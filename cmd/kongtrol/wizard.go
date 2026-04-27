@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -386,77 +387,218 @@ type detectedVPN struct {
 	version string
 }
 
-func detectInstalledVPNs() []detectedVPN {
-	type probe struct {
-		label    string
-		binaries []string
-		args     []string
-	}
-	probes := []probe{
-		{"FortiClient", []string{
-			"fortivpn", "forticlientsslvpn",
-			// Windows default install paths
+// vpnProbe describes how to locate and version-check one VPN client.
+type vpnProbe struct {
+	label    string
+	// binaries are checked via exec.LookPath first, then os.Stat for absolute paths.
+	binaries []string
+	// winGlobs are filepath.Glob patterns tried after binaries fail.
+	// Useful for versioned install dirs like ProtonVPN's v4.x.y subdirectories.
+	// The latest lexicographic match wins (higher version numbers sort last).
+	winGlobs []string
+	// args are passed to the binary to retrieve a version string.
+	// Leave empty to skip the version command (GUI-only apps).
+	args []string
+}
+
+var vpnProbes = []vpnProbe{
+	{
+		label: "FortiClient",
+		binaries: []string{
+			"fortivpn", "forticlientsslvpn", "FortiClient",
 			`C:\Program Files\Fortinet\FortiClient\FortiClient.exe`,
 			`C:\Program Files (x86)\Fortinet\FortiClient\FortiClient.exe`,
-		}, []string{"--version"}},
-		{"OpenVPN", []string{
+			`C:\Program Files\Fortinet\FortiClient EMS\FortiClient.exe`,
+		},
+		winGlobs: []string{
+			`C:\Program Files\Fortinet\FortiClient\*\FortiClient.exe`,
+			`C:\Program Files (x86)\Fortinet\FortiClient\*\FortiClient.exe`,
+		},
+		// FortiClient is an Electron GUI app — --version outputs JS module noise.
+		// Version is read from PE metadata via peVersion() instead.
+		args: []string{},
+	},
+	{
+		label: "OpenVPN",
+		binaries: []string{
 			"openvpn",
 			`C:\Program Files\OpenVPN\bin\openvpn.exe`,
 			`C:\Program Files (x86)\OpenVPN\bin\openvpn.exe`,
-		}, []string{"--version"}},
-		{"ProtonVPN", []string{
+			`C:\Program Files\OpenVPN Connect\OpenVPNConnect.exe`,
+		},
+		args: []string{"--version"},
+	},
+	{
+		label: "ProtonVPN",
+		binaries: []string{
 			"protonvpn-cli",
 			`C:\Program Files\Proton\VPN\ProtonVPN.Launcher.exe`,
 			`C:\Program Files (x86)\Proton Technologies\ProtonVPN\ProtonVPN.exe`,
-		}, []string{"--version"}},
-		{"Cisco AnyConnect", []string{
-			"vpn",
+		},
+		// ProtonVPN installs into versioned subdirs: v4.x.y/ProtonVPN.Client.exe
+		winGlobs: []string{
+			`C:\Program Files\Proton\VPN\v*\ProtonVPN.Client.exe`,
+			`C:\Program Files (x86)\Proton\VPN\v*\ProtonVPN.Client.exe`,
+		},
+		// GUI app — no reliable --version flag; version extracted from dir name instead.
+		args: []string{},
+	},
+	{
+		label: "Cisco AnyConnect",
+		binaries: []string{
+			"vpn", "vpncli",
 			"/opt/cisco/anyconnect/bin/vpn",
 			`C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
 			`C:\Program Files\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
-		}, []string{"-v"}},
-		{"WireGuard", []string{
-			"wg", "wg-quick",
+			`C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe`,
+			`C:\Program Files\Cisco\Cisco Secure Client\vpncli.exe`,
+		},
+		args: []string{"-v"},
+	},
+	{
+		label: "WireGuard",
+		binaries: []string{
+			"wg", "wg-quick", "wireguard",
 			`C:\Program Files\WireGuard\wg.exe`,
 			`C:\Program Files\WireGuard\wireguard.exe`,
-		}, []string{"--version"}},
-		{"GlobalProtect", []string{
-			"globalprotect",
+		},
+		args: []string{"--version"},
+	},
+	{
+		label: "GlobalProtect",
+		binaries: []string{
+			"globalprotect", "pangpcrypt",
 			"/opt/paloaltonetworks/globalprotect/pangpcrypt",
 			`C:\Program Files\Palo Alto Networks\GlobalProtect\PanGPA.exe`,
 			`C:\Program Files\Palo Alto Networks\GlobalProtect\pangpcrypt.exe`,
-		}, []string{"--version"}},
-		{"Tailscale", []string{
+		},
+		args: []string{"--version"},
+	},
+	{
+		label: "Tailscale",
+		binaries: []string{
 			"tailscale",
 			`C:\Program Files\Tailscale\tailscale.exe`,
-		}, []string{"version"}},
-		{"Cloudflare WARP", []string{
+		},
+		args: []string{"version"},
+	},
+	{
+		label: "Cloudflare WARP",
+		binaries: []string{
 			"warp-cli",
 			`C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe`,
-		}, []string{"--version"}},
-	}
+		},
+		args: []string{"--version"},
+	},
+	{
+		label: "TunnelBear",
+		binaries: []string{
+			"tunnelbear",
+			`C:\Program Files (x86)\TunnelBear\TunnelBear.exe`,
+			`C:\Program Files\TunnelBear\TunnelBear.exe`,
+			"/Applications/TunnelBear.app/Contents/MacOS/TunnelBear",
+		},
+		winGlobs: []string{
+			`C:\Program Files (x86)\TunnelBear\*\TunnelBear.exe`,
+			`C:\Program Files\TunnelBear\*\TunnelBear.exe`,
+		},
+		args: []string{"--version"},
+	},
+}
+
+func detectInstalledVPNs() []detectedVPN {
 	var found []detectedVPN
-	for _, p := range probes {
-		for _, bin := range p.binaries {
-			path, err := exec.LookPath(bin)
-			if err != nil {
-				if _, statErr := os.Stat(bin); statErr != nil {
-					continue
-				}
-				path = bin
-			}
-			ver := "installed"
-			if out, err := exec.Command(path, p.args...).Output(); err == nil {
-				ver = strings.TrimSpace(strings.Split(string(out), "\n")[0])
-				if len(ver) > 60 {
-					ver = ver[:60] + "…"
-				}
-			}
-			found = append(found, detectedVPN{label: p.label, version: ver})
-			break
+	for _, p := range vpnProbes {
+		if d, ok := resolveProbe(p); ok {
+			found = append(found, d)
 		}
 	}
 	return found
+}
+
+// resolveProbe tries to locate the VPN binary for p and returns its version.
+func resolveProbe(p vpnProbe) (detectedVPN, bool) {
+	// 1. PATH lookup + absolute-path stat for each binary entry.
+	for _, bin := range p.binaries {
+		path, err := exec.LookPath(bin)
+		if err != nil {
+			if _, statErr := os.Stat(bin); statErr != nil {
+				continue
+			}
+			path = bin
+		}
+		ver := runVersion(path, p.args)
+		if ver == "installed" {
+			// Try reading version from Windows PE metadata (works for GUI apps
+			// that don't expose a --version flag, e.g. FortiClient, TunnelBear).
+			if v := peVersion(path); v != "" {
+				ver = v
+			}
+		}
+		if ver == "installed" {
+			// Last resort: extract version from highest "v*" sibling directory
+			// (e.g. ProtonVPN installs into …\Proton\VPN\v4.3.14\).
+			parent := filepath.Dir(path)
+			if dirs, globErr := filepath.Glob(filepath.Join(parent, "v*")); globErr == nil && len(dirs) > 0 {
+				sort.Strings(dirs)
+				ver = filepath.Base(dirs[len(dirs)-1])
+			}
+		}
+		return detectedVPN{label: p.label, version: ver}, true
+	}
+
+	// 2. Glob patterns — useful for versioned install directories.
+	for _, pattern := range p.winGlobs {
+		matches, err := filepath.Glob(pattern)
+		if err != nil || len(matches) == 0 {
+			continue
+		}
+		// Sort ascending so the last entry is the highest version.
+		sort.Strings(matches)
+		path := matches[len(matches)-1]
+
+		ver := runVersion(path, p.args)
+		// If the binary gave no version, try extracting it from the parent dir name
+		// (e.g. "v4.3.14" from "…\Proton\VPN\v4.3.14\ProtonVPN.Client.exe").
+		if ver == "installed" {
+			if dir := filepath.Base(filepath.Dir(path)); strings.HasPrefix(dir, "v") {
+				ver = dir
+			}
+		}
+		return detectedVPN{label: p.label, version: ver}, true
+	}
+
+	return detectedVPN{}, false
+}
+
+// runVersion executes path with args and returns the first meaningful version
+// line from stdout. Falls back to "installed" when args is empty, the command
+// fails, or the output doesn't look like a version string.
+func runVersion(path string, args []string) string {
+	if len(args) == 0 {
+		return "installed"
+	}
+	out, err := exec.Command(path, args...).Output()
+	if err != nil || len(out) == 0 {
+		return "installed"
+	}
+	// Scan lines for the first one that looks like a version string.
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Skip lines that are just executable filenames or other noise.
+		lower := strings.ToLower(line)
+		if strings.HasSuffix(lower, ".exe") || strings.HasSuffix(lower, ".dll") {
+			continue
+		}
+		if len(line) > 60 {
+			line = line[:60] + "…"
+		}
+		return line
+	}
+	return "installed"
 }
 
 // ── prompt helpers ────────────────────────────────────────────────────────────
