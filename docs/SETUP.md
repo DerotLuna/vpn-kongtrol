@@ -39,7 +39,25 @@ Un solo comando. Sin tocar cada cliente VPN por separado.
 
 ## 1. Prerequisitos
 
-Antes de empezar, asegúrate de tener instalados los clientes VPN que vayas a usar:
+### Estado de las VPNs antes de empezar
+
+> **TL;DR:** Para configurar (`init`, `doctor`) el estado no importa. Para conectar (`up`), cierra la GUI del cliente primero.
+
+| Acción | Estado requerido de los clientes VPN |
+|---|---|
+| `kongtrol init` | Cualquiera — solo lee archivos y keychain |
+| `kongtrol doctor` | Cualquiera — solo valida, no conecta |
+| `kongtrol up office` | FortiClient GUI **cerrado** |
+| `kongtrol up dev-server` | OpenVPN GUI **cerrado** |
+| `kongtrol up us-content` | ProtonVPN GUI **cerrado** |
+
+**¿Por qué?** Kongtrol llama directamente al CLI del cliente. Si la GUI ya tiene una sesión abierta, dos instancias intentan controlar el mismo túnel y chocan. A partir del momento en que uses Kongtrol, las GUIs quedan cerradas — Kongtrol es quien las maneja.
+
+---
+
+### Clientes VPN requeridos
+
+Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
 | VPN | Cliente requerido | Verificar |
 |---|---|---|
@@ -248,6 +266,99 @@ kongtrol config validate
 
 ---
 
+## 5b. Configurar políticas de routing
+
+Las políticas definen qué tráfico va por qué VPN. El wizard no las configura — las agregas manualmente en `~/.kongtrol/kongtrol.yaml` bajo la sección `policies:`.
+
+### Ejemplo completo para tu setup
+
+```yaml
+policies:
+
+  # ── Oficina ────────────────────────────────────────────────────────
+  - name: "Servidores de oficina"
+    match:
+      ip_ranges:
+        - "10.10.0.0/16"        # red interna de oficina
+        - "192.168.50.0/24"     # subnets adicionales — ajusta a las tuyas
+    via: office
+
+  - name: "Dominios internos"
+    match:
+      domains:
+        - "*.tuempresa.com"     # cambia al dominio de tu empresa
+        - "intranet.local"
+    via: office
+
+  # ── Servidor de desarrollo ─────────────────────────────────────────
+  - name: "Servidor dev"
+    match:
+      ip_ranges:
+        - "185.0.0.0/32"        # reemplaza con la IP real de tu servidor
+    via: dev-server
+
+  # ── AWS ────────────────────────────────────────────────────────────
+  - name: "AWS workloads"
+    match:
+      ip_ranges:
+        - "172.31.0.0/16"       # VPC default de AWS
+        - "10.200.0.0/16"       # ajusta a tus CIDRs
+      domains:
+        - "*.amazonaws.com"
+        - "*.aws.tuempresa.com"
+    via: aws
+
+  # ── Contenido US / Claude ──────────────────────────────────────────
+  - name: "Claude AI"
+    match:
+      domains:
+        - "claude.ai"
+        - "*.claude.ai"
+        - "*.anthropic.com"     # API de Anthropic también
+    via: us-content
+
+  - name: "Contenido geo-restringido US"
+    match:
+      domains:
+        - "netflix.com"
+        - "*.netflix.com"
+        - "hulu.com"
+        - "*.hulu.com"
+        - "disneyplus.com"
+        - "*.disneyplus.com"
+    via: us-content
+
+  # El tráfico que no coincide con ninguna regla va por tu conexión
+  # normal (sin VPN). Si quieres forzar TODO el tráfico por una VPN:
+  # - name: "Default"
+  #   match:
+  #     ip_ranges: ["0.0.0.0/0"]
+  #   via: office
+```
+
+### Agregar cualquier otro dominio a us-content
+
+El patrón es siempre el mismo — agrega una entrada en `policies:`:
+
+```yaml
+  - name: "Mi servicio"
+    match:
+      domains:
+        - "ejemplo.com"
+        - "*.ejemplo.com"
+    via: us-content
+```
+
+Guarda y valida:
+
+```bash
+kongtrol config validate
+```
+
+No necesitas reiniciar nada — las políticas se leen al conectar.
+
+---
+
 ## 6. Verificar con doctor
 
 Antes de conectar por primera vez, deja que Kongtrol valide todo:
@@ -375,9 +486,9 @@ Abre `http://localhost:9741` en tu navegador. Verás:
 ### Comandos más usados
 
 ```bash
-kongtrol up --group work          # empezar el día
+kongtrol up --group work          # empezar el día (office + dev-server + aws)
 kongtrol down --group work        # terminar el día
-kongtrol up us-content            # ver Netflix / Hulu
+kongtrol up us-content            # Netflix, Hulu, Claude AI...
 kongtrol down --all               # apagar todo
 
 kongtrol status                   # ver qué está conectado
