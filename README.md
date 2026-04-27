@@ -142,6 +142,7 @@ kongtrol init
 ```
 
 The wizard:
+- Asks your preferred language — **Spanish by default**, English available (press `n` at the first prompt)
 - Detects VPN clients installed on your system
 - Shows existing profiles if a config file is found
 - Offers to refresh credentials for existing profiles

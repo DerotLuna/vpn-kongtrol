@@ -110,3 +110,18 @@ Go embed paths are relative to the source file — no `../` allowed. The layout 
 ### DNS manager internals
 
 `monitor.DNSManager` is reference-counted across simultaneous tunnels. `OnConnect` merges + deduplicates DNS servers from all active profiles and applies the guard. `OnDisconnect` re-applies with the remaining set, or restores original DNS when the last profile disconnects. Always call `ForceRestore()` on SIGTERM/panic path (it's deferred in `upCmd`).
+
+## Internationalization (i18n)
+
+All user-visible strings — prompts, error messages, status output, banners — must be internationalized using `internal/i18n`. **Never hardcode strings directly in user-facing code.**
+
+Rules:
+- Add new keys to **both** `ES` and `EN` maps in `internal/i18n/i18n.go`
+- In wizard/CLI code use `i18n.T(lang, key)` or `i18n.F(lang, key, args...)` — never `fmt.Printf("hardcoded string")`
+- Spanish (`ES`) is the default language; English (`EN`) must always be present as well
+- `confirm()` must use `i18n.YesNo(lang, def)` for the hint and `i18n.IsYes(lang, input)` for parsing — Spanish accepts `s/si/sí`, English accepts `y/yes`
+- The language is selected once at wizard startup via `selectLanguage()` and stored on the `wizard` struct; all subsequent output goes through `w.t(key)` / `w.tF(key, args...)`
+
+## Build on Windows
+
+`make` targets use `SHELL := /usr/bin/bash` and Unix env-var syntax — they must be run from **Git Bash**, not from PowerShell or cmd.exe. Running `make build-all-cli` from PowerShell will fail with "The syntax of the command is incorrect".

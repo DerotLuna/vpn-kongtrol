@@ -154,49 +154,60 @@ El wizard detecta tus clientes VPN instalados, te guía por cada perfil, y guard
 kongtrol init
 ```
 
-Verás algo así:
+Lo primero que verás es la selección de idioma — presiona Enter para español o `n` para inglés:
 
 ```
-╔══════════════════════════════════════════╗
-║        Kongtrol — Setup Wizard           ║
-╚══════════════════════════════════════════╝
+¿Continuar en español? [S/n]  (Press n for English):
+```
 
-Detected VPN clients on this system:
+Luego el wizard continúa en español:
+
+```
+╔═══════════════════════════════════════════════╗
+║   Kongtrol — Asistente de Configuración   ║
+╚═══════════════════════════════════════════════╝
+
+Este asistente crea o actualiza ~/.kongtrol/kongtrol.yaml.
+Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
+
+Clientes VPN detectados en este sistema:
   ✓ FortiClient             FortiClient 6.4.10.1821
   ✓ OpenVPN                 OpenVPN 2.6.x
   ✓ ProtonVPN               protonvpn-cli 3.x
 
-Add a new VPN profile? [Y/n]: y
+¿Agregar un nuevo perfil VPN? [s/N]: s
 ```
 
 ### Perfil 1: FortiClient (oficina)
 
 ```
-Profile name: office
-Type: forticlient
-VPN host: vpn.tuempresa.com
-Port [443]:
-Tunnel name: Office          ← exactamente como aparece en FortiClient
-FortiClient major version [6]: 6
-Auth method [certificate+credentials]:
-Client cert path: ~/.kongtrol/certs/office.crt
-Private key path: ~/.kongtrol/certs/office.key
-Username: tu_usuario
-Password: ****              ← se guarda en keychain, no en el YAML
-Priority [10]:
+  Nombre del perfil (ej. oficina, aws, wg-casa): office
+  Tipos de adaptador: forticlient | openvpn | protonvpn | ciscoanyconnect |
+                      wireguard | globalprotect | tailscale | cloudflarewarp
+  Tipo [openvpn]: forticlient
+  Host VPN (ej. vpn.empresa.com): vpn.tuempresa.com
+  Puerto [443]:
+  Nombre del túnel (como aparece en la UI de FortiClient) [Office]:
+  Versión mayor de FortiClient [6]:
+  Método de autenticación (certificate | credentials | certificate+credentials) [certificate+credentials]:
+  Ruta al certificado cliente (ej. ~/.kongtrol/certs/oficina.crt): ~/.kongtrol/certs/office.crt
+  Ruta a la clave privada (ej. ~/.kongtrol/certs/oficina.key): ~/.kongtrol/certs/office.key
+  Usuario: tu_usuario
+  Prioridad (menor = preferido, 1–100) [10]:
+  Contraseña para office (guardada en llavero del sistema, no en YAML): ****
 ```
 
 ### Perfil 2: OpenVPN servidor
 
 ```
-Add a new VPN profile? [Y/n]: y
-Profile name: dev-server
-Type: openvpn
-.ovpn config path: ~/.kongtrol/configs/server.ovpn
-Auth method [certificate]:
-Client cert path (leave blank if embedded in .ovpn):
-Private key path (leave blank if embedded in .ovpn):
-Priority [10]: 20
+¿Agregar un nuevo perfil VPN? [s/N]: s
+  Nombre del perfil (ej. oficina, aws, wg-casa): dev-server
+  Tipo [openvpn]:
+  Ruta al archivo .ovpn (ej. ~/.kongtrol/configs/servidor.ovpn): ~/.kongtrol/configs/server.ovpn
+  Método de autenticación (certificate | credentials | certificate+credentials) [certificate]:
+  Ruta al certificado cliente (vacío si está dentro del .ovpn):
+  Ruta a la clave privada (vacío si está dentro del .ovpn):
+  Prioridad (menor = preferido, 1–100) [10]: 20
 ```
 
 > Si el `.ovpn` ya tiene `<cert>` y `<key>` embebidas, deja los paths en blanco.
@@ -204,39 +215,46 @@ Priority [10]: 20
 ### Perfil 3: OpenVPN AWS
 
 ```
-Add a new VPN profile? [Y/n]: y
-Profile name: aws
-Type: openvpn
-.ovpn config path: ~/.kongtrol/configs/aws.ovpn
-Auth method [certificate]:
-Priority [10]: 20
+¿Agregar un nuevo perfil VPN? [s/N]: s
+  Nombre del perfil (ej. oficina, aws, wg-casa): aws
+  Tipo [openvpn]:
+  Ruta al archivo .ovpn (ej. ~/.kongtrol/configs/servidor.ovpn): ~/.kongtrol/configs/aws.ovpn
+  Método de autenticación (certificate | credentials | certificate+credentials) [certificate]:
+  Prioridad (menor = preferido, 1–100) [10]: 20
 ```
 
 ### Perfil 4: ProtonVPN
 
 ```
-Add a new VPN profile? [Y/n]: y
-Profile name: us-content
-Type: protonvpn
-Server / country code [fastest]: US
-Protocol [wireguard]:
-Username: tu_usuario_proton
-Password: ****
-Priority [10]: 5
+¿Agregar un nuevo perfil VPN? [s/N]: s
+  Nombre del perfil (ej. oficina, aws, wg-casa): us-content
+  Tipo [openvpn]: protonvpn
+  Servidor / código de país (ej. US, NL, fastest) [fastest]: US
+  Protocolo (wireguard | openvpn) [wireguard]:
+  Usuario de ProtonVPN: tu_usuario_proton
+  Prioridad (menor = preferido, 1–100) [10]: 5
+  Contraseña para us-content (guardada en llavero del sistema, no en YAML): ****
+
+¿Agregar un nuevo perfil VPN? [s/N]:
 ```
 
 ### Opciones de seguridad
 
 ```
-Enable kill switch? [Y/n]: y     ← bloquea tráfico si cae una VPN
-Enable DNS guard? [Y/n]: y       ← previene DNS leaks
-Enable signed audit log? [Y/n]: y
-Enable web dashboard? [Y/n]: y
+¿Activar kill switch? (bloquea todo el tráfico si cae la VPN) [S/n]:    ← Enter = sí
+¿Activar DNS guard? (previene fugas de DNS) [S/n]:
+¿Activar log de auditoría firmado? [S/n]:
+¿Activar panel web? (http://127.0.0.1:9741) [S/n]:
 
-Write config to ~/.kongtrol/kongtrol.yaml? [Y/n]: y
+¿Escribir configuración en ~/.kongtrol/kongtrol.yaml? [S/n]: s
 
-[✓] Config written
-[✓] Config is valid.
+[✓] Configuración escrita en ~/.kongtrol/kongtrol.yaml
+[✓] Configuración válida.
+
+Próximos pasos:
+  kongtrol status                  — ver estado de los túneles
+  kongtrol up <perfil>             — conectar un perfil
+  kongtrol dashboard               — abrir el panel web
 ```
 
 ---
@@ -508,7 +526,7 @@ kongtrol doctor                   # diagnóstico completo
 ```bash
 # Si cambias tu contraseña de FortiClient:
 kongtrol init
-# → elige el perfil "office" → "Refresh credentials" → ingresa la nueva
+# → elige el perfil "office" → "¿Actualizar credenciales de este perfil?" → ingresa la nueva
 ```
 
 ---
