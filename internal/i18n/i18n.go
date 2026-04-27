@@ -62,6 +62,7 @@ var messages = map[Lang]map[string]string{
 	ES: {
 		// Banner
 		"banner.title":    "Kongtrol — Asistente de Configuración",
+		"banner.subtitle": "Orquestación Multi-VPN",
 		"banner.yaml":     "Este asistente crea o actualiza ~/.kongtrol/kongtrol.yaml.",
 		"banner.keychain": "Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.",
 
@@ -146,6 +147,7 @@ var messages = map[Lang]map[string]string{
 	EN: {
 		// Banner
 		"banner.title":    "Kongtrol — Setup Wizard",
+		"banner.subtitle": "Multi-VPN Orchestration",
 		"banner.yaml":     "This wizard creates or updates ~/.kongtrol/kongtrol.yaml.",
 		"banner.keychain": "Passwords are stored in your OS keychain — never in the YAML file.",
 

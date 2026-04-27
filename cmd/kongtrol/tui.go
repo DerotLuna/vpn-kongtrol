@@ -15,7 +15,6 @@ const (
 
 	// Kong amber/gold palette
 	cKong    = "\033[38;5;136m" // dark amber  — gorilla body
-	cKongHi  = "\033[38;5;178m" // light gold  — highlights
 	cKongEye = "\033[38;5;51m"  // bright cyan — glowing eyes
 
 	// UI semantic colors
@@ -108,7 +107,7 @@ func (s *spinner) Stop() {
 // kongTitle returns "K O N G T R O L" with an amber→gold gradient per letter.
 func kongTitle() string {
 	if !isTerminal {
-		return "       K O N G T R O L"
+		return "K O N G T R O L"
 	}
 	gradient := []string{
 		"\033[38;5;208m", // K deep orange
@@ -121,38 +120,35 @@ func kongTitle() string {
 		"\033[38;5;202m", // L red-orange
 	}
 	var sb strings.Builder
-	sb.WriteString("      ")
 	for i, ch := range "KONGTROL" {
 		sb.WriteString(ansiBold)
 		sb.WriteString(gradient[i])
 		sb.WriteString(string(ch))
 		sb.WriteString(ansiReset)
-		sb.WriteString(" ")
+		if i < 7 {
+			sb.WriteString(" ")
+		}
 	}
 	return sb.String()
 }
 
-// kongLogoLines returns the gorilla face as a slice of printable strings.
-// leftEye / rightEye are single display-width Unicode chars (e.g. ◉, •, ─).
-// eyeColor is the ANSI color applied to those characters.
-func kongLogoLines(leftEye, rightEye, eyeColor string) []string {
+// kongLogoLines returns a compact 4-line gorilla face with text to the right.
+// leftEye / rightEye are single-width Unicode chars (◉  •  ─).
+// eyeColor is the ANSI code applied to those chars.
+// subtitle is already translated by the caller.
+func kongLogoLines(leftEye, rightEye, eyeColor, subtitle string) []string {
 	b := func(s string) string { return paintBold(cKong, s) }    // body
-	h := func(s string) string { return paintBold(cKongHi, s) }  // socket highlight
-	e := func(s string) string { return paintBold(eyeColor, s) } // eye chars
+	e := func(s string) string { return paintBold(eyeColor, s) } // eyes
 
+	//  ▄▄▄▄▄▄▄▄▄▄▄▄▄         (13 ▄)
+	//  █ ◉       ◉ █   K O N G T R O L
+	//  █   ▄▄▄▄▄   █   Multi-VPN Orchestration
+	//  ▀▀▀▀▀▀▀▀▀▀▀▀▀         (13 ▀)
 	return []string{
-		b("   ██████████████████████████"),
-		b("  ██▀▀                    ▀▀██"),
-		b("  ██  ") + h("▄▄███▄▄") + b("       ") + h("▄▄███▄▄") + b("  ██"),
-		b("  ██  ") + h("██") + e(" "+leftEye+" ") + h("██") + b("       ") + h("██") + e(" "+rightEye+" ") + h("██") + b("  ██"),
-		b("  ██  ") + h("▀▀███▀▀") + b("       ") + h("▀▀███▀▀") + b("  ██"),
-		b("  ██      ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄     ██"),
-		b("  ██     ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀    ██"),
-		b("  ██▄▄                        ▄▄██"),
-		b("   ██████████████████████████"),
-		"",
-		kongTitle(),
-		paint(cDim, "      Multi-VPN Orchestration"),
+		"  " + b("▄▄▄▄▄▄▄▄▄▄▄▄▄"),
+		"  " + b("█ ") + e(leftEye) + b("       ") + e(rightEye) + b(" █") + "  " + kongTitle(),
+		"  " + b("█   ▄▄▄▄▄▄▄   █") + "  " + paint(cDim, subtitle),
+		"  " + b("▀▀▀▀▀▀▀▀▀▀▀▀▀"),
 	}
 }
 
@@ -169,8 +165,9 @@ func redrawLogoLines(n int, lines []string) {
 	}
 }
 
-// AnimateLogo prints the Kong gorilla logo with a two-blink eye animation.
-func AnimateLogo() {
+// AnimateLogo prints the compact Kong logo with a two-blink eye animation.
+// subtitle is the already-translated tagline shown beside the logo.
+func AnimateLogo(subtitle string) {
 	const (
 		eyeOpen   = "◉"
 		eyeHalf   = "•"
@@ -195,7 +192,7 @@ func AnimateLogo() {
 		{eyeOpen, eyeOpen, cKongEye, 0}, // final state
 	}
 
-	first := kongLogoLines(anim[0].l, anim[0].r, anim[0].eyeColor)
+	first := kongLogoLines(anim[0].l, anim[0].r, anim[0].eyeColor, subtitle)
 	printLogoLines(first)
 	n := len(first)
 
@@ -205,7 +202,7 @@ func AnimateLogo() {
 
 	for i := 0; i < len(anim)-1; i++ {
 		time.Sleep(anim[i].hold)
-		next := kongLogoLines(anim[i+1].l, anim[i+1].r, anim[i+1].eyeColor)
+		next := kongLogoLines(anim[i+1].l, anim[i+1].r, anim[i+1].eyeColor, subtitle)
 		redrawLogoLines(n, next)
 	}
 }

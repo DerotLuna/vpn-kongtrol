@@ -62,7 +62,7 @@ func (w *wizard) selectLanguage() {
 
 func (w *wizard) run() error {
 	// ── animated logo ─────────────────────────────────────────────────────────
-	AnimateLogo()
+	AnimateLogo(w.t("banner.subtitle"))
 	fmt.Println()
 
 	// ── subtitle (typewriter effect) ──────────────────────────────────────────
@@ -393,14 +393,47 @@ func detectInstalledVPNs() []detectedVPN {
 		args     []string
 	}
 	probes := []probe{
-		{"FortiClient", []string{"fortivpn", "forticlientsslvpn"}, []string{"--version"}},
-		{"OpenVPN", []string{"openvpn"}, []string{"--version"}},
-		{"ProtonVPN", []string{"protonvpn-cli"}, []string{"--version"}},
-		{"Cisco AnyConnect", []string{"vpn", "/opt/cisco/anyconnect/bin/vpn"}, []string{"-v"}},
-		{"WireGuard", []string{"wg", "wg-quick"}, []string{"--version"}},
-		{"GlobalProtect", []string{"globalprotect", "/opt/paloaltonetworks/globalprotect/pangpcrypt"}, []string{"--version"}},
-		{"Tailscale", []string{"tailscale"}, []string{"version"}},
-		{"Cloudflare WARP", []string{"warp-cli"}, []string{"--version"}},
+		{"FortiClient", []string{
+			"fortivpn", "forticlientsslvpn",
+			// Windows default install paths
+			`C:\Program Files\Fortinet\FortiClient\FortiClient.exe`,
+			`C:\Program Files (x86)\Fortinet\FortiClient\FortiClient.exe`,
+		}, []string{"--version"}},
+		{"OpenVPN", []string{
+			"openvpn",
+			`C:\Program Files\OpenVPN\bin\openvpn.exe`,
+			`C:\Program Files (x86)\OpenVPN\bin\openvpn.exe`,
+		}, []string{"--version"}},
+		{"ProtonVPN", []string{
+			"protonvpn-cli",
+			`C:\Program Files\Proton\VPN\ProtonVPN.Launcher.exe`,
+			`C:\Program Files (x86)\Proton Technologies\ProtonVPN\ProtonVPN.exe`,
+		}, []string{"--version"}},
+		{"Cisco AnyConnect", []string{
+			"vpn",
+			"/opt/cisco/anyconnect/bin/vpn",
+			`C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
+			`C:\Program Files\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
+		}, []string{"-v"}},
+		{"WireGuard", []string{
+			"wg", "wg-quick",
+			`C:\Program Files\WireGuard\wg.exe`,
+			`C:\Program Files\WireGuard\wireguard.exe`,
+		}, []string{"--version"}},
+		{"GlobalProtect", []string{
+			"globalprotect",
+			"/opt/paloaltonetworks/globalprotect/pangpcrypt",
+			`C:\Program Files\Palo Alto Networks\GlobalProtect\PanGPA.exe`,
+			`C:\Program Files\Palo Alto Networks\GlobalProtect\pangpcrypt.exe`,
+		}, []string{"--version"}},
+		{"Tailscale", []string{
+			"tailscale",
+			`C:\Program Files\Tailscale\tailscale.exe`,
+		}, []string{"version"}},
+		{"Cloudflare WARP", []string{
+			"warp-cli",
+			`C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe`,
+		}, []string{"--version"}},
 	}
 	var found []detectedVPN
 	for _, p := range probes {
