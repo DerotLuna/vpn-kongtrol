@@ -132,7 +132,7 @@ Or build from source (requires Go 1.22+):
 git clone https://github.com/yourorg/vpn-kongtrol
 cd vpn-kongtrol
 make build          # current platform
-make build-all      # all platforms → build/dist/
+make build-all-cli  # all platforms → build/dist/
 ```
 
 ### 2. Run the setup wizard
