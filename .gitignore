@@ -1,0 +1,81 @@
+# ── Build output ──────────────────────────────────────────────────────────────
+build/dist/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# ── Go ────────────────────────────────────────────────────────────────────────
+vendor/
+*.test
+*.out
+coverage.out
+coverage.html
+cpu.prof
+mem.prof
+
+# ── Credentials & secrets ─────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.ovpn
+*.conf
+configs/local/
+.env
+.env.*
+secrets/
+
+# kongtrol user config (local overrides — never commit personal VPN config)
+kongtrol.yaml
+config.yaml
+~/.kongtrol/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.Trash-*
+
+# ── Editors & IDEs ────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*.vim
+*.sublime-project
+*.sublime-workspace
+.history/
+
+# ── Tooling ───────────────────────────────────────────────────────────────────
+# goreleaser
+.goreleaser-artifacts/
+
+# air (live reload)
+tmp/
+.air.toml.local
+
+# golangci-lint cache
+.golangci-lint-cache/
+
+# Test artifacts
+testdata/local/
+
+# ── Logs & runtime ────────────────────────────────────────────────────────────
+*.log
+audit.log
+*.pid

@@ -1,0 +1,45 @@
+name: vpn-kongtrol
+
+services:
+  kongtrol:
+    build:
+      context: ../..
+      dockerfile: build/docker/Dockerfile
+    image: vpn-kongtrol:dev
+    container_name: vpn-kongtrol
+    restart: unless-stopped
+
+    # ── Network privileges ─────────────────────────────────────────────────
+    # Required: VPN tunnel management needs kernel-level network access.
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    devices:
+      - /dev/net/tun:/dev/net/tun   # TUN interface for OpenVPN/WireGuard
+    network_mode: host               # Route management requires host network stack
+
+    # ── Config & certs ─────────────────────────────────────────────────────
+    volumes:
+      - ${HOME}/.kongtrol:/etc/kongtrol:ro   # config + certs (read-only)
+      - kongtrol-audit:/var/log/kongtrol      # audit log persistence
+
+    # ── Environment ────────────────────────────────────────────────────────
+    environment:
+      KONGTROL_CONFIG: /etc/kongtrol/kongtrol.yaml
+      KONGTROL_LOG_LEVEL: info
+
+    # ── Dashboard port ─────────────────────────────────────────────────────
+    # network_mode: host exposes all ports on the host directly.
+    # Configure bind: "127.0.0.1" in kongtrol.yaml to restrict dashboard access.
+    ports: []   # unused when network_mode: host
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9741/api/v1/security/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  kongtrol-audit:

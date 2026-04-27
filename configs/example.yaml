@@ -1,0 +1,180 @@
+# VPN Kongtrol — Example Configuration
+# Copy to ~/.kongtrol/kongtrol.yaml and edit as needed.
+# Run 'kongtrol init' for an interactive setup wizard.
+#
+# Credentials (passwords) are NEVER stored here.
+# Store them with: kongtrol config set-credential <profile> password
+
+vpns:
+  office:
+    type: forticlient
+    version: "6.4"               # cli_v6 bindings; use "7" for FortiClient 7.x
+    host: vpn.empresa.com
+    port: 443
+    tunnel_name: "Office"        # exactly as configured in FortiClient
+    auth:
+      method: certificate+credentials
+      cert: ~/.kongtrol/certs/office.crt
+      key: ~/.kongtrol/certs/office.key
+      username: your_username    # or use username_keychain below
+      # username_keychain: office.username   # keychain key name
+      # password_keychain: office.password   # keychain key name (recommended)
+    priority: 10
+
+  server:
+    type: openvpn
+    config: ~/.kongtrol/configs/server.ovpn
+    auth:
+      method: certificate
+      cert: ~/.kongtrol/certs/server.crt
+      key: ~/.kongtrol/certs/server.key
+    priority: 20
+
+  aws:
+    type: openvpn
+    config: ~/.kongtrol/configs/aws.ovpn
+    auth:
+      method: certificate
+      cert: ~/.kongtrol/certs/aws.crt
+      key: ~/.kongtrol/certs/aws.key
+    priority: 20
+
+  us-content:
+    type: protonvpn
+    server: US       # ISO country code; protonvpn-cli selects fastest server
+    protocol: wireguard
+    auth:
+      method: credentials
+      username_keychain: proton.username
+      # password stored via: kongtrol config set-credential us-content password
+    priority: 5
+
+  # ── Additional adapters ────────────────────────────────────────────────────
+
+  corporate-cisco:
+    type: ciscoanyconnect
+    host: vpn.corp.com
+    auth:
+      method: credentials
+      username: your_username
+      password_keychain: cisco.password
+    priority: 10
+
+  wg-home:
+    type: wireguard
+    config: ~/.kongtrol/configs/wg-home.conf  # path to WireGuard .conf file
+    auth:
+      method: certificate   # WireGuard uses keys embedded in .conf
+    priority: 15
+
+  global-protect:
+    type: globalprotect
+    host: gateway.corp.com
+    auth:
+      method: credentials
+      username_keychain: gp.username
+      password_keychain: gp.password
+    priority: 10
+
+  tailscale-mesh:
+    type: tailscale
+    # host: exit-node hostname (optional — routes through Tailscale exit node)
+    # password: Tailscale auth key (optional — reuses existing session if empty)
+    auth:
+      method: credentials
+      # password_keychain: tailscale.authkey
+    priority: 5
+
+  warp:
+    type: cloudflarewarp
+    # No credentials needed — device must be registered via 'warp-cli register'
+    auth:
+      method: credentials
+    priority: 1
+
+
+policies:
+  - name: "Office servers"
+    match:
+      ip_ranges:
+        - "10.10.0.0/16"
+        - "192.168.50.0/24"
+    via: office
+
+  - name: "AWS workloads"
+    match:
+      ip_ranges:
+        - "172.31.0.0/16"
+        - "10.200.0.0/16"
+      domains:
+        - "*.amazonaws.com"
+        - "*.aws.empresa.com"
+    via: aws
+
+  - name: "Dev server"
+    match:
+      ip_ranges:
+        - "185.x.x.x/32"        # replace with your server's actual IP
+    via: server
+
+  - name: "US geo-restricted content"
+    match:
+      domains:
+        - "netflix.com"
+        - "*.netflix.com"
+        - "hulu.com"
+    via: us-content
+
+  # No default rule: unmatched traffic goes through the physical interface.
+  # To force all unmatched traffic through a VPN, add:
+  # - name: "Default route"
+  #   match:
+  #     ip_ranges: ["0.0.0.0/0"]
+  #   via: office
+
+
+security:
+  kill_switch:
+    enabled: true
+    mode: strict    # strict = block ALL non-tunnel traffic; loose = allow LAN
+    allow_lan: true # allow 192.168.x.x / 10.x.x.x even when kill switch is ON
+
+  dns_guard:
+    enabled: true
+    fallback_dns: "1.1.1.1"
+
+  integrity_check:
+    enabled: true
+    interval: "120s"
+    # Optional: verify your public IP matches what's expected per VPN.
+    # expected_ips:
+    #   office: "203.x.x.x"
+
+  leak_detection:
+    enabled: true
+    interval: "60s"
+    action: notify   # notify | killswitch_and_notify
+
+  audit_log:
+    path: ~/.kongtrol/audit.log
+    max_size_mb: 100
+    sign: true       # HMAC-SHA256 per entry (key stored in OS keychain)
+
+
+monitor:
+  enabled: true
+  dashboard:
+    port: 9741
+    bind: "127.0.0.1"   # NEVER set to 0.0.0.0 without adding auth
+
+  health_check:
+    interval: "30s"
+    timeout: "10s"
+
+  alerts:
+    on_vpn_drop:
+      actions: ["notify", "log"]
+    on_leak_detected:
+      actions: ["kill_switch", "notify", "log"]
+    on_high_latency_ms: 500
+    on_reconnect_attempts: 3

@@ -1,0 +1,60 @@
+version: 2
+
+project_name: vpn-kongtrol
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  # CLI binary — CGO disabled, true cross-compilation.
+  - id: kongtrol-cli
+    binary: kongtrol
+    main: ./cmd/kongtrol
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+
+  # Tray app — CGO required, must be compiled natively per OS.
+  # Only the host OS is compiled in goreleaser; use matrix CI for multi-OS.
+  - id: kongtrol-tray
+    binary: kongtrol-tray
+    main: ./cmd/kongtrol-tray
+    env:
+      - CGO_ENABLED=1
+    goos: ["{{ .Os }}"]   # native OS only
+    goarch: ["{{ .Arch }}"]
+    ldflags:
+      - -s -w
+
+archives:
+  - id: cli-archive
+    builds: [kongtrol-cli]
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "kongtrol_{{ .Os }}_{{ .Arch }}"
+    files:
+      - configs/example.yaml
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+release:
+  draft: true
+  replace_existing_draft: true
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
