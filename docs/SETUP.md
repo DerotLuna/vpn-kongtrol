@@ -468,6 +468,14 @@ kongtrol up office        # solo FortiClient
 kongtrol up us-content    # solo ProtonVPN
 ```
 
+### Varios perfiles a la vez (sin grupo)
+
+```bash
+kongtrol up office dev-server aws
+```
+
+Los tres túneles se levantan en paralelo. El routing policy determina qué tráfico va por cuál — configura `policies:` en el YAML antes de usar esto (sección 5b).
+
 ### Ver estado
 
 ```bash
