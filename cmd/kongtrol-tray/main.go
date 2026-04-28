@@ -202,7 +202,7 @@ func setIcon(connected bool) {
 	iconBytes, err := assets.TrayIcon(size)
 	if err != nil {
 		// Fallback: use the full-res PNG and let systray resize.
-		iconBytes = assets.LogoPNG
+		iconBytes = assets.LogoKongPNG
 	}
 	systray.SetIcon(iconBytes)
 	_ = connected // future: swap to a grey version when disconnected

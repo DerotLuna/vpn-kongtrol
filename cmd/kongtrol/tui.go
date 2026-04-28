@@ -133,27 +133,31 @@ func kongTitle() string {
 }
 
 // kongLogoLines returns a compact 4-line gorilla face with text to the right.
+//
+//	▄▄▄▄▄▄▄▄▄▄▄▄▄                      (forehead)
+//	█ ◉       ◉ █  K O N G T R O L     (eyes  + title)
+//	█    ··     █  Orquestación...      (nose  + subtitle)
+//	▀▀▀▀▀▀▀▀▀▀▀▀▀  v1.2.3-dev          (chin  + version)
+//
 // leftEye / rightEye are single-width Unicode chars (◉  •  ─).
-// eyeColor is the ANSI code applied to those chars.
-// subtitle and ver are already translated/formatted by the caller.
+// eyeColor is applied to the eye chars; nose dots stay body-colored (subtle).
 func kongLogoLines(leftEye, rightEye, eyeColor, subtitle, ver string) []string {
-	b := func(s string) string { return paintBold(cKong, s) }    // body
+	b := func(s string) string { return paintBold(cKong, s) }    // body + nose
 	e := func(s string) string { return paintBold(eyeColor, s) } // eyes
 
-	title := kongTitle()
+	verStr := ""
 	if ver != "" {
-		title += "  " + paint(cDim, ver)
+		verStr = "  " + paint(cDim, ver)
 	}
 
-	//  ▄▄▄▄▄▄▄▄▄▄▄▄▄         (13 ▄)
-	//  █ ◉       ◉ █   K O N G T R O L  v1.2.3
-	//  █   ▄▄▄▄▄   █   Orquestación Multi-VPN
-	//  ▀▀▀▀▀▀▀▀▀▀▀▀▀         (13 ▀)
+	// All four face rows are exactly 13 display-chars wide.
+	// Inner width (between the two █) = 11 chars.
+	// Eyes sit at inner positions 1 and 9; nose dots at 4–5 (centered).
 	return []string{
 		"  " + b("▄▄▄▄▄▄▄▄▄▄▄▄▄"),
-		"  " + b("█ ") + e(leftEye) + b("       ") + e(rightEye) + b(" █") + "  " + title,
-		"  " + b("█   ▄▄▄▄▄▄▄   █") + "  " + paint(cDim, subtitle),
-		"  " + b("▀▀▀▀▀▀▀▀▀▀▀▀▀"),
+		"  " + b("█ ") + e(leftEye) + b("       ") + e(rightEye) + b(" █") + "  " + kongTitle(),
+		"  " + b("█    ") + b("··") + b("     █") + "  " + paint(cDim, subtitle),
+		"  " + b("▀▀▀▀▀▀▀▀▀▀▀▀▀") + verStr,
 	}
 }
 

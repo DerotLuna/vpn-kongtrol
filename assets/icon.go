@@ -12,7 +12,7 @@ import (
 // suitable for use with fyne.io/systray.SetIcon().
 // Uses Lanczos (CatmullRom) interpolation for crisp downscaling.
 func TrayIcon(size int) ([]byte, error) {
-	src, _, err := image.Decode(bytes.NewReader(LogoPNG))
+	src, _, err := image.Decode(bytes.NewReader(LogoKongPNG))
 	if err != nil {
 		return nil, err
 	}
