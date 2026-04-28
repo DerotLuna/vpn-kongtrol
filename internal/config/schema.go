@@ -22,9 +22,10 @@ type VPNConfig struct {
 	Host       string     `yaml:"host"`
 	Port       int        `yaml:"port"`
 	TunnelName string     `yaml:"tunnel_name"`
-	ConfigFile string     `yaml:"config"`   // .ovpn file path (openvpn)
-	Server     string     `yaml:"server"`   // server identifier (protonvpn)
-	Protocol   string     `yaml:"protocol"` // wireguard|openvpn (protonvpn)
+	ConfigFile string     `yaml:"config"`      // .ovpn / wg .conf file path
+	Server     string     `yaml:"server"`      // server identifier (protonvpn)
+	Protocol   string     `yaml:"protocol"`    // wireguard|openvpn (protonvpn)
+	BinaryPath string     `yaml:"binary_path"` // override adapter binary location (optional)
 	Auth       AuthConfig `yaml:"auth"`
 	Priority   int        `yaml:"priority"`
 }

@@ -135,18 +135,23 @@ func kongTitle() string {
 // kongLogoLines returns a compact 4-line gorilla face with text to the right.
 // leftEye / rightEye are single-width Unicode chars (◉  •  ─).
 // eyeColor is the ANSI code applied to those chars.
-// subtitle is already translated by the caller.
-func kongLogoLines(leftEye, rightEye, eyeColor, subtitle string) []string {
+// subtitle and ver are already translated/formatted by the caller.
+func kongLogoLines(leftEye, rightEye, eyeColor, subtitle, ver string) []string {
 	b := func(s string) string { return paintBold(cKong, s) }    // body
 	e := func(s string) string { return paintBold(eyeColor, s) } // eyes
 
+	title := kongTitle()
+	if ver != "" {
+		title += "  " + paint(cDim, ver)
+	}
+
 	//  ▄▄▄▄▄▄▄▄▄▄▄▄▄         (13 ▄)
-	//  █ ◉       ◉ █   K O N G T R O L
-	//  █   ▄▄▄▄▄   █   Multi-VPN Orchestration
+	//  █ ◉       ◉ █   K O N G T R O L  v1.2.3
+	//  █   ▄▄▄▄▄   █   Orquestación Multi-VPN
 	//  ▀▀▀▀▀▀▀▀▀▀▀▀▀         (13 ▀)
 	return []string{
 		"  " + b("▄▄▄▄▄▄▄▄▄▄▄▄▄"),
-		"  " + b("█ ") + e(leftEye) + b("       ") + e(rightEye) + b(" █") + "  " + kongTitle(),
+		"  " + b("█ ") + e(leftEye) + b("       ") + e(rightEye) + b(" █") + "  " + title,
 		"  " + b("█   ▄▄▄▄▄▄▄   █") + "  " + paint(cDim, subtitle),
 		"  " + b("▀▀▀▀▀▀▀▀▀▀▀▀▀"),
 	}
@@ -165,9 +170,23 @@ func redrawLogoLines(n int, lines []string) {
 	}
 }
 
+// PrintHeader prints a compact single-line banner for non-wizard commands.
+// It shows the gradient title, version, and subtitle — no animation.
+func PrintHeader(ver string) {
+	fmt.Println()
+	line := kongTitle()
+	if ver != "" {
+		line += "  " + paint(cDim, ver)
+	}
+	line += "  " + paint(cDim, "·  Multi-VPN Orchestration")
+	fmt.Println("  " + line)
+	fmt.Println()
+}
+
 // AnimateLogo prints the compact Kong logo with a two-blink eye animation.
 // subtitle is the already-translated tagline shown beside the logo.
-func AnimateLogo(subtitle string) {
+// ver is the version string (e.g. "v1.2.3-dev") shown after the title.
+func AnimateLogo(subtitle, ver string) {
 	const (
 		eyeOpen   = "◉"
 		eyeHalf   = "•"
@@ -192,7 +211,7 @@ func AnimateLogo(subtitle string) {
 		{eyeOpen, eyeOpen, cKongEye, 0}, // final state
 	}
 
-	first := kongLogoLines(anim[0].l, anim[0].r, anim[0].eyeColor, subtitle)
+	first := kongLogoLines(anim[0].l, anim[0].r, anim[0].eyeColor, subtitle, ver)
 	printLogoLines(first)
 	n := len(first)
 
@@ -202,7 +221,7 @@ func AnimateLogo(subtitle string) {
 
 	for i := 0; i < len(anim)-1; i++ {
 		time.Sleep(anim[i].hold)
-		next := kongLogoLines(anim[i+1].l, anim[i+1].r, anim[i+1].eyeColor, subtitle)
+		next := kongLogoLines(anim[i+1].l, anim[i+1].r, anim[i+1].eyeColor, subtitle, ver)
 		redrawLogoLines(n, next)
 	}
 }

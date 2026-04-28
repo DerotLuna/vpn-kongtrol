@@ -32,6 +32,10 @@ import (
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/wireguard"
 )
 
+// version is set at build time via -ldflags "-X main.version=v1.2.3".
+// Falls back to "dev" when built without ldflags (local go build).
+var version = "dev"
+
 var (
 	cfgPath  string
 	cfg      *config.Config
@@ -50,8 +54,12 @@ var rootCmd = &cobra.Command{
 	Use:   "kongtrol",
 	Short: "Multi-VPN orchestration — route traffic, enforce security, monitor tunnels",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Skip config load for init command.
-		if cmd.Name() == "init" {
+		// init shows its own animated logo — skip the compact header there.
+		if cmd.Name() != "init" {
+			PrintHeader(version)
+		}
+		// Skip config load for init and version commands.
+		if cmd.Name() == "init" || cmd.Name() == "version" {
 			return nil
 		}
 		return loadConfig()

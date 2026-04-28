@@ -99,6 +99,7 @@ var messages = map[Lang]map[string]string{
 
 		// Next steps
 		"nextsteps.header":    "\nPróximos pasos:",
+		"nextsteps.init":      "  kongtrol init                    — agregar más perfiles en cualquier momento",
 		"nextsteps.status":    "  kongtrol status                  — ver estado de los túneles",
 		"nextsteps.up":        "  kongtrol up <perfil>             — conectar un perfil",
 		"nextsteps.dashboard": "  kongtrol dashboard               — abrir el panel web",
@@ -137,6 +138,10 @@ var messages = map[Lang]map[string]string{
 		"collect.ts_key":       "  Auth key de Tailscale (vacío para omitir)",
 		"collect.warp_info1":   "  [i] WARP no requiere credenciales por perfil.",
 		"collect.warp_info2":   "      Ejecuta 'warp-cli register' una vez si aún no lo has hecho.",
+
+		// Binary path
+		"collect.not_detected":  "  [!] Este cliente VPN no fue detectado automáticamente en tu sistema.",
+		"collect.binary_path":   "  Ruta al binario (vacío = autodetectar, ej. C:\\Program Files\\...\\vpn.exe)",
 
 		// Credentials
 		"collect.password":      "  Contraseña para %s (guardada en llavero del sistema, no en YAML)",
@@ -184,6 +189,7 @@ var messages = map[Lang]map[string]string{
 
 		// Next steps
 		"nextsteps.header":    "\nNext steps:",
+		"nextsteps.init":      "  kongtrol init                    — add more profiles at any time",
 		"nextsteps.status":    "  kongtrol status                  — check tunnel states",
 		"nextsteps.up":        "  kongtrol up <profile>            — connect a profile",
 		"nextsteps.dashboard": "  kongtrol dashboard               — open the web UI",
@@ -222,6 +228,10 @@ var messages = map[Lang]map[string]string{
 		"collect.ts_key":       "  Tailscale auth key (leave blank to skip)",
 		"collect.warp_info1":   "  [i] WARP uses no per-profile credentials.",
 		"collect.warp_info2":   "      Run 'warp-cli register' once if not already registered.",
+
+		// Binary path
+		"collect.not_detected":  "  [!] This VPN client was not auto-detected on your system.",
+		"collect.binary_path":   "  Binary path (leave blank to auto-detect, e.g. /usr/bin/vpn)",
 
 		// Credentials
 		"collect.password":      "  Password for %s (stored in OS keychain, not in YAML)",

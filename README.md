@@ -35,7 +35,7 @@ Working with multiple VPNs simultaneously is painful:
 - **Auto-reconnect watchdog** — detects unexpected drops and reconnects with exponential backoff
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
 - **Profile groups** — define named sets of profiles (`work`, `travel`) and connect them all with one command
-- **Setup wizard** — `kongtrol init` detects installed clients, preserves existing config, stores credentials in the OS keychain
+- **Setup wizard** — `kongtrol init` auto-detects installed VPN clients (recursive search across standard and non-standard install paths on Windows, Linux, and macOS), preserves existing config, stores credentials in the OS keychain; re-run at any time to add more profiles
 - **Diagnostics** — `kongtrol doctor` validates your full stack (binaries, certs, keychain, permissions) before you connect
 - **Config export** — `kongtrol export` generates a sanitized config template for teammates (no secrets)
 
@@ -164,7 +164,7 @@ kongtrol dashboard         # open the web UI
 
 ```bash
 # Setup & diagnostics
-kongtrol init                        # interactive wizard (create or update config)
+kongtrol init                        # interactive wizard (create or update config; re-run to add profiles)
 kongtrol doctor                      # validate full stack: binaries · certs · keychain · permissions
 
 # Tunnel lifecycle
@@ -210,6 +210,9 @@ vpns:
     host: vpn.empresa.com
     port: 443
     tunnel_name: "Office"
+    # binary_path: "C:\Program Files\Fortinet\FortiClient\FortiClient.exe"
+    # Optional: override auto-detected binary location. Leave unset to let
+    # Kongtrol find it automatically (searches standard + non-standard paths).
     auth:
       method: certificate+credentials
       cert: ~/.kongtrol/certs/office.crt

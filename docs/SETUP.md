@@ -160,23 +160,26 @@ Lo primero que verás es la selección de idioma — presiona Enter para españo
 ¿Continuar en español? [S/n]  (Press n for English):
 ```
 
-Luego el wizard continúa en español:
+Luego el wizard muestra el logo animado y continúa en español:
 
 ```
-╔═══════════════════════════════════════════════╗
-║   Kongtrol — Asistente de Configuración   ║
-╚═══════════════════════════════════════════════╝
+  ▄▄▄▄▄▄▄▄▄▄▄▄▄
+  █ ◉       ◉ █  K O N G T R O L
+  █   ▄▄▄▄▄▄▄   █  Orquestación Multi-VPN
+  ▀▀▀▀▀▀▀▀▀▀▀▀▀
 
 Este asistente crea o actualiza ~/.kongtrol/kongtrol.yaml.
 Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 
-Clientes VPN detectados en este sistema:
-  ✓ FortiClient             FortiClient 6.4.10.1821
-  ✓ OpenVPN                 OpenVPN 2.6.x
-  ✓ ProtonVPN               protonvpn-cli 3.x
+▸  Clientes VPN detectados en este sistema:
+    ✓  FortiClient             6.4.10.1821
+    ✓  OpenVPN                 OpenVPN 2.6.8
+    ✓  ProtonVPN               4.3.14
 
 ¿Agregar un nuevo perfil VPN? [s/N]: s
 ```
+
+> **Detección automática:** el wizard busca clientes VPN en rutas estándar *y no estándar* de Windows, Linux y macOS (búsqueda recursiva hasta 3 niveles). Si un cliente está instalado pero no aparece en la lista, aún puedes configurarlo — el wizard te pedirá la ruta al binario cuando elijas ese tipo.
 
 ### Perfil 1: FortiClient (oficina)
 
@@ -185,6 +188,11 @@ Clientes VPN detectados en este sistema:
   Tipos de adaptador: forticlient | openvpn | protonvpn | ciscoanyconnect |
                       wireguard | globalprotect | tailscale | cloudflarewarp
   Tipo [openvpn]: forticlient
+
+  (Si el cliente no fue detectado automáticamente):
+  !  Este cliente VPN no fue detectado automáticamente en tu sistema.
+  Ruta al binario (vacío = autodetectar): ← Enter para omitir
+
   Host VPN (ej. vpn.empresa.com): vpn.tuempresa.com
   Puerto [443]:
   Nombre del túnel (como aparece en la UI de FortiClient) [Office]:
@@ -252,10 +260,13 @@ Clientes VPN detectados en este sistema:
 [✓] Configuración válida.
 
 Próximos pasos:
+  kongtrol init                    — agregar más perfiles en cualquier momento
   kongtrol status                  — ver estado de los túneles
   kongtrol up <perfil>             — conectar un perfil
   kongtrol dashboard               — abrir el panel web
 ```
+
+> **¿Quieres agregar otro perfil después?** Vuelve a ejecutar `kongtrol init`. El wizard detecta el config existente, muestra los perfiles actuales, ofrece refrescar credenciales, y pregunta si agregar más. No sobreescribe nada sin confirmación.
 
 ---
 
@@ -529,6 +540,15 @@ kongtrol init
 # → elige el perfil "office" → "¿Actualizar credenciales de este perfil?" → ingresa la nueva
 ```
 
+### Agregar un perfil nuevo sin tocar los existentes
+
+```bash
+kongtrol init
+# → el wizard muestra los perfiles existentes y ofrece refrescar credenciales
+# → luego pregunta "¿Agregar un nuevo perfil VPN?" → s
+# → los perfiles anteriores no se modifican
+```
+
 ---
 
 ## 10. Para compañeros de equipo
@@ -575,14 +595,27 @@ vpns:
 
 ## 11. Solución de problemas
 
-### "warp-cli not found" / "openvpn not found"
+### El cliente VPN no aparece en la detección automática
 
-El cliente VPN no está en el PATH. Instálalo o verifica la instalación:
+El wizard busca en rutas estándar e instalaciones en subcarpetas. Si aun así no lo detecta:
 
-```bash
-which openvpn        # Linux/macOS
-where openvpn        # Windows
-```
+1. **Ejecuta `kongtrol init`** y elige el tipo de adaptador igual — el wizard preguntará la ruta al binario si no lo encuentra:
+   ```
+   !  Este cliente VPN no fue detectado automáticamente en tu sistema.
+   Ruta al binario (vacío = autodetectar): C:\ruta\personalizada\vpn.exe
+   ```
+2. O agrega `binary_path` manualmente en `~/.kongtrol/kongtrol.yaml`:
+   ```yaml
+   office:
+     type: forticlient
+     binary_path: "C:\ruta\personalizada\FortiClient.exe"
+     ...
+   ```
+3. Verifica que el cliente esté instalado:
+   ```bash
+   which openvpn        # Linux/macOS
+   where openvpn        # Windows
+   ```
 
 ### "not registered — run 'warp-cli register' first"
 

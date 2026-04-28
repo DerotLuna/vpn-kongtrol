@@ -63,7 +63,7 @@ func (w *wizard) selectLanguage() {
 
 func (w *wizard) run() error {
 	// ── animated logo ─────────────────────────────────────────────────────────
-	AnimateLogo(w.t("banner.subtitle"))
+	AnimateLogo(w.t("banner.subtitle"), version)
 	fmt.Println()
 
 	// ── subtitle (typewriter effect) ──────────────────────────────────────────
@@ -138,7 +138,7 @@ func (w *wizard) run() error {
 		if !w.confirm(paintBold(cBright, w.t("profile.add_new")), false) {
 			break
 		}
-		profile, vpnNode, err := w.collectProfile()
+		profile, vpnNode, err := w.collectProfile(detected)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, tuiErr(err.Error()))
 			continue
@@ -220,6 +220,7 @@ func (w *wizard) run() error {
 	// ── next steps ────────────────────────────────────────────────────────────
 	fmt.Println()
 	fmt.Println(paintBold(cGold, w.t("nextsteps.header")))
+	fmt.Println("  " + paint(cPrompt, w.t("nextsteps.init")))
 	fmt.Println("  " + paint(cPrompt, w.t("nextsteps.status")))
 	fmt.Println("  " + paint(cPrompt, w.t("nextsteps.up")))
 	fmt.Println("  " + paint(cPrompt, w.t("nextsteps.dashboard")))
@@ -229,7 +230,20 @@ func (w *wizard) run() error {
 
 // ── profile collection ────────────────────────────────────────────────────────
 
-func (w *wizard) collectProfile() (string, *yaml.Node, error) {
+// detectedAdapterKeys builds a set of adapterKey values from the detected VPN list.
+func detectedAdapterKeys(detected []detectedVPN) map[string]bool {
+	keys := make(map[string]bool)
+	for _, d := range detected {
+		for _, p := range vpnProbes {
+			if p.label == d.label && p.adapterKey != "" {
+				keys[p.adapterKey] = true
+			}
+		}
+	}
+	return keys
+}
+
+func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, error) {
 	SectionHeader(w.t("section.new_profile"))
 
 	name := w.prompt(w.t("collect.profile_name"), "")
@@ -241,6 +255,14 @@ func (w *wizard) collectProfile() (string, *yaml.Node, error) {
 	fmt.Println(paint(cDim, w.t("collect.adapter_line1")))
 	fmt.Println(paint(cDim, w.t("collect.adapter_line2")))
 	adapterType := w.prompt(w.t("collect.type"), "openvpn")
+
+	// Warn + offer manual binary path when the chosen adapter wasn't auto-detected.
+	detectedKeys := detectedAdapterKeys(detected)
+	var binaryPath string
+	if adapterType != "cloudflarewarp" && !detectedKeys[adapterType] {
+		fmt.Println(tuiWarn(w.t("collect.not_detected")))
+		binaryPath = w.prompt(w.t("collect.binary_path"), "")
+	}
 
 	fields := [][2]string{{"type", adapterType}}
 	auth := config.AuthConfig{}
@@ -329,6 +351,9 @@ func (w *wizard) collectProfile() (string, *yaml.Node, error) {
 
 	priorityStr := w.promptDefault(w.t("collect.priority"), "10")
 	fields = append(fields, [2]string{"priority", priorityStr})
+	if binaryPath != "" {
+		fields = append(fields, [2]string{"binary_path", binaryPath})
+	}
 
 	authFields := [][2]string{{"method", auth.Method}}
 	if auth.Cert != "" {
@@ -387,122 +412,182 @@ type detectedVPN struct {
 	version string
 }
 
-// vpnProbe describes how to locate and version-check one VPN client.
+// vpnProbe describes how to locate one VPN client.
+//
+//   - adapterKey — adapter type string used in kongtrol.yaml (empty = info-only, not configurable)
+//   - binaries   — names tried via exec.LookPath; absolute paths tried via os.Stat
+//   - searchDirs — parent dirs walked up to searchDepth levels looking for exeNames
+//   - exeNames   — filenames (case-insensitive) to match inside searchDirs
+//   - args       — passed to the binary to get a version string; empty = GUI app, skip
 type vpnProbe struct {
-	label    string
-	// binaries are checked via exec.LookPath first, then os.Stat for absolute paths.
-	binaries []string
-	// winGlobs are filepath.Glob patterns tried after binaries fail.
-	// Useful for versioned install dirs like ProtonVPN's v4.x.y subdirectories.
-	// The latest lexicographic match wins (higher version numbers sort last).
-	winGlobs []string
-	// args are passed to the binary to retrieve a version string.
-	// Leave empty to skip the version command (GUI-only apps).
-	args []string
+	label       string
+	adapterKey  string
+	binaries    []string
+	searchDirs  []string
+	searchDepth int
+	exeNames    []string
+	args        []string
 }
 
 var vpnProbes = []vpnProbe{
 	{
-		label: "FortiClient",
-		binaries: []string{
-			"fortivpn", "forticlientsslvpn", "FortiClient",
-			`C:\Program Files\Fortinet\FortiClient\FortiClient.exe`,
-			`C:\Program Files (x86)\Fortinet\FortiClient\FortiClient.exe`,
-			`C:\Program Files\Fortinet\FortiClient EMS\FortiClient.exe`,
+		label:      "FortiClient",
+		adapterKey: "forticlient",
+		binaries:   []string{"fortivpn", "forticlientsslvpn", "FortiClient"},
+		searchDirs: []string{
+			// Windows
+			`C:\Program Files\Fortinet`,
+			`C:\Program Files (x86)\Fortinet`,
+			// Linux
+			"/opt/forticlient",
+			"/opt/fortinet/forticlient",
+			"/usr/share/forticlient",
+			"/usr/lib/forticlient",
+			// macOS
+			"/Applications/FortiClient.app/Contents/MacOS",
 		},
-		winGlobs: []string{
-			`C:\Program Files\Fortinet\FortiClient\*\FortiClient.exe`,
-			`C:\Program Files (x86)\Fortinet\FortiClient\*\FortiClient.exe`,
-		},
-		// FortiClient is an Electron GUI app — --version outputs JS module noise.
-		// Version is read from PE metadata via peVersion() instead.
+		searchDepth: 2,
+		exeNames:    []string{"FortiClient.exe", "FortiClient", "forticlient"},
+		// Electron GUI — --version outputs JS noise; version read from PE metadata.
 		args: []string{},
 	},
 	{
-		label: "OpenVPN",
-		binaries: []string{
-			"openvpn",
-			`C:\Program Files\OpenVPN\bin\openvpn.exe`,
-			`C:\Program Files (x86)\OpenVPN\bin\openvpn.exe`,
-			`C:\Program Files\OpenVPN Connect\OpenVPNConnect.exe`,
+		label:      "OpenVPN",
+		adapterKey: "openvpn",
+		binaries:   []string{"openvpn"},
+		searchDirs: []string{
+			// Windows
+			`C:\Program Files\OpenVPN`,
+			`C:\Program Files (x86)\OpenVPN`,
+			`C:\Program Files\OpenVPN Connect`,
+			`C:\Program Files (x86)\OpenVPN Connect`,
+			// Linux
+			"/usr/sbin",
+			"/usr/local/sbin",
+			// macOS (Homebrew + Tunnelblick)
+			"/usr/local/sbin",
+			"/opt/homebrew/sbin",
+			"/Applications/Tunnelblick.app/Contents/Resources",
 		},
-		args: []string{"--version"},
+		searchDepth: 2,
+		exeNames:    []string{"openvpn.exe", "OpenVPNConnect.exe", "openvpn"},
+		args:        []string{"--version"},
 	},
 	{
-		label: "ProtonVPN",
-		binaries: []string{
-			"protonvpn-cli",
-			`C:\Program Files\Proton\VPN\ProtonVPN.Launcher.exe`,
-			`C:\Program Files (x86)\Proton Technologies\ProtonVPN\ProtonVPN.exe`,
+		label:      "ProtonVPN",
+		adapterKey: "protonvpn",
+		binaries:   []string{"protonvpn-cli", "protonvpn"},
+		searchDirs: []string{
+			// Windows (versioned: …\Proton\VPN\v4.x.y\)
+			`C:\Program Files\Proton`,
+			`C:\Program Files (x86)\Proton`,
+			`C:\Program Files (x86)\Proton Technologies`,
+			// Linux
+			"/usr/bin",
+			"/usr/local/bin",
+			"/opt/protonvpn",
+			// macOS
+			"/Applications/ProtonVPN.app/Contents/MacOS",
 		},
-		// ProtonVPN installs into versioned subdirs: v4.x.y/ProtonVPN.Client.exe
-		winGlobs: []string{
-			`C:\Program Files\Proton\VPN\v*\ProtonVPN.Client.exe`,
-			`C:\Program Files (x86)\Proton\VPN\v*\ProtonVPN.Client.exe`,
-		},
-		// GUI app — no reliable --version flag; version extracted from dir name instead.
-		args: []string{},
+		searchDepth: 3,
+		exeNames:    []string{"ProtonVPN.Launcher.exe", "ProtonVPN.Client.exe", "ProtonVPN.exe", "protonvpn-cli", "protonvpn"},
+		args:        []string{},
 	},
 	{
-		label: "Cisco AnyConnect",
-		binaries: []string{
-			"vpn", "vpncli",
-			"/opt/cisco/anyconnect/bin/vpn",
-			`C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
-			`C:\Program Files\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
-			`C:\Program Files (x86)\Cisco\Cisco Secure Client\vpncli.exe`,
-			`C:\Program Files\Cisco\Cisco Secure Client\vpncli.exe`,
+		label:      "Cisco AnyConnect",
+		adapterKey: "ciscoanyconnect",
+		binaries:   []string{"vpn", "vpncli"},
+		searchDirs: []string{
+			// Linux / macOS
+			"/opt/cisco",
+			// Windows
+			`C:\Program Files\Cisco`,
+			`C:\Program Files (x86)\Cisco`,
 		},
-		args: []string{"-v"},
+		searchDepth: 3,
+		exeNames:    []string{"vpncli.exe", "vpncli", "vpn"},
+		args:        []string{"-v"},
 	},
 	{
-		label: "WireGuard",
-		binaries: []string{
-			"wg", "wg-quick", "wireguard",
-			`C:\Program Files\WireGuard\wg.exe`,
-			`C:\Program Files\WireGuard\wireguard.exe`,
+		label:      "WireGuard",
+		adapterKey: "wireguard",
+		binaries:   []string{"wg", "wg-quick", "wireguard"},
+		searchDirs: []string{
+			// Windows
+			`C:\Program Files\WireGuard`,
+			// macOS (Homebrew)
+			"/usr/local/bin",
+			"/opt/homebrew/bin",
+			"/Applications/WireGuard.app/Contents/MacOS",
 		},
-		args: []string{"--version"},
+		searchDepth: 1,
+		exeNames:    []string{"wireguard.exe", "wg.exe", "wg", "wireguard"},
+		args:        []string{"--version"},
 	},
 	{
-		label: "GlobalProtect",
-		binaries: []string{
-			"globalprotect", "pangpcrypt",
-			"/opt/paloaltonetworks/globalprotect/pangpcrypt",
-			`C:\Program Files\Palo Alto Networks\GlobalProtect\PanGPA.exe`,
-			`C:\Program Files\Palo Alto Networks\GlobalProtect\pangpcrypt.exe`,
+		label:      "GlobalProtect",
+		adapterKey: "globalprotect",
+		binaries:   []string{"globalprotect", "pangpcrypt"},
+		searchDirs: []string{
+			// Linux
+			"/opt/paloaltonetworks",
+			// Windows
+			`C:\Program Files\Palo Alto Networks`,
+			// macOS
+			"/Applications/GlobalProtect.app/Contents/MacOS",
 		},
-		args: []string{"--version"},
+		searchDepth: 2,
+		exeNames:    []string{"PanGPA.exe", "pangpcrypt.exe", "GlobalProtect", "globalprotect", "pangpcrypt"},
+		args:        []string{"--version"},
 	},
 	{
-		label: "Tailscale",
-		binaries: []string{
-			"tailscale",
-			`C:\Program Files\Tailscale\tailscale.exe`,
+		label:      "Tailscale",
+		adapterKey: "tailscale",
+		binaries:   []string{"tailscale"},
+		searchDirs: []string{
+			// Windows
+			`C:\Program Files\Tailscale`,
+			// macOS
+			"/Applications/Tailscale.app/Contents/MacOS",
+			// Linux (Homebrew / package manager → PATH, but also snap)
+			"/snap/tailscale/current/bin",
 		},
-		args: []string{"version"},
+		searchDepth: 1,
+		exeNames:    []string{"tailscale.exe", "tailscale"},
+		args:        []string{"version"},
 	},
 	{
-		label: "Cloudflare WARP",
-		binaries: []string{
-			"warp-cli",
-			`C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe`,
+		label:      "Cloudflare WARP",
+		adapterKey: "cloudflarewarp",
+		binaries:   []string{"warp-cli"},
+		searchDirs: []string{
+			// Windows
+			`C:\Program Files\Cloudflare\Cloudflare WARP`,
+			`C:\Program Files (x86)\Cloudflare\Cloudflare WARP`,
+			// macOS
+			"/Applications/Cloudflare WARP.app/Contents/MacOS",
+			// Linux
+			"/usr/bin",
+			"/usr/local/bin",
 		},
-		args: []string{"--version"},
+		searchDepth: 1,
+		exeNames:    []string{"warp-cli.exe", "warp-cli"},
+		args:        []string{"--version"},
 	},
 	{
-		label: "TunnelBear",
-		binaries: []string{
-			"tunnelbear",
-			`C:\Program Files (x86)\TunnelBear\TunnelBear.exe`,
-			`C:\Program Files\TunnelBear\TunnelBear.exe`,
-			"/Applications/TunnelBear.app/Contents/MacOS/TunnelBear",
+		label:      "TunnelBear",
+		adapterKey: "", // no adapter yet — shown as detected but not configurable
+		binaries:   []string{"tunnelbear"},
+		searchDirs: []string{
+			// Windows
+			`C:\Program Files\TunnelBear`,
+			`C:\Program Files (x86)\TunnelBear`,
+			// macOS
+			"/Applications/TunnelBear.app/Contents/MacOS",
 		},
-		winGlobs: []string{
-			`C:\Program Files (x86)\TunnelBear\*\TunnelBear.exe`,
-			`C:\Program Files\TunnelBear\*\TunnelBear.exe`,
-		},
-		args: []string{"--version"},
+		searchDepth: 2,
+		exeNames:    []string{"TunnelBear.exe", "TunnelBear"},
+		args:        []string{"--version"},
 	},
 }
 
@@ -516,9 +601,13 @@ func detectInstalledVPNs() []detectedVPN {
 	return found
 }
 
-// resolveProbe tries to locate the VPN binary for p and returns its version.
+// resolveProbe tries to locate the VPN binary described by p.
+// Resolution order:
+//  1. exec.LookPath (binary in $PATH)
+//  2. os.Stat on each absolute binary path
+//  3. Recursive directory walk in searchDirs up to searchDepth
 func resolveProbe(p vpnProbe) (detectedVPN, bool) {
-	// 1. PATH lookup + absolute-path stat for each binary entry.
+	// 1 & 2: PATH + absolute paths.
 	for _, bin := range p.binaries {
 		path, err := exec.LookPath(bin)
 		if err != nil {
@@ -527,70 +616,92 @@ func resolveProbe(p vpnProbe) (detectedVPN, bool) {
 			}
 			path = bin
 		}
-		ver := runVersion(path, p.args)
-		if ver == "installed" {
-			// Try reading version from Windows PE metadata (works for GUI apps
-			// that don't expose a --version flag, e.g. FortiClient, TunnelBear).
-			if v := peVersion(path); v != "" {
-				ver = v
-			}
-		}
-		if ver == "installed" {
-			// Last resort: extract version from highest "v*" sibling directory
-			// (e.g. ProtonVPN installs into …\Proton\VPN\v4.3.14\).
-			parent := filepath.Dir(path)
-			if dirs, globErr := filepath.Glob(filepath.Join(parent, "v*")); globErr == nil && len(dirs) > 0 {
-				sort.Strings(dirs)
-				ver = filepath.Base(dirs[len(dirs)-1])
-			}
-		}
-		return detectedVPN{label: p.label, version: ver}, true
+		return detectedVPN{label: p.label, version: versionOf(path, p.args)}, true
 	}
 
-	// 2. Glob patterns — useful for versioned install directories.
-	for _, pattern := range p.winGlobs {
-		matches, err := filepath.Glob(pattern)
-		if err != nil || len(matches) == 0 {
-			continue
-		}
-		// Sort ascending so the last entry is the highest version.
-		sort.Strings(matches)
-		path := matches[len(matches)-1]
-
-		ver := runVersion(path, p.args)
-		// If the binary gave no version, try extracting it from the parent dir name
-		// (e.g. "v4.3.14" from "…\Proton\VPN\v4.3.14\ProtonVPN.Client.exe").
-		if ver == "installed" {
-			if dir := filepath.Base(filepath.Dir(path)); strings.HasPrefix(dir, "v") {
-				ver = dir
-			}
-		}
-		return detectedVPN{label: p.label, version: ver}, true
+	// 3: Walk each searchDir for any of the exeNames.
+	var candidates []string
+	for _, dir := range p.searchDirs {
+		walkExe(dir, p.exeNames, p.searchDepth, &candidates)
 	}
-
-	return detectedVPN{}, false
+	if len(candidates) == 0 {
+		return detectedVPN{}, false
+	}
+	// Sort so that lexicographically later paths win (higher version dirs sort last).
+	sort.Strings(candidates)
+	path := candidates[len(candidates)-1]
+	return detectedVPN{label: p.label, version: versionOf(path, p.args)}, true
 }
 
-// runVersion executes path with args and returns the first meaningful version
-// line from stdout. Falls back to "installed" when args is empty, the command
-// fails, or the output doesn't look like a version string.
-func runVersion(path string, args []string) string {
-	if len(args) == 0 {
-		return "installed"
+// walkExe appends paths of files whose names match any entry in names
+// (case-insensitive) found within dir, recursing up to depth levels.
+func walkExe(dir string, names []string, depth int, out *[]string) {
+	if depth < 0 {
+		return
 	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		full := filepath.Join(dir, e.Name())
+		if e.IsDir() {
+			walkExe(full, names, depth-1, out)
+		} else {
+			lower := strings.ToLower(e.Name())
+			for _, want := range names {
+				if lower == strings.ToLower(want) {
+					*out = append(*out, full)
+					break
+				}
+			}
+		}
+	}
+}
+
+// versionOf returns a human-readable version string for the binary at path.
+// It tries (in order): CLI output, Windows PE metadata, sibling "v*" directory.
+// Always returns a non-empty string — falls back to "installed".
+func versionOf(path string, args []string) string {
+	// CLI version output.
+	if len(args) > 0 {
+		if v := runVersion(path, args); v != "" {
+			return v
+		}
+	}
+	// Windows PE metadata (build-tagged; no-op on non-Windows).
+	if v := peVersion(path); v != "" {
+		return v
+	}
+	// Version embedded in parent directory name (e.g. …\v4.3.14\app.exe).
+	parent := filepath.Base(filepath.Dir(path))
+	if strings.HasPrefix(parent, "v") && len(parent) > 1 {
+		return parent
+	}
+	// Grandparent (one more level up, e.g. …\Proton\VPN\v4.3.14\sub\app.exe).
+	grandparent := filepath.Base(filepath.Dir(filepath.Dir(path)))
+	if strings.HasPrefix(grandparent, "v") && len(grandparent) > 1 {
+		return grandparent
+	}
+	return "installed"
+}
+
+// runVersion runs path with args and returns the first non-noise line of stdout.
+// Returns empty string on failure so callers can try other strategies.
+func runVersion(path string, args []string) string {
 	out, err := exec.Command(path, args...).Output()
 	if err != nil || len(out) == 0 {
-		return "installed"
+		return ""
 	}
-	// Scan lines for the first one that looks like a version string.
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		// Skip lines that are just executable filenames or other noise.
 		lower := strings.ToLower(line)
-		if strings.HasSuffix(lower, ".exe") || strings.HasSuffix(lower, ".dll") {
+		// Skip lines that look like filenames or module-loader noise.
+		if strings.HasSuffix(lower, ".exe") || strings.HasSuffix(lower, ".dll") ||
+			strings.HasSuffix(lower, ".node") || strings.HasPrefix(lower, "loaded ") {
 			continue
 		}
 		if len(line) > 60 {
@@ -598,7 +709,7 @@ func runVersion(path string, args []string) string {
 		}
 		return line
 	}
-	return "installed"
+	return ""
 }
 
 // ── prompt helpers ────────────────────────────────────────────────────────────
