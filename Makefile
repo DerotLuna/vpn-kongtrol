@@ -4,17 +4,26 @@ VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "de
 LDFLAGS  := -ldflags "-X main.version=$(VERSION) -s -w"
 DIST     := build/dist
 
+# On Windows (Git Bash), OS=Windows_NT is set by the environment.
+ifeq ($(OS),Windows_NT)
+  EXT := .exe
+else
+  EXT :=
+endif
+
 # ── Local build ──────────────────────────────────────────────────────────────
 
 .PHONY: build
 build:
-	go build $(LDFLAGS) -o $(DIST)/kongtrol       ./cmd/kongtrol
-	@echo "Built: $(DIST)/kongtrol"
+	@mkdir -p $(DIST)
+	go build $(LDFLAGS) -o $(DIST)/kongtrol$(EXT) ./cmd/kongtrol
+	@echo "Built: $(DIST)/kongtrol$(EXT)  ($(VERSION))"
 
 .PHONY: build-tray
 build-tray:
-	go build $(LDFLAGS) -o $(DIST)/kongtrol-tray  ./cmd/kongtrol-tray
-	@echo "Built: $(DIST)/kongtrol-tray"
+	@mkdir -p $(DIST)
+	go build $(LDFLAGS) -o $(DIST)/kongtrol-tray$(EXT) ./cmd/kongtrol-tray
+	@echo "Built: $(DIST)/kongtrol-tray$(EXT)  ($(VERSION))"
 
 .PHONY: build-all-cli
 build-all-cli:
