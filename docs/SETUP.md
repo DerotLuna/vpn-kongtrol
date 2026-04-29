@@ -59,11 +59,13 @@ Un solo comando. Sin tocar cada cliente VPN por separado.
 
 Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
-| VPN | Cliente requerido | Verificar |
-|---|---|---|
-| FortiClient (oficina) | [FortiClient 6.4.x](https://www.fortinet.com/support/product-downloads) | Abre FortiClient, debe tener el túnel configurado |
-| OpenVPN (servidor / AWS) | [OpenVPN Community](https://openvpn.net/community-downloads/) | `openvpn --version` en terminal |
-| ProtonVPN (contenido US) | [protonvpn-cli](https://protonvpn.com/support/linux-vpn-tool/) | `protonvpn-cli --version` |
+| VPN | Cliente requerido | Verificar (Windows) | Verificar (Linux / macOS) |
+|---|---|---|---|
+| FortiClient (oficina) | [FortiClient 6.4.x](https://www.fortinet.com/support/product-downloads) | Abre FortiClient — debe mostrar el túnel configurado | `FortiClient --version` o abre la app |
+| OpenVPN (servidor / AWS) | [OpenVPN Community](https://openvpn.net/community-downloads/) | Busca `openvpn.exe` en `C:\Program Files\OpenVPN\bin\` | `openvpn --version` en terminal |
+| ProtonVPN (contenido US) | [ProtonVPN](https://protonvpn.com/download) (app de escritorio) | Abre ProtonVPN — debe aparecer el botón de conexión | `protonvpn-cli --version` |
+
+> **Nota Windows:** Los binarios de OpenVPN y ProtonVPN no están en el PATH del sistema — son instalaciones GUI. No corras `openvpn --version` desde PowerShell; Kongtrol los detecta directamente en sus rutas de instalación (`C:\Program Files\OpenVPN`, `C:\Program Files\Proton`). Si el wizard los muestra como detectados (✓), están listos.
 
 > **Importante:** Kongtrol no reemplaza estos clientes — los *orquesta*. Deben estar instalados.
 
@@ -115,38 +117,32 @@ make build
 
 ---
 
-## 3. Organizar tus certificados
+## 3. Archivos de conexión
 
-Kongtrol espera tus certs en `~/.kongtrol/certs/`. Crea la estructura una sola vez:
+**Si ya tienes tus VPNs configuradas, esta sección no requiere ninguna acción.** Kongtrol apunta a los archivos donde ya están — en el wizard simplemente escribes la ruta actual de cada archivo.
 
-```bash
-mkdir -p ~/.kongtrol/certs
-mkdir -p ~/.kongtrol/configs
-```
+Solo necesitas hacer algo aquí si:
+- Recibes archivos de un compañero y necesitas guardarlos en algún lugar
+- Tu empresa te entrega un `.crt` / `.key` nuevos y no tienes dónde ponerlos
+- Quieres reorganizar todo en un solo directorio para tener orden
 
-### Copia tus archivos
+### Qué necesita cada adaptador
 
-| Archivo | Destino sugerido |
-|---|---|
-| Cert de FortiClient (`.crt`) | `~/.kongtrol/certs/office.crt` |
-| Key de FortiClient (`.key`) | `~/.kongtrol/certs/office.key` |
-| Config OpenVPN servidor (`.ovpn`) | `~/.kongtrol/configs/server.ovpn` |
-| Config OpenVPN AWS (`.ovpn`) | `~/.kongtrol/configs/aws.ovpn` |
+| Adaptador | Qué pide el wizard | ¿Tienes que hacer algo? |
+|---|---|---|
+| FortiClient (Windows) | Nombre del túnel + usuario/contraseña | **No.** El túnel ya está en la GUI — Kongtrol lo activa por nombre. Sin certs. |
+| FortiClient (Linux/macOS) | Ruta al `.crt`, ruta a la `.key`, credenciales | Tener los archivos en alguna ruta accesible y anotarla. |
+| OpenVPN | Ruta al `.ovpn` | **No**, si ya tienes el `.ovpn`. Apunta a donde ya está (ej. `C:\Users\TU\OpenVPN\config\server.ovpn`). Si tiene `<cert>` y `<key>` embebidas, no necesitas campos extra. |
+| ProtonVPN | Usuario + contraseña de cuenta Proton | **No.** Sin archivos. |
+| WireGuard / otros | Ruta al archivo de config | **No**, si ya tienes el archivo. Solo anotar su ruta. |
 
-```bash
-# Ejemplo (ajusta las rutas a donde están tus archivos actuales)
-cp /ruta/actual/office.crt   ~/.kongtrol/certs/office.crt
-cp /ruta/actual/office.key   ~/.kongtrol/certs/office.key
-cp /ruta/actual/server.ovpn  ~/.kongtrol/configs/server.ovpn
-cp /ruta/actual/aws.ovpn     ~/.kongtrol/configs/aws.ovpn
-```
-
-> **Seguridad:** Estos archivos nunca van al repositorio (están en `.gitignore`).  
-> Solo viven en tu máquina local.
+> **Organización opcional:** si quieres centralizar, puedes crear `~/.kongtrol/certs/` y copiar los archivos ahí. Útil al incorporar un compañero nuevo o al recibir certs frescos. No es requerido si ya tienes todo en su lugar.
 
 ---
 
-## 4. Ejecutar el wizard: `kongtrol init`
+## 4. Registrar tus VPNs: `kongtrol init`
+
+> **¿Ya tienes tus VPNs configuradas?** Perfecto — `kongtrol init` no las toca. Lo que hace es decirle a Kongtrol dónde están y cómo hablarles: qué cliente usar, qué tunnel name tiene, dónde está el `.ovpn`. Si FortiClient ya conecta y OpenVPN ya tiene su `.ovpn`, este paso solo recopila esa información.
 
 El wizard detecta tus clientes VPN instalados, te guía por cada perfil, y guarda las contraseñas en el **keychain del OS** (nunca en el archivo YAML).
 
@@ -246,7 +242,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 ¿Agregar un nuevo perfil VPN? [s/N]:
 ```
 
-### Opciones de seguridad
+### Opciones de seguridad y políticas
 
 ```
 ¿Activar kill switch? (bloquea todo el tráfico si cae la VPN) [S/n]:    ← Enter = sí
@@ -254,19 +250,35 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 ¿Activar log de auditoría firmado? [S/n]:
 ¿Activar panel web? (http://127.0.0.1:9741) [S/n]:
 
+── Políticas de enrutamiento ──────────────────────────────────────────────
+
+¿Agregar una política de enrutamiento? [S/n]: s
+
+  Nombre de la política (ej: trabajo, streaming): Claude AI
+  Perfil VPN para esta política:
+    1) office
+    2) us-content
+  Elige [1]: 2
+
+    Dominio o sufijo — deja en blanco para terminar
+  Dominio: claude.ai
+  Dominio: *.anthropic.com
+  Dominio:
+
+    Rango IP o IP — deja en blanco para terminar
+  IP / rango:
+
+¿Agregar una política de enrutamiento? [S/n]:
+
+    También puedes editar políticas directamente en kongtrol.yaml → sección 'policies'.
+
 ¿Escribir configuración en ~/.kongtrol/kongtrol.yaml? [S/n]: s
 
 [✓] Configuración escrita en ~/.kongtrol/kongtrol.yaml
 [✓] Configuración válida.
-
-Próximos pasos:
-  kongtrol init                    — agregar más perfiles en cualquier momento
-  kongtrol status                  — ver estado de los túneles
-  kongtrol up <perfil>             — conectar un perfil
-  kongtrol dashboard               — abrir el panel web
 ```
 
-> **¿Quieres agregar otro perfil después?** Vuelve a ejecutar `kongtrol init`. El wizard detecta el config existente, muestra los perfiles actuales, ofrece refrescar credenciales, y pregunta si agregar más. No sobreescribe nada sin confirmación.
+> **¿Quieres agregar otro perfil o política después?** Vuelve a ejecutar `kongtrol init`. El wizard detecta el config existente, muestra los perfiles y políticas actuales, y no sobreescribe nada sin confirmación. Para más detalle sobre políticas ve a la [sección 5b](#5b-políticas-de-routing).
 
 ---
 
@@ -295,93 +307,159 @@ kongtrol config validate
 
 ---
 
-## 5b. Configurar políticas de routing
+## 5b. Políticas de routing
 
-Las políticas definen qué tráfico va por qué VPN. El wizard no las configura — las agregas manualmente en `~/.kongtrol/kongtrol.yaml` bajo la sección `policies:`.
+### ¿Para qué sirven?
 
-### Ejemplo completo para tu setup
+Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a Kongtrol qué tráfico va por qué VPN.
+
+**Sin políticas:** cada VPN instala sus propias rutas al conectarse. El último en conectar suele ganar el tráfico general. No puedes controlar qué va por dónde.
+
+**Con políticas:**
+- `claude.ai` y `*.anthropic.com` → van por `us-content` (ProtonVPN)
+- `10.10.0.0/16` (red interna) → van por `office` (FortiClient)
+- `*.tuempresa.com` → van por `office`
+- Todo lo demás → conexión directa, sin VPN
+
+### Opción A: desde el wizard
+
+Al final de `kongtrol init` (después de seguridad), el wizard pregunta:
+
+```
+── Políticas de enrutamiento ──────────────────────────────
+
+¿Agregar una política de enrutamiento? [S/n]: s
+
+  Nombre de la política (ej: trabajo, streaming): Claude AI
+  Perfil VPN para esta política:
+    1) office
+    2) us-content
+  Elige [1]: 2
+
+    Dominio o sufijo — deja en blanco para terminar
+  Dominio: claude.ai
+  Dominio: *.anthropic.com
+  Dominio:
+
+    Rango IP o IP — deja en blanco para terminar
+  IP / rango:
+
+¿Agregar una política de enrutamiento? [S/n]:
+
+    También puedes editar políticas directamente en kongtrol.yaml → sección 'policies'.
+```
+
+> **Tip:** puedes escribir varios dominios separados por coma en un solo prompt — `claude.ai, *.anthropic.com` genera dos entradas separadas.
+
+### Opción B: editar el YAML directamente
+
+Abre `~/.kongtrol/kongtrol.yaml` y añade la sección `policies:`. Estructura:
 
 ```yaml
 policies:
 
-  # ── Oficina ────────────────────────────────────────────────────────
-  - name: "Servidores de oficina"
-    match:
-      ip_ranges:
-        - "10.10.0.0/16"        # red interna de oficina
-        - "192.168.50.0/24"     # subnets adicionales — ajusta a las tuyas
-    via: office
-
-  - name: "Dominios internos"
+  # ── Contenido US / Claude AI ────────────────────────────────────────
+  - name: Claude AI
     match:
       domains:
-        - "*.tuempresa.com"     # cambia al dominio de tu empresa
-        - "intranet.local"
-    via: office
-
-  # ── Servidor de desarrollo ─────────────────────────────────────────
-  - name: "Servidor dev"
-    match:
-      ip_ranges:
-        - "185.0.0.0/32"        # reemplaza con la IP real de tu servidor
-    via: dev-server
-
-  # ── AWS ────────────────────────────────────────────────────────────
-  - name: "AWS workloads"
-    match:
-      ip_ranges:
-        - "172.31.0.0/16"       # VPC default de AWS
-        - "10.200.0.0/16"       # ajusta a tus CIDRs
-      domains:
-        - "*.amazonaws.com"
-        - "*.aws.tuempresa.com"
-    via: aws
-
-  # ── Contenido US / Claude ──────────────────────────────────────────
-  - name: "Claude AI"
-    match:
-      domains:
-        - "claude.ai"
-        - "*.claude.ai"
-        - "*.anthropic.com"     # API de Anthropic también
+        - claude.ai
+        - "*.anthropic.com"
     via: us-content
 
-  - name: "Contenido geo-restringido US"
+  - name: Contenido geo-restringido US
     match:
       domains:
-        - "netflix.com"
         - "*.netflix.com"
-        - "hulu.com"
         - "*.hulu.com"
-        - "disneyplus.com"
         - "*.disneyplus.com"
     via: us-content
 
-  # El tráfico que no coincide con ninguna regla va por tu conexión
-  # normal (sin VPN). Si quieres forzar TODO el tráfico por una VPN:
-  # - name: "Default"
+  # ── Oficina ─────────────────────────────────────────────────────────
+  - name: Red interna de oficina
+    match:
+      ip_ranges:
+        - 10.10.0.0/16          # ajusta a la red de tu oficina
+        - 192.168.50.0/24
+    via: office
+
+  - name: Dominios internos
+    match:
+      domains:
+        - "*.tuempresa.com"     # cambia al dominio de tu empresa
+        - intranet.local
+    via: office
+
+  # ── Servidor de desarrollo ───────────────────────────────────────────
+  - name: Servidor dev
+    match:
+      ip_ranges:
+        - 185.0.0.0/32          # reemplaza con la IP real de tu servidor
+    via: dev-server
+
+  # ── AWS ─────────────────────────────────────────────────────────────
+  - name: AWS workloads
+    match:
+      ip_ranges:
+        - 172.31.0.0/16         # VPC default de AWS — ajusta a tus CIDRs
+      domains:
+        - "*.amazonaws.com"
+    via: aws
+
+  # El tráfico que no coincide va por conexión directa (sin VPN).
+  # Para forzar TODO el tráfico por una VPN descomenta esto:
+  # - name: Default
   #   match:
-  #     ip_ranges: ["0.0.0.0/0"]
+  #     ip_ranges: [0.0.0.0/0]
   #   via: office
 ```
 
-### Agregar cualquier otro dominio a us-content
+### Cómo funciona el matching
 
-El patrón es siempre el mismo — agrega una entrada en `policies:`:
+#### Dominios
 
-```yaml
-  - name: "Mi servicio"
-    match:
-      domains:
-        - "ejemplo.com"
-        - "*.ejemplo.com"
-    via: us-content
+| Regla | Cubre | No cubre |
+|---|---|---|
+| `claude.ai` | Solo `claude.ai` exacto | `api.claude.ai` |
+| `*.anthropic.com` | `api.anthropic.com`, `docs.anthropic.com` | `anthropic.com` solo |
+
+> **Tip:** Para cubrir dominio raíz Y subdominios, agrega dos entradas: `anthropic.com` y `*.anthropic.com`.
+
+#### IPs y rangos
+
+No necesitas ser experto en redes. Aquí la guía rápida:
+
+| Quiero enrutar... | Escribo | Significado |
+|---|---|---|
+| **Una sola IP** | `172.28.152.26` | Solo esa máquina. Kongtrol agrega `/32` automáticamente |
+| **Una red pequeña** (256 IPs) | `10.0.0.0/24` | Todo `10.0.0.x` (de `.0` a `.255`) |
+| **Una red mediana** (65,536 IPs) | `10.0.0.0/16` | Todo `10.0.x.x` |
+| **Una red grande** (16 millones) | `10.0.0.0/8` | Todo `10.x.x.x` |
+
+**¿Qué significa el `/número`?** Es cuántos bits de la dirección son fijos. Mientras más grande el número, más específica (menos IPs):
+
+```
+/32  = 1 IP exacta          (ej: 172.28.152.26/32)
+/24  = 256 IPs              (ej: 172.28.152.0/24 → todo 172.28.152.*)
+/16  = 65,536 IPs           (ej: 172.28.0.0/16  → todo 172.28.*.*)
+/8   = 16,777,216 IPs       (ej: 10.0.0.0/8     → todo 10.*.*.*)
 ```
 
-Guarda y valida:
+> **No te preocupes:** si escribes solo la IP (sin `/`), Kongtrol la trata como una sola IP automáticamente. La notación con `/` solo hace falta cuando quieres cubrir un rango.
+
+#### Prioridad (longest-prefix match)
+
+Si dos reglas cubren la misma IP, gana la más específica:
+
+| Regla | Cubre |
+|---|---|
+| `10.10.0.0/16` vía `office` | Todo `10.10.x.x` |
+| `10.10.1.0/24` vía `dev-server` | Solo `10.10.1.x` — gana sobre `/16` |
+
+### Validar y aplicar
 
 ```bash
 kongtrol config validate
+# [OK] Config is valid.
 ```
 
 No necesitas reiniciar nada — las políticas se leen al conectar.

@@ -34,6 +34,14 @@ func ParseRule(name, via string, ipRanges, domains []string, priority int) (*Rul
 	}
 
 	for _, cidr := range ipRanges {
+		// Accept bare IPs (e.g. "172.28.152.26") by appending a host prefix.
+		if net.ParseIP(cidr) != nil {
+			if net.ParseIP(cidr).To4() != nil {
+				cidr += "/32"
+			} else {
+				cidr += "/128"
+			}
+		}
 		_, network, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return nil, fmt.Errorf("policy: rule %q: invalid CIDR %q: %w", name, cidr, err)

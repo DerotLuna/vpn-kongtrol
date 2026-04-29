@@ -93,6 +93,87 @@ func parseConfigDNS(configPath string) []net.IP {
 	return nil
 }
 
+// ParsePeerPublicKey reads the first [Peer] PublicKey from a WireGuard .conf file.
+// Exported because the PolicyResolver (internal/monitor) calls it.
+func ParsePeerPublicKey(configPath string) (string, error) {
+	f, err := os.Open(configPath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	inPeer := false
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.EqualFold(line, "[Peer]") {
+			inPeer = true
+			continue
+		}
+		if strings.HasPrefix(line, "[") {
+			inPeer = false
+		}
+		if inPeer && strings.HasPrefix(strings.ToLower(line), "publickey") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) < 2 {
+				continue
+			}
+			key := strings.TrimSpace(parts[1])
+			if key != "" {
+				return key, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("wireguard: no [Peer] PublicKey found in %s", configPath)
+}
+
+// ParseEndpoint reads the first [Peer] Endpoint IP from a WireGuard .conf file.
+// Returns only the IP portion (no port). Exported for PolicyResolver.
+func ParseEndpoint(configPath string) (net.IP, error) {
+	f, err := os.Open(configPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	inPeer := false
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.EqualFold(line, "[Peer]") {
+			inPeer = true
+			continue
+		}
+		if strings.HasPrefix(line, "[") {
+			inPeer = false
+		}
+		if inPeer && strings.HasPrefix(strings.ToLower(line), "endpoint") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) < 2 {
+				continue
+			}
+			hostport := strings.TrimSpace(parts[1])
+			// Handle [IPv6]:port and IPv4:port
+			host, _, err := net.SplitHostPort(hostport)
+			if err != nil {
+				// Maybe bare IP without port
+				host = hostport
+			}
+			ip := net.ParseIP(host)
+			if ip != nil {
+				return ip, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("wireguard: no [Peer] Endpoint found in %s", configPath)
+}
+
+// ParseConfigAddress is the exported form of parseConfigAddress for cross-package use.
+func ParseConfigAddress(configPath string) (net.IP, error) { return parseConfigAddress(configPath) }
+
+// ParseConfigDNS is the exported form of parseConfigDNS for cross-package use.
+func ParseConfigDNS(configPath string) []net.IP { return parseConfigDNS(configPath) }
+
 // parseHandshake checks if wg show output contains a recent handshake (< 3 min).
 func parseHandshake(wgShowOutput string) bool {
 	for _, line := range strings.Split(wgShowOutput, "\n") {
@@ -144,7 +225,19 @@ func parseTransfer(raw string) (sent, recv uint64) {
 	return
 }
 
+// ifaceExists returns true if a network interface with the given name exists.
+func ifaceExists(name string) bool {
+	ifaces, _ := net.Interfaces()
+	for _, iface := range ifaces {
+		if iface.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
 // waitForInterface polls until the WireGuard interface appears in net.Interfaces().
+// On timeout it includes the names of all current interfaces to aid diagnosis.
 func waitForInterface(ifaceName string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -156,5 +249,13 @@ func waitForInterface(ifaceName string, timeout time.Duration) error {
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return fmt.Errorf("wireguard: interface %q did not appear within %s", ifaceName, timeout)
+
+	// Build a list of current interface names to help diagnose naming mismatches.
+	ifaces, _ := net.Interfaces()
+	names := make([]string, 0, len(ifaces))
+	for _, iface := range ifaces {
+		names = append(names, iface.Name)
+	}
+	return fmt.Errorf("wireguard: interface %q did not appear within %s (present interfaces: %v)",
+		ifaceName, timeout, names)
 }

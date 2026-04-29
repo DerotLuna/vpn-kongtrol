@@ -62,6 +62,14 @@ type AdapterConfig struct {
 	Extra      map[string]string // adapter-specific parameters
 }
 
+// Configurable is an optional interface adapters may implement to accept their
+// AdapterConfig before Connect() is called. This allows Status() to work even
+// when the adapter has never been connected in the current process lifetime
+// (e.g. a tunnel started externally and queried via `kongtrol status`).
+type Configurable interface {
+	Configure(cfg AdapterConfig)
+}
+
 // VPNAdapter is the contract every VPN adapter must satisfy.
 // Implementations live in sub-packages (openvpn, forticlient, protonvpn, …)
 // and register themselves via init() using Register().

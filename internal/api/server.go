@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
@@ -18,15 +19,18 @@ import (
 
 // Server is the embedded HTTP API and dashboard server.
 type Server struct {
-	bind      string
-	port      int
-	adapters  map[string]vpn.VPNAdapter
-	collector *monitor.Collector
-	routes    routing.RouteManager
-	ks        security.KillSwitch
-	leakTest  *security.LeakTester
-	upgrader  websocket.Upgrader
-	srv       *http.Server
+	bind           string
+	port           int
+	adapters       map[string]vpn.VPNAdapter
+	collector      *monitor.Collector
+	routes         routing.RouteManager
+	ks             security.KillSwitch
+	leakTest       *security.LeakTester
+	policyEngine   *policy.Engine
+	policyResolver *monitor.PolicyResolver
+	dnsMgr         *monitor.DNSManager
+	upgrader       websocket.Upgrader
+	srv            *http.Server
 }
 
 // NewServer creates a new API server.
@@ -38,15 +42,21 @@ func NewServer(
 	routes routing.RouteManager,
 	ks security.KillSwitch,
 	leakTest *security.LeakTester,
+	policyEngine *policy.Engine,
+	policyResolver *monitor.PolicyResolver,
+	dnsMgr *monitor.DNSManager,
 ) *Server {
 	return &Server{
-		bind:      bind,
-		port:      port,
-		adapters:  adapters,
-		collector: collector,
-		routes:    routes,
-		ks:        ks,
-		leakTest:  leakTest,
+		bind:           bind,
+		port:           port,
+		adapters:       adapters,
+		collector:      collector,
+		routes:         routes,
+		ks:             ks,
+		leakTest:       leakTest,
+		policyEngine:   policyEngine,
+		policyResolver: policyResolver,
+		dnsMgr:         dnsMgr,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// Only allow connections from localhost.
@@ -68,6 +78,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/disconnect", s.handleDisconnect)
 	mux.HandleFunc("GET /api/v1/routes", s.handleListRoutes)
 	mux.HandleFunc("GET /api/v1/security/status", s.handleSecurityStatus)
+	mux.HandleFunc("GET /api/v1/policies", s.handleListPolicies)
+	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)
 
 	// WebSocket live metrics feed.
 	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)

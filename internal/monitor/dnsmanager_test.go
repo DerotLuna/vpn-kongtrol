@@ -57,7 +57,7 @@ func (m *mockDNSGuard) restoreCount() int {
 func newMgr(t *testing.T) (*monitor.DNSManager, *mockDNSGuard) {
 	t.Helper()
 	g := &mockDNSGuard{}
-	return monitor.NewDNSManager(g, "", zap.NewNop()), g
+	return monitor.NewDNSManager(g, zap.NewNop()), g
 }
 
 var (
@@ -70,7 +70,7 @@ var (
 // first profile connects.
 func TestDNSManager_ApplyOnFirstConnect(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("warp", []net.IP{dns1})
+	mgr.OnConnect("warp", "", []net.IP{dns1})
 
 	if !g.IsActive() {
 		t.Fatal("guard should be active after first connect")
@@ -85,8 +85,8 @@ func TestDNSManager_ApplyOnFirstConnect(t *testing.T) {
 // profile merges both DNS server lists (deduped).
 func TestDNSManager_MergedOnSecondConnect(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("warp", []net.IP{dns1})
-	mgr.OnConnect("tailscale", []net.IP{dns2})
+	mgr.OnConnect("warp", "", []net.IP{dns1})
+	mgr.OnConnect("tailscale", "", []net.IP{dns2})
 
 	ips := g.appliedIPs()
 	if len(ips) != 2 {
@@ -97,8 +97,8 @@ func TestDNSManager_MergedOnSecondConnect(t *testing.T) {
 // TestDNSManager_DedupedMerge ensures duplicate IPs from two profiles appear once.
 func TestDNSManager_DedupedMerge(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("a", []net.IP{dns1, dns2})
-	mgr.OnConnect("b", []net.IP{dns2, dns3}) // dns2 duplicated
+	mgr.OnConnect("a", "", []net.IP{dns1, dns2})
+	mgr.OnConnect("b", "", []net.IP{dns2, dns3}) // dns2 duplicated
 
 	ips := g.appliedIPs()
 	if len(ips) != 3 {
@@ -110,8 +110,8 @@ func TestDNSManager_DedupedMerge(t *testing.T) {
 // when all profiles have disconnected.
 func TestDNSManager_RestoreWhenLastDisconnects(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("a", []net.IP{dns1})
-	mgr.OnConnect("b", []net.IP{dns2})
+	mgr.OnConnect("a", "", []net.IP{dns1})
+	mgr.OnConnect("b", "", []net.IP{dns2})
 
 	// Disconnect first profile — guard must stay active.
 	mgr.OnDisconnect("a")
@@ -136,8 +136,8 @@ func TestDNSManager_RestoreWhenLastDisconnects(t *testing.T) {
 // re-applied with the surviving profile's DNS after one of two disconnects.
 func TestDNSManager_ReapplyOnDisconnectWithRemaining(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("a", []net.IP{dns1})
-	mgr.OnConnect("b", []net.IP{dns2})
+	mgr.OnConnect("a", "", []net.IP{dns1})
+	mgr.OnConnect("b", "", []net.IP{dns2})
 
 	mgr.OnDisconnect("a")
 
@@ -154,8 +154,8 @@ func TestDNSManager_ReapplyOnDisconnectWithRemaining(t *testing.T) {
 // TestDNSManager_ForceRestore clears all state and restores unconditionally.
 func TestDNSManager_ForceRestore(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("a", []net.IP{dns1})
-	mgr.OnConnect("b", []net.IP{dns2})
+	mgr.OnConnect("a", "", []net.IP{dns1})
+	mgr.OnConnect("b", "", []net.IP{dns2})
 
 	mgr.ForceRestore()
 
@@ -183,7 +183,7 @@ func TestDNSManager_ForceRestoreIdempotent(t *testing.T) {
 // does not activate the guard.
 func TestDNSManager_SkipEmptyDNS(t *testing.T) {
 	mgr, g := newMgr(t)
-	mgr.OnConnect("wg-home", nil) // WireGuard manages its own DNS
+	mgr.OnConnect("wg-home", "", nil) // WireGuard manages its own DNS
 
 	if g.IsActive() {
 		t.Fatal("guard should not activate for a profile with no DNS servers")

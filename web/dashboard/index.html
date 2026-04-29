@@ -41,6 +41,28 @@
       </table>
     </section>
 
+    <section class="card" id="traffic-map-section">
+      <h2>Traffic Map</h2>
+      <div class="resolve-bar">
+        <input type="text" id="resolve-input" placeholder="IP or domain — e.g. claude.ai, 172.28.152.26" spellcheck="false" />
+        <button class="action" id="resolve-btn" onclick="resolveTarget()">Check</button>
+      </div>
+      <div id="resolve-result" class="resolve-result" style="display:none"></div>
+      <table id="policies-table">
+        <thead>
+          <tr>
+            <th>Policy</th>
+            <th>Match</th>
+            <th>VPN Profile</th>
+            <th>Resolved IPs</th>
+          </tr>
+        </thead>
+        <tbody id="policies-body">
+          <tr><td colspan="4" class="empty">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+
     <div class="side-grid">
       <section class="card" id="security-section">
         <h2>Security</h2>
@@ -73,6 +95,39 @@
         <ul id="routes-list">
           <li class="empty">Loading…</li>
         </ul>
+      </section>
+
+      <section class="card" id="policy-help">
+        <h2>Policy Quick Reference</h2>
+        <details>
+          <summary>How to configure routing policies</summary>
+          <div class="help-content">
+            <p>Edit <code>~/.kongtrol/kongtrol.yaml</code> &rarr; section <code>policies:</code></p>
+            <h4>Domains</h4>
+            <table class="help-table">
+              <tr><td><code>claude.ai</code></td><td>Exact domain only</td></tr>
+              <tr><td><code>*.anthropic.com</code></td><td>All subdomains (not root)</td></tr>
+            </table>
+            <h4>IPs &amp; Ranges</h4>
+            <table class="help-table">
+              <tr><td><code>172.28.152.26</code></td><td>Single IP (auto /32)</td></tr>
+              <tr><td><code>10.0.0.0/24</code></td><td>256 IPs &mdash; 10.0.0.*</td></tr>
+              <tr><td><code>10.0.0.0/16</code></td><td>65,536 IPs &mdash; 10.0.*.*</td></tr>
+              <tr><td><code>10.0.0.0/8</code></td><td>16M IPs &mdash; 10.*.*.*</td></tr>
+            </table>
+            <p class="muted">Higher /number = fewer IPs (more specific). Just an IP without / = single host.</p>
+            <h4>Example</h4>
+            <pre>policies:
+  - name: Office
+    match:
+      ip_ranges:
+        - 10.10.0.0/16
+        - 172.28.152.26
+      domains:
+        - "*.company.com"
+    via: office</pre>
+          </div>
+        </details>
       </section>
     </div>
   </main>

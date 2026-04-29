@@ -45,6 +45,7 @@ func TestWatchdog_ReconnectsOnDrop(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	wd.MarkActive("office") // watchdog only monitors active profiles
 	wd.Start(ctx)
 
 	// Simulate unexpected drop.
@@ -155,6 +156,7 @@ func TestWatchdog_Stop(t *testing.T) {
 	wd := monitor.NewWatchdog(adapters, connect, zapNop())
 
 	ctx, cancel := context.WithCancel(context.Background())
+	wd.MarkActive("office")
 	wd.Start(ctx)
 	cancel() // cancel context before Stop to make sure Stop is idempotent
 	wd.Stop()
@@ -189,6 +191,8 @@ func TestWatchdog_MultipleProfiles(t *testing.T) {
 	wd := monitor.NewWatchdog(adapters, connect, zapNop())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	wd.MarkActive("p1")
+	wd.MarkActive("p2")
 	wd.Start(ctx)
 
 	// Drop only p1.

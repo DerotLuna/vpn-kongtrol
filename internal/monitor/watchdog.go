@@ -21,15 +21,17 @@ const (
 type ConnectFunc func(ctx context.Context, name string) error
 
 // Watchdog monitors VPN adapters and reconnects on unexpected disconnects.
-// It uses exponential backoff between retries and skips profiles that were
-// intentionally disconnected via MarkIntended.
+// It uses exponential backoff between retries and only watches profiles
+// that have been explicitly activated via MarkActive.
 type Watchdog struct {
 	mu       sync.Mutex
 	adapters map[string]vpn.VPNAdapter
 	intended map[string]bool // true = user requested disconnect; skip reconnect
+	active   map[string]bool // true = profile was connected; eligible for watchdog
 	connect  ConnectFunc
 	log      *zap.Logger
 
+	ctx    context.Context
 	cancel context.CancelFunc
 }
 
@@ -39,6 +41,7 @@ func NewWatchdog(adapters map[string]vpn.VPNAdapter, connect ConnectFunc, log *z
 	return &Watchdog{
 		adapters: adapters,
 		intended: make(map[string]bool),
+		active:   make(map[string]bool),
 		connect:  connect,
 		log:      log,
 	}
@@ -53,22 +56,38 @@ func (w *Watchdog) MarkIntended(name string) {
 	w.mu.Unlock()
 }
 
-// MarkActive clears the intended-disconnect flag, re-enabling reconnect.
-// Call this AFTER a successful Connect so future drops are treated as faults.
+// MarkActive clears the intended-disconnect flag and starts watching this
+// profile for unexpected disconnects. Call AFTER a successful Connect.
 func (w *Watchdog) MarkActive(name string) {
 	w.mu.Lock()
 	delete(w.intended, name)
+	alreadyActive := w.active[name]
+	w.active[name] = true
 	w.mu.Unlock()
+
+	// Spawn watcher goroutine on first activation (if Start was already called).
+	if !alreadyActive && w.ctx != nil {
+		if adapter, ok := w.adapters[name]; ok {
+			go w.watch(w.ctx, name, adapter)
+		}
+	}
 }
 
-// Start begins the watchdog loop. It returns immediately; call Stop to end it.
+// Start begins the watchdog. It returns immediately; call Stop to end it.
+// Watcher goroutines are spawned lazily when MarkActive is called for a profile.
 func (w *Watchdog) Start(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
+	w.ctx = ctx
 	w.cancel = cancel
 
-	for name, adapter := range w.adapters {
-		go w.watch(ctx, name, adapter)
+	// Spawn watchers for any profiles already marked active before Start.
+	w.mu.Lock()
+	for name := range w.active {
+		if adapter, ok := w.adapters[name]; ok {
+			go w.watch(ctx, name, adapter)
+		}
 	}
+	w.mu.Unlock()
 }
 
 // Stop shuts down all watchdog goroutines.

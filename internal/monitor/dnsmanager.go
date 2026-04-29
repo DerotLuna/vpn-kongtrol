@@ -18,25 +18,24 @@ import (
 type DNSManager struct {
 	mu      sync.Mutex
 	guard   security.DNSGuard
-	iface   string
+	iface   string            // last known tunnel interface name
 	active  map[string][]net.IP // profile → dns servers
 	log     *zap.Logger
 }
 
 // NewDNSManager creates a manager backed by the given guard implementation.
-// iface is the network interface name to protect (empty = OS default).
-func NewDNSManager(guard security.DNSGuard, iface string, log *zap.Logger) *DNSManager {
+func NewDNSManager(guard security.DNSGuard, log *zap.Logger) *DNSManager {
 	return &DNSManager{
 		guard:  guard,
-		iface:  iface,
 		active: make(map[string][]net.IP),
 		log:    log,
 	}
 }
 
 // OnConnect registers profile's DNS servers and (re)applies the guard with
-// the merged server list. Safe to call multiple times for the same profile.
-func (m *DNSManager) OnConnect(profile string, dnsServers []net.IP) {
+// the merged server list. iface is the tunnel interface name (e.g. "wg0").
+// Safe to call multiple times for the same profile.
+func (m *DNSManager) OnConnect(profile string, iface string, dnsServers []net.IP) {
 	if len(dnsServers) == 0 {
 		return
 	}
@@ -44,6 +43,9 @@ func (m *DNSManager) OnConnect(profile string, dnsServers []net.IP) {
 	defer m.mu.Unlock()
 
 	m.active[profile] = dnsServers
+	if iface != "" {
+		m.iface = iface
+	}
 	m.apply()
 }
 
@@ -90,6 +92,13 @@ func (m *DNSManager) restore() {
 		return
 	}
 	m.log.Info("dnsmanager: DNS restored")
+}
+
+// IsActive reports whether the DNS guard is currently applied to any profile.
+func (m *DNSManager) IsActive() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return len(m.active) > 0
 }
 
 // merged returns a deduped list of all DNS servers from active profiles.

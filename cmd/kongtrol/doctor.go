@@ -100,6 +100,7 @@ type binarySpec struct {
 	adapterType string
 	candidates  []string
 	versionArg  string
+	guiApp      bool // if true, read file version via PowerShell instead of launching
 }
 
 func vpnBinarySpecs() []binarySpec {
@@ -141,6 +142,7 @@ func vpnBinarySpecs() []binarySpec {
 					`C:\Program Files (x86)\Fortinet\FortiClient\FortiClient.exe`,
 				},
 				versionArg: "--version",
+				guiApp:     true,
 			},
 			binarySpec{
 				adapterType: "ciscoanyconnect",
@@ -225,11 +227,17 @@ func (d *doctor) checkBinaries(cfg *config.Config) {
 			continue
 		}
 		ver := ""
-		if out, err := exec.Command(found, spec.versionArg).Output(); err == nil {
-			ver = strings.TrimSpace(strings.Split(string(out), "\n")[0])
-			if len(ver) > 48 {
-				ver = ver[:48] + "…"
+		if spec.guiApp {
+			// GUI apps block when launched directly — read file version via PowerShell.
+			if out, err := exec.Command("powershell", "-NoProfile", "-Command",
+				fmt.Sprintf(`(Get-Item '%s').VersionInfo.ProductVersion`, found)).Output(); err == nil {
+				ver = strings.TrimSpace(string(out))
 			}
+		} else if out, err := exec.Command(found, spec.versionArg).Output(); err == nil {
+			ver = strings.TrimSpace(strings.Split(string(out), "\n")[0])
+		}
+		if len(ver) > 48 {
+			ver = ver[:48] + "…"
 		}
 		if ver == "" {
 			d.ok(spec.adapterType+" binary", found)

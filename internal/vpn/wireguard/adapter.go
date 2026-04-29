@@ -32,6 +32,22 @@ type Adapter struct {
 	lastCfg     vpn.AdapterConfig
 }
 
+// Configure pre-seeds the adapter config so Status() can probe the WireGuard
+// interface even when Connect() has not been called in this process lifetime.
+func (a *Adapter) Configure(cfg vpn.AdapterConfig) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.lastCfg.ConfigPath == "" {
+		a.lastCfg = cfg
+	}
+	if a.ifaceName == "" && cfg.ConfigPath != "" {
+		a.ifaceName = interfaceFromConfig(cfg.ConfigPath)
+		if cfg.TunnelName != "" {
+			a.ifaceName = cfg.TunnelName
+		}
+	}
+}
+
 func (a *Adapter) Name() string { return "wireguard" }
 func (a *Adapter) Version() string {
 	out, err := runCmd("wg", "--version")
@@ -117,23 +133,47 @@ func (a *Adapter) Reconnect(ctx context.Context) error {
 }
 
 func (a *Adapter) Status() vpn.Status {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
-	if a.status != vpn.StatusConnected {
+	iface := a.ifaceName
+	if iface == "" {
+		// No iface known in-memory — nothing to check.
 		return a.status.Normalize()
 	}
 
-	// Verify the tunnel is still alive via a wg show check.
-	raw, err := wgShow(a.ifaceName)
-	if err != nil {
-		return vpn.StatusError
+	raw, err := wgShow(iface)
+	if err != nil || raw == "" {
+		// wg show failed — wg CLI may be unavailable or the named pipe not yet ready.
+		// Fall back to checking the network interface directly.
+		if ifaceExists(iface) {
+			// Interface is up; reconcile state as connected below.
+			raw = "fallback"
+		} else {
+			// Interface not in net.Interfaces(). On Windows, the service may be
+			// starting or restarting — avoid false error during that window.
+			if tunnelServiceRunning(iface) {
+				return vpn.StatusConnecting
+			}
+			if a.status == vpn.StatusConnected {
+				a.status = vpn.StatusError
+			}
+			return a.status.Normalize()
+		}
 	}
-	if raw == "" || !parseHandshake(raw) {
-		// Interface exists but no recent handshake — tunnel may be down.
-		// Return connected anyway (handshake may just be idle); let the
-		// watchdog and leak tester detect actual failures.
-		return vpn.StatusConnected
+
+	// Interface is up — reconcile in-memory state.
+	if a.status != vpn.StatusConnected {
+		a.status = vpn.StatusConnected
+		if a.connectedAt.IsZero() {
+			a.connectedAt = time.Now()
+		}
+		if a.assignedIP == nil {
+			a.assignedIP, _ = parseConfigAddress(a.lastCfg.ConfigPath)
+		}
+		if len(a.dnsServers) == 0 {
+			a.dnsServers = parseConfigDNS(a.lastCfg.ConfigPath)
+		}
 	}
 	return vpn.StatusConnected
 }

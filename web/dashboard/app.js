@@ -86,7 +86,7 @@ async function refreshSecurity() {
     const data = await res.json();
 
     setBadge('ks-status',  data.kill_switch, 'ON', 'OFF');
-    setBadge('dns-status', false, 'ON', 'OFF'); // TODO: wire DNS guard status
+    setBadge('dns-status', data.dns_guard, 'ON', 'OFF');
 
     if (data.leak_check) {
       const lk = data.leak_check;
@@ -128,6 +128,80 @@ async function refreshRoutes() {
       </li>`
     ).join('');
   } catch (_) {}
+}
+
+// ── Traffic Map (policies + resolve) ─────────────────────────────────────────
+
+async function refreshPolicies() {
+  try {
+    const res = await fetch(`${API}/api/v1/policies`);
+    if (!res.ok) return;
+    const policies = await res.json();
+    const tbody = document.getElementById('policies-body');
+
+    if (!policies || policies.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">No policies configured.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = policies.map(p => {
+      // Build match tags
+      const tags = [];
+      (p.domains || []).forEach(d => tags.push(`<span class="match-tag domain">${esc(d)}</span>`));
+      (p.ip_ranges || []).forEach(r => tags.push(`<span class="match-tag ip">${esc(r)}</span>`));
+
+      const resolvedN = (p.resolved_cidrs || []).length;
+      const resolvedClass = resolvedN > 0 ? 'resolved-count' : 'resolved-count zero';
+      const resolvedText = resolvedN > 0 ? `${resolvedN} IPs` : '—';
+
+      return `<tr>
+        <td>${esc(p.name)}</td>
+        <td><div class="match-tags">${tags.join('')}</div></td>
+        <td><span class="via-profile">${esc(p.via)}</span></td>
+        <td><span class="${resolvedClass}">${resolvedText}</span></td>
+      </tr>`;
+    }).join('');
+  } catch (_) {}
+}
+
+async function resolveTarget() {
+  const input = document.getElementById('resolve-input');
+  const resultDiv = document.getElementById('resolve-result');
+  const target = input.value.trim();
+
+  if (!target) {
+    resultDiv.style.display = 'none';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/api/v1/resolve?target=${encodeURIComponent(target)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    resultDiv.style.display = 'block';
+    if (data.matched) {
+      resultDiv.className = 'resolve-result matched';
+      resultDiv.innerHTML = `<strong>${esc(data.target)}</strong> → <strong>${esc(data.via)}</strong> (${esc(data.rule)})`;
+    } else {
+      resultDiv.className = 'resolve-result no-match';
+      resultDiv.innerHTML = `<strong>${esc(data.target)}</strong> → default route (no matching policy)`;
+    }
+  } catch (_) {
+    resultDiv.style.display = 'none';
+  }
+}
+
+// Enter key in resolve input triggers search.
+document.getElementById('resolve-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') resolveTarget();
+});
+
+// Simple HTML escape.
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
 }
 
 // ── VPN actions ──────────────────────────────────────────────────────────────
@@ -178,6 +252,8 @@ function formatDuration(seconds) {
 connectWS();
 refreshSecurity();
 refreshRoutes();
+refreshPolicies();
 
 setInterval(refreshSecurity, 30_000);
 setInterval(refreshRoutes, 30_000);
+setInterval(refreshPolicies, 30_000);

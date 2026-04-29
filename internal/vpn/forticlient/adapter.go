@@ -37,7 +37,7 @@ type Adapter struct {
 func (a *Adapter) Name() string { return "forticlient" }
 
 func (a *Adapter) Version() string {
-	out, _ := runCmd(binaryPath(), "--version")
+	out, _ := versionCmd()
 	if out != "" {
 		lines := strings.SplitN(out, "\n", 2)
 		return strings.TrimSpace(lines[0])
@@ -69,13 +69,12 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	cfg.Password = "" // zero immediately
 
 	if err != nil {
-		// CLI failed — might be EMS-blocked. Try passive detection.
+		// CLI launch failed outright — try passive detection in case tunnel is already up.
 		iface, ip, detectErr := detectTunnelInterface(5 * time.Second)
 		if detectErr != nil {
 			a.status = vpn.StatusError
 			return ErrCLIBlocked
 		}
-		// Tunnel already up (manual connection).
 		a.tunnelIface = iface
 		a.assignedIP = ip
 		a.connectedAt = time.Now()
@@ -83,11 +82,15 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 		return nil
 	}
 
-	// CLI succeeded — wait for tunnel interface to appear.
-	iface, ip, err := detectTunnelInterface(20 * time.Second)
+	// CLI launched — wait for tunnel interface to appear.
+	// On Windows, FortiClient runs in background and may require GUI interaction
+	// (accept cert, MFA, etc.), so we allow a generous timeout.
+	iface, ip, err := detectTunnelInterface(60 * time.Second)
 	if err != nil {
-		a.status = vpn.StatusError
-		return fmt.Errorf("forticlient: tunnel interface did not appear: %w", err)
+		// Tunnel didn't appear — FortiClient GUI may need manual action.
+		// Reset to disconnected (not error) so a retry works cleanly.
+		a.status = vpn.StatusDisconnected
+		return fmt.Errorf("forticlient: tunnel did not come up within 60s — connect manually in the FortiClient GUI, then run 'kongtrol up' again")
 	}
 
 	a.tunnelIface = iface

@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
-	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -106,11 +106,13 @@ func (s *Server) handleListRoutes(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	type secStatus struct {
 		KillSwitch bool        `json:"kill_switch"`
+		DNSGuard   bool        `json:"dns_guard"`
 		LeakCheck  interface{} `json:"leak_check"`
 	}
 
 	status := secStatus{
 		KillSwitch: s.ks != nil && s.ks.IsEnabled(),
+		DNSGuard:   s.dnsMgr != nil && s.dnsMgr.IsActive(),
 	}
 
 	if s.leakTest != nil {
@@ -128,6 +130,100 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, status)
 }
 
-// routeFromDTO converts a list of routing.Route to a safe DTO for the API.
-// Kept here to avoid a circular import between api and routing packages.
-type routeEntry routing.Route
+// GET /api/v1/policies — active policies with resolved IPs from PolicyResolver.
+func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
+	type policyDTO struct {
+		Name          string   `json:"name"`
+		Via           string   `json:"via"`
+		Domains       []string `json:"domains"`
+		IPRanges      []string `json:"ip_ranges"`
+		ResolvedCIDRs []string `json:"resolved_cidrs"`
+	}
+
+	// Start from the policy engine rules (static config).
+	var out []policyDTO
+	if s.policyEngine != nil {
+		for _, rule := range s.policyEngine.Rules() {
+			dto := policyDTO{
+				Name: rule.Name,
+				Via:  rule.Via,
+			}
+			dto.Domains = rule.Match.Domains
+			for _, ipnet := range rule.Match.IPRanges {
+				dto.IPRanges = append(dto.IPRanges, ipnet.String())
+			}
+			out = append(out, dto)
+		}
+	}
+
+	// Enrich with resolved CIDRs from PolicyResolver.
+	if s.policyResolver != nil {
+		snapshots := s.policyResolver.Snapshot()
+		// Index snapshots by profile name for fast lookup.
+		byProfile := make(map[string]monitor.ProfileSnapshot, len(snapshots))
+		for _, snap := range snapshots {
+			byProfile[snap.Name] = snap
+		}
+		for i := range out {
+			if snap, ok := byProfile[out[i].Via]; ok {
+				out[i].ResolvedCIDRs = snap.ResolvedCIDRs
+			}
+		}
+	}
+
+	if out == nil {
+		out = []policyDTO{}
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// GET /api/v1/resolve?target=<ip-or-domain> — which VPN handles this target.
+func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
+	target := r.URL.Query().Get("target")
+	if target == "" {
+		writeError(w, http.StatusBadRequest, "missing 'target' query parameter")
+		return
+	}
+
+	type resolveDTO struct {
+		Target  string `json:"target"`
+		Via     string `json:"via"`
+		Rule    string `json:"rule"`
+		Matched bool   `json:"matched"`
+	}
+
+	result := resolveDTO{Target: target}
+
+	if s.policyEngine == nil {
+		writeJSON(w, http.StatusOK, result)
+		return
+	}
+
+	// Try as IP first, then as domain.
+	if ip := net.ParseIP(target); ip != nil {
+		if vpnName, matched := s.policyEngine.ResolveIP(ip); matched {
+			result.Via = vpnName
+			result.Matched = true
+			// Find matching rule name.
+			for _, rule := range s.policyEngine.Rules() {
+				if rule.Via == vpnName && rule.MatchesIP(ip) {
+					result.Rule = rule.Name
+					break
+				}
+			}
+		}
+	} else {
+		if vpnName, matched := s.policyEngine.ResolveDomain(target); matched {
+			result.Via = vpnName
+			result.Matched = true
+			for _, rule := range s.policyEngine.Rules() {
+				if rule.Via == vpnName && rule.MatchesDomain(target) {
+					result.Rule = rule.Name
+					break
+				}
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}

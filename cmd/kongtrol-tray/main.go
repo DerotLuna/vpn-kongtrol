@@ -140,7 +140,7 @@ func initDaemon() error {
 		leak = security.NewLeakTester(60*time.Second, cfg.Security.IntegrityCheck.ExpectedIPs)
 	}
 
-	_, _ = policy.New(cfg) // validates policies; orchestration handled by CLI
+	eng, _ := policy.New(cfg)
 
 	col = monitor.NewCollector(adapters)
 	col.Start(5 * time.Second)
@@ -153,6 +153,9 @@ func initDaemon() error {
 		routeMgr,
 		ks,
 		leak,
+		eng,
+		nil, // PolicyResolver is managed by the CLI daemon, not the tray
+		nil, // DNSManager is managed by the CLI daemon, not the tray
 	)
 	return srv.Start()
 }

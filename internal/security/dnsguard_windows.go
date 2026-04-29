@@ -106,7 +106,11 @@ func currentDNSWindows(iface string) ([]string, error) {
 	var servers []string
 	for _, line := range strings.Split(string(out), "\n") {
 		line = strings.TrimSpace(line)
-		if ip := net.ParseIP(strings.Fields(line)[len(strings.Fields(line))-1]); ip != nil {
+		fields := strings.Fields(line)
+		if len(fields) == 0 {
+			continue
+		}
+		if ip := net.ParseIP(fields[len(fields)-1]); ip != nil {
 			servers = append(servers, ip.String())
 		}
 	}

@@ -6,11 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 	"gopkg.in/yaml.v3"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
@@ -118,21 +120,32 @@ func (w *wizard) run() error {
 	}
 
 	// ── existing profiles: credential refresh ─────────────────────────────────
-	if existing != nil {
-		for name, vpnCfg := range existing.VPNs {
-			fmt.Printf("\n%s  %s %s\n",
-				paint(cInfo, "──"),
-				paintBold(cBright, name),
-				paint(cDim, "("+vpnCfg.Type+")"))
-			if w.confirm(w.t("profile.refresh_creds"), false) {
-				if err := w.collectCredentials(name, vpnCfg.Type, vpnCfg.Auth); err != nil {
-					fmt.Fprintln(os.Stderr, tuiWarn(err.Error()))
+	if existing != nil && len(existing.VPNs) > 0 {
+		fmt.Println()
+		if w.confirm(w.t("profile.refresh_any"), false) {
+			for name, vpnCfg := range existing.VPNs {
+				fmt.Printf("\n%s  %s %s\n",
+					paint(cInfo, "──"),
+					paintBold(cBright, name),
+					paint(cDim, "("+vpnCfg.Type+")"))
+				if w.confirm(w.t("profile.refresh_creds"), false) {
+					if err := w.collectCredentials(name, vpnCfg.Type, vpnCfg.Auth); err != nil {
+						fmt.Fprintln(os.Stderr, tuiWarn(err.Error()))
+					}
 				}
 			}
 		}
 	}
 
 	// ── add new profiles ──────────────────────────────────────────────────────
+	// Track all known profile names (existing + newly added this session).
+	knownProfiles := make(map[string]bool)
+	if existing != nil {
+		for name := range existing.VPNs {
+			knownProfiles[name] = true
+		}
+	}
+
 	for {
 		fmt.Println()
 		if !w.confirm(paintBold(cBright, w.t("profile.add_new")), false) {
@@ -143,19 +156,44 @@ func (w *wizard) run() error {
 			fmt.Fprintln(os.Stderr, tuiErr(err.Error()))
 			continue
 		}
+
 		vpnsNode := mappingKey(doc, "vpns")
 		if vpnsNode == nil {
 			vpnsNode = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 			doc.Content = append(doc.Content, scalarNode("vpns"), vpnsNode)
 		}
+
+		// If the profile name already exists, warn and ask to replace.
+		if knownProfiles[profile] {
+			fmt.Println(tuiWarn(w.tF("profile.already_exists", profile)))
+			if !w.confirm(w.t("profile.replace_confirm"), false) {
+				fmt.Println(paint(cDim, "  "+w.t("profile.replace_skipped")))
+				continue
+			}
+			// Remove the existing key+value pair from the YAML node.
+			removeMapping(vpnsNode, profile)
+		}
+
 		vpnsNode.Content = append(vpnsNode.Content, scalarNode(profile), vpnNode)
+		knownProfiles[profile] = true
 	}
+
+	// ── routing policies ──────────────────────────────────────────────────────
+	w.collectPolicies(doc, existing, knownProfiles)
 
 	// ── security defaults ─────────────────────────────────────────────────────
 	SectionHeader(w.t("section.security"))
+
+	// Ensure the "security" node exists before writing sub-keys into it.
+	secNode := mappingKey(doc, "security")
+	if secNode == nil {
+		secNode = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		doc.Content = append(doc.Content, scalarNode("security"), secNode)
+	}
+
 	if existing == nil || !existing.Security.KillSwitch.Enabled {
 		if w.confirm(w.t("security.kill_switch"), true) {
-			setMapping(mappingKey(doc, "security"), "kill_switch",
+			setMapping(secNode, "kill_switch",
 				mapNode([][2]string{
 					{"enabled", "true"},
 					{"mode", "strict"},
@@ -165,7 +203,7 @@ func (w *wizard) run() error {
 	}
 	if existing == nil || !existing.Security.DNSGuard.Enabled {
 		if w.confirm(w.t("security.dns_guard"), true) {
-			setMapping(mappingKey(doc, "security"), "dns_guard",
+			setMapping(secNode, "dns_guard",
 				mapNode([][2]string{
 					{"enabled", "true"},
 					{"fallback_dns", "1.1.1.1"},
@@ -175,7 +213,7 @@ func (w *wizard) run() error {
 	if existing == nil || !existing.Security.AuditLog.Sign {
 		auditPath := filepath.Join(home, ".kongtrol", "audit.log")
 		if w.confirm(w.t("security.audit_log"), true) {
-			setMapping(mappingKey(doc, "security"), "audit_log",
+			setMapping(secNode, "audit_log",
 				mapNode([][2]string{
 					{"path", auditPath},
 					{"max_size_mb", "100"},
@@ -243,6 +281,149 @@ func detectedAdapterKeys(detected []detectedVPN) map[string]bool {
 	return keys
 }
 
+// ── routing policies ──────────────────────────────────────────────────────────
+
+func (w *wizard) collectPolicies(doc *yaml.Node, existing *config.Config, profileNames map[string]bool) {
+	SectionHeader(w.t("section.policies"))
+
+	// Show existing policies if any.
+	if existing != nil && len(existing.Policies) > 0 {
+		fmt.Println(tuiInfo(w.t("policy.existing")))
+		for _, p := range existing.Policies {
+			fmt.Printf("    %s  %s → %s\n",
+				paint(cInfo, "·"),
+				paintBold(cBright, p.Name),
+				paint(cWarn, p.Via))
+		}
+		fmt.Println()
+	}
+
+	// Build profile list for the "via" select.
+	var profileOpts []selectOption
+	for name := range profileNames {
+		profileOpts = append(profileOpts, selectOption{value: name})
+	}
+	// Sort for stable display.
+	sort.Slice(profileOpts, func(i, j int) bool {
+		return profileOpts[i].value < profileOpts[j].value
+	})
+
+	if len(profileOpts) == 0 {
+		fmt.Println(paint(cDim, "    "+w.t("policy.no_profiles")))
+		return
+	}
+
+	// Get or create the policies sequence node.
+	policiesNode := mappingKey(doc, "policies")
+	if policiesNode == nil {
+		policiesNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		doc.Content = append(doc.Content, scalarNode("policies"), policiesNode)
+	}
+
+	// Track known policy names to detect duplicates.
+	knownPolicies := make(map[string]bool)
+	if existing != nil {
+		for _, p := range existing.Policies {
+			knownPolicies[p.Name] = true
+		}
+	}
+
+	added := 0
+	for {
+		fmt.Println()
+		if !w.confirm(w.t("policy.add_new"), added == 0 && len(profileOpts) > 0) {
+			break
+		}
+
+		name := w.prompt(w.t("policy.name"), "")
+		if name == "" {
+			continue
+		}
+
+		// Duplicate policy check.
+		if knownPolicies[name] {
+			fmt.Println(tuiWarn(w.tF("policy.already_exists", name)))
+			if !w.confirm(w.t("policy.replace_confirm"), false) {
+				fmt.Println(paint(cDim, w.t("policy.replace_skipped")))
+				continue
+			}
+			removePolicyByName(policiesNode, name)
+		}
+
+		defVia := profileOpts[0].value
+		via := w.promptSelect(w.t("policy.via"), profileOpts, defVia)
+
+		// Collect domains — split on comma so "a.com, b.com" works too.
+		fmt.Println(paint(cDim, "    "+w.t("policy.domains_hint")))
+		var domains []string
+		for {
+			d := w.prompt(w.t("policy.domain_prompt"), "")
+			if d == "" {
+				break
+			}
+			for _, part := range strings.Split(d, ",") {
+				if v := strings.TrimSpace(part); v != "" {
+					domains = append(domains, v)
+				}
+			}
+		}
+
+		// Collect IP ranges — split on comma too.
+		fmt.Println(paint(cDim, "    "+w.t("policy.ips_hint")))
+		var ipRanges []string
+		for {
+			ip := w.prompt(w.t("policy.ip_prompt"), "")
+			if ip == "" {
+				break
+			}
+			for _, part := range strings.Split(ip, ",") {
+				if v := strings.TrimSpace(part); v != "" {
+					ipRanges = append(ipRanges, v)
+				}
+			}
+		}
+
+		if len(domains) == 0 && len(ipRanges) == 0 {
+			fmt.Println(tuiWarn(w.t("policy.empty_match")))
+			continue
+		}
+
+		policiesNode.Content = append(policiesNode.Content, policyNode(name, via, domains, ipRanges))
+		knownPolicies[name] = true
+		added++
+	}
+
+	// Always show YAML hint for complex cases.
+	fmt.Println()
+	fmt.Println(paint(cDim, "    "+w.t("policy.yaml_hint")))
+}
+
+// policyNode builds a YAML mapping node for a single policy rule.
+func policyNode(name, via string, domains, ipRanges []string) *yaml.Node {
+	matchNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	if len(domains) > 0 {
+		seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, d := range domains {
+			seq.Content = append(seq.Content, scalarNode(d))
+		}
+		matchNode.Content = append(matchNode.Content, scalarNode("domains"), seq)
+	}
+	if len(ipRanges) > 0 {
+		seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, ip := range ipRanges {
+			seq.Content = append(seq.Content, scalarNode(ip))
+		}
+		matchNode.Content = append(matchNode.Content, scalarNode("ip_ranges"), seq)
+	}
+	n := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	n.Content = append(n.Content,
+		scalarNode("name"), scalarNode(name),
+		scalarNode("match"), matchNode,
+		scalarNode("via"), scalarNode(via),
+	)
+	return n
+}
+
 func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, error) {
 	SectionHeader(w.t("section.new_profile"))
 
@@ -252,16 +433,49 @@ func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, err
 	}
 	name = strings.ToLower(strings.ReplaceAll(name, " ", "-"))
 
-	fmt.Println(paint(cDim, w.t("collect.adapter_line1")))
-	fmt.Println(paint(cDim, w.t("collect.adapter_line2")))
-	adapterType := w.prompt(w.t("collect.type"), "openvpn")
+	// ── adapter type select ───────────────────────────────────────────────────
+	allAdapters := []struct{ key string }{
+		{"forticlient"}, {"openvpn"}, {"protonvpn"}, {"ciscoanyconnect"},
+		{"wireguard"}, {"globalprotect"}, {"tailscale"}, {"cloudflarewarp"},
+	}
+	detectedKeys := detectedAdapterKeys(detected)
+
+	var adapterOpts []selectOption
+	for _, a := range allAdapters {
+		if detectedKeys[a.key] {
+			adapterOpts = append(adapterOpts, selectOption{
+				value: a.key, hint: w.t("adapter.hint." + a.key), detected: true,
+			})
+		}
+	}
+	for _, a := range allAdapters {
+		if !detectedKeys[a.key] {
+			adapterOpts = append(adapterOpts, selectOption{
+				value: a.key, hint: w.t("adapter.hint." + a.key),
+			})
+		}
+	}
+	defAdapter := "openvpn"
+	if len(adapterOpts) > 0 && adapterOpts[0].detected {
+		defAdapter = adapterOpts[0].value
+	}
+	adapterType := w.promptSelect(w.t("collect.type"), adapterOpts, defAdapter)
 
 	// Warn + offer manual binary path when the chosen adapter wasn't auto-detected.
-	detectedKeys := detectedAdapterKeys(detected)
 	var binaryPath string
 	if adapterType != "cloudflarewarp" && !detectedKeys[adapterType] {
 		fmt.Println(tuiWarn(w.t("collect.not_detected")))
 		binaryPath = w.prompt(w.t("collect.binary_path"), "")
+	}
+
+	// ── auth method select helper ─────────────────────────────────────────────
+	authMethodSelect := func(def string) string {
+		opts := []selectOption{
+			{value: "credentials",             hint: w.t("auth.hint.credentials")},
+			{value: "certificate",             hint: w.t("auth.hint.certificate")},
+			{value: "certificate+credentials", hint: w.t("auth.hint.cert+creds")},
+		}
+		return w.promptSelect(w.t("collect.auth_method"), opts, def)
 	}
 
 	fields := [][2]string{{"type", adapterType}}
@@ -269,13 +483,31 @@ func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, err
 
 	switch adapterType {
 	case "forticlient":
+		w.promptHint("hint.host.forti")
 		fields = append(fields,
 			[2]string{"host", w.prompt(w.t("collect.host"), "")},
+		)
+		w.promptHint("hint.port")
+		fields = append(fields,
 			[2]string{"port", w.promptDefault(w.t("collect.port"), "443")},
+		)
+		w.promptHint("hint.tunnel_name")
+		fields = append(fields,
 			[2]string{"tunnel_name", w.prompt(w.t("collect.tunnel_name"), "Office")},
 		)
-		fields = append(fields, [2]string{"version", w.promptDefault(w.t("collect.forti_ver"), "6")})
-		auth.Method = w.promptDefault(w.t("collect.auth_method"), "certificate+credentials")
+		verOpts := []selectOption{
+			{value: "6", hint: w.t("forti.ver.hint.6")},
+			{value: "7", hint: w.t("forti.ver.hint.7")},
+			{value: "5", hint: w.t("forti.ver.hint.5")},
+		}
+		fields = append(fields, [2]string{"version", w.promptSelect(w.t("collect.forti_ver"), verOpts, "6")})
+
+		if runtime.GOOS == "windows" {
+			fmt.Println(paint(cDim, w.t("hint.auth.forti.win")))
+			auth.Method = "credentials"
+		} else {
+			auth.Method = authMethodSelect("certificate+credentials")
+		}
 		if strings.Contains(auth.Method, "certificate") {
 			auth.Cert = w.prompt(w.t("collect.cert"), "")
 			auth.Key = w.prompt(w.t("collect.key"), "")
@@ -286,10 +518,12 @@ func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, err
 		}
 
 	case "openvpn":
+		w.promptHint("hint.ovpn_config")
 		fields = append(fields,
 			[2]string{"config", w.prompt(w.t("collect.ovpn_config"), "")},
 		)
-		auth.Method = w.promptDefault(w.t("collect.auth_method"), "certificate")
+		w.promptHint("hint.auth.openvpn")
+		auth.Method = authMethodSelect("certificate")
 		if strings.Contains(auth.Method, "certificate") {
 			auth.Cert = w.prompt(w.t("collect.ovpn_cert"), "")
 			auth.Key = w.prompt(w.t("collect.ovpn_key"), "")
@@ -300,15 +534,23 @@ func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, err
 		}
 
 	case "protonvpn":
+		w.promptHint("hint.proton_srv")
 		fields = append(fields,
 			[2]string{"server", w.promptDefault(w.t("collect.proton_srv"), "fastest")},
-			[2]string{"protocol", w.promptDefault(w.t("collect.proton_proto"), "wireguard")},
+		)
+		protoOpts := []selectOption{
+			{value: "wireguard", hint: w.t("proto.hint.wireguard")},
+			{value: "openvpn",   hint: w.t("proto.hint.openvpn")},
+		}
+		fields = append(fields,
+			[2]string{"protocol", w.promptSelect(w.t("collect.proton_proto"), protoOpts, "wireguard")},
 		)
 		auth.Method = "credentials"
 		auth.Username = w.prompt(w.t("collect.proton_user"), "")
 		auth.PasswordKeychain = name + ".password"
 
 	case "ciscoanyconnect":
+		w.promptHint("hint.host.cisco")
 		fields = append(fields,
 			[2]string{"host", w.prompt(w.t("collect.cisco_host"), "")},
 		)
@@ -317,12 +559,14 @@ func (w *wizard) collectProfile(detected []detectedVPN) (string, *yaml.Node, err
 		auth.PasswordKeychain = name + ".password"
 
 	case "wireguard":
+		w.promptHint("hint.wg_config")
 		fields = append(fields,
 			[2]string{"config", w.prompt(w.t("collect.wg_config"), "")},
 		)
 		auth.Method = "certificate"
 
 	case "globalprotect":
+		w.promptHint("hint.host.gp")
 		fields = append(fields,
 			[2]string{"host", w.prompt(w.t("collect.gp_host"), "")},
 		)
@@ -752,20 +996,91 @@ func (w *wizard) prompt(label, def string) string {
 
 func (w *wizard) promptDefault(label, def string) string { return w.prompt(label, def) }
 
+// ── select prompt ─────────────────────────────────────────────────────────────
+
+type selectOption struct {
+	value    string
+	hint     string
+	detected bool
+}
+
+// promptSelect renders a numbered option list and returns the chosen value.
+// Detected options appear first (already sorted by caller); a separator is
+// printed before the first non-detected option when any detected ones exist.
+// Input can be a number ("2") or the value string ("openvpn"). Falls back to def.
+func (w *wizard) promptSelect(title string, options []selectOption, def string) string {
+	fmt.Println()
+	fmt.Printf("%s:\n", tuiLabel(title))
+
+	hasDetected := false
+	for _, o := range options {
+		if o.detected {
+			hasDetected = true
+			break
+		}
+	}
+
+	separatorPrinted := false
+	for i, opt := range options {
+		if hasDetected && !opt.detected && !separatorPrinted {
+			fmt.Printf("    %s\n", paint(cDim, "───────────────────────────────"))
+			separatorPrinted = true
+		}
+		num := paint(cDim, fmt.Sprintf("    %d)", i+1))
+		val := paintBold(cBright, fmt.Sprintf("%-22s", opt.value))
+		extra := ""
+		if opt.detected {
+			det := paintBold(cSuccess, "✓ "+w.t("select.detected"))
+			if opt.hint != "" {
+				extra = det + "  " + paint(cDim, opt.hint)
+			} else {
+				extra = det
+			}
+		} else if opt.hint != "" {
+			extra = paint(cDim, opt.hint)
+		}
+		fmt.Printf("%s  %s  %s\n", num, val, extra)
+	}
+	fmt.Println()
+
+	defDisplay := ""
+	for i, opt := range options {
+		if opt.value == def {
+			defDisplay = strconv.Itoa(i + 1)
+			break
+		}
+	}
+
+	raw := w.prompt(w.t("select.choose"), defDisplay)
+
+	if n, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil {
+		if n >= 1 && n <= len(options) {
+			return options[n-1].value
+		}
+	}
+	for _, opt := range options {
+		if strings.EqualFold(opt.value, strings.TrimSpace(raw)) {
+			return opt.value
+		}
+	}
+	return def
+}
+
+// promptHint prints a dim contextual hint line before a prompt.
+func (w *wizard) promptHint(key string) {
+	fmt.Println(paint(cDim, w.t(key)))
+}
+
 func (w *wizard) promptSecret(label string) string {
 	fmt.Printf("%s: ", tuiLabel(label))
-	sttyOff := exec.Command("stty", "-echo")
-	sttyOff.Stdin = os.Stdin
-	_ = sttyOff.Run()
-
-	line, _ := w.r.ReadString('\n')
-	line = strings.TrimSpace(line)
-
-	sttyOn := exec.Command("stty", "echo")
-	sttyOn.Stdin = os.Stdin
-	_ = sttyOn.Run()
+	b, err := term.ReadPassword(int(os.Stdin.Fd()))
 	fmt.Println()
-	return line
+	if err != nil {
+		// Fallback for non-terminal environments (pipes, CI).
+		line, _ := w.r.ReadString('\n')
+		return strings.TrimSpace(line)
+	}
+	return strings.TrimSpace(string(b))
 }
 
 func (w *wizard) confirm(label string, def bool) bool {
@@ -859,6 +1174,37 @@ func mappingKey(n *yaml.Node, key string) *yaml.Node {
 		}
 	}
 	return nil
+}
+
+// removeMapping removes the key+value pair for key from a mapping node.
+// removePolicyByName removes a policy mapping from a !!seq node by its "name" field.
+func removePolicyByName(seq *yaml.Node, name string) {
+	if seq == nil {
+		return
+	}
+	for i, item := range seq.Content {
+		if item.Kind != yaml.MappingNode {
+			continue
+		}
+		for j := 0; j+1 < len(item.Content); j += 2 {
+			if item.Content[j].Value == "name" && item.Content[j+1].Value == name {
+				seq.Content = append(seq.Content[:i], seq.Content[i+1:]...)
+				return
+			}
+		}
+	}
+}
+
+func removeMapping(parent *yaml.Node, key string) {
+	if parent == nil {
+		return
+	}
+	for i := 0; i+1 < len(parent.Content); i += 2 {
+		if parent.Content[i].Value == key {
+			parent.Content = append(parent.Content[:i], parent.Content[i+2:]...)
+			return
+		}
+	}
 }
 
 func setMapping(parent *yaml.Node, key string, val *yaml.Node) {
