@@ -6,6 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
 	"text/template"
 )
 
@@ -44,6 +47,39 @@ type configData struct {
 	Username string
 	Cert     string
 	Key      string
+}
+
+// ifaceByteCounters reads sent/received byte counts for a network interface.
+// On Windows uses PowerShell Get-NetAdapterStatistics; on Linux reads /sys/class/net.
+func ifaceByteCounters(name string) (sent, received uint64) {
+	switch runtime.GOOS {
+	case "windows":
+		// Get-NetAdapterStatistics returns SentBytes and ReceivedBytes.
+		ps := fmt.Sprintf(
+			`$s = Get-NetAdapterStatistics -Name '%s' -ErrorAction SilentlyContinue; `+
+				`if ($s) { "$($s.SentBytes) $($s.ReceivedBytes)" }`, name)
+		out, err := runCmd("powershell", "-NoProfile", "-Command", ps)
+		if err != nil {
+			return 0, 0
+		}
+		parts := strings.Fields(strings.TrimSpace(out))
+		if len(parts) == 2 {
+			sent, _ = strconv.ParseUint(parts[0], 10, 64)
+			received, _ = strconv.ParseUint(parts[1], 10, 64)
+		}
+	case "linux":
+		readSys := func(path string) uint64 {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return 0
+			}
+			v, _ := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
+			return v
+		}
+		sent = readSys("/sys/class/net/" + name + "/statistics/tx_bytes")
+		received = readSys("/sys/class/net/" + name + "/statistics/rx_bytes")
+	}
+	return
 }
 
 func writeTempConfig(host string, port int, cert, key, username, _ string) (string, error) {

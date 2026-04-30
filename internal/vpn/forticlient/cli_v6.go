@@ -1,6 +1,7 @@
 package forticlient
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"runtime"
@@ -75,26 +76,61 @@ func disconnectV6(tunnelName string) error {
 	}
 }
 
-// detectTunnelInterface polls network interfaces until a FortiClient
-// tunnel interface appears.
-//
-// On Linux/macOS the interface name itself is distinctive (fortissl, vpnssl0, etc.).
-// On Windows, FortiClient adapters have generic names like "Ethernet 4" but their
-// description contains "Fortinet". We match by description on Windows and by name
-// prefix elsewhere.
-func detectTunnelInterface(timeout time.Duration) (string, net.IP, error) {
-	if runtime.GOOS == "windows" {
-		return detectTunnelInterfaceWindows(timeout)
+// tryGUIConnect attempts GUI automation to connect a FortiClient tunnel.
+// Returns an error on non-Windows (caller falls back to CLI).
+// Implemented in gui_windows.go on Windows; this stub covers other OSes.
+func tryGUIConnect(tunnelName, username, password string) error {
+	if runtime.GOOS != "windows" {
+		return fmt.Errorf("gui automation not supported on %s", runtime.GOOS)
 	}
-	return detectTunnelInterfaceUnix(timeout)
+	return guiConnect(tunnelName, username, password)
+}
+
+// tryGUIDisconnect attempts GUI automation to disconnect. Non-Windows returns error.
+func tryGUIDisconnect(tunnelName string) error {
+	if runtime.GOOS != "windows" {
+		return fmt.Errorf("gui automation not supported on %s", runtime.GOOS)
+	}
+	return guiDisconnect(tunnelName)
+}
+
+// disableFortiAdapter disables a Fortinet network adapter as a fallback when
+// CLI /vpndisconnect is blocked by EMS policy. On Windows, uses PowerShell
+// Disable-NetAdapter which requires admin privileges but reliably drops the tunnel.
+// On Linux/macOS, falls back to ifconfig down.
+func disableFortiAdapter(ifaceName string) error {
+	switch runtime.GOOS {
+	case "windows":
+		// Disable-NetAdapter by name drops the tunnel without killing FortiClient.
+		_, err := runCmd("powershell", "-NoProfile", "-Command",
+			fmt.Sprintf(`Disable-NetAdapter -Name '%s' -Confirm:$false`, ifaceName))
+		return err
+	default:
+		_, err := runCmd("ifconfig", ifaceName, "down")
+		return err
+	}
+}
+
+// detectTunnelInterface polls network interfaces until a FortiClient
+// tunnel interface appears. ctx cancellation (e.g. Ctrl+C) stops the loop early.
+func detectTunnelInterface(ctx context.Context, timeout time.Duration) (string, net.IP, error) {
+	if runtime.GOOS == "windows" {
+		return detectTunnelInterfaceWindows(ctx, timeout)
+	}
+	return detectTunnelInterfaceUnix(ctx, timeout)
 }
 
 // detectTunnelInterfaceUnix matches by interface name prefix (Linux/macOS).
-func detectTunnelInterfaceUnix(timeout time.Duration) (string, net.IP, error) {
+func detectTunnelInterfaceUnix(ctx context.Context, timeout time.Duration) (string, net.IP, error) {
 	deadline := time.Now().Add(timeout)
 	candidates := []string{"fortissl", "vpnssl0", "ssl0", "ppp0"}
 
 	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return "", nil, ctx.Err()
+		default:
+		}
 		ifaces, err := net.Interfaces()
 		if err != nil {
 			return "", nil, err
@@ -121,7 +157,7 @@ func detectTunnelInterfaceUnix(timeout time.Duration) (string, net.IP, error) {
 // description, then reads their IP via the standard net package.
 // FortiClient creates adapters with descriptions like "Fortinet SSL VPN Virtual
 // Ethernet Adapter" or "Fortinet Virtual Ethernet Adapter (NDIS 6.30)".
-func detectTunnelInterfaceWindows(timeout time.Duration) (string, net.IP, error) {
+func detectTunnelInterfaceWindows(ctx context.Context, timeout time.Duration) (string, net.IP, error) {
 	deadline := time.Now().Add(timeout)
 
 	// PowerShell command to find a Fortinet adapter that is Up and has an IPv4 address.
@@ -130,6 +166,11 @@ func detectTunnelInterfaceWindows(timeout time.Duration) (string, net.IP, error)
 		`Select-Object -First 1 -ExpandProperty InterfaceAlias`
 
 	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return "", nil, ctx.Err()
+		default:
+		}
 		out, err := runCmd("powershell", "-NoProfile", "-Command", psCmd)
 		if err == nil {
 			name := strings.TrimSpace(out)

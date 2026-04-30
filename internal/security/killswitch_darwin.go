@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -23,15 +24,28 @@ func NewKillSwitch() KillSwitch {
 	return &darwinKillSwitch{}
 }
 
-func (k *darwinKillSwitch) Enable(tunnelInterface string, allowLAN bool) error {
+func (k *darwinKillSwitch) Enable(tunnelSpec string, allowLAN bool) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
+
+	// Parse tunnelSpec: "iface1,iface2|endpoint1,endpoint2"
+	var ifaceNames, endpointIPs []string
+	specParts := strings.SplitN(tunnelSpec, "|", 2)
+	if specParts[0] != "" {
+		ifaceNames = strings.Split(specParts[0], ",")
+	}
+	if len(specParts) > 1 && specParts[1] != "" {
+		endpointIPs = strings.Split(specParts[1], ",")
+	}
 
 	rules := "block out all\n"
 	rules += "pass out on lo0\n"
 
-	if tunnelInterface != "" {
-		rules += fmt.Sprintf("pass out on %s\n", tunnelInterface)
+	for _, iface := range ifaceNames {
+		rules += fmt.Sprintf("pass out on %s\n", iface)
+	}
+	for _, ep := range endpointIPs {
+		rules += fmt.Sprintf("pass out to %s\n", ep)
 	}
 	if allowLAN {
 		rules += "pass out to 192.168.0.0/16\n"

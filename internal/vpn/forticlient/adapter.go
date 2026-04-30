@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -64,33 +65,70 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	a.status = vpn.StatusConnecting
 	a.lastCfg = cfg
 
-	// Attempt CLI connect (v6.4.x).
-	err := connectV6(cfg.TunnelName, cfg.Host, cfg.Port, cfg.CertPath, cfg.KeyPath, cfg.Username, cfg.Password)
-	cfg.Password = "" // zero immediately
-
-	if err != nil {
-		// CLI launch failed outright — try passive detection in case tunnel is already up.
-		iface, ip, detectErr := detectTunnelInterface(5 * time.Second)
-		if detectErr != nil {
-			a.status = vpn.StatusError
-			return ErrCLIBlocked
-		}
+	// ── Step 0: fast-path — tunnel already up (user connected manually) ─────
+	// Check before doing anything so we don't interfere with an active session.
+	if iface, ip, err := detectTunnelInterface(ctx, 4*time.Second); err == nil {
 		a.tunnelIface = iface
 		a.assignedIP = ip
 		a.connectedAt = time.Now()
 		a.status = vpn.StatusConnected
+		cfg.Password = ""
 		return nil
 	}
+	if ctx.Err() != nil {
+		cfg.Password = ""
+		return ctx.Err()
+	}
 
-	// CLI launched — wait for tunnel interface to appear.
-	// On Windows, FortiClient runs in background and may require GUI interaction
-	// (accept cert, MFA, etc.), so we allow a generous timeout.
-	iface, ip, err := detectTunnelInterface(60 * time.Second)
+	// ── Step 1: trigger connection ────────────────────────────────────────────
+	// On Windows: run GUI automation in a goroutine so it doesn't block
+	// detectTunnelInterface — Ctrl+C can interrupt the detection loop even
+	// while the PS script is still running.
+	// On other OSes: fall back to CLI.
+	tunnelName := cfg.TunnelName
+	username := cfg.Username
+	password := cfg.Password
+	host := cfg.Host
+	port := cfg.Port
+	certPath := cfg.CertPath
+	keyPath := cfg.KeyPath
+	cfg.Password = "" // zero immediately
+
+	if runtime.GOOS == "windows" {
+		// Launch GUI automation asynchronously — it opens FortiClient, fills
+		// credentials, clicks Connect. Detection loop below waits for the result.
+		go func() {
+			_ = tryGUIConnect(tunnelName, username, password)
+		}()
+	} else {
+		// CLI path for Linux/macOS.
+		if err := connectV6(tunnelName, host, port, certPath, keyPath, username, password); err != nil {
+			// CLI failed — check if tunnel already up (manual connection).
+			iface, ip, detectErr := detectTunnelInterface(ctx, 5*time.Second)
+			if detectErr != nil {
+				a.status = vpn.StatusError
+				return ErrCLIBlocked
+			}
+			a.tunnelIface = iface
+			a.assignedIP = ip
+			a.connectedAt = time.Now()
+			a.status = vpn.StatusConnected
+			return nil
+		}
+	}
+
+	// ── Step 2: wait for tunnel interface to appear ───────────────────────────
+	// Context-aware: Ctrl+C cancels immediately instead of waiting 90s.
+	iface, ip, err := detectTunnelInterface(ctx, 90*time.Second)
 	if err != nil {
-		// Tunnel didn't appear — FortiClient GUI may need manual action.
-		// Reset to disconnected (not error) so a retry works cleanly.
 		a.status = vpn.StatusDisconnected
-		return fmt.Errorf("forticlient: tunnel did not come up within 60s — connect manually in the FortiClient GUI, then run 'kongtrol up' again")
+		if ctx.Err() != nil {
+			return ctx.Err() // user cancelled
+		}
+		if runtime.GOOS == "windows" {
+			return fmt.Errorf("forticlient: tunnel did not come up within 90s — check FortiClient window for errors or connect manually")
+		}
+		return fmt.Errorf("forticlient: tunnel did not come up within 90s — connect manually in FortiClient, then run 'kongtrol up' again")
 	}
 
 	a.tunnelIface = iface
@@ -104,9 +142,31 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if err := disconnectV6(a.lastCfg.TunnelName); err != nil {
-		a.status = vpn.StatusError
-		return fmt.Errorf("forticlient: disconnect: %w", err)
+	iface := a.tunnelIface
+
+	// Try GUI automation first (Windows) — clicks the Disconnect button in the GUI.
+	_ = tryGUIDisconnect(a.lastCfg.TunnelName)
+
+	// Also try CLI disconnect as belt-and-suspenders.
+	_ = disconnectV6(a.lastCfg.TunnelName)
+
+	// Wait up to 8s for the tunnel to go down.
+	if iface != "" && fortiIfaceUp(iface) {
+		deadline := time.Now().Add(8 * time.Second)
+		for time.Now().Before(deadline) {
+			time.Sleep(500 * time.Millisecond)
+			if !fortiIfaceUp(iface) {
+				break
+			}
+		}
+	}
+
+	// Last resort: force-disable the network adapter.
+	if iface != "" && fortiIfaceUp(iface) {
+		if err := disableFortiAdapter(iface); err != nil {
+			a.status = vpn.StatusError
+			return fmt.Errorf("forticlient: disconnect: GUI, CLI, and adapter disable all failed: %w", err)
+		}
 	}
 
 	a.tunnelIface = ""
@@ -123,9 +183,84 @@ func (a *Adapter) Reconnect(ctx context.Context) error {
 }
 
 func (a *Adapter) Status() vpn.Status {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// If we think we're connected, verify the tunnel interface is still up.
+	if a.status == vpn.StatusConnected && a.tunnelIface != "" {
+		if !fortiIfaceUp(a.tunnelIface) {
+			a.status = vpn.StatusDisconnected
+			a.tunnelIface = ""
+			a.assignedIP = nil
+		}
+	}
+
+	// If we think we're disconnected, check if the tunnel appeared externally
+	// (user connected manually in FortiClient GUI).
+	if a.status == vpn.StatusDisconnected {
+		if iface, ip := probeFortiInterface(); iface != "" {
+			a.tunnelIface = iface
+			a.assignedIP = ip
+			a.connectedAt = time.Now()
+			a.status = vpn.StatusConnected
+		}
+	}
+
 	return a.status.Normalize()
+}
+
+// fortiIfaceUp checks whether the named interface exists and has an IPv4 address.
+func fortiIfaceUp(name string) bool {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return false
+	}
+	// Check that interface is flagged up.
+	if iface.Flags&net.FlagUp == 0 {
+		return false
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return false
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// probeFortiInterface is a lightweight check (no PowerShell) that scans
+// net.Interfaces for a Fortinet tunnel with an IPv4 address and the UP flag.
+// Used in Status() polling — must be fast.
+func probeFortiInterface() (string, net.IP) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", nil
+	}
+	// On Unix, tunnel names are distinctive (fortissl, vpnssl0, etc.).
+	// On Windows, names are generic but we check all UP interfaces for a VPN-like
+	// IPv4 address. If we previously knew the interface name, fortiIfaceUp is used
+	// instead. This path is for discovering a NEW tunnel we haven't seen yet.
+	unixCandidates := []string{"fortissl", "vpnssl0", "ssl0", "ppp0"}
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 {
+			continue
+		}
+		name := strings.ToLower(iface.Name)
+		for _, c := range unixCandidates {
+			if strings.HasPrefix(name, c) {
+				addrs, _ := iface.Addrs()
+				for _, addr := range addrs {
+					if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+						return iface.Name, ipnet.IP
+					}
+				}
+			}
+		}
+	}
+	return "", nil
 }
 
 func (a *Adapter) TunnelInfo() (*vpn.TunnelInfo, error) {
@@ -142,11 +277,9 @@ func (a *Adapter) TunnelInfo() (*vpn.TunnelInfo, error) {
 		ConnectedAt:   a.connectedAt,
 	}
 
-	// Get current byte counts from the interface.
+	// Read byte counters from the OS interface.
 	if a.tunnelIface != "" {
-		if iface, err := net.InterfaceByName(a.tunnelIface); err == nil {
-			_ = iface // byte counts are OS-specific; delegated to monitor package
-		}
+		info.BytesSent, info.BytesReceived = ifaceByteCounters(a.tunnelIface)
 	}
 
 	return info, nil

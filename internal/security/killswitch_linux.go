@@ -5,6 +5,7 @@ package security
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -18,9 +19,19 @@ func NewKillSwitch() KillSwitch {
 	return &linuxKillSwitch{}
 }
 
-func (k *linuxKillSwitch) Enable(tunnelInterface string, allowLAN bool) error {
+func (k *linuxKillSwitch) Enable(tunnelSpec string, allowLAN bool) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
+
+	// Parse tunnelSpec: "iface1,iface2|endpoint1,endpoint2"
+	var ifaceNames, endpointIPs []string
+	parts := strings.SplitN(tunnelSpec, "|", 2)
+	if parts[0] != "" {
+		ifaceNames = strings.Split(parts[0], ",")
+	}
+	if len(parts) > 1 && parts[1] != "" {
+		endpointIPs = strings.Split(parts[1], ",")
+	}
 
 	_ = k.removeRules() // clean up stale rules
 
@@ -32,11 +43,15 @@ func (k *linuxKillSwitch) Enable(tunnelInterface string, allowLAN bool) error {
 	if err := ipt("-A", "OUTPUT", "-o", "lo", "-j", "ACCEPT"); err != nil {
 		return fmt.Errorf("kill switch: allow loopback: %w", err)
 	}
-	// Allow tunnel interface.
-	if tunnelInterface != "" {
-		if err := ipt("-A", "OUTPUT", "-o", tunnelInterface, "-j", "ACCEPT"); err != nil {
-			return fmt.Errorf("kill switch: allow tunnel %s: %w", tunnelInterface, err)
+	// Allow tunnel interfaces.
+	for _, iface := range ifaceNames {
+		if err := ipt("-A", "OUTPUT", "-o", iface, "-j", "ACCEPT"); err != nil {
+			return fmt.Errorf("kill switch: allow tunnel %s: %w", iface, err)
 		}
+	}
+	// Allow VPN endpoint IPs (so encrypted tunnel can reach the server).
+	for _, ep := range endpointIPs {
+		_ = ipt("-A", "OUTPUT", "-d", ep, "-j", "ACCEPT")
 	}
 	// Allow LAN ranges.
 	if allowLAN {

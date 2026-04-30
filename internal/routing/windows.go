@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -60,12 +62,81 @@ func (m *windowsRouteManager) Delete(r Route) error {
 	return nil
 }
 
+// List returns VPN-related routes from the OS routing table.
+// Includes both kongtrol-managed routes and routes added by VPN clients
+// (WireGuard, FortiClient, etc.). Filters out default system routes.
 func (m *windowsRouteManager) List() ([]Route, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	out := make([]Route, len(m.routes))
-	copy(out, m.routes)
-	return out, nil
+	// Read VPN-related routes from the OS route table.
+	// First, find VPN adapter interface indexes (by description keywords).
+	// Then, get routes only for those interfaces.
+	ps := `$vpnAdapters = Get-NetAdapter | Where-Object { ` +
+		`$_.InterfaceDescription -like '*Fortinet*' -or ` +
+		`$_.InterfaceDescription -like '*WireGuard*' -or ` +
+		`$_.InterfaceDescription -like '*TAP*' -or ` +
+		`$_.InterfaceDescription -like '*TUN*' -or ` +
+		`$_.InterfaceDescription -like '*VPN*' -or ` +
+		`$_.InterfaceDescription -like '*OpenVPN*' -or ` +
+		`$_.InterfaceDescription -like '*ProtonVPN*' -or ` +
+		`$_.InterfaceDescription -like '*Cloudflare*' -or ` +
+		`$_.InterfaceDescription -like '*Tailscale*' -or ` +
+		`$_.InterfaceDescription -like '*GlobalProtect*' -or ` +
+		`$_.InterfaceDescription -like '*Cisco AnyConnect*' ` +
+		`}; ` +
+		`if ($vpnAdapters) { ` +
+		`$idxs = $vpnAdapters.InterfaceIndex; ` +
+		`Get-NetRoute -AddressFamily IPv4 -ErrorAction SilentlyContinue | ` +
+		`Where-Object { $idxs -contains $_.InterfaceIndex -and ` +
+		`$_.DestinationPrefix -ne '0.0.0.0/0' -and ` +
+		`$_.DestinationPrefix -ne '255.255.255.255/32' } | ` +
+		`ForEach-Object { ` +
+		`$name = ($vpnAdapters | Where-Object { $_.InterfaceIndex -eq $_.InterfaceIndex }).Name; ` +
+		`if (-not $name) { $name = (Get-NetAdapter -InterfaceIndex $_.InterfaceIndex -ErrorAction SilentlyContinue).Name }; ` +
+		`"$($_.DestinationPrefix)|$($_.NextHop)|$name|$($_.RouteMetric)" } }`
+	cmd := exec.Command("powershell", "-NoProfile", "-Command", ps)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// Fallback: return kongtrol-managed routes only.
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		result := make([]Route, len(m.routes))
+		copy(result, m.routes)
+		return result, nil
+	}
+
+	var routes []Route
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "|", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		dest, gw, iface, metricStr := parts[0], parts[1], parts[2], parts[3]
+
+		// Skip link-local and multicast.
+		if strings.HasPrefix(dest, "169.254.") || strings.HasPrefix(dest, "224.") {
+			continue
+		}
+
+		_, ipnet, err := net.ParseCIDR(dest)
+		if err != nil {
+			continue
+		}
+		metric, _ := strconv.Atoi(metricStr)
+
+		r := Route{
+			Destination: *ipnet,
+			Interface:   iface,
+			Metric:      metric,
+		}
+		if gwIP := net.ParseIP(gw); gwIP != nil && !gwIP.Equal(net.IPv4zero) {
+			r.Gateway = gwIP
+		}
+		routes = append(routes, r)
+	}
+	return routes, nil
 }
 
 func (m *windowsRouteManager) Flush(tunnelInterface string) error {

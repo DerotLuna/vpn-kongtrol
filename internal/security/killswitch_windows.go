@@ -4,13 +4,17 @@ package security
 
 import (
 	"fmt"
+	"net"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
 const ksRuleBlock = "KongtrolKillSwitchBlock"
 const ksRuleAllow = "KongtrolKillSwitchAllow"
+const ksRuleEndpoint = "KongtrolKillSwitchEndpoint"
 const ksRuleLAN = "KongtrolKillSwitchLAN"
+const ksRuleLoopback = "KongtrolKillSwitchLoopback"
 
 type windowsKillSwitch struct {
 	mu      sync.Mutex
@@ -19,17 +23,33 @@ type windowsKillSwitch struct {
 
 // NewKillSwitch returns the Windows kill switch implementation.
 // Uses Windows Firewall (netsh advfirewall) for broad compatibility.
-// For WFP-level control (survives reboot), upgrade to iphlpapi/WFP calls.
 func NewKillSwitch() KillSwitch {
 	return &windowsKillSwitch{}
 }
 
-func (k *windowsKillSwitch) Enable(tunnelInterface string, allowLAN bool) error {
+// Enable activates the kill switch. tunnelSpec format:
+//
+//	"iface1,iface2|endpoint1,endpoint2"
+//
+// Left of | = tunnel interface names (their local IPs are allowed as source).
+// Right of | = VPN endpoint IPs (allowed as destination so encrypted tunnel works).
+// Either side may be empty.
+func (k *windowsKillSwitch) Enable(tunnelSpec string, allowLAN bool) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
 
 	// Remove any stale rules from a previous session.
 	_ = k.removeRules()
+
+	// Parse tunnelSpec.
+	var ifaceNames, endpointIPs []string
+	parts := strings.SplitN(tunnelSpec, "|", 2)
+	if parts[0] != "" {
+		ifaceNames = strings.Split(parts[0], ",")
+	}
+	if len(parts) > 1 && parts[1] != "" {
+		endpointIPs = strings.Split(parts[1], ",")
+	}
 
 	// Block all outbound traffic.
 	if err := netshFW("add", "rule",
@@ -40,16 +60,36 @@ func (k *windowsKillSwitch) Enable(tunnelInterface string, allowLAN bool) error 
 		return fmt.Errorf("kill switch: add block rule: %w", err)
 	}
 
-	// Allow traffic on the tunnel interface.
-	if tunnelInterface != "" {
-		if err := netshFW("add", "rule",
+	// Allow loopback (127.0.0.0/8).
+	_ = netshFW("add", "rule",
+		"name="+ksRuleLoopback,
+		"dir=out", "action=allow",
+		"enable=yes", "profile=any",
+		"remoteip=127.0.0.0/8",
+	)
+
+	// Allow traffic FROM VPN-assigned IPs (tunnel interfaces).
+	var localIPs []string
+	for _, name := range ifaceNames {
+		localIPs = append(localIPs, getInterfaceIPs(name)...)
+	}
+	if len(localIPs) > 0 {
+		_ = netshFW("add", "rule",
 			"name="+ksRuleAllow,
 			"dir=out", "action=allow",
 			"enable=yes", "profile=any",
-			"interface="+tunnelInterface,
-		); err != nil {
-			return fmt.Errorf("kill switch: add tunnel allow rule: %w", err)
-		}
+			"localip="+strings.Join(localIPs, ","),
+		)
+	}
+
+	// Allow traffic TO VPN endpoint IPs (so encrypted tunnel can reach the server).
+	if len(endpointIPs) > 0 {
+		_ = netshFW("add", "rule",
+			"name="+ksRuleEndpoint,
+			"dir=out", "action=allow",
+			"enable=yes", "profile=any",
+			"remoteip="+strings.Join(endpointIPs, ","),
+		)
 	}
 
 	// Allow LAN traffic if requested.
@@ -83,11 +123,29 @@ func (k *windowsKillSwitch) IsEnabled() bool {
 }
 
 func (k *windowsKillSwitch) removeRules() error {
-	for _, name := range []string{ksRuleBlock, ksRuleAllow, ksRuleLAN} {
-		// Ignore errors — rules may not exist.
+	for _, name := range []string{ksRuleBlock, ksRuleAllow, ksRuleEndpoint, ksRuleLAN, ksRuleLoopback} {
 		_ = netshFW("delete", "rule", "name="+name)
 	}
 	return nil
+}
+
+// getInterfaceIPs returns the IPv4 addresses assigned to the named interface.
+func getInterfaceIPs(name string) []string {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return nil
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return nil
+	}
+	var ips []string
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+			ips = append(ips, ipnet.IP.String())
+		}
+	}
+	return ips
 }
 
 func netshFW(args ...string) error {

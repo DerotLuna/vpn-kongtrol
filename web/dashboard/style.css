@@ -128,6 +128,35 @@ main {
   margin-bottom: 18px;
 }
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+.card-header h2 { margin-bottom: 18px; }
+
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  margin-bottom: 14px;
+}
+.refresh-btn:hover {
+  color: var(--blue);
+  border-color: var(--blue);
+  background: var(--blue-dim);
+}
+
 /* ── Table ───────────────────────────────────────────────────────────────── */
 
 table {

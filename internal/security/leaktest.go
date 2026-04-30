@@ -51,6 +51,18 @@ func NewLeakTester(interval time.Duration, expectedIPs map[string]string) *LeakT
 func (t *LeakTester) Start(ctx context.Context, onLeak func(result LeakResult)) {
 	ctx, t.cancel = context.WithCancel(ctx)
 	go func() {
+		// Immediate first check so the dashboard has data right away.
+		check := func() {
+			result := t.CheckNow()
+			t.mu.Lock()
+			t.lastResult["default"] = &result
+			t.mu.Unlock()
+			if result.HasLeak && onLeak != nil {
+				onLeak(result)
+			}
+		}
+		check()
+
 		ticker := time.NewTicker(t.interval)
 		defer ticker.Stop()
 		for {
@@ -58,13 +70,7 @@ func (t *LeakTester) Start(ctx context.Context, onLeak func(result LeakResult)) 
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				result := t.CheckNow()
-				t.mu.Lock()
-				t.lastResult["default"] = &result
-				t.mu.Unlock()
-				if result.HasLeak && onLeak != nil {
-					onLeak(result)
-				}
+				check()
 			}
 		}
 	}()

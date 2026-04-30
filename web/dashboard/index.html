@@ -42,7 +42,10 @@
     </section>
 
     <section class="card" id="traffic-map-section">
-      <h2>Traffic Map</h2>
+      <div class="card-header">
+        <h2>Traffic Map</h2>
+        <button class="refresh-btn" onclick="refreshPolicies()" title="Refresh">↻</button>
+      </div>
       <div class="resolve-bar">
         <input type="text" id="resolve-input" placeholder="IP or domain — e.g. claude.ai, 172.28.152.26" spellcheck="false" />
         <button class="action" id="resolve-btn" onclick="resolveTarget()">Check</button>
@@ -65,7 +68,10 @@
 
     <div class="side-grid">
       <section class="card" id="security-section">
-        <h2>Security</h2>
+        <div class="card-header">
+          <h2>Security</h2>
+          <button class="refresh-btn" onclick="refreshSecurity()" title="Refresh">↻</button>
+        </div>
         <ul id="security-list">
           <li>
             <span class="label">Kill Switch</span>
@@ -91,7 +97,10 @@
       </section>
 
       <section class="card" id="routes-section">
-        <h2>Active Routes</h2>
+        <div class="card-header">
+          <h2>Active Routes</h2>
+          <button class="refresh-btn" onclick="refreshRoutes()" title="Refresh">↻</button>
+        </div>
         <ul id="routes-list">
           <li class="empty">Loading…</li>
         </ul>

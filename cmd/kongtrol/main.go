@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"github.com/vpn-kongtrol/kongtrol/internal/api"
@@ -100,7 +101,9 @@ var upCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		ctx := contextWithSignal()
+		signalCtx := contextWithSignal()
+		ctx, cancelCtx := context.WithCancel(signalCtx)
+		defer cancelCtx()
 
 		// Write PID so `kongtrol down` can stop this daemon.
 		writePIDFile()
@@ -114,23 +117,56 @@ var upCmd = &cobra.Command{
 		}()
 
 		for _, name := range targets {
-			if err := connectProfile(ctx, name); err != nil {
+			spin := newSpinner(fmt.Sprintf("Connecting %s", name))
+			spin.Start()
+			err := connectProfile(ctx, name)
+			spin.Stop()
+			if err != nil {
+				fmt.Println(tuiErr(paintBold(cBright, name) + " " + err.Error()))
 				return fmt.Errorf("up %s: %w", name, err)
 			}
-			fmt.Printf("[+] %s connected\n", name)
+			fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, "connected")))
 		}
 
 		// Activate kill switch now that tunnels are up.
+		// Collect all tunnel interfaces so the kill switch allows their traffic.
 		if ks != nil && cfg.Security.KillSwitch.Enabled {
-			// Use the first connected tunnel's interface for allowed traffic.
-			tunnelIface := ""
+			var tunnelIfaces []string
 			for _, name := range targets {
 				if info, err := adapters[name].TunnelInfo(); err == nil && info != nil && info.InterfaceName != "" {
-					tunnelIface = info.InterfaceName
-					break
+					tunnelIfaces = append(tunnelIfaces, info.InterfaceName)
 				}
 			}
-			if err := ks.Enable(tunnelIface, cfg.Security.KillSwitch.AllowLAN); err != nil {
+			// Also collect VPN endpoint IPs so encrypted tunnel traffic can reach them.
+			var endpointIPs []string
+			for _, name := range targets {
+				if vpnCfg, ok := cfg.VPNs[name]; ok && vpnCfg.Host != "" {
+					if ip := net.ParseIP(vpnCfg.Host); ip != nil {
+						endpointIPs = append(endpointIPs, ip.String())
+					} else {
+						// Host is a hostname — resolve it.
+						if ips, err := net.LookupIP(vpnCfg.Host); err == nil {
+							for _, ip := range ips {
+								if ip.To4() != nil {
+									endpointIPs = append(endpointIPs, ip.String())
+								}
+							}
+						}
+					}
+				}
+				// For WireGuard, endpoint is in the config file, parse it.
+				if vpnCfg, ok := cfg.VPNs[name]; ok && vpnCfg.Type == "wireguard" && vpnCfg.ConfigFile != "" {
+					if epIP, err := wireguard.ParseEndpoint(vpnCfg.ConfigFile); err == nil && epIP != nil {
+						endpointIPs = append(endpointIPs, epIP.String())
+					}
+				}
+			}
+			// Pass first tunnel interface + endpoint IPs as comma-separated allow list.
+			allowSpec := strings.Join(tunnelIfaces, ",")
+			if len(endpointIPs) > 0 {
+				allowSpec += "|" + strings.Join(endpointIPs, ",")
+			}
+			if err := ks.Enable(allowSpec, cfg.Security.KillSwitch.AllowLAN); err != nil {
 				fmt.Fprintf(os.Stderr, "warning: kill switch enable failed: %v\n", err)
 			}
 			defer func() {
@@ -150,8 +186,32 @@ var upCmd = &cobra.Command{
 			defer policyResolver.Stop()
 		}
 
-		// Block until signal.
-		<-ctx.Done()
+		// Start background leak detection.
+		if leak != nil {
+			leak.Start(ctx, func(result security.LeakResult) {
+				if result.HasLeak {
+					fmt.Fprintf(os.Stderr, "[LEAK] %s (public IP: %s)\n", result.Reason, result.PublicIP)
+				}
+			})
+			defer leak.Stop()
+		}
+
+		// Start the API server / dashboard alongside the daemon.
+		var dashURL string
+		srv := buildAPIServer()
+		if err := srv.Start(); err != nil {
+			fmt.Fprintln(os.Stderr, tuiWarn("dashboard server: "+err.Error()))
+		} else {
+			dashURL = srv.Addr()
+			defer func() {
+				shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = srv.Shutdown(shutCtx)
+			}()
+		}
+
+		// Block until signal — show live daemon view on interactive terminals.
+		runUpTUI(ctx, cancelCtx, adapters, ks, dashURL)
 		return nil
 	},
 }
@@ -190,13 +250,22 @@ var downCmd = &cobra.Command{
 			return nil
 		}
 
+		disconnectWithSpinner := func(name string) error {
+			spin := newSpinner(fmt.Sprintf("Disconnecting %s", name))
+			spin.Start()
+			err := disconnect(name)
+			spin.Stop()
+			if err != nil {
+				fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error()))
+				return err
+			}
+			fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, "disconnected")))
+			return nil
+		}
+
 		if downAll {
 			for name := range adapters {
-				if err := disconnect(name); err != nil {
-					fmt.Fprintf(os.Stderr, "[-] %s: %v\n", name, err)
-				} else {
-					fmt.Printf("[-] %s disconnected\n", name)
-				}
+				_ = disconnectWithSpinner(name)
 			}
 			stopDaemon()
 			return nil
@@ -207,10 +276,9 @@ var downCmd = &cobra.Command{
 			return err
 		}
 		for _, name := range targets {
-			if err := disconnect(name); err != nil {
+			if err := disconnectWithSpinner(name); err != nil {
 				return fmt.Errorf("down %s: %w", name, err)
 			}
-			fmt.Printf("[-] %s disconnected\n", name)
 		}
 		stopDaemon()
 		return nil
@@ -242,33 +310,87 @@ func init() {
 	statusCmd.Flags().BoolVarP(&statusWatch, "watch", "w", false, "auto-refresh every 2 seconds")
 }
 
+var (
+	styleStatusHdr  = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Bold(true)
+	styleStatusName = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true)
+	styleStatusUp   = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
+	styleStatusDown = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	styleStatusErr  = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
+	styleStatusIP   = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+	styleStatusTime = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+)
+
+func statusDot(s vpn.Status) string {
+	switch s {
+	case vpn.StatusConnected:
+		return styleStatusUp.Render("●")
+	case vpn.StatusConnecting:
+		return styleInfo.Render("◌")
+	case vpn.StatusError:
+		return styleStatusErr.Render("✗")
+	default:
+		return styleStatusDown.Render("○")
+	}
+}
+
+func statusLabel(s vpn.Status) string {
+	switch s {
+	case vpn.StatusConnected:
+		return styleStatusUp.Render(string(s))
+	case vpn.StatusConnecting:
+		return styleInfo.Render(string(s))
+	case vpn.StatusError:
+		return styleStatusErr.Render(string(s))
+	default:
+		return styleStatusDown.Render(string(s))
+	}
+}
+
 func printStatus() {
-	fmt.Printf("%-16s %-14s %-18s %s\n", "PROFILE", "STATUS", "IP", "UPTIME")
-	fmt.Printf("%-16s %-14s %-18s %s\n", "-------", "------", "--", "------")
+	const (
+		nameW   = 18
+		statusW = 14
+		ipW     = 18
+	)
+
+	sep := styleDim.Render(strings.Repeat("─", nameW+statusW+ipW+14))
+	fmt.Printf("  %s %s %s %s\n",
+		styleStatusHdr.Render(pad("PROFILE", nameW)),
+		styleStatusHdr.Render(pad("STATUS", statusW)),
+		styleStatusHdr.Render(pad("IP", ipW)),
+		styleStatusHdr.Render("UPTIME"))
+	fmt.Println("  " + sep)
 
 	for name, adapter := range adapters {
 		status := adapter.Status()
-		ip := "—"
-		uptime := "—"
+		ip := styleDim.Render("—")
+		uptime := styleDim.Render("—")
 
 		if info, err := adapter.TunnelInfo(); err == nil && info != nil {
 			if info.AssignedIP != nil {
-				ip = info.AssignedIP.String()
+				ip = styleStatusIP.Render(info.AssignedIP.String())
 			}
 			if !info.ConnectedAt.IsZero() {
-				uptime = time.Since(info.ConnectedAt).Round(time.Second).String()
+				uptime = styleStatusTime.Render(time.Since(info.ConnectedAt).Round(time.Second).String())
 			}
 		}
 
-		fmt.Printf("%-16s %-14s %-18s %s\n", name, status, ip, uptime)
+		fmt.Printf("  %s %s %s %s %s\n",
+			statusDot(status),
+			styleStatusName.Render(pad(name, nameW)),
+			pad(statusLabel(status), statusW+30), // +30 for ANSI bytes
+			pad(ip, ipW+20),
+			uptime)
 	}
 
+	fmt.Println("  " + sep)
+
 	if ks != nil {
-		ksStatus := "OFF"
 		if ks.IsEnabled() {
-			ksStatus = "ON"
+			fmt.Println("  " + styleStatusUp.Render("⬡") + "  " + styleBright.Render("Kill switch") + "  " + styleStatusUp.Render("ACTIVE"))
+		} else {
+			fmt.Println("  " + styleStatusDown.Render("⬡") + "  " + styleDim.Render("Kill switch  off"))
 		}
-		fmt.Printf("\nKill Switch: %s\n", ksStatus)
 	}
 }
 
@@ -278,6 +400,7 @@ func runStatusWatch() error {
 	defer ticker.Stop()
 
 	clearScreen()
+	PrintHeader(version)
 	printStatus()
 
 	for {
@@ -286,14 +409,15 @@ func runStatusWatch() error {
 			return nil
 		case <-ticker.C:
 			clearScreen()
-			fmt.Printf("Last updated: %s  (Ctrl+C to exit)\n\n", time.Now().Format("15:04:05"))
+			PrintHeader(version)
+			fmt.Println("  " + styleDim.Render("Updated "+time.Now().Format("15:04:05")+"  ·  Ctrl+C to exit"))
+			fmt.Println()
 			printStatus()
 		}
 	}
 }
 
 func clearScreen() {
-	// ANSI escape: move cursor to top-left and clear screen.
 	fmt.Print("\033[H\033[2J")
 }
 
@@ -313,17 +437,29 @@ var routesListCmd = &cobra.Command{
 			return err
 		}
 		if len(routes) == 0 {
-			fmt.Println("No routes managed by kongtrol.")
+			fmt.Println("  " + styleDim.Render("No routes managed by kongtrol."))
 			return nil
 		}
-		fmt.Printf("%-24s %-18s %-12s %s\n", "DESTINATION", "GATEWAY", "INTERFACE", "METRIC")
+		const (destW = 24; gwW = 18; ifaceW = 14)
+		sep := styleDim.Render("  " + strings.Repeat("─", destW+gwW+ifaceW+10))
+		fmt.Printf("  %s %s %s %s\n",
+			styleMapHdr.Render(pad("DESTINATION", destW)),
+			styleMapHdr.Render(pad("GATEWAY", gwW)),
+			styleMapHdr.Render(pad("IFACE", ifaceW)),
+			styleMapHdr.Render("METRIC"))
+		fmt.Println(sep)
 		for _, r := range routes {
-			gw := "—"
+			gw := styleDim.Render("—")
 			if r.Gateway != nil {
-				gw = r.Gateway.String()
+				gw = styleStatusIP.Render(r.Gateway.String())
 			}
-			fmt.Printf("%-24s %-18s %-12s %d\n", r.Destination.String(), gw, r.Interface, r.Metric)
+			fmt.Printf("  %s %s %s %s\n",
+				styleMapName.Render(pad(r.Destination.String(), destW)),
+				pad(gw, gwW+20),
+				styleMapVia.Render(pad(r.Interface, ifaceW)),
+				styleStatusTime.Render(fmt.Sprintf("%d", r.Metric)))
 		}
+		fmt.Println(sep)
 		return nil
 	},
 }
@@ -341,13 +477,16 @@ var checkCmd = &cobra.Command{
 		if leak == nil {
 			return fmt.Errorf("leak tester not initialized (enable monitor in config)")
 		}
-		fmt.Println("Running leak test…")
+		spin := newSpinner("Running leak test")
+		spin.Start()
 		result := leak.CheckNow()
+		spin.Stop()
 		if result.HasLeak {
-			fmt.Printf("[LEAK] %s\n", result.Reason)
+			fmt.Println(tuiErr(paintBold(cBright, "Leak detected") + "  " + paint(cDim, result.Reason)))
 			return fmt.Errorf("leak detected")
 		}
-		fmt.Printf("[OK] No leak detected. Public IP: %s\n", result.PublicIP)
+		fmt.Println(tuiOK(paintBold(cBright, "No leak detected") +
+			"  " + paint(cDim, "Public IP: ") + styleStatusIP.Render(result.PublicIP)))
 		return nil
 	},
 }
@@ -374,42 +513,43 @@ var mapCmd = &cobra.Command{
 	},
 }
 
-func printResolve(target string) {
-	ip := net.ParseIP(target)
+var (
+	styleMapHdr      = lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Bold(true)
+	styleMapName     = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true)
+	styleMapDomain   = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
+	styleMapIP       = lipgloss.NewStyle().Foreground(lipgloss.Color("214"))
+	styleMapVia      = lipgloss.NewStyle().Foreground(lipgloss.Color("51")).Bold(true)
+	styleMapResolved = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
+)
 
-	if ip != nil {
-		vpnName, matched := engine.ResolveIP(ip)
+func printResolve(target string) {
+	resolve := func(vpnName string, matched bool) {
 		if matched {
-			fmt.Printf("  %s %s → %s\n",
-				paint(cSuccess, "●"),
-				paintBold(cBright, target),
-				paintBold(cInfo, vpnName))
+			fmt.Printf("  %s  %s  →  %s\n",
+				styleStatusUp.Render("●"),
+				styleMapName.Render(target),
+				styleMapVia.Render(vpnName))
 		} else {
-			fmt.Printf("  %s %s → %s\n",
-				paint(cDim, "○"),
-				paintBold(cBright, target),
-				paint(cDim, "default route (no matching policy)"))
+			fmt.Printf("  %s  %s  →  %s\n",
+				styleDim.Render("○"),
+				styleBright.Render(target),
+				styleDim.Render("default route (no matching policy)"))
 		}
+	}
+
+	if ip := net.ParseIP(target); ip != nil {
+		vpnName, matched := engine.ResolveIP(ip)
+		resolve(vpnName, matched)
 	} else {
 		vpnName, matched := engine.ResolveDomain(target)
-		if matched {
-			fmt.Printf("  %s %s → %s\n",
-				paint(cSuccess, "●"),
-				paintBold(cBright, target),
-				paintBold(cInfo, vpnName))
-		} else {
-			fmt.Printf("  %s %s → %s\n",
-				paint(cDim, "○"),
-				paintBold(cBright, target),
-				paint(cDim, "default route (no matching policy)"))
-		}
+		resolve(vpnName, matched)
 	}
 }
 
 func printTrafficMap() {
 	rules := engine.Rules()
 	if len(rules) == 0 {
-		fmt.Println("  No policies configured.")
+		fmt.Println("  " + styleDim.Render("No policies configured."))
 		return
 	}
 
@@ -437,45 +577,57 @@ func printTrafficMap() {
 			viaW = l + 2
 		}
 	}
-	// Cap match column.
 	if matchW > 40 {
 		matchW = 40
 	}
 
-	// Header.
-	hdr := fmt.Sprintf("  %-*s %-*s %-*s %s",
-		nameW, "POLICY", matchW, "MATCH", viaW, "VIA", "RESOLVED")
-	fmt.Println(paint(cDim, hdr))
-	fmt.Println(paint(cDim, "  "+strings.Repeat("─", nameW+matchW+viaW+12)))
+	sep := styleDim.Render("  " + strings.Repeat("─", nameW+matchW+viaW+12))
+	fmt.Printf("  %s %s %s %s\n",
+		styleMapHdr.Render(pad("POLICY", nameW)),
+		styleMapHdr.Render(pad("MATCH", matchW)),
+		styleMapHdr.Render(pad("VIA", viaW)),
+		styleMapHdr.Render("RESOLVED"))
+	fmt.Println(sep)
 
-	// Rows.
 	for _, r := range rules {
 		match := summarizeMatch(&r)
 		if len(match) > matchW {
 			match = match[:matchW-1] + "…"
 		}
 
-		resolved := paint(cDim, "—")
+		resolved := styleDim.Render("—")
 		if resolvedByProfile != nil {
 			if n, ok := resolvedByProfile[r.Via]; ok && n > 0 {
-				resolved = paint(cSuccess, fmt.Sprintf("%d IPs", n))
+				resolved = styleMapResolved.Render(fmt.Sprintf("%d IPs", n))
 			}
 		}
 
-		// Color the match column: domains in blue, IPs in yellow.
-		matchColored := match
+		// Color match column: domains=blue, IPs=orange, mixed=plain
+		matchPadded := pad(match, matchW)
+		var matchColored string
 		if len(r.Match.Domains) > 0 && len(r.Match.IPRanges) == 0 {
-			matchColored = paint(cInfo, match)
+			matchColored = styleMapDomain.Render(matchPadded)
 		} else if len(r.Match.IPRanges) > 0 && len(r.Match.Domains) == 0 {
-			matchColored = paint(cWarn, match)
+			matchColored = styleMapIP.Render(matchPadded)
+		} else {
+			matchColored = matchPadded
 		}
 
-		fmt.Printf("  %-*s %-*s %-*s %s\n",
-			nameW, paintBold(cBright, r.Name),
-			matchW, matchColored,
-			viaW, paintBold(cInfo, r.Via),
+		fmt.Printf("  %s %s %s %s\n",
+			styleMapName.Render(pad(r.Name, nameW)),
+			matchColored,
+			styleMapVia.Render(pad(r.Via, viaW)),
 			resolved)
 	}
+	fmt.Println(sep)
+}
+
+// pad right-pads s with spaces to width w (display-safe, no ANSI).
+func pad(s string, w int) string {
+	if len(s) >= w {
+		return s
+	}
+	return s + strings.Repeat(" ", w-len(s))
 }
 
 func summarizeMatch(r *policy.Rule) string {
@@ -500,8 +652,11 @@ var dashboardCmd = &cobra.Command{
 			return fmt.Errorf("dashboard: %w", err)
 		}
 		addr := srv.Addr()
-		fmt.Printf("Dashboard running at %s\n", addr)
+		fmt.Println(tuiOK(styleBright.Render("Dashboard running") + "  " + paint(cDim, "→") + "  " + stylePrompt.Render(addr)))
+		fmt.Println(paint(cDim, "  Opening browser…"))
 		openBrowser(addr)
+		fmt.Println(paint(cDim, "  Ctrl+C to stop"))
+		fmt.Println()
 
 		// Block until Ctrl+C.
 		<-contextWithSignal().Done()
@@ -529,10 +684,14 @@ var configValidateCmd = &cobra.Command{
 	Use:   "validate",
 	Short: "Validate kongtrol.yaml without connecting",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if _, err := config.Load(cfgPath); err != nil {
+		spin := newSpinner("Validating config")
+		spin.Start()
+		_, err := config.Load(cfgPath)
+		spin.Stop()
+		if err != nil {
 			return err
 		}
-		fmt.Println("[OK] Config is valid.")
+		fmt.Println(tuiOK(styleBright.Render("Config is valid")))
 		return nil
 	},
 }
@@ -550,73 +709,93 @@ var exportCmd = &cobra.Command{
 		if cfg == nil {
 			return fmt.Errorf("no config loaded")
 		}
-		fmt.Println("# Kongtrol config template — generated by 'kongtrol export'")
-		fmt.Println("# Passwords and keys are redacted. Run 'kongtrol init' on the target machine")
-		fmt.Println("# to store credentials in the OS keychain.")
+
+		// YAML syntax helpers — only colorize on interactive terminals.
+		yKey   := func(s string) string { return styleMapVia.Render(s) }
+		yStr   := func(s string) string { return styleStatusIP.Render(s) }
+		yNum   := func(s string) string { return styleStatusTime.Render(s) }
+		yComment := func(s string) string { return styleDim.Render(s) }
+		ySection := func(s string) string { return styleGold.Render(s) }
+
+		p := func(indent, key, val string) {
+			fmt.Printf("%s%s: %s\n", indent, yKey(key), yStr(val))
+		}
+		pNum := func(indent, key string, val int) {
+			fmt.Printf("%s%s: %s\n", indent, yKey(key), yNum(fmt.Sprintf("%d", val)))
+		}
+		pComment := func(indent, key, val, comment string) {
+			fmt.Printf("%s%s: %s  %s\n", indent, yKey(key), yStr(val), yComment("# "+comment))
+		}
+
+		fmt.Println(yComment("# Kongtrol config template — generated by 'kongtrol export'"))
+		fmt.Println(yComment("# Passwords and keys are redacted. Run 'kongtrol init' on the target machine"))
+		fmt.Println(yComment("# to store credentials in the OS keychain."))
 		fmt.Println()
-		fmt.Println("vpns:")
+		fmt.Println(ySection("vpns") + yKey(":"))
 		for name, v := range cfg.VPNs {
-			fmt.Printf("  %s:\n", name)
-			fmt.Printf("    type: %s\n", v.Type)
+			fmt.Printf("  %s:\n", styleBright.Render(name))
+			p("    ", "type", v.Type)
 			if v.Version != "" {
-				fmt.Printf("    version: %q\n", v.Version)
+				p("    ", "version", v.Version)
 			}
 			if v.Host != "" {
-				fmt.Printf("    host: %s\n", v.Host)
+				p("    ", "host", v.Host)
 			}
 			if v.Port != 0 {
-				fmt.Printf("    port: %d\n", v.Port)
+				pNum("    ", "port", v.Port)
 			}
 			if v.TunnelName != "" {
-				fmt.Printf("    tunnel_name: %q\n", v.TunnelName)
+				p("    ", "tunnel_name", v.TunnelName)
 			}
 			if v.ConfigFile != "" {
-				fmt.Printf("    config: %s\n", v.ConfigFile)
+				p("    ", "config", v.ConfigFile)
 			}
 			if v.Server != "" {
-				fmt.Printf("    server: %s\n", v.Server)
+				p("    ", "server", v.Server)
 			}
 			if v.Protocol != "" {
-				fmt.Printf("    protocol: %s\n", v.Protocol)
+				p("    ", "protocol", v.Protocol)
 			}
 			if v.Priority != 0 {
-				fmt.Printf("    priority: %d\n", v.Priority)
+				pNum("    ", "priority", v.Priority)
 			}
-			fmt.Printf("    auth:\n")
-			fmt.Printf("      method: %s\n", v.Auth.Method)
+			fmt.Printf("    %s:\n", yKey("auth"))
+			p("      ", "method", v.Auth.Method)
 			if v.Auth.Cert != "" {
-				fmt.Printf("      cert: %s\n", v.Auth.Cert)
+				p("      ", "cert", v.Auth.Cert)
 			}
 			if v.Auth.Key != "" {
-				fmt.Printf("      key: %s\n", v.Auth.Key)
+				p("      ", "key", v.Auth.Key)
 			}
 			if v.Auth.Username != "" {
-				fmt.Printf("      username: %s\n", v.Auth.Username)
+				p("      ", "username", v.Auth.Username)
 			}
 			if v.Auth.PasswordKeychain != "" {
-				fmt.Printf("      password_keychain: %s  # store via: kongtrol init\n", v.Auth.PasswordKeychain)
+				pComment("      ", "password_keychain", v.Auth.PasswordKeychain, "store via: kongtrol init")
 			}
 			if v.Auth.UsernameKeychain != "" {
-				fmt.Printf("      username_keychain: %s  # store via: kongtrol init\n", v.Auth.UsernameKeychain)
+				pComment("      ", "username_keychain", v.Auth.UsernameKeychain, "store via: kongtrol init")
 			}
 		}
 		if len(cfg.Policies) > 0 {
-			fmt.Println("\npolicies:")
-			for _, p := range cfg.Policies {
-				fmt.Printf("  - name: %q\n", p.Name)
-				if len(p.Match.IPRanges) > 0 {
-					fmt.Printf("    match:\n      ip_ranges: %v\n", p.Match.IPRanges)
+			fmt.Println()
+			fmt.Println(ySection("policies") + yKey(":"))
+			for _, pol := range cfg.Policies {
+				fmt.Printf("  - %s: %s\n", yKey("name"), yStr(pol.Name))
+				if len(pol.Match.IPRanges) > 0 {
+					fmt.Printf("    %s:\n      %s: %s\n", yKey("match"), yKey("ip_ranges"), yNum(fmt.Sprintf("%v", pol.Match.IPRanges)))
 				}
-				if len(p.Match.Domains) > 0 {
-					fmt.Printf("    match:\n      domains: %v\n", p.Match.Domains)
+				if len(pol.Match.Domains) > 0 {
+					fmt.Printf("    %s:\n      %s: %s\n", yKey("match"), yKey("domains"), yNum(fmt.Sprintf("%v", pol.Match.Domains)))
 				}
-				fmt.Printf("    via: %s\n", p.Via)
+				fmt.Printf("    %s: %s\n", yKey("via"), yStr(pol.Via))
 			}
 		}
 		if len(cfg.Groups) > 0 {
-			fmt.Println("\ngroups:")
+			fmt.Println()
+			fmt.Println(ySection("groups") + yKey(":"))
 			for name, g := range cfg.Groups {
-				fmt.Printf("  %s:\n    profiles: %v\n", name, g.Profiles)
+				fmt.Printf("  %s:\n    %s: %s\n", styleBright.Render(name), yKey("profiles"), yNum(fmt.Sprintf("%v", g.Profiles)))
 			}
 		}
 		return nil
@@ -684,7 +863,11 @@ func loadConfig() error {
 
 	// Security.
 	ks = security.NewKillSwitch()
-	if cfg.Security.LeakDetection.Enabled {
+	// Enable leak detection: explicit config or auto-enable when any security feature is on.
+	leakEnabled := cfg.Security.LeakDetection.Enabled ||
+		cfg.Security.KillSwitch.Enabled ||
+		cfg.Security.DNSGuard.Enabled
+	if leakEnabled {
 		leak = security.NewLeakTester(
 			parseDuration(cfg.Security.LeakDetection.Interval, 60*time.Second),
 			cfg.Security.IntegrityCheck.ExpectedIPs,
@@ -1034,7 +1217,7 @@ func stopDaemon() {
 		return
 	}
 	if err := proc.Kill(); err != nil {
-		fmt.Fprintf(os.Stderr, "warn: cannot stop daemon process %d: %v (try running as Administrator)\n", pid, err)
+		fmt.Fprintf(os.Stderr, "warn: cannot stop daemon process %d: %v\n", pid, err)
 		return
 	}
 	_ = os.Remove(path)

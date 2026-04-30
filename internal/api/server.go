@@ -84,12 +84,16 @@ func (s *Server) Start() error {
 	// WebSocket live metrics feed.
 	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)
 
-	// Embedded dashboard — served at /.
+	// Embedded dashboard — served at / with no-cache to pick up new versions.
 	dashFS, err := fs.Sub(assets.FS, "dashboard")
 	if err != nil {
 		return fmt.Errorf("api: embed dashboard: %w", err)
 	}
-	mux.Handle("/", http.FileServer(http.FS(dashFS)))
+	fileServer := http.FileServer(http.FS(dashFS))
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		fileServer.ServeHTTP(w, r)
+	}))
 
 	addr := fmt.Sprintf("%s:%d", s.bind, s.port)
 	s.srv = &http.Server{
