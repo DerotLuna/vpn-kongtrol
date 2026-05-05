@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -98,7 +99,9 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 		// Launch GUI automation asynchronously — it opens FortiClient, fills
 		// credentials, clicks Connect. Detection loop below waits for the result.
 		go func() {
-			_ = tryGUIConnect(tunnelName, username, password)
+			if err := tryGUIConnect(tunnelName, username, password); err != nil {
+				fmt.Fprintf(os.Stderr, "forticlient gui: %v\n", err)
+			}
 		}()
 	} else {
 		// CLI path for Linux/macOS.
@@ -280,6 +283,11 @@ func (a *Adapter) TunnelInfo() (*vpn.TunnelInfo, error) {
 	// Read byte counters from the OS interface.
 	if a.tunnelIface != "" {
 		info.BytesSent, info.BytesReceived = ifaceByteCounters(a.tunnelIface)
+	}
+
+	// Read DNS servers assigned to the tunnel interface by FortiClient.
+	if a.tunnelIface != "" {
+		info.DNS = ifaceDNSServers(a.tunnelIface)
 	}
 
 	return info, nil

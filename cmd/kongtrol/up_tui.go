@@ -9,6 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -21,6 +22,7 @@ type upQuitMsg struct{}
 type upModel struct {
 	adapters map[string]vpn.VPNAdapter
 	ks       security.KillSwitch
+	dnsMgr   *monitor.DNSManager
 	dashURL  string
 	cancel   context.CancelFunc
 	now      time.Time
@@ -31,12 +33,14 @@ type upModel struct {
 func newUpModel(
 	adapters map[string]vpn.VPNAdapter,
 	ks security.KillSwitch,
+	dnsMgr *monitor.DNSManager,
 	dashURL string,
 	cancel context.CancelFunc,
 ) upModel {
 	return upModel{
 		adapters: adapters,
 		ks:       ks,
+		dnsMgr:   dnsMgr,
 		dashURL:  dashURL,
 		cancel:   cancel,
 		now:      time.Now(),
@@ -91,6 +95,8 @@ var (
 	upStyleRule   = lipgloss.NewStyle().Foreground(lipgloss.Color("237"))
 	upStyleKSOn   = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
 	upStyleKSOff  = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
+	upStyleDNSOn  = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
+	upStyleDNSOff = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	upStyleDash   = lipgloss.NewStyle().Foreground(lipgloss.Color("51")).Bold(true)
 )
 
@@ -176,6 +182,15 @@ func (m upModel) View() string {
 				upStyleKSOff.Render("⬡  Kill switch  off"))
 		}
 	}
+	if m.dnsMgr != nil {
+		if m.dnsMgr.IsActive() {
+			statusParts = append(statusParts,
+				upStyleDNSOn.Render("⬡  DNS Guard  ACTIVE"))
+		} else {
+			statusParts = append(statusParts,
+				upStyleDNSOff.Render("⬡  DNS Guard  off"))
+		}
+	}
 	if m.dashURL != "" {
 		statusParts = append(statusParts,
 			styleInfo.Render("▸  Dashboard → ")+upStyleDash.Render(m.dashURL))
@@ -197,14 +212,14 @@ func (m upModel) View() string {
 // runUpTUI starts the Bubble Tea daemon view. It blocks until the user quits
 // (q / Ctrl+C) or ctx is cancelled by an external signal (SIGTERM / kill).
 // When the user quits interactively, cancel() is called to trigger upCmd's defers.
-func runUpTUI(ctx context.Context, cancel context.CancelFunc, adapters map[string]vpn.VPNAdapter, ks security.KillSwitch, dashURL string) {
+func runUpTUI(ctx context.Context, cancel context.CancelFunc, adapters map[string]vpn.VPNAdapter, ks security.KillSwitch, dnsMgr *monitor.DNSManager, dashURL string) {
 	if !isTerminal {
 		// Non-interactive: just block until cancelled.
 		<-ctx.Done()
 		return
 	}
 
-	model := newUpModel(adapters, ks, dashURL, cancel)
+	model := newUpModel(adapters, ks, dnsMgr, dashURL, cancel)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	// Forward external cancellation (SIGTERM / kill) into Bubble Tea.

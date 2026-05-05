@@ -89,8 +89,9 @@ func (m *windowsRouteManager) List() ([]Route, error) {
 		`$_.DestinationPrefix -ne '0.0.0.0/0' -and ` +
 		`$_.DestinationPrefix -ne '255.255.255.255/32' } | ` +
 		`ForEach-Object { ` +
-		`$name = ($vpnAdapters | Where-Object { $_.InterfaceIndex -eq $_.InterfaceIndex }).Name; ` +
-		`if (-not $name) { $name = (Get-NetAdapter -InterfaceIndex $_.InterfaceIndex -ErrorAction SilentlyContinue).Name }; ` +
+		`$idx = $_.InterfaceIndex; ` +
+		`$name = ($vpnAdapters | Where-Object { $_.InterfaceIndex -eq $idx }).Name; ` +
+		`if (-not $name) { $name = (Get-NetAdapter -InterfaceIndex $idx -ErrorAction SilentlyContinue).Name }; ` +
 		`"$($_.DestinationPrefix)|$($_.NextHop)|$name|$($_.RouteMetric)" } }`
 	cmd := exec.Command("powershell", "-NoProfile", "-Command", ps)
 	out, err := cmd.CombinedOutput()

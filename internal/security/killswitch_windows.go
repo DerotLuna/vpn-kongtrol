@@ -5,7 +5,6 @@ package security
 import (
 	"fmt"
 	"net"
-	"os/exec"
 	"strings"
 	"sync"
 )
@@ -34,6 +33,8 @@ func NewKillSwitch() KillSwitch {
 // Left of | = tunnel interface names (their local IPs are allowed as source).
 // Right of | = VPN endpoint IPs (allowed as destination so encrypted tunnel works).
 // Either side may be empty.
+//
+// If not running elevated, triggers a single UAC prompt to add all firewall rules.
 func (k *windowsKillSwitch) Enable(tunnelSpec string, allowLAN bool) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()
@@ -51,22 +52,21 @@ func (k *windowsKillSwitch) Enable(tunnelSpec string, allowLAN bool) error {
 		endpointIPs = strings.Split(parts[1], ",")
 	}
 
+	// Collect all netsh commands to batch into a single elevated execution.
+	var cmds [][]string
+
 	// Block all outbound traffic.
-	if err := netshFW("add", "rule",
-		"name="+ksRuleBlock,
+	cmds = append(cmds, []string{"advfirewall", "firewall", "add", "rule",
+		"name=" + ksRuleBlock,
 		"dir=out", "action=block",
-		"enable=yes", "profile=any",
-	); err != nil {
-		return fmt.Errorf("kill switch: add block rule: %w", err)
-	}
+		"enable=yes", "profile=any"})
 
 	// Allow loopback (127.0.0.0/8).
-	_ = netshFW("add", "rule",
-		"name="+ksRuleLoopback,
+	cmds = append(cmds, []string{"advfirewall", "firewall", "add", "rule",
+		"name=" + ksRuleLoopback,
 		"dir=out", "action=allow",
 		"enable=yes", "profile=any",
-		"remoteip=127.0.0.0/8",
-	)
+		"remoteip=127.0.0.0/8"})
 
 	// Allow traffic FROM VPN-assigned IPs (tunnel interfaces).
 	var localIPs []string
@@ -74,34 +74,35 @@ func (k *windowsKillSwitch) Enable(tunnelSpec string, allowLAN bool) error {
 		localIPs = append(localIPs, getInterfaceIPs(name)...)
 	}
 	if len(localIPs) > 0 {
-		_ = netshFW("add", "rule",
-			"name="+ksRuleAllow,
+		cmds = append(cmds, []string{"advfirewall", "firewall", "add", "rule",
+			"name=" + ksRuleAllow,
 			"dir=out", "action=allow",
 			"enable=yes", "profile=any",
-			"localip="+strings.Join(localIPs, ","),
-		)
+			"localip=" + strings.Join(localIPs, ",")})
 	}
 
 	// Allow traffic TO VPN endpoint IPs (so encrypted tunnel can reach the server).
 	if len(endpointIPs) > 0 {
-		_ = netshFW("add", "rule",
-			"name="+ksRuleEndpoint,
+		cmds = append(cmds, []string{"advfirewall", "firewall", "add", "rule",
+			"name=" + ksRuleEndpoint,
 			"dir=out", "action=allow",
 			"enable=yes", "profile=any",
-			"remoteip="+strings.Join(endpointIPs, ","),
-		)
+			"remoteip=" + strings.Join(endpointIPs, ",")})
 	}
 
 	// Allow LAN traffic if requested.
 	if allowLAN {
 		for _, subnet := range []string{"192.168.0.0/16", "10.0.0.0/8", "172.16.0.0/12"} {
-			_ = netshFW("add", "rule",
-				"name="+ksRuleLAN,
+			cmds = append(cmds, []string{"advfirewall", "firewall", "add", "rule",
+				"name=" + ksRuleLAN,
 				"dir=out", "action=allow",
 				"enable=yes", "profile=any",
-				"remoteip="+subnet,
-			)
+				"remoteip=" + subnet})
 		}
+	}
+
+	if err := runNetshElevated(cmds); err != nil {
+		return fmt.Errorf("kill switch: %w", err)
 	}
 
 	k.enabled = true
@@ -123,9 +124,12 @@ func (k *windowsKillSwitch) IsEnabled() bool {
 }
 
 func (k *windowsKillSwitch) removeRules() error {
+	var cmds [][]string
 	for _, name := range []string{ksRuleBlock, ksRuleAllow, ksRuleEndpoint, ksRuleLAN, ksRuleLoopback} {
-		_ = netshFW("delete", "rule", "name="+name)
+		cmds = append(cmds, []string{"advfirewall", "firewall", "delete", "rule", "name=" + name})
 	}
+	// Best-effort cleanup — ignore errors (rules may not exist).
+	_ = runNetshElevated(cmds)
 	return nil
 }
 
@@ -146,14 +150,4 @@ func getInterfaceIPs(name string) []string {
 		}
 	}
 	return ips
-}
-
-func netshFW(args ...string) error {
-	fullArgs := append([]string{"advfirewall", "firewall"}, args...)
-	cmd := exec.Command("netsh", fullArgs...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("netsh advfirewall %v: %w (%s)", args, err, out)
-	}
-	return nil
 }

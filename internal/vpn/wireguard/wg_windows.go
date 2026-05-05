@@ -26,6 +26,11 @@ func wgUp(configPath string) error {
 		return nil
 	}
 
+	// Remove stale kongtrol-managed tunnels left over from previous runs
+	// (e.g. process crash before graceful disconnect). These use temp dir
+	// names like "kongtrol-wg-281123272" and can block new tunnel creation.
+	cleanStaleKongtrolTunnels(iface)
+
 	// Service exists but interface is down (stopped/failed) — remove stale service
 	// before reinstalling so wireguard.exe gets a clean slate.
 	if tunnelServiceExists(iface) {
@@ -65,6 +70,35 @@ func wgUp(configPath string) error {
 		return fmt.Errorf("wireguard service state unknown after install")
 	}
 	return fmt.Errorf("wireguard service did not reach Running state (state=%v); check Event Viewer → Windows Logs → Application for WireGuard errors", st.State)
+}
+
+// cleanStaleKongtrolTunnels removes WireGuard tunnel services left behind by
+// previous kongtrol runs that exited without graceful disconnect. These have
+// names matching "WireGuardTunnel$kongtrol-wg-*" from temp-dir-based configs.
+// The currentIface is excluded (handled separately by the caller).
+func cleanStaleKongtrolTunnels(currentIface string) {
+	m, err := mgr.Connect()
+	if err != nil {
+		return
+	}
+	defer m.Disconnect()
+
+	services, err := m.ListServices()
+	if err != nil {
+		return
+	}
+
+	const prefix = "WireGuardTunnel$kongtrol-wg-"
+	for _, svcName := range services {
+		if !strings.HasPrefix(svcName, prefix) {
+			continue
+		}
+		ifaceName := strings.TrimPrefix(svcName, "WireGuardTunnel$")
+		if ifaceName == currentIface {
+			continue
+		}
+		_ = wgDown(ifaceName)
+	}
 }
 
 // tunnelServiceExists returns true if the WireGuard tunnel Windows service exists.

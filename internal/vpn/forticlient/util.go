@@ -3,6 +3,7 @@ package forticlient
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,6 +81,45 @@ func ifaceByteCounters(name string) (sent, received uint64) {
 		received = readSys("/sys/class/net/" + name + "/statistics/rx_bytes")
 	}
 	return
+}
+
+// ifaceDNSServers reads the DNS servers assigned to a network interface.
+// FortiClient pushes DNS servers through the tunnel; this reads them from the OS.
+func ifaceDNSServers(name string) []net.IP {
+	switch runtime.GOOS {
+	case "windows":
+		ps := fmt.Sprintf(
+			`(Get-DnsClientServerAddress -InterfaceAlias '%s' -AddressFamily IPv4 -ErrorAction SilentlyContinue).ServerAddresses -join ' '`, name)
+		out, err := runCmd("powershell", "-NoProfile", "-Command", ps)
+		if err != nil {
+			return nil
+		}
+		var servers []net.IP
+		for _, s := range strings.Fields(strings.TrimSpace(out)) {
+			if ip := net.ParseIP(s); ip != nil {
+				servers = append(servers, ip)
+			}
+		}
+		return servers
+	case "linux", "darwin":
+		// FortiClient on Linux/macOS typically modifies /etc/resolv.conf.
+		// Read nameservers from the interface's DNS config.
+		data, err := os.ReadFile("/etc/resolv.conf")
+		if err != nil {
+			return nil
+		}
+		var servers []net.IP
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "nameserver ") {
+				if ip := net.ParseIP(strings.TrimPrefix(line, "nameserver ")); ip != nil {
+					servers = append(servers, ip)
+				}
+			}
+		}
+		return servers
+	}
+	return nil
 }
 
 func writeTempConfig(host string, port int, cert, key, username, _ string) (string, error) {

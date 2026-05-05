@@ -211,7 +211,7 @@ var upCmd = &cobra.Command{
 		}
 
 		// Block until signal — show live daemon view on interactive terminals.
-		runUpTUI(ctx, cancelCtx, adapters, ks, dashURL)
+		runUpTUI(ctx, cancelCtx, adapters, ks, dnsMgr, dashURL)
 		return nil
 	},
 }
@@ -390,6 +390,13 @@ func printStatus() {
 			fmt.Println("  " + styleStatusUp.Render("⬡") + "  " + styleBright.Render("Kill switch") + "  " + styleStatusUp.Render("ACTIVE"))
 		} else {
 			fmt.Println("  " + styleStatusDown.Render("⬡") + "  " + styleDim.Render("Kill switch  off"))
+		}
+	}
+	if dnsMgr != nil {
+		if dnsMgr.IsActive() {
+			fmt.Println("  " + styleStatusUp.Render("⬡") + "  " + styleBright.Render("DNS Guard") + "  " + styleStatusUp.Render("ACTIVE"))
+		} else {
+			fmt.Println("  " + styleStatusDown.Render("⬡") + "  " + styleDim.Render("DNS Guard  off"))
 		}
 	}
 }
@@ -964,8 +971,17 @@ func connectProfile(ctx context.Context, name string) error {
 	// redundant — especially in split-tunnel mode where the WireGuard iface
 	// does not carry general DNS traffic.
 	if dnsMgr != nil && cfg.Security.DNSGuard.Enabled && vpnCfg.Type != "wireguard" {
-		if info, err := adapter.TunnelInfo(); err == nil && info != nil && len(info.DNS) > 0 {
-			dnsMgr.OnConnect(name, info.InterfaceName, info.DNS)
+		if info, err := adapter.TunnelInfo(); err == nil && info != nil {
+			dnsServers := info.DNS
+			// Use fallback DNS if tunnel didn't push any servers.
+			if len(dnsServers) == 0 && cfg.Security.DNSGuard.FallbackDNS != "" {
+				if ip := net.ParseIP(cfg.Security.DNSGuard.FallbackDNS); ip != nil {
+					dnsServers = []net.IP{ip}
+				}
+			}
+			if len(dnsServers) > 0 {
+				dnsMgr.OnConnect(name, info.InterfaceName, dnsServers)
+			}
 		}
 	}
 
