@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -82,9 +81,8 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	}
 
 	// ── Step 1: trigger connection ────────────────────────────────────────────
-	// On Windows: run GUI automation in a goroutine so it doesn't block
-	// detectTunnelInterface — Ctrl+C can interrupt the detection loop even
-	// while the PS script is still running.
+	// On Windows: run GUI automation first so failures are surfaced immediately
+	// (instead of timing out 90s later with no detail).
 	// On other OSes: fall back to CLI.
 	tunnelName := cfg.TunnelName
 	username := cfg.Username
@@ -96,13 +94,12 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	cfg.Password = "" // zero immediately
 
 	if runtime.GOOS == "windows" {
-		// Launch GUI automation asynchronously — it opens FortiClient, fills
-		// credentials, clicks Connect. Detection loop below waits for the result.
-		go func() {
-			if err := tryGUIConnect(tunnelName, username, password); err != nil {
-				fmt.Fprintf(os.Stderr, "forticlient gui: %v\n", err)
-			}
-		}()
+		// GUI automation opens FortiClient, selects the tunnel, fills credentials,
+		// and clicks Connect.
+		if err := tryGUIConnect(tunnelName, username, password); err != nil {
+			a.status = vpn.StatusError
+			return fmt.Errorf("forticlient gui: %w", err)
+		}
 	} else {
 		// CLI path for Linux/macOS.
 		if err := connectV6(tunnelName, host, port, certPath, keyPath, username, password); err != nil {

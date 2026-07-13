@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vercel/
+
+# Binarios de distribución — demasiado grandes para git.
+# Se actualizan localmente para deploy a Vercel.
+_binaries/kongtrol-*
+_binaries/checksums.txt
+
+# Excepción: mantener el placeholder
+!_binaries/.gitkeep
+
+.vercel

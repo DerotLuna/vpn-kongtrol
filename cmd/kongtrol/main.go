@@ -5,11 +5,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -17,7 +20,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 	"github.com/vpn-kongtrol/kongtrol/internal/api"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
@@ -26,6 +28,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/wireguard"
+	"go.uber.org/zap"
 
 	// Adapter registrations — order is irrelevant; all run via init().
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/ciscoanyconnect"
@@ -44,18 +47,18 @@ import (
 var version = "dev"
 
 var (
-	cfgPath  string
-	cfg      *config.Config
-	adapters map[string]vpn.VPNAdapter
-	routeMgr routing.RouteManager
-	engine   *policy.Engine
-	ks       security.KillSwitch
-	leak     *security.LeakTester
-	audit    *security.AuditLogger
-	col             *monitor.Collector
-	watchdog        *monitor.Watchdog
-	dnsMgr          *monitor.DNSManager
-	policyResolver  *monitor.PolicyResolver
+	cfgPath        string
+	cfg            *config.Config
+	adapters       map[string]vpn.VPNAdapter
+	routeMgr       routing.RouteManager
+	engine         *policy.Engine
+	ks             security.KillSwitch
+	leak           *security.LeakTester
+	audit          *security.AuditLogger
+	col            *monitor.Collector
+	watchdog       *monitor.Watchdog
+	dnsMgr         *monitor.DNSManager
+	policyResolver *monitor.PolicyResolver
 )
 
 var rootCmd = &cobra.Command{
@@ -346,6 +349,53 @@ func statusLabel(s vpn.Status) string {
 	}
 }
 
+type apiSecurityStatus struct {
+	KillSwitch bool `json:"kill_switch"`
+	DNSGuard   bool `json:"dns_guard"`
+}
+
+func dashboardURL() string {
+	return fmt.Sprintf("http://%s:%d", cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
+}
+
+func fetchDaemonSnapshot() ([]monitor.TunnelMetrics, *apiSecurityStatus, error) {
+	client := &http.Client{Timeout: 1200 * time.Millisecond}
+	base := dashboardURL()
+
+	tResp, err := client.Get(base + "/api/v1/tunnels")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tResp.Body.Close()
+	if tResp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("dashboard unavailable")
+	}
+
+	var tunnels []monitor.TunnelMetrics
+	if err := json.NewDecoder(tResp.Body).Decode(&tunnels); err != nil {
+		return nil, nil, err
+	}
+	sort.Slice(tunnels, func(i, j int) bool {
+		return tunnels[i].Name < tunnels[j].Name
+	})
+
+	sResp, err := client.Get(base + "/api/v1/security/status")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer sResp.Body.Close()
+	if sResp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("security status unavailable")
+	}
+
+	sec := &apiSecurityStatus{}
+	if err := json.NewDecoder(sResp.Body).Decode(sec); err != nil {
+		return nil, nil, err
+	}
+
+	return tunnels, sec, nil
+}
+
 func printStatus() {
 	const (
 		nameW   = 18
@@ -360,6 +410,31 @@ func printStatus() {
 		styleStatusHdr.Render(pad("IP", ipW)),
 		styleStatusHdr.Render("UPTIME"))
 	fmt.Println("  " + sep)
+
+	if tunnels, sec, err := fetchDaemonSnapshot(); err == nil && len(tunnels) > 0 {
+		for _, t := range tunnels {
+			status := t.Status.Normalize()
+			ip := styleDim.Render("—")
+			uptime := styleDim.Render("—")
+			if t.AssignedIP != "" {
+				ip = styleStatusIP.Render(t.AssignedIP)
+			}
+			if !t.ConnectedAt.IsZero() {
+				uptime = styleStatusTime.Render(time.Since(t.ConnectedAt).Round(time.Second).String())
+			}
+
+			fmt.Printf("  %s %s %s %s %s\n",
+				statusDot(status),
+				styleStatusName.Render(pad(t.Name, nameW)),
+				pad(statusLabel(status), statusW+30),
+				pad(ip, ipW+20),
+				uptime)
+		}
+		fmt.Println("  " + sep)
+		fmt.Println("  " + securityGlyph(sec.KillSwitch) + "  " + styleBright.Render("Kill switch") + "  " + ternaryStatus(sec.KillSwitch))
+		fmt.Println("  " + securityGlyph(sec.DNSGuard) + "  " + styleBright.Render("DNS Guard") + "  " + ternaryStatus(sec.DNSGuard))
+		return
+	}
 
 	for name, adapter := range adapters {
 		status := adapter.Status()
@@ -392,6 +467,7 @@ func printStatus() {
 			fmt.Println("  " + styleStatusDown.Render("⬡") + "  " + styleDim.Render("Kill switch  off"))
 		}
 	}
+
 	if dnsMgr != nil {
 		if dnsMgr.IsActive() {
 			fmt.Println("  " + styleStatusUp.Render("⬡") + "  " + styleBright.Render("DNS Guard") + "  " + styleStatusUp.Render("ACTIVE"))
@@ -399,6 +475,20 @@ func printStatus() {
 			fmt.Println("  " + styleStatusDown.Render("⬡") + "  " + styleDim.Render("DNS Guard  off"))
 		}
 	}
+}
+
+func ternaryStatus(active bool) string {
+	if active {
+		return styleStatusUp.Render("ACTIVE")
+	}
+	return styleStatusDown.Render("off")
+}
+
+func securityGlyph(active bool) string {
+	if active {
+		return styleStatusUp.Render("⬡")
+	}
+	return styleStatusDown.Render("⬡")
 }
 
 func runStatusWatch() error {
@@ -447,7 +537,11 @@ var routesListCmd = &cobra.Command{
 			fmt.Println("  " + styleDim.Render("No routes managed by kongtrol."))
 			return nil
 		}
-		const (destW = 24; gwW = 18; ifaceW = 14)
+		const (
+			destW  = 24
+			gwW    = 18
+			ifaceW = 14
+		)
 		sep := styleDim.Render("  " + strings.Repeat("─", destW+gwW+ifaceW+10))
 		fmt.Printf("  %s %s %s %s\n",
 			styleMapHdr.Render(pad("DESTINATION", destW)),
@@ -654,11 +748,19 @@ var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
 	Short: "Start the web dashboard and open it in your browser",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if _, _, err := fetchDaemonSnapshot(); err == nil {
+			addr := dashboardURL()
+			fmt.Println(tuiOK(styleBright.Render("Dashboard running") + "  " + paint(cDim, "→") + "  " + stylePrompt.Render(addr)))
+			fmt.Println(paint(cDim, "  Opening browser…"))
+			openBrowser(addr)
+			return nil
+		}
+
 		srv := buildAPIServer()
 		if err := srv.Start(); err != nil {
 			return fmt.Errorf("dashboard: %w", err)
 		}
-		addr := srv.Addr()
+		addr := dashboardURL()
 		fmt.Println(tuiOK(styleBright.Render("Dashboard running") + "  " + paint(cDim, "→") + "  " + stylePrompt.Render(addr)))
 		fmt.Println(paint(cDim, "  Opening browser…"))
 		openBrowser(addr)
@@ -718,9 +820,9 @@ var exportCmd = &cobra.Command{
 		}
 
 		// YAML syntax helpers — only colorize on interactive terminals.
-		yKey   := func(s string) string { return styleMapVia.Render(s) }
-		yStr   := func(s string) string { return styleStatusIP.Render(s) }
-		yNum   := func(s string) string { return styleStatusTime.Render(s) }
+		yKey := func(s string) string { return styleMapVia.Render(s) }
+		yStr := func(s string) string { return styleStatusIP.Render(s) }
+		yNum := func(s string) string { return styleStatusTime.Render(s) }
 		yComment := func(s string) string { return styleDim.Render(s) }
 		ySection := func(s string) string { return styleGold.Render(s) }
 

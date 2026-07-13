@@ -3,6 +3,8 @@ MODULE   := github.com/vpn-kongtrol/kongtrol
 VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS  := -ldflags "-X main.version=$(VERSION) -s -w"
 DIST     := build/dist
+SITE_DIR := site
+SITE_BIN := $(SITE_DIR)/_binaries
 
 # On Windows (Git Bash), OS=Windows_NT is set by the environment.
 ifeq ($(OS),Windows_NT)
@@ -95,6 +97,25 @@ dev:
 .PHONY: tidy
 tidy:
 	go mod tidy
+
+.PHONY: site-sync-binaries
+site-sync-binaries:
+	@if ! ls $(DIST)/kongtrol-* > /dev/null 2>&1; then \
+		echo "No binaries found in $(DIST)/. Run: make build-all-cli"; \
+		exit 1; \
+	fi
+	@mkdir -p $(SITE_BIN)
+	@cp -f $(DIST)/kongtrol-* $(SITE_BIN)/
+	@cd $(SITE_BIN) && \
+		if command -v sha256sum > /dev/null 2>&1; then \
+			sha256sum kongtrol-* > checksums.txt; \
+		elif command -v shasum > /dev/null 2>&1; then \
+			shasum -a 256 kongtrol-* > checksums.txt; \
+		else \
+			echo "No SHA256 tool found (sha256sum/shasum)."; \
+			exit 1; \
+		fi
+	@echo "Updated site binaries + checksums in $(SITE_BIN)/"
 
 # ── Release ───────────────────────────────────────────────────────────────────
 

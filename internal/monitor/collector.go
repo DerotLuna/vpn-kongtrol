@@ -41,6 +41,8 @@ func NewCollector(adapters map[string]vpn.VPNAdapter) *Collector {
 
 // Start begins collecting metrics every interval.
 func (c *Collector) Start(interval time.Duration) {
+	// Prime metrics immediately so API/CLI consumers don't see an empty first snapshot.
+	c.collect()
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()

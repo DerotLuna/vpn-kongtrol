@@ -13,6 +13,22 @@
 
 ---
 
+## Table of Contents
+
+- [The Problem](#the-problem)
+- [Features](#features)
+- [Supported VPN Adapters](#supported-vpn-adapters)
+- [ProtonVPN Modes (GUI vs WireGuard)](#protonvpn-modes-gui-vs-wireguard)
+- [Quick Start](#quick-start)
+- [CLI Reference](#cli-reference)
+- [Configuration](#configuration)
+- [Security Model](#security-model)
+- [Dashboard](#dashboard)
+- [Docker](#docker)
+- [Development](#development)
+
+---
+
 ## The Problem
 
 Working with multiple VPNs simultaneously is painful:
@@ -60,12 +76,54 @@ Working with multiple VPNs simultaneously is painful:
 |---|---|---|---|
 | FortiClient 6.4.x | `forticlient` | Win / Linux / macOS | CLI + passive detection fallback for EMS-locked installs |
 | OpenVPN | `openvpn` | Win / Linux / macOS | Multi-instance, dynamic management port per tunnel |
-| ProtonVPN | `protonvpn` | Win / Linux / macOS | JSON API (v3.10+) with human-readable fallback |
+| ProtonVPN | `protonvpn` | Win / Linux / macOS | Proton CLI/API flow (credentials + server/protocol) |
 | Cisco AnyConnect / Secure Client | `ciscoanyconnect` | Win / Linux / macOS | Stdin pipe for credentials |
 | WireGuard | `wireguard` | Win / Linux / macOS | `wg-quick` on Unix, `wireguard.exe` service on Windows |
 | GlobalProtect (Palo Alto) | `globalprotect` | Win / macOS | SSO detection fallback |
 | Tailscale | `tailscale` | Win / Linux / macOS | Auth key + optional exit node |
 | Cloudflare WARP | `cloudflarewarp` | Win / Linux / macOS | Requires prior `warp-cli register` |
+
+---
+
+## ProtonVPN Modes (GUI vs WireGuard)
+
+Use one of these two approaches depending on your team workflow:
+
+### A) Manual via Proton GUI (quick start)
+
+Use this when users already connect from the Proton app and just need a manual workflow.
+
+1. Install ProtonVPN desktop app.
+2. Create/connect once manually in GUI to verify account and connectivity.
+3. In Kongtrol, add a `protonvpn` profile (`kongtrol init`) and set server/protocol.
+4. Keep in mind this path still depends on Proton client behavior outside Kongtrol.
+
+### B) Automatic via WireGuard config (recommended for stable automation)
+
+Use this when you want deterministic automation with Kongtrol.
+
+1. Install WireGuard runtime/tools (`wg`, `wg-quick`, or WireGuard app/service).
+2. In Proton account/dashboard, generate a WireGuard config file (`.conf`).
+3. Save that `.conf` locally (for example `~/.kongtrol/configs/proton-us.conf`).
+4. In `kongtrol init`, add profile type `wireguard` and point to that file path.
+
+Example:
+
+```yaml
+vpns:
+  proton-us:
+    type: wireguard
+    config: ~/.kongtrol/configs/proton-us.conf
+    auth:
+      method: certificate
+```
+
+### ProtonVPN together with other adapters
+
+- If Proton is only for selected domains/apps, keep it in its own profile (for example `us-content`) and route only those policies through it.
+- Keep corporate traffic (`forticlient`, `openvpn`, etc.) in separate profiles with explicit policy targets.
+- Prefer policy-based separation over a catch-all default route when combining Proton with work VPNs.
+- Use profile priorities intentionally (`priority`) if two policies may overlap.
 
 ---
 
@@ -133,6 +191,16 @@ git clone https://github.com/yourorg/vpn-kongtrol
 cd vpn-kongtrol
 make build          # current platform
 make build-all-cli  # all platforms → build/dist/
+```
+
+### Landing site (separate from embedded dashboard)
+
+The public landing is under `site/` and is independent from `web/dashboard`.
+
+```bash
+make build-all-cli      # produce CLI binaries in build/dist/
+make site-sync-binaries # copy + refresh checksums in site/_binaries/
+cd site && pnpm install && pnpm run dev
 ```
 
 ### 2. Run the setup wizard

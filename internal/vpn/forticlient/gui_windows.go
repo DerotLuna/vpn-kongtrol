@@ -13,9 +13,10 @@ import (
 // Used as primary connect method on Windows when EMS policy blocks /vpnconnect CLI.
 //
 // Layout measured from FortiClient 6.4.10 at any window size (relative positions):
-//   Username field center: 54.1% x, 62.4% y
-//   Password field center: 54.1% x, 66.6% y
-//   Connect button center: 49.7% x, 75.4% y
+//   VPN dropdown center:    54.1% x, 58.6% y
+//   Username field center:  54.1% x, 62.4% y
+//   Password field center:  54.1% x, 66.6% y
+//   Connect button center:  49.7% x, 75.4% y
 func guiConnect(tunnelName, username, password string) error {
 	script := buildGuiScript("connect", tunnelName, username, password)
 	tmpDir, err := os.MkdirTemp("", "kongtrol-fcgui-*")
@@ -215,10 +216,28 @@ $btnX = $left + [int]($w * 0.497)
 $btnY = $top  + [int]($h * 0.754)
 
 if ($action -eq 'connect') {
+    $vpnX  = $left + [int]($w * 0.541)
+    $vpnY  = $top  + [int]($h * 0.586)
     $userX = $left + [int]($w * 0.541)
     $userY = $top  + [int]($h * 0.624)
     $passX = $left + [int]($w * 0.541)
     $passY = $top  + [int]($h * 0.666)
+
+    if ($tunnel -ne '') {
+        Write-Output "Selecting VPN tunnel at ($vpnX,$vpnY)..."
+        [FC]::ForceForeground($hwnd)
+        for ($i = 0; $i -lt 2; $i++) {
+            [FC]::Click($vpnX, $vpnY)
+            Start-Sleep -Milliseconds 120
+        }
+        [System.Windows.Forms.SendKeys]::SendWait("^a")
+        Start-Sleep -Milliseconds 100
+        [System.Windows.Forms.Clipboard]::SetText($tunnel)
+        [System.Windows.Forms.SendKeys]::SendWait("^v")
+        Start-Sleep -Milliseconds 120
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+        Start-Sleep -Milliseconds 350
+    }
 
     Write-Output "Filling username at ($userX,$userY)..."
     # Re-assert foreground before clicking — CEF may have stolen focus during load.
@@ -259,8 +278,8 @@ if ($action -eq 'connect') {
     $dismissed = $false
     while (-not $dismissed -and (Get-Date) -lt $alertDeadline) {
         # Try both common dialog titles and button labels.
-        foreach ($title in @("Security Alert", "Security Warning", "Certificate Warning")) {
-            foreach ($btn in @("Yes", "&Yes", "Continue")) {
+        foreach ($title in @("Security Alert", "Alerta de seguridad", "Security Warning", "Certificate Warning")) {
+            foreach ($btn in @("Yes", "&Yes", "Continue", "Sí", "Si", "&Sí", "&Si")) {
                 if ([FC]::DismissDialog($title, $btn)) {
                     Write-Output "OK: '$title' dialog dismissed (clicked '$btn')"
                     $dismissed = $true
@@ -273,6 +292,30 @@ if ($action -eq 'connect') {
     }
     if (-not $dismissed) {
         Write-Output "INFO: No Security Alert dialog appeared within 15s (may not be needed)"
+    }
+
+    # ── 5. Fail fast on common auth/access dialogs ────────────────────────────
+    # Avoid waiting full tunnel timeout when FortiClient already reported failure.
+    $failDeadline = (Get-Date).AddSeconds(20)
+    while ((Get-Date) -lt $failDeadline) {
+        $failed = $false
+        foreach ($title in @(
+            "Access denied", "Acceso denegado",
+            "Authentication failed", "Error de autenticación",
+            "Login failed", "Connection failed",
+            "Error", "FortiClient Error"
+        )) {
+            foreach ($btn in @("OK", "&OK", "Aceptar", "Close", "Cerrar")) {
+                if ([FC]::DismissDialog($title, $btn)) {
+                    Write-Output "ERROR: FortiClient connection failed ($title)"
+                    $failed = $true
+                    break
+                }
+            }
+            if ($failed) { break }
+        }
+        if ($failed) { exit 2 }
+        Start-Sleep -Milliseconds 300
     }
 
     Write-Output "OK: connect sequence complete"
