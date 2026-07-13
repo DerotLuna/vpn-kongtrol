@@ -46,7 +46,7 @@ Working with multiple VPNs simultaneously is painful:
 ## Features
 
 ### Core
-- **Policy-based routing** — define which IP ranges or domains route through which VPN
+- **Policy-based routing** — route by IP ranges, domains, or app executable (experimental)
 - **Multi-VPN coexistence** — run compatible VPNs simultaneously with isolated routes
 - **Auto-reconnect watchdog** — detects unexpected drops and reconnects with exponential backoff
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
@@ -360,6 +360,11 @@ policies:
       domains: ["netflix.com", "*.netflix.com", "hulu.com"]
     via: us-content
 
+  - name: "Corporate apps (experimental)"
+    match:
+      apps: ["chrome", "teams*", "*\\Code.exe"]
+    via: office
+
   # Unmatched traffic → physical interface (no VPN).
   # To force everything else through a VPN, add:
   # - name: "Default"
@@ -560,6 +565,9 @@ No changes to routing, security, monitoring, or policy engine required.
 go test ./...
 make test
 
+# E2E (live daemons; opt-in)
+go test -tags e2e ./internal/vpn/...
+
 # Build current platform
 make build
 
@@ -613,7 +621,7 @@ vpn-kongtrol/
 │   │   └── darwin.go              # /sbin/route
 │   │
 │   ├── policy/
-│   │   ├── engine.go              # ResolveIP / ResolveDomain
+│   │   ├── engine.go              # ResolveIP / ResolveDomain / ResolveApp
 │   │   └── rules.go               # Rule · MatchSpec · ParseRule
 │   │
 │   ├── security/
@@ -696,7 +704,8 @@ vpn-kongtrol/
 | Profile groups (`kongtrol up --group work`) | ✅ |
 | `kongtrol status --watch` (live terminal view) | ✅ |
 | `kongtrol export` (sanitized config template for teammates) | ✅ |
-| Per-app routing rules (experimental) | 🔲 |
+| Per-app routing rules (experimental) | ✅ |
+| Full E2E test suite with live VPN daemons | ✅ |
 
 ---
 
@@ -720,7 +729,7 @@ Cisco AnyConnect · WireGuard · GlobalProtect · Tailscale · Cloudflare WARP �
 ### v1.1 ✅
 `kongtrol doctor` · Profile groups · `status --watch` · `kongtrol export`
 
-### v1.2 🔲
+### v1.2 ✅
 Per-app routing (experimental) · Full E2E test suite with live VPN daemons
 
 ---

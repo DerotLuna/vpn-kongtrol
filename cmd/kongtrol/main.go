@@ -595,9 +595,9 @@ var checkCmd = &cobra.Command{
 // ── map ──────────────────────────────────────────────────────────────────────
 
 var mapCmd = &cobra.Command{
-	Use:   "map [target]",
+	Use:   "map [target|app:<exe>]",
 	Short: "Show traffic routing map — which VPN handles each destination",
-	Long:  "Display all policy rules and their resolved IPs. Optionally query a specific IP or domain.",
+	Long:  "Display all policy rules and their resolved IPs. Optionally query a specific IP/domain or app:<executable>.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if engine == nil {
 			return fmt.Errorf("policy engine not loaded")
@@ -640,6 +640,10 @@ func printResolve(target string) {
 
 	if ip := net.ParseIP(target); ip != nil {
 		vpnName, matched := engine.ResolveIP(ip)
+		resolve(vpnName, matched)
+	} else if strings.HasPrefix(strings.ToLower(target), "app:") {
+		app := strings.TrimSpace(target[4:])
+		vpnName, matched := engine.ResolveApp(app)
 		resolve(vpnName, matched)
 	} else {
 		vpnName, matched := engine.ResolveDomain(target)
@@ -733,6 +737,9 @@ func pad(s string, w int) string {
 
 func summarizeMatch(r *policy.Rule) string {
 	var parts []string
+	for _, a := range r.Match.Apps {
+		parts = append(parts, "app:"+a)
+	}
 	for _, d := range r.Match.Domains {
 		parts = append(parts, d)
 	}
@@ -896,6 +903,9 @@ var exportCmd = &cobra.Command{
 				}
 				if len(pol.Match.Domains) > 0 {
 					fmt.Printf("    %s:\n      %s: %s\n", yKey("match"), yKey("domains"), yNum(fmt.Sprintf("%v", pol.Match.Domains)))
+				}
+				if len(pol.Match.Apps) > 0 {
+					fmt.Printf("    %s:\n      %s: %s\n", yKey("match"), yKey("apps"), yNum(fmt.Sprintf("%v", pol.Match.Apps)))
 				}
 				fmt.Printf("    %s: %s\n", yKey("via"), yStr(pol.Via))
 			}

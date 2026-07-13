@@ -25,7 +25,7 @@ func New(cfg *config.Config) (*Engine, error) {
 			priority = vpnCfg.Priority
 		}
 
-		rule, err := ParseRule(pr.Name, pr.Via, pr.Match.IPRanges, pr.Match.Domains, priority)
+		rule, err := ParseRule(pr.Name, pr.Via, pr.Match.IPRanges, pr.Match.Domains, pr.Match.Apps, priority)
 		if err != nil {
 			return nil, fmt.Errorf("policy: %w", err)
 		}
@@ -77,6 +77,17 @@ func (e *Engine) ResolveIP(dst net.IP) (vpnName string, matched bool) {
 func (e *Engine) ResolveDomain(domain string) (vpnName string, matched bool) {
 	for _, rule := range e.rules {
 		if rule.MatchesDomain(domain) {
+			return rule.Via, true
+		}
+	}
+	return "", false
+}
+
+// ResolveApp returns the VPN profile name for a given process executable
+// (name or full path). Returns ("", false) if no app rule matches.
+func (e *Engine) ResolveApp(app string) (vpnName string, matched bool) {
+	for _, rule := range e.rules {
+		if rule.MatchesApp(app) {
 			return rule.Via, true
 		}
 	}

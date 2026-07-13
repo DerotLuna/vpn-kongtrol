@@ -2,11 +2,11 @@ package config
 
 // Config is the root configuration structure for VPN Kongtrol.
 type Config struct {
-	VPNs     map[string]VPNConfig  `yaml:"vpns"     validate:"required,min=1,dive"`
+	VPNs     map[string]VPNConfig   `yaml:"vpns"     validate:"required,min=1,dive"`
 	Groups   map[string]GroupConfig `yaml:"groups"`
-	Policies []PolicyRule          `yaml:"policies"`
-	Security SecurityConfig        `yaml:"security"`
-	Monitor  MonitorConfig         `yaml:"monitor"`
+	Policies []PolicyRule           `yaml:"policies"`
+	Security SecurityConfig         `yaml:"security"`
+	Monitor  MonitorConfig          `yaml:"monitor"`
 }
 
 // GroupConfig defines a named set of VPN profiles that can be
@@ -53,6 +53,7 @@ type PolicyRule struct {
 type MatchSpec struct {
 	IPRanges []string `yaml:"ip_ranges"` // CIDR notation
 	Domains  []string `yaml:"domains"`   // glob patterns (*.example.com)
+	Apps     []string `yaml:"apps"`      // executable names or glob patterns (experimental)
 }
 
 // SecurityConfig holds all security-related settings.
@@ -80,7 +81,7 @@ type DNSGuardConfig struct {
 // IntegrityCheckConfig configures tunnel integrity verification.
 type IntegrityCheckConfig struct {
 	Enabled     bool              `yaml:"enabled"`
-	Interval    string            `yaml:"interval"` // e.g. "120s"
+	Interval    string            `yaml:"interval"`     // e.g. "120s"
 	ExpectedIPs map[string]string `yaml:"expected_ips"` // vpn_name → expected public IP
 }
 
@@ -101,10 +102,10 @@ type AuditLogConfig struct {
 
 // MonitorConfig holds monitoring and dashboard settings.
 type MonitorConfig struct {
-	Enabled     bool             `yaml:"enabled"`
-	Dashboard   DashboardConfig  `yaml:"dashboard"`
+	Enabled     bool              `yaml:"enabled"`
+	Dashboard   DashboardConfig   `yaml:"dashboard"`
 	HealthCheck HealthCheckConfig `yaml:"health_check"`
-	Alerts      AlertsConfig     `yaml:"alerts"`
+	Alerts      AlertsConfig      `yaml:"alerts"`
 }
 
 // DashboardConfig configures the embedded web dashboard.

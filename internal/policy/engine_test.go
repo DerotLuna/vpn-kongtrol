@@ -127,8 +127,8 @@ func TestResolveDomain_WildcardMatch(t *testing.T) {
 	}{
 		{"s3.amazonaws.com", true},
 		{"ec2.amazonaws.com", true},
-		{"amazonaws.com", false},           // wildcard requires a prefix
-		{"sub.sub.amazonaws.com", false},   // wildcard is single-label only
+		{"amazonaws.com", false},         // wildcard requires a prefix
+		{"sub.sub.amazonaws.com", false}, // wildcard is single-label only
 		{"other.com", false},
 	}
 
@@ -151,17 +151,63 @@ func TestResolveDomain_NoMatch(t *testing.T) {
 	}
 }
 
+// ── App resolution tests ───────────────────────────────────────────────────────
+
+func TestResolveApp_ExactExecutableName(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "streaming", Match: config.MatchSpec{Apps: []string{"vlc.exe"}}, Via: "us-vpn"},
+	}, nil)
+
+	vpn, ok := e.ResolveApp("C:\\Program Files\\VideoLAN\\VLC\\vlc.exe")
+	if !ok || vpn != "us-vpn" {
+		t.Errorf("got (%q, %v), want (us-vpn, true)", vpn, ok)
+	}
+}
+
+func TestResolveApp_BaseNameWithoutExeMatches(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "browser", Match: config.MatchSpec{Apps: []string{"chrome"}}, Via: "work-vpn"},
+	}, nil)
+
+	vpn, ok := e.ResolveApp("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
+	if !ok || vpn != "work-vpn" {
+		t.Errorf("got (%q, %v), want (work-vpn, true)", vpn, ok)
+	}
+}
+
+func TestResolveApp_GlobPattern(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "dev-tools", Match: config.MatchSpec{Apps: []string{"code*"}}, Via: "dev-vpn"},
+	}, nil)
+
+	vpn, ok := e.ResolveApp("code-insiders.exe")
+	if !ok || vpn != "dev-vpn" {
+		t.Errorf("got (%q, %v), want (dev-vpn, true)", vpn, ok)
+	}
+}
+
+func TestResolveApp_NoMatch(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "browser", Match: config.MatchSpec{Apps: []string{"chrome"}}, Via: "work-vpn"},
+	}, nil)
+
+	_, ok := e.ResolveApp("firefox.exe")
+	if ok {
+		t.Error("expected no match for firefox.exe")
+	}
+}
+
 // ── Rule parsing tests ────────────────────────────────────────────────────────
 
 func TestParseRule_InvalidCIDR(t *testing.T) {
-	_, err := ParseRule("bad", "vpn", []string{"not-a-cidr"}, nil, 0)
+	_, err := ParseRule("bad", "vpn", []string{"not-a-cidr"}, nil, nil, 0)
 	if err == nil {
 		t.Error("expected error for invalid CIDR, got nil")
 	}
 }
 
 func TestParseRule_ValidCIDR(t *testing.T) {
-	r, err := ParseRule("test", "vpn", []string{"10.0.0.0/8"}, []string{"*.example.com"}, 10)
+	r, err := ParseRule("test", "vpn", []string{"10.0.0.0/8"}, []string{"*.example.com"}, []string{"chrome"}, 10)
 	if err != nil {
 		t.Fatalf("ParseRule: %v", err)
 	}
@@ -170,6 +216,9 @@ func TestParseRule_ValidCIDR(t *testing.T) {
 	}
 	if len(r.Match.IPRanges) != 1 {
 		t.Errorf("IPRanges len = %d, want 1", len(r.Match.IPRanges))
+	}
+	if len(r.Match.Apps) != 1 {
+		t.Errorf("Apps len = %d, want 1", len(r.Match.Apps))
 	}
 }
 

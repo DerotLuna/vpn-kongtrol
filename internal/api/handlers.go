@@ -137,6 +137,7 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 		Via           string   `json:"via"`
 		Domains       []string `json:"domains"`
 		IPRanges      []string `json:"ip_ranges"`
+		Apps          []string `json:"apps"`
 		ResolvedCIDRs []string `json:"resolved_cidrs"`
 	}
 
@@ -149,6 +150,7 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 				Via:  rule.Via,
 			}
 			dto.Domains = rule.Match.Domains
+			dto.Apps = rule.Match.Apps
 			for _, ipnet := range rule.Match.IPRanges {
 				dto.IPRanges = append(dto.IPRanges, ipnet.String())
 			}
@@ -177,29 +179,46 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// GET /api/v1/resolve?target=<ip-or-domain> — which VPN handles this target.
+// GET /api/v1/resolve?target=<ip-or-domain>&app=<exe-or-path> — which VPN handles this match.
 func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("target")
-	if target == "" {
-		writeError(w, http.StatusBadRequest, "missing 'target' query parameter")
+	app := r.URL.Query().Get("app")
+	if target == "" && app == "" {
+		writeError(w, http.StatusBadRequest, "missing query parameter: provide 'target' or 'app'")
 		return
 	}
 
 	type resolveDTO struct {
 		Target  string `json:"target"`
+		App     string `json:"app,omitempty"`
 		Via     string `json:"via"`
 		Rule    string `json:"rule"`
 		Matched bool   `json:"matched"`
 	}
 
-	result := resolveDTO{Target: target}
+	result := resolveDTO{Target: target, App: app}
 
 	if s.policyEngine == nil {
 		writeJSON(w, http.StatusOK, result)
 		return
 	}
 
-	// Try as IP first, then as domain.
+	if app != "" {
+		if vpnName, matched := s.policyEngine.ResolveApp(app); matched {
+			result.Via = vpnName
+			result.Matched = true
+			for _, rule := range s.policyEngine.Rules() {
+				if rule.Via == vpnName && rule.MatchesApp(app) {
+					result.Rule = rule.Name
+					break
+				}
+			}
+			writeJSON(w, http.StatusOK, result)
+			return
+		}
+	}
+
+	// Try target as IP first, then as domain.
 	if ip := net.ParseIP(target); ip != nil {
 		if vpnName, matched := s.policyEngine.ResolveIP(ip); matched {
 			result.Via = vpnName

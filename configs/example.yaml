@@ -125,6 +125,14 @@ policies:
         - "hulu.com"
     via: us-content
 
+  - name: "Corporate apps (experimental)"
+    match:
+      apps:
+        - "chrome"
+        - "teams*"
+        - "*\\Code.exe"
+    via: office
+
   # No default rule: unmatched traffic goes through the physical interface.
   # To force all unmatched traffic through a VPN, add:
   # - name: "Default route"

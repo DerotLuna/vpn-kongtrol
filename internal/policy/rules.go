@@ -5,6 +5,8 @@ package policy
 import (
 	"fmt"
 	"net"
+	"path"
+	"strings"
 )
 
 // Rule maps a set of traffic patterns to a VPN profile name.
@@ -20,16 +22,18 @@ type Rule struct {
 type MatchSpec struct {
 	IPRanges []*net.IPNet
 	Domains  []string // glob patterns: "*.example.com", "exact.host.com"
+	Apps     []string // executable names or glob patterns: "chrome", "slack*", "*\\Code.exe"
 }
 
 // ParseRule converts raw config strings into a compiled Rule.
-func ParseRule(name, via string, ipRanges, domains []string, priority int) (*Rule, error) {
+func ParseRule(name, via string, ipRanges, domains, apps []string, priority int) (*Rule, error) {
 	r := &Rule{
 		Name:     name,
 		Via:      via,
 		Priority: priority,
 		Match: MatchSpec{
 			Domains: domains,
+			Apps:    apps,
 		},
 	}
 
@@ -74,6 +78,37 @@ func (r *Rule) MatchesDomain(domain string) bool {
 	return false
 }
 
+// MatchesApp reports whether the rule matches the given process executable.
+// Accepts either full process path or executable name.
+func (r *Rule) MatchesApp(app string) bool {
+	full, base, baseNoExt := normalizeApp(app)
+	if full == "" {
+		return false
+	}
+	for _, pattern := range r.Match.Apps {
+		p := normalizePattern(pattern)
+		if p == "" {
+			continue
+		}
+		if strings.Contains(p, "/") {
+			if ok, _ := path.Match(p, full); ok {
+				return true
+			}
+			continue
+		}
+
+		if ok, _ := path.Match(p, base); ok {
+			return true
+		}
+		if baseNoExt != "" {
+			if ok, _ := path.Match(p, baseNoExt); ok {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // prefixLen returns the prefix length of a network for specificity comparison.
 func prefixLen(n *net.IPNet) int {
 	ones, _ := n.Mask.Size()
@@ -102,4 +137,23 @@ func matchGlob(pattern, s string) bool {
 		}
 	}
 	return false
+}
+
+func normalizePattern(pattern string) string {
+	p := strings.TrimSpace(pattern)
+	p = strings.ReplaceAll(p, "\\", "/")
+	p = strings.ToLower(p)
+	return p
+}
+
+func normalizeApp(app string) (full, base, baseNoExt string) {
+	full = normalizePattern(app)
+	if full == "" {
+		return "", "", ""
+	}
+	base = strings.ToLower(path.Base(full))
+	if strings.HasSuffix(base, ".exe") {
+		baseNoExt = strings.TrimSuffix(base, ".exe")
+	}
+	return full, base, baseNoExt
 }
