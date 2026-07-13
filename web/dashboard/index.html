@@ -47,10 +47,15 @@
         <button class="refresh-btn" onclick="refreshPolicies()" title="Refresh">↻</button>
       </div>
       <div class="resolve-bar">
-        <input type="text" id="resolve-input" placeholder="IP or domain — e.g. claude.ai, 172.28.152.26" spellcheck="false" />
+        <input type="text" id="resolve-input" placeholder="IP/domain, URL, policy/profile, or app:process — e.g. claude.ai, https://chatgpt.com, us-content, app:chrome.exe" spellcheck="false" />
         <button class="action" id="resolve-btn" onclick="resolveTarget()">Check</button>
       </div>
       <div id="resolve-result" class="resolve-result" style="display:none"></div>
+      <div class="resolve-batch">
+        <textarea id="resolve-batch-input" rows="3" placeholder="Batch check (one per line):&#10;chatgpt.com&#10;oracle.com&#10;10.10.5.20&#10;app:chrome.exe"></textarea>
+        <button class="action" onclick="resolveBatchTargets()">Check list</button>
+      </div>
+      <div id="resolve-batch-result" class="resolve-batch-result" style="display:none"></div>
       <table id="policies-table">
         <thead>
           <tr>
@@ -67,6 +72,21 @@
     </section>
 
     <div class="side-grid">
+      <section class="card" id="base-network-section">
+        <div class="card-header">
+          <h2>Base Network</h2>
+          <button class="refresh-btn" onclick="refreshNetworkOverview()" title="Refresh">↻</button>
+        </div>
+        <ul id="base-network-list">
+          <li><span class="label">Connected tunnels</span><span id="base-connected" class="mono">—</span></li>
+          <li><span class="label">Default egress</span><span id="base-egress" class="mono">—</span></li>
+          <li><span class="label">Gateway</span><span id="base-gateway" class="mono">—</span></li>
+          <li><span class="label">Local IPs</span><span id="base-local-ips" class="mono">—</span></li>
+          <li><span class="label">Public IP (normal internet)</span><span id="base-public-ip" class="mono">—</span></li>
+        </ul>
+        <p id="base-routing-note" class="muted">Unmatched traffic follows your default route.</p>
+      </section>
+
       <section class="card" id="security-section">
         <div class="card-header">
           <h2>Security</h2>
@@ -100,6 +120,13 @@
         <div class="card-header">
           <h2>Active Routes</h2>
           <button class="refresh-btn" onclick="refreshRoutes()" title="Refresh">↻</button>
+        </div>
+        <div class="routes-toolbar">
+          <label for="routes-filter">Filter</label>
+          <select id="routes-filter">
+            <option value="all">All routes</option>
+            <option value="default">Default route</option>
+          </select>
         </div>
         <ul id="routes-list">
           <li class="empty">Loading…</li>

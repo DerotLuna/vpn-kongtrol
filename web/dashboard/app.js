@@ -6,6 +6,10 @@ const API = '';
 
 let ws = null;
 let wsReconnectTimer = null;
+let currentPolicies = [];
+let currentRoutes = [];
+let lastPublicIP = '';
+let currentOverview = null;
 
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -50,6 +54,7 @@ function renderTunnels(tunnels) {
     .map(([name, m]) => {
       const status = (m.Status || 'disconnected').toLowerCase();
       const isConnected = status === 'connected';
+      const isConnecting = status === 'connecting';
 
       const dot   = `<span class="status-dot ${status}"></span>`;
       const ip    = m.AssignedIP || '<span class="muted">—</span>';
@@ -58,9 +63,12 @@ function renderTunnels(tunnels) {
       const recv  = m.BytesReceived > 0 ? formatBytes(m.BytesReceived) : '<span class="muted">—</span>';
       const lat   = m.LatencyMS    > 0 ? `${m.LatencyMS}ms`          : '<span class="muted">—</span>';
 
-      const btn = isConnected
-        ? `<button class="action disconnect" onclick="disconnectVPN('${name}')">Disconnect</button>`
-        : `<button class="action" onclick="connectVPN('${name}')">Connect</button>`;
+      let btn = `<button class="action" onclick="connectVPN('${name}')">Connect</button>`;
+      if (isConnected) {
+        btn = `<button class="action disconnect" onclick="disconnectVPN('${name}')">Disconnect</button>`;
+      } else if (isConnecting) {
+        btn = `<button class="action disconnect" onclick="cancelConnectVPN('${name}')">Cancel</button>`;
+      }
 
       return `<tr>
         <td>${name}</td>
@@ -85,26 +93,57 @@ async function refreshSecurity() {
     if (!res.ok) return;
     const data = await res.json();
 
-    setBadge('ks-status',  data.kill_switch, 'ON', 'OFF');
-    setBadge('dns-status', data.dns_guard, 'ON', 'OFF');
+    setFeatureBadge('ks-status', data.kill_switch_enabled, data.kill_switch);
+    setFeatureBadge('dns-status', data.dns_guard_enabled, data.dns_guard);
+
+    if (!data.leak_detection_enabled) {
+      setBadge('leak-status', 'DISABLED', 'disabled');
+      document.getElementById('public-ip').textContent = knownPublicIP() || '—';
+      document.getElementById('base-public-ip').textContent = knownPublicIP() || '—';
+      document.getElementById('leak-time').textContent = '—';
+      return;
+    }
 
     if (data.leak_check) {
       const lk = data.leak_check;
-      setBadge('leak-status', !lk.has_leak, 'CLEAN', 'LEAK');
-      document.getElementById('public-ip').textContent = lk.public_ip || '—';
+      setBadge('leak-status', lk.has_leak ? 'LEAK' : 'CLEAN', lk.has_leak ? 'leak' : 'ok');
+      lastPublicIP = lk.public_ip || '';
+      document.getElementById('public-ip').textContent = lastPublicIP || '—';
+      document.getElementById('base-public-ip').textContent = lastPublicIP || '—';
       if (lk.checked_at) {
         const d = new Date(lk.checked_at);
         document.getElementById('leak-time').textContent = d.toLocaleTimeString();
+      } else {
+        document.getElementById('leak-time').textContent = '—';
       }
+      return;
     }
+    setBadge('leak-status', 'PENDING', 'pending');
+    document.getElementById('public-ip').textContent = knownPublicIP() || '—';
+    document.getElementById('base-public-ip').textContent = knownPublicIP() || '—';
+    document.getElementById('leak-time').textContent = '—';
   } catch (_) {}
 }
 
-function setBadge(id, positive, trueLabel, falseLabel) {
+function setFeatureBadge(id, enabled, active) {
+  if (!enabled) {
+    setBadge(id, 'DISABLED', 'disabled');
+    return;
+  }
+  setBadge(id, active ? 'ON' : 'IDLE', active ? 'on' : 'off');
+}
+
+function setBadge(id, label, stateClass) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = positive ? trueLabel : falseLabel;
-  el.className = 'badge ' + (positive ? 'on' : 'off');
+  el.textContent = label;
+  el.className = 'badge ' + stateClass;
+}
+
+function knownPublicIP() {
+  if (lastPublicIP) return lastPublicIP;
+  if (currentOverview && currentOverview.public_ip) return currentOverview.public_ip;
+  return '';
 }
 
 // ── Route list ──────────────────────────────────────────────────────────────
@@ -113,21 +152,82 @@ async function refreshRoutes() {
   try {
     const res = await fetch(`${API}/api/v1/routes`);
     if (!res.ok) return;
-    const routes = await res.json();
-    const ul = document.getElementById('routes-list');
-
-    if (!routes || routes.length === 0) {
-      ul.innerHTML = '<li><span class="empty">No routes managed.</span></li>';
-      return;
-    }
-
-    ul.innerHTML = routes.map(r =>
-      `<li>
-        <span class="dest">${r.destination}</span>
-        <span class="via">→ ${r.interface || r.gateway || '—'}</span>
-      </li>`
-    ).join('');
+    currentRoutes = await res.json();
+    renderRoutes();
   } catch (_) {}
+}
+
+function renderRoutes() {
+  const ul = document.getElementById('routes-list');
+  const filterSel = document.getElementById('routes-filter');
+  const filter = filterSel ? filterSel.value : 'all';
+  const routes = Array.isArray(currentRoutes) ? currentRoutes : [];
+
+  const filtered = routes.filter((r) => {
+    if (filter === 'all') return true;
+    if (filter === 'default') return !!r.is_default;
+    if (!filter.startsWith('policy:')) return true;
+    return r.policy_name === filter.slice('policy:'.length);
+  });
+
+  if (filtered.length === 0) {
+    ul.innerHTML = '<li><span class="empty">No routes for this filter.</span></li>';
+    return;
+  }
+
+  ul.innerHTML = filtered.map(r => {
+    const tag = r.is_default
+      ? '<span class="route-tag default">default</span>'
+      : (r.policy_name ? `<span class="route-tag policy">${esc(r.policy_name)}</span>` : '');
+    return `<li>
+      <span class="dest">${r.destination}</span>
+      <span class="route-meta">
+        ${tag}
+        <span class="via">→ ${esc(r.interface || r.gateway || '—')}</span>
+      </span>
+    </li>`;
+  }).join('');
+}
+
+async function refreshNetworkOverview() {
+  try {
+    const res = await fetch(`${API}/api/v1/network/overview`);
+    if (!res.ok) return;
+    currentOverview = await res.json();
+    renderNetworkOverview();
+  } catch (_) {}
+}
+
+function renderNetworkOverview() {
+  const o = currentOverview || {};
+  document.getElementById('base-connected').textContent = `${o.connected_tunnels || 0}`;
+
+  const defaults = Array.isArray(o.default_routes) ? o.default_routes : [];
+  const topDefault = defaults[0] || null;
+  document.getElementById('base-egress').textContent = topDefault ? `${topDefault.interface || '—'} (metric ${topDefault.metric ?? '—'})` : '—';
+  document.getElementById('base-gateway').textContent = topDefault ? (topDefault.gateway || 'on-link') : '—';
+
+  const localIPs = Array.isArray(o.local_ips) ? o.local_ips : [];
+  document.getElementById('base-local-ips').textContent = localIPs.length ? localIPs.join(', ') : '—';
+  if (o.public_ip) lastPublicIP = o.public_ip;
+  const pub = knownPublicIP();
+  document.getElementById('base-public-ip').textContent = pub || '—';
+  document.getElementById('public-ip').textContent = pub || '—';
+}
+
+function syncRouteFilter(policies) {
+  const sel = document.getElementById('routes-filter');
+  if (!sel) return;
+  const prev = sel.value || 'all';
+  const names = [...new Set((policies || []).map((p) => p.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const options = [
+    '<option value="all">All routes</option>',
+    '<option value="default">Default route</option>',
+    ...names.map((name) => `<option value="policy:${esc(name)}">Policy: ${esc(name)}</option>`),
+  ];
+  sel.innerHTML = options.join('');
+  const stillExists = Array.from(sel.options).some((o) => o.value === prev);
+  sel.value = stillExists ? prev : 'all';
 }
 
 // ── Traffic Map (policies + resolve) ─────────────────────────────────────────
@@ -137,6 +237,8 @@ async function refreshPolicies() {
     const res = await fetch(`${API}/api/v1/policies`);
     if (!res.ok) return;
     const policies = await res.json();
+    currentPolicies = policies || [];
+    syncRouteFilter(currentPolicies);
     const tbody = document.getElementById('policies-body');
 
     if (!policies || policies.length === 0) {
@@ -175,27 +277,75 @@ async function resolveTarget() {
   }
 
   try {
-    const res = await fetch(`${API}/api/v1/resolve?target=${encodeURIComponent(target)}`);
-    if (!res.ok) return;
-    const data = await res.json();
+    const data = await resolveOneTarget(target);
+    if (!data) return;
 
     resultDiv.style.display = 'block';
     if (data.matched) {
       resultDiv.className = 'resolve-result matched';
-      resultDiv.innerHTML = `<strong>${esc(data.target)}</strong> → <strong>${esc(data.via)}</strong> (${esc(data.rule)})`;
+      const lhs = data.app ? `app:${esc(data.app)}` : esc(data.target);
+      resultDiv.innerHTML = `<strong>${lhs}</strong> → <strong>${esc(data.via)}</strong> (${esc(data.rule)})`;
     } else {
       resultDiv.className = 'resolve-result no-match';
-      resultDiv.innerHTML = `<strong>${esc(data.target)}</strong> → default route (no matching policy)`;
+      const lhs = data.app ? `app:${esc(data.app)}` : esc(data.target);
+      const publicIP = lastPublicIP ? ` (public IP ${esc(lastPublicIP)})` : '';
+      resultDiv.innerHTML = `<strong>${lhs}</strong> → default route (no matching policy)${publicIP}`;
     }
   } catch (_) {
     resultDiv.style.display = 'none';
   }
 }
 
+async function resolveBatchTargets() {
+  const input = document.getElementById('resolve-batch-input');
+  const out = document.getElementById('resolve-batch-result');
+  const lines = input.value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    out.style.display = 'none';
+    return;
+  }
+  const rows = [];
+  for (const item of lines) {
+    const data = await resolveOneTarget(item);
+    if (!data) continue;
+    const target = data.app ? `app:${data.app}` : data.target;
+    const route = data.matched ? data.via : 'default route';
+    const rule = data.matched ? (data.rule || 'matched') : 'no matching policy';
+    rows.push({ target, route, rule, matched: data.matched });
+  }
+
+  if (rows.length === 0) {
+    out.style.display = 'none';
+    return;
+  }
+  out.style.display = 'block';
+  out.innerHTML = `<table>
+    <thead><tr><th>Target</th><th>Route</th><th>Rule</th></tr></thead>
+    <tbody>${rows.map((r) => `<tr>
+      <td>${esc(r.target)}</td>
+      <td>${r.matched ? `<span class="route-tag policy">${esc(r.route)}</span>` : `<span class="route-tag default">default</span>`}</td>
+      <td>${esc(r.rule)}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function resolveOneTarget(raw) {
+  const value = (raw || '').trim();
+  if (!value) return null;
+  const isApp = value.toLowerCase().startsWith('app:');
+  const query = isApp
+    ? `app=${encodeURIComponent(value.slice(4).trim())}`
+    : `target=${encodeURIComponent(value)}`;
+  const res = await fetch(`${API}/api/v1/resolve?${query}`);
+  if (!res.ok) return null;
+  return res.json();
+}
+
 // Enter key in resolve input triggers search.
 document.getElementById('resolve-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') resolveTarget();
 });
+document.getElementById('routes-filter').addEventListener('change', renderRoutes);
 
 // Simple HTML escape.
 function esc(s) {
@@ -207,24 +357,39 @@ function esc(s) {
 // ── VPN actions ──────────────────────────────────────────────────────────────
 
 async function connectVPN(name) {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = 'Connecting…';
   try {
     await fetch(`${API}/api/v1/tunnels/${name}/connect`, { method: 'POST' });
+    refreshRoutes();
+  } catch (_) {
   } finally {
-    setTimeout(() => { btn.disabled = false; }, 2000);
+    setTimeout(() => {
+      refreshRoutes();
+      refreshNetworkOverview();
+    }, 600);
+  }
+}
+
+async function cancelConnectVPN(name) {
+  try {
+    await fetch(`${API}/api/v1/tunnels/${name}/cancel_connect`, { method: 'POST' });
+  } catch (_) {
+  } finally {
+    setTimeout(() => {
+      refreshRoutes();
+      refreshNetworkOverview();
+    }, 600);
   }
 }
 
 async function disconnectVPN(name) {
-  const btn = event.target;
-  btn.disabled = true;
-  btn.textContent = 'Disconnecting…';
   try {
     await fetch(`${API}/api/v1/tunnels/${name}/disconnect`, { method: 'POST' });
+  } catch (_) {
   } finally {
-    setTimeout(() => { btn.disabled = false; }, 2000);
+    setTimeout(() => {
+      refreshRoutes();
+      refreshNetworkOverview();
+    }, 600);
   }
 }
 
@@ -250,10 +415,12 @@ function formatDuration(seconds) {
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
 connectWS();
-refreshSecurity();
 refreshRoutes();
 refreshPolicies();
+refreshNetworkOverview();
+refreshSecurity();
 
 setInterval(refreshSecurity, 30_000);
 setInterval(refreshRoutes, 30_000);
 setInterval(refreshPolicies, 30_000);
+setInterval(refreshNetworkOverview, 30_000);

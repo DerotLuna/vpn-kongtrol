@@ -1,8 +1,8 @@
 # Kongtrol Landing (`site/`)
 
-Landing público independiente del dashboard embebido (`web/dashboard`).
+Public landing site, separate from the embedded dashboard (`web/dashboard`).
 
-## Desarrollo local
+## Local development
 
 ```bash
 cd site
@@ -17,11 +17,11 @@ cd site
 pnpm run build
 ```
 
-## Descargas
+## Downloads
 
-- El sitio usa binarios locales en `site/_binaries/`.
-- `GET /api/download` valida token temporal y sirve el archivo desde esa carpeta.
-- Archivos esperados:
+- The site serves local binaries from `site/_binaries/`.
+- `GET /api/download` validates a temporary token and serves the file from that folder.
+- Expected files:
   - `kongtrol-windows-amd64.exe`
   - `kongtrol-darwin-amd64`
   - `kongtrol-darwin-arm64`
@@ -29,7 +29,7 @@ pnpm run build
   - `kongtrol-linux-arm64`
   - `checksums.txt`
 
-Para refrescarlos desde este repo:
+To refresh them from this repo:
 
 ```bash
 make build-all-cli

@@ -23,10 +23,10 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 
+	"github.com/vpn-kongtrol/kongtrol/assets"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/forticlient"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/protonvpn"
-	"github.com/vpn-kongtrol/kongtrol/assets"
 )
 
 var (
@@ -152,10 +152,12 @@ func initDaemon() error {
 		col,
 		routeMgr,
 		ks,
+		cfg.Security.KillSwitch.Enabled,
 		leak,
 		eng,
 		nil, // PolicyResolver is managed by the CLI daemon, not the tray
 		nil, // DNSManager is managed by the CLI daemon, not the tray
+		cfg.Security.DNSGuard.Enabled,
 	)
 	return srv.Start()
 }

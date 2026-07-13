@@ -193,6 +193,8 @@ make build          # current platform
 make build-all-cli  # all platforms → build/dist/
 ```
 
+> **Windows note:** run your shell as **Administrator** for tunnel, routing, DNS guard, and kill switch operations (`kongtrol init`, `up`, `down`, `doctor`).
+
 ### Landing site (separate from embedded dashboard)
 
 The public landing is under `site/` and is independent from `web/dashboard`.
@@ -237,6 +239,7 @@ kongtrol doctor                      # validate full stack: binaries · certs ·
 
 # Tunnel lifecycle
 kongtrol up <profile> [profile...]   # connect one or more profiles
+kongtrol up --all                    # connect all configured profiles
 kongtrol up --group work             # connect all profiles in a group
 kongtrol down <profile>              # disconnect a profile
 kongtrol down --group work           # disconnect all profiles in a group

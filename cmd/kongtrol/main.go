@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -43,8 +44,8 @@ import (
 )
 
 // version is set at build time via -ldflags "-X main.version=v1.2.3".
-// Falls back to "dev" when built without ldflags (local go build).
-var version = "dev"
+// Falls back to a local dev marker when built without ldflags.
+var version = "v1.0.1-dev"
 
 var (
 	cfgPath        string
@@ -66,7 +67,7 @@ var rootCmd = &cobra.Command{
 	Short: "Multi-VPN orchestration — route traffic, enforce security, monitor tunnels",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// init shows its own animated logo — skip the compact header there.
-		if cmd.Name() != "init" {
+		if cmd.Name() != "init" && cmd.Name() != "version" {
 			PrintHeader(version)
 		}
 		// Skip config load for init and version commands.
@@ -90,19 +91,33 @@ func init() {
 	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(exportCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 // ── up ───────────────────────────────────────────────────────────────────────
 
+var upAll bool
 var upGroup string
 
 var upCmd = &cobra.Command{
 	Use:   "up [profile...]",
-	Short: "Connect one or more VPN profiles (or a group with --group)",
+	Short: "Connect one or more VPN profiles (or all with --all)",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		targets, err := resolveProfiles(args, upGroup)
-		if err != nil {
-			return err
+		startedAll := time.Now()
+		var (
+			targets []string
+			err     error
+		)
+		if upAll {
+			targets = make([]string, 0, len(adapters))
+			for name := range adapters {
+				targets = append(targets, name)
+			}
+		} else {
+			targets, err = resolveProfiles(args, upGroup)
+			if err != nil {
+				return err
+			}
 		}
 		signalCtx := contextWithSignal()
 		ctx, cancelCtx := context.WithCancel(signalCtx)
@@ -120,16 +135,40 @@ var upCmd = &cobra.Command{
 		}()
 
 		for _, name := range targets {
+			startedProfile := time.Now()
 			spin := newSpinner(fmt.Sprintf("Connecting %s", name))
 			spin.Start()
-			err := connectProfile(ctx, name)
+			wasConnected := adapters[name].Status().Normalize() == vpn.StatusConnected
+			connectCtx, cancelConnect := context.WithTimeout(ctx, 5*time.Minute)
+			connectDone := make(chan error, 1)
+			go func() {
+				connectDone <- connectProfile(connectCtx, name)
+			}()
+			select {
+			case err = <-connectDone:
+			case <-ctx.Done():
+				err = ctx.Err()
+			}
+			cancelConnect()
 			spin.Stop()
 			if err != nil {
-				fmt.Println(tuiErr(paintBold(cBright, name) + " " + err.Error()))
+				if errors.Is(err, context.Canceled) {
+					fmt.Println(tuiWarn("connection cancelled"))
+					return nil
+				}
+				if errors.Is(err, context.DeadlineExceeded) || errors.Is(connectCtx.Err(), context.DeadlineExceeded) {
+					err = fmt.Errorf("connection timed out after 5m (check VPN client window/credentials, then retry)")
+				}
+				fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error() + "  " + paint(cDim, "("+time.Since(startedProfile).Round(time.Second).String()+")")))
 				return fmt.Errorf("up %s: %w", name, err)
 			}
-			fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, "connected")))
+			if wasConnected {
+				fmt.Println(tuiInfo(paintBold(cBright, name) + "  " + paint(cDim, "already connected ("+time.Since(startedProfile).Round(time.Second).String()+")")))
+			} else {
+				fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, "connected in "+time.Since(startedProfile).Round(time.Second).String())))
+			}
 		}
+		fmt.Println(tuiInfo(paint(cDim, fmt.Sprintf("All targets connected in %s", time.Since(startedAll).Round(time.Second)))))
 
 		// Activate kill switch now that tunnels are up.
 		// Collect all tunnel interfaces so the kill switch allows their traffic.
@@ -220,6 +259,7 @@ var upCmd = &cobra.Command{
 }
 
 func init() {
+	upCmd.Flags().BoolVar(&upAll, "all", false, "connect all configured profiles")
 	upCmd.Flags().StringVar(&upGroup, "group", "", "connect all profiles in a named group")
 }
 
@@ -350,8 +390,10 @@ func statusLabel(s vpn.Status) string {
 }
 
 type apiSecurityStatus struct {
-	KillSwitch bool `json:"kill_switch"`
-	DNSGuard   bool `json:"dns_guard"`
+	KillSwitch        bool `json:"kill_switch"`
+	KillSwitchEnabled bool `json:"kill_switch_enabled"`
+	DNSGuard          bool `json:"dns_guard"`
+	DNSGuardEnabled   bool `json:"dns_guard_enabled"`
 }
 
 func dashboardURL() string {
@@ -431,8 +473,8 @@ func printStatus() {
 				uptime)
 		}
 		fmt.Println("  " + sep)
-		fmt.Println("  " + securityGlyph(sec.KillSwitch) + "  " + styleBright.Render("Kill switch") + "  " + ternaryStatus(sec.KillSwitch))
-		fmt.Println("  " + securityGlyph(sec.DNSGuard) + "  " + styleBright.Render("DNS Guard") + "  " + ternaryStatus(sec.DNSGuard))
+		fmt.Println("  " + securityGlyph(sec.KillSwitchEnabled, sec.KillSwitch) + "  " + styleBright.Render("Kill switch") + "  " + featureStatus(sec.KillSwitchEnabled, sec.KillSwitch))
+		fmt.Println("  " + securityGlyph(sec.DNSGuardEnabled, sec.DNSGuard) + "  " + styleBright.Render("DNS Guard") + "  " + featureStatus(sec.DNSGuardEnabled, sec.DNSGuard))
 		return
 	}
 
@@ -484,7 +526,20 @@ func ternaryStatus(active bool) string {
 	return styleStatusDown.Render("off")
 }
 
-func securityGlyph(active bool) string {
+func featureStatus(enabled, active bool) string {
+	if !enabled {
+		return styleDim.Render("disabled")
+	}
+	if active {
+		return styleStatusUp.Render("ACTIVE")
+	}
+	return styleStatusDown.Render("idle")
+}
+
+func securityGlyph(enabled, active bool) string {
+	if !enabled {
+		return styleDim.Render("◇")
+	}
 	if active {
 		return styleStatusUp.Render("⬡")
 	}
@@ -921,6 +976,14 @@ var exportCmd = &cobra.Command{
 	},
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show CLI version",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(version)
+	},
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 // resolveProfiles returns the list of profile names from explicit args or a group.
@@ -1068,8 +1131,10 @@ func connectProfile(ctx context.Context, name string) error {
 		}
 	}
 
-	if err := adapter.Connect(ctx, aCfg); err != nil {
-		return err
+	if adapter.Status().Normalize() != vpn.StatusConnected {
+		if err := adapter.Connect(ctx, aCfg); err != nil {
+			return err
+		}
 	}
 
 	// Mark active so watchdog monitors this profile for unexpected drops.
@@ -1127,10 +1192,12 @@ func buildAPIServer() *api.Server {
 		col,
 		routeMgr,
 		ks,
+		cfg.Security.KillSwitch.Enabled,
 		leak,
 		engine,
 		policyResolver,
 		dnsMgr,
+		cfg.Security.DNSGuard.Enabled,
 	)
 }
 

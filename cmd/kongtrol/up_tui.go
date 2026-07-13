@@ -110,8 +110,7 @@ func (m upModel) View() string {
 
 	// ── header ────────────────────────────────────────────────────────────────
 	b.WriteString("\n")
-	crown := styleGold.Render("▲ ▲ ▲ ▲")
-	b.WriteString("  " + crown + "  " + kongTitle() + "  " + styleDim.Render(version) + "\n")
+	b.WriteString("  " + kongTitle() + "  " + styleDim.Render(version) + "\n")
 	b.WriteString("\n")
 
 	// ── tunnel table ──────────────────────────────────────────────────────────

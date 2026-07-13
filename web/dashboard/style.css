@@ -28,6 +28,27 @@ body {
   font-size: 13.5px;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) var(--surface);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--border2);
+  border-radius: 999px;
+  border: 2px solid var(--surface);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #3a4a67;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
@@ -241,6 +262,8 @@ tr:hover td { background: var(--surface2); }
 .badge.off  { background: var(--red-dim);    color: var(--red);   border-color: rgba(239,68,68,0.3); }
 .badge.ok   { background: var(--green-dim);  color: var(--green); border-color: rgba(34,197,94,0.3); }
 .badge.leak { background: var(--red-dim);    color: var(--red);   border-color: rgba(239,68,68,0.3); }
+.badge.disabled { background: var(--surface2); color: var(--muted); border-color: var(--border2); }
+.badge.pending  { background: var(--blue-dim); color: var(--blue); border-color: rgba(59,130,246,0.3); }
 
 /* ── Security list ───────────────────────────────────────────────────────── */
 
@@ -261,6 +284,20 @@ tr:hover td { background: var(--surface2); }
 .mono  { font-family: var(--font-mono); font-size: 12px; color: var(--text); }
 .muted { color: var(--muted); font-size: 11.5px; }
 
+#base-network-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+#base-network-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 /* ── Routes list ─────────────────────────────────────────────────────────── */
 
 #routes-list {
@@ -268,6 +305,9 @@ tr:hover td { background: var(--surface2); }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 #routes-list li {
@@ -284,6 +324,65 @@ tr:hover td { background: var(--surface2); }
 
 #routes-list .dest { color: var(--text); }
 #routes-list .via  { color: var(--blue); font-size: 11px; }
+
+.routes-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: -6px 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.routes-toolbar select {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 6px 30px 6px 10px;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.routes-toolbar select:focus {
+  border-color: var(--blue);
+}
+
+.route-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.route-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.route-tag.default {
+  border-color: rgba(59,130,246,0.3);
+  color: var(--blue);
+}
+
+.route-tag.policy {
+  border-color: rgba(34,197,94,0.3);
+  color: var(--green);
+}
+
+#routes-section {
+  grid-column: 1 / -1;
+}
 
 /* ── Action buttons ──────────────────────────────────────────────────────── */
 
@@ -372,6 +471,40 @@ button.action.disconnect:hover {
   background: var(--surface2);
   border-color: var(--border2);
   color: var(--muted);
+}
+
+.resolve-batch {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+
+.resolve-batch textarea {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  resize: vertical;
+}
+
+.resolve-batch textarea:focus {
+  border-color: var(--blue);
+}
+
+.resolve-batch-result {
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.resolve-batch-result table {
+  width: 100%;
 }
 
 #policies-table td:nth-child(2) {

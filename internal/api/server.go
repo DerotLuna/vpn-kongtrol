@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -25,10 +26,14 @@ type Server struct {
 	collector      *monitor.Collector
 	routes         routing.RouteManager
 	ks             security.KillSwitch
+	killSwitchOn   bool
 	leakTest       *security.LeakTester
 	policyEngine   *policy.Engine
 	policyResolver *monitor.PolicyResolver
 	dnsMgr         *monitor.DNSManager
+	dnsGuardOn     bool
+	connectMu      sync.Mutex
+	connectCancel  map[string]context.CancelFunc
 	upgrader       websocket.Upgrader
 	srv            *http.Server
 }
@@ -41,10 +46,12 @@ func NewServer(
 	collector *monitor.Collector,
 	routes routing.RouteManager,
 	ks security.KillSwitch,
+	killSwitchEnabled bool,
 	leakTest *security.LeakTester,
 	policyEngine *policy.Engine,
 	policyResolver *monitor.PolicyResolver,
 	dnsMgr *monitor.DNSManager,
+	dnsGuardEnabled bool,
 ) *Server {
 	return &Server{
 		bind:           bind,
@@ -53,10 +60,13 @@ func NewServer(
 		collector:      collector,
 		routes:         routes,
 		ks:             ks,
+		killSwitchOn:   killSwitchEnabled,
 		leakTest:       leakTest,
 		policyEngine:   policyEngine,
 		policyResolver: policyResolver,
 		dnsMgr:         dnsMgr,
+		dnsGuardOn:     dnsGuardEnabled,
+		connectCancel:  make(map[string]context.CancelFunc),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// Only allow connections from localhost.
@@ -75,8 +85,10 @@ func (s *Server) Start() error {
 	// REST API endpoints.
 	mux.HandleFunc("GET /api/v1/tunnels", s.handleListTunnels)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/connect", s.handleConnect)
+	mux.HandleFunc("POST /api/v1/tunnels/{name}/cancel_connect", s.handleCancelConnect)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/disconnect", s.handleDisconnect)
 	mux.HandleFunc("GET /api/v1/routes", s.handleListRoutes)
+	mux.HandleFunc("GET /api/v1/network/overview", s.handleNetworkOverview)
 	mux.HandleFunc("GET /api/v1/security/status", s.handleSecurityStatus)
 	mux.HandleFunc("GET /api/v1/policies", s.handleListPolicies)
 	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)

@@ -86,6 +86,8 @@ Asegúrate de tener instalados los clientes VPN que vayas a usar:
    kongtrol --help
    ```
 
+> **Importante (Windows):** abre PowerShell o CMD como **Administrador** para usar `kongtrol init`, `kongtrol up`, `kongtrol down` y `kongtrol doctor` (requieren permisos elevados para rutas/firewall/DNS).
+
 ### macOS
 
 ```bash

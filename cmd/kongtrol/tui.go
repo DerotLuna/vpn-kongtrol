@@ -85,8 +85,9 @@ func tuiBright(s string) string { return styleBright.Render(s) }
 var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 
 type spinner struct {
-	label string
-	stop  chan struct{}
+	label     string
+	stop      chan struct{}
+	startedAt time.Time
 }
 
 func newSpinner(label string) *spinner {
@@ -94,6 +95,7 @@ func newSpinner(label string) *spinner {
 }
 
 func (s *spinner) Start() {
+	s.startedAt = time.Now()
 	if !isTerminal {
 		fmt.Println(s.label + "...")
 		return
@@ -104,9 +106,10 @@ func (s *spinner) Start() {
 			case <-s.stop:
 				return
 			default:
+				elapsed := time.Since(s.startedAt).Round(time.Second)
 				fmt.Printf("\r\033[2K%s %s",
 					styleInfo.Render(spinFrames[i%len(spinFrames)]),
-					styleDim.Render(s.label))
+					styleDim.Render(fmt.Sprintf("%s (%s)", s.label, elapsed)))
 				time.Sleep(80 * time.Millisecond)
 			}
 		}
@@ -167,7 +170,7 @@ func kongLogoLines(leftEye, rightEye string, eyeStyle lipgloss.Style, crownStyle
 	}
 
 	return []string{
-		"  " + k(" ▲  ▲  ▲  ▲ "),
+		"  " + k(""),
 		"  " + s("░▒▓██████████▓▒░"),
 		" " + s("▒▓████▒░    ░▒████▓▒"),
 		s("▒▓████  ░▒▓░  ░▓▒░  ████▓▒"),
@@ -195,8 +198,7 @@ func redrawLogoLines(n int, lines []string) {
 // PrintHeader prints a compact single-line banner for non-wizard commands.
 func PrintHeader(ver string) {
 	fmt.Println()
-	crown := styleGold.Render("▲ ▲ ▲ ▲")
-	line := crown + "  " + kongTitle()
+	line := kongTitle()
 	if ver != "" {
 		line += "  " + styleDim.Render(ver)
 	}
@@ -216,27 +218,27 @@ func AnimateLogo(subtitle, ver string) {
 		eyeClosed = "─"
 	)
 
-	crownGlow  := lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Bold(true) // bright gold
-	crownDim   := lipgloss.NewStyle().Foreground(lipgloss.Color("136"))            // amber (dim)
-	crownGone  := styleKong                                                        // same as body → invisible
+	crownGlow := lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Bold(true) // bright gold
+	crownDim := lipgloss.NewStyle().Foreground(lipgloss.Color("136"))             // amber (dim)
+	crownGone := styleKong                                                        // same as body → invisible
 
 	type frame struct {
-		l, r        string
-		eyeStyle    lipgloss.Style
-		crownStyle  lipgloss.Style
-		hold        time.Duration
+		l, r       string
+		eyeStyle   lipgloss.Style
+		crownStyle lipgloss.Style
+		hold       time.Duration
 	}
 
 	anim := []frame{
-		{eyeOpen,   eyeOpen,   styleEye,  crownGlow, 700 * time.Millisecond},
-		{eyeHalf,   eyeHalf,   styleEye,  crownDim,  60 * time.Millisecond},
+		{eyeOpen, eyeOpen, styleEye, crownGlow, 700 * time.Millisecond},
+		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
 		{eyeClosed, eyeClosed, styleKong, crownGone, 130 * time.Millisecond},
-		{eyeHalf,   eyeHalf,   styleEye,  crownDim,  60 * time.Millisecond},
-		{eyeOpen,   eyeOpen,   styleEye,  crownGlow, 900 * time.Millisecond},
-		{eyeHalf,   eyeHalf,   styleEye,  crownDim,  60 * time.Millisecond},
+		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
+		{eyeOpen, eyeOpen, styleEye, crownGlow, 900 * time.Millisecond},
+		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
 		{eyeClosed, eyeClosed, styleKong, crownGone, 130 * time.Millisecond},
-		{eyeHalf,   eyeHalf,   styleEye,  crownDim,  60 * time.Millisecond},
-		{eyeOpen,   eyeOpen,   styleEye,  crownGlow, 0}, // final state
+		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
+		{eyeOpen, eyeOpen, styleEye, crownGlow, 0}, // final state
 	}
 
 	first := kongLogoLines(anim[0].l, anim[0].r, anim[0].eyeStyle, anim[0].crownStyle, subtitle, ver)

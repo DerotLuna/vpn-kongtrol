@@ -64,11 +64,11 @@ func (m *windowsRouteManager) Delete(r Route) error {
 
 // List returns VPN-related routes from the OS routing table.
 // Includes both kongtrol-managed routes and routes added by VPN clients
-// (WireGuard, FortiClient, etc.). Filters out default system routes.
+// (WireGuard, FortiClient, etc.), plus default route(s) for visibility.
 func (m *windowsRouteManager) List() ([]Route, error) {
 	// Read VPN-related routes from the OS route table.
 	// First, find VPN adapter interface indexes (by description keywords).
-	// Then, get routes only for those interfaces.
+	// Then, get routes for those interfaces + default route(s).
 	ps := `$vpnAdapters = Get-NetAdapter | Where-Object { ` +
 		`$_.InterfaceDescription -like '*Fortinet*' -or ` +
 		`$_.InterfaceDescription -like '*WireGuard*' -or ` +
@@ -82,17 +82,16 @@ func (m *windowsRouteManager) List() ([]Route, error) {
 		`$_.InterfaceDescription -like '*GlobalProtect*' -or ` +
 		`$_.InterfaceDescription -like '*Cisco AnyConnect*' ` +
 		`}; ` +
-		`if ($vpnAdapters) { ` +
-		`$idxs = $vpnAdapters.InterfaceIndex; ` +
+		`$idxs = @(); if ($vpnAdapters) { $idxs = $vpnAdapters.InterfaceIndex }; ` +
 		`Get-NetRoute -AddressFamily IPv4 -ErrorAction SilentlyContinue | ` +
-		`Where-Object { $idxs -contains $_.InterfaceIndex -and ` +
-		`$_.DestinationPrefix -ne '0.0.0.0/0' -and ` +
-		`$_.DestinationPrefix -ne '255.255.255.255/32' } | ` +
+		`Where-Object { ($idxs -contains $_.InterfaceIndex -and $_.DestinationPrefix -ne '255.255.255.255/32') -or $_.DestinationPrefix -eq '0.0.0.0/0' } | ` +
 		`ForEach-Object { ` +
 		`$idx = $_.InterfaceIndex; ` +
-		`$name = ($vpnAdapters | Where-Object { $_.InterfaceIndex -eq $idx }).Name; ` +
+		`$name = $null; ` +
+		`if ($vpnAdapters) { $name = ($vpnAdapters | Where-Object { $_.InterfaceIndex -eq $idx }).Name }; ` +
 		`if (-not $name) { $name = (Get-NetAdapter -InterfaceIndex $idx -ErrorAction SilentlyContinue).Name }; ` +
-		`"$($_.DestinationPrefix)|$($_.NextHop)|$name|$($_.RouteMetric)" } }`
+		`if (-not $name) { $name = "if-" + $idx }; ` +
+		`"$($_.DestinationPrefix)|$($_.NextHop)|$name|$($_.RouteMetric)" }`
 	cmd := exec.Command("powershell", "-NoProfile", "-Command", ps)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

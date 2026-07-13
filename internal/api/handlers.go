@@ -3,11 +3,17 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/policy"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -38,19 +44,42 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
 	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
-	defer cancel()
-
-	// AdapterConfig is pre-loaded by the orchestrator; for API-triggered
-	// connects we use the last known config from the adapter's state.
-	// Detailed credential injection is handled by the CLI's connect flow.
-	if err := adapter.Reconnect(ctx); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if st := adapter.Status().Normalize(); st == vpn.StatusConnected {
+		writeJSON(w, http.StatusOK, map[string]string{"status": "already_connected", "tunnel": name})
+		return
+	}
+	if s.hasPendingConnect(name) {
+		writeError(w, http.StatusConflict, "connect already in progress for "+name)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{"status": "connected", "tunnel": name})
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	s.setPendingConnect(name, cancel)
+	go func() {
+		defer s.clearPendingConnect(name)
+		// AdapterConfig is pre-loaded by the orchestrator; API-triggered connects
+		// use the adapter's previously configured values.
+		_ = adapter.Reconnect(ctx)
+	}()
+
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "connecting", "tunnel": name})
+}
+
+// POST /api/v1/tunnels/{name}/cancel_connect
+func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	adapter, ok := s.adapters[name]
+	if !ok {
+		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
+		return
+	}
+	s.cancelPendingConnect(name)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	_ = adapter.Disconnect(ctx)
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "connect_cancelled", "tunnel": name})
 }
 
 // POST /api/v1/tunnels/{name}/disconnect
@@ -61,6 +90,7 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
 	}
+	s.cancelPendingConnect(name)
 
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
@@ -71,6 +101,37 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "tunnel": name})
+}
+
+func (s *Server) hasPendingConnect(name string) bool {
+	s.connectMu.Lock()
+	defer s.connectMu.Unlock()
+	_, ok := s.connectCancel[name]
+	return ok
+}
+
+func (s *Server) setPendingConnect(name string, cancel context.CancelFunc) {
+	s.connectMu.Lock()
+	defer s.connectMu.Unlock()
+	s.connectCancel[name] = cancel
+}
+
+func (s *Server) clearPendingConnect(name string) {
+	s.connectMu.Lock()
+	defer s.connectMu.Unlock()
+	delete(s.connectCancel, name)
+}
+
+func (s *Server) cancelPendingConnect(name string) {
+	s.connectMu.Lock()
+	cancel, ok := s.connectCancel[name]
+	if ok {
+		delete(s.connectCancel, name)
+	}
+	s.connectMu.Unlock()
+	if ok {
+		cancel()
+	}
 }
 
 // GET /api/v1/routes
@@ -86,33 +147,207 @@ func (s *Server) handleListRoutes(w http.ResponseWriter, r *http.Request) {
 		Gateway     string `json:"gateway"`
 		Interface   string `json:"interface"`
 		Metric      int    `json:"metric"`
+		PolicyName  string `json:"policy_name,omitempty"`
+		PolicyVia   string `json:"policy_via,omitempty"`
+		IsDefault   bool   `json:"is_default"`
 	}
+	var rules []policy.Rule
+	if s.policyEngine != nil {
+		rules = s.policyEngine.Rules()
+	}
+	ruleNameByVia := make(map[string]string, len(rules))
+	for _, rule := range rules {
+		if _, exists := ruleNameByVia[rule.Via]; !exists {
+			ruleNameByVia[rule.Via] = rule.Name
+		}
+	}
+
+	resolvedViaByCIDR := make(map[string]string)
+	if s.policyResolver != nil {
+		for _, snap := range s.policyResolver.Snapshot() {
+			for _, cidr := range snap.ResolvedCIDRs {
+				resolvedViaByCIDR[cidr] = snap.Name
+			}
+		}
+	}
+
 	out := make([]routeDTO, len(routes))
 	for i, r := range routes {
+		dest := r.Destination.String()
 		dto := routeDTO{
-			Destination: r.Destination.String(),
+			Destination: dest,
 			Interface:   r.Interface,
 			Metric:      r.Metric,
+			IsDefault:   isDefaultRoute(r.Destination),
 		}
 		if r.Gateway != nil {
 			dto.Gateway = r.Gateway.String()
 		}
+		if dto.IsDefault {
+			dto.PolicyName = "default"
+			dto.PolicyVia = "system"
+		} else if via, ok := resolvedViaByCIDR[dest]; ok {
+			dto.PolicyVia = via
+			dto.PolicyName = ruleNameByVia[via]
+		} else {
+			dto.PolicyVia, dto.PolicyName = matchStaticPolicy(r.Destination, rules)
+		}
 		out[i] = dto
 	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].IsDefault != out[j].IsDefault {
+			return out[i].IsDefault
+		}
+		if (out[i].PolicyName != "") != (out[j].PolicyName != "") {
+			return out[i].PolicyName != ""
+		}
+		if pI, pJ := cidrPrefixLen(out[i].Destination), cidrPrefixLen(out[j].Destination); pI != pJ {
+			return pI > pJ // more specific first
+		}
+		if out[i].Metric != out[j].Metric {
+			return out[i].Metric < out[j].Metric
+		}
+		if out[i].PolicyName != out[j].PolicyName {
+			return out[i].PolicyName < out[j].PolicyName
+		}
+		return out[i].Destination < out[j].Destination
+	})
 	writeJSON(w, http.StatusOK, out)
+}
+
+// GET /api/v1/network/overview
+func (s *Server) handleNetworkOverview(w http.ResponseWriter, r *http.Request) {
+	type defaultRouteDTO struct {
+		Destination string `json:"destination"`
+		Gateway     string `json:"gateway"`
+		Interface   string `json:"interface"`
+		Metric      int    `json:"metric"`
+	}
+	type overviewDTO struct {
+		ConnectedTunnels int               `json:"connected_tunnels"`
+		DefaultRoutes    []defaultRouteDTO `json:"default_routes"`
+		LocalIPs         []string          `json:"local_ips"`
+		PublicIP         string            `json:"public_ip,omitempty"`
+	}
+
+	out := overviewDTO{}
+
+	if s.collector != nil {
+		for _, m := range s.collector.Snapshot() {
+			if m.Status.Normalize() == vpn.StatusConnected {
+				out.ConnectedTunnels++
+			}
+		}
+	}
+
+	if s.routes != nil {
+		routes, err := s.routes.List()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		for _, rt := range routes {
+			if !isDefaultRoute(rt.Destination) {
+				continue
+			}
+			row := defaultRouteDTO{
+				Destination: rt.Destination.String(),
+				Interface:   rt.Interface,
+				Metric:      rt.Metric,
+			}
+			if rt.Gateway != nil {
+				row.Gateway = rt.Gateway.String()
+			}
+			out.DefaultRoutes = append(out.DefaultRoutes, row)
+		}
+		sort.Slice(out.DefaultRoutes, func(i, j int) bool {
+			return out.DefaultRoutes[i].Metric < out.DefaultRoutes[j].Metric
+		})
+	}
+
+	if ifaces, err := net.Interfaces(); err == nil {
+		ips := make(map[string]struct{})
+		for _, iface := range ifaces {
+			if (iface.Flags & net.FlagUp) == 0 {
+				continue
+			}
+			if (iface.Flags & net.FlagLoopback) != 0 {
+				continue
+			}
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+			for _, a := range addrs {
+				var ip net.IP
+				switch v := a.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				}
+				if ip == nil {
+					continue
+				}
+				ip = ip.To4()
+				if ip == nil || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+					continue
+				}
+				ips[ip.String()] = struct{}{}
+			}
+		}
+		out.LocalIPs = make([]string, 0, len(ips))
+		for ip := range ips {
+			out.LocalIPs = append(out.LocalIPs, ip)
+		}
+		sort.Strings(out.LocalIPs)
+	}
+	if s.leakTest != nil {
+		if lr := s.leakTest.LastResult(); lr != nil && lr.PublicIP != "" {
+			out.PublicIP = lr.PublicIP
+		}
+	}
+	if out.PublicIP == "" {
+		out.PublicIP = fetchPublicIP()
+	}
+
+	writeJSON(w, http.StatusOK, out)
+}
+
+func fetchPublicIP() string {
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("https://api.ipify.org")
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return ""
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 64))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(body))
 }
 
 // GET /api/v1/security/status
 func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	type secStatus struct {
-		KillSwitch bool        `json:"kill_switch"`
-		DNSGuard   bool        `json:"dns_guard"`
-		LeakCheck  interface{} `json:"leak_check"`
+		KillSwitch           bool        `json:"kill_switch"`
+		KillSwitchEnabled    bool        `json:"kill_switch_enabled"`
+		DNSGuard             bool        `json:"dns_guard"`
+		DNSGuardEnabled      bool        `json:"dns_guard_enabled"`
+		LeakDetectionEnabled bool        `json:"leak_detection_enabled"`
+		LeakCheck            interface{} `json:"leak_check"`
 	}
 
 	status := secStatus{
-		KillSwitch: s.ks != nil && s.ks.IsEnabled(),
-		DNSGuard:   s.dnsMgr != nil && s.dnsMgr.IsActive(),
+		KillSwitch:           s.ks != nil && s.ks.IsEnabled(),
+		KillSwitchEnabled:    s.killSwitchOn,
+		DNSGuard:             s.dnsMgr != nil && s.dnsMgr.IsActive(),
+		DNSGuardEnabled:      s.dnsGuardOn,
+		LeakDetectionEnabled: s.leakTest != nil,
 	}
 
 	if s.leakTest != nil {
@@ -128,6 +363,41 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, status)
+}
+
+func isDefaultRoute(dst net.IPNet) bool {
+	ones, bits := dst.Mask.Size()
+	return ones == 0 && (bits == 32 || bits == 128)
+}
+
+func matchStaticPolicy(route net.IPNet, rules []policy.Rule) (via string, name string) {
+	bestPrefix := -1
+	for _, rule := range rules {
+		for _, cidr := range rule.Match.IPRanges {
+			if cidrOverlaps(route, *cidr) {
+				ones, _ := cidr.Mask.Size()
+				if ones > bestPrefix {
+					bestPrefix = ones
+					via = rule.Via
+					name = rule.Name
+				}
+			}
+		}
+	}
+	return via, name
+}
+
+func cidrOverlaps(a net.IPNet, b net.IPNet) bool {
+	return a.Contains(b.IP) || b.Contains(a.IP)
+}
+
+func cidrPrefixLen(cidr string) int {
+	_, n, err := net.ParseCIDR(cidr)
+	if err != nil || n == nil {
+		return -1
+	}
+	ones, _ := n.Mask.Size()
+	return ones
 }
 
 // GET /api/v1/policies — active policies with resolved IPs from PolicyResolver.
@@ -181,7 +451,7 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/resolve?target=<ip-or-domain>&app=<exe-or-path> — which VPN handles this match.
 func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
-	target := r.URL.Query().Get("target")
+	target := normalizeResolveTarget(r.URL.Query().Get("target"))
 	app := r.URL.Query().Get("app")
 	if target == "" && app == "" {
 		writeError(w, http.StatusBadRequest, "missing query parameter: provide 'target' or 'app'")
@@ -202,17 +472,27 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, result)
 		return
 	}
+	rules := s.policyEngine.Rules()
 
 	if app != "" {
 		if vpnName, matched := s.policyEngine.ResolveApp(app); matched {
 			result.Via = vpnName
 			result.Matched = true
-			for _, rule := range s.policyEngine.Rules() {
+			for _, rule := range rules {
 				if rule.Via == vpnName && rule.MatchesApp(app) {
 					result.Rule = rule.Name
 					break
 				}
 			}
+			writeJSON(w, http.StatusOK, result)
+			return
+		}
+	}
+	if target != "" {
+		if via, ruleName, ok := matchPolicyOrProfileToken(target, rules); ok {
+			result.Via = via
+			result.Rule = ruleName
+			result.Matched = true
 			writeJSON(w, http.StatusOK, result)
 			return
 		}
@@ -224,7 +504,7 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 			result.Via = vpnName
 			result.Matched = true
 			// Find matching rule name.
-			for _, rule := range s.policyEngine.Rules() {
+			for _, rule := range rules {
 				if rule.Via == vpnName && rule.MatchesIP(ip) {
 					result.Rule = rule.Name
 					break
@@ -235,7 +515,7 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 		if vpnName, matched := s.policyEngine.ResolveDomain(target); matched {
 			result.Via = vpnName
 			result.Matched = true
-			for _, rule := range s.policyEngine.Rules() {
+			for _, rule := range rules {
 				if rule.Via == vpnName && rule.MatchesDomain(target) {
 					result.Rule = rule.Name
 					break
@@ -245,4 +525,37 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, result)
+}
+
+func normalizeResolveTarget(raw string) string {
+	s := strings.TrimSpace(raw)
+	if s == "" {
+		return ""
+	}
+	if strings.Contains(s, "://") {
+		if u, err := url.Parse(s); err == nil && u.Host != "" {
+			s = u.Hostname()
+		}
+	}
+	if strings.Contains(s, "/") {
+		s = strings.SplitN(s, "/", 2)[0]
+	}
+	if h, _, err := net.SplitHostPort(s); err == nil {
+		s = h
+	}
+	s = strings.Trim(s, "[]")
+	s = strings.TrimSuffix(s, ".")
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
+func matchPolicyOrProfileToken(token string, rules []policy.Rule) (via string, rule string, ok bool) {
+	if token == "" {
+		return "", "", false
+	}
+	for _, r := range rules {
+		if strings.EqualFold(r.Name, token) || strings.EqualFold(r.Via, token) {
+			return r.Via, r.Name, true
+		}
+	}
+	return "", "", false
 }
