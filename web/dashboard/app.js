@@ -10,6 +10,7 @@ let currentPolicies = [];
 let currentRoutes = [];
 let lastPublicIP = '';
 let currentOverview = null;
+let currentPolicyFilter = '';
 
 function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -230,6 +231,19 @@ function syncRouteFilter(policies) {
   sel.value = stillExists ? prev : 'all';
 }
 
+function policyMatchesFilter(p, query) {
+  if (!query) return true;
+  const q = query.toLowerCase();
+  const fields = [
+    p.name || '',
+    p.via || '',
+    ...(p.domains || []),
+    ...(p.ip_ranges || []),
+    ...(p.apps || []),
+  ].map((v) => String(v).toLowerCase());
+  return fields.some((v) => v.includes(q));
+}
+
 // ── Traffic Map (policies + resolve) ─────────────────────────────────────────
 
 async function refreshPolicies() {
@@ -240,13 +254,25 @@ async function refreshPolicies() {
     currentPolicies = policies || [];
     syncRouteFilter(currentPolicies);
     const tbody = document.getElementById('policies-body');
+    const note = document.getElementById('policy-filter-note');
 
     if (!policies || policies.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" class="empty">No policies configured.</td></tr>';
+      note.textContent = '';
       return;
     }
 
-    tbody.innerHTML = policies.map(p => {
+    const filtered = currentPolicies.filter((p) => policyMatchesFilter(p, currentPolicyFilter));
+    note.textContent = currentPolicyFilter
+      ? `Showing ${filtered.length} of ${currentPolicies.length} policies for: ${currentPolicyFilter}`
+      : `Showing ${currentPolicies.length} policies`;
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">No policies match this filter.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(p => {
       // Build match tags
       const tags = [];
       (p.domains || []).forEach(d => tags.push(`<span class="match-tag domain">${esc(d)}</span>`));
@@ -279,6 +305,8 @@ async function resolveTarget() {
   try {
     const data = await resolveOneTarget(target);
     if (!data) return;
+    currentPolicyFilter = target;
+    renderPoliciesFromCache();
 
     resultDiv.style.display = 'block';
     if (data.matched) {
@@ -296,37 +324,45 @@ async function resolveTarget() {
   }
 }
 
-async function resolveBatchTargets() {
-  const input = document.getElementById('resolve-batch-input');
-  const out = document.getElementById('resolve-batch-result');
-  const lines = input.value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
-  if (lines.length === 0) {
-    out.style.display = 'none';
+function renderPoliciesFromCache() {
+  const tbody = document.getElementById('policies-body');
+  const note = document.getElementById('policy-filter-note');
+  if (!Array.isArray(currentPolicies) || currentPolicies.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">No policies configured.</td></tr>';
+    note.textContent = '';
     return;
   }
-  const rows = [];
-  for (const item of lines) {
-    const data = await resolveOneTarget(item);
-    if (!data) continue;
-    const target = data.app ? `app:${data.app}` : data.target;
-    const route = data.matched ? data.via : 'default route';
-    const rule = data.matched ? (data.rule || 'matched') : 'no matching policy';
-    rows.push({ target, route, rule, matched: data.matched });
+  const filtered = currentPolicies.filter((p) => policyMatchesFilter(p, currentPolicyFilter));
+  note.textContent = currentPolicyFilter
+    ? `Showing ${filtered.length} of ${currentPolicies.length} policies for: ${currentPolicyFilter}`
+    : `Showing ${currentPolicies.length} policies`;
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">No policies match this filter.</td></tr>';
+    return;
   }
+  tbody.innerHTML = filtered.map(p => {
+    const tags = [];
+    (p.domains || []).forEach(d => tags.push(`<span class="match-tag domain">${esc(d)}</span>`));
+    (p.ip_ranges || []).forEach(r => tags.push(`<span class="match-tag ip">${esc(r)}</span>`));
+    const resolvedN = (p.resolved_cidrs || []).length;
+    const resolvedClass = resolvedN > 0 ? 'resolved-count' : 'resolved-count zero';
+    const resolvedText = resolvedN > 0 ? `${resolvedN} IPs` : '—';
+    return `<tr>
+      <td>${esc(p.name)}</td>
+      <td><div class="match-tags">${tags.join('')}</div></td>
+      <td><span class="via-profile">${esc(p.via)}</span></td>
+      <td><span class="${resolvedClass}">${resolvedText}</span></td>
+    </tr>`;
+  }).join('');
+}
 
-  if (rows.length === 0) {
-    out.style.display = 'none';
-    return;
-  }
-  out.style.display = 'block';
-  out.innerHTML = `<table>
-    <thead><tr><th>Target</th><th>Route</th><th>Rule</th></tr></thead>
-    <tbody>${rows.map((r) => `<tr>
-      <td>${esc(r.target)}</td>
-      <td>${r.matched ? `<span class="route-tag policy">${esc(r.route)}</span>` : `<span class="route-tag default">default</span>`}</td>
-      <td>${esc(r.rule)}</td>
-    </tr>`).join('')}</tbody>
-  </table>`;
+function clearResolve() {
+  currentPolicyFilter = '';
+  const input = document.getElementById('resolve-input');
+  const resultDiv = document.getElementById('resolve-result');
+  input.value = '';
+  resultDiv.style.display = 'none';
+  renderPoliciesFromCache();
 }
 
 async function resolveOneTarget(raw) {

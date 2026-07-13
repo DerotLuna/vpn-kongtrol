@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
@@ -30,6 +31,8 @@ type Server struct {
 	leakTest       *security.LeakTester
 	policyEngine   *policy.Engine
 	policyResolver *monitor.PolicyResolver
+	configPath     string
+	onPolicyUpdate func(*config.Config, *policy.Engine)
 	dnsMgr         *monitor.DNSManager
 	dnsGuardOn     bool
 	connectMu      sync.Mutex
@@ -50,6 +53,8 @@ func NewServer(
 	leakTest *security.LeakTester,
 	policyEngine *policy.Engine,
 	policyResolver *monitor.PolicyResolver,
+	configPath string,
+	onPolicyUpdate func(*config.Config, *policy.Engine),
 	dnsMgr *monitor.DNSManager,
 	dnsGuardEnabled bool,
 ) *Server {
@@ -64,6 +69,8 @@ func NewServer(
 		leakTest:       leakTest,
 		policyEngine:   policyEngine,
 		policyResolver: policyResolver,
+		configPath:     configPath,
+		onPolicyUpdate: onPolicyUpdate,
 		dnsMgr:         dnsMgr,
 		dnsGuardOn:     dnsGuardEnabled,
 		connectCancel:  make(map[string]context.CancelFunc),
@@ -91,6 +98,11 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/network/overview", s.handleNetworkOverview)
 	mux.HandleFunc("GET /api/v1/security/status", s.handleSecurityStatus)
 	mux.HandleFunc("GET /api/v1/policies", s.handleListPolicies)
+	mux.HandleFunc("GET /api/v1/policies/meta", s.handlePoliciesMeta)
+	mux.HandleFunc("POST /api/v1/policies", s.handleCreatePolicy)
+	mux.HandleFunc("PUT /api/v1/policies/{name}", s.handleUpdatePolicy)
+	mux.HandleFunc("DELETE /api/v1/policies/{name}", s.handleDeletePolicy)
+	mux.HandleFunc("POST /api/v1/policies/test", s.handleTestPolicy)
 	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)
 
 	// WebSocket live metrics feed.

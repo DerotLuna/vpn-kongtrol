@@ -3,17 +3,21 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"gopkg.in/yaml.v3"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -449,6 +453,198 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// GET /api/v1/policies/meta
+func (s *Server) handlePoliciesMeta(w http.ResponseWriter, r *http.Request) {
+	type metaDTO struct {
+		Profiles []string `json:"profiles"`
+	}
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	profiles := make([]string, 0, len(cfg.VPNs))
+	for name := range cfg.VPNs {
+		profiles = append(profiles, name)
+	}
+	sort.Strings(profiles)
+	writeJSON(w, http.StatusOK, metaDTO{Profiles: profiles})
+}
+
+// POST /api/v1/policies
+func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
+	var req config.PolicyRule
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	req = normalizePolicyRule(req)
+	if err := validatePolicyRule(req, cfg); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	for _, p := range cfg.Policies {
+		if strings.EqualFold(p.Name, req.Name) {
+			writeError(w, http.StatusConflict, "policy name already exists")
+			return
+		}
+	}
+	cfg.Policies = append(cfg.Policies, req)
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "created", "policy": req.Name})
+}
+
+// PUT /api/v1/policies/{name}
+func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "missing policy name")
+		return
+	}
+	var req config.PolicyRule
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	req = normalizePolicyRule(req)
+	if req.Name == "" {
+		req.Name = name
+	}
+	if !strings.EqualFold(req.Name, name) {
+		for _, p := range cfg.Policies {
+			if strings.EqualFold(p.Name, req.Name) {
+				writeError(w, http.StatusConflict, "policy name already exists")
+				return
+			}
+		}
+	}
+	if err := validatePolicyRule(req, cfg); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	updated := false
+	for i := range cfg.Policies {
+		if strings.EqualFold(cfg.Policies[i].Name, name) {
+			cfg.Policies[i] = req
+			updated = true
+			break
+		}
+	}
+	if !updated {
+		writeError(w, http.StatusNotFound, "policy not found")
+		return
+	}
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "policy": req.Name})
+}
+
+// DELETE /api/v1/policies/{name}
+func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	var out []config.PolicyRule
+	deleted := false
+	for _, p := range cfg.Policies {
+		if strings.EqualFold(p.Name, name) {
+			deleted = true
+			continue
+		}
+		out = append(out, p)
+	}
+	if !deleted {
+		writeError(w, http.StatusNotFound, "policy not found")
+		return
+	}
+	cfg.Policies = out
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "policy": name})
+}
+
+// POST /api/v1/policies/test
+func (s *Server) handleTestPolicy(w http.ResponseWriter, r *http.Request) {
+	type testReq struct {
+		Rule   config.PolicyRule `json:"rule"`
+		Target string            `json:"target"`
+		App    string            `json:"app"`
+	}
+	type testResp struct {
+		Matched bool   `json:"matched"`
+		Via     string `json:"via"`
+		Rule    string `json:"rule"`
+		Reason  string `json:"reason,omitempty"`
+	}
+	var req testReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	req.Rule = normalizePolicyRule(req.Rule)
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := validatePolicyRule(req.Rule, cfg); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	rule, err := policy.ParseRule(req.Rule.Name, req.Rule.Via, req.Rule.Match.IPRanges, req.Rule.Match.Domains, req.Rule.Match.Apps, 1)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	target := normalizeResolveTarget(req.Target)
+	resp := testResp{Via: req.Rule.Via, Rule: req.Rule.Name}
+	if strings.TrimSpace(req.App) != "" {
+		resp.Matched = rule.MatchesApp(req.App)
+		if !resp.Matched {
+			resp.Reason = "app did not match the rule"
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	if target == "" {
+		writeError(w, http.StatusBadRequest, "target or app is required")
+		return
+	}
+	if ip := net.ParseIP(target); ip != nil {
+		resp.Matched = rule.MatchesIP(ip)
+		if !resp.Matched {
+			resp.Reason = "IP did not match the rule"
+		}
+		writeJSON(w, http.StatusOK, resp)
+		return
+	}
+	resp.Matched = rule.MatchesDomain(target)
+	if !resp.Matched {
+		resp.Reason = "domain did not match the rule"
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // GET /api/v1/resolve?target=<ip-or-domain>&app=<exe-or-path> — which VPN handles this match.
 func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 	target := normalizeResolveTarget(r.URL.Query().Get("target"))
@@ -546,6 +742,93 @@ func normalizeResolveTarget(raw string) string {
 	s = strings.Trim(s, "[]")
 	s = strings.TrimSuffix(s, ".")
 	return strings.ToLower(strings.TrimSpace(s))
+}
+
+func normalizePolicyRule(r config.PolicyRule) config.PolicyRule {
+	r.Name = strings.TrimSpace(r.Name)
+	r.Via = strings.TrimSpace(r.Via)
+	for i := range r.Match.Domains {
+		r.Match.Domains[i] = strings.TrimSpace(r.Match.Domains[i])
+	}
+	for i := range r.Match.IPRanges {
+		r.Match.IPRanges[i] = strings.TrimSpace(r.Match.IPRanges[i])
+	}
+	for i := range r.Match.Apps {
+		r.Match.Apps[i] = strings.TrimSpace(r.Match.Apps[i])
+	}
+	r.Match.Domains = filterNonEmpty(r.Match.Domains)
+	r.Match.IPRanges = filterNonEmpty(r.Match.IPRanges)
+	r.Match.Apps = filterNonEmpty(r.Match.Apps)
+	return r
+}
+
+func filterNonEmpty(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, v := range in {
+		if strings.TrimSpace(v) != "" {
+			out = append(out, strings.TrimSpace(v))
+		}
+	}
+	return out
+}
+
+func validatePolicyRule(rule config.PolicyRule, cfg *config.Config) error {
+	if rule.Name == "" {
+		return fmt.Errorf("policy name is required")
+	}
+	if rule.Via == "" {
+		return fmt.Errorf("policy via profile is required")
+	}
+	if _, ok := cfg.VPNs[rule.Via]; !ok {
+		return fmt.Errorf("via profile %q not found in vpns", rule.Via)
+	}
+	if len(rule.Match.Domains) == 0 && len(rule.Match.IPRanges) == 0 && len(rule.Match.Apps) == 0 {
+		return fmt.Errorf("policy must define at least one domain, ip_range, or app")
+	}
+	_, err := policy.ParseRule(rule.Name, rule.Via, rule.Match.IPRanges, rule.Match.Domains, rule.Match.Apps, 1)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) loadRuntimeConfig() (*config.Config, string, error) {
+	cfgPath := s.configPath
+	if cfgPath == "" {
+		for _, candidate := range config.DefaultPaths() {
+			if _, err := os.Stat(candidate); err == nil {
+				cfgPath = candidate
+				break
+			}
+		}
+	}
+	if cfgPath == "" {
+		return nil, "", fmt.Errorf("config path not found")
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		return nil, "", err
+	}
+	return cfg, cfgPath, nil
+}
+
+func (s *Server) saveRuntimeConfig(cfgPath string, cfg *config.Config) error {
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := os.WriteFile(cfgPath, data, 0600); err != nil {
+		return fmt.Errorf("write config: %w", err)
+	}
+	newEngine, err := policy.New(cfg)
+	if err != nil {
+		return fmt.Errorf("policy engine validation failed: %w", err)
+	}
+	s.policyEngine = newEngine
+	if s.onPolicyUpdate != nil {
+		s.onPolicyUpdate(cfg, newEngine)
+	}
+	return nil
 }
 
 func matchPolicyOrProfileToken(token string, rules []policy.Rule) (via string, rule string, ok bool) {

@@ -14,6 +14,10 @@
       <span class="brand-name">VPN Kongtrol</span>
     </div>
     <div class="header-right">
+      <nav class="top-nav">
+        <a class="nav-link active" href="/">Overview</a>
+        <a class="nav-link" href="/policies.html">Policy Studio</a>
+      </nav>
       <span id="ws-label" class="ws-label">connecting…</span>
       <div id="connection-indicator" class="indicator disconnected" title="Daemon connection"></div>
     </div>
@@ -43,19 +47,16 @@
 
     <section class="card" id="traffic-map-section">
       <div class="card-header">
-        <h2>Traffic Map</h2>
+        <h2>Traffic Map & Policy Resolver</h2>
         <button class="refresh-btn" onclick="refreshPolicies()" title="Refresh">↻</button>
       </div>
       <div class="resolve-bar">
         <input type="text" id="resolve-input" placeholder="IP/domain, URL, policy/profile, or app:process — e.g. claude.ai, https://chatgpt.com, us-content, app:chrome.exe" spellcheck="false" />
         <button class="action" id="resolve-btn" onclick="resolveTarget()">Check</button>
+        <button class="action" id="resolve-clear-btn" onclick="clearResolve()">Clear</button>
       </div>
       <div id="resolve-result" class="resolve-result" style="display:none"></div>
-      <div class="resolve-batch">
-        <textarea id="resolve-batch-input" rows="3" placeholder="Batch check (one per line):&#10;chatgpt.com&#10;oracle.com&#10;10.10.5.20&#10;app:chrome.exe"></textarea>
-        <button class="action" onclick="resolveBatchTargets()">Check list</button>
-      </div>
-      <div id="resolve-batch-result" class="resolve-batch-result" style="display:none"></div>
+      <div id="policy-filter-note" class="muted"></div>
       <table id="policies-table">
         <thead>
           <tr>
@@ -74,22 +75,22 @@
     <div class="side-grid">
       <section class="card" id="base-network-section">
         <div class="card-header">
-          <h2>Base Network</h2>
+          <h2>Base Network Egress</h2>
           <button class="refresh-btn" onclick="refreshNetworkOverview()" title="Refresh">↻</button>
         </div>
         <ul id="base-network-list">
-          <li><span class="label">Connected tunnels</span><span id="base-connected" class="mono">—</span></li>
-          <li><span class="label">Default egress</span><span id="base-egress" class="mono">—</span></li>
-          <li><span class="label">Gateway</span><span id="base-gateway" class="mono">—</span></li>
-          <li><span class="label">Local IPs</span><span id="base-local-ips" class="mono">—</span></li>
-          <li><span class="label">Public IP (normal internet)</span><span id="base-public-ip" class="mono">—</span></li>
+          <li><span class="label">Connected tunnels</span><span id="base-connected" class="mono value">—</span></li>
+          <li><span class="label">Default egress</span><span id="base-egress" class="mono value">—</span></li>
+          <li><span class="label">Gateway</span><span id="base-gateway" class="mono value">—</span></li>
+          <li><span class="label">Local IPs</span><span id="base-local-ips" class="mono value value-wrap">—</span></li>
+          <li><span class="label">Public IP (normal internet)</span><span id="base-public-ip" class="mono value">—</span></li>
         </ul>
         <p id="base-routing-note" class="muted">Unmatched traffic follows your default route.</p>
       </section>
 
       <section class="card" id="security-section">
         <div class="card-header">
-          <h2>Security</h2>
+          <h2>Security Controls</h2>
           <button class="refresh-btn" onclick="refreshSecurity()" title="Refresh">↻</button>
         </div>
         <ul id="security-list">
@@ -118,7 +119,7 @@
 
       <section class="card" id="routes-section">
         <div class="card-header">
-          <h2>Active Routes</h2>
+          <h2>Active Routes (Live)</h2>
           <button class="refresh-btn" onclick="refreshRoutes()" title="Refresh">↻</button>
         </div>
         <div class="routes-toolbar">
@@ -133,38 +134,6 @@
         </ul>
       </section>
 
-      <section class="card" id="policy-help">
-        <h2>Policy Quick Reference</h2>
-        <details>
-          <summary>How to configure routing policies</summary>
-          <div class="help-content">
-            <p>Edit <code>~/.kongtrol/kongtrol.yaml</code> &rarr; section <code>policies:</code></p>
-            <h4>Domains</h4>
-            <table class="help-table">
-              <tr><td><code>claude.ai</code></td><td>Exact domain only</td></tr>
-              <tr><td><code>*.anthropic.com</code></td><td>All subdomains (not root)</td></tr>
-            </table>
-            <h4>IPs &amp; Ranges</h4>
-            <table class="help-table">
-              <tr><td><code>172.28.152.26</code></td><td>Single IP (auto /32)</td></tr>
-              <tr><td><code>10.0.0.0/24</code></td><td>256 IPs &mdash; 10.0.0.*</td></tr>
-              <tr><td><code>10.0.0.0/16</code></td><td>65,536 IPs &mdash; 10.0.*.*</td></tr>
-              <tr><td><code>10.0.0.0/8</code></td><td>16M IPs &mdash; 10.*.*.*</td></tr>
-            </table>
-            <p class="muted">Higher /number = fewer IPs (more specific). Just an IP without / = single host.</p>
-            <h4>Example</h4>
-            <pre>policies:
-  - name: Office
-    match:
-      ip_ranges:
-        - 10.10.0.0/16
-        - 172.28.152.26
-      domains:
-        - "*.company.com"
-    via: office</pre>
-          </div>
-        </details>
-      </section>
     </div>
   </main>
 

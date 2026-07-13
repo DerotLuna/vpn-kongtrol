@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Policy Studio - VPN Kongtrol</title>
+  <link rel="icon" type="image/png" href="/logo-kong.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="/logo-kong.png" alt="VPN Kongtrol" class="brand-logo" />
+      <span class="brand-name">VPN Kongtrol</span>
+    </div>
+    <div class="header-right">
+      <nav class="top-nav">
+        <a class="nav-link" href="/">Overview</a>
+        <a class="nav-link active" href="/policies.html">Policy Studio</a>
+      </nav>
+      <span id="ws-label" class="ws-label">config editor</span>
+      <div id="connection-indicator" class="indicator connected" title="Policy editor"></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="card-header">
+        <h2>Policy Studio (CRUD + Test)</h2>
+        <button class="refresh-btn" onclick="loadPolicies()" title="Refresh">↻</button>
+      </div>
+      <div class="policy-grid">
+        <div class="card">
+          <h2>Editor</h2>
+          <div class="form-grid">
+            <label>Name
+              <input id="p-name" type="text" placeholder="Contenido US" />
+            </label>
+            <label>Via VPN profile
+              <select id="p-via"></select>
+            </label>
+            <label>Domains (one per line)
+              <textarea id="p-domains" rows="5" placeholder="*.java.com&#10;chatgpt.com"></textarea>
+            </label>
+            <label>IP ranges (one per line)
+              <textarea id="p-ip-ranges" rows="4" placeholder="10.2.0.2/32"></textarea>
+            </label>
+            <label>Apps (one per line)
+              <textarea id="p-apps" rows="3" placeholder="chrome.exe"></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="action" onclick="createPolicy()">Create</button>
+              <button class="action" onclick="updatePolicy()">Update</button>
+              <button class="action disconnect" onclick="deletePolicy()">Delete</button>
+              <button class="action" onclick="clearForm()">Clear</button>
+            </div>
+          </div>
+          <p class="muted" style="margin-top:10px;">Tip: pick a row from the table to edit it.</p>
+            <p class="muted" style="margin-top:6px;">Template: use domains like <code>*.java.com</code>, IP ranges like <code>10.2.0.2/32</code>, and apps like <code>chrome.exe</code>.</p>
+        </div>
+
+        <div class="card">
+          <h2>Test Policy Before Saving</h2>
+          <div class="resolve-bar">
+            <input id="test-target" type="text" placeholder="Target: domain/IP/URL" />
+            <input id="test-app" type="text" placeholder="or app: chrome.exe" />
+            <button class="action" onclick="testDraftPolicy()">Test</button>
+          </div>
+          <div id="test-result" class="resolve-result" style="display:none"></div>
+
+          <h2 style="margin-top:16px;">Existing Policies</h2>
+          <table class="policy-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Match</th>
+                <th>Via</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="policy-list-body">
+              <tr><td colspan="4" class="empty">Loading policies…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="policies.js"></script>
+</body>
+</html>

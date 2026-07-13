@@ -156,6 +156,8 @@ func initDaemon() error {
 		leak,
 		eng,
 		nil, // PolicyResolver is managed by the CLI daemon, not the tray
+		"",  // config path not used by tray policy editor
+		nil, // no runtime callback in tray
 		nil, // DNSManager is managed by the CLI daemon, not the tray
 		cfg.Security.DNSGuard.Enabled,
 	)

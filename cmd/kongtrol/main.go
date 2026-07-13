@@ -49,6 +49,7 @@ var version = "v1.0.1-dev"
 
 var (
 	cfgPath        string
+	activeCfgPath  string
 	cfg            *config.Config
 	adapters       map[string]vpn.VPNAdapter
 	routeMgr       routing.RouteManager
@@ -1006,7 +1007,11 @@ func resolveProfiles(args []string, group string) ([]string, error) {
 
 func loadConfig() error {
 	var err error
-	cfg, err = config.Load(cfgPath)
+	activeCfgPath, err = resolveConfigPath(cfgPath)
+	if err != nil {
+		return err
+	}
+	cfg, err = config.Load(activeCfgPath)
 	if err != nil {
 		return err
 	}
@@ -1196,9 +1201,26 @@ func buildAPIServer() *api.Server {
 		leak,
 		engine,
 		policyResolver,
+		activeCfgPath,
+		func(newCfg *config.Config, newEngine *policy.Engine) {
+			cfg = newCfg
+			engine = newEngine
+		},
 		dnsMgr,
 		cfg.Security.DNSGuard.Enabled,
 	)
+}
+
+func resolveConfigPath(path string) (string, error) {
+	if path != "" {
+		return path, nil
+	}
+	for _, candidate := range config.DefaultPaths() {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("config: no config file found; run 'kongtrol init' to create one")
 }
 
 func contextWithSignal() context.Context {

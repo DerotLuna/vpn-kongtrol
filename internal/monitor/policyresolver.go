@@ -58,8 +58,8 @@ func NewPolicyResolver(cfg *config.Config, routeMgr routing.RouteManager, log *z
 }
 
 // RegisterProfile parses the WireGuard config and collects policy domains for
-// the named profile. It performs an immediate first resolution (blocking) so
-// the tunnel is usable right after this call returns.
+// the named profile. It performs an immediate first resolution with a bounded
+// budget so `kongtrol up` is not blocked by slow DNS.
 func (r *PolicyResolver) RegisterProfile(name, ifaceName, configPath string) error {
 	pubKey, err := wireguard.ParsePeerPublicKey(configPath)
 	if err != nil {
@@ -109,8 +109,8 @@ func (r *PolicyResolver) RegisterProfile(name, ifaceName, configPath string) err
 	r.profiles[name] = ps
 	r.mu.Unlock()
 
-	// Immediate first resolution so the tunnel routes traffic right away.
-	r.resolve(name, ps)
+	// Immediate first resolution with a bounded time budget.
+	r.resolve(name, ps, 12*time.Second)
 	return nil
 }
 
@@ -142,10 +142,10 @@ func (r *PolicyResolver) Stop() {
 
 // ProfileSnapshot is a read-only view of a profile's resolved routing state.
 type ProfileSnapshot struct {
-	Name         string   `json:"name"`
-	Interface    string   `json:"interface"`
-	Domains      []string `json:"domains"`
-	IPRanges     []string `json:"ip_ranges"`
+	Name          string   `json:"name"`
+	Interface     string   `json:"interface"`
+	Domains       []string `json:"domains"`
+	IPRanges      []string `json:"ip_ranges"`
 	ResolvedCIDRs []string `json:"resolved_cidrs"`
 }
 
@@ -189,7 +189,7 @@ func (r *PolicyResolver) loop(ctx context.Context) {
 			r.mu.Unlock()
 
 			for name, ps := range snap {
-				r.resolve(name, ps)
+				r.resolve(name, ps, 25*time.Second)
 			}
 		}
 	}
@@ -197,12 +197,19 @@ func (r *PolicyResolver) loop(ctx context.Context) {
 
 // resolve performs DNS lookups for all domains in the profile and updates
 // WireGuard AllowedIPs if new IPs are discovered.
-func (r *PolicyResolver) resolve(name string, ps *profileState) {
+func (r *PolicyResolver) resolve(name string, ps *profileState, budget time.Duration) {
+	started := time.Now()
 	newCount := 0
 
 	for _, pattern := range ps.domains {
+		if budget > 0 && time.Since(started) >= budget {
+			break
+		}
 		lookups := expandDomainPattern(pattern)
 		for _, domain := range lookups {
+			if budget > 0 && time.Since(started) >= budget {
+				break
+			}
 			ips := r.lookupAll(domain, ps.dnsServers)
 			for _, ip := range ips {
 				cidr := ipToCIDR(ip)
@@ -313,10 +320,16 @@ func (r *PolicyResolver) lookupAll(domain string, vpnDNS []net.IP) []net.IP {
 		}
 	}
 
-	// System resolver.
-	if ips, err := net.LookupIP(domain); err == nil {
-		add(ips)
+	// System resolver with timeout (can otherwise block for a long time).
+	sysCtx, sysCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	if ips, err := net.DefaultResolver.LookupIPAddr(sysCtx, domain); err == nil {
+		ipList := make([]net.IP, len(ips))
+		for i, a := range ips {
+			ipList[i] = a.IP
+		}
+		add(ipList)
 	}
+	sysCancel()
 
 	// VPN DNS servers via custom resolver.
 	for _, dns := range vpnDNS {
@@ -330,7 +343,7 @@ func (r *PolicyResolver) lookupAll(domain string, vpnDNS []net.IP) []net.IP {
 				return d.DialContext(ctx, "udp", net.JoinHostPort(dns.String(), "53"))
 			},
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		if ips, err := resolver.LookupIPAddr(ctx, domain); err == nil {
 			ipList := make([]net.IP, len(ips))
 			for i, a := range ips {
