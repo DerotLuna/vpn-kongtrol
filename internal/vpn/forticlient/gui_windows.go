@@ -17,8 +17,8 @@ import (
 //   Username field center:  54.1% x, 62.4% y
 //   Password field center:  54.1% x, 66.6% y
 //   Connect button center:  49.7% x, 75.4% y
-func guiConnect(tunnelName, username, password string) error {
-	script := buildGuiScript("connect", tunnelName, username, password)
+func guiConnect(tunnelName, username, password string, allowInsecureCert bool) error {
+	script := buildGuiScript("connect", tunnelName, username, password, allowInsecureCert)
 	tmpDir, err := os.MkdirTemp("", "kongtrol-fcgui-*")
 	if err != nil {
 		return fmt.Errorf("forticlient gui: temp dir: %w", err)
@@ -48,7 +48,7 @@ func guiConnect(tunnelName, username, password string) error {
 // guiDisconnect automates the FortiClient GUI to click Disconnect.
 // When connected, FortiClient replaces the Connect button with Disconnect at the same position.
 func guiDisconnect(tunnelName string) error {
-	script := buildGuiScript("disconnect", tunnelName, "", "")
+	script := buildGuiScript("disconnect", tunnelName, "", "", false)
 	tmpDir, err := os.MkdirTemp("", "kongtrol-fcgui-*")
 	if err != nil {
 		return fmt.Errorf("forticlient gui: temp dir: %w", err)
@@ -78,7 +78,7 @@ func guiDisconnect(tunnelName string) error {
 // buildGuiScript generates the PowerShell GUI automation script.
 // action is "connect" or "disconnect".
 // Passwords are passed via temp clipboard to avoid SendKeys special-character escaping.
-func buildGuiScript(action, tunnelName, username, password string) string {
+func buildGuiScript(action, tunnelName, username, password string, allowInsecureCert bool) string {
 	binary := binaryPath()
 
 	// Escape single quotes in strings passed into PS script.
@@ -163,6 +163,7 @@ $tunnel    = '%s'
 $username  = '%s'
 $password  = '%s'
 $action    = '%s'
+$allowInsecureCert = %t
 
 # ── 1. Ensure FortiClient is running ─────────────────────────────────────────
 $proc = Get-Process "FortiClient" -ErrorAction SilentlyContinue |
@@ -270,27 +271,34 @@ if ($action -eq 'connect') {
     Write-Output "Clicking Connect at ($btnX,$btnY)..."
     [FC]::Click($btnX, $btnY)
 
-    # ── 4. Dismiss Security Alert (untrusted certificate) ─────────────────────
-    # FortiClient shows a Win32 "Security Alert" dialog after clicking Connect
-    # when the server has a self-signed / enterprise cert. Automatically accept.
+    # ── 4. Handle Security Alert (untrusted certificate) ──────────────────────
+    # Secure default: fail closed on certificate warnings.
+    # Optional override: allow insecure cert warnings only if explicitly enabled.
     Write-Output "Waiting for Security Alert dialog..."
     $alertDeadline = (Get-Date).AddSeconds(15)
-    $dismissed = $false
-    while (-not $dismissed -and (Get-Date) -lt $alertDeadline) {
-        # Try both common dialog titles and button labels.
-        foreach ($title in @("Security Alert", "Alerta de seguridad", "Security Warning", "Certificate Warning")) {
-            foreach ($btn in @("Yes", "&Yes", "Continue", "Sí", "Si", "&Sí", "&Si")) {
-                if ([FC]::DismissDialog($title, $btn)) {
-                    Write-Output "OK: '$title' dialog dismissed (clicked '$btn')"
-                    $dismissed = $true
-                    break
+    $handled = $false
+    $alertTitles = @("Security Alert", "Alerta de seguridad", "Security Warning", "Certificate Warning")
+    while (-not $handled -and (Get-Date) -lt $alertDeadline) {
+        foreach ($title in $alertTitles) {
+            if ([FC]::FindWindow($null, $title) -ne [IntPtr]::Zero) {
+                if ($allowInsecureCert) {
+                    foreach ($btn in @("Yes", "&Yes", "Continue", "Sí", "Si", "&Sí", "&Si")) {
+                        if ([FC]::DismissDialog($title, $btn)) {
+                            Write-Output "OK: '$title' dialog dismissed (clicked '$btn')"
+                            $handled = $true
+                            break
+                        }
+                    }
+                } else {
+                    Write-Output "ERROR: Untrusted VPN certificate warning detected ($title). Connection aborted by secure default. Set allow_insecure_cert: true only if you fully trust the environment."
+                    exit 3
                 }
             }
-            if ($dismissed) { break }
+            if ($handled) { break }
         }
-        if (-not $dismissed) { Start-Sleep -Milliseconds 300 }
+        if (-not $handled) { Start-Sleep -Milliseconds 300 }
     }
-    if (-not $dismissed) {
+    if (-not $handled) {
         Write-Output "INFO: No Security Alert dialog appeared within 15s (may not be needed)"
     }
 
@@ -334,5 +342,5 @@ if ($action -eq 'connect') {
 
     Write-Output "OK: disconnect sequence complete"
 }
-`, escapedBinary, escapedTunnel, escapedUser, escapedPass, action)
+`, escapedBinary, escapedTunnel, escapedUser, escapedPass, action, allowInsecureCert)
 }

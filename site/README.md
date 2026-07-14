@@ -42,3 +42,33 @@ make site-sync-binaries
 cd site
 vercel --prod
 ```
+
+Set this environment variable in Vercel Project Settings:
+
+- `DOWNLOAD_KEY` (required by `/api/auth` and `/api/download`)
+
+## API auth quick test
+
+Expected behavior:
+- `200` with `{ ok: true, token }` when the key is correct.
+- `401` with `{ ok: false, error: "Clave incorrecta" }` when the key is wrong.
+
+Linux/macOS:
+
+```bash
+curl -i -X POST https://vpn-kongtrol-site.vercel.app/api/auth \
+  -H "Content-Type: application/json" \
+  -d '{"key":"test"}'
+```
+
+Windows PowerShell (recommended):
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "https://vpn-kongtrol-site.vercel.app/api/auth" -ContentType "application/json" -Body (@{ key = "test" } | ConvertTo-Json)
+```
+
+Windows with curl binary:
+
+```powershell
+curl.exe -i -X POST "https://vpn-kongtrol-site.vercel.app/api/auth" -H "Content-Type: application/json" -d "{\"key\":\"test\"}"
+```

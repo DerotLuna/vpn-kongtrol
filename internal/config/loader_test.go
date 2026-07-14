@@ -69,6 +69,32 @@ func TestLoad_ValidConfig(t *testing.T) {
 	if len(cfg.Policies) != 1 {
 		t.Errorf("Policies count = %d, want 1", len(cfg.Policies))
 	}
+	if cfg.VPNs["office"].AllowInsecureCert {
+		t.Errorf("office.AllowInsecureCert = true, want false by default")
+	}
+}
+
+func TestLoad_FortiClientAllowInsecureCert(t *testing.T) {
+	path := writeConfig(t, `
+vpns:
+  office:
+    type: forticlient
+    allow_insecure_cert: true
+    host: vpn.example.com
+    port: 443
+    tunnel_name: Office
+    auth:
+      method: certificate+credentials
+      cert: /tmp/cert.crt
+      key: /tmp/cert.key
+`)
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.VPNs["office"].AllowInsecureCert {
+		t.Errorf("office.AllowInsecureCert = false, want true")
+	}
 }
 
 func TestLoad_Defaults(t *testing.T) {

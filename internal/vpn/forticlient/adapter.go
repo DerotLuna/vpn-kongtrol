@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -91,12 +92,13 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	port := cfg.Port
 	certPath := cfg.CertPath
 	keyPath := cfg.KeyPath
+	allowInsecureCert, _ := strconv.ParseBool(cfg.Extra["allow_insecure_cert"])
 	cfg.Password = "" // zero immediately
 
 	if runtime.GOOS == "windows" {
 		// GUI automation opens FortiClient, selects the tunnel, fills credentials,
 		// and clicks Connect.
-		if err := tryGUIConnect(tunnelName, username, password); err != nil {
+		if err := tryGUIConnect(tunnelName, username, password, allowInsecureCert); err != nil {
 			a.status = vpn.StatusError
 			return fmt.Errorf("forticlient gui: %w", err)
 		}

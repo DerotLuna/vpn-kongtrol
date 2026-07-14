@@ -79,11 +79,11 @@ func disconnectV6(tunnelName string) error {
 // tryGUIConnect attempts GUI automation to connect a FortiClient tunnel.
 // Returns an error on non-Windows (caller falls back to CLI).
 // Implemented in gui_windows.go on Windows; this stub covers other OSes.
-func tryGUIConnect(tunnelName, username, password string) error {
+func tryGUIConnect(tunnelName, username, password string, allowInsecureCert bool) error {
 	if runtime.GOOS != "windows" {
 		return fmt.Errorf("gui automation not supported on %s", runtime.GOOS)
 	}
-	return guiConnect(tunnelName, username, password)
+	return guiConnect(tunnelName, username, password, allowInsecureCert)
 }
 
 // tryGUIDisconnect attempts GUI automation to disconnect. Non-Windows returns error.

@@ -1033,7 +1033,10 @@ func loadConfig() error {
 				KeyPath:    vpnCfg.Auth.Key,
 				ConfigPath: vpnCfg.ConfigFile,
 				Username:   vpnCfg.Auth.Username,
-				Extra:      map[string]string{"protocol": vpnCfg.Protocol},
+				Extra: map[string]string{
+					"protocol":            vpnCfg.Protocol,
+					"allow_insecure_cert": strconv.FormatBool(vpnCfg.AllowInsecureCert),
+				},
 			})
 		}
 		adapters[name] = a
@@ -1098,7 +1101,10 @@ func connectProfile(ctx context.Context, name string) error {
 		KeyPath:    vpnCfg.Auth.Key,
 		ConfigPath: vpnCfg.ConfigFile,
 		Username:   vpnCfg.Auth.Username,
-		Extra:      map[string]string{"protocol": vpnCfg.Protocol},
+		Extra: map[string]string{
+			"protocol":            vpnCfg.Protocol,
+			"allow_insecure_cert": strconv.FormatBool(vpnCfg.AllowInsecureCert),
+		},
 	}
 
 	// Resolve credentials from OS keychain.

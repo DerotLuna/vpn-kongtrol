@@ -1,6 +1,12 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { validateToken } from './_utils'
+import { createHmac } from 'crypto'
+
+function validateToken(token: string, key: string): boolean {
+  const win = Math.floor(Date.now() / 86400000)
+  const make = (w: number) => createHmac('sha256', key).update(String(w)).digest('hex')
+  return token === make(win) || token === make(win - 1)
+}
 
 const ALLOWED: Record<string, string> = {
   'kongtrol-darwin-amd64':      'application/octet-stream',
@@ -12,14 +18,11 @@ const ALLOWED: Record<string, string> = {
 }
 
 export default function handler(req: any, res: any) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ ok: false, error: 'Method not allowed' })
-  }
-
   try {
     const { file, token } = req.query as Record<string, string>
+    const downloadKey = process.env.DOWNLOAD_KEY
 
-    if (!process.env.DOWNLOAD_KEY || !token || !validateToken(token, process.env.DOWNLOAD_KEY)) {
+    if (!downloadKey || !token || !validateToken(token, downloadKey)) {
       return res.status(401).json({ ok: false, error: 'Token inválido o expirado' })
     }
 

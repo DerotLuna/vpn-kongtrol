@@ -19,7 +19,6 @@ export default function Nav({ os, setOS }: Props) {
         <ul className="nav-links">
           <li><a href="#descargar">Descargar</a></li>
           <li><a href="#guia">Guía</a></li>
-          <li><a href="https://github.com/vpn-kongtrol/kongtrol" target="_blank" rel="noreferrer">GitHub</a></li>
         </ul>
 
         <div className="nav-os-switcher" title="Sistema operativo">

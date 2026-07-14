@@ -9,6 +9,9 @@ vpns:
   office:
     type: forticlient
     version: "6.4"               # cli_v6 bindings; use "7" for FortiClient 7.x
+    # SECURITY: keep false in production. true allows auto-accepting
+    # untrusted certificate warnings in FortiClient GUI automation (MITM risk).
+    # allow_insecure_cert: false
     host: vpn.empresa.com
     port: 443
     tunnel_name: "Office"        # exactly as configured in FortiClient

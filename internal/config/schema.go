@@ -22,6 +22,9 @@ type VPNConfig struct {
 	Host       string     `yaml:"host"`
 	Port       int        `yaml:"port"`
 	TunnelName string     `yaml:"tunnel_name"`
+	// FortiClient-only: when true, GUI automation accepts certificate warnings.
+	// Keep false in production to avoid MITM risk.
+	AllowInsecureCert bool `yaml:"allow_insecure_cert"`
 	ConfigFile string     `yaml:"config"`      // .ovpn / wg .conf file path
 	Server     string     `yaml:"server"`      // server identifier (protonvpn)
 	Protocol   string     `yaml:"protocol"`    // wireguard|openvpn (protonvpn)
