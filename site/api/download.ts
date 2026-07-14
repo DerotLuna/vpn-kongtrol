@@ -1,12 +1,6 @@
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { createHmac } from 'crypto'
-
-function validateToken(token: string, key: string): boolean {
-  const win = Math.floor(Date.now() / 86400000)
-  const make = (w: number) => createHmac('sha256', key).update(String(w)).digest('hex')
-  return token === make(win) || token === make(win - 1)
-}
+import { validateToken } from './_utils'
 
 const ALLOWED: Record<string, string> = {
   'kongtrol-darwin-amd64':      'application/octet-stream',

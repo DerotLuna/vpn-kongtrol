@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { detectOS, OS } from './hooks/useOS'
+import { usePreferences } from './hooks/usePreferences'
+import { useDownloadGate } from './hooks/useDownloadGate'
 import Nav from './components/Nav'
 import Hero from './components/Hero'
 import Download from './components/Download'
@@ -7,47 +9,33 @@ import Guide from './components/Guide'
 import Footer from './components/Footer'
 import DownloadGate from './components/DownloadGate'
 
-const SESSION_KEY = 'dkt' // download token — no la clave real
-
 export default function App() {
   const [os, setOS] = useState<OS>(detectOS)
-
-  // Token HMAC guardado en sessionStorage — válido 24h, nunca contiene la clave real
-  const [downloadToken, setDownloadToken] = useState<string | null>(
-    () => sessionStorage.getItem(SESSION_KEY)
-  )
-
-  // Archivo pendiente de descarga hasta que el usuario ingrese la clave
-  const [pendingFile, setPendingFile] = useState<string | null>(null)
-  const handleRequestKey = (filename: string) => {
-    setPendingFile(filename)
-  }
-
-  const handleKeySuccess = (token: string) => {
-    sessionStorage.setItem(SESSION_KEY, token)
-    setDownloadToken(token)
-
-    if (pendingFile) {
-      // Dispara la descarga — URL lleva token, nunca la clave
-      window.location.href = `/api/download?file=${pendingFile}&token=${encodeURIComponent(token)}`
-      setPendingFile(null)
-    }
-  }
+  const { lang, setLang, theme, setTheme } = usePreferences()
+  const { downloadToken, pendingFile, requestKey, closeGate, handleKeySuccess } = useDownloadGate()
 
   return (
     <>
-      <Nav os={os} setOS={setOS} />
+      <Nav
+        os={os}
+        setOS={setOS}
+        lang={lang}
+        setLang={setLang}
+        theme={theme}
+        setTheme={setTheme}
+      />
       <main>
-        <Hero os={os} downloadKey={downloadToken} onRequestKey={handleRequestKey} />
-        <Download os={os} downloadKey={downloadToken} onRequestKey={handleRequestKey} />
-        <Guide os={os} setOS={setOS} />
+        <Hero os={os} lang={lang} downloadKey={downloadToken} onRequestKey={requestKey} />
+        <Download os={os} lang={lang} downloadKey={downloadToken} onRequestKey={requestKey} />
+        <Guide os={os} setOS={setOS} lang={lang} />
       </main>
-      <Footer />
+      <Footer lang={lang} />
 
       {pendingFile && (
         <DownloadGate
+          lang={lang}
           filename={pendingFile}
-          onClose={() => setPendingFile(null)}
+          onClose={closeGate}
           onSuccess={handleKeySuccess}
         />
       )}

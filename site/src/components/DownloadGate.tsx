@@ -1,12 +1,36 @@
 import { useRef, useState } from 'react'
+import { Lang } from '../i18n'
 
 interface Props {
+  lang: Lang
   filename: string
   onClose: () => void
   onSuccess: (token: string) => void
 }
 
-export default function DownloadGate({ filename, onClose, onSuccess }: Props) {
+export default function DownloadGate({ lang, filename, onClose, onSuccess }: Props) {
+  const copy = lang === 'es'
+    ? {
+      badKey: 'Clave incorrecta',
+      connError: 'Error de conexión',
+      close: 'Cerrar',
+      access: 'Acceso requerido',
+      prompt: 'Ingresa la clave para descargar',
+      placeholder: 'Clave de descarga',
+      checking: 'Verificando…',
+      download: 'Descargar',
+    }
+    : {
+      badKey: 'Invalid key',
+      connError: 'Connection error',
+      close: 'Close',
+      access: 'Access required',
+      prompt: 'Enter the key to download',
+      placeholder: 'Download key',
+      checking: 'Checking…',
+      download: 'Download',
+    }
+
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,12 +55,12 @@ export default function DownloadGate({ filename, onClose, onSuccess }: Props) {
       if (res.ok && data.token) {
         onSuccess(data.token)
       } else {
-        setError(data.error ?? 'Clave incorrecta')
+        setError(data.error ?? copy.badKey)
         setKey('')
         inputRef.current?.focus()
       }
     } catch {
-      setError('Error de conexión')
+      setError(copy.connError)
     } finally {
       setLoading(false)
     }
@@ -45,7 +69,7 @@ export default function DownloadGate({ filename, onClose, onSuccess }: Props) {
   return (
     <div className="gate-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="gate-modal">
-        <button className="gate-close" onClick={onClose} aria-label="Cerrar">×</button>
+        <button className="gate-close" onClick={onClose} aria-label={copy.close}>×</button>
 
         <div className="gate-icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -54,9 +78,9 @@ export default function DownloadGate({ filename, onClose, onSuccess }: Props) {
           </svg>
         </div>
 
-        <h2 className="gate-title">Acceso requerido</h2>
+        <h2 className="gate-title">{copy.access}</h2>
         <p className="gate-sub">
-          Ingresa la clave para descargar{' '}
+          {copy.prompt}{' '}
           <code className="mono" style={{ fontSize: '0.78em' }}>{filename}</code>
         </p>
 
@@ -65,7 +89,7 @@ export default function DownloadGate({ filename, onClose, onSuccess }: Props) {
             ref={inputRef}
             type="password"
             className={`gate-input${error ? ' error' : ''}`}
-            placeholder="Clave de descarga"
+            placeholder={copy.placeholder}
             value={key}
             onChange={e => { setKey(e.target.value); setError('') }}
             autoFocus
@@ -78,7 +102,7 @@ export default function DownloadGate({ filename, onClose, onSuccess }: Props) {
             disabled={loading || !key.trim()}
             style={{ width: '100%', justifyContent: 'center' }}
           >
-            {loading ? 'Verificando…' : 'Descargar'}
+            {loading ? copy.checking : copy.download}
           </button>
         </form>
       </div>

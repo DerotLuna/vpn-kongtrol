@@ -7,6 +7,9 @@ interface Props {
 
 export default function CodeBlock({ lang = 'bash', children }: Props) {
   const [copied, setCopied] = useState(false)
+  const isES = typeof document !== 'undefined'
+    ? document.documentElement.lang.toLowerCase().startsWith('es')
+    : false
 
   const copy = () => {
     // Strip prompt symbols before copying
@@ -41,7 +44,7 @@ export default function CodeBlock({ lang = 'bash', children }: Props) {
       <div className="code-block-header">
         <span className="code-block-lang">{lang}</span>
         <button className={`copy-btn${copied ? ' copied' : ''}`} onClick={copy}>
-          {copied ? 'copiado ✓' : 'copiar'}
+          {copied ? (isES ? 'copiado ✓' : 'copied ✓') : (isES ? 'copiar' : 'copy')}
         </button>
       </div>
       <pre>{highlighted}</pre>

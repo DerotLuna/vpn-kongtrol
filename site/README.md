@@ -1,6 +1,11 @@
-# Kongtrol Landing (`site/`)
+# Kongtrol CLI Site (`site/`)
 
-Public landing site, separate from the embedded dashboard (`web/dashboard`).
+Public marketing/docs site for **Kongtrol CLI**, separate from the embedded dashboard (`web/dashboard`).
+
+## Prerequisites
+
+- Node.js 20+
+- pnpm 10+
 
 ## Local development
 
@@ -15,6 +20,25 @@ pnpm run dev
 ```bash
 cd site
 pnpm run build
+```
+
+## Quality check
+
+```bash
+cd site
+pnpm run check
+```
+
+## Project structure
+
+```text
+site/
+├── src/
+│   ├── components/   # UI sections and reusable presentational blocks
+│   ├── hooks/        # UI/application state hooks
+│   └── content/      # static guide/nav content shared by language variants
+├── api/              # Vercel serverless endpoints (/api/auth, /api/download)
+└── _binaries/        # private release artifacts served by /api/download
 ```
 
 ## Downloads
@@ -46,6 +70,12 @@ vercel --prod
 Set this environment variable in Vercel Project Settings:
 
 - `DOWNLOAD_KEY` (required by `/api/auth` and `/api/download`)
+
+## Troubleshooting
+
+- `401` on `/api/auth` or `/api/download`: verify `DOWNLOAD_KEY` in Vercel Project Settings.
+- `404` on `/api/download`: verify file exists in `site/_binaries/` and is listed in `api/download.ts`.
+- Missing artifacts in production: run `make build-all-cli && make site-sync-binaries` before deploy.
 
 ## API auth quick test
 

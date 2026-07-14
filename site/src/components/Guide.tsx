@@ -1,21 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { OS } from '../hooks/useOS'
+import { Lang } from '../i18n'
 import CodeBlock from './CodeBlock'
+import GuideEN from './GuideEN'
+import { GUIDE_SECTIONS_ES } from '../content/guideSections'
 
-interface Props { os: OS; setOS: (os: OS) => void }
-
-const SECTIONS = [
-  { id: 'prereqs',    num: '01', label: 'Prerequisitos' },
-  { id: 'install',    num: '02', label: 'Instalación' },
-  { id: 'certs',      num: '03', label: 'Certificados' },
-  { id: 'wizard',     num: '04', label: 'kongtrol init' },
-  { id: 'groups',     num: '05', label: 'Grupos y políticas' },
-  { id: 'doctor',     num: '06', label: 'Doctor check' },
-  { id: 'connect',    num: '07', label: 'Primera conexión' },
-  { id: 'dashboard',  num: '08', label: 'Dashboard web' },
-  { id: 'daily',      num: '09', label: 'Uso diario' },
-  { id: 'trouble',    num: '10', label: 'Solución de problemas' },
-]
+interface Props { os: OS; setOS: (os: OS) => void; lang: Lang }
 
 function OsTabs({ os, setOS }: { os: OS; setOS: (o: OS) => void }) {
   return (
@@ -31,7 +21,7 @@ function OsTabs({ os, setOS }: { os: OS; setOS: (o: OS) => void }) {
 
 const IC = ({ c }: { c: string }) => <code className="ic">{c}</code>
 
-export default function Guide({ os, setOS }: Props) {
+function GuideES({ os, setOS }: { os: OS; setOS: (os: OS) => void }) {
   const [activeSection, setActiveSection] = useState('prereqs')
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -44,7 +34,7 @@ export default function Guide({ os, setOS }: Props) {
       },
       { rootMargin: '-20% 0px -70% 0px' }
     )
-    SECTIONS.forEach(s => {
+    GUIDE_SECTIONS_ES.forEach(s => {
       const el = document.getElementById(s.id)
       if (el) observer.observe(el)
     })
@@ -60,7 +50,7 @@ export default function Guide({ os, setOS }: Props) {
           <aside className="guide-sidebar">
             <div className="guide-nav-title">Contenido</div>
             <ul className="guide-nav-list">
-              {SECTIONS.map(s => (
+              {GUIDE_SECTIONS_ES.map(s => (
                 <li key={s.id}>
                   <a
                     href={`#${s.id}`}
@@ -642,6 +632,18 @@ kongtrol down --group work`}</CodeBlock>
                 IPs: longest-prefix match — gana la regla más específica. <IC c="10.10.1.0/24" /> tiene prioridad sobre <IC c="10.0.0.0/8" />.
               </div>
 
+              <div className="callout" style={{ marginTop: 12 }}>
+                <strong>Flow-aware policy:</strong> puedes combinar app + dominio/IP en la misma regla.
+                Si una regla define <IC c="apps" /> y también <IC c="domains" /> / <IC c="ip_ranges" />,
+                ambas condiciones deben coincidir para enrutar por ese perfil.
+              </div>
+
+              <div className="callout" style={{ marginTop: 12 }}>
+                <strong>Split-DNS transparente:</strong> con <IC c="monitor.split_dns.enabled: true" />,
+                Kongtrol inyecta dominios de policy en resolución del sistema (hosts) para que apps
+                normales resuelvan por el túnel correcto sin llamar la API.
+              </div>
+
               <CodeBlock lang="bash">{`# Validar después de editar
 $ kongtrol config validate
 # [OK] Config is valid.`}</CodeBlock>
@@ -779,8 +781,14 @@ $ kongtrol status --watch`}</CodeBlock>
                   <tr><td>Tunnels</td><td>Estado, IP asignada, uptime, tráfico por túnel</td></tr>
                   <tr><td>Security</td><td>Kill switch, DNS guard, IP pública, último leak check</td></tr>
                   <tr><td>Active Routes</td><td>Rutas activas en tiempo real</td></tr>
+                  <tr><td>History</td><td>Histórico persistente por perfil (reconnects, leaks, jitter, health)</td></tr>
                 </tbody>
               </table>
+
+              <CodeBlock lang="bash">{`# Endpoints útiles
+GET /api/v1/metrics/history
+GET /api/v1/dns/resolve?domain=claude.ai&via=us-content
+GET /api/v1/resolve?target=portal.empresa.com&app=chrome.exe`}</CodeBlock>
 
               <div className="callout">
                 El dashboard está compilado dentro del binario — no necesitas instalar nada
@@ -808,6 +816,25 @@ $ kongtrol status --watch`}</CodeBlock>
                   <tr><td>kongtrol export</td><td>Exportar config sin contraseñas (para compartir)</td></tr>
                 </tbody>
               </table>
+
+              <p style={{ marginTop: 20 }}><strong>Scheduler opcional por horario:</strong></p>
+              <CodeBlock lang="yaml">{`monitor:
+  scheduler:
+    enabled: true
+    interval: "1m"
+    rules:
+      - name: "work-hours"
+        profiles: ["office", "aws"]
+        weekdays: ["mon","tue","wed","thu","fri"]
+        start: "09:00"
+        end: "18:00"`}</CodeBlock>
+
+              <p style={{ marginTop: 16 }}><strong>Kill switch por perfil (override):</strong></p>
+              <CodeBlock lang="yaml">{`vpns:
+  office:
+    kill_switch: true
+  us-content:
+    kill_switch: false`}</CodeBlock>
 
               <p style={{ marginTop: 24 }}><strong>Actualizar una contraseña:</strong></p>
               <CodeBlock lang="bash">{`$ kongtrol init
@@ -877,6 +904,11 @@ $ kongtrol init
               <CodeBlock lang="bash">{`$ kongtrol init
 # Selecciona el perfil → "Refresh credentials" → ingresa la nueva`}</CodeBlock>
 
+              <div className="callout" style={{ marginTop: 12 }}>
+                Si detecta fallo de sesión/token/credenciales durante connect/reconnect,
+                Kongtrol emite alerta de <strong>reauth requerida</strong> con hint específico por adapter.
+              </div>
+
               <p style={{ marginTop: 32 }}><strong>Estructura de archivos:</strong></p>
               <CodeBlock lang="text">{`~/.kongtrol/
 ├── kongtrol.yaml     ← config principal (sin contraseñas)
@@ -899,4 +931,11 @@ Contraseñas guardadas en:
       </div>
     </section>
   )
+}
+
+export default function Guide({ os, setOS, lang }: Props) {
+  if (lang === 'en') {
+    return <GuideEN os={os} setOS={setOS} />
+  }
+  return <GuideES os={os} setOS={setOS} />
 }
