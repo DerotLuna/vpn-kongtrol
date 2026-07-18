@@ -5,6 +5,7 @@ package routing
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -31,9 +32,13 @@ func (m *darwinRouteManager) Add(r Route) error {
 	}
 
 	if err := routeCmd(args...); err != nil {
+		if routeAlreadyExists(err) {
+			addTrackedRoute(&m.routes, r)
+			return nil
+		}
 		return fmt.Errorf("routing: add %s via %s: %w", r.Destination.String(), r.Interface, err)
 	}
-	m.routes = append(m.routes, r)
+	addTrackedRoute(&m.routes, r)
 	return nil
 }
 
@@ -98,4 +103,21 @@ func removeRoute(routes []Route, target Route) []Route {
 		}
 	}
 	return out
+}
+
+func routeAlreadyExists(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "file exists") || strings.Contains(msg, "already exists")
+}
+
+func addTrackedRoute(routes *[]Route, r Route) {
+	for _, cur := range *routes {
+		if cur.Destination.String() == r.Destination.String() && cur.Interface == r.Interface {
+			return
+		}
+	}
+	*routes = append(*routes, r)
 }

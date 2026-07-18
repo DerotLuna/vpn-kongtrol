@@ -9,10 +9,11 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// isTerminal is true when stdout is an interactive terminal.
-// Used only for cursor/animation control — Lip Gloss handles color detection
-// automatically via termenv.
-var isTerminal = func() bool {
+// isTerminal reports whether stdout is interactive and suitable for animation.
+func isTerminal() bool {
+	if outputQuiet {
+		return false
+	}
 	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
 		return false
 	}
@@ -21,68 +22,35 @@ var isTerminal = func() bool {
 		return false
 	}
 	return fi.Mode()&os.ModeCharDevice != 0
-}()
-
-// ── Lip Gloss styles ──────────────────────────────────────────────────────────
-
-var (
-	styleOK     = lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
-	styleErr    = lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
-	styleWarn   = lipgloss.NewStyle().Foreground(lipgloss.Color("214")).Bold(true)
-	styleInfo   = lipgloss.NewStyle().Foreground(lipgloss.Color("39"))
-	stylePrompt = lipgloss.NewStyle().Foreground(lipgloss.Color("51")).Bold(true)
-	styleDim    = lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	styleBright = lipgloss.NewStyle().Foreground(lipgloss.Color("255")).Bold(true)
-	styleGold   = lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Bold(true)
-	styleKong   = lipgloss.NewStyle().Foreground(lipgloss.Color("136")).Bold(true)
-	styleEye    = lipgloss.NewStyle().Foreground(lipgloss.Color("51")).Bold(true)
-
-	// Block-char shading styles — amber gradient: ░ → ▒ → ▓ → █
-	shadeLight = lipgloss.NewStyle().Foreground(lipgloss.Color("94"))  // dark olive (outermost)
-	shadeMed   = lipgloss.NewStyle().Foreground(lipgloss.Color("130")) // brown
-	shadeHeavy = lipgloss.NewStyle().Foreground(lipgloss.Color("136")) // amber
-	shadeSolid = lipgloss.NewStyle().Foreground(lipgloss.Color("172")) // bright amber (core)
-)
-
-// ── Title gradient ─────────────────────────────────────────────────────────────
-
-// titleGradient holds per-letter ANSI 256 colors: K O N G T R O L
-var titleGradient = []lipgloss.Color{"208", "214", "220", "226", "220", "214", "208", "202"}
-
-// kongShade colors each ░▒▓█ rune with its corresponding amber shade.
-// All other characters are passed through unstyled.
-func kongShade(s string) string {
-	var sb strings.Builder
-	for _, ch := range s {
-		switch ch {
-		case '░':
-			sb.WriteString(shadeLight.Render(string(ch)))
-		case '▒':
-			sb.WriteString(shadeMed.Render(string(ch)))
-		case '▓':
-			sb.WriteString(shadeHeavy.Render(string(ch)))
-		case '█':
-			sb.WriteString(shadeSolid.Render(string(ch)))
-		default:
-			sb.WriteString(string(ch))
-		}
-	}
-	return sb.String()
 }
+
+// Styles and palette live in theme.go ("Signal Contour").
 
 // ── Semantic helpers ──────────────────────────────────────────────────────────
 
-func tuiOK(s string) string     { return styleOK.Render("✓") + "  " + s }
-func tuiErr(s string) string    { return styleErr.Render("✗") + "  " + s }
-func tuiWarn(s string) string   { return styleWarn.Render("!") + "  " + s }
-func tuiInfo(s string) string   { return styleInfo.Render("▸") + "  " + s }
+func sym(pretty, plain string) string {
+	if outputPlain {
+		return plain
+	}
+	return pretty
+}
+
+func tuiOK(s string) string     { return styleOK.Render(sym("✓", "[OK]")) + "  " + s }
+func tuiErr(s string) string    { return styleErr.Render(sym("✗", "[ERR]")) + "  " + s }
+func tuiWarn(s string) string   { return styleWarn.Render(sym("!", "[WARN]")) + "  " + s }
+func tuiInfo(s string) string   { return styleInfo.Render(">") + "  " + s }
 func tuiLabel(s string) string  { return stylePrompt.Render(s) }
 func tuiDim(s string) string    { return styleDim.Render(s) }
 func tuiBright(s string) string { return styleBright.Render(s) }
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
 
-var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+// Braille-dot spinner — dots orbit inside the cell. (Arc glyphs ◜◠◝ looked
+// nicer on paper but are missing from common terminal fonts.)
+var (
+	spinFramesFancy = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+	spinFramesPlain = []string{"-", "\\", "|", "/"}
+)
 
 type spinner struct {
 	label     string
@@ -96,9 +64,16 @@ func newSpinner(label string) *spinner {
 
 func (s *spinner) Start() {
 	s.startedAt = time.Now()
-	if !isTerminal {
+	if outputQuiet {
+		return
+	}
+	if !isTerminal() {
 		fmt.Println(s.label + "...")
 		return
+	}
+	frames := spinFramesFancy
+	if outputPlain {
+		frames = spinFramesPlain
 	}
 	go func() {
 		for i := 0; ; i++ {
@@ -108,7 +83,7 @@ func (s *spinner) Start() {
 			default:
 				elapsed := time.Since(s.startedAt).Round(time.Second)
 				fmt.Printf("\r\033[2K%s %s",
-					styleInfo.Render(spinFrames[i%len(spinFrames)]),
+					stylePrompt.Render(frames[i%len(frames)]),
 					styleDim.Render(fmt.Sprintf("%s (%s)", s.label, elapsed)))
 				time.Sleep(80 * time.Millisecond)
 			}
@@ -117,7 +92,7 @@ func (s *spinner) Start() {
 }
 
 func (s *spinner) Stop() {
-	if !isTerminal {
+	if outputQuiet || !isTerminal() {
 		return
 	}
 	close(s.stop)
@@ -125,7 +100,7 @@ func (s *spinner) Stop() {
 	fmt.Printf("\r\033[2K")
 }
 
-// ── Kong gorilla logo ─────────────────────────────────────────────────────────
+// ── Kong wordmark + banner ────────────────────────────────────────────────────
 
 // kongTitle returns "K O N G T R O L" with an amber→gold gradient per letter.
 func kongTitle() string {
@@ -140,142 +115,149 @@ func kongTitle() string {
 	return sb.String()
 }
 
-// kongLogoLines returns a 9-line compact gorilla face using ░▒▓█ block chars
-// with an amber gradient, animated eyes, and text to the right.
-//
-//	  ▲  ▲  ▲  ▲                             (crown — animated gold spikes)
-//	  ░▒▓██████████▓▒░                        (top of head)
-//	 ▒▓████▒░    ░▒████▓▒                     (temples)
-//	▒▓████  ░▒▓░  ░▓▒░  ████▓▒               (brow ridge)
-//	▓████  ░█◉█░  ░█◉█░  ████▓  K O N G T R O L
-//	▒████   ░░      ░░   ████▒  Subtitle
-//	░████  ░▓████████▓░  ████░  v1.2.3
-//	 ▒▓████▒░      ░▒████▓▒                   (chin)
-//	  ░▒▒▓████████████▓▒▒░                    (base)
-//
-// Crown spikes and eyes animate in sync.
-func kongLogoLines(leftEye, rightEye string, eyeStyle lipgloss.Style, crownStyle lipgloss.Style, subtitle, ver string) []string {
-	s := kongShade
-	e := eyeStyle.Render
-	k := crownStyle.Render
-
-	titleText := "  " + kongTitle()
-	subText := ""
-	if subtitle != "" {
-		subText = "  " + styleDim.Render(subtitle)
-	}
-	verText := ""
-	if ver != "" {
-		verText = "  " + styleDim.Render(ver)
-	}
-
-	return []string{
-		"  " + k(""),
-		"  " + s("░▒▓██████████▓▒░"),
-		" " + s("▒▓████▒░    ░▒████▓▒"),
-		s("▒▓████  ░▒▓░  ░▓▒░  ████▓▒"),
-		s("▓████  ░█") + e(leftEye) + s("█░  ░█") + e(rightEye) + s("█░  ████▓") + titleText,
-		s("▒████   ░░      ░░   ████▒") + subText,
-		s("░████  ░▓████████▓░  ████░") + verText,
-		" " + s("▒▓████▒░      ░▒████▓▒"),
-		"  " + s("░▒▒▓████████████▓▒▒░"),
-	}
+// kongBannerLines is the site hero's ANSI-Shadow KONGTROL wordmark — the same
+// motd the landing page shows on `ssh guest@kongtrol.tower`.
+var kongBannerLines = []string{
+	`██╗  ██╗ ██████╗ ███╗   ██╗ ██████╗ ████████╗██████╗  ██████╗ ██╗`,
+	`██║ ██╔╝██╔═══██╗████╗  ██║██╔════╝ ╚══██╔══╝██╔══██╗██╔═══██╗██║`,
+	`█████╔╝ ██║   ██║██╔██╗ ██║██║  ███╗   ██║   ██████╔╝██║   ██║██║`,
+	`██╔═██╗ ██║   ██║██║╚██╗██║██║   ██║   ██║   ██╔══██╗██║   ██║██║`,
+	`██║  ██╗╚██████╔╝██║ ╚████║╚██████╔╝   ██║   ██║  ██║╚██████╔╝███████╗`,
+	`╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝    ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝`,
 }
 
-func printLogoLines(lines []string) {
-	for _, l := range lines {
-		fmt.Println(l)
-	}
+// bannerRamp is the vertical amber gradient — brightest at the base, like the
+// site's phosphor glow.
+var bannerRamp = []lipgloss.Color{
+	colEmber2, colEmber3, colSignal, colSignal, colSignalHi, colEmber3,
 }
 
-func redrawLogoLines(n int, lines []string) {
+func renderBannerLines(ramp func(i int) lipgloss.Color) []string {
+	out := make([]string, len(kongBannerLines))
+	for i, l := range kongBannerLines {
+		out[i] = "  " + lipgloss.NewStyle().Foreground(ramp(i)).Bold(true).Render(l)
+	}
+	return out
+}
+
+func redrawLines(n int, lines []string) {
 	fmt.Printf("\033[%dA", n)
 	for _, l := range lines {
 		fmt.Printf("\r\033[2K%s\n", l)
 	}
 }
 
+// AnimateBanner prints the block wordmark with a CRT power-on: lines reveal
+// top to bottom, flash bright once, then settle on the amber ramp. Falls back
+// to the compact wordmark on narrow terminals and in --plain mode.
+func AnimateBanner(subtitle, ver string) {
+	if outputPlain || lipgloss.Width(kongBannerLines[0])+2 > terminalWidth() {
+		line := kongTitle()
+		if ver != "" {
+			line += "  " + styleDim.Render(ver)
+		}
+		line += "  " + styleDim.Render(sym("·", "-")+"  "+subtitle)
+		fmt.Println("  " + line)
+		return
+	}
+
+	settled := renderBannerLines(func(i int) lipgloss.Color { return bannerRamp[i%len(bannerRamp)] })
+	if !isTerminal() {
+		for _, l := range settled {
+			fmt.Println(l)
+		}
+	} else {
+		for _, l := range settled {
+			fmt.Println(l)
+			time.Sleep(28 * time.Millisecond)
+		}
+		time.Sleep(90 * time.Millisecond)
+		redrawLines(len(settled), renderBannerLines(func(int) lipgloss.Color { return colSignalHi }))
+		time.Sleep(120 * time.Millisecond)
+		redrawLines(len(settled), settled)
+	}
+
+	meta := styleDim.Render(sym("#", "#") + " " + subtitle)
+	if ver != "" {
+		meta += styleDim.Render(" · " + ver)
+	}
+	meta += " " + styleInfo.Render("[beta]")
+	fmt.Println()
+	fmt.Println("  " + meta)
+}
+
 // PrintHeader prints a compact single-line banner for non-wizard commands.
 func PrintHeader(ver string) {
+	if outputQuiet {
+		return
+	}
 	fmt.Println()
 	line := kongTitle()
 	if ver != "" {
 		line += "  " + styleDim.Render(ver)
 	}
-	line += "  " + styleDim.Render("·  Multi-VPN Orchestration")
+	line += " " + styleInfo.Render("[beta]")
+	line += "  " + styleDim.Render(sym("·", "-")+"  "+ct("cli.header.subtitle"))
 	fmt.Println("  " + line)
 	// Thin separator rule under the header
-	fmt.Println("  " + lipgloss.NewStyle().Foreground(lipgloss.Color("237")).Render(strings.Repeat("─", 62)))
+	fmt.Println("  " + lipgloss.NewStyle().Foreground(colRule).Render(strings.Repeat("─", 62)))
 	fmt.Println()
 }
 
-// AnimateLogo prints the Kong logo with a two-blink eye animation.
-// The crown spikes glow/dim/vanish in sync with the eye state.
-func AnimateLogo(subtitle, ver string) {
-	const (
-		eyeOpen   = "◉"
-		eyeHalf   = "•"
-		eyeClosed = "─"
-	)
-
-	crownGlow := lipgloss.NewStyle().Foreground(lipgloss.Color("220")).Bold(true) // bright gold
-	crownDim := lipgloss.NewStyle().Foreground(lipgloss.Color("136"))             // amber (dim)
-	crownGone := styleKong                                                        // same as body → invisible
-
-	type frame struct {
-		l, r       string
-		eyeStyle   lipgloss.Style
-		crownStyle lipgloss.Style
-		hold       time.Duration
-	}
-
-	anim := []frame{
-		{eyeOpen, eyeOpen, styleEye, crownGlow, 700 * time.Millisecond},
-		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
-		{eyeClosed, eyeClosed, styleKong, crownGone, 130 * time.Millisecond},
-		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
-		{eyeOpen, eyeOpen, styleEye, crownGlow, 900 * time.Millisecond},
-		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
-		{eyeClosed, eyeClosed, styleKong, crownGone, 130 * time.Millisecond},
-		{eyeHalf, eyeHalf, styleEye, crownDim, 60 * time.Millisecond},
-		{eyeOpen, eyeOpen, styleEye, crownGlow, 0}, // final state
-	}
-
-	first := kongLogoLines(anim[0].l, anim[0].r, anim[0].eyeStyle, anim[0].crownStyle, subtitle, ver)
-	printLogoLines(first)
-	n := len(first)
-
-	if !isTerminal {
-		return
-	}
-
-	for i := 0; i < len(anim)-1; i++ {
-		time.Sleep(anim[i].hold)
-		f := anim[i+1]
-		next := kongLogoLines(f.l, f.r, f.eyeStyle, f.crownStyle, subtitle, ver)
-		redrawLogoLines(n, next)
-	}
+// SectionHeader prints a section divider marked with the brand contour ring.
+func SectionHeader(s string) {
+	fmt.Printf("\n  %s  %s\n", stylePrompt.Render(sym("◎", "#")), styleBright.Render(s))
 }
 
-// SectionHeader prints a colored section divider line.
-func SectionHeader(s string) {
-	fmt.Printf("\n%s\n", tuiInfo(styleBright.Render(s)))
+// StepHeader prints a numbered wizard phase header: ◎ 2/4 · Seguridad
+func StepHeader(step, total int, s string) {
+	fmt.Printf("\n  %s %s %s\n",
+		stylePrompt.Render(sym("◎", "#")),
+		styleDim.Render(fmt.Sprintf("%d/%d ·", step, total)),
+		styleBright.Render(s))
+}
+
+// NextStepsPanel renders the wizard's closing card: a rounded amber box with
+// each step as a shell command — the terminal twin of the site's quickstart
+// card. Entries are i18n lines shaped "command — description".
+func NextStepsPanel(title string, entries []string) string {
+	type row struct{ cmd, desc string }
+	rows := make([]row, 0, len(entries))
+	maxW := 0
+	for _, e := range entries {
+		parts := strings.SplitN(strings.TrimSpace(e), "—", 2)
+		r := row{cmd: strings.TrimSpace(parts[0])}
+		if len(parts) == 2 {
+			r.desc = strings.TrimSpace(parts[1])
+		}
+		if w := lipgloss.Width(r.cmd); w > maxW {
+			maxW = w
+		}
+		rows = append(rows, r)
+	}
+
+	var b strings.Builder
+	b.WriteString(stylePrompt.Render(sym("◎", "#")) + "  " + styleGold.Render(strings.Trim(strings.TrimSpace(title), ":")))
+	b.WriteString("\n")
+	for _, r := range rows {
+		b.WriteString("\n" + stylePrompt.Render("$ ") + styleBright.Render(r.cmd))
+		if r.desc != "" {
+			b.WriteString(strings.Repeat(" ", maxW-lipgloss.Width(r.cmd)+2))
+			b.WriteString(styleDim.Render(sym("·", "-") + " " + r.desc))
+		}
+	}
+
+	box := lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(colEmber2).
+		Padding(0, 2).
+		Render(b.String())
+	return "  " + strings.ReplaceAll(box, "\n", "\n  ")
 }
 
 // ── Legacy shims ──────────────────────────────────────────────────────────────
 // Thin wrappers so wizard.go and main.go continue to compile until each file
-// is rewritten with Lip Gloss / huh in its own task.
-
-var (
-	cSuccess = lipgloss.Color("82")
-	cError   = lipgloss.Color("196")
-	cWarn    = lipgloss.Color("214")
-	cInfo    = lipgloss.Color("39")
-	cPrompt  = lipgloss.Color("51")
-	cDim     = lipgloss.Color("245")
-	cBright  = lipgloss.Color("255")
-	cGold    = lipgloss.Color("220")
-)
+// is rewritten with Lip Gloss / huh in its own task. Colors live in theme.go.
 
 func paint(color lipgloss.Color, s string) string {
 	return lipgloss.NewStyle().Foreground(color).Render(s)

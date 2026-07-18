@@ -198,11 +198,21 @@ func (a *Adapter) TunnelInfo() (*vpn.TunnelInfo, error) {
 		info.BytesSent, info.BytesReceived = parseTransfer(raw)
 	}
 
-	// Resolve actual interface IP in case wg-quick adjusted it.
+	// Resolve actual interface IP in case wg-quick adjusted it. Don't assume
+	// addrs[0] is IPv4 — on Windows the WireGuard TUN adapter commonly lists
+	// a link-local IPv6 address first, and To4() on that silently wipes out
+	// the IPv4 already parsed from the config.
 	if iface, err := net.InterfaceByName(a.ifaceName); err == nil {
-		if addrs, err := iface.Addrs(); err == nil && len(addrs) > 0 {
-			if ipnet, ok := addrs[0].(*net.IPNet); ok {
-				info.AssignedIP = ipnet.IP.To4()
+		if addrs, err := iface.Addrs(); err == nil {
+			for _, addr := range addrs {
+				ipnet, ok := addr.(*net.IPNet)
+				if !ok {
+					continue
+				}
+				if v4 := ipnet.IP.To4(); v4 != nil {
+					info.AssignedIP = v4
+					break
+				}
 			}
 		}
 	}

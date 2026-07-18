@@ -81,29 +81,61 @@ func (r *Rule) MatchesDomain(domain string) bool {
 // MatchesApp reports whether the rule matches the given process executable.
 // Accepts either full process path or executable name.
 func (r *Rule) MatchesApp(app string) bool {
+	for _, pattern := range r.Match.Apps {
+		if appMatchesPattern(app, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// MatchesFlow reports whether the rule matches a combined flow context.
+// If the rule defines app matchers, app must be provided and match.
+// If the rule defines IP/domain matchers, target must be provided and match.
+func (r *Rule) MatchesFlow(target string, app string) bool {
+	needsApp := len(r.Match.Apps) > 0
+	needsTarget := len(r.Match.IPRanges) > 0 || len(r.Match.Domains) > 0
+
+	if needsApp {
+		if strings.TrimSpace(app) == "" || !r.MatchesApp(app) {
+			return false
+		}
+	}
+	if needsTarget {
+		target = strings.TrimSpace(target)
+		if target == "" {
+			return false
+		}
+		if ip := net.ParseIP(target); ip != nil {
+			return r.MatchesIP(ip)
+		}
+		return r.MatchesDomain(target)
+	}
+	return needsApp
+}
+
+func appMatchesPattern(app, pattern string) bool {
 	full, base, baseNoExt := normalizeApp(app)
 	if full == "" {
 		return false
 	}
-	for _, pattern := range r.Match.Apps {
-		p := normalizePattern(pattern)
-		if p == "" {
-			continue
-		}
-		if strings.Contains(p, "/") {
-			if ok, _ := path.Match(p, full); ok {
-				return true
-			}
-			continue
-		}
-
-		if ok, _ := path.Match(p, base); ok {
+	p := normalizePattern(pattern)
+	if p == "" {
+		return false
+	}
+	if strings.Contains(p, "/") {
+		if ok, _ := path.Match(p, full); ok {
 			return true
 		}
-		if baseNoExt != "" {
-			if ok, _ := path.Match(p, baseNoExt); ok {
-				return true
-			}
+		return false
+	}
+
+	if ok, _ := path.Match(p, base); ok {
+		return true
+	}
+	if baseNoExt != "" {
+		if ok, _ := path.Match(p, baseNoExt); ok {
+			return true
 		}
 	}
 	return false

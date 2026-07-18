@@ -3,6 +3,7 @@
 package security
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -10,10 +11,27 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 const resolvConf = "/etc/resolv.conf"
 const resolvBackup = "/etc/resolv.conf.kongtrol.bak"
+
+// networksetupTimeout bounds every networksetup invocation. DNS guard
+// apply/restore runs on the daemon's connect/disconnect and shutdown
+// (SIGTERM) paths; a hung networksetup must not be able to block process
+// exit or leave DNS in an indeterminate state indefinitely.
+const networksetupTimeout = 5 * time.Second
+
+func runNetworksetup(args ...string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), networksetupTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "networksetup", args...).CombinedOutput()
+	if err != nil && ctx.Err() == context.DeadlineExceeded {
+		return out, fmt.Errorf("networksetup %v: timed out after %s (%s)", args, networksetupTimeout, out)
+	}
+	return out, err
+}
 
 type unixDNSGuard struct {
 	mu     sync.Mutex
@@ -126,8 +144,7 @@ func (g *unixDNSGuard) applyDarwin(iface string, dnsServers []net.IP) error {
 		args = append(args, srv.String())
 	}
 
-	cmd := exec.Command("networksetup", args...)
-	out, err := cmd.CombinedOutput()
+	out, err := runNetworksetup(args...)
 	if err != nil {
 		return fmt.Errorf("dnsguard: networksetup %v: %w (%s)", args, err, out)
 	}
@@ -143,8 +160,7 @@ func (g *unixDNSGuard) restoreDarwin(iface string) error {
 	}
 
 	// Restore to DHCP-assigned DNS.
-	cmd := exec.Command("networksetup", "-setdnsservers", service, "empty")
-	out, err := cmd.CombinedOutput()
+	out, err := runNetworksetup("-setdnsservers", service, "empty")
 	if err != nil {
 		return fmt.Errorf("dnsguard: restore DNS: %w (%s)", err, out)
 	}
@@ -154,8 +170,7 @@ func (g *unixDNSGuard) restoreDarwin(iface string) error {
 // darwinServiceForInterface maps a BSD interface name (e.g. "utun0") to
 // a macOS network service name (e.g. "VPN (L2TP)") using networksetup.
 func darwinServiceForInterface(iface string) (string, error) {
-	cmd := exec.Command("networksetup", "-listallhardwareports")
-	out, err := cmd.Output()
+	out, err := runNetworksetup("-listallhardwareports")
 	if err != nil {
 		return "", err
 	}

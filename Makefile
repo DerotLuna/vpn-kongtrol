@@ -4,7 +4,7 @@ VERSION  := $(shell v=$$(git describe --tags --always --dirty 2>/dev/null || ech
 	if echo "$$v" | grep -q -- "-dirty$$"; then echo "$$v.$$(date +%Y%m%d%H%M%S)"; else echo "$$v"; fi)
 LDFLAGS  := -ldflags "-X main.version=$(VERSION) -s -w"
 DIST     := build/dist
-SITE_DIR := site
+SITE_DIR := landing
 SITE_BIN := $(SITE_DIR)/_binaries
 
 # On Windows (Git Bash), OS=Windows_NT is set by the environment.
@@ -99,8 +99,8 @@ dev:
 tidy:
 	go mod tidy
 
-.PHONY: site-sync-binaries
-site-sync-binaries:
+.PHONY: landing-sync-binaries
+landing-sync-binaries:
 	@if ! ls $(DIST)/kongtrol-* > /dev/null 2>&1; then \
 		echo "No binaries found in $(DIST)/. Run: make build-all-cli"; \
 		exit 1; \
@@ -116,7 +116,7 @@ site-sync-binaries:
 			echo "No SHA256 tool found (sha256sum/shasum)."; \
 			exit 1; \
 		fi
-	@echo "Updated site binaries + checksums in $(SITE_BIN)/"
+	@echo "Updated landing binaries + checksums in $(SITE_BIN)/"
 
 # ── Release ───────────────────────────────────────────────────────────────────
 

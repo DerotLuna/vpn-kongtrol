@@ -17,20 +17,21 @@ type GroupConfig struct {
 
 // VPNConfig holds the configuration for a single VPN profile.
 type VPNConfig struct {
-	Type       string     `yaml:"type"        validate:"required,oneof=forticlient openvpn protonvpn ciscoanyconnect wireguard globalprotect tailscale cloudflarewarp"`
-	Version    string     `yaml:"version"`
-	Host       string     `yaml:"host"`
-	Port       int        `yaml:"port"`
-	TunnelName string     `yaml:"tunnel_name"`
+	Type       string `yaml:"type"        validate:"required,oneof=forticlient openvpn protonvpn ciscoanyconnect wireguard globalprotect tailscale cloudflarewarp"`
+	Version    string `yaml:"version"`
+	Host       string `yaml:"host"`
+	Port       int    `yaml:"port"`
+	TunnelName string `yaml:"tunnel_name"`
 	// FortiClient-only: when true, GUI automation accepts certificate warnings.
 	// Keep false in production to avoid MITM risk.
-	AllowInsecureCert bool `yaml:"allow_insecure_cert"`
-	ConfigFile string     `yaml:"config"`      // .ovpn / wg .conf file path
-	Server     string     `yaml:"server"`      // server identifier (protonvpn)
-	Protocol   string     `yaml:"protocol"`    // wireguard|openvpn (protonvpn)
-	BinaryPath string     `yaml:"binary_path"` // override adapter binary location (optional)
-	Auth       AuthConfig `yaml:"auth"`
-	Priority   int        `yaml:"priority"`
+	AllowInsecureCert bool       `yaml:"allow_insecure_cert"`
+	ConfigFile        string     `yaml:"config"`      // .ovpn / wg .conf file path
+	Server            string     `yaml:"server"`      // server identifier (protonvpn)
+	Protocol          string     `yaml:"protocol"`    // wireguard|openvpn (protonvpn)
+	BinaryPath        string     `yaml:"binary_path"` // override adapter binary location (optional)
+	Auth              AuthConfig `yaml:"auth"`
+	Priority          int        `yaml:"priority"`
+	KillSwitch        *bool      `yaml:"kill_switch"` // optional per-profile override
 }
 
 // AuthConfig defines authentication credentials for a VPN profile.
@@ -108,6 +109,9 @@ type MonitorConfig struct {
 	Enabled     bool              `yaml:"enabled"`
 	Dashboard   DashboardConfig   `yaml:"dashboard"`
 	HealthCheck HealthCheckConfig `yaml:"health_check"`
+	History     HistoryConfig     `yaml:"history"`
+	Scheduler   SchedulerConfig   `yaml:"scheduler"`
+	SplitDNS    SplitDNSConfig    `yaml:"split_dns"`
 	Alerts      AlertsConfig      `yaml:"alerts"`
 }
 
@@ -121,6 +125,34 @@ type DashboardConfig struct {
 type HealthCheckConfig struct {
 	Interval string `yaml:"interval"` // e.g. "30s"
 	Timeout  string `yaml:"timeout"`  // e.g. "10s"
+}
+
+// HistoryConfig stores rolling profile stability metrics.
+type HistoryConfig struct {
+	Path          string `yaml:"path"`           // e.g. ~/.kongtrol/history.json
+	FlushInterval string `yaml:"flush_interval"` // e.g. "30s"
+}
+
+// SchedulerConfig activates profile groups by schedule windows.
+type SchedulerConfig struct {
+	Enabled  bool           `yaml:"enabled"`
+	Interval string         `yaml:"interval"` // e.g. "1m"
+	Rules    []ScheduleRule `yaml:"rules"`
+}
+
+// ScheduleRule defines when a set of profiles should stay connected.
+type ScheduleRule struct {
+	Name     string   `yaml:"name"`
+	Profiles []string `yaml:"profiles"`
+	Weekdays []string `yaml:"weekdays"` // mon,tue,wed,thu,fri,sat,sun (optional)
+	Start    string   `yaml:"start"`    // HH:MM 24h (optional)
+	End      string   `yaml:"end"`      // HH:MM 24h (optional)
+}
+
+// SplitDNSConfig enables transparent host-level split DNS injection.
+type SplitDNSConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Interval string `yaml:"interval"` // e.g. "60s"
 }
 
 // AlertsConfig defines alert thresholds and actions.

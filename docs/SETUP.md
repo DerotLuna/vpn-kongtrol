@@ -592,6 +592,7 @@ Abre `http://localhost:9741` en tu navegador. Verás:
 - Tráfico por túnel (upload / download)
 - Rutas activas
 - Estado del kill switch y DNS guard
+- Historial persistente por perfil (uptime, reconexiones, leaks, jitter)
 - Últimos eventos de conexión
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra.
@@ -611,13 +612,27 @@ kongtrol down --all               # apagar todo
 kongtrol status                   # ver qué está conectado
 kongtrol status --watch           # monitoreo en vivo
 kongtrol check                    # test de leaks ahora mismo
+kongtrol up --group work --dry-run # simulación completa sin tocar rutas/DNS/firewall
+kongtrol policy explain github.com # explica qué regla de policy aplica y por qué
+kongtrol policy explain github.com --json # salida estructurada
 kongtrol dashboard                # abrir UI web
 ```
+
+### Endpoints útiles del daemon/dashboard
+
+```bash
+GET /api/v1/metrics/history                # histórico persistente por perfil
+GET /api/v1/dns/resolve?domain=...&via=... # split-DNS por túnel específico
+GET /api/v1/resolve?target=...&app=...     # policy flow-aware (app + target)
+```
+
+Para idioma operativo del CLI (mensajes nuevos), usa `KONGTROL_LANG=es` o `KONGTROL_LANG=en`.
 
 ### Si algo falla
 
 ```bash
 kongtrol doctor                   # diagnóstico completo
+kongtrol doctor --json            # salida estructurada para CI/automatización
 ```
 
 ### Actualizar una contraseña en el keychain
@@ -761,6 +776,20 @@ sudo pfctl -d
 kongtrol init
 # Selecciona el perfil → "Refresh credentials" → ingresa la nueva contraseña
 ```
+
+Kongtrol también emite alerta de **reauth requerida** cuando detecta errores típicos
+de sesión/token/credenciales en reconnect/connect, con hint por tipo de adapter.
+
+### Split-DNS transparente del sistema
+
+Si activas `monitor.split_dns.enabled`, Kongtrol inyecta entradas controladas en el
+archivo de hosts del sistema para dominios de policy, de modo que apps normales
+(sin consumir la API) resuelvan por el túnel correspondiente.
+
+### Historial persistente
+
+Por defecto se guarda en `~/.kongtrol/history.json` y se actualiza en background
+(`monitor.history.flush_interval`).
 
 ---
 

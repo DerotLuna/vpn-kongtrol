@@ -5,6 +5,7 @@ dist/
 *.dll
 *.so
 *.dylib
+/kongtrol
 
 # ── Go ────────────────────────────────────────────────────────────────────────
 vendor/
@@ -50,6 +51,12 @@ $RECYCLE.BIN/
 *~
 .fuse_hidden*
 .Trash-*
+
+# ── AI tooling (local harness config / skills cache) ──────────────────────────
+.claude/
+.agents/
+/agent/
+skills-lock.json
 
 # ── Editors & IDEs ────────────────────────────────────────────────────────────
 .idea/

@@ -6,18 +6,19 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func tempAuditLog(t *testing.T, sign bool, key []byte) (*AuditLogger, string) {
 	t.Helper()
 	dir := t.TempDir()
-	path := filepath.Join(dir, "audit.log")
-	l, err := NewAuditLogger(path, sign, key)
+	basePath := filepath.Join(dir, "audit.log")
+	l, err := NewAuditLogger(basePath, sign, key)
 	if err != nil {
 		t.Fatalf("NewAuditLogger: %v", err)
 	}
 	t.Cleanup(func() { _ = l.Close() })
-	return l, path
+	return l, DailyAuditLogPath(basePath, time.Now())
 }
 
 func readEvents(t *testing.T, path string) []AuditEvent {
@@ -154,5 +155,32 @@ func TestAuditLogger_UniqueIDs(t *testing.T) {
 			t.Errorf("duplicate event ID: %s", ev.ID)
 		}
 		ids[ev.ID] = true
+	}
+}
+
+func TestAuditLogger_PrunesToTodayAndYesterday(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "audit.log")
+	now := time.Date(2026, 7, 15, 10, 0, 0, 0, time.Local)
+	older := DailyAuditLogPath(base, now.AddDate(0, 0, -2))
+	yesterday := DailyAuditLogPath(base, now.AddDate(0, 0, -1))
+	today := DailyAuditLogPath(base, now)
+	for _, p := range []string{older, yesterday, today} {
+		if err := os.WriteFile(p, []byte("{}\n"), 0o600); err != nil {
+			t.Fatalf("write %s: %v", p, err)
+		}
+	}
+
+	l := &AuditLogger{basePath: base}
+	l.pruneOldFiles(now)
+
+	if _, err := os.Stat(today); err != nil {
+		t.Fatalf("today should be kept: %v", err)
+	}
+	if _, err := os.Stat(yesterday); err != nil {
+		t.Fatalf("yesterday should be kept: %v", err)
+	}
+	if _, err := os.Stat(older); !os.IsNotExist(err) {
+		t.Fatalf("older file should be removed, err=%v", err)
 	}
 }

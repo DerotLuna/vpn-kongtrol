@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -29,7 +30,7 @@ type Server struct {
 	ks             security.KillSwitch
 	killSwitchOn   bool
 	leakTest       *security.LeakTester
-	policyEngine   *policy.Engine
+	policyEngine   atomic.Pointer[policy.Engine] // hot-swapped on policy CRUD; see saveRuntimeConfig
 	policyResolver *monitor.PolicyResolver
 	configPath     string
 	onPolicyUpdate func(*config.Config, *policy.Engine)
@@ -39,6 +40,7 @@ type Server struct {
 	connectCancel  map[string]context.CancelFunc
 	upgrader       websocket.Upgrader
 	srv            *http.Server
+	onShutdown     func()
 }
 
 // NewServer creates a new API server.
@@ -57,8 +59,9 @@ func NewServer(
 	onPolicyUpdate func(*config.Config, *policy.Engine),
 	dnsMgr *monitor.DNSManager,
 	dnsGuardEnabled bool,
+	onShutdown func(),
 ) *Server {
-	return &Server{
+	s := &Server{
 		bind:           bind,
 		port:           port,
 		adapters:       adapters,
@@ -67,12 +70,12 @@ func NewServer(
 		ks:             ks,
 		killSwitchOn:   killSwitchEnabled,
 		leakTest:       leakTest,
-		policyEngine:   policyEngine,
 		policyResolver: policyResolver,
 		configPath:     configPath,
 		onPolicyUpdate: onPolicyUpdate,
 		dnsMgr:         dnsMgr,
 		dnsGuardOn:     dnsGuardEnabled,
+		onShutdown:     onShutdown,
 		connectCancel:  make(map[string]context.CancelFunc),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -83,6 +86,8 @@ func NewServer(
 			},
 		},
 	}
+	s.policyEngine.Store(policyEngine)
+	return s
 }
 
 // Start launches the HTTP server. Returns immediately; call Shutdown() to stop.
@@ -91,6 +96,7 @@ func (s *Server) Start() error {
 
 	// REST API endpoints.
 	mux.HandleFunc("GET /api/v1/tunnels", s.handleListTunnels)
+	mux.HandleFunc("GET /api/v1/metrics/history", s.handleMetricsHistory)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/connect", s.handleConnect)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/cancel_connect", s.handleCancelConnect)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/disconnect", s.handleDisconnect)
@@ -104,6 +110,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("DELETE /api/v1/policies/{name}", s.handleDeletePolicy)
 	mux.HandleFunc("POST /api/v1/policies/test", s.handleTestPolicy)
 	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)
+	mux.HandleFunc("GET /api/v1/dns/resolve", s.handleDNSResolve)
+	mux.HandleFunc("POST /api/v1/shutdown", s.handleShutdown)
 
 	// WebSocket live metrics feed.
 	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)

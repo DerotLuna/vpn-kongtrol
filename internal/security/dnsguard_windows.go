@@ -3,12 +3,18 @@
 package security
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
+
+// netshQueryTimeout bounds the read-only netsh query used to snapshot the
+// current DNS servers before overwriting them.
+const netshQueryTimeout = 5 * time.Second
 
 type windowsDNSGuard struct {
 	mu      sync.Mutex
@@ -94,7 +100,9 @@ func (g *windowsDNSGuard) IsActive() bool {
 // currentDNSWindows reads the current DNS servers for an interface via netsh.
 // This is a read-only query that doesn't require elevation.
 func currentDNSWindows(iface string) ([]string, error) {
-	cmd := exec.Command("netsh", "interface", "ip", "show", "dns", iface)
+	ctx, cancel := context.WithTimeout(context.Background(), netshQueryTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "netsh", "interface", "ip", "show", "dns", iface)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err

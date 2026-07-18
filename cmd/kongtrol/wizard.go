@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -28,6 +29,8 @@ var initCmd = &cobra.Command{
 }
 
 func init() {
+	initCmd.Short = ct("cli.init.short")
+	initCmd.Example = ct("cli.init.examples")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -36,42 +39,43 @@ func init() {
 func kongTheme() *huh.Theme {
 	t := huh.ThemeBase()
 
-	amber  := lipgloss.Color("220") // gold
-	cyan   := lipgloss.Color("51")  // cyan / eye color
-	dim    := lipgloss.Color("245") // gray
-	bright := lipgloss.Color("255") // near-white
-	green  := lipgloss.Color("82")  // success
-	red    := lipgloss.Color("196") // error
+	// Signal Contour tokens (theme.go)
+	amber := colSignal
+	cyan := colSteel
+	dim := colDim
+	bright := colText
+	green := colSignal
+	red := colDanger
 
 	// Focused field styles (amber border + title)
 	t.Focused.Base = lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(amber).
 		Padding(0, 1)
-	t.Focused.Title          = lipgloss.NewStyle().Foreground(amber).Bold(true)
-	t.Focused.Description    = lipgloss.NewStyle().Foreground(dim)
+	t.Focused.Title = lipgloss.NewStyle().Foreground(amber).Bold(true)
+	t.Focused.Description = lipgloss.NewStyle().Foreground(dim)
 	t.Focused.ErrorIndicator = lipgloss.NewStyle().Foreground(red)
-	t.Focused.ErrorMessage   = lipgloss.NewStyle().Foreground(red)
+	t.Focused.ErrorMessage = lipgloss.NewStyle().Foreground(red)
 	t.Focused.SelectSelector = lipgloss.NewStyle().Foreground(cyan).Bold(true)
-	t.Focused.Option         = lipgloss.NewStyle().Foreground(bright)
+	t.Focused.Option = lipgloss.NewStyle().Foreground(bright)
 	t.Focused.SelectedOption = lipgloss.NewStyle().Foreground(amber).Bold(true)
 	t.Focused.SelectedPrefix = lipgloss.NewStyle().Foreground(green).Bold(true)
 	t.Focused.UnselectedOption = lipgloss.NewStyle().Foreground(dim)
-	t.Focused.FocusedButton  = lipgloss.NewStyle().Foreground(bright).Background(amber).Bold(true).Padding(0, 2)
-	t.Focused.BlurredButton  = lipgloss.NewStyle().Foreground(dim).Padding(0, 2)
-	t.Focused.TextInput.Prompt      = lipgloss.NewStyle().Foreground(cyan)
-	t.Focused.TextInput.Text        = lipgloss.NewStyle().Foreground(bright)
+	t.Focused.FocusedButton = lipgloss.NewStyle().Foreground(bright).Background(amber).Bold(true).Padding(0, 2)
+	t.Focused.BlurredButton = lipgloss.NewStyle().Foreground(dim).Padding(0, 2)
+	t.Focused.TextInput.Prompt = lipgloss.NewStyle().Foreground(cyan)
+	t.Focused.TextInput.Text = lipgloss.NewStyle().Foreground(bright)
 	t.Focused.TextInput.Placeholder = lipgloss.NewStyle().Foreground(dim)
-	t.Focused.TextInput.Cursor      = lipgloss.NewStyle().Foreground(amber)
+	t.Focused.TextInput.Cursor = lipgloss.NewStyle().Foreground(amber)
 	t.Focused.NoteTitle = lipgloss.NewStyle().Foreground(amber).Bold(true)
 
 	// Blurred (not focused)
 	t.Blurred.Base = lipgloss.NewStyle().
 		BorderStyle(lipgloss.HiddenBorder()).
 		Padding(0, 1)
-	t.Blurred.Title          = lipgloss.NewStyle().Foreground(dim)
-	t.Blurred.Description    = lipgloss.NewStyle().Foreground(dim)
-	t.Blurred.Option         = lipgloss.NewStyle().Foreground(dim)
+	t.Blurred.Title = lipgloss.NewStyle().Foreground(dim)
+	t.Blurred.Description = lipgloss.NewStyle().Foreground(dim)
+	t.Blurred.Option = lipgloss.NewStyle().Foreground(dim)
 	t.Blurred.SelectSelector = lipgloss.NewStyle().Foreground(dim)
 	t.Blurred.TextInput.Text = lipgloss.NewStyle().Foreground(dim)
 
@@ -112,18 +116,23 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	} else {
 		lang = i18n.ES
 	}
-	t := func(key string) string              { return i18n.T(lang, key) }
-	tf := func(key string, a ...any) string   { return i18n.F(lang, key, a...) }
+	t := func(key string) string { return i18n.T(lang, key) }
+	tf := func(key string, a ...any) string { return i18n.F(lang, key, a...) }
 
-	// ── 2. Logo + greeting ────────────────────────────────────────────────────
+	// Persist the choice so every other command (status, up, ...) uses it too.
+	if p, err := loadPreferences(); err == nil {
+		p.Language = langChoice
+		_ = savePreferences(p)
+	}
+
+	// ── 2. Banner — the site hero's motd, now in the terminal ─────────────────
 	fmt.Println()
-	AnimateLogo(t("banner.subtitle"), version)
-	fmt.Println()
-	fmt.Println(styleDim.Render("  " + t("banner.yaml")))
-	fmt.Println(styleDim.Render("  " + t("banner.keychain")))
+	AnimateBanner(t("banner.subtitle"), version)
+	fmt.Println(styleDim.Render("  " + sym("#", "#") + " " + t("banner.yaml")))
+	fmt.Println(styleDim.Render("  " + sym("#", "#") + " " + t("banner.keychain")))
 	fmt.Println()
 
-	// ── 3. Detect installed VPN clients ───────────────────────────────────────
+	// ── 3. Detect installed VPN clients — boot-sequence reveal ────────────────
 	spin := newSpinner(t("detected.scanning"))
 	spin.Start()
 	detected := detectInstalledVPNs()
@@ -132,10 +141,13 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	if len(detected) > 0 {
 		fmt.Println(tuiInfo(styleBright.Render(t("detected.header"))))
 		for _, d := range detected {
+			if isTerminal() {
+				time.Sleep(90 * time.Millisecond)
+			}
 			fmt.Printf("    %s  %-22s  %s\n",
-				styleOK.Render("✓"),
+				styleOK.Render(sym("✓", "[OK]")),
 				styleBright.Render(d.label),
-				styleDim.Render(d.version))
+				styleInfo.Render(d.version))
 		}
 	} else {
 		fmt.Println(tuiWarn(t("detected.none")))
@@ -197,6 +209,8 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	}
 
 	// ── 7. Add VPN profiles ───────────────────────────────────────────────────
+	StepHeader(1, 4, t("section.profiles"))
+
 	knownProfiles := make(map[string]bool)
 	if existing != nil {
 		for name := range existing.VPNs {
@@ -256,7 +270,7 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	collectPoliciesHuh(lang, doc, existing, knownProfiles)
 
 	// ── 9. Security ───────────────────────────────────────────────────────────
-	SectionHeader(t("section.security"))
+	StepHeader(3, 4, t("section.security"))
 
 	secNode := mappingKey(doc, "security")
 	if secNode == nil {
@@ -272,9 +286,9 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	)
 	// Pre-fill defaults from existing config.
 	if existing != nil {
-		enableKS      = existing.Security.KillSwitch.Enabled
-		enableDNS     = existing.Security.DNSGuard.Enabled
-		enableAudit   = existing.Security.AuditLog.Sign
+		enableKS = existing.Security.KillSwitch.Enabled
+		enableDNS = existing.Security.DNSGuard.Enabled
+		enableAudit = existing.Security.AuditLog.Sign
 		enableMonitor = existing.Monitor.Enabled
 	} else {
 		enableKS, enableDNS, enableAudit, enableMonitor = true, true, true, true
@@ -284,7 +298,7 @@ func runWizard(_ *cobra.Command, _ []string) error {
 		huh.NewGroup(
 			huh.NewNote().
 				Title(t("section.security")).
-				Description(styleDim.Render("Configure security policies for all tunnels.")),
+				Description(styleDim.Render(t("security.note"))),
 			huh.NewConfirm().
 				Title(t("security.kill_switch")).
 				Description(styleDim.Render(t("hint.killswitch"))).
@@ -325,7 +339,7 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	}
 
 	// ── 10. Confirm + write ───────────────────────────────────────────────────
-	fmt.Println()
+	StepHeader(4, 4, t("section.write"))
 	var doWrite bool
 	_ = newForm(
 		huh.NewGroup(
@@ -362,11 +376,12 @@ func runWizard(_ *cobra.Command, _ []string) error {
 
 	// ── Next steps ────────────────────────────────────────────────────────────
 	fmt.Println()
-	fmt.Println(styleGold.Render(t("nextsteps.header")))
-	fmt.Println("  " + stylePrompt.Render(t("nextsteps.init")))
-	fmt.Println("  " + stylePrompt.Render(t("nextsteps.status")))
-	fmt.Println("  " + stylePrompt.Render(t("nextsteps.up")))
-	fmt.Println("  " + stylePrompt.Render(t("nextsteps.dashboard")))
+	fmt.Println(NextStepsPanel(t("nextsteps.header"), []string{
+		t("nextsteps.init"),
+		t("nextsteps.status"),
+		t("nextsteps.up"),
+		t("nextsteps.dashboard"),
+	}))
 	fmt.Println()
 	return nil
 }
@@ -796,7 +811,7 @@ func collectCredentialsHuh(lang i18n.Lang, profileName, adapterType string, auth
 // ── Routing policies ──────────────────────────────────────────────────────────
 
 func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config, profileNames map[string]bool) {
-	SectionHeader(i18n.T(lang, "section.policies"))
+	StepHeader(2, 4, i18n.T(lang, "section.policies"))
 
 	if existing != nil && len(existing.Policies) > 0 {
 		fmt.Println(tuiInfo(i18n.T(lang, "policy.existing")))

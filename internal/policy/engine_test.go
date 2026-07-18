@@ -266,3 +266,89 @@ func TestEngine_Rules_ReturnsCopy(t *testing.T) {
 		t.Error("Rules() returned a reference — engine state was mutated")
 	}
 }
+
+func TestExplainIP_IncludesRuleAndCIDR(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "broad", Match: config.MatchSpec{IPRanges: []string{"10.10.0.0/16"}}, Via: "broad-vpn"},
+		{Name: "narrow", Match: config.MatchSpec{IPRanges: []string{"10.10.5.0/24"}}, Via: "narrow-vpn"},
+	}, nil)
+
+	got := e.ExplainIP(net.ParseIP("10.10.5.20"))
+	if !got.Matched {
+		t.Fatalf("expected a match, got %#v", got)
+	}
+	if got.Via != "narrow-vpn" || got.RuleName != "narrow" {
+		t.Fatalf("unexpected explain result: %#v", got)
+	}
+	if got.Reason == "" {
+		t.Fatalf("expected reason to be populated")
+	}
+}
+
+func TestExplainTarget_AppPrefix(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "dev-tools", Match: config.MatchSpec{Apps: []string{"code*"}}, Via: "dev-vpn"},
+	}, nil)
+
+	got := e.ExplainTarget("app:code-insiders.exe")
+	if !got.Matched {
+		t.Fatalf("expected app target to match, got %#v", got)
+	}
+	if got.Kind != "app" || got.Via != "dev-vpn" || got.RuleName != "dev-tools" {
+		t.Fatalf("unexpected explain result: %#v", got)
+	}
+}
+
+func TestExplainDomain_NoMatch(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{Name: "us", Match: config.MatchSpec{Domains: []string{"netflix.com"}}, Via: "us-vpn"},
+	}, nil)
+
+	got := e.ExplainDomain("example.org")
+	if got.Matched {
+		t.Fatalf("expected no match, got %#v", got)
+	}
+	if got.DefaultTo == "" || got.Reason == "" {
+		t.Fatalf("expected default and reason for no-match, got %#v", got)
+	}
+}
+
+func TestResolveFlow_AppAndDomainMustBothMatch(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{
+			Name: "corp-browser",
+			Match: config.MatchSpec{
+				Domains: []string{"*.corp.local"},
+				Apps:    []string{"chrome"},
+			},
+			Via: "office",
+		},
+	}, nil)
+
+	via, rule, ok := e.ResolveFlow("portal.corp.local", "chrome.exe")
+	if !ok || via != "office" || rule != "corp-browser" {
+		t.Fatalf("ResolveFlow match = (%q, %q, %v), want (office, corp-browser, true)", via, rule, ok)
+	}
+
+	_, _, ok = e.ResolveFlow("portal.corp.local", "firefox.exe")
+	if ok {
+		t.Fatalf("ResolveFlow should fail when app does not match")
+	}
+}
+
+func TestResolveFlow_AppOnlyRuleStillMatches(t *testing.T) {
+	e := buildEngine(t, []config.PolicyRule{
+		{
+			Name: "dev-tools",
+			Match: config.MatchSpec{
+				Apps: []string{"code*"},
+			},
+			Via: "dev",
+		},
+	}, nil)
+
+	via, rule, ok := e.ResolveFlow("", "code-insiders.exe")
+	if !ok || via != "dev" || rule != "dev-tools" {
+		t.Fatalf("ResolveFlow app-only = (%q, %q, %v), want (dev, dev-tools, true)", via, rule, ok)
+	}
+}

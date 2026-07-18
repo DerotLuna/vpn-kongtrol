@@ -4,70 +4,74 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VPN Kongtrol</title>
-  <link rel="icon" type="image/png" href="/logo-kong.png" />
+  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
+  <header class="top-header">
     <div class="brand">
-      <img src="/logo-kong.png" alt="VPN Kongtrol" class="brand-logo" />
-      <span class="brand-name">VPN Kongtrol</span>
+      <img src="/logo-kong.svg" alt="VPN Kongtrol" class="brand-logo" />
+      <span class="brand-name"><strong>K O N G T R O L</strong><small>CLI</small><small class="beta">BETA</small></span>
     </div>
     <div class="header-right">
       <nav class="top-nav">
-        <a class="nav-link active" href="/">Overview</a>
-        <a class="nav-link" href="/policies.html">Policy Studio</a>
+        <a class="nav-link active" href="/" data-i18n="nav.overview">Overview</a>
+        <a class="nav-link" href="/policies.html" data-i18n="nav.policyStudio">Policy Studio</a>
       </nav>
-      <span id="ws-label" class="ws-label">connecting…</span>
+      <button id="lang-toggle" class="lang-toggle" type="button" aria-label="Toggle language">EN</button>
+      <span id="ws-label" class="ws-label" data-i18n="ws.connecting">connecting…</span>
       <div id="connection-indicator" class="indicator disconnected" title="Daemon connection"></div>
     </div>
   </header>
 
   <main>
     <section class="card" id="tunnels-section">
-      <h2>Tunnels</h2>
+      <h2 data-i18n="sections.tunnels">Tunnels</h2>
       <table id="tunnels-table">
         <thead>
           <tr>
-            <th>Profile</th>
-            <th>Status</th>
-            <th>Assigned IP</th>
-            <th>Uptime</th>
-            <th>↑ Sent</th>
-            <th>↓ Received</th>
-            <th>Latency</th>
-            <th>Actions</th>
+            <th data-i18n="table.profile">Profile</th>
+            <th data-i18n="table.status">Status</th>
+            <th data-i18n="table.assignedIp">Assigned IP</th>
+            <th data-i18n="table.uptime">Uptime</th>
+            <th data-i18n="table.sent">↑ Sent</th>
+            <th data-i18n="table.received">↓ Received</th>
+            <th data-i18n="table.latency">Latency</th>
+            <th data-i18n="table.actions">Actions</th>
           </tr>
         </thead>
         <tbody id="tunnels-body">
-          <tr><td colspan="8" class="empty">Connecting to daemon…</td></tr>
+          <tr><td colspan="8" class="empty" data-i18n="empty.connectingDaemon">Connecting to daemon…</td></tr>
         </tbody>
       </table>
     </section>
 
     <section class="card" id="traffic-map-section">
       <div class="card-header">
-        <h2>Traffic Map & Policy Resolver</h2>
+        <h2 data-i18n="sections.trafficMap">Traffic Map & Policy Resolver</h2>
         <button class="refresh-btn" onclick="refreshPolicies()" title="Refresh">↻</button>
       </div>
       <div class="resolve-bar">
-        <input type="text" id="resolve-input" placeholder="IP/domain, URL, policy/profile, or app:process — e.g. claude.ai, https://chatgpt.com, us-content, app:chrome.exe" spellcheck="false" />
-        <button class="action" id="resolve-btn" onclick="resolveTarget()">Check</button>
-        <button class="action" id="resolve-clear-btn" onclick="clearResolve()">Clear</button>
+        <input type="text" id="resolve-input" data-i18n-placeholder="resolve.placeholder" placeholder="IP/domain, URL, policy/profile, or app:process — e.g. claude.ai, https://chatgpt.com, us-content, app:chrome.exe" spellcheck="false" />
+        <button class="action" id="resolve-btn" onclick="resolveTarget()" data-i18n="resolve.check">Check</button>
+        <button class="action" id="resolve-clear-btn" onclick="clearResolve()" data-i18n="resolve.clear">Clear</button>
       </div>
       <div id="resolve-result" class="resolve-result" style="display:none"></div>
       <div id="policy-filter-note" class="muted"></div>
       <table id="policies-table">
         <thead>
           <tr>
-            <th>Policy</th>
-            <th>Match</th>
-            <th>VPN Profile</th>
-            <th>Resolved IPs</th>
+            <th data-i18n="policies.policy">Policy</th>
+            <th data-i18n="policies.match">Match</th>
+            <th data-i18n="policies.vpnProfile">VPN Profile</th>
+            <th data-i18n="policies.resolvedIps">Resolved IPs</th>
           </tr>
         </thead>
         <tbody id="policies-body">
-          <tr><td colspan="4" class="empty">Loading…</td></tr>
+          <tr><td colspan="4" class="empty" data-i18n="empty.loading">Loading…</td></tr>
         </tbody>
       </table>
     </section>
@@ -75,43 +79,43 @@
     <div class="side-grid">
       <section class="card" id="base-network-section">
         <div class="card-header">
-          <h2>Base Network Egress</h2>
+          <h2 data-i18n="sections.baseNetwork">Base Network Egress</h2>
           <button class="refresh-btn" onclick="refreshNetworkOverview()" title="Refresh">↻</button>
         </div>
         <ul id="base-network-list">
-          <li><span class="label">Connected tunnels</span><span id="base-connected" class="mono value">—</span></li>
-          <li><span class="label">Default egress</span><span id="base-egress" class="mono value">—</span></li>
-          <li><span class="label">Gateway</span><span id="base-gateway" class="mono value">—</span></li>
-          <li><span class="label">Local IPs</span><span id="base-local-ips" class="mono value value-wrap">—</span></li>
-          <li><span class="label">Public IP (normal internet)</span><span id="base-public-ip" class="mono value">—</span></li>
+          <li><span class="label" data-i18n="base.connectedTunnels">Connected tunnels</span><span id="base-connected" class="mono value">—</span></li>
+          <li><span class="label" data-i18n="base.defaultEgress">Default egress</span><span id="base-egress" class="mono value">—</span></li>
+          <li><span class="label" data-i18n="base.gateway">Gateway</span><span id="base-gateway" class="mono value">—</span></li>
+          <li><span class="label" data-i18n="base.localIps">Local IPs</span><span id="base-local-ips" class="mono value value-wrap">—</span></li>
+          <li><span class="label" data-i18n="base.publicIp">Public IP (normal internet)</span><span id="base-public-ip" class="mono value">—</span></li>
         </ul>
-        <p id="base-routing-note" class="muted">Unmatched traffic follows your default route.</p>
+        <p id="base-routing-note" class="muted" data-i18n="base.note">Unmatched traffic follows your default route.</p>
       </section>
 
       <section class="card" id="security-section">
         <div class="card-header">
-          <h2>Security Controls</h2>
+          <h2 data-i18n="sections.security">Security Controls</h2>
           <button class="refresh-btn" onclick="refreshSecurity()" title="Refresh">↻</button>
         </div>
         <ul id="security-list">
           <li>
-            <span class="label">Kill Switch</span>
+            <span class="label" data-i18n="security.killSwitch">Kill Switch</span>
             <span id="ks-status" class="badge">—</span>
           </li>
           <li>
-            <span class="label">DNS Guard</span>
+            <span class="label" data-i18n="security.dnsGuard">DNS Guard</span>
             <span id="dns-status" class="badge">—</span>
           </li>
           <li>
-            <span class="label">Leak Check</span>
+            <span class="label" data-i18n="security.leakCheck">Leak Check</span>
             <span id="leak-status" class="badge">—</span>
           </li>
           <li>
-            <span class="label">Public IP</span>
+            <span class="label" data-i18n="security.publicIp">Public IP</span>
             <span id="public-ip" class="mono">—</span>
           </li>
           <li>
-            <span class="label">Last checked</span>
+            <span class="label" data-i18n="security.lastChecked">Last checked</span>
             <span id="leak-time" class="muted">—</span>
           </li>
         </ul>
@@ -119,18 +123,18 @@
 
       <section class="card" id="routes-section">
         <div class="card-header">
-          <h2>Active Routes (Live)</h2>
+          <h2 data-i18n="sections.activeRoutes">Active Routes (Live)</h2>
           <button class="refresh-btn" onclick="refreshRoutes()" title="Refresh">↻</button>
         </div>
         <div class="routes-toolbar">
-          <label for="routes-filter">Filter</label>
+          <label for="routes-filter" data-i18n="routes.filter">Filter</label>
           <select id="routes-filter">
-            <option value="all">All routes</option>
-            <option value="default">Default route</option>
+            <option value="all" data-i18n="routes.all">All routes</option>
+            <option value="default" data-i18n="routes.default">Default route</option>
           </select>
         </div>
         <ul id="routes-list">
-          <li class="empty">Loading…</li>
+          <li class="empty" data-i18n="empty.loading">Loading…</li>
         </ul>
       </section>
 

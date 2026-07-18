@@ -23,6 +23,7 @@ vpns:
       # username_keychain: office.username   # keychain key name
       # password_keychain: office.password   # keychain key name (recommended)
     priority: 10
+    kill_switch: true
 
   server:
     type: openvpn
@@ -94,6 +95,7 @@ vpns:
     auth:
       method: credentials
     priority: 1
+    kill_switch: false
 
 
 policies:
@@ -181,6 +183,24 @@ monitor:
   health_check:
     interval: "30s"
     timeout: "10s"
+
+  history:
+    path: ~/.kongtrol/history.json
+    flush_interval: "30s"
+
+  split_dns:
+    enabled: true
+    interval: "60s"
+
+  scheduler:
+    enabled: false
+    interval: "1m"
+    rules:
+      - name: "work-hours"
+        profiles: ["office"]
+        weekdays: ["mon", "tue", "wed", "thu", "fri"]
+        start: "09:00"
+        end: "18:00"
 
   alerts:
     on_vpn_drop:

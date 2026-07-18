@@ -4,6 +4,7 @@ package routing
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/vishvananda/netlink"
@@ -38,9 +39,13 @@ func (m *linuxRouteManager) Add(r Route) error {
 	}
 
 	if err := netlink.RouteAdd(nlRoute); err != nil {
+		if routeAlreadyExists(err) {
+			addTrackedRoute(&m.routes, r)
+			return nil
+		}
 		return fmt.Errorf("routing: add %s via %s: %w", r.Destination.String(), r.Interface, err)
 	}
-	m.routes = append(m.routes, r)
+	addTrackedRoute(&m.routes, r)
 	return nil
 }
 
@@ -116,4 +121,21 @@ func filterInterface(routes []Route, iface string) []Route {
 		}
 	}
 	return out
+}
+
+func addTrackedRoute(routes *[]Route, r Route) {
+	for _, cur := range *routes {
+		if cur.Destination.String() == r.Destination.String() && cur.Interface == r.Interface {
+			return
+		}
+	}
+	*routes = append(*routes, r)
+}
+
+func routeAlreadyExists(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "file exists") || strings.Contains(msg, "already exists")
 }

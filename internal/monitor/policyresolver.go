@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"runtime"
@@ -171,6 +172,25 @@ func (r *PolicyResolver) Snapshot() []ProfileSnapshot {
 	return out
 }
 
+// ResolveDomainViaProfile resolves a domain using the DNS servers attached to
+// a specific profile. It returns deduplicated IPs.
+func (r *PolicyResolver) ResolveDomainViaProfile(profile, domain string) ([]net.IP, error) {
+	r.mu.Lock()
+	ps, ok := r.profiles[profile]
+	r.mu.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("policyresolver: profile %q is not registered", profile)
+	}
+	if strings.TrimSpace(domain) == "" {
+		return nil, errors.New("policyresolver: empty domain")
+	}
+	ips := r.lookupAll(domain, ps.dnsServers)
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("policyresolver: no answers for %q via %s DNS", domain, profile)
+	}
+	return ips, nil
+}
+
 func (r *PolicyResolver) loop(ctx context.Context) {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
@@ -228,30 +248,28 @@ func (r *PolicyResolver) resolve(name string, ps *profileState, budget time.Dura
 		}
 	}
 
-	if newCount == 0 {
-		return
-	}
-
-	r.log.Info("policyresolver: discovered new IPs",
-		zap.String("profile", name),
-		zap.Int("new", newCount),
-		zap.Int("total", len(ps.seenCIDRs)),
-	)
-
 	// Build full AllowedIPs list: essential + accumulated.
 	all := r.buildAllowedIPs(ps)
 
-	// Update WireGuard crypto-routing via `wg set`.
-	if err := wireguard.WgSetAllowedIPs(ps.ifaceName, ps.peerPubKey, all); err != nil {
-		r.log.Error("policyresolver: wg set failed",
+	if newCount > 0 {
+		r.log.Info("policyresolver: discovered new IPs",
 			zap.String("profile", name),
-			zap.Error(err),
+			zap.Int("new", newCount),
+			zap.Int("total", len(ps.seenCIDRs)),
 		)
-		return
+
+		// Update WireGuard crypto-routing via `wg set`.
+		if err := wireguard.WgSetAllowedIPs(ps.ifaceName, ps.peerPubKey, all); err != nil {
+			r.log.Error("policyresolver: wg set failed",
+				zap.String("profile", name),
+				zap.Error(err),
+			)
+			return
+		}
 	}
 
-	// On Linux/macOS, `wg set` does NOT update the OS routing table.
-	// Add routes explicitly via routeMgr.
+	// On Linux/macOS, enforce expected OS routes every cycle.
+	// This self-heals route drift when the OS or VPN client overwrites entries.
 	if runtime.GOOS != "windows" && r.routeMgr != nil {
 		r.addOSRoutes(ps, all)
 	}

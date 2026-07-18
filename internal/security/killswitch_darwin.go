@@ -3,13 +3,21 @@
 package security
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
+
+// pfctlTimeout bounds every pfctl invocation. Kill-switch enable/disable
+// runs on the daemon's shutdown/cleanup path (including SIGTERM); a hung
+// pfctl (lock contention, unusual system state) must not be able to block
+// process exit or leave the anchor in an indeterminate state indefinitely.
+const pfctlTimeout = 5 * time.Second
 
 const anchorName = "kongtrol"
 const anchorDir = "/etc/pf.anchors"
@@ -83,9 +91,14 @@ func (k *darwinKillSwitch) IsEnabled() bool {
 }
 
 func pfctl(args ...string) error {
-	cmd := exec.Command("pfctl", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), pfctlTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "pfctl", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("pfctl %v: timed out after %s (%s)", args, pfctlTimeout, out)
+		}
 		return fmt.Errorf("pfctl %v: %w (%s)", args, err, out)
 	}
 	return nil

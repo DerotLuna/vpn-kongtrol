@@ -30,6 +30,31 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
+// POST /api/v1/shutdown asks the daemon to terminate gracefully: it triggers
+// the same root-context cancellation as Ctrl+C/SIGTERM, so the daemon's own
+// deferred cleanup (kill switch teardown, DNS restore, history flush, PID
+// file removal) runs before the process exits — unlike a caller sending
+// SIGKILL/TerminateProcess directly, which skips all of it. This works
+// identically on every OS, including Windows, where there is no reliable
+// SIGTERM equivalent deliverable across processes.
+func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
+	if s.onShutdown == nil {
+		writeError(w, http.StatusNotImplemented, "shutdown not supported by this daemon instance")
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"status": "shutting_down"})
+	go s.onShutdown()
+}
+
+// GET /api/v1/metrics/history
+func (s *Server) handleMetricsHistory(w http.ResponseWriter, r *http.Request) {
+	if s.collector == nil {
+		writeJSON(w, http.StatusOK, map[string]monitor.ProfileHistory{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.collector.HistorySnapshot())
+}
+
 // GET /api/v1/tunnels
 func (s *Server) handleListTunnels(w http.ResponseWriter, r *http.Request) {
 	snapshot := s.collector.Snapshot()
@@ -156,8 +181,8 @@ func (s *Server) handleListRoutes(w http.ResponseWriter, r *http.Request) {
 		IsDefault   bool   `json:"is_default"`
 	}
 	var rules []policy.Rule
-	if s.policyEngine != nil {
-		rules = s.policyEngine.Rules()
+	if pe := s.policyEngine.Load(); pe != nil {
+		rules = pe.Rules()
 	}
 	ruleNameByVia := make(map[string]string, len(rules))
 	for _, rule := range rules {
@@ -417,8 +442,8 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 
 	// Start from the policy engine rules (static config).
 	var out []policyDTO
-	if s.policyEngine != nil {
-		for _, rule := range s.policyEngine.Rules() {
+	if pe := s.policyEngine.Load(); pe != nil {
+		for _, rule := range pe.Rules() {
 			dto := policyDTO{
 				Name: rule.Name,
 				Via:  rule.Via,
@@ -618,31 +643,15 @@ func (s *Server) handleTestPolicy(w http.ResponseWriter, r *http.Request) {
 	}
 	target := normalizeResolveTarget(req.Target)
 	resp := testResp{Via: req.Rule.Via, Rule: req.Rule.Name}
-	if strings.TrimSpace(req.App) != "" {
-		resp.Matched = rule.MatchesApp(req.App)
+	if strings.TrimSpace(req.App) != "" || target != "" {
+		resp.Matched = rule.MatchesFlow(target, req.App)
 		if !resp.Matched {
-			resp.Reason = "app did not match the rule"
+			resp.Reason = "flow did not match the rule"
 		}
 		writeJSON(w, http.StatusOK, resp)
 		return
 	}
-	if target == "" {
-		writeError(w, http.StatusBadRequest, "target or app is required")
-		return
-	}
-	if ip := net.ParseIP(target); ip != nil {
-		resp.Matched = rule.MatchesIP(ip)
-		if !resp.Matched {
-			resp.Reason = "IP did not match the rule"
-		}
-		writeJSON(w, http.StatusOK, resp)
-		return
-	}
-	resp.Matched = rule.MatchesDomain(target)
-	if !resp.Matched {
-		resp.Reason = "domain did not match the rule"
-	}
-	writeJSON(w, http.StatusOK, resp)
+	writeError(w, http.StatusBadRequest, "target or app is required")
 }
 
 // GET /api/v1/resolve?target=<ip-or-domain>&app=<exe-or-path> — which VPN handles this match.
@@ -664,22 +673,18 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 
 	result := resolveDTO{Target: target, App: app}
 
-	if s.policyEngine == nil {
+	pe := s.policyEngine.Load()
+	if pe == nil {
 		writeJSON(w, http.StatusOK, result)
 		return
 	}
-	rules := s.policyEngine.Rules()
+	rules := pe.Rules()
 
-	if app != "" {
-		if vpnName, matched := s.policyEngine.ResolveApp(app); matched {
+	if app != "" || target != "" {
+		if vpnName, ruleName, matched := pe.ResolveFlow(target, app); matched {
 			result.Via = vpnName
+			result.Rule = ruleName
 			result.Matched = true
-			for _, rule := range rules {
-				if rule.Via == vpnName && rule.MatchesApp(app) {
-					result.Rule = rule.Name
-					break
-				}
-			}
 			writeJSON(w, http.StatusOK, result)
 			return
 		}
@@ -696,7 +701,7 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 
 	// Try target as IP first, then as domain.
 	if ip := net.ParseIP(target); ip != nil {
-		if vpnName, matched := s.policyEngine.ResolveIP(ip); matched {
+		if vpnName, matched := pe.ResolveIP(ip); matched {
 			result.Via = vpnName
 			result.Matched = true
 			// Find matching rule name.
@@ -708,7 +713,7 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		if vpnName, matched := s.policyEngine.ResolveDomain(target); matched {
+		if vpnName, matched := pe.ResolveDomain(target); matched {
 			result.Via = vpnName
 			result.Matched = true
 			for _, rule := range rules {
@@ -742,6 +747,46 @@ func normalizeResolveTarget(raw string) string {
 	s = strings.Trim(s, "[]")
 	s = strings.TrimSuffix(s, ".")
 	return strings.ToLower(strings.TrimSpace(s))
+}
+
+// GET /api/v1/dns/resolve?domain=<fqdn>&via=<profile>
+func (s *Server) handleDNSResolve(w http.ResponseWriter, r *http.Request) {
+	domain := strings.TrimSpace(r.URL.Query().Get("domain"))
+	if domain == "" {
+		writeError(w, http.StatusBadRequest, "missing query parameter: domain")
+		return
+	}
+	via := strings.TrimSpace(r.URL.Query().Get("via"))
+	if via == "" {
+		if pe := s.policyEngine.Load(); pe != nil {
+			if resolvedVia, matched := pe.ResolveDomain(domain); matched {
+				via = resolvedVia
+			}
+		}
+	}
+	if via == "" {
+		writeError(w, http.StatusBadRequest, "missing query parameter: via (or no policy matched domain)")
+		return
+	}
+	if s.policyResolver == nil {
+		writeError(w, http.StatusServiceUnavailable, "policy resolver unavailable")
+		return
+	}
+	ips, err := s.policyResolver.ResolveDomainViaProfile(via, domain)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	out := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		out = append(out, ip.String())
+	}
+	sort.Strings(out)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"domain": domain,
+		"via":    via,
+		"ips":    out,
+	})
 }
 
 func normalizePolicyRule(r config.PolicyRule) config.PolicyRule {
@@ -824,7 +869,7 @@ func (s *Server) saveRuntimeConfig(cfgPath string, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("policy engine validation failed: %w", err)
 	}
-	s.policyEngine = newEngine
+	s.policyEngine.Store(newEngine)
 	if s.onPolicyUpdate != nil {
 		s.onPolicyUpdate(cfg, newEngine)
 	}

@@ -4,21 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Policy Studio - VPN Kongtrol</title>
-  <link rel="icon" type="image/png" href="/logo-kong.png" />
+  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
+  <header class="top-header">
     <div class="brand">
-      <img src="/logo-kong.png" alt="VPN Kongtrol" class="brand-logo" />
-      <span class="brand-name">VPN Kongtrol</span>
+      <img src="/logo-kong.svg" alt="VPN Kongtrol" class="brand-logo" />
+      <span class="brand-name"><strong>K O N G T R O L</strong><small>CLI</small><small class="beta">BETA</small></span>
     </div>
     <div class="header-right">
       <nav class="top-nav">
-        <a class="nav-link" href="/">Overview</a>
-        <a class="nav-link active" href="/policies.html">Policy Studio</a>
+        <a class="nav-link" href="/" data-i18n="nav.overview">Overview</a>
+        <a class="nav-link active" href="/policies.html" data-i18n="nav.policyStudio">Policy Studio</a>
       </nav>
-      <span id="ws-label" class="ws-label">config editor</span>
+      <button id="lang-toggle" class="lang-toggle" type="button" aria-label="Toggle language">EN</button>
+      <span id="ws-label" class="ws-label" data-i18n="ws.configEditor">config editor</span>
       <div id="connection-indicator" class="indicator connected" title="Policy editor"></div>
     </div>
   </header>
@@ -26,60 +30,60 @@
   <main>
     <section class="card">
       <div class="card-header">
-        <h2>Policy Studio (CRUD + Test)</h2>
+        <h2 data-i18n="policyStudio.title">Policy Studio (CRUD + Test)</h2>
         <button class="refresh-btn" onclick="loadPolicies()" title="Refresh">↻</button>
       </div>
       <div class="policy-grid">
         <div class="card">
-          <h2>Editor</h2>
+          <h2 data-i18n="editor.title">Editor</h2>
           <div class="form-grid">
-            <label>Name
-              <input id="p-name" type="text" placeholder="Contenido US" />
+            <label><span data-i18n="editor.name">Name</span>
+              <input id="p-name" type="text" data-i18n-placeholder="editor.namePlaceholder" placeholder="US Content" />
             </label>
-            <label>Via VPN profile
+            <label><span data-i18n="editor.viaProfile">Via VPN profile</span>
               <select id="p-via"></select>
             </label>
-            <label>Domains (one per line)
+            <label><span data-i18n="editor.domains">Domains (one per line)</span>
               <textarea id="p-domains" rows="5" placeholder="*.java.com&#10;chatgpt.com"></textarea>
             </label>
-            <label>IP ranges (one per line)
+            <label><span data-i18n="editor.ipRanges">IP ranges (one per line)</span>
               <textarea id="p-ip-ranges" rows="4" placeholder="10.2.0.2/32"></textarea>
             </label>
-            <label>Apps (one per line)
+            <label><span data-i18n="editor.apps">Apps (one per line)</span>
               <textarea id="p-apps" rows="3" placeholder="chrome.exe"></textarea>
             </label>
             <div class="form-actions">
-              <button class="action" onclick="createPolicy()">Create</button>
-              <button class="action" onclick="updatePolicy()">Update</button>
-              <button class="action disconnect" onclick="deletePolicy()">Delete</button>
-              <button class="action" onclick="clearForm()">Clear</button>
+              <button class="action" onclick="createPolicy()" data-i18n="actions.create">Create</button>
+              <button class="action" onclick="updatePolicy()" data-i18n="actions.update">Update</button>
+              <button class="action disconnect" onclick="deletePolicy()" data-i18n="actions.delete">Delete</button>
+              <button class="action" onclick="clearForm()" data-i18n="actions.clear">Clear</button>
             </div>
           </div>
-          <p class="muted" style="margin-top:10px;">Tip: pick a row from the table to edit it.</p>
-            <p class="muted" style="margin-top:6px;">Template: use domains like <code>*.java.com</code>, IP ranges like <code>10.2.0.2/32</code>, and apps like <code>chrome.exe</code>.</p>
+          <p class="muted" style="margin-top:10px;" data-i18n="editor.tip">Tip: pick a row from the table to edit it.</p>
+            <p class="muted" style="margin-top:6px;" data-i18n-html="editor.template">Template: use domains like <code>*.java.com</code>, IP ranges like <code>10.2.0.2/32</code>, and apps like <code>chrome.exe</code>.</p>
         </div>
 
         <div class="card">
-          <h2>Test Policy Before Saving</h2>
+          <h2 data-i18n="test.title">Test Policy Before Saving</h2>
           <div class="resolve-bar">
-            <input id="test-target" type="text" placeholder="Target: domain/IP/URL" />
-            <input id="test-app" type="text" placeholder="or app: chrome.exe" />
-            <button class="action" onclick="testDraftPolicy()">Test</button>
+            <input id="test-target" type="text" data-i18n-placeholder="test.targetPlaceholder" placeholder="Target: domain/IP/URL" />
+            <input id="test-app" type="text" data-i18n-placeholder="test.appPlaceholder" placeholder="or app: chrome.exe" />
+            <button class="action" onclick="testDraftPolicy()" data-i18n="test.button">Test</button>
           </div>
           <div id="test-result" class="resolve-result" style="display:none"></div>
 
-          <h2 style="margin-top:16px;">Existing Policies</h2>
+          <h2 style="margin-top:16px;" data-i18n="existing.title">Existing Policies</h2>
           <table class="policy-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Match</th>
-                <th>Via</th>
-                <th>Actions</th>
+                <th data-i18n="table.name">Name</th>
+                <th data-i18n="table.match">Match</th>
+                <th data-i18n="table.via">Via</th>
+                <th data-i18n="table.actions">Actions</th>
               </tr>
             </thead>
             <tbody id="policy-list-body">
-              <tr><td colspan="4" class="empty">Loading policies…</td></tr>
+              <tr><td colspan="4" class="empty" data-i18n="empty.loadingPolicies">Loading policies…</td></tr>
             </tbody>
           </table>
         </div>

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
@@ -12,6 +13,17 @@ import (
 // (IP or domain) to the VPN profile that should handle it.
 type Engine struct {
 	rules []*Rule // sorted by priority descending, then by prefix specificity
+}
+
+// ExplainResult contains human-friendly resolution metadata for a target.
+type ExplainResult struct {
+	Target    string
+	Kind      string // ip | domain | app
+	Matched   bool
+	Via       string
+	RuleName  string
+	Reason    string
+	DefaultTo string
 }
 
 // New builds an Engine from the loaded configuration.
@@ -50,24 +62,9 @@ func New(cfg *config.Config) (*Engine, error) {
 // Returns ("", false) if no rule matches — traffic should go through
 // the default physical interface.
 func (e *Engine) ResolveIP(dst net.IP) (vpnName string, matched bool) {
-	// Find the most specific matching rule (longest prefix).
-	bestLen := -1
-	bestVPN := ""
-
-	for _, rule := range e.rules {
-		for _, network := range rule.Match.IPRanges {
-			if network.Contains(dst) {
-				ones, _ := network.Mask.Size()
-				if ones > bestLen {
-					bestLen = ones
-					bestVPN = rule.Via
-				}
-			}
-		}
-	}
-
-	if bestVPN != "" {
-		return bestVPN, true
+	rule, _, ok := e.resolveIPMatch(dst)
+	if ok {
+		return rule.Via, true
 	}
 	return "", false
 }
@@ -75,10 +72,9 @@ func (e *Engine) ResolveIP(dst net.IP) (vpnName string, matched bool) {
 // ResolveDomain returns the VPN profile name for a given domain name.
 // Returns ("", false) if no rule matches.
 func (e *Engine) ResolveDomain(domain string) (vpnName string, matched bool) {
-	for _, rule := range e.rules {
-		if rule.MatchesDomain(domain) {
-			return rule.Via, true
-		}
+	rule, _, ok := e.resolveDomainMatch(domain)
+	if ok {
+		return rule.Via, true
 	}
 	return "", false
 }
@@ -86,12 +82,99 @@ func (e *Engine) ResolveDomain(domain string) (vpnName string, matched bool) {
 // ResolveApp returns the VPN profile name for a given process executable
 // (name or full path). Returns ("", false) if no app rule matches.
 func (e *Engine) ResolveApp(app string) (vpnName string, matched bool) {
-	for _, rule := range e.rules {
-		if rule.MatchesApp(app) {
-			return rule.Via, true
-		}
+	rule, _, ok := e.resolveAppMatch(app)
+	if ok {
+		return rule.Via, true
 	}
 	return "", false
+}
+
+// ResolveFlow returns the VPN profile and rule for a combined flow context.
+// target may be an IP or domain; app may be an executable name/path.
+func (e *Engine) ResolveFlow(target, app string) (vpnName string, ruleName string, matched bool) {
+	for _, r := range e.rules {
+		if r.MatchesFlow(target, app) {
+			return r.Via, r.Name, true
+		}
+	}
+	return "", "", false
+}
+
+// ExplainTarget explains how a target is resolved.
+// Targets are interpreted in this order: IP, app:<exe>, domain.
+func (e *Engine) ExplainTarget(target string) ExplainResult {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return ExplainResult{Target: target, Reason: "empty target", DefaultTo: "default route"}
+	}
+
+	if ip := net.ParseIP(target); ip != nil {
+		return e.ExplainIP(ip)
+	}
+
+	if strings.HasPrefix(strings.ToLower(target), "app:") {
+		app := strings.TrimSpace(target[4:])
+		return e.ExplainApp(app)
+	}
+
+	return e.ExplainDomain(target)
+}
+
+// ExplainIP explains IP resolution and includes longest-prefix detail.
+func (e *Engine) ExplainIP(ip net.IP) ExplainResult {
+	out := ExplainResult{
+		Target:    ip.String(),
+		Kind:      "ip",
+		DefaultTo: "default route",
+	}
+	rule, network, ok := e.resolveIPMatch(ip)
+	if !ok {
+		out.Reason = "no matching ip_ranges rule"
+		return out
+	}
+	out.Matched = true
+	out.Via = rule.Via
+	out.RuleName = rule.Name
+	out.Reason = fmt.Sprintf("matched CIDR %s (longest-prefix wins)", network.String())
+	return out
+}
+
+// ExplainDomain explains domain resolution and includes pattern detail.
+func (e *Engine) ExplainDomain(domain string) ExplainResult {
+	out := ExplainResult{
+		Target:    domain,
+		Kind:      "domain",
+		DefaultTo: "default route",
+	}
+	rule, pattern, ok := e.resolveDomainMatch(domain)
+	if !ok {
+		out.Reason = "no matching domains rule"
+		return out
+	}
+	out.Matched = true
+	out.Via = rule.Via
+	out.RuleName = rule.Name
+	out.Reason = fmt.Sprintf("matched domain pattern %q", pattern)
+	return out
+}
+
+// ExplainApp explains app resolution and includes pattern detail.
+func (e *Engine) ExplainApp(app string) ExplainResult {
+	out := ExplainResult{
+		Target:    app,
+		Kind:      "app",
+		DefaultTo: "default route",
+	}
+	rule, pattern, ok := e.resolveAppMatch(app)
+	if !ok {
+		out.Reason = "no matching apps rule"
+		return out
+	}
+	out.Matched = true
+	out.Via = rule.Via
+	out.RuleName = rule.Name
+	out.Reason = fmt.Sprintf("matched app pattern %q", pattern)
+	return out
 }
 
 // Rules returns a copy of all rules loaded in the engine (for display purposes).
@@ -111,4 +194,51 @@ func maxPrefixLen(networks []*net.IPNet) int {
 		}
 	}
 	return max
+}
+
+func (e *Engine) resolveIPMatch(dst net.IP) (rule *Rule, network *net.IPNet, matched bool) {
+	bestLen := -1
+	var bestRule *Rule
+	var bestNet *net.IPNet
+
+	for _, r := range e.rules {
+		for _, n := range r.Match.IPRanges {
+			if !n.Contains(dst) {
+				continue
+			}
+			ones, _ := n.Mask.Size()
+			if ones > bestLen {
+				bestLen = ones
+				bestRule = r
+				bestNet = n
+			}
+		}
+	}
+
+	if bestRule == nil {
+		return nil, nil, false
+	}
+	return bestRule, bestNet, true
+}
+
+func (e *Engine) resolveDomainMatch(domain string) (rule *Rule, pattern string, matched bool) {
+	for _, r := range e.rules {
+		for _, p := range r.Match.Domains {
+			if matchGlob(p, domain) {
+				return r, p, true
+			}
+		}
+	}
+	return nil, "", false
+}
+
+func (e *Engine) resolveAppMatch(app string) (rule *Rule, pattern string, matched bool) {
+	for _, r := range e.rules {
+		for _, p := range r.Match.Apps {
+			if appMatchesPattern(app, p) {
+				return r, p, true
+			}
+		}
+	}
+	return nil, "", false
 }

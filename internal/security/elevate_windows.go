@@ -8,10 +8,21 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
+
+// elevatedWaitTimeout bounds how long runElevated waits for the child
+// process (and any UAC prompt) before giving up. Without a bound, this used
+// windows.INFINITE — meaning a UAC prompt that never surfaces (a
+// non-interactive/service session) or a hung elevated script would block
+// the caller forever. DNS guard apply/restore call through here on the
+// daemon's connect/disconnect and SIGTERM cleanup paths, so an unbounded
+// wait here can wedge the whole daemon shutdown. 60s leaves enough room for
+// a human to notice and click the UAC prompt.
+const elevatedWaitTimeout = 60 * time.Second
 
 // shellExecuteInfo mirrors the Win32 SHELLEXECUTEINFOW struct.
 type shellExecuteInfo struct {
@@ -77,8 +88,14 @@ func runElevated(exe string, args ...string) error {
 	}
 	defer windows.CloseHandle(info.hProcess)
 
-	if _, err := windows.WaitForSingleObject(info.hProcess, windows.INFINITE); err != nil {
+	waitMS := uint32(elevatedWaitTimeout / time.Millisecond)
+	event, err := windows.WaitForSingleObject(info.hProcess, waitMS)
+	if err != nil {
 		return fmt.Errorf("wait: %w", err)
+	}
+	if event == uint32(windows.WAIT_TIMEOUT) {
+		_ = windows.TerminateProcess(info.hProcess, 1)
+		return fmt.Errorf("timed out after %s waiting for elevated process (UAC prompt not answered?)", elevatedWaitTimeout)
 	}
 
 	var exitCode uint32

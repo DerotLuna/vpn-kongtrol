@@ -236,29 +236,47 @@ func fortiIfaceUp(name string) bool {
 // probeFortiInterface is a lightweight check (no PowerShell) that scans
 // net.Interfaces for a Fortinet tunnel with an IPv4 address and the UP flag.
 // Used in Status() polling — must be fast.
+//
+// On Unix, tunnel names are distinctive (fortissl, vpnssl0, etc.) and matched
+// by prefix. On Windows the adapter's interface name is the friendly name
+// (e.g. "Fortinet SSL VPN Virtual Ethernet Adapter"), which never matches
+// those prefixes — so it's matched by substring instead. Without this, a
+// tunnel connected outside kongtrol (FortiClient GUI, or a separate kongtrol
+// process) is never detected on Windows and always reports disconnected.
 func probeFortiInterface() (string, net.IP) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return "", nil
 	}
-	// On Unix, tunnel names are distinctive (fortissl, vpnssl0, etc.).
-	// On Windows, names are generic but we check all UP interfaces for a VPN-like
-	// IPv4 address. If we previously knew the interface name, fortiIfaceUp is used
-	// instead. This path is for discovering a NEW tunnel we haven't seen yet.
-	unixCandidates := []string{"fortissl", "vpnssl0", "ssl0", "ppp0"}
+	unixPrefixes := []string{"fortissl", "vpnssl0", "ssl0", "ppp0"}
+	nameHints := []string{"fortinet", "sslvpn", "ssl vpn", "fortissl"}
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 {
 			continue
 		}
 		name := strings.ToLower(iface.Name)
-		for _, c := range unixCandidates {
-			if strings.HasPrefix(name, c) {
-				addrs, _ := iface.Addrs()
-				for _, addr := range addrs {
-					if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-						return iface.Name, ipnet.IP
-					}
+		matched := false
+		for _, p := range unixPrefixes {
+			if strings.HasPrefix(name, p) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			for _, h := range nameHints {
+				if strings.Contains(name, h) {
+					matched = true
+					break
 				}
+			}
+		}
+		if !matched {
+			continue
+		}
+		addrs, _ := iface.Addrs()
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				return iface.Name, ipnet.IP
 			}
 		}
 	}

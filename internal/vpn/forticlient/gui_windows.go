@@ -165,37 +165,78 @@ $password  = '%s'
 $action    = '%s'
 $allowInsecureCert = %t
 
-# ── 1. Ensure FortiClient is running ─────────────────────────────────────────
-$proc = Get-Process "FortiClient" -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+# Minimum plausible size for the actual FortiClient login/main dialog.
+# FortiClient can spin up small helper/tray windows (observed: a stray
+# 160x28 window) whose process still reports a non-zero MainWindowHandle —
+# picking the first such handle blindly means clicks and SendKeys land on
+# the wrong window (typing credentials "anywhere"). Only a window whose
+# title mentions FortiClient AND is at least this size is treated as real.
+$minW = 500
+$minH = 400
 
-if (-not $proc) {
-    if (-not (Test-Path $binary)) {
-        Write-Output "ERROR: FortiClient not found at $binary"
+# Finds the real FortiClient dialog among all "FortiClient*" processes,
+# filtering out any window that doesn't look like the actual login/main UI.
+function Get-FortiClientWindow {
+    Get-Process -Name "FortiClient*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -match 'FortiClient' } |
+        ForEach-Object {
+            $r = New-Object FC+RECT
+            [FC]::GetWindowRect([IntPtr]$_.MainWindowHandle, [ref]$r) | Out-Null
+            $ww = $r.right - $r.left
+            $hh = $r.bottom - $r.top
+            if ($ww -ge $minW -and $hh -ge $minH) {
+                [PSCustomObject]@{ Handle = [IntPtr]$_.MainWindowHandle; Rect = $r; W = $ww; H = $hh }
+            }
+        } |
+        Sort-Object -Property @{ Expression = { $_.W * $_.H } } -Descending |
+        Select-Object -First 1
+}
+
+# ── 1. Ensure FortiClient is running with a real (correctly sized) window ───
+$found = Get-FortiClientWindow
+
+if (-not $found) {
+    $running = Get-Process -Name "FortiClient*" -ErrorAction SilentlyContinue
+    if (-not $running) {
+        if (-not (Test-Path $binary)) {
+            Write-Output "ERROR: FortiClient not found at $binary"
+            exit 1
+        }
+        # Launch without inheriting our console so Electron debug output
+        # does not appear in the kongtrol terminal.
+        Start-Process $binary -RedirectStandardOutput "$env:TEMP\fc_launch_out.txt" -RedirectStandardError "$env:TEMP\fc_launch_err.txt"
+    }
+    $deadline = (Get-Date).AddSeconds(30)
+    while (-not $found -and (Get-Date) -lt $deadline) {
+        Start-Sleep -Milliseconds 800
+        $found = Get-FortiClientWindow
+    }
+    if (-not $found) {
+        Write-Output "ERROR: FortiClient login window did not appear (or stayed smaller than ${minW}x${minH}) within 30s"
         exit 1
     }
-    # Launch without inheriting our console so Electron debug output
-    # does not appear in the kongtrol terminal.
-    Start-Process $binary -RedirectStandardOutput "$env:TEMP\fc_launch_out.txt" -RedirectStandardError "$env:TEMP\fc_launch_err.txt"
-    $deadline = (Get-Date).AddSeconds(25)
-    while (-not $proc -and (Get-Date) -lt $deadline) {
-        Start-Sleep -Milliseconds 800
-        $proc = Get-Process "FortiClient" -ErrorAction SilentlyContinue |
-                Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
-    }
-    if (-not $proc) { Write-Output "ERROR: FortiClient window did not appear after 25s"; exit 1 }
     # Extra wait for CEF/Electron to finish rendering the VPN login form.
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 3
 }
+
+$hwnd = $found.Handle
 
 # ── 2. Restore and force foreground ──────────────────────────────────────────
 # AttachThreadInput bypasses Windows 10/11 focus-steal restrictions so the
 # window actually receives keyboard/mouse input, not just a taskbar flash.
-$hwnd = [IntPtr]$proc.MainWindowHandle
 [FC]::ForceForeground($hwnd)
 # Wait for CEF content to be fully rendered and interactive.
 # FortiClient Electron can take 2-3s after window appears before inputs accept events.
 Start-Sleep -Milliseconds 2500
+
+# Confirm the window we found is actually in the foreground before typing
+# anything into it — if some other window stole focus (or ForceForeground
+# silently failed), abort instead of blindly sending keystrokes into
+# whatever happens to be focused.
+if ([FC]::GetForegroundWindow() -ne $hwnd) {
+    Write-Output "ERROR: could not bring the FortiClient window to the foreground (another window has focus) — aborting instead of typing credentials into the wrong window"
+    exit 1
+}
 
 # ── 3. Get window rect ────────────────────────────────────────────────────────
 $rect = New-Object FC+RECT
@@ -204,7 +245,7 @@ $left = $rect.left; $top = $rect.top
 $w    = $rect.right  - $rect.left
 $h    = $rect.bottom - $rect.top
 
-if ($w -lt 400 -or $h -lt 300) {
+if ($w -lt $minW -or $h -lt $minH) {
     Write-Output "ERROR: Window too small ($($w)x$($h)) — still minimized?"
     exit 1
 }
@@ -227,6 +268,10 @@ if ($action -eq 'connect') {
     if ($tunnel -ne '') {
         Write-Output "Selecting VPN tunnel at ($vpnX,$vpnY)..."
         [FC]::ForceForeground($hwnd)
+        if ([FC]::GetForegroundWindow() -ne $hwnd) {
+            Write-Output "ERROR: FortiClient window lost foreground before selecting the tunnel — aborting instead of typing into the wrong window"
+            exit 1
+        }
         for ($i = 0; $i -lt 2; $i++) {
             [FC]::Click($vpnX, $vpnY)
             Start-Sleep -Milliseconds 120
@@ -243,6 +288,10 @@ if ($action -eq 'connect') {
     Write-Output "Filling username at ($userX,$userY)..."
     # Re-assert foreground before clicking — CEF may have stolen focus during load.
     [FC]::ForceForeground($hwnd)
+    if ([FC]::GetForegroundWindow() -ne $hwnd) {
+        Write-Output "ERROR: FortiClient window lost foreground before filling the username — aborting instead of typing credentials into the wrong window"
+        exit 1
+    }
     # Retry click up to 3 times to ensure CEF field gets focus.
     for ($i = 0; $i -lt 3; $i++) {
         [FC]::Click($userX, $userY)

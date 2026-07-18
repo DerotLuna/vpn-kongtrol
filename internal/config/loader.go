@@ -58,6 +58,9 @@ func Load(path string) (*Config, error) {
 	if err := validate.Struct(&cfg); err != nil {
 		return nil, fmt.Errorf("config: validation failed: %w", err)
 	}
+	if err := validateSemantics(&cfg); err != nil {
+		return nil, fmt.Errorf("config: validation failed: %w", err)
+	}
 
 	return &cfg, nil
 }
@@ -75,6 +78,15 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Monitor.HealthCheck.Timeout == "" {
 		cfg.Monitor.HealthCheck.Timeout = "10s"
+	}
+	if cfg.Monitor.History.FlushInterval == "" {
+		cfg.Monitor.History.FlushInterval = "30s"
+	}
+	if cfg.Monitor.Scheduler.Interval == "" {
+		cfg.Monitor.Scheduler.Interval = "1m"
+	}
+	if cfg.Monitor.SplitDNS.Interval == "" {
+		cfg.Monitor.SplitDNS.Interval = "60s"
 	}
 	if cfg.Security.LeakDetection.Interval == "" {
 		cfg.Security.LeakDetection.Interval = "60s"
@@ -98,6 +110,9 @@ func applyDefaults(cfg *Config) {
 	}
 	if cfg.Security.AuditLog.Path != "" {
 		cfg.Security.AuditLog.Path = expandHome(cfg.Security.AuditLog.Path, home)
+	}
+	if cfg.Monitor.History.Path != "" {
+		cfg.Monitor.History.Path = expandHome(cfg.Monitor.History.Path, home)
 	}
 }
 

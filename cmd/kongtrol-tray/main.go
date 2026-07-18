@@ -160,6 +160,7 @@ func initDaemon() error {
 		nil, // no runtime callback in tray
 		nil, // DNSManager is managed by the CLI daemon, not the tray
 		cfg.Security.DNSGuard.Enabled,
+		nil, // graceful /api/v1/shutdown not wired into the tray's systray.Quit() lifecycle
 	)
 	return srv.Start()
 }

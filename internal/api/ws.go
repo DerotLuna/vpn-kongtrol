@@ -6,7 +6,13 @@ import (
 	"time"
 )
 
-// handleWebSocket pushes live metrics to browser clients every second.
+// handleWebSocket pushes live metrics to browser clients: immediately on
+// any real tunnel-state change (via the collector's change broadcast), and
+// otherwise on a heartbeat matched to the collector's own poll interval —
+// there's no point waking faster than the source of truth updates, and the
+// heartbeat still carries in-flight byte counters, which change
+// continuously during an active transfer without counting as a "state
+// change" on their own.
 // GET /api/v1/ws/metrics
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.upgrader.Upgrade(w, r, nil)
@@ -15,19 +21,33 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	ticker := time.NewTicker(1 * time.Second)
+	changes, unsubscribe := s.collector.Subscribe()
+	defer unsubscribe()
+
+	send := func() bool {
+		snapshot := s.collector.Snapshot()
+		data, err := json.Marshal(snapshot)
+		if err != nil {
+			return true
+		}
+		return conn.WriteMessage(1, data) == nil
+	}
+
+	if !send() {
+		return
+	}
+
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			snapshot := s.collector.Snapshot()
-			data, err := json.Marshal(snapshot)
-			if err != nil {
-				continue
+			if !send() {
+				return
 			}
-			if err := conn.WriteMessage(1, data); err != nil {
-				// Client disconnected.
+		case <-changes:
+			if !send() {
 				return
 			}
 		case <-r.Context().Done():

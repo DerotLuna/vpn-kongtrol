@@ -3,11 +3,20 @@
 package security
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
 	"sync"
+	"time"
 )
+
+// iptablesTimeout bounds every iptables invocation. Kill-switch enable/
+// disable runs on the daemon's shutdown/cleanup path (including SIGTERM); a
+// hung iptables (lock contention, unusual system state) must not be able to
+// block process exit or leave OUTPUT rules in an indeterminate state
+// indefinitely.
+const iptablesTimeout = 5 * time.Second
 
 type linuxKillSwitch struct {
 	mu      sync.Mutex
@@ -91,9 +100,14 @@ func (k *linuxKillSwitch) removeRules() error {
 }
 
 func ipt(args ...string) error {
-	cmd := exec.Command("iptables", args...)
+	ctx, cancel := context.WithTimeout(context.Background(), iptablesTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "iptables", args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("iptables %v: timed out after %s (%s)", args, iptablesTimeout, out)
+		}
 		return fmt.Errorf("iptables %v: %w (%s)", args, err, out)
 	}
 	return nil
