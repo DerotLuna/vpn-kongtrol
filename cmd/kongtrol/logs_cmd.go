@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -67,35 +66,6 @@ func init() {
 	rootCmd.AddCommand(logsCmd)
 }
 
-func readAuditEvents(path string) ([]security.AuditEvent, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []security.AuditEvent{}, nil
-		}
-		return nil, fmt.Errorf("logs: open: %w", err)
-	}
-	defer f.Close()
-
-	var out []security.AuditEvent
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue
-		}
-		var ev security.AuditEvent
-		if err := json.Unmarshal([]byte(line), &ev); err != nil {
-			continue
-		}
-		out = append(out, ev)
-	}
-	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("logs: read: %w", err)
-	}
-	return out, nil
-}
-
 // dailyLogPaths returns the daily-rotated audit log paths that are
 // candidates for "current" activity: yesterday's (in case midnight just
 // rolled over and a writer still has it open) and today's.
@@ -109,7 +79,7 @@ func dailyLogPaths(basePath string) []string {
 func readAuditEventsForRetention(basePath string) ([]security.AuditEvent, error) {
 	out := make([]security.AuditEvent, 0, 256)
 	for _, path := range dailyLogPaths(basePath) {
-		evs, err := readAuditEvents(path)
+		evs, err := security.ReadAuditEvents(path)
 		if err != nil {
 			return nil, err
 		}

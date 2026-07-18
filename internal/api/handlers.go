@@ -10,12 +10,14 @@ import (
 	"net/url"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
+	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 	"gopkg.in/yaml.v3"
 )
@@ -373,9 +375,9 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 
 	status := secStatus{
 		KillSwitch:           s.ks != nil && s.ks.IsEnabled(),
-		KillSwitchEnabled:    s.killSwitchOn,
+		KillSwitchEnabled:    s.killSwitchOn.Load(),
 		DNSGuard:             s.dnsMgr != nil && s.dnsMgr.IsActive(),
-		DNSGuardEnabled:      s.dnsGuardOn,
+		DNSGuardEnabled:      s.dnsGuardOn.Load(),
 		LeakDetectionEnabled: s.leakTest != nil,
 	}
 
@@ -392,6 +394,857 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, status)
+}
+
+// POST /api/v1/security/killswitch  {"enabled": bool}
+func (s *Server) handleToggleKillSwitch(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	cfg.Security.KillSwitch.Enabled = req.Enabled
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.killSwitchOn.Store(req.Enabled)
+	if s.onSecurityToggle != nil {
+		s.onSecurityToggle(cfg)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "kill_switch_enabled": req.Enabled})
+}
+
+// POST /api/v1/security/dnsguard  {"enabled": bool}
+func (s *Server) handleToggleDNSGuard(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	cfg.Security.DNSGuard.Enabled = req.Enabled
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	s.dnsGuardOn.Store(req.Enabled)
+	if s.onSecurityToggle != nil {
+		s.onSecurityToggle(cfg)
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "dns_guard_enabled": req.Enabled})
+}
+
+// GET /api/v1/vpns — list VPN profiles. Credentials are never returned, only
+// whether a username/password is stored in the OS keychain for the profile.
+func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	type vpnDTO struct {
+		Name               string `json:"name"`
+		Type               string `json:"type"`
+		Host               string `json:"host,omitempty"`
+		Port               int    `json:"port,omitempty"`
+		Server             string `json:"server,omitempty"`
+		Protocol           string `json:"protocol,omitempty"`
+		ConfigFile         string `json:"config,omitempty"`
+		Priority           int    `json:"priority"`
+		AuthMethod         string `json:"auth_method,omitempty"`
+		Username           string `json:"username,omitempty"`
+		HasUsernameCred    bool   `json:"has_username_credential"`
+		HasPasswordCred    bool   `json:"has_password_credential"`
+		KillSwitchOverride string `json:"kill_switch_override"` // "inherit" | "on" | "off"
+	}
+	out := make([]vpnDTO, 0, len(cfg.VPNs))
+	for name, v := range cfg.VPNs {
+		override := "inherit"
+		if v.KillSwitch != nil {
+			if *v.KillSwitch {
+				override = "on"
+			} else {
+				override = "off"
+			}
+		}
+		out = append(out, vpnDTO{
+			Name:               name,
+			Type:               v.Type,
+			Host:               v.Host,
+			Port:               v.Port,
+			Server:             v.Server,
+			Protocol:           v.Protocol,
+			ConfigFile:         v.ConfigFile,
+			Priority:           v.Priority,
+			AuthMethod:         v.Auth.Method,
+			Username:           v.Auth.Username,
+			HasUsernameCred:    v.Auth.UsernameKeychain != "",
+			HasPasswordCred:    v.Auth.PasswordKeychain != "",
+			KillSwitchOverride: override,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	writeJSON(w, http.StatusOK, out)
+}
+
+type vpnProfileReq struct {
+	Name       string `json:"name"`
+	Type       string `json:"type"`
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	Server     string `json:"server"`
+	Protocol   string `json:"protocol"`
+	ConfigFile string `json:"config"`
+	Priority   int    `json:"priority"`
+	AuthMethod string `json:"auth_method"`
+	Cert       string `json:"cert"`
+	Key        string `json:"key"`
+	Username   string `json:"username"`
+	// Password is plaintext in the request only; it is written to the OS
+	// keychain and never persisted to the YAML config.
+	Password string `json:"password"`
+}
+
+// POST /api/v1/vpns — create a new VPN profile. Writes config + OS keychain
+// only; a newly created profile is not hot-registered with the running
+// daemon (the shared adapters map has no safe runtime-mutation path — see
+// cmd/kongtrol/main.go loadConfig), so the response flags restart_required.
+func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
+	var req vpnProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "profile name is required")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if _, exists := cfg.VPNs[req.Name]; exists {
+		writeError(w, http.StatusConflict, "vpn profile already exists")
+		return
+	}
+	if err := s.saveVPNProfile(cfg, cfgPath, req.Name, req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"status": "created", "profile": req.Name, "restart_required": true})
+}
+
+// PUT /api/v1/vpns/{name} — update an existing VPN profile. Same
+// restart-required caveat as create.
+func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "missing profile name")
+		return
+	}
+	var req vpnProfileReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if _, exists := cfg.VPNs[name]; !exists {
+		writeError(w, http.StatusNotFound, "vpn profile not found")
+		return
+	}
+	if err := s.saveVPNProfile(cfg, cfgPath, name, req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "profile": name, "restart_required": true})
+}
+
+// saveVPNProfile validates the merged profile against a trial copy of cfg
+// before writing anything, then stores any provided credentials in the OS
+// keychain and persists cfg via the existing saveRuntimeConfig pattern.
+func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, req vpnProfileReq) error {
+	vc := config.VPNConfig{
+		Type:       strings.TrimSpace(req.Type),
+		Host:       strings.TrimSpace(req.Host),
+		Port:       req.Port,
+		Server:     strings.TrimSpace(req.Server),
+		Protocol:   strings.TrimSpace(req.Protocol),
+		ConfigFile: strings.TrimSpace(req.ConfigFile),
+		Priority:   req.Priority,
+		Auth: config.AuthConfig{
+			Method:   strings.TrimSpace(req.AuthMethod),
+			Cert:     strings.TrimSpace(req.Cert),
+			Key:      strings.TrimSpace(req.Key),
+			Username: strings.TrimSpace(req.Username),
+		},
+	}
+	if existing, ok := cfg.VPNs[name]; ok {
+		vc.Auth.UsernameKeychain = existing.Auth.UsernameKeychain
+		vc.Auth.PasswordKeychain = existing.Auth.PasswordKeychain
+		vc.KillSwitch = existing.KillSwitch
+	}
+	if strings.TrimSpace(req.Username) != "" {
+		vc.Auth.UsernameKeychain = name + ".username"
+	}
+	if req.Password != "" {
+		vc.Auth.PasswordKeychain = name + ".password"
+	}
+
+	trial := *cfg
+	trialVPNs := make(map[string]config.VPNConfig, len(cfg.VPNs)+1)
+	for k, v := range cfg.VPNs {
+		trialVPNs[k] = v
+	}
+	trialVPNs[name] = vc
+	trial.VPNs = trialVPNs
+	if err := config.Validate(&trial); err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(req.Username) != "" {
+		if err := config.SetCredential(name, "username", req.Username); err != nil {
+			return fmt.Errorf("store username credential: %w", err)
+		}
+	}
+	if req.Password != "" {
+		if err := config.SetCredential(name, "password", req.Password); err != nil {
+			return fmt.Errorf("store password credential: %w", err)
+		}
+	}
+
+	cfg.VPNs[name] = vc
+	return s.saveRuntimeConfig(cfgPath, cfg)
+}
+
+// DELETE /api/v1/vpns/{name} — reject if the profile is still referenced by
+// a policy or group, or if it's the last remaining profile.
+func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	existing, ok := cfg.VPNs[name]
+	if !ok {
+		writeError(w, http.StatusNotFound, "vpn profile not found")
+		return
+	}
+	if len(cfg.VPNs) <= 1 {
+		writeError(w, http.StatusConflict, "cannot delete the last remaining VPN profile")
+		return
+	}
+	for _, p := range cfg.Policies {
+		if strings.EqualFold(p.Via, name) {
+			writeError(w, http.StatusConflict, fmt.Sprintf("profile %q is referenced by policy %q", name, p.Name))
+			return
+		}
+	}
+	for groupName, g := range cfg.Groups {
+		for _, prof := range g.Profiles {
+			if strings.EqualFold(prof, name) {
+				writeError(w, http.StatusConflict, fmt.Sprintf("profile %q is referenced by group %q", name, groupName))
+				return
+			}
+		}
+	}
+
+	delete(cfg.VPNs, name)
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if existing.Auth.UsernameKeychain != "" {
+		_ = config.DeleteCredential(name, "username")
+	}
+	if existing.Auth.PasswordKeychain != "" {
+		_ = config.DeleteCredential(name, "password")
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"status": "deleted", "profile": name, "restart_required": true})
+}
+
+// GET /api/v1/audit?limit=200&profile=&level= — recent audit log events,
+// newest first. Reuses the same reader the CLI `logs` command uses
+// (internal/security.ReadRecentAuditEvents) so both stay in sync.
+func (s *Server) handleAuditLog(w http.ResponseWriter, r *http.Request) {
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if cfg.Security.AuditLog.Path == "" {
+		writeJSON(w, http.StatusOK, []security.AuditEvent{})
+		return
+	}
+
+	events, err := security.ReadRecentAuditEvents(cfg.Security.AuditLog.Path, 2)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	profile := strings.TrimSpace(r.URL.Query().Get("profile"))
+	level := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("level")))
+	filtered := make([]security.AuditEvent, 0, len(events))
+	for _, ev := range events {
+		if profile != "" && !strings.EqualFold(ev.Profile, profile) {
+			continue
+		}
+		if level != "" && strings.ToUpper(ev.Level) != level {
+			continue
+		}
+		filtered = append(filtered, ev)
+	}
+
+	sort.Slice(filtered, func(i, j int) bool { return filtered[i].Timestamp.After(filtered[j].Timestamp) })
+
+	limit := 200
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+
+	writeJSON(w, http.StatusOK, filtered)
+}
+
+type groupDTO struct {
+	Name     string   `json:"name"`
+	Profiles []string `json:"profiles"`
+}
+
+// GET /api/v1/groups
+func (s *Server) handleListGroups(w http.ResponseWriter, r *http.Request) {
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	out := make([]groupDTO, 0, len(cfg.Groups))
+	for name, g := range cfg.Groups {
+		out = append(out, groupDTO{Name: name, Profiles: g.Profiles})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	writeJSON(w, http.StatusOK, out)
+}
+
+type groupReq struct {
+	Name     string   `json:"name"`
+	Profiles []string `json:"profiles"`
+}
+
+// POST /api/v1/groups
+func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
+	var req groupReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "group name is required")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if _, exists := cfg.Groups[req.Name]; exists {
+		writeError(w, http.StatusConflict, "group already exists")
+		return
+	}
+	if err := s.saveGroup(cfg, cfgPath, req.Name, req.Profiles); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "created", "group": req.Name})
+}
+
+// PUT /api/v1/groups/{name}
+func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "missing group name")
+		return
+	}
+	var req groupReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if _, exists := cfg.Groups[name]; !exists {
+		writeError(w, http.StatusNotFound, "group not found")
+		return
+	}
+	if err := s.saveGroup(cfg, cfgPath, name, req.Profiles); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "group": name})
+}
+
+func (s *Server) saveGroup(cfg *config.Config, cfgPath, name string, profiles []string) error {
+	clean := make([]string, 0, len(profiles))
+	for _, p := range profiles {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if _, ok := cfg.VPNs[p]; !ok {
+			return fmt.Errorf("group references unknown profile %q", p)
+		}
+		clean = append(clean, p)
+	}
+	if len(clean) == 0 {
+		return fmt.Errorf("group must include at least one profile")
+	}
+	if cfg.Groups == nil {
+		cfg.Groups = make(map[string]config.GroupConfig)
+	}
+	cfg.Groups[name] = config.GroupConfig{Profiles: clean}
+	return s.saveRuntimeConfig(cfgPath, cfg)
+}
+
+// DELETE /api/v1/groups/{name}
+func (s *Server) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if _, ok := cfg.Groups[name]; !ok {
+		writeError(w, http.StatusNotFound, "group not found")
+		return
+	}
+	delete(cfg.Groups, name)
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "group": name})
+}
+
+// POST /api/v1/groups/{name}/connect — starts a connect for every profile in
+// the group that isn't already connected/connecting, mirroring handleConnect
+// per-profile (same pending-connect tracking, same async Reconnect call).
+func (s *Server) handleConnectGroup(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	g, ok := cfg.Groups[name]
+	if !ok {
+		writeError(w, http.StatusNotFound, "group not found")
+		return
+	}
+
+	started := make([]string, 0, len(g.Profiles))
+	alreadyConnected := make([]string, 0)
+	for _, profile := range g.Profiles {
+		adapter, ok := s.adapters[profile]
+		if !ok {
+			continue
+		}
+		if adapter.Status().Normalize() == vpn.StatusConnected {
+			alreadyConnected = append(alreadyConnected, profile)
+			continue
+		}
+		if s.hasPendingConnect(profile) {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		s.setPendingConnect(profile, cancel)
+		started = append(started, profile)
+		go func(p string, a vpn.VPNAdapter, ctx context.Context) {
+			defer s.clearPendingConnect(p)
+			_ = a.Reconnect(ctx)
+		}(profile, adapter, ctx)
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"status":            "connecting",
+		"group":             name,
+		"started":           started,
+		"already_connected": alreadyConnected,
+	})
+}
+
+// POST /api/v1/groups/{name}/disconnect — disconnects every connected
+// profile in the group, collecting per-profile errors instead of stopping
+// at the first failure.
+func (s *Server) handleDisconnectGroup(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	g, ok := cfg.Groups[name]
+	if !ok {
+		writeError(w, http.StatusNotFound, "group not found")
+		return
+	}
+
+	var errs []string
+	for _, profile := range g.Profiles {
+		adapter, ok := s.adapters[profile]
+		if !ok {
+			continue
+		}
+		s.cancelPendingConnect(profile)
+		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+		disconnectErr := adapter.Disconnect(ctx)
+		cancel()
+		if disconnectErr != nil {
+			errs = append(errs, fmt.Sprintf("%s: %v", profile, disconnectErr))
+		}
+	}
+	if len(errs) > 0 {
+		writeError(w, http.StatusInternalServerError, strings.Join(errs, "; "))
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "group": name})
+}
+
+type settingsDTO struct {
+	// Read-only — the dashboard's own bind/port. Changing it from the page
+	// serving this request would cut the connection mid-response, so it's
+	// only changeable via `kongtrol config dashboard set-port/set-bind`
+	// (see cmd/kongtrol preferences.go); shown here for visibility only.
+	DashboardBind string `json:"dashboard_bind"`
+	DashboardPort int    `json:"dashboard_port"`
+
+	HealthCheckInterval string `json:"health_check_interval"`
+	HealthCheckTimeout  string `json:"health_check_timeout"`
+
+	SchedulerEnabled  bool   `json:"scheduler_enabled"`
+	SchedulerInterval string `json:"scheduler_interval"`
+
+	SplitDNSEnabled  bool   `json:"split_dns_enabled"`
+	SplitDNSInterval string `json:"split_dns_interval"`
+
+	KillSwitchMode     string `json:"kill_switch_mode"`
+	KillSwitchAllowLAN bool   `json:"kill_switch_allow_lan"`
+
+	DNSGuardFallbackDNS string `json:"dns_guard_fallback_dns"`
+
+	LeakDetectionEnabled  bool   `json:"leak_detection_enabled"`
+	LeakDetectionInterval string `json:"leak_detection_interval"`
+	LeakDetectionAction   string `json:"leak_detection_action"`
+
+	AuditLogPath      string `json:"audit_log_path"`
+	AuditLogMaxSizeMB int    `json:"audit_log_max_size_mb"`
+	AuditLogSign      bool   `json:"audit_log_sign"`
+}
+
+// GET /api/v1/settings
+func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, settingsToDTO(cfg))
+}
+
+func settingsToDTO(cfg *config.Config) settingsDTO {
+	return settingsDTO{
+		DashboardBind:         cfg.Monitor.Dashboard.Bind,
+		DashboardPort:         cfg.Monitor.Dashboard.Port,
+		HealthCheckInterval:   cfg.Monitor.HealthCheck.Interval,
+		HealthCheckTimeout:    cfg.Monitor.HealthCheck.Timeout,
+		SchedulerEnabled:      cfg.Monitor.Scheduler.Enabled,
+		SchedulerInterval:     cfg.Monitor.Scheduler.Interval,
+		SplitDNSEnabled:       cfg.Monitor.SplitDNS.Enabled,
+		SplitDNSInterval:      cfg.Monitor.SplitDNS.Interval,
+		KillSwitchMode:        cfg.Security.KillSwitch.Mode,
+		KillSwitchAllowLAN:    cfg.Security.KillSwitch.AllowLAN,
+		DNSGuardFallbackDNS:   cfg.Security.DNSGuard.FallbackDNS,
+		LeakDetectionEnabled:  cfg.Security.LeakDetection.Enabled,
+		LeakDetectionInterval: cfg.Security.LeakDetection.Interval,
+		LeakDetectionAction:   cfg.Security.LeakDetection.Action,
+		AuditLogPath:          cfg.Security.AuditLog.Path,
+		AuditLogMaxSizeMB:     cfg.Security.AuditLog.MaxSizeMB,
+		AuditLogSign:          cfg.Security.AuditLog.Sign,
+	}
+}
+
+// PUT /api/v1/settings — everything except the dashboard bind/port, which is
+// read-only here (see settingsDTO comment).
+func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
+	var req settingsDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	for _, d := range []string{req.HealthCheckInterval, req.HealthCheckTimeout, req.SchedulerInterval, req.SplitDNSInterval, req.LeakDetectionInterval} {
+		if d == "" {
+			continue
+		}
+		if _, err := time.ParseDuration(d); err != nil {
+			writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid duration %q: %v", d, err))
+			return
+		}
+	}
+
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	trial := *cfg
+	trial.Monitor.HealthCheck.Interval = req.HealthCheckInterval
+	trial.Monitor.HealthCheck.Timeout = req.HealthCheckTimeout
+	trial.Monitor.Scheduler.Enabled = req.SchedulerEnabled
+	trial.Monitor.Scheduler.Interval = req.SchedulerInterval
+	trial.Monitor.SplitDNS.Enabled = req.SplitDNSEnabled
+	trial.Monitor.SplitDNS.Interval = req.SplitDNSInterval
+	trial.Security.KillSwitch.Mode = req.KillSwitchMode
+	trial.Security.KillSwitch.AllowLAN = req.KillSwitchAllowLAN
+	trial.Security.DNSGuard.FallbackDNS = req.DNSGuardFallbackDNS
+	trial.Security.LeakDetection.Enabled = req.LeakDetectionEnabled
+	trial.Security.LeakDetection.Interval = req.LeakDetectionInterval
+	trial.Security.LeakDetection.Action = req.LeakDetectionAction
+	trial.Security.AuditLog.Path = req.AuditLogPath
+	trial.Security.AuditLog.MaxSizeMB = req.AuditLogMaxSizeMB
+	trial.Security.AuditLog.Sign = req.AuditLogSign
+	if err := config.Validate(&trial); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	*cfg = trial
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if s.onSecurityToggle != nil {
+		s.onSecurityToggle(cfg)
+	}
+	writeJSON(w, http.StatusOK, settingsToDTO(cfg))
+}
+
+// PUT /api/v1/vpns/{name}/killswitch  {"override": "inherit"|"on"|"off"}
+// Sets the per-profile kill switch override (config.VPNConfig.KillSwitch).
+// "inherit" clears the override so the profile falls back to the global
+// security.kill_switch.enabled setting (see KillSwitchService.profileKillSwitchEnabled).
+func (s *Server) handleSetProfileKillSwitch(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	var req struct {
+		Override string `json:"override"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	vc, ok := cfg.VPNs[name]
+	if !ok {
+		writeError(w, http.StatusNotFound, "vpn profile not found")
+		return
+	}
+	switch strings.ToLower(strings.TrimSpace(req.Override)) {
+	case "on":
+		v := true
+		vc.KillSwitch = &v
+	case "off":
+		v := false
+		vc.KillSwitch = &v
+	case "inherit", "":
+		vc.KillSwitch = nil
+	default:
+		writeError(w, http.StatusBadRequest, "override must be one of: inherit, on, off")
+		return
+	}
+	cfg.VPNs[name] = vc
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if s.onSecurityToggle != nil {
+		s.onSecurityToggle(cfg)
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "profile": name})
+}
+
+type scheduleRuleDTO struct {
+	Name     string   `json:"name"`
+	Profiles []string `json:"profiles"`
+	Weekdays []string `json:"weekdays,omitempty"`
+	Start    string   `json:"start,omitempty"`
+	End      string   `json:"end,omitempty"`
+}
+
+// GET /api/v1/scheduler/rules
+func (s *Server) handleListScheduleRules(w http.ResponseWriter, r *http.Request) {
+	cfg, _, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	out := make([]scheduleRuleDTO, 0, len(cfg.Monitor.Scheduler.Rules))
+	for _, rule := range cfg.Monitor.Scheduler.Rules {
+		out = append(out, scheduleRuleDTO{
+			Name:     rule.Name,
+			Profiles: rule.Profiles,
+			Weekdays: rule.Weekdays,
+			Start:    rule.Start,
+			End:      rule.End,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// POST /api/v1/scheduler/rules
+func (s *Server) handleCreateScheduleRule(w http.ResponseWriter, r *http.Request) {
+	var req scheduleRuleDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		writeError(w, http.StatusBadRequest, "rule name is required")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	for _, rule := range cfg.Monitor.Scheduler.Rules {
+		if strings.EqualFold(rule.Name, req.Name) {
+			writeError(w, http.StatusConflict, "scheduler rule already exists")
+			return
+		}
+	}
+	if err := s.saveScheduleRule(cfg, cfgPath, -1, req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]string{"status": "created", "rule": req.Name})
+}
+
+// PUT /api/v1/scheduler/rules/{name}
+func (s *Server) handleUpdateScheduleRule(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	var req scheduleRuleDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	idx := -1
+	for i, rule := range cfg.Monitor.Scheduler.Rules {
+		if strings.EqualFold(rule.Name, name) {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		writeError(w, http.StatusNotFound, "scheduler rule not found")
+		return
+	}
+	if err := s.saveScheduleRule(cfg, cfgPath, idx, req); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "rule": name})
+}
+
+func (s *Server) saveScheduleRule(cfg *config.Config, cfgPath string, idx int, req scheduleRuleDTO) error {
+	rule := config.ScheduleRule{
+		Name:     strings.TrimSpace(req.Name),
+		Profiles: req.Profiles,
+		Weekdays: req.Weekdays,
+		Start:    strings.TrimSpace(req.Start),
+		End:      strings.TrimSpace(req.End),
+	}
+
+	trial := *cfg
+	trialRules := make([]config.ScheduleRule, len(cfg.Monitor.Scheduler.Rules))
+	copy(trialRules, cfg.Monitor.Scheduler.Rules)
+	if idx >= 0 {
+		trialRules[idx] = rule
+	} else {
+		trialRules = append(trialRules, rule)
+	}
+	trial.Monitor.Scheduler.Rules = trialRules
+	if err := config.Validate(&trial); err != nil {
+		return err
+	}
+
+	cfg.Monitor.Scheduler.Rules = trialRules
+	return s.saveRuntimeConfig(cfgPath, cfg)
+}
+
+// DELETE /api/v1/scheduler/rules/{name}
+func (s *Server) handleDeleteScheduleRule(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	idx := -1
+	for i, rule := range cfg.Monitor.Scheduler.Rules {
+		if strings.EqualFold(rule.Name, name) {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		writeError(w, http.StatusNotFound, "scheduler rule not found")
+		return
+	}
+	cfg.Monitor.Scheduler.Rules = append(cfg.Monitor.Scheduler.Rules[:idx], cfg.Monitor.Scheduler.Rules[idx+1:]...)
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "rule": name})
 }
 
 func isDefaultRoute(dst net.IPNet) bool {

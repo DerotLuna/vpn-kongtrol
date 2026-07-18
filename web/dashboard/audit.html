@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audit Log - VPN Kongtrol</title>
+  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="audit" data-i18n-title="page.audit.title">
+  <div class="app-shell">
+  <aside id="shell-sidebar" class="shell-sidebar"></aside>
+  <div class="shell-main">
+  <header id="shell-topbar" class="shell-topbar"></header>
+
+  <main>
+    <section class="card">
+      <div class="card-header">
+        <h2 data-i18n="audit.title">Audit Log</h2>
+        <button class="refresh-btn" onclick="loadAudit()" title="Refresh">↻</button>
+      </div>
+      <div class="resolve-bar">
+        <input type="text" id="audit-profile" data-i18n-placeholder="audit.filterProfile" placeholder="Filter by profile…" />
+        <select id="audit-level">
+          <option value="" data-i18n="audit.allLevels">All levels</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+          <option value="SECURITY">SECURITY</option>
+        </select>
+        <button class="action" onclick="loadAudit()" data-i18n="audit.apply">Apply</button>
+      </div>
+      <p id="audit-note" class="muted"></p>
+      <table id="audit-table">
+        <thead>
+          <tr>
+            <th data-i18n="audit.time">Time</th>
+            <th data-i18n="audit.level">Level</th>
+            <th data-i18n="audit.action">Action</th>
+            <th data-i18n="audit.profile">Profile</th>
+            <th data-i18n="audit.message">Message</th>
+            <th data-i18n="audit.signed">Signed</th>
+          </tr>
+        </thead>
+        <tbody id="audit-body">
+          <tr><td colspan="6" class="empty" data-i18n="empty.loading">Loading…</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+  </div>
+  </div>
+
+  <script src="shell.js"></script>
+  <script src="toast.js"></script>
+  <script src="audit.js"></script>
+</body>
+</html>

@@ -28,19 +28,24 @@ type Server struct {
 	collector      *monitor.Collector
 	routes         routing.RouteManager
 	ks             security.KillSwitch
-	killSwitchOn   bool
+	killSwitchOn   atomic.Bool
 	leakTest       *security.LeakTester
 	policyEngine   atomic.Pointer[policy.Engine] // hot-swapped on policy CRUD; see saveRuntimeConfig
 	policyResolver *monitor.PolicyResolver
 	configPath     string
 	onPolicyUpdate func(*config.Config, *policy.Engine)
-	dnsMgr         *monitor.DNSManager
-	dnsGuardOn     bool
-	connectMu      sync.Mutex
-	connectCancel  map[string]context.CancelFunc
-	upgrader       websocket.Upgrader
-	srv            *http.Server
-	onShutdown     func()
+	// onSecurityToggle is invoked after a kill switch / DNS guard toggle
+	// endpoint persists cfg, so the daemon can immediately re-apply live
+	// enforcement (firewall rules / DNS override) — onPolicyUpdate only
+	// rebuilds the service objects, it does not re-run Apply().
+	onSecurityToggle func(*config.Config)
+	dnsMgr           *monitor.DNSManager
+	dnsGuardOn       atomic.Bool
+	connectMu        sync.Mutex
+	connectCancel    map[string]context.CancelFunc
+	upgrader         websocket.Upgrader
+	srv              *http.Server
+	onShutdown       func()
 }
 
 // NewServer creates a new API server.
@@ -57,26 +62,26 @@ func NewServer(
 	policyResolver *monitor.PolicyResolver,
 	configPath string,
 	onPolicyUpdate func(*config.Config, *policy.Engine),
+	onSecurityToggle func(*config.Config),
 	dnsMgr *monitor.DNSManager,
 	dnsGuardEnabled bool,
 	onShutdown func(),
 ) *Server {
 	s := &Server{
-		bind:           bind,
-		port:           port,
-		adapters:       adapters,
-		collector:      collector,
-		routes:         routes,
-		ks:             ks,
-		killSwitchOn:   killSwitchEnabled,
-		leakTest:       leakTest,
-		policyResolver: policyResolver,
-		configPath:     configPath,
-		onPolicyUpdate: onPolicyUpdate,
-		dnsMgr:         dnsMgr,
-		dnsGuardOn:     dnsGuardEnabled,
-		onShutdown:     onShutdown,
-		connectCancel:  make(map[string]context.CancelFunc),
+		bind:             bind,
+		port:             port,
+		adapters:         adapters,
+		collector:        collector,
+		routes:           routes,
+		ks:               ks,
+		leakTest:         leakTest,
+		policyResolver:   policyResolver,
+		configPath:       configPath,
+		onPolicyUpdate:   onPolicyUpdate,
+		onSecurityToggle: onSecurityToggle,
+		dnsMgr:           dnsMgr,
+		onShutdown:       onShutdown,
+		connectCancel:    make(map[string]context.CancelFunc),
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// Only allow connections from localhost.
@@ -87,6 +92,8 @@ func NewServer(
 		},
 	}
 	s.policyEngine.Store(policyEngine)
+	s.killSwitchOn.Store(killSwitchEnabled)
+	s.dnsGuardOn.Store(dnsGuardEnabled)
 	return s
 }
 
@@ -103,6 +110,26 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/routes", s.handleListRoutes)
 	mux.HandleFunc("GET /api/v1/network/overview", s.handleNetworkOverview)
 	mux.HandleFunc("GET /api/v1/security/status", s.handleSecurityStatus)
+	mux.HandleFunc("POST /api/v1/security/killswitch", s.handleToggleKillSwitch)
+	mux.HandleFunc("POST /api/v1/security/dnsguard", s.handleToggleDNSGuard)
+	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
+	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
+	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
+	mux.HandleFunc("DELETE /api/v1/vpns/{name}", s.handleDeleteVPN)
+	mux.HandleFunc("PUT /api/v1/vpns/{name}/killswitch", s.handleSetProfileKillSwitch)
+	mux.HandleFunc("GET /api/v1/scheduler/rules", s.handleListScheduleRules)
+	mux.HandleFunc("POST /api/v1/scheduler/rules", s.handleCreateScheduleRule)
+	mux.HandleFunc("PUT /api/v1/scheduler/rules/{name}", s.handleUpdateScheduleRule)
+	mux.HandleFunc("DELETE /api/v1/scheduler/rules/{name}", s.handleDeleteScheduleRule)
+	mux.HandleFunc("GET /api/v1/audit", s.handleAuditLog)
+	mux.HandleFunc("GET /api/v1/settings", s.handleGetSettings)
+	mux.HandleFunc("PUT /api/v1/settings", s.handleUpdateSettings)
+	mux.HandleFunc("GET /api/v1/groups", s.handleListGroups)
+	mux.HandleFunc("POST /api/v1/groups", s.handleCreateGroup)
+	mux.HandleFunc("PUT /api/v1/groups/{name}", s.handleUpdateGroup)
+	mux.HandleFunc("DELETE /api/v1/groups/{name}", s.handleDeleteGroup)
+	mux.HandleFunc("POST /api/v1/groups/{name}/connect", s.handleConnectGroup)
+	mux.HandleFunc("POST /api/v1/groups/{name}/disconnect", s.handleDisconnectGroup)
 	mux.HandleFunc("GET /api/v1/policies", s.handleListPolicies)
 	mux.HandleFunc("GET /api/v1/policies/meta", s.handlePoliciesMeta)
 	mux.HandleFunc("POST /api/v1/policies", s.handleCreatePolicy)

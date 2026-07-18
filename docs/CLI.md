@@ -49,7 +49,17 @@ kongtrol dashboard                   # start web UI and open browser
 ```bash
 kongtrol config validate             # validate kongtrol.yaml without connecting
 kongtrol export                      # print sanitized config template (no secrets)
+
+kongtrol config dashboard show               # show the dashboard bind/port override, if any
+kongtrol config dashboard set-port <port>    # override the dashboard's local port (restart to apply)
+kongtrol config dashboard set-bind <address> # override the dashboard's bind address (restart to apply)
+kongtrol config dashboard reset              # clear the override, fall back to kongtrol.yaml
 ```
+
+`kongtrol config dashboard` writes to `~/.kongtrol/preferences.json` — the same machine-local file
+that stores `kongtrol config lang`, favorites, and the default group. It's intentionally **not**
+editable from the dashboard itself: changing the port from the page serving that request would cut
+the connection mid-response.
 
 ## Audit log
 
@@ -68,9 +78,49 @@ KONGTROL_LANG=en kongtrol doctor
 
 ## Useful daemon/dashboard API endpoints
 
+The embedded dashboard (`web/dashboard/`) is a full client of this API — everything it can do is
+reachable directly too. All endpoints are under `http://127.0.0.1:9741` by default.
+
 ```bash
-GET /api/v1/metrics/history                 # persistent per-profile history
-GET /api/v1/dns/resolve?domain=...&via=...  # split-DNS resolution for a specific tunnel
-GET /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app + target)
-POST /api/v1/shutdown                       # ask a running daemon to shut down gracefully
+# Tunnels & monitoring
+GET  /api/v1/tunnels                         # live snapshot of all tunnels
+GET  /api/v1/metrics/history                 # persistent per-profile history (reconnects, jitter, samples)
+GET  /api/v1/routes                          # active OS routes with resolved policy/profile
+GET  /api/v1/network/overview                # default egress, local IPs, public IP, connected count
+POST /api/v1/tunnels/{name}/connect
+POST /api/v1/tunnels/{name}/cancel_connect
+POST /api/v1/tunnels/{name}/disconnect
+GET  /api/v1/dns/resolve?domain=...&via=...  # split-DNS resolution for a specific tunnel
+GET  /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app + target)
+
+# Policies
+GET/POST  /api/v1/policies
+PUT/DELETE /api/v1/policies/{name}
+POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
+
+# VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
+GET/POST  /api/v1/vpns
+PUT/DELETE /api/v1/vpns/{name}
+PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
+
+# Groups
+GET/POST  /api/v1/groups
+PUT/DELETE /api/v1/groups/{name}
+POST /api/v1/groups/{name}/connect
+POST /api/v1/groups/{name}/disconnect
+
+# Security — live toggles, immediately re-applied (not just persisted)
+GET  /api/v1/security/status
+POST /api/v1/security/killswitch             # {"enabled": true|false}
+POST /api/v1/security/dnsguard               # {"enabled": true|false}
+
+# Settings & scheduler
+GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, audit log
+GET/POST  /api/v1/scheduler/rules
+PUT/DELETE /api/v1/scheduler/rules/{name}
+
+# Audit log
+GET  /api/v1/audit?profile=...&level=...&limit=...
+
+POST /api/v1/shutdown                        # ask a running daemon to shut down gracefully
 ```

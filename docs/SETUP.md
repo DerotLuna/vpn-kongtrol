@@ -586,16 +586,19 @@ kongtrol dashboard
 # Dashboard running at http://127.0.0.1:9741
 ```
 
-Abre `http://localhost:9741` en tu navegador. Verás:
+Abre `http://localhost:9741` en tu navegador. Es una consola de gestión completa, no solo
+monitoreo, con estas páginas:
 
-- Estado de todos los túneles en tiempo real
-- Tráfico por túnel (upload / download)
-- Rutas activas
-- Estado del kill switch y DNS guard
-- Historial persistente por perfil (uptime, reconexiones, leaks, jitter)
-- Últimos eventos de conexión
+- **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, conectar/desconectar todo
+- **Policy Studio** — CRUD de políticas de routing + probador de reglas antes de guardar
+- **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check
+- **VPN Profiles** — CRUD de perfiles VPN y grupos (actualiza config + keychain; requiere reiniciar el daemon para conectar con un perfil nuevo/editado)
+- **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
+- **Settings** — health check, scheduler + reglas, split DNS, ajustes de kill switch/DNS guard, audit log
 
-> El dashboard está compilado dentro del binario. No necesitas instalar nada extra.
+> El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
+> puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —
+> cambiarlo desde la página que sirve la petición rompería la conexión.
 
 ---
 
@@ -621,10 +624,17 @@ kongtrol dashboard                # abrir UI web
 ### Endpoints útiles del daemon/dashboard
 
 ```bash
-GET /api/v1/metrics/history                # histórico persistente por perfil
-GET /api/v1/dns/resolve?domain=...&via=... # split-DNS por túnel específico
-GET /api/v1/resolve?target=...&app=...     # policy flow-aware (app + target)
+GET  /api/v1/metrics/history                # histórico persistente por perfil
+GET  /api/v1/dns/resolve?domain=...&via=... # split-DNS por túnel específico
+GET  /api/v1/resolve?target=...&app=...     # policy flow-aware (app + target)
+POST /api/v1/security/killswitch            # {"enabled": true|false} — activa/desactiva en vivo
+POST /api/v1/security/dnsguard              # {"enabled": true|false} — activa/desactiva en vivo
+GET  /api/v1/vpns                           # perfiles VPN · POST/PUT/DELETE para CRUD
+GET  /api/v1/groups                         # grupos · POST/PUT/DELETE + /connect /disconnect
+GET  /api/v1/audit?profile=...&level=...    # eventos de auditoría
 ```
+
+Ver [docs/CLI.md](CLI.md#useful-daemondashboard-api-endpoints) para la lista completa.
 
 Para idioma operativo del CLI (mensajes nuevos), usa `KONGTROL_LANG=es` o `KONGTROL_LANG=en`.
 

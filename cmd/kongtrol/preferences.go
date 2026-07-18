@@ -6,12 +6,23 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
 
 type preferences struct {
 	Favorites    []string `json:"favorites"`
 	DefaultGroup string   `json:"default_group"`
 	Language     string   `json:"language,omitempty"` // "es" or "en"
+	// DashboardPort/DashboardBind are a machine-local override for the
+	// embedded dashboard's listen address — set via `kongtrol config
+	// dashboard set-port/set-bind`, not editable from the dashboard itself
+	// (changing the port from the page serving that request would cut the
+	// connection mid-response). Takes precedence over kongtrol.yaml's
+	// monitor.dashboard settings when non-zero/non-empty.
+	DashboardPort int    `json:"dashboard_port,omitempty"`
+	DashboardBind string `json:"dashboard_bind,omitempty"`
 }
 
 func preferencesPath() string {
@@ -48,6 +59,23 @@ func savePreferences(p *preferences) error {
 		return fmt.Errorf("preferences: write: %w", err)
 	}
 	return nil
+}
+
+// applyDashboardPreferences overrides cfg.Monitor.Dashboard with any
+// machine-local preference set via `kongtrol config dashboard`. Called right
+// after config.Load in loadConfig(), before anything reads the dashboard
+// bind/port.
+func applyDashboardPreferences(cfg *config.Config) {
+	p, err := loadPreferences()
+	if err != nil {
+		return
+	}
+	if p.DashboardPort > 0 {
+		cfg.Monitor.Dashboard.Port = p.DashboardPort
+	}
+	if strings.TrimSpace(p.DashboardBind) != "" {
+		cfg.Monitor.Dashboard.Bind = p.DashboardBind
+	}
 }
 
 func addFavorite(name string) error {

@@ -10,6 +10,17 @@
 
 Every subprocess the security layer shells out to (`pfctl`, `iptables`, `networksetup`, `netsh`, elevated PowerShell on Windows) runs under a bounded timeout, so a hung system call can't block the daemon's shutdown or leave the kill switch / DNS guard in an indeterminate state.
 
+## Toggling from the dashboard
+
+The dashboard's **Security** page can flip Kill Switch and DNS Guard on/off live (`POST
+/api/v1/security/killswitch`, `POST /api/v1/security/dnsguard`) and set a per-profile kill switch
+override (`PUT /api/v1/vpns/{name}/killswitch`, `"override": "inherit"|"on"|"off"`). Each toggle
+persists to `kongtrol.yaml` *and* immediately re-applies enforcement — for the kill switch that's a
+re-run of `KillSwitchService.Apply()` (`internal/app/killswitch_service.go`); for DNS guard it's
+`applyDNSGuardState()` (`cmd/kongtrol/main.go`), which mirrors the same enable gate `ProfileService.Connect`
+uses. Nothing here is exposed on the network by default — the dashboard only binds to
+`127.0.0.1` unless you've explicitly overridden the bind address (see [CONFIGURATION.md](CONFIGURATION.md)).
+
 ## DNS guard recovery
 
 If Kongtrol crashes without cleanly restoring DNS, run:

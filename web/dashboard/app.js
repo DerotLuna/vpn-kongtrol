@@ -5,6 +5,11 @@ const I18N = {
   es: {
     'nav.overview': 'Resumen',
     'nav.policyStudio': 'Policy Studio',
+    'nav.security': 'Seguridad',
+    'nav.vpnProfiles': 'Perfiles VPN',
+    'nav.auditLog': 'Registro de Auditoría',
+    'nav.settings': 'Configuración',
+    'page.overview.title': 'Resumen',
     'ws.connecting': 'conectando…',
     'ws.live': 'en vivo',
     'ws.reconnecting': 'reconectando…',
@@ -20,7 +25,15 @@ const I18N = {
     'table.sent': '↑ Enviado',
     'table.received': '↓ Recibido',
     'table.latency': 'Latencia',
+    'table.trend': 'Tendencia',
     'table.actions': 'Acciones',
+    'sections.trafficOverTime': 'Tráfico en el Tiempo',
+    'chart.noData': 'Sin túneles conectados — los gráficos se completan al conectar un túnel.',
+    'chart.sent': 'Enviado',
+    'chart.received': 'Recibido',
+    'stat.reconnects': 'Reconexiones',
+    'stat.jitter': 'Jitter',
+    'stat.samples': 'Muestras',
     'policies.policy': 'Política',
     'policies.match': 'Match',
     'policies.vpnProfile': 'Perfil VPN',
@@ -36,6 +49,11 @@ const I18N = {
     'security.leakCheck': 'Leak Check',
     'security.publicIp': 'IP pública',
     'security.lastChecked': 'Última revisión',
+    'security.manage': 'Gestionar →',
+    'bulk.connectAll': 'Conectar todo',
+    'bulk.disconnectAll': 'Desconectar todo',
+    'toast.daemonLost': 'Se perdió la conexión con el daemon — reintentando…',
+    'toast.daemonRestored': 'Conexión con el daemon restablecida',
     'routes.filter': 'Filtro',
     'routes.all': 'Todas las rutas',
     'routes.default': 'Ruta predeterminada',
@@ -78,6 +96,11 @@ const I18N = {
   en: {
     'nav.overview': 'Overview',
     'nav.policyStudio': 'Policy Studio',
+    'nav.security': 'Security',
+    'nav.vpnProfiles': 'VPN Profiles',
+    'nav.auditLog': 'Audit Log',
+    'nav.settings': 'Settings',
+    'page.overview.title': 'Overview',
     'ws.connecting': 'connecting…',
     'ws.live': 'live',
     'ws.reconnecting': 'reconnecting…',
@@ -93,7 +116,15 @@ const I18N = {
     'table.sent': '↑ Sent',
     'table.received': '↓ Received',
     'table.latency': 'Latency',
+    'table.trend': 'Trend',
     'table.actions': 'Actions',
+    'sections.trafficOverTime': 'Traffic Over Time',
+    'chart.noData': 'No connected tunnels — charts fill in once a tunnel connects.',
+    'chart.sent': 'Sent',
+    'chart.received': 'Received',
+    'stat.reconnects': 'Reconnects',
+    'stat.jitter': 'Jitter',
+    'stat.samples': 'Samples',
     'policies.policy': 'Policy',
     'policies.match': 'Match',
     'policies.vpnProfile': 'VPN Profile',
@@ -109,6 +140,11 @@ const I18N = {
     'security.leakCheck': 'Leak Check',
     'security.publicIp': 'Public IP',
     'security.lastChecked': 'Last checked',
+    'security.manage': 'Manage →',
+    'bulk.connectAll': 'Connect All',
+    'bulk.disconnectAll': 'Disconnect All',
+    'toast.daemonLost': 'Lost connection to the daemon — retrying…',
+    'toast.daemonRestored': 'Daemon connection restored',
     'routes.filter': 'Filter',
     'routes.all': 'All routes',
     'routes.default': 'Default route',
@@ -158,6 +194,10 @@ let currentRoutes = [];
 let lastPublicIP = '';
 let currentOverview = null;
 let currentPolicyFilter = '';
+let lastTunnels = {};
+let metricsHistory = {};
+const HISTORY_MAX_SAMPLES = 120;
+const tunnelHistory = {};
 
 function resolveInitialLang() {
   const saved = localStorage.getItem(LANG_KEY);
@@ -178,6 +218,7 @@ function setLang(next) {
   applyStaticTranslations();
   renderPoliciesFromCache();
   renderRoutes();
+  renderTrafficCharts();
 }
 
 function applyStaticTranslations() {
@@ -238,20 +279,47 @@ function connectWS() {
   ws.onerror = () => ws.close();
 }
 
+let wsWasConnected = null; // null = not yet known (initial load), avoids a spurious toast on first connect
+
 function setWSStatus(connected) {
   const dot = document.getElementById('connection-indicator');
   const label = document.getElementById('ws-label');
   dot.className = 'indicator ' + (connected ? 'connected' : 'disconnected');
   label.textContent = connected ? t('ws.live') : t('ws.reconnecting');
+
+  if (wsWasConnected === true && !connected) {
+    showToast(t('toast.daemonLost'), 'error', 8000);
+  } else if (wsWasConnected === false && connected) {
+    showToast(t('toast.daemonRestored'), 'success');
+  }
+  wsWasConnected = connected;
 }
 
 // ── Tunnel table ────────────────────────────────────────────────────────────
 
+function recordTunnelSamples(tunnels) {
+  Object.entries(tunnels || {}).forEach(([name, m]) => {
+    const status = (m.Status || 'disconnected').toLowerCase();
+    if (status !== 'connected') return;
+    if (!tunnelHistory[name]) tunnelHistory[name] = { latency: [], sent: [], recv: [] };
+    const h = tunnelHistory[name];
+    h.latency.push(m.LatencyMS || 0);
+    h.sent.push(m.BytesSent || 0);
+    h.recv.push(m.BytesReceived || 0);
+    if (h.latency.length > HISTORY_MAX_SAMPLES) h.latency.shift();
+    if (h.sent.length > HISTORY_MAX_SAMPLES) h.sent.shift();
+    if (h.recv.length > HISTORY_MAX_SAMPLES) h.recv.shift();
+  });
+}
+
 function renderTunnels(tunnels) {
   const tbody = document.getElementById('tunnels-body');
+  lastTunnels = tunnels || {};
+  recordTunnelSamples(lastTunnels);
 
   if (!tunnels || Object.keys(tunnels).length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" class="empty">${t('empty.noTunnels')}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="empty">${t('empty.noTunnels')}</td></tr>`;
+    renderTrafficCharts();
     return;
   }
 
@@ -269,6 +337,9 @@ function renderTunnels(tunnels) {
       const sent = m.BytesSent > 0 ? formatBytes(m.BytesSent) : '<span class="muted">—</span>';
       const recv = m.BytesReceived > 0 ? formatBytes(m.BytesReceived) : '<span class="muted">—</span>';
       const lat = m.LatencyMS > 0 ? `${m.LatencyMS}ms` : '<span class="muted">—</span>';
+      const trend = isConnected
+        ? `<canvas class="latency-spark" data-profile="${esc(name)}" width="64" height="20"></canvas>`
+        : '<span class="muted">—</span>';
 
       let btn = `<button class="action" onclick="connectVPN('${name}')">${t('actions.connect')}</button>`;
       if (isConnected) {
@@ -285,11 +356,81 @@ function renderTunnels(tunnels) {
         <td>${sent}</td>
         <td>${recv}</td>
         <td>${lat}</td>
+        <td>${trend}</td>
         <td>${btn}</td>
       </tr>`;
     });
 
   tbody.innerHTML = rows.join('');
+
+  Object.entries(tunnels).forEach(([name, m]) => {
+    if ((m.Status || '').toLowerCase() !== 'connected') return;
+    const canvas = tbody.querySelector(`canvas.latency-spark[data-profile="${cssEsc(name)}"]`);
+    const h = tunnelHistory[name];
+    if (canvas && h) drawSparkline(canvas, h.latency, { color: themeColor('--signal') });
+  });
+
+  renderTrafficCharts();
+}
+
+function themeColor(varName) {
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || undefined;
+}
+
+function cssEsc(s) {
+  return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&');
+}
+
+function renderTrafficCharts() {
+  const container = document.getElementById('traffic-chart-list');
+  if (!container) return;
+
+  const connected = Object.entries(lastTunnels).filter(([, m]) => (m.Status || '').toLowerCase() === 'connected');
+  if (connected.length === 0) {
+    container.innerHTML = `<p class="empty">${t('chart.noData')}</p>`;
+    return;
+  }
+
+  container.innerHTML = connected.map(([name]) => {
+    const hist = metricsHistory[name];
+    const tiles = hist
+      ? `<div class="stat-tiles">
+          <div class="stat-tile"><span class="stat-label">${t('stat.reconnects')}</span><span class="stat-value">${hist.reconnects ?? 0}</span></div>
+          <div class="stat-tile"><span class="stat-label">${t('stat.jitter')}</span><span class="stat-value">${hist.jitter_ms ?? 0}ms</span></div>
+          <div class="stat-tile"><span class="stat-label">${t('stat.samples')}</span><span class="stat-value">${hist.samples ?? 0}</span></div>
+        </div>`
+      : '';
+    return `<div class="traffic-chart-item">
+      <div class="chart-head">
+        <span class="chart-name">${esc(name)}</span>
+        <span class="chart-legend">
+          <span><span class="legend-dot" style="background:${themeColor('--steel')}"></span>${t('chart.sent')}</span>
+          <span><span class="legend-dot" style="background:${themeColor('--signal')}"></span>${t('chart.received')}</span>
+        </span>
+      </div>
+      <canvas data-traffic-profile="${esc(name)}" width="600" height="64"></canvas>
+      ${tiles}
+    </div>`;
+  }).join('');
+
+  connected.forEach(([name]) => {
+    const canvas = container.querySelector(`canvas[data-traffic-profile="${cssEsc(name)}"]`);
+    const h = tunnelHistory[name];
+    if (!canvas || !h) return;
+    drawTimeSeries(canvas, [
+      { data: h.sent, color: themeColor('--steel') },
+      { data: h.recv, color: themeColor('--signal') },
+    ]);
+  });
+}
+
+async function refreshMetricsHistory() {
+  try {
+    const res = await fetch(`${API}/api/v1/metrics/history`);
+    if (!res.ok) return;
+    metricsHistory = await res.json();
+    renderTrafficCharts();
+  } catch (_) {}
 }
 
 // ── Security status ─────────────────────────────────────────────────────────
@@ -611,6 +752,16 @@ async function disconnectVPN(name) {
   }
 }
 
+async function connectAll() {
+  const targets = Object.entries(lastTunnels).filter(([, m]) => (m.Status || '').toLowerCase() !== 'connected');
+  await Promise.all(targets.map(([name]) => connectVPN(name)));
+}
+
+async function disconnectAll() {
+  const targets = Object.entries(lastTunnels).filter(([, m]) => (m.Status || '').toLowerCase() === 'connected');
+  await Promise.all(targets.map(([name]) => disconnectVPN(name)));
+}
+
 // ── Formatters ──────────────────────────────────────────────────────────────
 
 function formatBytes(b) {
@@ -639,8 +790,20 @@ refreshRoutes();
 refreshPolicies();
 refreshNetworkOverview();
 refreshSecurity();
+refreshMetricsHistory();
+
+document.getElementById('theme-toggle')?.addEventListener('click', () => {
+  setTimeout(() => {
+    document.querySelectorAll('canvas.latency-spark').forEach((c) => {
+      const h = tunnelHistory[c.dataset.profile];
+      if (h) drawSparkline(c, h.latency, { color: themeColor('--signal') });
+    });
+    renderTrafficCharts();
+  }, 30);
+});
 
 setInterval(refreshSecurity, 30_000);
 setInterval(refreshRoutes, 30_000);
 setInterval(refreshPolicies, 30_000);
 setInterval(refreshNetworkOverview, 30_000);
+setInterval(refreshMetricsHistory, 30_000);

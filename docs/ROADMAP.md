@@ -27,7 +27,12 @@
 | Leak detection (periodic · configurable action) | ✅ |
 | Audit log (append-only · HMAC-SHA256 signed, fsnotify-based live tail) | ✅ |
 | Metrics collector + persistent profile history (event-driven change broadcast) | ✅ |
-| Embedded web dashboard (dark theme · live WebSocket feed) | ✅ |
+| Embedded web dashboard — full management UI (dark/light theme, sidebar nav, live WebSocket feed) | ✅ |
+| Dashboard: VPN profile + group CRUD (config + keychain) | ✅ |
+| Dashboard: live security toggles (kill switch, DNS guard, per-profile override) | ✅ |
+| Dashboard: settings page (monitor/security tuning, scheduler rules CRUD) | ✅ |
+| Dashboard: audit log viewer, per-tunnel traffic charts | ✅ |
+| Dashboard bind/port: CLI-local override (`kongtrol config dashboard`) | ✅ |
 | System tray app (logo icon · per-profile menu) | ✅ |
 | Graceful daemon shutdown (`kongtrol down` → `POST /api/v1/shutdown`) | ✅ |
 | `kongtrol init` wizard (detect · preserve existing · keychain) | ✅ |
@@ -66,3 +71,6 @@ Per-app routing (experimental) · Full E2E test suite with live VPN daemons
 
 ### v1.3 ✅
 Event-driven architecture (fsnotify log tailing, metrics change broadcast, live remote status streaming) · Graceful cross-platform daemon shutdown · Timeout-bounded system calls throughout the security layer
+
+### v1.4 ✅
+Dashboard rebuilt as a full management UI: sidebar navigation, light/dark theme, per-tunnel traffic charts · VPN profile + group CRUD · live Kill Switch/DNS Guard toggles + per-profile override · Settings page (scheduler rules, split DNS, audit log tuning) · Audit log viewer · CLI-local dashboard bind/port override (`kongtrol config dashboard`)

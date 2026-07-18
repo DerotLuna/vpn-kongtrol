@@ -65,6 +65,16 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// Validate runs the same struct-tag and semantic validation Load uses. It's
+// exported for callers (e.g. the dashboard API) that mutate an already-loaded
+// config in memory and need to check it before persisting.
+func Validate(cfg *Config) error {
+	if err := validate.Struct(cfg); err != nil {
+		return fmt.Errorf("config: validation failed: %w", err)
+	}
+	return validateSemantics(cfg)
+}
+
 // applyDefaults fills in zero-value fields with sensible defaults.
 func applyDefaults(cfg *Config) {
 	if cfg.Monitor.Dashboard.Port == 0 {

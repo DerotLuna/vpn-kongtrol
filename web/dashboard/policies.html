@@ -10,22 +10,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <header class="top-header">
-    <div class="brand">
-      <img src="/logo-kong.svg" alt="VPN Kongtrol" class="brand-logo" />
-      <span class="brand-name"><strong>K O N G T R O L</strong><small>CLI</small><small class="beta">BETA</small></span>
-    </div>
-    <div class="header-right">
-      <nav class="top-nav">
-        <a class="nav-link" href="/" data-i18n="nav.overview">Overview</a>
-        <a class="nav-link active" href="/policies.html" data-i18n="nav.policyStudio">Policy Studio</a>
-      </nav>
-      <button id="lang-toggle" class="lang-toggle" type="button" aria-label="Toggle language">EN</button>
-      <span id="ws-label" class="ws-label" data-i18n="ws.configEditor">config editor</span>
-      <div id="connection-indicator" class="indicator connected" title="Policy editor"></div>
-    </div>
-  </header>
+<body data-page="policies" data-i18n-title="page.policies.title">
+  <div class="app-shell">
+  <aside id="shell-sidebar" class="shell-sidebar"></aside>
+  <div class="shell-main">
+  <header id="shell-topbar" class="shell-topbar"></header>
 
   <main>
     <section class="card">
@@ -90,7 +79,11 @@
       </div>
     </section>
   </main>
+  </div>
+  </div>
 
+  <script src="shell.js"></script>
+  <script src="toast.js"></script>
   <script src="policies.js"></script>
 </body>
 </html>

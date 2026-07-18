@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings - VPN Kongtrol</title>
+  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="settings" data-i18n-title="page.settings.title">
+  <div class="app-shell">
+  <aside id="shell-sidebar" class="shell-sidebar"></aside>
+  <div class="shell-main">
+  <header id="shell-topbar" class="shell-topbar"></header>
+
+  <main>
+    <section class="card">
+      <div class="card-header">
+        <h2 data-i18n="settings.dashboard">Dashboard</h2>
+      </div>
+      <ul id="dashboard-info-list" class="kv-list">
+        <li><span class="label" data-i18n="settings.dashboardBind">Bind address</span><span id="s-dashboard-bind" class="mono value">—</span></li>
+        <li><span class="label" data-i18n="settings.dashboardPort">Port</span><span id="s-dashboard-port" class="mono value">—</span></li>
+      </ul>
+      <p class="muted" style="margin-top:10px;" data-i18n="settings.dashboardNote">Not editable from here — changing it from the page serving this request would break the connection. Use the CLI instead:</p>
+      <p class="mono muted" style="margin-top:4px;">kongtrol config dashboard set-port &lt;port&gt;<br />kongtrol config dashboard set-bind &lt;address&gt;</p>
+    </section>
+
+    <div class="side-grid">
+      <section class="card">
+        <div class="card-header">
+          <h2 data-i18n="settings.healthCheck">Health Check</h2>
+        </div>
+        <div class="form-grid">
+          <label><span data-i18n="settings.interval">Interval</span>
+            <input id="s-hc-interval" type="text" placeholder="30s" />
+          </label>
+          <label><span data-i18n="settings.timeout">Timeout</span>
+            <input id="s-hc-timeout" type="text" placeholder="10s" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 data-i18n="settings.splitDns">Split DNS</h2>
+        </div>
+        <div class="form-grid">
+          <label class="security-row" style="padding:0; border:none;">
+            <span data-i18n="settings.enabled">Enabled</span>
+            <label class="switch"><input type="checkbox" id="s-splitdns-enabled" /><span class="slider"></span></label>
+          </label>
+          <label><span data-i18n="settings.interval">Interval</span>
+            <input id="s-splitdns-interval" type="text" placeholder="60s" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 data-i18n="settings.killSwitchTuning">Kill Switch Tuning</h2>
+        </div>
+        <div class="form-grid">
+          <label><span data-i18n="settings.mode">Mode</span>
+            <select id="s-ks-mode">
+              <option value="strict">strict</option>
+              <option value="loose">loose</option>
+            </select>
+          </label>
+          <label class="security-row" style="padding:0; border:none;">
+            <span data-i18n="settings.allowLan">Allow LAN traffic</span>
+            <label class="switch"><input type="checkbox" id="s-ks-allowlan" /><span class="slider"></span></label>
+          </label>
+        </div>
+        <p class="muted" style="margin-top:8px;" data-i18n="settings.killSwitchNote">Enable/disable the kill switch itself from the Security page.</p>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 data-i18n="settings.dnsGuardTuning">DNS Guard Tuning</h2>
+        </div>
+        <div class="form-grid">
+          <label><span data-i18n="settings.fallbackDns">Fallback DNS</span>
+            <input id="s-dns-fallback" type="text" placeholder="1.1.1.1" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 data-i18n="settings.leakDetection">Leak Detection</h2>
+        </div>
+        <div class="form-grid">
+          <label class="security-row" style="padding:0; border:none;">
+            <span data-i18n="settings.enabled">Enabled</span>
+            <label class="switch"><input type="checkbox" id="s-leak-enabled" /><span class="slider"></span></label>
+          </label>
+          <label><span data-i18n="settings.interval">Interval</span>
+            <input id="s-leak-interval" type="text" placeholder="60s" />
+          </label>
+          <label><span data-i18n="settings.action">Action</span>
+            <select id="s-leak-action">
+              <option value="notify">notify</option>
+              <option value="killswitch_and_notify">killswitch_and_notify</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 data-i18n="settings.auditLog">Audit Log</h2>
+        </div>
+        <div class="form-grid">
+          <label><span data-i18n="settings.path">Log file path</span>
+            <input id="s-audit-path" type="text" placeholder="~/.kongtrol/audit.log" />
+          </label>
+          <label><span data-i18n="settings.maxSize">Max size (MB)</span>
+            <input id="s-audit-maxsize" type="number" placeholder="100" />
+          </label>
+          <label class="security-row" style="padding:0; border:none;">
+            <span data-i18n="settings.sign">HMAC sign entries</span>
+            <label class="switch"><input type="checkbox" id="s-audit-sign" /><span class="slider"></span></label>
+          </label>
+        </div>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="form-actions">
+        <button class="action" onclick="saveSettings()" data-i18n="settings.save">Save Settings</button>
+        <button class="action" onclick="loadSettings()" data-i18n="settings.revert">Revert</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 data-i18n="settings.schedulerRules">Scheduler Rules</h2>
+        <button class="refresh-btn" onclick="loadScheduleRules()" title="Refresh">↻</button>
+      </div>
+      <div class="security-row" style="padding:0 0 16px; border:none;">
+        <span data-i18n="settings.schedulerEnabled">Scheduler enabled</span>
+        <label class="switch"><input type="checkbox" id="s-sched-enabled" onchange="saveSettings()" /><span class="slider"></span></label>
+      </div>
+      <label><span data-i18n="settings.interval">Interval</span>
+        <input id="s-sched-interval" type="text" placeholder="1m" style="max-width:200px;" />
+      </label>
+
+      <div class="policy-grid" style="margin-top:16px;">
+        <div class="card">
+          <h2 data-i18n="settings.ruleEditor">Rule Editor</h2>
+          <div class="form-grid">
+            <label><span data-i18n="settings.ruleName">Name</span>
+              <input id="r-name" type="text" data-i18n-placeholder="settings.ruleNamePlaceholder" placeholder="business-hours" />
+            </label>
+            <label><span data-i18n="groups.profiles">Profiles (one per line)</span>
+              <textarea id="r-profiles" rows="3" placeholder="office"></textarea>
+            </label>
+            <label><span data-i18n="settings.weekdays">Weekdays (comma-separated, optional)</span>
+              <input id="r-weekdays" type="text" placeholder="mon,tue,wed,thu,fri" />
+            </label>
+            <label><span data-i18n="settings.start">Start (HH:MM, optional)</span>
+              <input id="r-start" type="text" placeholder="09:00" />
+            </label>
+            <label><span data-i18n="settings.end">End (HH:MM, optional)</span>
+              <input id="r-end" type="text" placeholder="18:00" />
+            </label>
+            <div class="form-actions">
+              <button class="action" onclick="createRule()" data-i18n="actions.create">Create</button>
+              <button class="action" onclick="updateRule()" data-i18n="actions.update">Update</button>
+              <button class="action disconnect" onclick="deleteRule()" data-i18n="actions.delete">Delete</button>
+              <button class="action" onclick="clearRuleForm()" data-i18n="actions.clear">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="settings.existingRules">Existing Rules</h2>
+          <table class="policy-table">
+            <thead>
+              <tr>
+                <th data-i18n="table.name">Name</th>
+                <th data-i18n="groups.profiles">Profiles</th>
+                <th data-i18n="settings.window">Window</th>
+                <th data-i18n="table.actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="rule-list-body">
+              <tr><td colspan="4" class="empty" data-i18n="empty.loading">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  </div>
+  </div>
+
+  <script src="shell.js"></script>
+  <script src="toast.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>

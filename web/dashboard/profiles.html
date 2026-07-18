@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VPN Profiles - VPN Kongtrol</title>
+  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body data-page="profiles" data-i18n-title="page.profiles.title">
+  <div class="app-shell">
+  <aside id="shell-sidebar" class="shell-sidebar"></aside>
+  <div class="shell-main">
+  <header id="shell-topbar" class="shell-topbar"></header>
+
+  <main>
+    <section class="card">
+      <div class="card-header">
+        <h2 data-i18n="profileStudio.title">VPN Profiles</h2>
+        <button class="refresh-btn" onclick="loadProfiles()" title="Refresh">↻</button>
+      </div>
+      <p class="muted" data-i18n="profileStudio.restartNote">Changes here update the config file and OS keychain only — restart the daemon to connect through a new or edited profile.</p>
+
+      <div class="policy-grid" style="margin-top:16px;">
+        <div class="card">
+          <h2 data-i18n="editor.title">Editor</h2>
+          <div class="form-grid">
+            <label><span data-i18n="pEditor.name">Name</span>
+              <input id="v-name" type="text" data-i18n-placeholder="pEditor.namePlaceholder" placeholder="office" />
+            </label>
+            <label><span data-i18n="pEditor.type">Type</span>
+              <select id="v-type">
+                <option value="openvpn">openvpn</option>
+                <option value="wireguard">wireguard</option>
+                <option value="protonvpn">protonvpn</option>
+                <option value="ciscoanyconnect">ciscoanyconnect</option>
+                <option value="forticlient">forticlient</option>
+                <option value="globalprotect">globalprotect</option>
+                <option value="tailscale">tailscale</option>
+                <option value="cloudflarewarp">cloudflarewarp</option>
+              </select>
+            </label>
+            <label><span data-i18n="pEditor.priority">Priority</span>
+              <input id="v-priority" type="number" value="10" />
+            </label>
+            <label><span data-i18n="pEditor.host">Host</span>
+              <input id="v-host" type="text" data-i18n-placeholder="pEditor.hostPlaceholder" placeholder="vpn.corp.com" />
+            </label>
+            <label><span data-i18n="pEditor.configFile">Config file path</span>
+              <input id="v-config" type="text" data-i18n-placeholder="pEditor.configPlaceholder" placeholder="~/.kongtrol/configs/server.ovpn" />
+            </label>
+            <label><span data-i18n="pEditor.server">Server (protonvpn)</span>
+              <input id="v-server" type="text" placeholder="US" />
+            </label>
+            <label><span data-i18n="pEditor.protocol">Protocol (protonvpn)</span>
+              <input id="v-protocol" type="text" placeholder="wireguard" />
+            </label>
+            <label><span data-i18n="pEditor.authMethod">Auth method</span>
+              <select id="v-auth-method">
+                <option value="certificate">certificate</option>
+                <option value="credentials">credentials</option>
+                <option value="certificate+credentials">certificate+credentials</option>
+              </select>
+            </label>
+            <label><span data-i18n="pEditor.cert">Certificate path</span>
+              <input id="v-cert" type="text" placeholder="~/.kongtrol/certs/server.crt" />
+            </label>
+            <label><span data-i18n="pEditor.key">Key path</span>
+              <input id="v-key" type="text" placeholder="~/.kongtrol/certs/server.key" />
+            </label>
+            <label><span data-i18n="pEditor.username">Username</span>
+              <input id="v-username" type="text" autocomplete="off" />
+            </label>
+            <label><span data-i18n="pEditor.password">Password</span>
+              <input id="v-password" type="password" autocomplete="new-password" data-i18n-placeholder="pEditor.passwordPlaceholder" placeholder="Leave blank to keep existing" />
+            </label>
+            <div class="form-actions">
+              <button class="action" onclick="createProfile()" data-i18n="actions.create">Create</button>
+              <button class="action" onclick="updateProfile()" data-i18n="actions.update">Update</button>
+              <button class="action disconnect" onclick="deleteProfile()" data-i18n="actions.delete">Delete</button>
+              <button class="action" onclick="clearForm()" data-i18n="actions.clear">Clear</button>
+            </div>
+          </div>
+          <p class="muted" style="margin-top:10px;" data-i18n="pEditor.tip">Tip: pick a row from the table to edit it. Not every field applies to every adapter type.</p>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="existing.title">Existing Profiles</h2>
+          <input type="text" id="profile-search" class="text-input" data-i18n-placeholder="pEditor.search" placeholder="Filter by name, type, or host…" style="width:100%; margin-bottom:12px;" oninput="renderProfiles()" />
+          <table class="policy-table">
+            <thead>
+              <tr>
+                <th data-i18n="table.name">Name</th>
+                <th data-i18n="pTable.type">Type</th>
+                <th data-i18n="pTable.target">Host / Server</th>
+                <th data-i18n="pTable.credentials">Credentials</th>
+                <th data-i18n="table.actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="profile-list-body">
+              <tr><td colspan="5" class="empty" data-i18n="empty.loadingProfiles">Loading profiles…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-header">
+        <h2 data-i18n="groups.title">Groups</h2>
+        <button class="refresh-btn" onclick="loadGroups()" title="Refresh">↻</button>
+      </div>
+      <div class="policy-grid">
+        <div class="card">
+          <h2 data-i18n="groups.editorTitle">Group Editor</h2>
+          <div class="form-grid">
+            <label><span data-i18n="groups.name">Name</span>
+              <input id="g-name" type="text" data-i18n-placeholder="groups.namePlaceholder" placeholder="work" />
+            </label>
+            <label><span data-i18n="groups.profiles">Profiles (one per line)</span>
+              <textarea id="g-profiles" rows="5" placeholder="office&#10;us-content"></textarea>
+            </label>
+            <div class="form-actions">
+              <button class="action" onclick="createGroup()" data-i18n="actions.create">Create</button>
+              <button class="action" onclick="updateGroup()" data-i18n="actions.update">Update</button>
+              <button class="action disconnect" onclick="deleteGroup()" data-i18n="actions.delete">Delete</button>
+              <button class="action" onclick="clearGroupForm()" data-i18n="actions.clear">Clear</button>
+            </div>
+          </div>
+          <p class="muted" style="margin-top:10px;" data-i18n="groups.tip">Tip: pick a row from the table to edit it.</p>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="groups.existingTitle">Existing Groups</h2>
+          <table class="policy-table">
+            <thead>
+              <tr>
+                <th data-i18n="table.name">Name</th>
+                <th data-i18n="groups.profiles">Profiles</th>
+                <th data-i18n="table.actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="group-list-body">
+              <tr><td colspan="3" class="empty" data-i18n="empty.loadingGroups">Loading groups…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+  </div>
+  </div>
+
+  <script src="shell.js"></script>
+  <script src="toast.js"></script>
+  <script src="profiles.js"></script>
+</body>
+</html>

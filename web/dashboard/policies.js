@@ -5,6 +5,11 @@ const I18N = {
   es: {
     'nav.overview': 'Resumen',
     'nav.policyStudio': 'Policy Studio',
+    'nav.security': 'Seguridad',
+    'nav.vpnProfiles': 'Perfiles VPN',
+    'nav.auditLog': 'Registro de Auditoría',
+    'nav.settings': 'Configuración',
+    'page.policies.title': 'Policy Studio',
     'ws.configEditor': 'editor de config',
     'policyStudio.title': 'Policy Studio (CRUD + Prueba)',
     'editor.title': 'Editor',
@@ -47,6 +52,11 @@ const I18N = {
   en: {
     'nav.overview': 'Overview',
     'nav.policyStudio': 'Policy Studio',
+    'nav.security': 'Security',
+    'nav.vpnProfiles': 'VPN Profiles',
+    'nav.auditLog': 'Audit Log',
+    'nav.settings': 'Settings',
+    'page.policies.title': 'Policy Studio',
     'ws.configEditor': 'config editor',
     'policyStudio.title': 'Policy Studio (CRUD + Test)',
     'editor.title': 'Editor',
@@ -146,6 +156,14 @@ function applyStaticTranslations() {
     toggle.textContent = lang.toUpperCase();
     toggle.setAttribute('aria-label', lang === 'es' ? 'Cambiar idioma' : 'Toggle language');
     toggle.title = lang === 'es' ? 'Cambiar a English' : 'Switch to Español';
+  }
+
+  const wsLabel = document.getElementById('ws-label');
+  if (wsLabel) wsLabel.textContent = t('ws.configEditor');
+  const indicator = document.getElementById('connection-indicator');
+  if (indicator) {
+    indicator.className = 'indicator connected';
+    indicator.title = 'Policy editor';
   }
 }
 
@@ -254,7 +272,7 @@ async function createPolicy() {
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({ error: t('alerts.createFailed') }));
-    alert(e.error || t('alerts.createFailed'));
+    showToast(e.error || t('alerts.createFailed'), 'error');
     return;
   }
   await loadPolicies();
@@ -265,7 +283,7 @@ async function updatePolicy() {
   const rule = draftRule();
   const key = selectedName || rule.name;
   if (!key) {
-    alert(t('alerts.selectFirst'));
+    showToast(t('alerts.selectFirst'), 'error');
     return;
   }
   const res = await fetch(`${API}/api/v1/policies/${encodeURIComponent(key)}`, {
@@ -275,7 +293,7 @@ async function updatePolicy() {
   });
   if (!res.ok) {
     const e = await res.json().catch(() => ({ error: t('alerts.updateFailed') }));
-    alert(e.error || t('alerts.updateFailed'));
+    showToast(e.error || t('alerts.updateFailed'), 'error');
     return;
   }
   await loadPolicies();
@@ -285,7 +303,7 @@ async function updatePolicy() {
 async function deletePolicy() {
   const name = selectedName || document.getElementById('p-name').value.trim();
   if (!name) {
-    alert(t('alerts.selectDelete'));
+    showToast(t('alerts.selectDelete'), 'error');
     return;
   }
   await deletePolicyByName(name);
@@ -296,7 +314,7 @@ async function deletePolicyByName(name) {
   const res = await fetch(`${API}/api/v1/policies/${encodeURIComponent(name)}`, { method: 'DELETE' });
   if (!res.ok) {
     const e = await res.json().catch(() => ({ error: t('alerts.deleteFailed') }));
-    alert(e.error || t('alerts.deleteFailed'));
+    showToast(e.error || t('alerts.deleteFailed'), 'error');
     return;
   }
   if (selectedName === name) clearForm();

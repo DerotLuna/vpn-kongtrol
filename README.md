@@ -25,7 +25,7 @@ Working with multiple VPNs simultaneously is painful: each client overrides your
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
 - **Auto-reconnect watchdog** with exponential backoff and priority failover between profiles
 - **Kill switch + DNS guard** enforced at the OS firewall/network layer, with a signed audit log
-- **Embedded web dashboard** and system tray app — no external server, no Node.js, compiled into the binary
+- **Embedded web dashboard** — full management UI (profiles, groups, policies, live security toggles, settings, audit log, traffic charts), plus a system tray app; no external server, no Node.js, compiled into the binary
 - **Setup wizard** (`kongtrol init`) that auto-detects installed VPN clients and stores credentials in the OS keychain
 - **Diagnostics** (`kongtrol doctor`) that validate your whole stack before you connect
 

@@ -100,15 +100,23 @@ vpn-kongtrol/
 │   │
 │   └── api/
 │       ├── server.go
-│       ├── handlers.go            # REST: tunnels · routes · security · policies
+│       ├── handlers.go            # REST: tunnels · routes · policies · vpns · groups ·
+│       │                          #       security toggles · settings · scheduler · audit
 │       └── ws.go                  # WebSocket live metrics feed
 │
 ├── web/
 │   ├── assets.go                  # //go:embed dashboard
-│   └── dashboard/
-│       ├── index.html
-│       ├── app.js
-│       ├── style.css
+│   └── dashboard/                 # full management UI, vanilla JS/CSS, no bundler
+│       ├── shell.js               # shared sidebar/topbar (theme, lang toggle, nav)
+│       ├── toast.js               # toast notifications
+│       ├── charts.js              # dependency-free canvas charts (sparklines, time series)
+│       ├── index.html / app.js    # Overview: tunnels, traffic charts, routes, policy resolver
+│       ├── policies.html / .js    # Policy Studio: policy CRUD + test-before-save
+│       ├── security.html / .js    # live kill switch/DNS guard toggles, per-profile override
+│       ├── profiles.html / .js    # VPN profile CRUD + groups CRUD/connect/disconnect
+│       ├── settings.html / .js    # monitor/security tuning + scheduler rules CRUD
+│       ├── audit.html / .js       # audit log viewer (filter by profile/level)
+│       ├── style.css              # shared styles (light/dark theme via [data-theme])
 │       └── logo.png
 │
 ├── configs/

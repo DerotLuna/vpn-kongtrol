@@ -72,8 +72,8 @@ cmd/kongtrol/main.go:disconnect()
 | `internal/routing` | OS route table management; build-tagged per OS (`windows.go`, `linux.go`, `darwin.go`) |
 | `internal/security` | Kill switch, DNS guard, leak tester, HMAC-signed audit log; OS implementations are build-tagged |
 | `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
-| `internal/api` | Embedded HTTP server + REST handlers + WebSocket live feed; imports `web` package for `//go:embed` |
-| `web/` | `//go:embed dashboard` in `web/assets.go`; dashboard files in `web/dashboard/` |
+| `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
+| `web/` | `//go:embed dashboard` in `web/assets.go`; dashboard files (full management UI, vanilla JS/CSS, no bundler) in `web/dashboard/` |
 | `assets/` | `//go:embed logo.png` in `assets/embed.go`; `TrayIcon(size)` in `assets/icon.go` |
 | `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
 | `cmd/kongtrol-tray` | systray app; starts the full daemon internally |
@@ -98,6 +98,32 @@ Go embed paths are relative to the source file — no `../` allowed. The layout 
 ### Config validation
 
 `internal/config/schema.go` uses `go-playground/validator` tags. The `vpns` field has `validate:"required,min=1,dive"` — the `dive` tag is required for validator to recurse into `map[string]VPNConfig` values. Adding a new adapter type requires updating the `oneof` tag on `VPNConfig.Type`.
+
+`config.Validate(cfg)` (in `internal/config/loader.go`) exposes the same struct-tag + semantic
+validation `Load()` runs, for callers that mutate an already-loaded `*Config` in memory before
+persisting it — used by the dashboard API's trial-then-commit pattern (build a modified copy,
+`config.Validate(&trial)`, only write if it passes).
+
+### Dashboard REST API + machine-local preferences
+
+`internal/api/handlers.go` follows one repeated pattern for every dashboard CRUD endpoint (policies,
+VPN profiles, groups, scheduler rules, settings): `s.loadRuntimeConfig()` → mutate a copy →
+`config.Validate` → `s.saveRuntimeConfig()` (marshals YAML, hot-swaps the policy engine, calls
+`onPolicyUpdate`). Security toggles (`POST /api/v1/security/killswitch|dnsguard`) additionally call
+`s.onSecurityToggle`, which re-runs `applyKillSwitchState()`/`applyDNSGuardState()` in
+`cmd/kongtrol/main.go` so the change takes effect immediately, not just on the next connect.
+
+VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
+adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,
+unsynchronized, with the collector/watchdog goroutines), so responses include a
+`restart_required` flag.
+
+Settings that are genuinely local to one machine — not the shared `kongtrol.yaml` — live in
+`~/.kongtrol/preferences.json` instead (`cmd/kongtrol/preferences.go`): CLI display language,
+favorites, default group, and the dashboard's own bind/port override
+(`kongtrol config dashboard set-port/set-bind`, applied in `loadConfig()` via
+`applyDashboardPreferences`). This is intentionally **not** editable from the dashboard itself —
+changing the port from the page serving that request would cut the connection mid-response.
 
 ### Credential rule
 

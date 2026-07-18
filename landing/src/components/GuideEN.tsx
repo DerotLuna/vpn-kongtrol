@@ -868,29 +868,40 @@ $ kongtrol status --watch`}</CodeBlock>
 
               <p>
                 Open <a href="http://localhost:9741" target="_blank" rel="noreferrer">http://localhost:9741</a> in
-                your browser. The dashboard shows:
+                your browser. It's a full management console, with sidebar navigation:
               </p>
 
               <div className="table-scroll">
               <table className="data-table">
-                <thead><tr><th>Panel</th><th>What it shows</th></tr></thead>
+                <thead><tr><th>Page</th><th>What it does</th></tr></thead>
                 <tbody>
-                  <tr><td>Tunnels</td><td>Status, assigned IP, uptime, traffic per tunnel</td></tr>
-                  <tr><td>Security</td><td>Kill switch, DNS guard, public IP, last leak check</td></tr>
-                  <tr><td>Active Routes</td><td>Active routes in real time</td></tr>
-                  <tr><td>History</td><td>Persistent per-profile history (reconnects, leaks, jitter, health)</td></tr>
+                  <tr><td>Overview</td><td>Live tunnels, per-tunnel traffic charts, active routes, policy resolver, connect/disconnect all</td></tr>
+                  <tr><td>Policy Studio</td><td>Routing policy CRUD + a rule tester before saving</td></tr>
+                  <tr><td>Security</td><td>Live Kill Switch/DNS Guard toggles, per-profile kill switch override, leak check status</td></tr>
+                  <tr><td>VPN Profiles</td><td>VPN profile and group CRUD (config + keychain; needs a daemon restart to activate)</td></tr>
+                  <tr><td>Audit Log</td><td>Audit events filterable by profile/level, with an HMAC-signed indicator</td></tr>
+                  <tr><td>Settings</td><td>Health check, scheduler + rules, split DNS, kill switch/DNS guard tuning, audit log</td></tr>
                 </tbody>
               </table>
               </div>
 
               <CodeBlock lang="bash">{`# Useful endpoints
-GET /api/v1/metrics/history
-GET /api/v1/dns/resolve?domain=claude.ai&via=us-content
-GET /api/v1/resolve?target=portal.company.com&app=chrome.exe`}</CodeBlock>
+GET  /api/v1/metrics/history
+GET  /api/v1/dns/resolve?domain=claude.ai&via=us-content
+GET  /api/v1/resolve?target=portal.company.com&app=chrome.exe
+POST /api/v1/security/killswitch   {"enabled": true}
+POST /api/v1/security/dnsguard     {"enabled": true}
+GET  /api/v1/vpns                  # profiles · POST/PUT/DELETE for CRUD
+GET  /api/v1/groups                # groups · POST/PUT/DELETE + /connect /disconnect
+GET  /api/v1/settings              # PUT to save
+GET  /api/v1/audit                 # ?profile=&level=&limit=`}</CodeBlock>
 
               <div className="callout">
                 The dashboard is compiled into the binary — nothing extra to install.
-                It's read-only monitoring; connections are still managed through the CLI.
+                It's full management now (create/edit profiles, policies, groups, toggle the
+                kill switch live), not just read-only monitoring. The dashboard's own port/bind
+                is still CLI-only (<code>kongtrol config dashboard set-port &lt;port&gt;</code>)
+                — changing it from the page serving the request would break the connection.
               </div>
             </div>
 
