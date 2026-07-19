@@ -679,15 +679,19 @@ main {
   margin-bottom: 16px;
 }
 
+/* .card-header itself owns the gap to whatever follows (table, list, form)
+   — a fixed margin-bottom here instead of leaning on a child element's own
+   margin means the spacing is consistent no matter which child (title vs.
+   action buttons vs. refresh icon) happens to be tallest. */
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0;
+  margin-bottom: 18px;
 }
 
 .card-header h2 {
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .refresh-btn {
@@ -703,7 +707,6 @@ main {
   align-items: center;
   justify-content: center;
   transition: all 0.15s;
-  margin-bottom: 13px;
 }
 
 .refresh-btn:hover {

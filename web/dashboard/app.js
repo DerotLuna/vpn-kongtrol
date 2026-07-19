@@ -275,7 +275,7 @@ function recordTunnelSamples(tunnels) {
   Object.entries(tunnels || {}).forEach(([name, m]) => {
     const status = (m.Status || 'disconnected').toLowerCase();
     if (status !== 'connected') return;
-    if (!tunnelHistory[name]) tunnelHistory[name] = { latency: [], sent: [], recv: [], lastSent: null, lastRecv: null };
+    if (!tunnelHistory[name]) tunnelHistory[name] = { latency: [], sent: [], recv: [], lastSent: null, lastRecv: null, lastLatency: null };
     const h = tunnelHistory[name];
 
     // BytesSent/BytesReceived are cumulative counters, so plotting them
@@ -289,10 +289,23 @@ function recordTunnelSamples(tunnels) {
     h.lastSent = sentTotal;
     h.lastRecv = recvTotal;
 
-    h.latency.push(m.LatencyMS || 0);
+    // LatencyMS only gets a fresh reading once per health-check interval
+    // (default 30s, see cmd/kongtrol/main.go healthCheckProfile), while
+    // this runs on every ~5s WS push. Pushing the same stale value 5-6
+    // times in a row before each real change would flood the sparkline's
+    // fixed-size window with flat duplicate runs even when latency has
+    // genuinely moved recently — so only record a point when the reading
+    // actually changes (plus the very first one), keeping the visible
+    // window representative of real variation instead of repeats.
+    const latency = m.LatencyMS || 0;
+    if (h.lastLatency === null || latency !== h.lastLatency) {
+      h.latency.push(latency);
+      if (h.latency.length > HISTORY_MAX_SAMPLES) h.latency.shift();
+    }
+    h.lastLatency = latency;
+
     h.sent.push(sentDelta);
     h.recv.push(recvDelta);
-    if (h.latency.length > HISTORY_MAX_SAMPLES) h.latency.shift();
     if (h.sent.length > HISTORY_MAX_SAMPLES) h.sent.shift();
     if (h.recv.length > HISTORY_MAX_SAMPLES) h.recv.shift();
   });
