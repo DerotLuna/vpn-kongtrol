@@ -1,19 +1,61 @@
 const API = '';
-const LANG_KEY = 'kongtrol-dashboard-lang';
+const WS_INDICATOR_KEY = 'ws.studio';
 
 const I18N = {
   es: {
     'nav.overview': 'Resumen',
-    'nav.policyStudio': 'Policy Studio',
+    'nav.studio': 'Estudio',
     'nav.security': 'Seguridad',
-    'nav.vpnProfiles': 'Perfiles VPN',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
-    'page.profiles.title': 'Perfiles VPN',
-    'ws.profileEditor': 'editor de perfiles',
-    'profileStudio.title': 'Perfiles VPN',
-    'profileStudio.restartNote': 'Los cambios aquí actualizan el archivo de config y el keychain del sistema — reinicia el daemon para conectar con un perfil nuevo o editado.',
+    'nav.collapse': 'Contraer',
+    'page.studio.title': 'Estudio',
+    'ws.studio': 'editor',
+    'studio.tabPolicies': 'Políticas',
+    'studio.tabProfiles': 'Perfiles VPN',
+    'studio.tabGroups': 'Grupos',
+    'studio.configPath': 'Archivo de config activo: {path} (solo lectura — cámbialo con --config al iniciar el daemon)',
+
     'editor.title': 'Editor',
+    'editor.name': 'Nombre',
+    'editor.namePlaceholder': 'Contenido US',
+    'editor.viaProfile': 'Vía perfil VPN',
+    'editor.domains': 'Dominios (uno por línea)',
+    'editor.ipRanges': 'Rangos IP (uno por línea)',
+    'editor.apps': 'Apps (una por línea)',
+    'editor.tip': 'Tip: elige una fila de la tabla para editarla.',
+    'editor.template': 'Plantilla: usa dominios como <code>*.java.com</code>, rangos IP como <code>10.2.0.2/32</code>, y apps como <code>chrome.exe</code>.',
+    'actions.create': 'Crear',
+    'actions.update': 'Actualizar',
+    'actions.delete': 'Eliminar',
+    'actions.clear': 'Limpiar',
+    'actions.edit': 'Editar',
+    'actions.connect': 'Conectar',
+    'actions.disconnect': 'Desconectar',
+    'test.title': 'Probar política antes de guardar',
+    'test.targetPlaceholder': 'Objetivo: dominio/IP/URL',
+    'test.appPlaceholder': 'o app: chrome.exe',
+    'test.button': 'Probar',
+    'existing.title': 'Políticas existentes',
+    'table.name': 'Nombre',
+    'table.match': 'Match',
+    'table.via': 'Vía',
+    'table.actions': 'Acciones',
+    'empty.loadingPolicies': 'Cargando políticas…',
+    'empty.noPolicies': 'No hay políticas configuradas.',
+    'alerts.createFailed': 'Error al crear política',
+    'alerts.updateFailed': 'Error al actualizar política',
+    'alerts.deleteFailed': 'Error al eliminar política',
+    'alerts.testFailed': 'Falló la prueba',
+    'alerts.selectFirst': 'Selecciona primero una política o escribe un nombre.',
+    'alerts.selectDelete': 'Selecciona una política para eliminar.',
+    'confirm.delete': '¿Eliminar política "{name}"?',
+    'result.matched': 'Match → <strong>{via}</strong> ({rule})',
+    'result.noMatch': 'Sin match ({reason})',
+    'result.noMatchReason': 'la regla no coincide con esta entrada',
+    'common.refresh': 'Actualizar',
+
+    'profileStudio.restartNote': 'Los cambios aquí actualizan el archivo de config y el keychain del sistema — reinicia el daemon para conectar con un perfil nuevo o editado.',
     'pEditor.name': 'Nombre',
     'pEditor.namePlaceholder': 'oficina',
     'pEditor.type': 'Tipo',
@@ -32,14 +74,7 @@ const I18N = {
     'pEditor.passwordPlaceholder': 'Dejar en blanco para mantener la actual',
     'pEditor.tip': 'Tip: elige una fila de la tabla para editarla. No todos los campos aplican a todos los tipos de adaptador.',
     'pEditor.search': 'Filtrar por nombre, tipo o host…',
-    'actions.create': 'Crear',
-    'actions.update': 'Actualizar',
-    'actions.delete': 'Eliminar',
-    'actions.clear': 'Limpiar',
-    'actions.edit': 'Editar',
-    'existing.title': 'Perfiles existentes',
-    'table.name': 'Nombre',
-    'table.actions': 'Acciones',
+    'existingProfiles.title': 'Perfiles existentes',
     'pTable.type': 'Tipo',
     'pTable.target': 'Host / Server',
     'pTable.credentials': 'Credenciales',
@@ -49,16 +84,16 @@ const I18N = {
     'cred.userOnly': 'solo usuario',
     'cred.passOnly': 'solo contraseña',
     'cred.none': '—',
-    'alerts.createFailed': 'Error al crear el perfil',
-    'alerts.updateFailed': 'Error al actualizar el perfil',
-    'alerts.deleteFailed': 'Error al eliminar el perfil',
-    'alerts.selectFirst': 'Selecciona primero un perfil o escribe un nombre.',
-    'alerts.selectDelete': 'Selecciona un perfil para eliminar.',
-    'confirm.delete': '¿Eliminar el perfil "{name}"? Esto no afecta túneles ya conectados hasta el próximo reinicio.',
-    'toast.created': 'Perfil "{name}" creado. Reinicia el daemon para activarlo.',
-    'toast.updated': 'Perfil "{name}" actualizado. Reinicia el daemon para aplicar los cambios.',
-    'toast.deleted': 'Perfil "{name}" eliminado.',
-    'common.refresh': 'Actualizar',
+    'alerts.profileCreateFailed': 'Error al crear el perfil',
+    'alerts.profileUpdateFailed': 'Error al actualizar el perfil',
+    'alerts.profileDeleteFailed': 'Error al eliminar el perfil',
+    'alerts.profileSelectFirst': 'Selecciona primero un perfil o escribe un nombre.',
+    'alerts.profileSelectDelete': 'Selecciona un perfil para eliminar.',
+    'confirm.deleteProfile': '¿Eliminar el perfil "{name}"? Esto no afecta túneles ya conectados hasta el próximo reinicio.',
+    'toast.profileCreated': 'Perfil "{name}" creado. Reinicia el daemon para activarlo.',
+    'toast.profileUpdated': 'Perfil "{name}" actualizado. Reinicia el daemon para aplicar los cambios.',
+    'toast.profileDeleted': 'Perfil "{name}" eliminado.',
+
     'groups.title': 'Grupos',
     'groups.editorTitle': 'Editor de Grupo',
     'groups.name': 'Nombre',
@@ -68,8 +103,6 @@ const I18N = {
     'groups.existingTitle': 'Grupos existentes',
     'empty.loadingGroups': 'Cargando grupos…',
     'empty.noGroups': 'No hay grupos configurados.',
-    'actions.connect': 'Conectar',
-    'actions.disconnect': 'Desconectar',
     'alerts.groupCreateFailed': 'Error al crear el grupo',
     'alerts.groupUpdateFailed': 'Error al actualizar el grupo',
     'alerts.groupDeleteFailed': 'Error al eliminar el grupo',
@@ -85,16 +118,58 @@ const I18N = {
   },
   en: {
     'nav.overview': 'Overview',
-    'nav.policyStudio': 'Policy Studio',
+    'nav.studio': 'Studio',
     'nav.security': 'Security',
-    'nav.vpnProfiles': 'VPN Profiles',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
-    'page.profiles.title': 'VPN Profiles',
-    'ws.profileEditor': 'profile editor',
-    'profileStudio.title': 'VPN Profiles',
-    'profileStudio.restartNote': 'Changes here update the config file and OS keychain only — restart the daemon to connect through a new or edited profile.',
+    'nav.collapse': 'Collapse',
+    'page.studio.title': 'Studio',
+    'ws.studio': 'editor',
+    'studio.tabPolicies': 'Policies',
+    'studio.tabProfiles': 'VPN Profiles',
+    'studio.tabGroups': 'Groups',
+    'studio.configPath': 'Active config file: {path} (read-only — change it with --config when starting the daemon)',
+
     'editor.title': 'Editor',
+    'editor.name': 'Name',
+    'editor.namePlaceholder': 'US Content',
+    'editor.viaProfile': 'Via VPN profile',
+    'editor.domains': 'Domains (one per line)',
+    'editor.ipRanges': 'IP ranges (one per line)',
+    'editor.apps': 'Apps (one per line)',
+    'editor.tip': 'Tip: pick a row from the table to edit it.',
+    'editor.template': 'Template: use domains like <code>*.java.com</code>, IP ranges like <code>10.2.0.2/32</code>, and apps like <code>chrome.exe</code>.',
+    'actions.create': 'Create',
+    'actions.update': 'Update',
+    'actions.delete': 'Delete',
+    'actions.clear': 'Clear',
+    'actions.edit': 'Edit',
+    'actions.connect': 'Connect',
+    'actions.disconnect': 'Disconnect',
+    'test.title': 'Test Policy Before Saving',
+    'test.targetPlaceholder': 'Target: domain/IP/URL',
+    'test.appPlaceholder': 'or app: chrome.exe',
+    'test.button': 'Test',
+    'existing.title': 'Existing Policies',
+    'table.name': 'Name',
+    'table.match': 'Match',
+    'table.via': 'Via',
+    'table.actions': 'Actions',
+    'empty.loadingPolicies': 'Loading policies…',
+    'empty.noPolicies': 'No policies configured.',
+    'alerts.createFailed': 'Failed to create policy',
+    'alerts.updateFailed': 'Failed to update policy',
+    'alerts.deleteFailed': 'Failed to delete policy',
+    'alerts.testFailed': 'Test failed',
+    'alerts.selectFirst': 'Select a policy first or provide a name.',
+    'alerts.selectDelete': 'Select a policy to delete.',
+    'confirm.delete': 'Delete policy "{name}"?',
+    'result.matched': 'Matched → <strong>{via}</strong> ({rule})',
+    'result.noMatch': 'No match ({reason})',
+    'result.noMatchReason': 'rule does not match this input',
+    'common.refresh': 'Refresh',
+
+    'profileStudio.restartNote': 'Changes here update the config file and OS keychain only — restart the daemon to connect through a new or edited profile.',
     'pEditor.name': 'Name',
     'pEditor.namePlaceholder': 'office',
     'pEditor.type': 'Type',
@@ -113,14 +188,7 @@ const I18N = {
     'pEditor.passwordPlaceholder': 'Leave blank to keep existing',
     'pEditor.tip': 'Tip: pick a row from the table to edit it. Not every field applies to every adapter type.',
     'pEditor.search': 'Filter by name, type, or host…',
-    'actions.create': 'Create',
-    'actions.update': 'Update',
-    'actions.delete': 'Delete',
-    'actions.clear': 'Clear',
-    'actions.edit': 'Edit',
-    'existing.title': 'Existing Profiles',
-    'table.name': 'Name',
-    'table.actions': 'Actions',
+    'existingProfiles.title': 'Existing Profiles',
     'pTable.type': 'Type',
     'pTable.target': 'Host / Server',
     'pTable.credentials': 'Credentials',
@@ -130,16 +198,16 @@ const I18N = {
     'cred.userOnly': 'username only',
     'cred.passOnly': 'password only',
     'cred.none': '—',
-    'alerts.createFailed': 'Failed to create profile',
-    'alerts.updateFailed': 'Failed to update profile',
-    'alerts.deleteFailed': 'Failed to delete profile',
-    'alerts.selectFirst': 'Select a profile first or provide a name.',
-    'alerts.selectDelete': 'Select a profile to delete.',
-    'confirm.delete': 'Delete profile "{name}"? This does not affect already-connected tunnels until the next restart.',
-    'toast.created': 'Profile "{name}" created. Restart the daemon to activate it.',
-    'toast.updated': 'Profile "{name}" updated. Restart the daemon to apply the change.',
-    'toast.deleted': 'Profile "{name}" deleted.',
-    'common.refresh': 'Refresh',
+    'alerts.profileCreateFailed': 'Failed to create profile',
+    'alerts.profileUpdateFailed': 'Failed to update profile',
+    'alerts.profileDeleteFailed': 'Failed to delete profile',
+    'alerts.profileSelectFirst': 'Select a profile first or provide a name.',
+    'alerts.profileSelectDelete': 'Select a profile to delete.',
+    'confirm.deleteProfile': 'Delete profile "{name}"? This does not affect already-connected tunnels until the next restart.',
+    'toast.profileCreated': 'Profile "{name}" created. Restart the daemon to activate it.',
+    'toast.profileUpdated': 'Profile "{name}" updated. Restart the daemon to apply the change.',
+    'toast.profileDeleted': 'Profile "{name}" deleted.',
+
     'groups.title': 'Groups',
     'groups.editorTitle': 'Group Editor',
     'groups.name': 'Name',
@@ -149,8 +217,6 @@ const I18N = {
     'groups.existingTitle': 'Existing Groups',
     'empty.loadingGroups': 'Loading groups…',
     'empty.noGroups': 'No groups configured.',
-    'actions.connect': 'Connect',
-    'actions.disconnect': 'Disconnect',
     'alerts.groupCreateFailed': 'Failed to create group',
     'alerts.groupUpdateFailed': 'Failed to update group',
     'alerts.groupDeleteFailed': 'Failed to delete group',
@@ -166,77 +232,212 @@ const I18N = {
   },
 };
 
-let profiles = [];
-let selectedName = '';
-let lang = resolveInitialLang();
-
-function resolveInitialLang() {
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved === 'es' || saved === 'en') return saved;
-  return navigator.language && navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en';
-}
-
-function t(key, vars = {}) {
-  const dict = I18N[lang] || I18N.en;
-  const raw = dict[key] || I18N.en[key] || key;
-  return raw.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
-}
-
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
-function setLang(next) {
-  lang = next === 'es' ? 'es' : 'en';
-  localStorage.setItem(LANG_KEY, lang);
-  document.documentElement.lang = lang;
-  applyStaticTranslations();
+// t/setLang/resolveInitialLang/applyStaticTranslations/initLangToggle/esc
+// live in the shared i18n.js — this page only supplies the I18N dict and
+// WS_INDICATOR_KEY above, plus the re-render hook below.
+function onLangChange() {
+  renderPolicies();
   renderProfiles();
   renderGroups();
 }
 
-function applyStaticTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const key = el.getAttribute('data-i18n');
-    if (!key) return;
-    el.textContent = t(key);
-  });
+function lines(id) {
+  return document.getElementById(id).value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
+}
 
-  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-    const key = el.getAttribute('data-i18n-placeholder');
-    if (!key) return;
-    el.setAttribute('placeholder', t(key));
-  });
+// ── Policies ────────────────────────────────────────────────────────────────
 
-  document.querySelectorAll('.refresh-btn').forEach((btn) => {
-    btn.title = t('common.refresh');
-  });
+let policies = [];
+let selectedPolicyName = '';
 
-  const toggle = document.getElementById('lang-toggle');
-  if (toggle) {
-    toggle.textContent = lang.toUpperCase();
-    toggle.setAttribute('aria-label', lang === 'es' ? 'Cambiar idioma' : 'Toggle language');
-    toggle.title = lang === 'es' ? 'Cambiar a English' : 'Switch to Español';
+function draftPolicyRule() {
+  return {
+    name: document.getElementById('p-name').value.trim(),
+    via: document.getElementById('p-via').value.trim(),
+    match: {
+      domains: lines('p-domains'),
+      ip_ranges: lines('p-ip-ranges'),
+      apps: lines('p-apps'),
+    },
+  };
+}
+
+function fillPolicyForm(p) {
+  selectedPolicyName = p.name;
+  document.getElementById('p-name').value = p.name || '';
+  document.getElementById('p-via').value = p.via || '';
+  document.getElementById('p-domains').value = (p.domains || []).join('\n');
+  document.getElementById('p-ip-ranges').value = (p.ip_ranges || []).join('\n');
+  document.getElementById('p-apps').value = (p.apps || []).join('\n');
+  enhanceSelect(document.getElementById('p-via'));
+}
+
+function clearPolicyForm() {
+  selectedPolicyName = '';
+  document.getElementById('p-name').value = '';
+  document.getElementById('p-domains').value = '';
+  document.getElementById('p-ip-ranges').value = '';
+  document.getElementById('p-apps').value = '';
+  document.getElementById('test-target').value = '';
+  document.getElementById('test-app').value = '';
+  document.getElementById('test-result').style.display = 'none';
+}
+
+function renderPolicies() {
+  const tbody = document.getElementById('policy-list-body');
+  if (!Array.isArray(policies) || policies.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty">${t('empty.noPolicies')}</td></tr>`;
+    return;
   }
 
-  const wsLabel = document.getElementById('ws-label');
-  if (wsLabel) wsLabel.textContent = t('ws.profileEditor');
-  const indicator = document.getElementById('connection-indicator');
-  if (indicator) {
-    indicator.className = 'indicator connected';
-    indicator.title = 'Profile editor';
+  tbody.innerHTML = policies.map((p, idx) => {
+    const match = [
+      ...(p.domains || []),
+      ...(p.ip_ranges || []),
+      ...(p.apps || []).map((a) => `app:${a}`),
+    ];
+    return `<tr>
+      <td>${esc(p.name)}</td>
+      <td>${match.length ? esc(match.join(', ')) : '—'}</td>
+      <td>${esc(p.via)}</td>
+      <td>
+        <div class="policy-row-actions">
+          <button class="action" onclick='selectPolicyByIndex(${idx})'>${t('actions.edit')}</button>
+          <button class="action disconnect" onclick='deletePolicyByIndex(${idx})'>${t('actions.delete')}</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function selectPolicyByIndex(index) {
+  const p = policies[index];
+  if (!p) return;
+  fillPolicyForm(p);
+}
+
+async function loadPolicyMeta() {
+  const res = await fetch(`${API}/api/v1/policies/meta`);
+  if (!res.ok) return;
+  const meta = await res.json();
+  const sel = document.getElementById('p-via');
+  const opts = (meta.profiles || []).map((p) => `<option value="${esc(p)}">${esc(p)}</option>`);
+  sel.innerHTML = opts.join('');
+  enhanceSelect(sel);
+
+  const pathEl = document.getElementById('studio-config-path');
+  if (pathEl && meta.config_path) {
+    pathEl.textContent = t('studio.configPath', { path: meta.config_path });
   }
 }
 
-function initLangToggle() {
-  const toggle = document.getElementById('lang-toggle');
-  if (!toggle) return;
-  toggle.addEventListener('click', () => {
-    setLang(lang === 'es' ? 'en' : 'es');
-  });
+async function loadPolicies() {
+  await loadPolicyMeta();
+  const res = await fetch(`${API}/api/v1/policies`);
+  if (!res.ok) return;
+  policies = await res.json();
+  policies.sort((a, b) => a.name.localeCompare(b.name));
+  renderPolicies();
 }
+
+async function createPolicy() {
+  const rule = draftPolicyRule();
+  const res = await fetch(`${API}/api/v1/policies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rule),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ error: t('alerts.createFailed') }));
+    showToast(e.error || t('alerts.createFailed'), 'error');
+    return;
+  }
+  await loadPolicies();
+  selectedPolicyName = rule.name;
+}
+
+async function updatePolicy() {
+  const rule = draftPolicyRule();
+  const key = selectedPolicyName || rule.name;
+  if (!key) {
+    showToast(t('alerts.selectFirst'), 'error');
+    return;
+  }
+  const res = await fetch(`${API}/api/v1/policies/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(rule),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ error: t('alerts.updateFailed') }));
+    showToast(e.error || t('alerts.updateFailed'), 'error');
+    return;
+  }
+  await loadPolicies();
+  selectedPolicyName = rule.name || key;
+}
+
+async function deletePolicy() {
+  const name = selectedPolicyName || document.getElementById('p-name').value.trim();
+  if (!name) {
+    showToast(t('alerts.selectDelete'), 'error');
+    return;
+  }
+  await deletePolicyByName(name);
+}
+
+async function deletePolicyByName(name) {
+  if (!confirm(t('confirm.delete', { name }))) return;
+  const res = await fetch(`${API}/api/v1/policies/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ error: t('alerts.deleteFailed') }));
+    showToast(e.error || t('alerts.deleteFailed'), 'error');
+    return;
+  }
+  if (selectedPolicyName === name) clearPolicyForm();
+  await loadPolicies();
+}
+
+async function deletePolicyByIndex(index) {
+  const p = policies[index];
+  if (!p) return;
+  await deletePolicyByName(p.name);
+}
+
+async function testDraftPolicy() {
+  const body = {
+    rule: draftPolicyRule(),
+    target: document.getElementById('test-target').value.trim(),
+    app: document.getElementById('test-app').value.trim(),
+  };
+  const res = await fetch(`${API}/api/v1/policies/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const box = document.getElementById('test-result');
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ error: t('alerts.testFailed') }));
+    box.className = 'resolve-result no-match';
+    box.innerHTML = esc(e.error || t('alerts.testFailed'));
+    box.style.display = 'block';
+    return;
+  }
+  const data = await res.json();
+  box.style.display = 'block';
+  if (data.matched) {
+    box.className = 'resolve-result matched';
+    box.innerHTML = t('result.matched', { via: esc(data.via), rule: esc(data.rule) });
+  } else {
+    box.className = 'resolve-result no-match';
+    box.innerHTML = t('result.noMatch', { reason: esc(data.reason || t('result.noMatchReason')) });
+  }
+}
+
+// ── VPN Profiles ────────────────────────────────────────────────────────────
+
+let profiles = [];
+let selectedProfileName = '';
 
 function draftProfile() {
   return {
@@ -255,8 +456,8 @@ function draftProfile() {
   };
 }
 
-function fillForm(p) {
-  selectedName = p.name;
+function fillProfileForm(p) {
+  selectedProfileName = p.name;
   document.getElementById('v-name').value = p.name || '';
   document.getElementById('v-type').value = p.type || 'openvpn';
   document.getElementById('v-priority').value = p.priority || 0;
@@ -269,16 +470,20 @@ function fillForm(p) {
   document.getElementById('v-key').value = '';
   document.getElementById('v-username').value = p.username || '';
   document.getElementById('v-password').value = '';
+  enhanceSelect(document.getElementById('v-type'));
+  enhanceSelect(document.getElementById('v-auth-method'));
 }
 
-function clearForm() {
-  selectedName = '';
+function clearProfileForm() {
+  selectedProfileName = '';
   ['v-name', 'v-host', 'v-config', 'v-server', 'v-protocol', 'v-cert', 'v-key', 'v-username', 'v-password'].forEach((id) => {
     document.getElementById(id).value = '';
   });
   document.getElementById('v-type').value = 'openvpn';
   document.getElementById('v-priority').value = 10;
   document.getElementById('v-auth-method').value = 'certificate';
+  enhanceSelect(document.getElementById('v-type'));
+  enhanceSelect(document.getElementById('v-auth-method'));
 }
 
 function credentialsLabel(p) {
@@ -327,7 +532,7 @@ function renderProfiles() {
 function selectProfileByIndex(index) {
   const p = profiles[index];
   if (!p) return;
-  fillForm(p);
+  fillProfileForm(p);
 }
 
 async function loadProfiles() {
@@ -346,20 +551,20 @@ async function createProfile() {
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.createFailed') }));
-    showToast(e.error || t('alerts.createFailed'), 'error');
+    const e = await res.json().catch(() => ({ error: t('alerts.profileCreateFailed') }));
+    showToast(e.error || t('alerts.profileCreateFailed'), 'error');
     return;
   }
-  showToast(t('toast.created', { name: draft.name }), 'success', 7000);
+  showToast(t('toast.profileCreated', { name: draft.name }), 'success', 7000);
   await loadProfiles();
-  selectedName = draft.name;
+  selectedProfileName = draft.name;
 }
 
 async function updateProfile() {
   const draft = draftProfile();
-  const key = selectedName || draft.name;
+  const key = selectedProfileName || draft.name;
   if (!key) {
-    showToast(t('alerts.selectFirst'), 'error');
+    showToast(t('alerts.profileSelectFirst'), 'error');
     return;
   }
   const res = await fetch(`${API}/api/v1/vpns/${encodeURIComponent(key)}`, {
@@ -368,34 +573,34 @@ async function updateProfile() {
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.updateFailed') }));
-    showToast(e.error || t('alerts.updateFailed'), 'error');
+    const e = await res.json().catch(() => ({ error: t('alerts.profileUpdateFailed') }));
+    showToast(e.error || t('alerts.profileUpdateFailed'), 'error');
     return;
   }
-  showToast(t('toast.updated', { name: draft.name || key }), 'success', 7000);
+  showToast(t('toast.profileUpdated', { name: draft.name || key }), 'success', 7000);
   await loadProfiles();
-  selectedName = draft.name || key;
+  selectedProfileName = draft.name || key;
 }
 
 async function deleteProfile() {
-  const name = selectedName || document.getElementById('v-name').value.trim();
+  const name = selectedProfileName || document.getElementById('v-name').value.trim();
   if (!name) {
-    showToast(t('alerts.selectDelete'), 'error');
+    showToast(t('alerts.profileSelectDelete'), 'error');
     return;
   }
   await deleteProfileByName(name);
 }
 
 async function deleteProfileByName(name) {
-  if (!confirm(t('confirm.delete', { name }))) return;
+  if (!confirm(t('confirm.deleteProfile', { name }))) return;
   const res = await fetch(`${API}/api/v1/vpns/${encodeURIComponent(name)}`, { method: 'DELETE' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.deleteFailed') }));
-    showToast(e.error || t('alerts.deleteFailed'), 'error');
+    const e = await res.json().catch(() => ({ error: t('alerts.profileDeleteFailed') }));
+    showToast(e.error || t('alerts.profileDeleteFailed'), 'error');
     return;
   }
-  showToast(t('toast.deleted', { name }), 'info');
-  if (selectedName === name) clearForm();
+  showToast(t('toast.profileDeleted', { name }), 'info');
+  if (selectedProfileName === name) clearProfileForm();
   await loadProfiles();
 }
 
@@ -409,10 +614,6 @@ async function deleteProfileByIndex(index) {
 
 let groups = [];
 let selectedGroupName = '';
-
-function lines(id) {
-  return document.getElementById(id).value.split(/\r?\n/).map((v) => v.trim()).filter(Boolean);
-}
 
 function draftGroup() {
   return {
@@ -560,5 +761,7 @@ async function disconnectGroupByIndex(index) {
 
 setLang(lang);
 initLangToggle();
+enhanceAllSelects();
+loadPolicies();
 loadProfiles();
 loadGroups();

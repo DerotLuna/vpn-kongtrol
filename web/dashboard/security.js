@@ -1,14 +1,14 @@
 const API = '';
-const LANG_KEY = 'kongtrol-dashboard-lang';
+const WS_INDICATOR_KEY = 'ws.security';
 
 const I18N = {
   es: {
     'nav.overview': 'Resumen',
-    'nav.policyStudio': 'Policy Studio',
+    'nav.studio': 'Estudio',
     'nav.security': 'Seguridad',
-    'nav.vpnProfiles': 'Perfiles VPN',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
+    'nav.collapse': 'Contraer',
     'page.security.title': 'Seguridad',
     'ws.security': 'controles en vivo',
     'sections.controls': 'Controles',
@@ -47,11 +47,11 @@ const I18N = {
   },
   en: {
     'nav.overview': 'Overview',
-    'nav.policyStudio': 'Policy Studio',
+    'nav.studio': 'Studio',
     'nav.security': 'Security',
-    'nav.vpnProfiles': 'VPN Profiles',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
+    'nav.collapse': 'Collapse',
     'page.security.title': 'Security',
     'ws.security': 'live controls',
     'sections.controls': 'Controls',
@@ -90,62 +90,11 @@ const I18N = {
   },
 };
 
-let lang = resolveInitialLang();
 let lastPublicIP = '';
 
-function resolveInitialLang() {
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved === 'es' || saved === 'en') return saved;
-  return navigator.language && navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en';
-}
-
-function t(key, vars = {}) {
-  const dict = I18N[lang] || I18N.en;
-  const raw = dict[key] || I18N.en[key] || key;
-  return raw.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
-}
-
-function setLang(next) {
-  lang = next === 'es' ? 'es' : 'en';
-  localStorage.setItem(LANG_KEY, lang);
-  document.documentElement.lang = lang;
-  applyStaticTranslations();
-}
-
-function applyStaticTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const key = el.getAttribute('data-i18n');
-    if (!key) return;
-    el.textContent = t(key);
-  });
-
-  document.querySelectorAll('.refresh-btn').forEach((btn) => {
-    btn.title = t('common.refresh');
-  });
-
-  const toggle = document.getElementById('lang-toggle');
-  if (toggle) {
-    toggle.textContent = lang.toUpperCase();
-    toggle.setAttribute('aria-label', lang === 'es' ? 'Cambiar idioma' : 'Toggle language');
-    toggle.title = lang === 'es' ? 'Cambiar a English' : 'Switch to Español';
-  }
-
-  const wsLabel = document.getElementById('ws-label');
-  if (wsLabel) wsLabel.textContent = t('ws.security');
-  const indicator = document.getElementById('connection-indicator');
-  if (indicator) {
-    indicator.className = 'indicator connected';
-    indicator.title = 'Security controls';
-  }
-}
-
-function initLangToggle() {
-  const toggle = document.getElementById('lang-toggle');
-  if (!toggle) return;
-  toggle.addEventListener('click', () => {
-    setLang(lang === 'es' ? 'en' : 'es');
-  });
-}
+// t/setLang/resolveInitialLang/applyStaticTranslations/initLangToggle/esc
+// live in the shared i18n.js — this page only supplies the I18N dict and
+// WS_INDICATOR_KEY above.
 
 function setBadge(id, label, stateClass) {
   const el = document.getElementById(id);
@@ -236,12 +185,6 @@ async function onToggleDNSGuard(input) {
   }
 }
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
 // ── Per-profile kill switch override ───────────────────────────────────────
 
 function renderProfileOverrides(profiles) {
@@ -261,6 +204,7 @@ function renderProfileOverrides(profiles) {
         </select>
       </td>
     </tr>`).join('');
+  enhanceAllSelects(tbody);
 }
 
 async function refreshProfileOverrides() {
@@ -290,6 +234,7 @@ async function onChangeProfileOverride(name, override) {
 
 setLang(lang);
 initLangToggle();
+enhanceAllSelects();
 refreshSecurity();
 refreshProfileOverrides();
 setInterval(refreshSecurity, 15_000);

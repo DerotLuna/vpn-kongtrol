@@ -1,14 +1,13 @@
 const API = '';
-const LANG_KEY = 'kongtrol-dashboard-lang';
 
 const I18N = {
   es: {
     'nav.overview': 'Resumen',
-    'nav.policyStudio': 'Policy Studio',
+    'nav.studio': 'Estudio',
     'nav.security': 'Seguridad',
-    'nav.vpnProfiles': 'Perfiles VPN',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
+    'nav.collapse': 'Contraer',
     'page.overview.title': 'Resumen',
     'ws.connecting': 'conectando…',
     'ws.live': 'en vivo',
@@ -42,7 +41,7 @@ const I18N = {
     'base.defaultEgress': 'Salida predeterminada',
     'base.gateway': 'Gateway',
     'base.localIps': 'IPs locales',
-    'base.publicIp': 'IP pública (internet normal)',
+    'base.publicIp': 'IP pública',
     'base.note': 'El tráfico sin match usa tu ruta predeterminada.',
     'security.killSwitch': 'Kill Switch',
     'security.dnsGuard': 'DNS Guard',
@@ -52,6 +51,12 @@ const I18N = {
     'security.manage': 'Gestionar →',
     'bulk.connectAll': 'Conectar todo',
     'bulk.disconnectAll': 'Desconectar todo',
+    'sections.groups': 'Grupos',
+    'empty.noGroups': 'No hay grupos configurados — créalos en Estudio.',
+    'unit.profiles': 'perfiles',
+    'toast.groupConnecting': 'Conectando grupo "{name}"…',
+    'toast.groupDisconnecting': 'Grupo "{name}" desconectado.',
+    'toast.groupActionFailed': 'La acción sobre el grupo falló',
     'toast.daemonLost': 'Se perdió la conexión con el daemon — reintentando…',
     'toast.daemonRestored': 'Conexión con el daemon restablecida',
     'routes.filter': 'Filtro',
@@ -95,11 +100,11 @@ const I18N = {
   },
   en: {
     'nav.overview': 'Overview',
-    'nav.policyStudio': 'Policy Studio',
+    'nav.studio': 'Studio',
     'nav.security': 'Security',
-    'nav.vpnProfiles': 'VPN Profiles',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
+    'nav.collapse': 'Collapse',
     'page.overview.title': 'Overview',
     'ws.connecting': 'connecting…',
     'ws.live': 'live',
@@ -133,7 +138,7 @@ const I18N = {
     'base.defaultEgress': 'Default egress',
     'base.gateway': 'Gateway',
     'base.localIps': 'Local IPs',
-    'base.publicIp': 'Public IP (normal internet)',
+    'base.publicIp': 'Public IP',
     'base.note': 'Unmatched traffic follows your default route.',
     'security.killSwitch': 'Kill Switch',
     'security.dnsGuard': 'DNS Guard',
@@ -143,6 +148,12 @@ const I18N = {
     'security.manage': 'Manage →',
     'bulk.connectAll': 'Connect All',
     'bulk.disconnectAll': 'Disconnect All',
+    'sections.groups': 'Groups',
+    'empty.noGroups': 'No groups configured — create some in Studio.',
+    'unit.profiles': 'profiles',
+    'toast.groupConnecting': 'Connecting group "{name}"…',
+    'toast.groupDisconnecting': 'Group "{name}" disconnected.',
+    'toast.groupActionFailed': 'Group action failed',
     'toast.daemonLost': 'Lost connection to the daemon — retrying…',
     'toast.daemonRestored': 'Daemon connection restored',
     'routes.filter': 'Filter',
@@ -186,7 +197,6 @@ const I18N = {
   },
 };
 
-let lang = resolveInitialLang();
 let ws = null;
 let wsReconnectTimer = null;
 let currentPolicies = [];
@@ -199,59 +209,13 @@ let metricsHistory = {};
 const HISTORY_MAX_SAMPLES = 120;
 const tunnelHistory = {};
 
-function resolveInitialLang() {
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved === 'es' || saved === 'en') return saved;
-  return navigator.language && navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en';
-}
-
-function t(key, vars = {}) {
-  const dict = I18N[lang] || I18N.en;
-  const raw = dict[key] || I18N.en[key] || key;
-  return raw.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
-}
-
-function setLang(next) {
-  lang = next === 'es' ? 'es' : 'en';
-  localStorage.setItem(LANG_KEY, lang);
-  document.documentElement.lang = lang;
-  applyStaticTranslations();
+// t/setLang/resolveInitialLang/applyStaticTranslations/initLangToggle/esc
+// live in the shared i18n.js — this page only supplies the I18N dict above
+// and the re-render hook below (called at the end of every setLang()).
+function onLangChange() {
   renderPoliciesFromCache();
   renderRoutes();
   renderTrafficCharts();
-}
-
-function applyStaticTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const key = el.getAttribute('data-i18n');
-    if (!key) return;
-    el.textContent = t(key);
-  });
-
-  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
-    const key = el.getAttribute('data-i18n-placeholder');
-    if (!key) return;
-    el.setAttribute('placeholder', t(key));
-  });
-
-  document.querySelectorAll('.refresh-btn').forEach((btn) => {
-    btn.title = t('common.refresh');
-  });
-
-  const toggle = document.getElementById('lang-toggle');
-  if (toggle) {
-    toggle.textContent = lang.toUpperCase();
-    toggle.setAttribute('aria-label', lang === 'es' ? 'Cambiar idioma' : 'Toggle language');
-    toggle.title = lang === 'es' ? 'Cambiar a English' : 'Switch to Español';
-  }
-}
-
-function initLangToggle() {
-  const toggle = document.getElementById('lang-toggle');
-  if (!toggle) return;
-  toggle.addEventListener('click', () => {
-    setLang(lang === 'es' ? 'en' : 'es');
-  });
 }
 
 // ── WebSocket live metrics ──────────────────────────────────────────────────
@@ -283,9 +247,8 @@ let wsWasConnected = null; // null = not yet known (initial load), avoids a spur
 
 function setWSStatus(connected) {
   const dot = document.getElementById('connection-indicator');
-  const label = document.getElementById('ws-label');
   dot.className = 'indicator ' + (connected ? 'connected' : 'disconnected');
-  label.textContent = connected ? t('ws.live') : t('ws.reconnecting');
+  dot.title = connected ? t('ws.live') : t('ws.reconnecting');
 
   if (wsWasConnected === true && !connected) {
     showToast(t('toast.daemonLost'), 'error', 8000);
@@ -297,15 +260,38 @@ function setWSStatus(connected) {
 
 // ── Tunnel table ────────────────────────────────────────────────────────────
 
+async function refreshTunnels() {
+  try {
+    const res = await fetch(`${API}/api/v1/tunnels`);
+    if (!res.ok) return;
+    const list = await res.json();
+    const map = {};
+    (list || []).forEach((m) => { map[m.Name] = m; });
+    renderTunnels(map);
+  } catch (_) {}
+}
+
 function recordTunnelSamples(tunnels) {
   Object.entries(tunnels || {}).forEach(([name, m]) => {
     const status = (m.Status || 'disconnected').toLowerCase();
     if (status !== 'connected') return;
-    if (!tunnelHistory[name]) tunnelHistory[name] = { latency: [], sent: [], recv: [] };
+    if (!tunnelHistory[name]) tunnelHistory[name] = { latency: [], sent: [], recv: [], lastSent: null, lastRecv: null };
     const h = tunnelHistory[name];
+
+    // BytesSent/BytesReceived are cumulative counters, so plotting them
+    // directly only ever rises (or sits flat) — never a meaningful shape.
+    // Chart per-tick deltas (throughput) instead, clamped to >=0 in case a
+    // tunnel reconnected and the counter reset.
+    const sentTotal = m.BytesSent || 0;
+    const recvTotal = m.BytesReceived || 0;
+    const sentDelta = h.lastSent === null ? 0 : Math.max(0, sentTotal - h.lastSent);
+    const recvDelta = h.lastRecv === null ? 0 : Math.max(0, recvTotal - h.lastRecv);
+    h.lastSent = sentTotal;
+    h.lastRecv = recvTotal;
+
     h.latency.push(m.LatencyMS || 0);
-    h.sent.push(m.BytesSent || 0);
-    h.recv.push(m.BytesReceived || 0);
+    h.sent.push(sentDelta);
+    h.recv.push(recvDelta);
     if (h.latency.length > HISTORY_MAX_SAMPLES) h.latency.shift();
     if (h.sent.length > HISTORY_MAX_SAMPLES) h.sent.shift();
     if (h.recv.length > HISTORY_MAX_SAMPLES) h.recv.shift();
@@ -579,6 +565,7 @@ function syncRouteFilter(policies) {
   sel.innerHTML = options.join('');
   const stillExists = Array.from(sel.options).some((o) => o.value === prev);
   sel.value = stillExists ? prev : 'all';
+  enhanceSelect(sel);
 }
 
 function policyMatchesFilter(p, query) {
@@ -707,12 +694,6 @@ document.getElementById('resolve-input').addEventListener('keydown', (e) => {
 
 document.getElementById('routes-filter').addEventListener('change', renderRoutes);
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
 // ── VPN actions ─────────────────────────────────────────────────────────────
 
 async function connectVPN(name) {
@@ -752,6 +733,53 @@ async function disconnectVPN(name) {
   }
 }
 
+// ── Groups quick-launch ─────────────────────────────────────────────────────
+
+async function refreshGroupsQuicklaunch() {
+  try {
+    const res = await fetch(`${API}/api/v1/groups`);
+    if (!res.ok) return;
+    renderGroupsQuicklaunch(await res.json());
+  } catch (_) {}
+}
+
+function renderGroupsQuicklaunch(groups) {
+  const el = document.getElementById('groups-quicklaunch-list');
+  if (!Array.isArray(groups) || groups.length === 0) {
+    el.innerHTML = `<p class="empty">${t('empty.noGroups')}</p>`;
+    return;
+  }
+  el.innerHTML = groups.map((g) => `
+    <div class="group-chip">
+      <span class="group-chip-name">${esc(g.name)}</span>
+      <span class="group-chip-count">${(g.profiles || []).length} ${t('unit.profiles')}</span>
+      <button class="action" onclick='connectGroupQuick(${JSON.stringify(g.name)})'>${t('actions.connect')}</button>
+      <button class="action disconnect" onclick='disconnectGroupQuick(${JSON.stringify(g.name)})'>${t('actions.disconnect')}</button>
+    </div>
+  `).join('');
+}
+
+async function connectGroupQuick(name) {
+  try {
+    await fetch(`${API}/api/v1/groups/${encodeURIComponent(name)}/connect`, { method: 'POST' });
+    showToast(t('toast.groupConnecting', { name }), 'info');
+  } catch (_) {
+    showToast(t('toast.groupActionFailed'), 'error');
+  } finally {
+    setTimeout(() => { refreshRoutes(); refreshNetworkOverview(); }, 600);
+  }
+}
+
+async function disconnectGroupQuick(name) {
+  const res = await fetch(`${API}/api/v1/groups/${encodeURIComponent(name)}/disconnect`, { method: 'POST' }).catch(() => null);
+  if (!res || !res.ok) {
+    showToast(t('toast.groupActionFailed'), 'error');
+  } else {
+    showToast(t('toast.groupDisconnecting', { name }), 'success');
+  }
+  setTimeout(() => { refreshRoutes(); refreshNetworkOverview(); }, 600);
+}
+
 async function connectAll() {
   const targets = Object.entries(lastTunnels).filter(([, m]) => (m.Status || '').toLowerCase() !== 'connected');
   await Promise.all(targets.map(([name]) => connectVPN(name)));
@@ -785,12 +813,14 @@ function formatDuration(seconds) {
 
 setLang(lang);
 initLangToggle();
+enhanceAllSelects();
 connectWS();
 refreshRoutes();
 refreshPolicies();
 refreshNetworkOverview();
 refreshSecurity();
 refreshMetricsHistory();
+refreshGroupsQuicklaunch();
 
 document.getElementById('theme-toggle')?.addEventListener('click', () => {
   setTimeout(() => {
@@ -807,3 +837,4 @@ setInterval(refreshRoutes, 30_000);
 setInterval(refreshPolicies, 30_000);
 setInterval(refreshNetworkOverview, 30_000);
 setInterval(refreshMetricsHistory, 30_000);
+setInterval(refreshGroupsQuicklaunch, 30_000);

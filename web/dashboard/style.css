@@ -16,6 +16,7 @@
   --danger: #ff5a52;
   --radius: 6px;
   --radius-lg: 12px;
+  --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
   --font-display: "Space Grotesk", system-ui, sans-serif;
   --font-body: "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -72,6 +73,99 @@ html {
   overflow-x: hidden;
 }
 
+/* Theme toggle — View Transitions API, circular reveal growing from the
+   toggle button (top-right of the topbar). Mirrors landing/src/index.css.
+   Scoped to html.kongtrol-theme-transition (set by shell.js around the
+   toggle) so it doesn't also fire for plain page navigation below. */
+html.kongtrol-theme-transition::view-transition-group(root) {
+  animation-timing-function: var(--expo-out);
+}
+
+html.kongtrol-theme-transition::view-transition-new(root) {
+  mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><filter id="blur"><feGaussianBlur stdDeviation="2"/></filter></defs><circle cx="40" cy="0" r="18" fill="white" filter="url(%23blur)"/></svg>') top right / 0 no-repeat;
+  mask-origin: content-box;
+  animation: kongtrolThemeReveal 1s;
+  animation-fill-mode: both;
+  transform-origin: top right;
+}
+
+html.kongtrol-theme-transition::view-transition-old(root),
+html.kongtrol-theme-transition:root[data-theme="dark"]::view-transition-old(root) {
+  animation: kongtrolThemeReveal 1s;
+  animation-fill-mode: both;
+  transform-origin: top right;
+  z-index: -1;
+}
+
+@keyframes kongtrolThemeReveal {
+  to {
+    mask-size: 350vmax;
+  }
+}
+
+/* Cross-document navigation between dashboard pages (Overview/Studio/
+   Security/Audit/Settings are separate HTML files, not an SPA) — a plain
+   fast crossfade so switching sections doesn't feel like a jarring reload.
+   Chromium-based browsers only; other browsers fall back to an instant
+   swap, which is fine. */
+@view-transition {
+  navigation: auto;
+}
+
+html:not(.kongtrol-theme-transition)::view-transition-old(root) {
+  animation: kongtrolPageFadeOut 0.12s var(--expo-out) both;
+}
+
+html:not(.kongtrol-theme-transition)::view-transition-new(root) {
+  animation: kongtrolPageFadeIn 0.18s var(--expo-out) both;
+}
+
+@keyframes kongtrolPageFadeOut {
+  to { opacity: 0; }
+}
+
+@keyframes kongtrolPageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root),
+  ::view-transition-new(root),
+  ::view-transition-old(root) {
+    animation: none !important;
+  }
+}
+
+/* Skeleton loaders — shown in place of tables/values while their first
+   fetch is in flight, instead of a "Loading…" text row popping straight
+   into real data. */
+.skeleton {
+  display: inline-block;
+  height: 0.9em;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--border-2) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: kongtrolSkeleton 1.4s ease infinite;
+  vertical-align: middle;
+}
+
+@keyframes kongtrolSkeleton {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.skeleton-row td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--surface-2);
+  }
+}
+
 body {
   position: relative;
   min-height: 100vh;
@@ -121,33 +215,106 @@ body::before {
 }
 
 .app-shell {
-  display: flex;
-  align-items: stretch;
   min-height: 100vh;
 }
 
 .shell-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
   width: 232px;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 26px;
   padding: 20px 14px;
   background: var(--surface);
   border-right: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  height: 100vh;
+  overflow-x: hidden;
   overflow-y: auto;
   z-index: 200;
+  transition: width 0.2s ease, padding 0.2s ease, transform 0.2s ease;
+}
+
+/* Small floating circular toggle straddling the sidebar/content boundary,
+   vertically aligned with the topbar's bottom border. Icon-only. */
+/* Fixed to the viewport (not nested in the sidebar) so it can straddle the
+   sidebar/content boundary without being clipped by the sidebar's own
+   overflow-x:hidden. Centered vertically on the topbar's bottom border
+   line (topbar height 60px → button top = 60 - half its own height). */
+.sidebar-collapse-toggle {
+  position: fixed;
+  top: 46px;
+  left: 232px;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: 50%;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: left 0.2s ease, color 0.15s, border-color 0.15s, background 0.15s;
+  z-index: 210;
+}
+
+.sidebar-collapse-toggle:hover {
+  color: var(--signal);
+  border-color: var(--signal-line);
+  background: var(--signal-soft);
+}
+
+.sidebar-collapse-toggle svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+@media (min-width: 981px) {
+  body.sidebar-collapsed .shell-sidebar {
+    width: 68px;
+    padding: 20px 10px;
+  }
+
+  body.sidebar-collapsed .shell-main {
+    margin-left: 68px;
+  }
+
+  body.sidebar-collapsed .sidebar-collapse-toggle {
+    left: 68px;
+  }
+
+  body.sidebar-collapsed .brand {
+    justify-content: center;
+    padding: 0;
+  }
+
+  body.sidebar-collapsed .brand-name,
+  body.sidebar-collapsed .side-nav-link span {
+    display: none;
+  }
+
+  body.sidebar-collapsed .side-nav-link {
+    justify-content: center;
+    padding: 10px;
+  }
+
+  body.sidebar-collapsed .sidebar-collapse-toggle svg {
+    transform: rotate(180deg);
+  }
 }
 
 .shell-main {
-  flex: 1;
-  min-width: 0;
+  margin-left: 232px;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  transition: margin-left 0.2s ease;
 }
 
 .shell-topbar {
@@ -174,6 +341,7 @@ body::before {
   align-items: center;
   gap: 11px;
   padding: 0 6px;
+  text-decoration: none;
 }
 
 .brand-logo {
@@ -335,16 +503,21 @@ body::before {
   background: var(--signal-soft);
 }
 
+/* Same footprint as .icon-toggle (theme button) so the two sit flush in the
+   topbar. position:relative + overflow:hidden lets the language-code flash
+   sit exactly over the globe icon without affecting layout. */
 .lang-toggle {
-  min-width: 42px;
+  position: relative;
+  overflow: hidden;
+  width: 30px;
   height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
   cursor: pointer;
   transition: all 0.15s;
 }
@@ -355,18 +528,66 @@ body::before {
   background: var(--signal-soft);
 }
 
-.ws-label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.03em;
-  color: var(--text-dim);
-  display: none;
+.lang-icon {
+  display: inline-flex;
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.18s, transform 0.18s;
 }
 
-@media (min-width: 620px) {
-  .ws-label {
-    display: inline;
+.lang-icon.hide {
+  opacity: 0;
+  transform: scale(0.75);
+}
+
+.lang-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.lang-flash {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  opacity: 0;
+  transform: scale(0.82);
+  pointer-events: none;
+  color: var(--signal-hi);
+}
+
+.lang-flash.show {
+  animation: langPulse 0.7s ease;
+}
+
+@keyframes langPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
   }
+  25% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+/* Connection state now lives in the indicator dot's native title tooltip
+   instead of visible text next to it — see setWSStatus()/applyStaticTranslations()
+   in each page script. */
+.ws-label {
+  display: none;
 }
 
 .indicator {
@@ -387,10 +608,10 @@ main {
   max-width: 1460px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 26px;
 }
 
 .toast-stack {
@@ -436,14 +657,14 @@ main {
 .side-grid {
   display: grid;
   grid-template-columns: 360px 1fr;
-  gap: 22px;
+  gap: 24px;
 }
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 22px;
+  padding: 26px 28px;
   max-width: 100%;
   overflow-x: auto;
 }
@@ -510,7 +731,7 @@ th {
 }
 
 td {
-  padding: 14px;
+  padding: 16px 14px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
   font-family: var(--font-mono);
@@ -715,26 +936,180 @@ tr:hover td {
   font-size: 0.8rem;
 }
 
-.routes-toolbar select,
-.form-grid select {
+/* Custom select — see select.js. The native <select> is kept for state/
+   accessibility fallback but visually replaced by trigger + listbox. */
+.ks-select {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.ks-select select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ks-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   background-color: var(--bg);
   color: var(--text);
   border: 1px solid var(--border-2);
   border-radius: var(--radius);
+  font-family: var(--font-mono);
   font-size: 0.8rem;
-  padding: 7px 30px 7px 10px;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23616b7b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
 }
 
-.routes-toolbar select:focus,
-.form-grid select:focus {
+.ks-select-trigger:hover,
+.ks-select.open .ks-select-trigger {
   border-color: var(--signal);
+}
+
+.ks-select-trigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ks-select-trigger svg {
+  width: 13px;
+  height: 13px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+
+.ks-select.open .ks-select-trigger svg {
+  transform: rotate(180deg);
+}
+
+.ks-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ks-select-listbox {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
+  max-height: 240px;
+  overflow-y: auto;
+  display: none;
+  padding: 4px;
+}
+
+.ks-select.open .ks-select-listbox {
+  display: block;
+}
+
+.ks-select-option {
+  padding: 7px 10px;
+  border-radius: calc(var(--radius) - 2px);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+}
+
+.ks-select-option:hover,
+.ks-select-option:focus {
+  background: var(--signal-soft);
+  color: var(--signal-hi);
+}
+
+.ks-select-option.selected {
+  color: var(--signal-hi);
+  font-weight: 600;
+}
+
+.routes-toolbar .ks-select {
+  width: 220px;
+}
+
+/* Tabs — see initTabs() in shell.js */
+.tab-list {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 11px 10px;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--text);
+}
+
+.tab-btn.active {
+  color: var(--signal-hi);
+  border-bottom-color: var(--signal);
+}
+
+.tab-panel[hidden] {
+  display: none;
+}
+
+.groups-quicklaunch-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.group-chip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+
+.group-chip-name {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.group-chip-count {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  white-space: nowrap;
 }
 
 .route-meta {
@@ -770,15 +1145,18 @@ tr:hover td {
 .policy-grid {
   display: grid;
   grid-template-columns: 420px 1fr;
-  gap: 22px;
+  gap: 24px;
 }
 
 .form-grid {
   display: grid;
-  gap: 12px;
+  gap: 18px;
 }
 
 .form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
   color: var(--text-muted);
   font-size: 0.8rem;
 }
@@ -792,7 +1170,7 @@ tr:hover td {
   border: 1px solid var(--border-2);
   color: var(--text);
   border-radius: var(--radius);
-  padding: 8px 10px;
+  padding: 9px 12px;
   font-family: var(--font-mono);
   font-size: 0.8rem;
   outline: none;
@@ -807,14 +1185,30 @@ tr:hover td {
 
 .form-actions {
   display: flex;
-  gap: 8px;
+  gap: 14px;
   flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.card-header .form-actions {
+  margin-top: 0;
+  margin-right: 2px;
 }
 
 .policy-row-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+/* Uniform width for in-table action buttons (Connect/Disconnect/Edit/Delete
+   etc.) so rows don't ragged-edge based on label length. */
+td button.action {
+  min-width: 100px;
+}
+
+td:last-child {
+  padding-right: 20px;
 }
 
 .policy-table td:last-child {
@@ -825,7 +1219,7 @@ button.action {
   background: var(--surface-2);
   border: 1px solid var(--border-2);
   color: var(--text);
-  padding: 6px 12px;
+  padding: 8px 15px;
   border-radius: var(--radius);
   cursor: pointer;
   font-family: var(--font-mono);
@@ -1015,6 +1409,7 @@ button.action.disconnect:hover {
   color: var(--text);
 }
 
+.form-grid label.switch,
 .switch {
   position: relative;
   display: inline-block;
@@ -1065,12 +1460,14 @@ button.action.disconnect:hover {
   cursor: not-allowed;
 }
 
+.form-grid label.security-row,
 .security-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
+  padding: 16px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -1105,13 +1502,17 @@ button.action.disconnect:hover {
 }
 
 .summary-link-card a {
+  display: inline-flex;
+  align-items: center;
   color: var(--signal-hi);
   font-family: var(--font-mono);
-  font-size: 0.74rem;
+  font-weight: 500;
+  font-size: 0.78rem;
   text-decoration: none;
   border: 1px solid var(--signal-line);
   border-radius: var(--radius);
-  padding: 6px 11px;
+  padding: 10px 18px;
+  margin-right: 2px;
   transition: all 0.15s;
 }
 
@@ -1137,18 +1538,16 @@ button.action.disconnect:hover {
   }
 
   .shell-sidebar {
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    height: 100vh;
     transform: translateX(-100%);
     box-shadow: 0 0 44px rgba(0, 0, 0, 0.4);
-    transition: transform 0.2s ease;
   }
 
   .shell-sidebar.open {
     transform: translateX(0);
+  }
+
+  .shell-main {
+    margin-left: 0;
   }
 
   .sidebar-scrim.show {
@@ -1161,6 +1560,10 @@ button.action.disconnect:hover {
 
   .sidebar-toggle {
     display: inline-flex;
+  }
+
+  .sidebar-collapse-toggle {
+    display: none;
   }
 
   .brand-name small {

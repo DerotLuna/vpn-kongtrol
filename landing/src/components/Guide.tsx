@@ -880,10 +880,9 @@ $ kongtrol status --watch`}</CodeBlock>
               <table className="data-table">
                 <thead><tr><th>Página</th><th>Qué hace</th></tr></thead>
                 <tbody>
-                  <tr><td>Overview</td><td>Túneles en vivo, gráficos de tráfico por túnel, rutas activas, resolución de policy, conectar/desconectar todo</td></tr>
-                  <tr><td>Policy Studio</td><td>CRUD de políticas de routing + probador de reglas antes de guardar</td></tr>
+                  <tr><td>Overview</td><td>Túneles en vivo, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo</td></tr>
+                  <tr><td>Studio</td><td>Pestañas: políticas de routing (CRUD + probador de reglas), perfiles VPN (CRUD, config + keychain), y grupos (CRUD + conectar/desconectar)</td></tr>
                   <tr><td>Security</td><td>Activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check</td></tr>
-                  <tr><td>VPN Profiles</td><td>CRUD de perfiles VPN y grupos (config + keychain; requiere reiniciar el daemon para activarse)</td></tr>
                   <tr><td>Audit Log</td><td>Eventos de auditoría filtrables por perfil/nivel, con indicador de firma HMAC</td></tr>
                   <tr><td>Settings</td><td>Health check, scheduler + reglas, split DNS, ajustes de kill switch/DNS guard, audit log</td></tr>
                 </tbody>

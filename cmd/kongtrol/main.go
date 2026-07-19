@@ -2102,7 +2102,11 @@ func loadConfig() error {
 		audit = nil
 	}
 	if cfg.Security.AuditLog.Path != "" {
-		a, err := security.NewAuditLogger(cfg.Security.AuditLog.Path, cfg.Security.AuditLog.Sign, nil)
+		var hmacKey []byte
+		if cfg.Security.AuditLog.Sign {
+			hmacKey = loadOrCreateAuditHMACKey()
+		}
+		a, err := security.NewAuditLogger(cfg.Security.AuditLog.Path, cfg.Security.AuditLog.Sign, hmacKey)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, tuiWarn(cf("cli.audit.init_warn", err)))
 		} else {

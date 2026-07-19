@@ -107,14 +107,17 @@ vpn-kongtrol/
 ├── web/
 │   ├── assets.go                  # //go:embed dashboard
 │   └── dashboard/                 # full management UI, vanilla JS/CSS, no bundler
-│       ├── shell.js               # shared sidebar/topbar (theme, lang toggle, nav)
+│       ├── shell.js               # shared sidebar (collapsible, full-height) + topbar
 │       ├── toast.js               # toast notifications
+│       ├── select.js              # custom-styled <select> replacement, used everywhere
 │       ├── charts.js              # dependency-free canvas charts (sparklines, time series)
-│       ├── index.html / app.js    # Overview: tunnels, traffic charts, routes, policy resolver
-│       ├── policies.html / .js    # Policy Studio: policy CRUD + test-before-save
+│       ├── index.html / app.js    # Overview: tunnels, traffic charts, routes, policy
+│       │                          #   resolver, groups quick-launch
+│       ├── studio.html / .js      # Studio: tabbed policy CRUD + VPN profile CRUD +
+│       │                          #   groups CRUD/connect/disconnect (shared tabs.js-less
+│       │                          #   initTabs() helper in shell.js)
 │       ├── security.html / .js    # live kill switch/DNS guard toggles, per-profile override
-│       ├── profiles.html / .js    # VPN profile CRUD + groups CRUD/connect/disconnect
-│       ├── settings.html / .js    # monitor/security tuning + scheduler rules CRUD
+│       ├── settings.html / .js    # tabbed: general/security tuning + scheduler rules CRUD
 │       ├── audit.html / .js       # audit log viewer (filter by profile/level)
 │       ├── style.css              # shared styles (light/dark theme via [data-theme])
 │       └── logo.png

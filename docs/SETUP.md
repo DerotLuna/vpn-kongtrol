@@ -589,12 +589,11 @@ kongtrol dashboard
 Abre `http://localhost:9741` en tu navegador. Es una consola de gestión completa, no solo
 monitoreo, con estas páginas:
 
-- **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, conectar/desconectar todo
-- **Policy Studio** — CRUD de políticas de routing + probador de reglas antes de guardar
+- **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo
+- **Studio** — pestañas: políticas de routing (CRUD + probador de reglas), perfiles VPN (CRUD, actualiza config + keychain; requiere reiniciar el daemon para conectar con un perfil nuevo/editado), y grupos (CRUD + conectar/desconectar)
 - **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check
-- **VPN Profiles** — CRUD de perfiles VPN y grupos (actualiza config + keychain; requiere reiniciar el daemon para conectar con un perfil nuevo/editado)
 - **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
-- **Settings** — health check, scheduler + reglas, split DNS, ajustes de kill switch/DNS guard, audit log
+- **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, leak detection, audit log), scheduler (reglas)
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
 > puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —

@@ -1334,9 +1334,10 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/policies/meta
 func (s *Server) handlePoliciesMeta(w http.ResponseWriter, r *http.Request) {
 	type metaDTO struct {
-		Profiles []string `json:"profiles"`
+		Profiles   []string `json:"profiles"`
+		ConfigPath string   `json:"config_path"`
 	}
-	cfg, _, err := s.loadRuntimeConfig()
+	cfg, cfgPath, err := s.loadRuntimeConfig()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1346,7 +1347,7 @@ func (s *Server) handlePoliciesMeta(w http.ResponseWriter, r *http.Request) {
 		profiles = append(profiles, name)
 	}
 	sort.Strings(profiles)
-	writeJSON(w, http.StatusOK, metaDTO{Profiles: profiles})
+	writeJSON(w, http.StatusOK, metaDTO{Profiles: profiles, ConfigPath: cfgPath})
 }
 
 // POST /api/v1/policies

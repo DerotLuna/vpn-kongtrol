@@ -23,6 +23,7 @@
         <div class="form-actions">
           <button class="action" onclick="connectAll()" data-i18n="bulk.connectAll">Connect All</button>
           <button class="action disconnect" onclick="disconnectAll()" data-i18n="bulk.disconnectAll">Disconnect All</button>
+          <button class="refresh-btn" onclick="refreshTunnels()" title="Refresh" style="margin-bottom:0;">↻</button>
         </div>
       </div>
       <table id="tunnels-table">
@@ -40,9 +41,20 @@
           </tr>
         </thead>
         <tbody id="tunnels-body">
-          <tr><td colspan="9" class="empty" data-i18n="empty.connectingDaemon">Connecting to daemon…</td></tr>
+          <tr class="skeleton-row"><td><span class="skeleton" style="width:65%"></span></td><td><span class="skeleton" style="width:55%"></span></td><td><span class="skeleton" style="width:50%"></span></td><td><span class="skeleton" style="width:40%"></span></td><td><span class="skeleton" style="width:45%"></span></td><td><span class="skeleton" style="width:45%"></span></td><td><span class="skeleton" style="width:35%"></span></td><td><span class="skeleton" style="width:60%"></span></td><td><span class="skeleton" style="width:70%"></span></td></tr>
+          <tr class="skeleton-row"><td><span class="skeleton" style="width:50%"></span></td><td><span class="skeleton" style="width:45%"></span></td><td><span class="skeleton" style="width:60%"></span></td><td><span class="skeleton" style="width:35%"></span></td><td><span class="skeleton" style="width:55%"></span></td><td><span class="skeleton" style="width:40%"></span></td><td><span class="skeleton" style="width:30%"></span></td><td><span class="skeleton" style="width:60%"></span></td><td><span class="skeleton" style="width:70%"></span></td></tr>
         </tbody>
       </table>
+    </section>
+
+    <section class="card" id="groups-quicklaunch-section">
+      <div class="card-header">
+        <h2 data-i18n="sections.groups">Groups</h2>
+        <button class="refresh-btn" onclick="refreshGroupsQuicklaunch()" title="Refresh">↻</button>
+      </div>
+      <div id="groups-quicklaunch-list" class="groups-quicklaunch-list">
+        <span class="skeleton" style="width:220px;height:2.4em;display:block;"></span>
+      </div>
     </section>
 
     <section class="card" id="traffic-chart-section">
@@ -76,7 +88,8 @@
           </tr>
         </thead>
         <tbody id="policies-body">
-          <tr><td colspan="4" class="empty" data-i18n="empty.loading">Loading…</td></tr>
+          <tr class="skeleton-row"><td><span class="skeleton" style="width:70%"></span></td><td><span class="skeleton" style="width:45%"></span></td><td><span class="skeleton" style="width:60%"></span></td><td><span class="skeleton" style="width:40%"></span></td></tr>
+          <tr class="skeleton-row"><td><span class="skeleton" style="width:70%"></span></td><td><span class="skeleton" style="width:45%"></span></td><td><span class="skeleton" style="width:60%"></span></td><td><span class="skeleton" style="width:40%"></span></td></tr>
         </tbody>
       </table>
     </section>
@@ -88,11 +101,11 @@
           <button class="refresh-btn" onclick="refreshNetworkOverview()" title="Refresh">↻</button>
         </div>
         <ul id="base-network-list">
-          <li><span class="label" data-i18n="base.connectedTunnels">Connected tunnels</span><span id="base-connected" class="mono value">—</span></li>
-          <li><span class="label" data-i18n="base.defaultEgress">Default egress</span><span id="base-egress" class="mono value">—</span></li>
-          <li><span class="label" data-i18n="base.gateway">Gateway</span><span id="base-gateway" class="mono value">—</span></li>
-          <li><span class="label" data-i18n="base.localIps">Local IPs</span><span id="base-local-ips" class="mono value value-wrap">—</span></li>
-          <li><span class="label" data-i18n="base.publicIp">Public IP (normal internet)</span><span id="base-public-ip" class="mono value">—</span></li>
+          <li><span class="label" data-i18n="base.connectedTunnels">Connected tunnels</span><span id="base-connected" class="mono value"><span class="skeleton" style="width:24px"></span></span></li>
+          <li><span class="label" data-i18n="base.defaultEgress">Default egress</span><span id="base-egress" class="mono value"><span class="skeleton" style="width:80px"></span></span></li>
+          <li><span class="label" data-i18n="base.gateway">Gateway</span><span id="base-gateway" class="mono value"><span class="skeleton" style="width:90px"></span></span></li>
+          <li><span class="label" data-i18n="base.localIps">Local IPs</span><span id="base-local-ips" class="mono value value-wrap"><span class="skeleton" style="width:110px"></span></span></li>
+          <li><span class="label" data-i18n="base.publicIp">Public IP</span><span id="base-public-ip" class="mono value"><span class="skeleton" style="width:90px"></span></span></li>
         </ul>
         <p id="base-routing-note" class="muted" data-i18n="base.note">Unmatched traffic follows your default route.</p>
       </section>
@@ -139,7 +152,8 @@
           </select>
         </div>
         <ul id="routes-list">
-          <li class="empty" data-i18n="empty.loading">Loading…</li>
+          <li><span class="skeleton" style="width:80%"></span></li>
+          <li><span class="skeleton" style="width:60%"></span></li>
         </ul>
       </section>
 
@@ -149,7 +163,9 @@
   </div>
 
   <script src="shell.js"></script>
+  <script src="i18n.js"></script>
   <script src="toast.js"></script>
+  <script src="select.js"></script>
   <script src="charts.js"></script>
   <script src="app.js"></script>
 </body>

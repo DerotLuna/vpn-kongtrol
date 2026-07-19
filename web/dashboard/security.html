@@ -60,7 +60,8 @@
           </tr>
         </thead>
         <tbody id="profile-ks-body">
-          <tr><td colspan="2" class="empty" data-i18n="empty.loading">Loading…</td></tr>
+          <tr class="skeleton-row"><td><span class="skeleton" style="width:70%"></span></td><td><span class="skeleton" style="width:45%"></span></td></tr>
+          <tr class="skeleton-row"><td><span class="skeleton" style="width:70%"></span></td><td><span class="skeleton" style="width:45%"></span></td></tr>
         </tbody>
       </table>
     </section>
@@ -72,15 +73,15 @@
       <ul id="security-list">
         <li>
           <span class="label" data-i18n="security.leakCheck">Leak Check</span>
-          <span id="leak-status" class="badge">—</span>
+          <span id="leak-status" class="badge"><span class="skeleton" style="width:56px"></span></span>
         </li>
         <li>
           <span class="label" data-i18n="security.publicIp">Public IP</span>
-          <span id="public-ip" class="mono">—</span>
+          <span id="public-ip" class="mono"><span class="skeleton" style="width:90px"></span></span>
         </li>
         <li>
           <span class="label" data-i18n="security.lastChecked">Last checked</span>
-          <span id="leak-time" class="muted">—</span>
+          <span id="leak-time" class="muted"><span class="skeleton" style="width:70px"></span></span>
         </li>
       </ul>
     </section>
@@ -89,7 +90,9 @@
   </div>
 
   <script src="shell.js"></script>
+  <script src="i18n.js"></script>
   <script src="toast.js"></script>
+  <script src="select.js"></script>
   <script src="security.js"></script>
 </body>
 </html>
