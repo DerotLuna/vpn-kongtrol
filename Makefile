@@ -46,6 +46,44 @@ build-tray-native:
 	CGO_ENABLED=1 go build $(LDFLAGS) -o $(DIST)/kongtrol-tray ./cmd/kongtrol-tray
 	@echo "Built tray (native only): $(DIST)/kongtrol-tray"
 
+# Signs every .exe in $(DIST) with a local Authenticode cert (Windows only).
+# Generate one first: pwsh scripts/gen-devcert.ps1
+#
+# ⚠ LOCAL ONLY unless KONGTROL_SIGN_PFX points at a CA-issued cert: the default dev
+# cert is self-signed and only trusted on the machine that generated it (see
+# docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives). Signing a
+# release binary with it before distributing it does NOT stop SmartScreen/Defender
+# warnings for anyone else — don't sign release artifacts with the dev cert.
+.PHONY: sign
+sign:
+ifneq ($(OS),Windows_NT)
+	@echo "Code signing targets Windows .exe artifacts only; nothing to sign on this OS."
+else
+	@PFX="$${KONGTROL_SIGN_PFX:-$$HOME/.kongtrol/codesign/kongtrol-devsign.pfx}"; \
+	if [ ! -f "$$PFX" ]; then \
+		echo "No signing cert at $$PFX — generate one with: pwsh scripts/gen-devcert.ps1"; \
+		exit 1; \
+	fi; \
+	if [ -z "$$KONGTROL_SIGN_PFX" ]; then \
+		echo "⚠ Using the local self-signed dev cert — this only suppresses warnings on THIS machine."; \
+		echo "  Do not distribute binaries signed this way as if they were verified for others."; \
+	fi; \
+	PW="$${KONGTROL_SIGN_PFX_PASSWORD:-$$(cat "$$PFX.password" 2>/dev/null)}"; \
+	SIGNTOOL=$$(find "/c/Program Files (x86)/Windows Kits/10/bin" -iname signtool.exe -path "*x64*" 2>/dev/null | head -1); \
+	if [ -z "$$SIGNTOOL" ]; then \
+		echo "signtool.exe not found. Install the Windows SDK (App Certification Kit)."; \
+		exit 1; \
+	fi; \
+	found=0; \
+	for f in $(DIST)/*.exe; do \
+		[ -f "$$f" ] || continue; \
+		found=1; \
+		echo "Signing $$f"; \
+		MSYS_NO_PATHCONV=1 "$$SIGNTOOL" sign /f "$$PFX" /p "$$PW" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "$$f"; \
+	done; \
+	if [ "$$found" = "0" ]; then echo "No .exe files found in $(DIST)/ — run make build first."; fi
+endif
+
 # ── Test ─────────────────────────────────────────────────────────────────────
 
 .PHONY: test

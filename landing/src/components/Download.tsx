@@ -45,6 +45,14 @@ $ cd kongtrol
 $ make build-all-cli
 # → binarios en build/dist/ para todas las plataformas`,
       yourSystem: 'TU SISTEMA',
+      verifyTitle: 'Sobre los binarios no firmados',
+      verifyText: 'Kongtrol es de código abierto y no paga por un certificado de firma de código (Windows/macOS lo exigen para evitar advertencias de SmartScreen/Gatekeeper). Es normal que el binario descargado dispare una advertencia — no significa que contenga malware. Cada release en GitHub incluye un checksums.txt (SHA256) para que verifiques que lo que descargaste coincide con lo que se compiló. Si prefieres no confiar en un binario prebuild, revisa el código y compílalo tú mismo (ver FUENTE abajo).',
+      verifyScript: `# Verificar checksum (Windows PowerShell)
+Get-FileHash kongtrol-windows-amd64.exe -Algorithm SHA256
+# compara el resultado con la línea correspondiente en checksums.txt del release
+
+# Verificar checksum (Linux/macOS)
+sha256sum -c checksums.txt`,
     }
     : {
       section: '$ make install',
@@ -60,6 +68,14 @@ $ cd kongtrol
 $ make build-all-cli
 # -> binaries in build/dist/ for all platforms`,
       yourSystem: 'YOUR SYSTEM',
+      verifyTitle: 'About unsigned binaries',
+      verifyText: 'Kongtrol is open source and does not pay for a code-signing certificate (Windows/macOS require one to skip SmartScreen/Gatekeeper warnings). It is normal for the downloaded binary to trigger a warning — that does not mean it contains malware. Every GitHub release ships a checksums.txt (SHA256) so you can verify the download matches what was actually built. If you would rather not trust a prebuilt binary, review the source and build it yourself (see SOURCE below).',
+      verifyScript: `# Verify checksum (Windows PowerShell)
+Get-FileHash kongtrol-windows-amd64.exe -Algorithm SHA256
+# compare the output against the matching line in the release's checksums.txt
+
+# Verify checksum (Linux/macOS)
+sha256sum -c checksums.txt`,
     }
 
   return (
@@ -103,6 +119,12 @@ $ make build-all-cli
 
         <div className="callout warn" style={{ marginTop: 32 }}>
           <strong>{copy.beta}</strong> {copy.betaText}
+        </div>
+
+        <div className="source-install reveal" style={{ marginTop: 20 }}>
+          <div className="source-label">{copy.verifyTitle}</div>
+          <p className="section-sub" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>
+          <CodeBlock lang="bash">{copy.verifyScript}</CodeBlock>
         </div>
 
         <div className="source-install reveal">

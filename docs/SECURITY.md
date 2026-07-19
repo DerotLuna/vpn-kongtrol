@@ -1,5 +1,64 @@
 # Security Model
 
+## No telemetry, no external calls
+
+Kongtrol is 100% local. There is no phone-home, no analytics, no update-check ping, no external
+API — the daemon, CLI, tray app, and embedded dashboard talk to your VPN clients, your OS network
+stack, and `127.0.0.1`, and nothing else. Credentials go straight from your prompt into the OS
+keychain (`internal/config`) and are never written to disk in plaintext or logged. The audit log
+(`internal/security`) is local, HMAC-signed for tamper-evidence, and never leaves the machine. You
+can verify this yourself — the whole codebase is open source; grep for `http://` / `https://`
+outside of test fixtures and adapter vendor docs and you'll find nothing that ships data out.
+
+## Unsigned binaries and antivirus false positives
+
+Kongtrol does not currently ship with a CA-issued code-signing certificate — that costs money
+(EV certs run several hundred dollars a year) and this is an unfunded open-source project. Windows
+SmartScreen and Defender lean heavily on binary reputation (hash + publisher trust), and a
+freshly-built, unsigned Go binary that manipulates routing tables, DNS, and firewall rules is
+exactly the profile their ML heuristics flag — commonly as a generic detection like
+`Trojan:Win32/Bearfoos.A!ml`. That `!ml` suffix means it was flagged by a cloud ML model on
+low-prevalence/no-reputation files, not a signature match against known malware. It's a known,
+common false positive for this class of tool, not evidence of anything malicious.
+
+What to do about it:
+
+- **Verify the download.** Every GitHub release includes a `checksums.txt` (SHA256). It's produced
+  automatically — pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs
+  `goreleaser release --clean` (config in `.goreleaser.yaml`); goreleaser cross-compiles every
+  platform binary, hashes them, and uploads both the binaries and `checksums.txt` as release assets
+  in one step. Nothing needs to be uploaded by hand. Compare the binary you downloaded:
+
+  ```powershell
+  # Windows
+  Get-FileHash kongtrol-windows-amd64.exe -Algorithm SHA256
+  ```
+
+  ```bash
+  # Linux/macOS
+  sha256sum -c checksums.txt
+  ```
+
+- **Report the false positive** to Microsoft so the reputation model stops flagging it for
+  everyone: https://www.microsoft.com/en-us/wdsi/filesubmission
+
+- **Build it yourself** after reading the source — the whole point of open source. See the
+  [README Quick start](../README.md#quick-start) (`make build` / `make build-all-cli`).
+
+- **Sign your own local build**, Windows-only, LOCAL-ONLY: `pwsh scripts/gen-devcert.ps1` generates
+  a self-signed cert and trusts it under `Cert:\CurrentUser` on your machine; `make build sign`
+  then signs the `.exe` files in `build/dist/`. This stops SmartScreen/Defender from flagging
+  binaries **you personally compile**, and only on **the machine you ran the script on** — a
+  self-signed cert has no chain to a public CA, so it establishes zero trust anywhere else. It has
+  no Linux/macOS equivalent (Authenticode only applies to Windows PE files) and `make sign` no-ops
+  on those platforms. Never sign release/landing-page binaries with this cert — it would look
+  "signed" without actually meaning anything to whoever downloads it. It exists purely so `make
+  sign` is already wired up for a real CA-issued cert if the project ever gets one; swapping in a
+  purchased `.pfx` via `KONGTROL_SIGN_PFX`/`KONGTROL_SIGN_PFX_PASSWORD` is the only change needed
+  at that point — release automation still would not use it automatically, that'd be a deliberate
+  addition to `release.yml`.
+
+
 | Layer | Windows | Linux | macOS |
 |---|---|---|---|
 | **Kill Switch** | `netsh advfirewall` block + tunnel allow | `iptables OUTPUT -j DROP` + ACCEPT | `pf` anchor at `/etc/pf.anchors/kongtrol` |

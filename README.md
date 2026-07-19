@@ -56,6 +56,12 @@ make build   # → build/dist/kongtrol
 
 > **Windows:** run your shell as **Administrator** for `kongtrol init`, `up`, `down`, and `doctor` — they need elevated permissions for routing, DNS, and firewall.
 
+> **Antivirus/SmartScreen warning?** Kongtrol is unsigned (no paid code-signing cert — this is an
+> unfunded open-source project) and touches routing/DNS/firewall, which AV heuristics flag on sight.
+> It's a known false positive, not malware. Verify the download against the release's
+> `checksums.txt`, or build from source and judge the code yourself. See
+> [docs/SECURITY.md](docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives).
+
 ```bash
 kongtrol init           # interactive wizard: detects clients, stores credentials in OS keychain
 kongtrol up office aws  # connect one or more profiles
