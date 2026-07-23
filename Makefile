@@ -1,5 +1,6 @@
 SHELL    := /usr/bin/bash
 MODULE   := github.com/vpn-kongtrol/kongtrol
+GO_PACKAGES := ./cmd/... ./internal/... ./assets ./web
 VERSION  := $(shell v=$$(git describe --tags --always --dirty 2>/dev/null || echo "dev"); \
 	if echo "$$v" | grep -q -- "-dirty$$"; then echo "$$v.$$(date +%Y%m%d%H%M%S)"; else echo "$$v"; fi)
 LDFLAGS  := -ldflags "-X main.version=$(VERSION) -s -w"
@@ -10,8 +11,13 @@ SITE_BIN := $(SITE_DIR)/_binaries
 # On Windows (Git Bash), OS=Windows_NT is set by the environment.
 ifeq ($(OS),Windows_NT)
   EXT := .exe
+  # windowsgui: no console window attached, so the tray keeps running after
+  # whatever terminal launched it closes (a plain console-subsystem build
+  # dies with its parent console, which is wrong for a background tray app).
+  TRAY_LDFLAGS := -ldflags "-X main.version=$(VERSION) -s -w -H=windowsgui"
 else
   EXT :=
+  TRAY_LDFLAGS := $(LDFLAGS)
 endif
 
 # ── Local build ──────────────────────────────────────────────────────────────
@@ -43,8 +49,12 @@ build-all-cli:
 .PHONY: build-tray-native
 build-tray-native:
 	@mkdir -p $(DIST)
-	CGO_ENABLED=1 go build $(LDFLAGS) -o $(DIST)/kongtrol-tray ./cmd/kongtrol-tray
-	@echo "Built tray (native only): $(DIST)/kongtrol-tray"
+ifeq ($(OS),Windows_NT)
+	@echo "Embedding exe icon (assets/logo.ico)..."
+	go run github.com/akavel/rsrc@latest -arch $$(go env GOARCH) -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows.syso
+endif
+	CGO_ENABLED=1 go build $(TRAY_LDFLAGS) -o $(DIST)/kongtrol-tray$(EXT) ./cmd/kongtrol-tray
+	@echo "Built tray (native only): $(DIST)/kongtrol-tray$(EXT)"
 
 # Signs every .exe in $(DIST) with a local Authenticode cert (Windows only).
 # Generate one first: pwsh scripts/gen-devcert.ps1
@@ -88,25 +98,25 @@ endif
 
 .PHONY: test
 test:
-	go test ./...
+	go test $(GO_PACKAGES)
 
 .PHONY: test-verbose
 test-verbose:
-	go test -v ./...
+	go test -v $(GO_PACKAGES)
 
 .PHONY: test-race
 test-race:
-	go test -race ./...
+	go test -race ./cmd/kongtrol ./internal/...
 
 # ── Lint ─────────────────────────────────────────────────────────────────────
 
 .PHONY: lint
 lint:
-	golangci-lint run ./...
+	golangci-lint run $(GO_PACKAGES)
 
 .PHONY: vet
 vet:
-	go vet ./...
+	go vet $(GO_PACKAGES)
 
 # ── Docker ───────────────────────────────────────────────────────────────────
 

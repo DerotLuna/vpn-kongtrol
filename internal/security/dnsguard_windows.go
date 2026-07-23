@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -103,6 +104,7 @@ func currentDNSWindows(iface string) ([]string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), netshQueryTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "netsh", "interface", "ip", "show", "dns", iface)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err

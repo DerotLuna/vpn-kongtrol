@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
 // connect calls protonvpn-cli to connect to a specific server.
@@ -79,6 +81,7 @@ func extractJSON(s, key string) string {
 
 func cli(args ...string) error {
 	cmd := exec.Command("protonvpn-cli", args...)
+	vpn.HideChildWindow(cmd)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -90,6 +93,7 @@ func cli(args ...string) error {
 
 func cliOutput(args ...string) (string, error) {
 	cmd := exec.Command("protonvpn-cli", args...)
+	vpn.HideChildWindow(cmd)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

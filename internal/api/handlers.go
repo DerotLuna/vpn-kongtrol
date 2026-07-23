@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -79,18 +80,20 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "already_connected", "tunnel": name})
 		return
 	}
-	if s.hasPendingConnect(name) {
-		writeError(w, http.StatusConflict, "connect already in progress for "+name)
+	if s.connectProfile == nil {
+		writeError(w, http.StatusServiceUnavailable, "connection service unavailable")
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	s.setPendingConnect(name, cancel)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Minute)
+	if !s.startPendingConnect(name, cancel) {
+		cancel()
+		writeError(w, http.StatusConflict, "connect already in progress for "+name)
+		return
+	}
 	go func() {
 		defer s.clearPendingConnect(name)
-		// AdapterConfig is pre-loaded by the orchestrator; API-triggered connects
-		// use the adapter's previously configured values.
-		_ = adapter.Reconnect(ctx)
+		_ = s.connectProfile(ctx, name)
 	}()
 
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "connecting", "tunnel": name})
@@ -99,16 +102,23 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/tunnels/{name}/cancel_connect
 func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	adapter, ok := s.adapters[name]
+	_, ok := s.adapters[name]
 	if !ok {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
 	}
 	s.cancelPendingConnect(name)
 
+	if s.disconnectProfile == nil {
+		writeError(w, http.StatusServiceUnavailable, "connection service unavailable")
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	_ = adapter.Disconnect(ctx)
+	if err := s.disconnectProfile(ctx, name); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "connect_cancelled", "tunnel": name})
 }
@@ -116,17 +126,21 @@ func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/tunnels/{name}/disconnect
 func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	adapter, ok := s.adapters[name]
+	_, ok := s.adapters[name]
 	if !ok {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
 	}
 	s.cancelPendingConnect(name)
 
+	if s.disconnectProfile == nil {
+		writeError(w, http.StatusServiceUnavailable, "connection service unavailable")
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 
-	if err := adapter.Disconnect(ctx); err != nil {
+	if err := s.disconnectProfile(ctx, name); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -134,17 +148,14 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "tunnel": name})
 }
 
-func (s *Server) hasPendingConnect(name string) bool {
+func (s *Server) startPendingConnect(name string, cancel context.CancelFunc) bool {
 	s.connectMu.Lock()
 	defer s.connectMu.Unlock()
-	_, ok := s.connectCancel[name]
-	return ok
-}
-
-func (s *Server) setPendingConnect(name string, cancel context.CancelFunc) {
-	s.connectMu.Lock()
-	defer s.connectMu.Unlock()
+	if _, exists := s.connectCancel[name]; exists {
+		return false
+	}
 	s.connectCancel[name] = cancel
+	return true
 }
 
 func (s *Server) clearPendingConnect(name string) {
@@ -364,36 +375,118 @@ func fetchPublicIP() string {
 
 // GET /api/v1/security/status
 func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
+	type leakCheckStatus struct {
+		State     string    `json:"state"`
+		HasLeak   bool      `json:"has_leak"`
+		PublicIP  string    `json:"public_ip,omitempty"`
+		Reason    string    `json:"reason,omitempty"`
+		CheckedAt time.Time `json:"checked_at"`
+	}
 	type secStatus struct {
-		KillSwitch           bool        `json:"kill_switch"`
-		KillSwitchEnabled    bool        `json:"kill_switch_enabled"`
-		DNSGuard             bool        `json:"dns_guard"`
-		DNSGuardEnabled      bool        `json:"dns_guard_enabled"`
-		LeakDetectionEnabled bool        `json:"leak_detection_enabled"`
-		LeakCheck            interface{} `json:"leak_check"`
+		KillSwitch              bool             `json:"kill_switch"`
+		KillSwitchEnabled       bool             `json:"kill_switch_enabled"`
+		KillSwitchState         string           `json:"kill_switch_state"`
+		DNSGuard                bool             `json:"dns_guard"`
+		DNSGuardEnabled         bool             `json:"dns_guard_enabled"`
+		DNSGuardState           string           `json:"dns_guard_state"`
+		LeakDetectionEnabled    bool             `json:"leak_detection_enabled"`
+		LeakDetectionConfigured bool             `json:"leak_detection_configured"`
+		LeakCheckAvailable      bool             `json:"leak_check_available"`
+		LeakCheck               *leakCheckStatus `json:"leak_check,omitempty"`
 	}
 
+	killActive := s.ks != nil && s.ks.IsEnabled()
+	killEnabled := s.killSwitchOn.Load()
+	dnsActive := s.dnsMgr != nil && s.dnsMgr.IsActive()
+	dnsEnabled := s.dnsGuardOn.Load()
 	status := secStatus{
-		KillSwitch:           s.ks != nil && s.ks.IsEnabled(),
-		KillSwitchEnabled:    s.killSwitchOn.Load(),
-		DNSGuard:             s.dnsMgr != nil && s.dnsMgr.IsActive(),
-		DNSGuardEnabled:      s.dnsGuardOn.Load(),
+		KillSwitch:           killActive,
+		KillSwitchEnabled:    killEnabled,
+		KillSwitchState:      configuredRuntimeState(killEnabled, killActive, "armed"),
+		DNSGuard:             dnsActive,
+		DNSGuardEnabled:      dnsEnabled,
+		DNSGuardState:        configuredRuntimeState(dnsEnabled, dnsActive, "active"),
 		LeakDetectionEnabled: s.leakTest != nil,
+		LeakCheckAvailable:   s.leakTest != nil,
+	}
+	if cfg, _, err := s.loadRuntimeConfig(); err == nil {
+		status.LeakDetectionConfigured = cfg.Security.LeakDetection.Enabled
 	}
 
 	if s.leakTest != nil {
 		lr := s.leakTest.LastResult()
 		if lr != nil {
-			status.LeakCheck = map[string]interface{}{
-				"has_leak":   lr.HasLeak,
-				"public_ip":  lr.PublicIP,
-				"reason":     lr.Reason,
-				"checked_at": lr.CheckedAt,
+			state := "clean"
+			if lr.HasLeak {
+				state = "leak"
+			} else if lr.PublicIP == "" && lr.Reason != "" {
+				state = "error"
+			}
+			status.LeakCheck = &leakCheckStatus{
+				State:     state,
+				HasLeak:   lr.HasLeak,
+				PublicIP:  lr.PublicIP,
+				Reason:    lr.Reason,
+				CheckedAt: lr.CheckedAt,
 			}
 		}
 	}
 
 	writeJSON(w, http.StatusOK, status)
+}
+
+func configuredRuntimeState(configured, active bool, activeState string) string {
+	if !configured {
+		return "disabled"
+	}
+	if active {
+		return activeState
+	}
+	return "idle"
+}
+
+type preferenceDTO struct {
+	Language string `json:"language"`
+	Theme    string `json:"theme"`
+}
+
+// GET /api/v1/preferences
+func (s *Server) handleGetPreferences(w http.ResponseWriter, _ *http.Request) {
+	prefs, err := config.LoadPreferences(s.preferencesPath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, preferenceDTO{Language: prefs.Language, Theme: prefs.Theme})
+}
+
+// PUT /api/v1/preferences — dashboard-owned fields only. Other machine-local
+// preferences are preserved by the serialized read-modify-write operation.
+func (s *Server) handleUpdatePreferences(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Language *string `json:"language"`
+		Theme    *string `json:"theme"`
+	}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	prefs, err := config.UpdatePreferences(s.preferencesPath, func(prefs *config.Preferences) error {
+		if req.Language != nil {
+			prefs.Language = *req.Language
+		}
+		if req.Theme != nil {
+			prefs.Theme = *req.Theme
+		}
+		return config.ValidatePreferences(prefs)
+	})
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, preferenceDTO{Language: prefs.Language, Theme: prefs.Theme})
 }
 
 // POST /api/v1/security/killswitch  {"enabled": bool}
@@ -583,6 +676,16 @@ func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 // before writing anything, then stores any provided credentials in the OS
 // keychain and persists cfg via the existing saveRuntimeConfig pattern.
 func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, req vpnProfileReq) error {
+	for field, value := range map[string]string{
+		"name": req.Name, "type": req.Type, "host": req.Host, "server": req.Server,
+		"protocol": req.Protocol, "config": req.ConfigFile, "auth_method": req.AuthMethod,
+		"cert": req.Cert, "key": req.Key, "username": req.Username,
+	} {
+		if containsEnvReference(value) {
+			return fmt.Errorf("%s must not contain environment-variable references", field)
+		}
+	}
+
 	vc := config.VPNConfig{
 		Type:       strings.TrimSpace(req.Type),
 		Host:       strings.TrimSpace(req.Host),
@@ -621,19 +724,70 @@ func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, req vp
 		return err
 	}
 
+	cfg.VPNs[name] = vc
+	backups := make([]credentialBackup, 0, 2)
 	if strings.TrimSpace(req.Username) != "" {
+		backup := backupCredential(name, "username")
 		if err := config.SetCredential(name, "username", req.Username); err != nil {
 			return fmt.Errorf("store username credential: %w", err)
 		}
+		backups = append(backups, backup)
 	}
 	if req.Password != "" {
+		backup := backupCredential(name, "password")
 		if err := config.SetCredential(name, "password", req.Password); err != nil {
-			return fmt.Errorf("store password credential: %w", err)
+			return errors.Join(
+				fmt.Errorf("store password credential: %w", err),
+				restoreCredentials(name, backups),
+			)
+		}
+		backups = append(backups, backup)
+	}
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		return errors.Join(err, restoreCredentials(name, backups))
+	}
+	return nil
+}
+
+type credentialBackup struct {
+	key     string
+	value   string
+	existed bool
+}
+
+func backupCredential(profile, key string) credentialBackup {
+	value, err := config.GetCredential(profile, key)
+	return credentialBackup{key: key, value: value, existed: err == nil}
+}
+
+func restoreCredentials(profile string, backups []credentialBackup) error {
+	var errs []error
+	for i := len(backups) - 1; i >= 0; i-- {
+		backup := backups[i]
+		var err error
+		if backup.existed {
+			err = config.SetCredential(profile, backup.key, backup.value)
+		} else {
+			err = config.DeleteCredential(profile, backup.key)
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("restore %s credential: %w", backup.key, err))
 		}
 	}
+	return errors.Join(errs...)
+}
 
-	cfg.VPNs[name] = vc
-	return s.saveRuntimeConfig(cfgPath, cfg)
+func containsEnvReference(value string) bool {
+	for i := 0; i < len(value); i++ {
+		if value[i] != '$' || i+1 >= len(value) {
+			continue
+		}
+		next := value[i+1]
+		if next == '{' || next == '_' || next >= 'A' && next <= 'Z' || next >= 'a' && next <= 'z' {
+			return true
+		}
+	}
+	return false
 }
 
 // DELETE /api/v1/vpns/{name} — reject if the profile is still referenced by
@@ -674,11 +828,20 @@ func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	var cleanupErrs []error
 	if existing.Auth.UsernameKeychain != "" {
-		_ = config.DeleteCredential(name, "username")
+		if err := config.DeleteCredential(name, "username"); err != nil {
+			cleanupErrs = append(cleanupErrs, err)
+		}
 	}
 	if existing.Auth.PasswordKeychain != "" {
-		_ = config.DeleteCredential(name, "password")
+		if err := config.DeleteCredential(name, "password"); err != nil {
+			cleanupErrs = append(cleanupErrs, err)
+		}
+	}
+	if err := errors.Join(cleanupErrs...); err != nil {
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("profile deleted but credential cleanup failed: %v", err))
+		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "deleted", "profile": name, "restart_required": true})
 }
@@ -856,7 +1019,7 @@ func (s *Server) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/v1/groups/{name}/connect — starts a connect for every profile in
 // the group that isn't already connected/connecting, mirroring handleConnect
-// per-profile (same pending-connect tracking, same async Reconnect call).
+// per-profile through the shared orchestrator lifecycle.
 func (s *Server) handleConnectGroup(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	cfg, _, err := s.loadRuntimeConfig()
@@ -881,16 +1044,19 @@ func (s *Server) handleConnectGroup(w http.ResponseWriter, r *http.Request) {
 			alreadyConnected = append(alreadyConnected, profile)
 			continue
 		}
-		if s.hasPendingConnect(profile) {
+		if s.connectProfile == nil {
 			continue
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		s.setPendingConnect(profile, cancel)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Minute)
+		if !s.startPendingConnect(profile, cancel) {
+			cancel()
+			continue
+		}
 		started = append(started, profile)
-		go func(p string, a vpn.VPNAdapter, ctx context.Context) {
+		go func(p string, ctx context.Context) {
 			defer s.clearPendingConnect(p)
-			_ = a.Reconnect(ctx)
-		}(profile, adapter, ctx)
+			_ = s.connectProfile(ctx, p)
+		}(profile, ctx)
 	}
 
 	writeJSON(w, http.StatusAccepted, map[string]any{
@@ -918,14 +1084,17 @@ func (s *Server) handleDisconnectGroup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var errs []string
+	if s.disconnectProfile == nil {
+		writeError(w, http.StatusServiceUnavailable, "connection service unavailable")
+		return
+	}
 	for _, profile := range g.Profiles {
-		adapter, ok := s.adapters[profile]
-		if !ok {
+		if _, ok := s.adapters[profile]; !ok {
 			continue
 		}
 		s.cancelPendingConnect(profile)
 		ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-		disconnectErr := adapter.Disconnect(ctx)
+		disconnectErr := s.disconnectProfile(ctx, profile)
 		cancel()
 		if disconnectErr != nil {
 			errs = append(errs, fmt.Sprintf("%s: %v", profile, disconnectErr))
@@ -1712,16 +1881,19 @@ func (s *Server) loadRuntimeConfig() (*config.Config, string, error) {
 }
 
 func (s *Server) saveRuntimeConfig(cfgPath string, cfg *config.Config) error {
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
-	}
-	if err := os.WriteFile(cfgPath, data, 0600); err != nil {
-		return fmt.Errorf("write config: %w", err)
+	if err := config.Validate(cfg); err != nil {
+		return err
 	}
 	newEngine, err := policy.New(cfg)
 	if err != nil {
 		return fmt.Errorf("policy engine validation failed: %w", err)
+	}
+	data, err := yaml.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("marshal config: %w", err)
+	}
+	if err := config.WriteFileAtomic(cfgPath, data, 0o600); err != nil {
+		return fmt.Errorf("write config: %w", err)
 	}
 	s.policyEngine.Store(newEngine)
 	if s.onPolicyUpdate != nil {

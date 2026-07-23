@@ -103,6 +103,9 @@ function shellResolveInitialTheme() {
 
 function shellApplyTheme(theme) {
   document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  const colorScheme = document.querySelector('meta[name="color-scheme"]');
+  if (colorScheme) colorScheme.content = theme;
   const btn = document.getElementById('theme-toggle');
   if (btn) {
     btn.innerHTML = theme === 'dark' ? SHELL_MOON_SVG : SHELL_SUN_SVG;
@@ -119,6 +122,7 @@ function initShellTheme() {
     const apply = () => {
       shellApplyTheme(next);
       localStorage.setItem(SHELL_THEME_KEY, next);
+      shellSavePreferences({ theme: next });
     };
     // Circular reveal growing from the toggle button — see the
     // ::view-transition-* rules in style.css. Falls back to an instant
@@ -135,6 +139,35 @@ function initShellTheme() {
       apply();
     }
   });
+}
+
+async function shellSavePreferences(update) {
+  try {
+    const res = await fetch('/api/v1/preferences', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update),
+    });
+    if (!res.ok) throw new Error(`preferences: ${res.status}`);
+    window.kongtrolPreferences = await res.json();
+    return window.kongtrolPreferences;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function shellLoadPreferences() {
+  try {
+    const res = await fetch('/api/v1/preferences');
+    if (!res.ok) return;
+    const prefs = await res.json();
+    window.kongtrolPreferences = prefs;
+    if (prefs.theme === 'light' || prefs.theme === 'dark') {
+      localStorage.setItem(SHELL_THEME_KEY, prefs.theme);
+      shellApplyTheme(prefs.theme);
+    }
+    window.dispatchEvent(new CustomEvent('kongtrol:preferences-loaded', { detail: prefs }));
+  } catch (_) {}
 }
 
 // Briefly hides the globe icon and flashes the target language code,
@@ -277,3 +310,4 @@ initShellMobileNav();
 initShellCollapse();
 initShellNavTooltips();
 initTabs(document);
+shellLoadPreferences();

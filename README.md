@@ -5,7 +5,7 @@
   Policy-based routing · Security enforcement · Live monitoring — from a single binary.</p>
 
   <p>
-    <img src="https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square&logo=go" />
+    <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go" />
     <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS-informational?style=flat-square" />
     <img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" />
   </p>
@@ -21,7 +21,7 @@ Working with multiple VPNs simultaneously is painful: each client overrides your
 
 ## Features
 
-- **Policy-based routing** by IP range, domain, or app executable, with priority-based conflict resolution
+- **Policy-based routing** by IP range and domain for WireGuard, with priority-based conflict resolution; app rules currently provide flow resolution and diagnostics, not OS-level per-process enforcement
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
 - **Auto-reconnect watchdog** with exponential backoff and priority failover between profiles
 - **Kill switch + DNS guard** enforced at the OS firewall/network layer, with a signed audit log
@@ -46,7 +46,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full feature/status matrix.
 
 ## Quick start
 
-Download the latest release for your platform from [Releases](../../releases), or build from source (requires Go 1.22+):
+Download the latest release for your platform from [Releases](../../releases), or build from source (requires Go 1.25+):
 
 ```bash
 git clone https://github.com/vpn-kongtrol/kongtrol

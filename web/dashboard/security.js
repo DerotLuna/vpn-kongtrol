@@ -37,6 +37,8 @@ const I18N = {
     'badge.leak': 'FUGA',
     'badge.clean': 'LIMPIO',
     'badge.pending': 'PENDIENTE',
+    'badge.error': 'ERROR',
+    'badge.unavailable': 'NO DISPONIBLE',
     'confirm.disableKillSwitch': '¿Desactivar el Kill Switch? El tráfico ya no se bloqueará si un túnel protegido se desconecta.',
     'toast.killSwitchOn': 'Kill Switch activado',
     'toast.killSwitchOff': 'Kill Switch desactivado',
@@ -80,6 +82,8 @@ const I18N = {
     'badge.leak': 'LEAK',
     'badge.clean': 'CLEAN',
     'badge.pending': 'PENDING',
+    'badge.error': 'ERROR',
+    'badge.unavailable': 'UNAVAILABLE',
     'confirm.disableKillSwitch': 'Disable the Kill Switch? Traffic will no longer be blocked if a protected tunnel drops.',
     'toast.killSwitchOn': 'Kill Switch enabled',
     'toast.killSwitchOff': 'Kill Switch disabled',
@@ -113,9 +117,15 @@ async function refreshSecurity() {
     if (ksToggle && document.activeElement !== ksToggle) ksToggle.checked = !!data.kill_switch_enabled;
     const dnsToggle = document.getElementById('dns-toggle');
     if (dnsToggle && document.activeElement !== dnsToggle) dnsToggle.checked = !!data.dns_guard_enabled;
+    setRuntimeBadge('ks-runtime-status', data.kill_switch_state);
+    setRuntimeBadge('dns-runtime-status', data.dns_guard_state);
 
-    if (!data.leak_detection_enabled) {
-      setBadge('leak-status', t('badge.disabled'), 'disabled');
+    if (!data.leak_check_available) {
+      setBadge(
+        'leak-status',
+        data.leak_detection_configured ? t('badge.unavailable') : t('badge.disabled'),
+        data.leak_detection_configured ? 'leak' : 'disabled',
+      );
       document.getElementById('public-ip').textContent = lastPublicIP || '—';
       document.getElementById('leak-time').textContent = '—';
       return;
@@ -123,13 +133,27 @@ async function refreshSecurity() {
 
     if (data.leak_check) {
       const lk = data.leak_check;
-      setBadge('leak-status', lk.has_leak ? t('badge.leak') : t('badge.clean'), lk.has_leak ? 'leak' : 'ok');
+      if (lk.state === 'error') {
+        setBadge('leak-status', t('badge.error'), 'leak');
+      } else {
+        setBadge('leak-status', lk.has_leak ? t('badge.leak') : t('badge.clean'), lk.has_leak ? 'leak' : 'ok');
+      }
       lastPublicIP = lk.public_ip || '';
       document.getElementById('public-ip').textContent = lastPublicIP || '—';
       if (lk.checked_at) {
         document.getElementById('leak-time').textContent = new Date(lk.checked_at).toLocaleTimeString(lang);
       } else {
         document.getElementById('leak-time').textContent = '—';
+      }
+
+      function setRuntimeBadge(id, state) {
+        if (state === 'disabled') {
+          setBadge(id, t('badge.disabled'), 'disabled');
+        } else if (state === 'armed' || state === 'active') {
+          setBadge(id, t('badge.on'), 'on');
+        } else {
+          setBadge(id, t('badge.idle'), 'pending');
+        }
       }
       return;
     }

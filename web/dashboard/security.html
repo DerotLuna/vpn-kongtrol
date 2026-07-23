@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta name="color-scheme" content="light dark">
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Security - VPN Kongtrol</title>
@@ -28,10 +29,13 @@
           <span class="security-row-title" data-i18n="security.killSwitch">Kill Switch</span>
           <span class="security-row-desc" data-i18n="security.killSwitchDesc">Blocks all network traffic outside the tunnel if a protected VPN drops unexpectedly.</span>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="ks-toggle" onchange="onToggleKillSwitch(this)" />
-          <span class="slider"></span>
-        </label>
+        <div class="security-row-control" style="display:flex;align-items:center;gap:12px">
+          <span id="ks-runtime-status" class="badge"><span class="skeleton" style="width:48px"></span></span>
+          <label class="switch">
+            <input type="checkbox" id="ks-toggle" onchange="onToggleKillSwitch(this)" />
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
 
       <div class="security-row">
@@ -39,10 +43,13 @@
           <span class="security-row-title" data-i18n="security.dnsGuard">DNS Guard</span>
           <span class="security-row-desc" data-i18n="security.dnsGuardDesc">Forces DNS resolution through the tunnel's resolvers to prevent DNS leaks.</span>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="dns-toggle" onchange="onToggleDNSGuard(this)" />
-          <span class="slider"></span>
-        </label>
+        <div class="security-row-control" style="display:flex;align-items:center;gap:12px">
+          <span id="dns-runtime-status" class="badge"><span class="skeleton" style="width:48px"></span></span>
+          <label class="switch">
+            <input type="checkbox" id="dns-toggle" onchange="onToggleDNSGuard(this)" />
+            <span class="slider"></span>
+          </label>
+        </div>
       </div>
     </section>
 

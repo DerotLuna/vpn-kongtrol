@@ -79,7 +79,13 @@ KONGTROL_LANG=en kongtrol doctor
 ## Useful daemon/dashboard API endpoints
 
 The embedded dashboard (`web/dashboard/`) is a full client of this API — everything it can do is
-reachable directly too. All endpoints are under `http://127.0.0.1:9741` by default.
+reachable directly too. All endpoints are under `http://127.0.0.1:9741` by default and require
+the local capability stored in `~/.kongtrol/api-token`:
+
+```bash
+curl -H "X-Kongtrol-Token: $(cat ~/.kongtrol/api-token)" \
+  http://127.0.0.1:9741/api/v1/tunnels
+```
 
 ```bash
 # Tunnels & monitoring

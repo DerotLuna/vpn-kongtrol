@@ -70,7 +70,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Theme toggle — View Transitions API, circular reveal growing from the
@@ -169,7 +169,7 @@ html:not(.kongtrol-theme-transition)::view-transition-new(root) {
 body {
   position: relative;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Module
 
-`github.com/vpn-kongtrol/kongtrol` — Go 1.22+
+`github.com/vpn-kongtrol/kongtrol` — Go 1.25+
 
 ## Common Commands
 

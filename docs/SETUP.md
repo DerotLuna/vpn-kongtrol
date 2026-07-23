@@ -108,7 +108,7 @@ sudo mv kongtrol /usr/local/bin/
 kongtrol --help
 ```
 
-### Desde el código fuente (si tienes Go 1.22+)
+### Desde el código fuente (si tienes Go 1.25+)
 
 ```bash
 git clone https://github.com/yourorg/vpn-kongtrol

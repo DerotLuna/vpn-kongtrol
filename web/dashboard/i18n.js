@@ -94,8 +94,20 @@ function initLangToggle() {
     const next = lang === 'es' ? 'en' : 'es';
     shellPulseLangButton(next);
     setLang(next);
+    if (typeof shellSavePreferences === 'function') shellSavePreferences({ language: next });
   });
 }
+
+function applyPreferenceLanguage(prefs) {
+  if (!prefs || (prefs.language !== 'es' && prefs.language !== 'en')) return;
+  localStorage.setItem(LANG_KEY, prefs.language);
+  if (prefs.language !== lang) setLang(prefs.language);
+}
+
+window.addEventListener('kongtrol:preferences-loaded', (event) => {
+  applyPreferenceLanguage(event.detail);
+});
+if (window.kongtrolPreferences) applyPreferenceLanguage(window.kongtrolPreferences);
 
 function esc(s) {
   const d = document.createElement('div');

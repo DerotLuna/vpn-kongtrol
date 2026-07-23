@@ -6,6 +6,12 @@ import (
 )
 
 func validateSemantics(cfg *Config) error {
+	if cfg.Monitor.Dashboard.Bind != "" {
+		if err := ValidateDashboardBind(cfg.Monitor.Dashboard.Bind); err != nil {
+			return err
+		}
+	}
+
 	policyNames := make(map[string]struct{}, len(cfg.Policies))
 
 	for i, pol := range cfg.Policies {

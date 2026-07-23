@@ -3,10 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -47,54 +43,14 @@ func loadOrCreateAuditHMACKey() []byte {
 	return raw
 }
 
-type preferences struct {
-	Favorites    []string `json:"favorites"`
-	DefaultGroup string   `json:"default_group"`
-	Language     string   `json:"language,omitempty"` // "es" or "en"
-	// DashboardPort/DashboardBind are a machine-local override for the
-	// embedded dashboard's listen address — set via `kongtrol config
-	// dashboard set-port/set-bind`, not editable from the dashboard itself
-	// (changing the port from the page serving that request would cut the
-	// connection mid-response). Takes precedence over kongtrol.yaml's
-	// monitor.dashboard settings when non-zero/non-empty.
-	DashboardPort int    `json:"dashboard_port,omitempty"`
-	DashboardBind string `json:"dashboard_bind,omitempty"`
-}
-
-func preferencesPath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".kongtrol", "preferences.json")
-}
+type preferences = config.Preferences
 
 func loadPreferences() (*preferences, error) {
-	path := preferencesPath()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return &preferences{}, nil
-		}
-		return nil, fmt.Errorf("preferences: read: %w", err)
-	}
-	var p preferences
-	if err := json.Unmarshal(data, &p); err != nil {
-		return nil, fmt.Errorf("preferences: decode: %w", err)
-	}
-	return &p, nil
+	return config.LoadPreferences("")
 }
 
 func savePreferences(p *preferences) error {
-	path := preferencesPath()
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return fmt.Errorf("preferences: mkdir: %w", err)
-	}
-	data, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return fmt.Errorf("preferences: encode: %w", err)
-	}
-	if err := os.WriteFile(path, data, 0o600); err != nil {
-		return fmt.Errorf("preferences: write: %w", err)
-	}
-	return nil
+	return config.SavePreferences("", p)
 }
 
 // applyDashboardPreferences overrides cfg.Monitor.Dashboard with any

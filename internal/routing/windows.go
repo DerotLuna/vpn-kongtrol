@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 // windowsRouteManager manages routes on Windows using netsh.
@@ -97,6 +98,7 @@ func (m *windowsRouteManager) List() ([]Route, error) {
 		`if (-not $name) { $name = "if-" + $idx }; ` +
 		`"$($_.DestinationPrefix)|$($_.NextHop)|$name|$($_.RouteMetric)" }`
 	cmd := exec.Command("powershell", "-NoProfile", "-Command", ps)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		// Fallback: return kongtrol-managed routes only.
@@ -166,6 +168,7 @@ func (m *windowsRouteManager) Flush(tunnelInterface string) error {
 
 func netsh(args ...string) error {
 	cmd := exec.Command("netsh", args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("netsh %v: %w\noutput: %s", args, err, out)

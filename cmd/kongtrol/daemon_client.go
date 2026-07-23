@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,7 +16,7 @@ import (
 // the same config, so this is how a `status --watch` viewer finds a daemon
 // that's already running in another process.
 func daemonAPIBase() string {
-	return fmt.Sprintf("http://%s:%d", cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
+	return "http://" + net.JoinHostPort(cfg.Monitor.Dashboard.Bind, strconv.Itoa(cfg.Monitor.Dashboard.Port))
 }
 
 // probeDaemonAPI reports whether a kongtrol daemon's API server is reachable
@@ -24,7 +26,11 @@ func daemonAPIBase() string {
 // risk a duplicate tunnel — see the `up_tui.go` daemonMode comment).
 func probeDaemonAPI(base string) bool {
 	client := http.Client{Timeout: 800 * time.Millisecond}
-	resp, err := client.Get(base + "/api/v1/tunnels")
+	req, err := daemonRequest(http.MethodGet, base+"/api/v1/tunnels", nil)
+	if err != nil {
+		return false
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
@@ -58,7 +64,11 @@ func daemonAPIError(resp *http.Response) error {
 // process initiated the connection.
 func daemonConnect(base, name string) error {
 	client := http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Post(base+"/api/v1/tunnels/"+name+"/connect", "application/json", nil)
+	req, err := daemonRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/connect", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -75,7 +85,7 @@ func daemonConnect(base, name string) error {
 // the tunnel is already down.
 func daemonDisconnect(base, name string) error {
 	client := http.Client{Timeout: 35 * time.Second}
-	req, err := http.NewRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/disconnect", nil)
+	req, err := daemonRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/disconnect", nil)
 	if err != nil {
 		return err
 	}
@@ -95,7 +105,11 @@ func daemonDisconnect(base, name string) error {
 // over an OS-level kill/signal.
 func daemonShutdown(base string) error {
 	client := http.Client{Timeout: 5 * time.Second}
-	resp, err := client.Post(base+"/api/v1/shutdown", "application/json", nil)
+	req, err := daemonRequest(http.MethodPost, base+"/api/v1/shutdown", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -104,6 +118,18 @@ func daemonShutdown(base string) error {
 		return daemonAPIError(resp)
 	}
 	return nil
+}
+
+func daemonRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Kongtrol-Token", apiToken)
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	return req, nil
 }
 
 // daemonReconnect disconnects then reconnects profile name through the

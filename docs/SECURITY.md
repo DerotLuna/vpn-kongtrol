@@ -65,7 +65,7 @@ What to do about it:
 | **DNS Guard** | `netsh interface ip set dns` per interface | `/etc/resolv.conf` rewrite (backup kept) | `networksetup -setdnsservers` per service |
 | **Credentials** | Windows Credential Manager | libsecret / D-Bus Secret Service | macOS Keychain |
 | **Audit log** | HMAC-SHA256 per entry; signing key in OS keychain | ← same | ← same |
-| **Dashboard** | Localhost-only bind (`127.0.0.1`) | ← same | ← same |
+| **Dashboard** | Localhost-only bind (`127.0.0.1`) + per-user API capability | ← same | ← same |
 
 Every subprocess the security layer shells out to (`pfctl`, `iptables`, `networksetup`, `netsh`, elevated PowerShell on Windows) runs under a bounded timeout, so a hung system call can't block the daemon's shutdown or leave the kill switch / DNS guard in an indeterminate state.
 
@@ -78,7 +78,9 @@ persists to `kongtrol.yaml` *and* immediately re-applies enforcement — for the
 re-run of `KillSwitchService.Apply()` (`internal/app/killswitch_service.go`); for DNS guard it's
 `applyDNSGuardState()` (`cmd/kongtrol/main.go`), which mirrors the same enable gate `ProfileService.Connect`
 uses. Nothing here is exposed on the network by default — the dashboard only binds to
-`127.0.0.1` unless you've explicitly overridden the bind address (see [CONFIGURATION.md](CONFIGURATION.md)).
+loopback addresses. Non-loopback overrides are rejected. Native clients authenticate with the
+mode-`0600` capability in `~/.kongtrol/api-token`; the dashboard receives the same capability in
+an HttpOnly, SameSite=Strict cookie and state-changing cross-origin requests are rejected.
 
 ## DNS guard recovery
 

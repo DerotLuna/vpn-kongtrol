@@ -19,18 +19,6 @@ builds:
       - -s -w
       - -X main.version={{.Version}}
 
-  # Tray app — CGO required, must be compiled natively per OS.
-  # Only the host OS is compiled in goreleaser; use matrix CI for multi-OS.
-  - id: kongtrol-tray
-    binary: kongtrol-tray
-    main: ./cmd/kongtrol-tray
-    env:
-      - CGO_ENABLED=1
-    goos: ["{{ .Os }}"]   # native OS only
-    goarch: ["{{ .Arch }}"]
-    ldflags:
-      - -s -w
-
 archives:
   - id: cli-archive
     builds: [kongtrol-cli]
@@ -50,6 +38,8 @@ checksum:
 release:
   draft: true
   replace_existing_draft: true
+  extra_files:
+    - glob: ./build/tray/*
 
 changelog:
   sort: asc

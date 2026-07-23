@@ -410,11 +410,10 @@ func (d *doctor) checkKeychain(cfg *config.Config) {
 // ── permissions ───────────────────────────────────────────────────────────────
 
 func (d *doctor) checkPermissions() {
-	ks := security.NewKillSwitch()
-	if err := ks.Disable(); err != nil {
-		d.warn(ct("cli.doctor.label.kill_switch"), fmt.Sprintf(ct("cli.doctor.permission.maybe_elevated"), err))
-	} else {
+	if hasNetworkAdminPrivileges() {
 		d.ok(ct("cli.doctor.label.kill_switch"), ct("cli.doctor.permission.available"))
+	} else {
+		d.warn(ct("cli.doctor.label.kill_switch"), fmt.Sprintf(ct("cli.doctor.permission.maybe_elevated"), ct("cli.doctor.permission.required")))
 	}
 
 	dnsGuard := security.NewDNSGuard()

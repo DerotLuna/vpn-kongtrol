@@ -11,11 +11,14 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
 // runCmd executes a command synchronously and returns combined output.
 func runCmd(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
+	vpn.HideChildWindow(cmd)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -26,6 +29,7 @@ func runCmd(name string, args ...string) (string, error) {
 // runCmdBackground starts a command without waiting for it to finish.
 func runCmdBackground(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
+	vpn.HideChildWindow(cmd)
 	if err := cmd.Start(); err != nil {
 		return "", fmt.Errorf("start %s: %w", name, err)
 	}

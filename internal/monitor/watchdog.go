@@ -68,6 +68,7 @@ type Watchdog struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
 // SetEventCallback registers an optional callback for watchdog lifecycle events.
@@ -179,28 +180,27 @@ func (w *Watchdog) MarkActive(name string) {
 	delete(w.intended, name)
 	alreadyActive := w.active[name]
 	w.active[name] = true
-	w.mu.Unlock()
-
-	// Spawn watcher goroutine on first activation (if Start was already called).
-	if !alreadyActive && w.ctx != nil {
-		if adapter, ok := w.adapters[name]; ok {
-			go w.watch(w.ctx, name, adapter)
-		}
+	ctx := w.ctx
+	adapter, hasAdapter := w.adapters[name]
+	if !alreadyActive && ctx != nil && hasAdapter {
+		w.wg.Go(func() { w.watch(ctx, name, adapter) })
 	}
+	w.mu.Unlock()
 }
 
 // Start begins the watchdog. It returns immediately; call Stop to end it.
 // Watcher goroutines are spawned lazily when MarkActive is called for a profile.
 func (w *Watchdog) Start(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
+	w.mu.Lock()
 	w.ctx = ctx
 	w.cancel = cancel
 
 	// Spawn watchers for any profiles already marked active before Start.
-	w.mu.Lock()
 	for name := range w.active {
 		if adapter, ok := w.adapters[name]; ok {
-			go w.watch(ctx, name, adapter)
+			name, adapter := name, adapter
+			w.wg.Go(func() { w.watch(ctx, name, adapter) })
 		}
 	}
 	w.mu.Unlock()
@@ -208,9 +208,15 @@ func (w *Watchdog) Start(ctx context.Context) {
 
 // Stop shuts down all watchdog goroutines.
 func (w *Watchdog) Stop() {
-	if w.cancel != nil {
-		w.cancel()
+	w.mu.Lock()
+	cancel := w.cancel
+	w.cancel = nil
+	w.ctx = nil
+	w.mu.Unlock()
+	if cancel != nil {
+		cancel()
 	}
+	w.wg.Wait()
 }
 
 func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapter) {
@@ -260,10 +266,17 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 				zap.Duration("backoff", delay),
 			)
 
+			timer := time.NewTimer(delay)
 			select {
 			case <-ctx.Done():
+				if !timer.Stop() {
+					select {
+					case <-timer.C:
+					default:
+					}
+				}
 				return
-			case <-time.After(delay):
+			case <-timer.C:
 			}
 
 			w.mu.Lock()

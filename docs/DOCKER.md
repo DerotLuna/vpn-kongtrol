@@ -22,4 +22,4 @@ Or with Compose:
 docker compose -f build/docker/docker-compose.yml up -d
 ```
 
-> **Note:** `--privileged` and `--cap-add NET_ADMIN` are required for tunnel and routing management. Never expose port 9741 externally without adding authentication.
+> **Note:** `--privileged` and `--cap-add NET_ADMIN` are required for tunnel and routing management. The control API only accepts loopback binds; expose it through a local SSH tunnel rather than publishing it on a LAN interface.

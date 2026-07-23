@@ -42,9 +42,9 @@
 | Profile groups (`kongtrol up --group work`) | ✅ |
 | `kongtrol status --watch` (live terminal view, remote daemon streaming) | ✅ |
 | `kongtrol export` (sanitized config template for teammates) | ✅ |
-| Per-app routing rules (experimental) | ✅ |
+| Per-app rule resolution and diagnostics (OS-level enforcement pending) | 🧪 |
 | Unit, integration, and race-detector test coverage | ✅ |
-| Full E2E test suite with live VPN daemons | ✅ |
+| Live-daemon E2E tests (OpenVPN and WireGuard; broader adapter coverage pending) | 🧪 |
 
 ## Roadmap
 
@@ -67,7 +67,7 @@ Cisco AnyConnect · WireGuard · GlobalProtect · Tailscale · Cloudflare WARP �
 `kongtrol doctor` · Profile groups · `status --watch` · `kongtrol export`
 
 ### v1.2 ✅
-Per-app routing (experimental) · Full E2E test suite with live VPN daemons
+Per-app rule resolution (experimental) · Live OpenVPN/WireGuard daemon E2E harness
 
 ### v1.3 ✅
 Event-driven architecture (fsnotify log tailing, metrics change broadcast, live remote status streaming) · Graceful cross-platform daemon shutdown · Timeout-bounded system calls throughout the security layer

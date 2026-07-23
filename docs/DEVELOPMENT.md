@@ -15,7 +15,7 @@ make build-tray-native  # tray app, native only (requires CGO)
 ## Test
 
 ```bash
-go test ./...                                      # all packages
+go test ./cmd/... ./internal/... ./assets ./web    # all product packages
 go test ./internal/policy/                          # single package
 go test -run TestEngine_ResolveIP ./internal/policy/ # single test
 make test-race                                       # with the race detector (requires a C toolchain)
@@ -25,8 +25,8 @@ go test -tags e2e ./internal/vpn/...                 # E2E tests against live da
 ## Lint
 
 ```bash
-go vet ./...
-golangci-lint run ./...
+go vet ./cmd/... ./internal/... ./assets ./web
+golangci-lint run ./cmd/... ./internal/... ./assets ./web
 ```
 
 ## Release

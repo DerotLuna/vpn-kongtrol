@@ -90,6 +90,8 @@ const I18N = {
     'badge.leak': 'FUGA',
     'badge.clean': 'LIMPIO',
     'badge.pending': 'PENDIENTE',
+    'badge.error': 'ERROR',
+    'badge.unavailable': 'NO DISPONIBLE',
     'filter.showing': 'Mostrando {shown} de {total} políticas para: {query}',
     'filter.showingAll': 'Mostrando {total} políticas',
     'network.metric': 'métrica',
@@ -187,6 +189,8 @@ const I18N = {
     'badge.leak': 'LEAK',
     'badge.clean': 'CLEAN',
     'badge.pending': 'PENDING',
+    'badge.error': 'ERROR',
+    'badge.unavailable': 'UNAVAILABLE',
     'filter.showing': 'Showing {shown} of {total} policies for: {query}',
     'filter.showingAll': 'Showing {total} policies',
     'network.metric': 'metric',
@@ -440,11 +444,15 @@ async function refreshSecurity() {
     if (!res.ok) return;
     const data = await res.json();
 
-    setFeatureBadge('ks-status', data.kill_switch_enabled, data.kill_switch);
-    setFeatureBadge('dns-status', data.dns_guard_enabled, data.dns_guard);
+    setFeatureStateBadge('ks-status', data.kill_switch_state);
+    setFeatureStateBadge('dns-status', data.dns_guard_state);
 
-    if (!data.leak_detection_enabled) {
-      setBadge('leak-status', t('badge.disabled'), 'disabled');
+    if (!data.leak_check_available) {
+      setBadge(
+        'leak-status',
+        data.leak_detection_configured ? t('badge.unavailable') : t('badge.disabled'),
+        data.leak_detection_configured ? 'leak' : 'disabled',
+      );
       document.getElementById('public-ip').textContent = knownPublicIP() || '—';
       document.getElementById('base-public-ip').textContent = knownPublicIP() || '—';
       document.getElementById('leak-time').textContent = '—';
@@ -453,7 +461,11 @@ async function refreshSecurity() {
 
     if (data.leak_check) {
       const lk = data.leak_check;
-      setBadge('leak-status', lk.has_leak ? t('badge.leak') : t('badge.clean'), lk.has_leak ? 'leak' : 'ok');
+      if (lk.state === 'error') {
+        setBadge('leak-status', t('badge.error'), 'leak');
+      } else {
+        setBadge('leak-status', lk.has_leak ? t('badge.leak') : t('badge.clean'), lk.has_leak ? 'leak' : 'ok');
+      }
       lastPublicIP = lk.public_ip || '';
       document.getElementById('public-ip').textContent = lastPublicIP || '—';
       document.getElementById('base-public-ip').textContent = lastPublicIP || '—';
@@ -477,6 +489,16 @@ function setFeatureBadge(id, enabled, active) {
   if (!enabled) {
     setBadge(id, t('badge.disabled'), 'disabled');
     return;
+  }
+
+  function setFeatureStateBadge(id, state) {
+    if (state === 'disabled') {
+      setBadge(id, t('badge.disabled'), 'disabled');
+    } else if (state === 'armed' || state === 'active') {
+      setBadge(id, t('badge.on'), 'on');
+    } else {
+      setBadge(id, t('badge.idle'), 'pending');
+    }
   }
   setBadge(id, active ? t('badge.on') : t('badge.idle'), active ? 'on' : 'off');
 }

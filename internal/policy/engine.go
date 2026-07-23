@@ -233,10 +233,11 @@ func (e *Engine) resolveDomainMatch(domain string) (rule *Rule, pattern string, 
 }
 
 func (e *Engine) resolveAppMatch(app string) (rule *Rule, pattern string, matched bool) {
+	full, base, baseNoExt := normalizeApp(app)
 	for _, r := range e.rules {
-		for _, p := range r.Match.Apps {
-			if appMatchesPattern(app, p) {
-				return r, p, true
+		for i, p := range r.appPatterns {
+			if appMatchesNormalized(full, base, baseNoExt, p) {
+				return r, r.Match.Apps[i], true
 			}
 		}
 	}

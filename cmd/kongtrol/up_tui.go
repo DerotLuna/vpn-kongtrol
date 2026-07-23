@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -917,7 +918,8 @@ func watchRemoteDaemon(ctx context.Context, p *tea.Program) {
 // forwards every snapshot into the TUI until the connection drops or ctx
 // is cancelled.
 func streamRemoteTunnels(ctx context.Context, p *tea.Program, base string) {
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, daemonWSURL(base), nil)
+	headers := http.Header{"X-Kongtrol-Token": []string{apiToken}}
+	conn, _, err := websocket.DefaultDialer.DialContext(ctx, daemonWSURL(base), headers)
 	if err != nil {
 		return
 	}

@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -56,7 +57,7 @@ var (
 	engine              *policy.Engine
 	ks                  security.KillSwitch
 	killSwitchSvc       *app.KillSwitchService
-	profileSvc          *app.ProfileService
+	profileSvc          atomic.Pointer[app.ProfileService]
 	leak                *security.LeakTester
 	audit               *security.AuditLogger
 	col                 *monitor.Collector
@@ -66,6 +67,7 @@ var (
 	policyResolver      *monitor.PolicyResolver
 	splitDNSMgr         *monitor.SplitDNSManager
 	alertBell           bool
+	apiToken            string
 	sessionGreetingLine string
 	sessionLastUseLine  string
 )
@@ -822,15 +824,70 @@ func renderSecurityLine(ksEnabled, ksActive, dnsEnabled, dnsActive bool) string 
 		styleBright.Render(ct("cli.status.dns_guard")) + " " + dnsStateStyle.Render(dnsState)
 }
 
+func renderLeakCheckLine(configured, available bool, check *apiLeakCheck) string {
+	state := ct("cli.status.security.disabled_caps")
+	stateStyle := styleDim
+	if configured && !available {
+		state = ct("cli.status.security.unavailable_caps")
+		stateStyle = styleStatusErr
+	}
+	if available {
+		state = ct("cli.status.security.pending_caps")
+		stateStyle = styleStatusDown
+	}
+	if check != nil {
+		switch check.State {
+		case "clean":
+			state = ct("cli.status.security.clean_caps")
+			stateStyle = styleStatusUp
+		case "leak":
+			state = ct("cli.status.security.leak_caps")
+			stateStyle = styleStatusErr
+		case "error":
+			state = ct("cli.status.security.error_caps")
+			stateStyle = styleStatusErr
+		}
+	}
+	return styleBright.Render(ct("cli.status.leak_check")) + " " + stateStyle.Render(state)
+}
+
 func renderWatchdogLine() string {
 	return styleInfo.Render(sym("●", "~")) + " " + styleBright.Render(cf("cli.status.watchdog.line", "5s", "2s", "5m"))
 }
 
 type apiSecurityStatus struct {
-	KillSwitch        bool `json:"kill_switch"`
-	KillSwitchEnabled bool `json:"kill_switch_enabled"`
-	DNSGuard          bool `json:"dns_guard"`
-	DNSGuardEnabled   bool `json:"dns_guard_enabled"`
+	KillSwitch              bool          `json:"kill_switch"`
+	KillSwitchEnabled       bool          `json:"kill_switch_enabled"`
+	DNSGuard                bool          `json:"dns_guard"`
+	DNSGuardEnabled         bool          `json:"dns_guard_enabled"`
+	LeakDetectionEnabled    bool          `json:"leak_detection_enabled"`
+	LeakDetectionConfigured bool          `json:"leak_detection_configured"`
+	LeakCheckAvailable      bool          `json:"leak_check_available"`
+	LeakCheck               *apiLeakCheck `json:"leak_check,omitempty"`
+}
+
+type apiLeakCheck struct {
+	State     string    `json:"state"`
+	HasLeak   bool      `json:"has_leak"`
+	PublicIP  string    `json:"public_ip,omitempty"`
+	Reason    string    `json:"reason,omitempty"`
+	CheckedAt time.Time `json:"checked_at"`
+}
+
+func leakResultToAPI(result *security.LeakResult) *apiLeakCheck {
+	state := "clean"
+	if result.HasLeak {
+		state = "leak"
+	} else if result.PublicIP == "" && result.Reason != "" {
+		state = "error"
+	}
+	return &apiLeakCheck{
+		State:     state,
+		HasLeak:   result.HasLeak,
+		PublicIP:  result.PublicIP,
+		Reason:    result.Reason,
+		CheckedAt: result.CheckedAt,
+	}
 }
 
 type statusTunnelJSON struct {
@@ -842,10 +899,13 @@ type statusTunnelJSON struct {
 }
 
 type statusSecurityJSON struct {
-	KillSwitchEnabled bool `json:"kill_switch_enabled"`
-	KillSwitchActive  bool `json:"kill_switch_active"`
-	DNSGuardEnabled   bool `json:"dns_guard_enabled"`
-	DNSGuardActive    bool `json:"dns_guard_active"`
+	KillSwitchEnabled       bool          `json:"kill_switch_enabled"`
+	KillSwitchActive        bool          `json:"kill_switch_active"`
+	DNSGuardEnabled         bool          `json:"dns_guard_enabled"`
+	DNSGuardActive          bool          `json:"dns_guard_active"`
+	LeakDetectionConfigured bool          `json:"leak_detection_configured"`
+	LeakCheckAvailable      bool          `json:"leak_check_available"`
+	LeakCheck               *apiLeakCheck `json:"leak_check,omitempty"`
 }
 
 type statusReportJSON struct {
@@ -869,8 +929,10 @@ func collectStatusReport() (statusReportJSON, error) {
 		Source:      "local",
 		Tunnels:     make([]statusTunnelJSON, 0, len(adapters)),
 		Security: statusSecurityJSON{
-			KillSwitchEnabled: cfg.Security.KillSwitch.Enabled,
-			DNSGuardEnabled:   cfg.Security.DNSGuard.Enabled,
+			KillSwitchEnabled:       cfg.Security.KillSwitch.Enabled,
+			DNSGuardEnabled:         cfg.Security.DNSGuard.Enabled,
+			LeakDetectionConfigured: cfg.Security.LeakDetection.Enabled,
+			LeakCheckAvailable:      leak != nil,
 		},
 	}
 	report.User = resolveSystemUserName()
@@ -884,6 +946,9 @@ func collectStatusReport() (statusReportJSON, error) {
 		report.Security.KillSwitchEnabled = sec.KillSwitchEnabled
 		report.Security.DNSGuardActive = sec.DNSGuard
 		report.Security.DNSGuardEnabled = sec.DNSGuardEnabled
+		report.Security.LeakDetectionConfigured = sec.LeakDetectionConfigured
+		report.Security.LeakCheckAvailable = sec.LeakCheckAvailable
+		report.Security.LeakCheck = sec.LeakCheck
 		for _, t := range tunnels {
 			item := statusTunnelJSON{
 				Name:       t.Name,
@@ -910,6 +975,11 @@ func collectStatusReport() (statusReportJSON, error) {
 	}
 	if dnsMgr != nil {
 		report.Security.DNSGuardActive = dnsMgr.IsActive()
+	}
+	if leak != nil {
+		if result := leak.LastResult(); result != nil {
+			report.Security.LeakCheck = leakResultToAPI(result)
+		}
 	}
 	for _, name := range sortedAdapterNames(adapters) {
 		adapter := adapters[name]
@@ -941,7 +1011,11 @@ func collectStatusReport() (statusReportJSON, error) {
 
 func fetchDaemonHistory() (map[string]monitor.ProfileHistory, error) {
 	client := &http.Client{Timeout: 1200 * time.Millisecond}
-	resp, err := client.Get(dashboardURL() + "/api/v1/metrics/history")
+	req, err := daemonRequest(http.MethodGet, dashboardURL()+"/api/v1/metrics/history", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -960,7 +1034,11 @@ func fetchDaemonSnapshot() ([]monitor.TunnelMetrics, *apiSecurityStatus, error) 
 	client := &http.Client{Timeout: 1200 * time.Millisecond}
 	base := dashboardURL()
 
-	tResp, err := client.Get(base + "/api/v1/tunnels")
+	tReq, err := daemonRequest(http.MethodGet, base+"/api/v1/tunnels", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	tResp, err := client.Do(tReq)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -977,7 +1055,11 @@ func fetchDaemonSnapshot() ([]monitor.TunnelMetrics, *apiSecurityStatus, error) 
 		return tunnels[i].Name < tunnels[j].Name
 	})
 
-	sResp, err := client.Get(base + "/api/v1/security/status")
+	sReq, err := daemonRequest(http.MethodGet, base+"/api/v1/security/status", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	sResp, err := client.Do(sReq)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1037,6 +1119,7 @@ func printStatus() {
 		sep := tableRule(layout.RuleW)
 		fmt.Println(renderStatusSummary(rows))
 		fmt.Println("  " + renderSecurityLine(sec.KillSwitchEnabled, sec.KillSwitch, sec.DNSGuardEnabled, sec.DNSGuard))
+		fmt.Println("  " + renderLeakCheckLine(sec.LeakDetectionConfigured, sec.LeakCheckAvailable, sec.LeakCheck))
 		fmt.Println("  " + renderWatchdogLine())
 		fmt.Println()
 		fmt.Println(renderTunnelHeader(layout))
@@ -1089,6 +1172,13 @@ func printStatus() {
 	sep := tableRule(layout.RuleW)
 	fmt.Println(renderStatusSummary(rows))
 	fmt.Println("  " + renderSecurityLine(ksEnabled, ksActive, dnsEnabled, dnsActive))
+	var leakCheck *apiLeakCheck
+	if leak != nil {
+		if result := leak.LastResult(); result != nil {
+			leakCheck = leakResultToAPI(result)
+		}
+	}
+	fmt.Println("  " + renderLeakCheckLine(cfg != nil && cfg.Security.LeakDetection.Enabled, leak != nil, leakCheck))
 	fmt.Println("  " + renderWatchdogLine())
 	fmt.Println()
 	fmt.Println(renderTunnelHeader(layout))
@@ -1728,6 +1818,9 @@ var configDashboardSetBindCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bind := strings.TrimSpace(args[0])
+		if err := config.ValidateDashboardBind(bind); err != nil {
+			return fmt.Errorf("%s", cf("cli.config.dashboard.invalid_bind", bind))
+		}
 		p, err := loadPreferences()
 		if err != nil {
 			return err
@@ -1974,6 +2067,13 @@ func loadConfig() error {
 		return err
 	}
 	applyDashboardPreferences(cfg)
+	if err := config.Validate(cfg); err != nil {
+		return err
+	}
+	apiToken, err = config.LoadOrCreateAPIToken()
+	if err != nil {
+		return err
+	}
 
 	// Instantiate adapters from config.
 	adapters = make(map[string]vpn.VPNAdapter)
@@ -2046,8 +2146,8 @@ func loadConfig() error {
 		case "reconnect_failed":
 			emitAlert("ERROR", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
 			logAudit("ERROR", "vpn.reconnect_failed", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
-			if profileSvc != nil {
-				profileSvc.HandleReconnectError(profile, err)
+			if svc := profileSvc.Load(); svc != nil {
+				svc.HandleReconnectError(profile, err)
 			}
 		case "reconnected":
 			if col != nil {
@@ -2095,7 +2195,7 @@ func loadConfig() error {
 		parseDuration(cfg.Monitor.SplitDNS.Interval, 60*time.Second),
 		log,
 	)
-	profileSvc = buildProfileService()
+	profileSvc.Store(buildProfileService())
 
 	if audit != nil {
 		_ = audit.Close()
@@ -2171,17 +2271,19 @@ func buildProfileService() *app.ProfileService {
 }
 
 func disconnectProfile(ctx context.Context, name string) error {
-	if profileSvc == nil {
+	svc := profileSvc.Load()
+	if svc == nil {
 		return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
 	}
-	return profileSvc.Disconnect(ctx, name)
+	return svc.Disconnect(ctx, name)
 }
 
 func connectProfile(ctx context.Context, name string) error {
-	if profileSvc == nil {
+	svc := profileSvc.Load()
+	if svc == nil {
 		return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
 	}
-	return profileSvc.Connect(ctx, name)
+	return svc.Connect(ctx, name)
 }
 
 // buildAPIServer wires up the embedded API/dashboard server. onShutdown is
@@ -2207,7 +2309,7 @@ func buildAPIServer(onShutdown func()) *api.Server {
 			cfg = newCfg
 			engine = newEngine
 			killSwitchSvc = app.NewKillSwitchService(cfg, adapters, ks)
-			profileSvc = buildProfileService()
+			profileSvc.Store(buildProfileService())
 		},
 		func(newCfg *config.Config) {
 			_ = applyKillSwitchState()
@@ -2215,6 +2317,9 @@ func buildAPIServer(onShutdown func()) *api.Server {
 		},
 		dnsMgr,
 		cfg.Security.DNSGuard.Enabled,
+		connectProfile,
+		disconnectProfile,
+		apiToken,
 		onShutdown,
 	)
 }
@@ -2411,10 +2516,11 @@ func applyDNSGuardState() {
 }
 
 func policyAllowedIPs(profileName string) []string {
-	if profileSvc == nil {
+	svc := profileSvc.Load()
+	if svc == nil {
 		return nil
 	}
-	return profileSvc.PolicyAllowedIPs(profileName)
+	return svc.PolicyAllowedIPs(profileName)
 }
 
 // openBrowser launches the OS default browser at url. Callers decide whether

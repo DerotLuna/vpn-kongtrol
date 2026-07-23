@@ -135,7 +135,7 @@ monitor:
   enabled: true
   dashboard:
     port: 9741
-    bind: "127.0.0.1"  # never expose to 0.0.0.0 without adding auth
+    bind: "127.0.0.1"  # loopback only; non-local addresses are rejected
     # Machine-local override (doesn't touch this file): `kongtrol config
     # dashboard set-port <port>` / `set-bind <address>`, stored in
     # ~/.kongtrol/preferences.json. Not editable from the dashboard itself.

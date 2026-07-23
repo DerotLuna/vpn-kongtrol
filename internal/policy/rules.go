@@ -11,10 +11,11 @@ import (
 
 // Rule maps a set of traffic patterns to a VPN profile name.
 type Rule struct {
-	Name     string
-	Match    MatchSpec
-	Via      string // VPN profile name from config
-	Priority int    // higher = evaluated first
+	Name        string
+	Match       MatchSpec
+	Via         string // VPN profile name from config
+	Priority    int    // higher = evaluated first
+	appPatterns []string
 }
 
 // MatchSpec defines which traffic a rule targets.
@@ -52,6 +53,10 @@ func ParseRule(name, via string, ipRanges, domains, apps []string, priority int)
 		}
 		r.Match.IPRanges = append(r.Match.IPRanges, network)
 	}
+	r.appPatterns = make([]string, len(apps))
+	for i, app := range apps {
+		r.appPatterns[i] = normalizePattern(app)
+	}
 
 	return r, nil
 }
@@ -81,8 +86,9 @@ func (r *Rule) MatchesDomain(domain string) bool {
 // MatchesApp reports whether the rule matches the given process executable.
 // Accepts either full process path or executable name.
 func (r *Rule) MatchesApp(app string) bool {
-	for _, pattern := range r.Match.Apps {
-		if appMatchesPattern(app, pattern) {
+	full, base, baseNoExt := normalizeApp(app)
+	for _, pattern := range r.appPatterns {
+		if appMatchesNormalized(full, base, baseNoExt, pattern) {
 			return true
 		}
 	}
@@ -120,21 +126,28 @@ func appMatchesPattern(app, pattern string) bool {
 		return false
 	}
 	p := normalizePattern(pattern)
-	if p == "" {
+	return appMatchesNormalized(full, base, baseNoExt, p)
+}
+
+func appMatchesNormalized(full, base, baseNoExt, pattern string) bool {
+	if full == "" {
 		return false
 	}
-	if strings.Contains(p, "/") {
-		if ok, _ := path.Match(p, full); ok {
+	if pattern == "" {
+		return false
+	}
+	if strings.Contains(pattern, "/") {
+		if ok, _ := path.Match(pattern, full); ok {
 			return true
 		}
 		return false
 	}
 
-	if ok, _ := path.Match(p, base); ok {
+	if ok, _ := path.Match(pattern, base); ok {
 		return true
 	}
 	if baseNoExt != "" {
-		if ok, _ := path.Match(p, baseNoExt); ok {
+		if ok, _ := path.Match(pattern, baseNoExt); ok {
 			return true
 		}
 	}
