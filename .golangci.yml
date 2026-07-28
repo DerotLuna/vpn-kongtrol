@@ -1,0 +1,51 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - funlen
+    - gocyclo
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+
+  settings:
+    funlen:
+      lines: 150
+      statements: 100
+    gocyclo:
+      min-complexity: 25
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+
+  exclusions:
+    rules:
+      # Test files legitimately run long table-driven setups.
+      - path: _test\.go
+        linters:
+          - funlen
+          - gocyclo
+      # Bubble Tea's Update() is an idiomatic large switch over message types;
+      # splitting it up would hurt readability, not help it.
+      - path: cmd/kongtrol/up_tui\.go
+        linters:
+          - funlen
+          - gocyclo
+      # i18n string tables are Spanish/English UI copy — misspell only knows
+      # English, so every Spanish string reads as a typo.
+      - path: internal/i18n/i18n\.go
+        linters:
+          - misspell
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
