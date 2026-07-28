@@ -1,13 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -90,26 +87,55 @@ func newForm(groups ...*huh.Group) *huh.Form {
 	return huh.NewForm(groups...).WithTheme(kongTheme())
 }
 
+// ── Cancellation ──────────────────────────────────────────────────────────────
+
+// errWizardCancelled is returned up the call stack the moment a user aborts
+// any huh form (Ctrl+C / Esc) — every collect* function propagates it instead
+// of swallowing the error and continuing with zero-value fields.
+var errWizardCancelled = errors.New("wizard cancelled")
+
+// runForm runs a huh.Form and normalizes huh's own abort error to
+// errWizardCancelled, so every call site can check for one sentinel.
+func runForm(form *huh.Form) error {
+	if err := form.Run(); err != nil {
+		if errors.Is(err, huh.ErrUserAborted) {
+			return errWizardCancelled
+		}
+		return err
+	}
+	return nil
+}
+
 // ── wizard entry point ────────────────────────────────────────────────────────
 
 func runWizard(_ *cobra.Command, _ []string) error {
-	// ── 1. Language selection ─────────────────────────────────────────────────
+	// ── 1. Language selection — only asked the very first time ───────────────
+	// Once a language is on record in preferences.json, every later `init` run
+	// (and every other command, via cliLang()) just uses it. Changing it after
+	// that goes through `kongtrol config lang <es|en>`, not this wizard.
+	prefs, prefsErr := loadPreferences()
 	var langChoice string
-	langForm := huh.NewForm(
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Title("Language / Idioma").
-				Options(
-					huh.NewOption("Español", "es"),
-					huh.NewOption("English", "en"),
-				).
-				Value(&langChoice),
-		),
-	).WithTheme(kongTheme())
+	firstRun := prefsErr != nil || strings.TrimSpace(prefs.Language) == ""
 
-	if err := langForm.Run(); err != nil {
-		return nil // user aborted
+	if firstRun {
+		langForm := newForm(
+			huh.NewGroup(
+				huh.NewSelect[string]().
+					Title("Language / Idioma").
+					Options(
+						huh.NewOption("Español", "es"),
+						huh.NewOption("English", "en"),
+					).
+					Value(&langChoice),
+			),
+		)
+		if err := runForm(langForm); err != nil {
+			return nil // user aborted before there's anything to lose
+		}
+	} else {
+		langChoice = strings.ToLower(strings.TrimSpace(prefs.Language))
 	}
+
 	var lang i18n.Lang
 	if langChoice == "en" {
 		lang = i18n.EN
@@ -118,11 +144,19 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	}
 	t := func(key string) string { return i18n.T(lang, key) }
 	tf := func(key string, a ...any) string { return i18n.F(lang, key, a...) }
+	cancelled := func() error {
+		fmt.Println(styleWarn.Render(t("wizard.cancelled")))
+		return nil
+	}
 
-	// Persist the choice so every other command (status, up, ...) uses it too.
-	if p, err := loadPreferences(); err == nil {
-		p.Language = langChoice
-		_ = savePreferences(p)
+	if firstRun {
+		// Persist the choice so every other command (status, up, ...) uses it
+		// too, and won't ask again.
+		if p, err := loadPreferences(); err == nil {
+			p.Language = langChoice
+			_ = savePreferences(p)
+		}
+		fmt.Println(styleDim.Render("  " + t("wizard.lang.change_hint")))
 	}
 
 	// ── 2. Banner — the site hero's motd, now in the terminal ─────────────────
@@ -182,25 +216,32 @@ func runWizard(_ *cobra.Command, _ []string) error {
 
 		// Offer credential refresh
 		var refreshAny bool
-		_ = newForm(
+		if err := runForm(newForm(
 			huh.NewGroup(
 				huh.NewConfirm().
 					Title(t("profile.refresh_any")).
 					Value(&refreshAny),
 			),
-		).Run()
+		)); err != nil {
+			return cancelled()
+		}
 		if refreshAny {
 			for name, vpnCfg := range existing.VPNs {
 				var refreshThis bool
-				_ = newForm(
+				if err := runForm(newForm(
 					huh.NewGroup(
 						huh.NewConfirm().
 							Title(tf("profile.refresh_creds") + " [" + name + "]").
 							Value(&refreshThis),
 					),
-				).Run()
+				)); err != nil {
+					return cancelled()
+				}
 				if refreshThis {
 					if err := collectCredentialsHuh(lang, name, vpnCfg.Type, vpnCfg.Auth); err != nil {
+						if errors.Is(err, errWizardCancelled) {
+							return cancelled()
+						}
 						fmt.Println(tuiWarn(err.Error()))
 					}
 				}
@@ -218,20 +259,24 @@ func runWizard(_ *cobra.Command, _ []string) error {
 		}
 	}
 
+	var addedProfiles []profileSummary
 	for {
 		var addNew bool
-		if err := newForm(
+		if err := runForm(newForm(
 			huh.NewGroup(
 				huh.NewConfirm().
 					Title(styleBright.Render(t("profile.add_new"))).
 					Value(&addNew),
 			),
-		).Run(); err != nil || !addNew {
+		)); err != nil || !addNew {
 			break
 		}
 
 		profile, vpnNode, err := collectProfileHuh(lang, detected, knownProfiles)
 		if err != nil {
+			if errors.Is(err, errWizardCancelled) {
+				return cancelled()
+			}
 			fmt.Println(tuiErr(err.Error()))
 			continue
 		}
@@ -248,13 +293,15 @@ func runWizard(_ *cobra.Command, _ []string) error {
 		if knownProfiles[profile] {
 			fmt.Println(tuiWarn(tf("profile.already_exists", profile)))
 			var replace bool
-			_ = newForm(
+			if err := runForm(newForm(
 				huh.NewGroup(
 					huh.NewConfirm().
 						Title(t("profile.replace_confirm")).
 						Value(&replace),
 				),
-			).Run()
+			)); err != nil {
+				return cancelled()
+			}
 			if !replace {
 				fmt.Println(styleDim.Render("  " + t("profile.replace_skipped")))
 				continue
@@ -264,10 +311,21 @@ func runWizard(_ *cobra.Command, _ []string) error {
 
 		vpnsNode.Content = append(vpnsNode.Content, scalarNode(profile), vpnNode)
 		knownProfiles[profile] = true
+		addedProfiles = append(addedProfiles, profileSummary{
+			name: profile,
+			typ:  valueOf(vpnNode, "type"),
+			host: valueOf(vpnNode, "host"),
+		})
 	}
 
 	// ── 8. Routing policies ───────────────────────────────────────────────────
-	collectPoliciesHuh(lang, doc, existing, knownProfiles)
+	addedPolicies, err := collectPoliciesHuh(lang, doc, existing, knownProfiles)
+	if err != nil {
+		if errors.Is(err, errWizardCancelled) {
+			return cancelled()
+		}
+		return err
+	}
 
 	// ── 9. Security ───────────────────────────────────────────────────────────
 	StepHeader(3, 4, t("section.security"))
@@ -294,7 +352,7 @@ func runWizard(_ *cobra.Command, _ []string) error {
 		enableKS, enableDNS, enableAudit, enableMonitor = true, true, true, true
 	}
 
-	_ = newForm(
+	if err := runForm(newForm(
 		huh.NewGroup(
 			huh.NewNote().
 				Title(t("section.security")).
@@ -316,7 +374,9 @@ func runWizard(_ *cobra.Command, _ []string) error {
 				Description(styleDim.Render(t("hint.dashboard"))).
 				Value(&enableMonitor),
 		),
-	).Run()
+	)); err != nil {
+		return cancelled()
+	}
 
 	auditPath := filepath.Join(home, ".kongtrol", "audit.log")
 	if enableKS {
@@ -338,16 +398,23 @@ func runWizard(_ *cobra.Command, _ []string) error {
 		setMapping(doc, "monitor", mapNode([][2]string{{"enabled", "true"}}))
 	}
 
-	// ── 10. Confirm + write ───────────────────────────────────────────────────
+	// ── 10. Review + confirm + write ──────────────────────────────────────────
 	StepHeader(4, 4, t("section.write"))
+	fmt.Println(renderReviewPanel(lang, outPath, addedProfiles, addedPolicies, securitySummary{
+		killSwitch: enableKS, dnsGuard: enableDNS, auditLog: enableAudit, monitor: enableMonitor,
+	}))
+	fmt.Println()
+
 	var doWrite bool
-	_ = newForm(
+	if err := runForm(newForm(
 		huh.NewGroup(
 			huh.NewConfirm().
 				Title(tf("write.confirm", styleWarn.Render(outPath))).
 				Value(&doWrite),
 		),
-	).Run()
+	)); err != nil {
+		return cancelled()
+	}
 
 	if !doWrite {
 		fmt.Println(tuiWarn(t("write.aborted")))
@@ -386,988 +453,70 @@ func runWizard(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-// ── Profile collection ────────────────────────────────────────────────────────
+// ── Review panel ──────────────────────────────────────────────────────────────
 
-func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, knownProfiles map[string]bool) (string, *yaml.Node, error) {
-	t := func(key string) string { return i18n.T(lang, key) }
-
-	SectionHeader(t("section.new_profile"))
-
-	// Build adapter options — detected ones first, with a note.
-	allAdapters := []string{"forticlient", "openvpn", "protonvpn", "ciscoanyconnect", "wireguard", "globalprotect", "tailscale", "cloudflarewarp"}
-	detectedKeys := detectedAdapterKeys(detected)
-
-	var adapterOpts []huh.Option[string]
-	for _, key := range allAdapters {
-		if detectedKeys[key] {
-			adapterOpts = append(adapterOpts, huh.NewOption(key+" ✓", key))
-		}
-	}
-	for _, key := range allAdapters {
-		if !detectedKeys[key] {
-			adapterOpts = append(adapterOpts, huh.NewOption(key, key))
-		}
-	}
-
-	var (
-		name        string
-		adapterType string
-	)
-	defAdapter := "openvpn"
-	if len(adapterOpts) > 0 {
-		// First option is the first detected (or first in list).
-		defAdapter = allAdapters[0]
-		for _, key := range allAdapters {
-			if detectedKeys[key] {
-				defAdapter = key
-				break
-			}
-		}
-	}
-	adapterType = defAdapter
-
-	if err := newForm(
-		huh.NewGroup(
-			huh.NewInput().
-				Title(t("collect.profile_name")).
-				Description(styleDim.Render("e.g. work-vpn, office-forti")).
-				Validate(func(s string) error {
-					if strings.TrimSpace(s) == "" {
-						return fmt.Errorf("%s", t("collect.profile_name_empty"))
-					}
-					return nil
-				}).
-				Value(&name),
-			huh.NewSelect[string]().
-				Title(t("collect.type")).
-				Description(styleDim.Render("✓ = detected on this machine")).
-				Options(adapterOpts...).
-				Value(&adapterType),
-		),
-	).Run(); err != nil {
-		return "", nil, nil
-	}
-
-	name = strings.ToLower(strings.ReplaceAll(strings.TrimSpace(name), " ", "-"))
-	if name == "" {
-		return "", nil, fmt.Errorf("%s", t("collect.profile_name_empty"))
-	}
-
-	// Type-specific fields
-	fields := [][2]string{{"type", adapterType}}
-	auth := config.AuthConfig{}
-
-	switch adapterType {
-	case "forticlient":
-		if err := collectFortiFields(lang, name, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "openvpn":
-		if err := collectOpenVPNFields(lang, name, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "protonvpn":
-		if err := collectProtonFields(lang, name, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "ciscoanyconnect":
-		if err := collectCiscoFields(lang, name, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "wireguard":
-		if err := collectWireGuardFields(lang, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "globalprotect":
-		if err := collectGlobalProtectFields(lang, name, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "tailscale":
-		if err := collectTailscaleFields(lang, name, &fields, &auth); err != nil {
-			return "", nil, err
-		}
-
-	case "cloudflarewarp":
-		fmt.Println(tuiInfo(i18n.T(lang, "collect.warp_info1")))
-		fmt.Println(styleDim.Render("  " + i18n.T(lang, "collect.warp_info2")))
-		auth.Method = "credentials"
-
-	default:
-		return "", nil, fmt.Errorf("%s", i18n.F(lang, "collect.unknown_adapter", adapterType))
-	}
-
-	// Binary path override when not detected
-	if adapterType != "cloudflarewarp" && !detectedKeys[adapterType] {
-		fmt.Println(tuiWarn(i18n.T(lang, "collect.not_detected")))
-		var binPath string
-		_ = newForm(huh.NewGroup(
-			huh.NewInput().
-				Title(i18n.T(lang, "collect.binary_path")).
-				Description(styleDim.Render("Leave empty to skip")).
-				Value(&binPath),
-		)).Run()
-		if binPath != "" {
-			fields = append(fields, [2]string{"binary_path", binPath})
-		}
-	}
-
-	// Priority
-	var priorityStr string = "10"
-	_ = newForm(huh.NewGroup(
-		huh.NewInput().
-			Title(i18n.T(lang, "collect.priority")).
-			Placeholder("10").
-			Value(&priorityStr),
-	)).Run()
-	if priorityStr == "" {
-		priorityStr = "10"
-	}
-	fields = append(fields, [2]string{"priority", priorityStr})
-
-	// Build YAML node
-	authFields := [][2]string{{"method", auth.Method}}
-	if auth.Cert != "" {
-		authFields = append(authFields, [2]string{"cert", auth.Cert})
-	}
-	if auth.Key != "" {
-		authFields = append(authFields, [2]string{"key", auth.Key})
-	}
-	if auth.Username != "" {
-		authFields = append(authFields, [2]string{"username", auth.Username})
-	}
-	if auth.PasswordKeychain != "" {
-		authFields = append(authFields, [2]string{"password_keychain", auth.PasswordKeychain})
-	}
-
-	node := mapNode(fields)
-	node.Content = append(node.Content, scalarNode("auth"), mapNode(authFields))
-
-	if auth.PasswordKeychain != "" {
-		if err := collectCredentialsHuh(lang, name, adapterType, auth); err != nil {
-			fmt.Println(tuiWarn(i18n.F(lang, "collect.password_warn", err)))
-		}
-	}
-
-	return name, node, nil
+// profileSummary is the minimal shape shown in the pre-write review panel.
+type profileSummary struct {
+	name, typ, host string
 }
 
-// ── Type-specific field collectors ───────────────────────────────────────────
-
-func collectFortiFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var (
-		host       string
-		port       string = "443"
-		tunnelName string = "Office"
-		version    string = "6"
-	)
-
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.host")).
-			Description(styleDim.Render(i18n.T(lang, "hint.host.forti"))).
-			Value(&host),
-		huh.NewInput().Title(i18n.T(lang, "collect.port")).
-			Placeholder("443").Value(&port),
-		huh.NewInput().Title(i18n.T(lang, "collect.tunnel_name")).
-			Placeholder("Office").Value(&tunnelName),
-		huh.NewSelect[string]().Title(i18n.T(lang, "collect.forti_ver")).
-			Options(
-				huh.NewOption("6.x ("+i18n.T(lang, "forti.ver.hint.6")+")", "6"),
-				huh.NewOption("7.x ("+i18n.T(lang, "forti.ver.hint.7")+")", "7"),
-				huh.NewOption("5.x ("+i18n.T(lang, "forti.ver.hint.5")+")", "5"),
-			).Value(&version),
-	)).Run(); err != nil {
-		return nil
-	}
-	if port == "" {
-		port = "443"
-	}
-	if tunnelName == "" {
-		tunnelName = "Office"
-	}
-
-	*fields = append(*fields,
-		[2]string{"host", host},
-		[2]string{"port", port},
-		[2]string{"tunnel_name", tunnelName},
-		[2]string{"version", version},
-	)
-
-	if runtime.GOOS == "windows" {
-		fmt.Println(styleDim.Render(i18n.T(lang, "hint.auth.forti.win")))
-		auth.Method = "credentials"
-		auth.Username = promptInput(lang, "collect.username", "")
-		auth.PasswordKeychain = name + ".password"
-	} else {
-		auth.Method = selectAuthMethod(lang, "certificate+credentials")
-		if strings.Contains(auth.Method, "certificate") {
-			auth.Cert = promptInput(lang, "collect.cert", "")
-			auth.Key = promptInput(lang, "collect.key", "")
-		}
-		if strings.Contains(auth.Method, "credentials") {
-			auth.Username = promptInput(lang, "collect.username", "")
-			auth.PasswordKeychain = name + ".password"
-		}
-	}
-	return nil
+// securitySummary mirrors the four toggles collected in step 3.
+type securitySummary struct {
+	killSwitch, dnsGuard, auditLog, monitor bool
 }
 
-func collectOpenVPNFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var ovpnConfig string
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.ovpn_config")).
-			Description(styleDim.Render(i18n.T(lang, "hint.ovpn_config"))).
-			Value(&ovpnConfig),
-	)).Run(); err != nil {
-		return nil
-	}
-	*fields = append(*fields, [2]string{"config", ovpnConfig})
-	auth.Method = selectAuthMethod(lang, "certificate")
-	if strings.Contains(auth.Method, "certificate") {
-		auth.Cert = promptInput(lang, "collect.ovpn_cert", "")
-		auth.Key = promptInput(lang, "collect.ovpn_key", "")
-	}
-	if strings.Contains(auth.Method, "credentials") {
-		auth.Username = promptInput(lang, "collect.username", "")
-		auth.PasswordKeychain = name + ".password"
-	}
-	return nil
-}
-
-func collectProtonFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var (
-		server   string = "fastest"
-		protocol string = "wireguard"
-	)
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.proton_srv")).
-			Description(styleDim.Render(i18n.T(lang, "hint.proton_srv"))).
-			Placeholder("fastest").Value(&server),
-		huh.NewSelect[string]().Title(i18n.T(lang, "collect.proton_proto")).
-			Options(
-				huh.NewOption("WireGuard — "+i18n.T(lang, "proto.hint.wireguard"), "wireguard"),
-				huh.NewOption("OpenVPN — "+i18n.T(lang, "proto.hint.openvpn"), "openvpn"),
-			).Value(&protocol),
-	)).Run(); err != nil {
-		return nil
-	}
-	if server == "" {
-		server = "fastest"
-	}
-	*fields = append(*fields, [2]string{"server", server}, [2]string{"protocol", protocol})
-	auth.Method = "credentials"
-	auth.Username = promptInput(lang, "collect.proton_user", "")
-	auth.PasswordKeychain = name + ".password"
-	return nil
-}
-
-func collectCiscoFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var host string
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.cisco_host")).
-			Description(styleDim.Render(i18n.T(lang, "hint.host.cisco"))).
-			Value(&host),
-	)).Run(); err != nil {
-		return nil
-	}
-	*fields = append(*fields, [2]string{"host", host})
-	auth.Method = "credentials"
-	auth.Username = promptInput(lang, "collect.cisco_user", "")
-	auth.PasswordKeychain = name + ".password"
-	return nil
-}
-
-func collectWireGuardFields(lang i18n.Lang, fields *[][2]string, auth *config.AuthConfig) error {
-	var wgConfig string
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.wg_config")).
-			Description(styleDim.Render(i18n.T(lang, "hint.wg_config"))).
-			Value(&wgConfig),
-	)).Run(); err != nil {
-		return nil
-	}
-	*fields = append(*fields, [2]string{"config", wgConfig})
-	auth.Method = "certificate"
-	return nil
-}
-
-func collectGlobalProtectFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var host string
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.gp_host")).
-			Description(styleDim.Render(i18n.T(lang, "hint.host.gp"))).
-			Value(&host),
-	)).Run(); err != nil {
-		return nil
-	}
-	*fields = append(*fields, [2]string{"host", host})
-	auth.Method = "credentials"
-	auth.Username = promptInput(lang, "collect.gp_user", "")
-	auth.PasswordKeychain = name + ".password"
-	return nil
-}
-
-func collectTailscaleFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var (
-		exitNode string
-		useKey   bool
-	)
-	if err := newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.ts_exitnode")).
-			Description(styleDim.Render("Leave empty for default routing")).
-			Value(&exitNode),
-		huh.NewConfirm().Title(i18n.T(lang, "collect.ts_usekey")).
-			Value(&useKey),
-	)).Run(); err != nil {
-		return nil
-	}
-	if exitNode != "" {
-		*fields = append(*fields, [2]string{"host", exitNode})
-	}
-	auth.Method = "credentials"
-	if useKey {
-		auth.PasswordKeychain = name + ".authkey"
-	}
-	return nil
-}
-
-// selectAuthMethod shows an auth method selector and returns the chosen value.
-func selectAuthMethod(lang i18n.Lang, def string) string {
-	var method string = def
-	_ = newForm(huh.NewGroup(
-		huh.NewSelect[string]().
-			Title(i18n.T(lang, "collect.auth_method")).
-			Options(
-				huh.NewOption(i18n.T(lang, "auth.hint.credentials"), "credentials"),
-				huh.NewOption(i18n.T(lang, "auth.hint.certificate"), "certificate"),
-				huh.NewOption(i18n.T(lang, "auth.hint.cert+creds"), "certificate+credentials"),
-			).
-			Value(&method),
-	)).Run()
-	return method
-}
-
-// promptInput shows a single-field huh form and returns the value.
-func promptInput(lang i18n.Lang, key, placeholder string) string {
-	var val string
-	_ = newForm(huh.NewGroup(
-		huh.NewInput().
-			Title(i18n.T(lang, key)).
-			Placeholder(placeholder).
-			Value(&val),
-	)).Run()
-	return strings.TrimSpace(val)
-}
-
-// ── Credentials ───────────────────────────────────────────────────────────────
-
-func collectCredentialsHuh(lang i18n.Lang, profileName, adapterType string, auth config.AuthConfig) error {
-	switch adapterType {
-	case "cloudflarewarp", "wireguard":
-		return nil
-	case "tailscale":
-		if auth.PasswordKeychain == "" {
-			return nil
-		}
-		var key string
-		if err := newForm(huh.NewGroup(
-			huh.NewInput().
-				Title(i18n.T(lang, "collect.ts_key")).
-				EchoMode(huh.EchoModePassword).
-				Value(&key),
-		)).Run(); err != nil {
-			return nil
-		}
-		if key != "" {
-			return config.SetCredential(profileName, "password", key)
-		}
-		return nil
-	default:
-		if auth.PasswordKeychain == "" {
-			return nil
-		}
-		var pwd string
-		title := i18n.F(lang, "collect.password", styleBright.Render(profileName))
-		if err := newForm(huh.NewGroup(
-			huh.NewInput().
-				Title(title).
-				EchoMode(huh.EchoModePassword).
-				Value(&pwd),
-		)).Run(); err != nil {
-			return nil
-		}
-		if pwd != "" {
-			return config.SetCredential(profileName, "password", pwd)
-		}
-		return nil
-	}
-}
-
-// ── Routing policies ──────────────────────────────────────────────────────────
-
-func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config, profileNames map[string]bool) {
-	StepHeader(2, 4, i18n.T(lang, "section.policies"))
-
-	if existing != nil && len(existing.Policies) > 0 {
-		fmt.Println(tuiInfo(i18n.T(lang, "policy.existing")))
-		for _, p := range existing.Policies {
-			fmt.Printf("    %s  %s → %s\n",
-				styleInfo.Render("·"),
-				styleBright.Render(p.Name),
-				styleWarn.Render(p.Via))
-		}
-		fmt.Println()
-	}
-
-	// Build profile options for "via" selector.
-	var profileList []string
-	for name := range profileNames {
-		profileList = append(profileList, name)
-	}
-	sort.Strings(profileList)
-
-	if len(profileList) == 0 {
-		fmt.Println(styleDim.Render("    " + i18n.T(lang, "policy.no_profiles")))
-		return
-	}
-
-	viaOpts := make([]huh.Option[string], len(profileList))
-	for i, n := range profileList {
-		viaOpts[i] = huh.NewOption(n, n)
-	}
-
-	policiesNode := mappingKey(doc, "policies")
-	if policiesNode == nil {
-		policiesNode = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-		doc.Content = append(doc.Content, scalarNode("policies"), policiesNode)
-	}
-
-	knownPolicies := make(map[string]bool)
-	if existing != nil {
-		for _, p := range existing.Policies {
-			knownPolicies[p.Name] = true
-		}
-	}
-
-	added := 0
-	for {
-		defAdd := added == 0 && len(profileList) > 0
-		var addNew bool
-		if defAdd {
-			addNew = true
-		}
-		if err := newForm(huh.NewGroup(
-			huh.NewConfirm().
-				Title(i18n.T(lang, "policy.add_new")).
-				Value(&addNew),
-		)).Run(); err != nil || !addNew {
-			break
-		}
-
-		var (
-			policyName string
-			via        string = profileList[0]
-			domainsRaw string
-			ipsRaw     string
-		)
-
-		if err := newForm(
-			huh.NewGroup(
-				huh.NewInput().
-					Title(i18n.T(lang, "policy.name")).
-					Description(styleDim.Render("e.g. work-internal, saas-apps")).
-					Validate(func(s string) error {
-						if strings.TrimSpace(s) == "" {
-							return fmt.Errorf("policy name required")
-						}
-						return nil
-					}).
-					Value(&policyName),
-				huh.NewSelect[string]().
-					Title(i18n.T(lang, "policy.via")).
-					Options(viaOpts...).
-					Value(&via),
-			),
-			huh.NewGroup(
-				huh.NewNote().
-					Title(i18n.T(lang, "policy.domains_hint")).
-					Description(styleDim.Render("e.g. internal.company.com, *.corp")),
-				huh.NewInput().
-					Title(i18n.T(lang, "policy.domain_prompt")).
-					Description(styleDim.Render("Comma-separated, leave empty to skip")).
-					Value(&domainsRaw),
-				huh.NewNote().
-					Title(i18n.T(lang, "policy.ips_hint")).
-					Description(styleDim.Render("e.g. 10.0.0.0/8, 192.168.1.0/24")),
-				huh.NewInput().
-					Title(i18n.T(lang, "policy.ip_prompt")).
-					Description(styleDim.Render("Comma-separated CIDR, leave empty to skip")).
-					Value(&ipsRaw),
-			),
-		).Run(); err != nil {
-			break
-		}
-
-		policyName = strings.TrimSpace(policyName)
-		if policyName == "" {
-			continue
-		}
-
-		var domains []string
-		for _, d := range strings.Split(domainsRaw, ",") {
-			if v := strings.TrimSpace(d); v != "" {
-				domains = append(domains, v)
-			}
-		}
-		var ipRanges []string
-		for _, ip := range strings.Split(ipsRaw, ",") {
-			if v := strings.TrimSpace(ip); v != "" {
-				ipRanges = append(ipRanges, v)
-			}
-		}
-
-		if len(domains) == 0 && len(ipRanges) == 0 {
-			fmt.Println(tuiWarn(i18n.T(lang, "policy.empty_match")))
-			continue
-		}
-
-		if knownPolicies[policyName] {
-			fmt.Println(tuiWarn(i18n.F(lang, "policy.already_exists", policyName)))
-			var replace bool
-			_ = newForm(huh.NewGroup(
-				huh.NewConfirm().Title(i18n.T(lang, "policy.replace_confirm")).Value(&replace),
-			)).Run()
-			if !replace {
-				fmt.Println(styleDim.Render(i18n.T(lang, "policy.replace_skipped")))
-				continue
-			}
-			removePolicyByName(policiesNode, policyName)
-		}
-
-		policiesNode.Content = append(policiesNode.Content, policyNode(policyName, via, domains, ipRanges))
-		knownPolicies[policyName] = true
-		added++
-	}
-
-	fmt.Println()
-	fmt.Println(styleDim.Render("    " + i18n.T(lang, "policy.yaml_hint")))
-}
-
-// policyNode builds a YAML mapping node for a single policy rule.
-func policyNode(name, via string, domains, ipRanges []string) *yaml.Node {
-	matchNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	if len(domains) > 0 {
-		seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-		for _, d := range domains {
-			seq.Content = append(seq.Content, scalarNode(d))
-		}
-		matchNode.Content = append(matchNode.Content, scalarNode("domains"), seq)
-	}
-	if len(ipRanges) > 0 {
-		seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
-		for _, ip := range ipRanges {
-			seq.Content = append(seq.Content, scalarNode(ip))
-		}
-		matchNode.Content = append(matchNode.Content, scalarNode("ip_ranges"), seq)
-	}
-	n := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	n.Content = append(n.Content,
-		scalarNode("name"), scalarNode(name),
-		scalarNode("match"), matchNode,
-		scalarNode("via"), scalarNode(via),
-	)
-	return n
-}
-
-// detectedAdapterKeys builds a set of adapterKey values from the detected list.
-func detectedAdapterKeys(detected []detectedVPN) map[string]bool {
-	keys := make(map[string]bool)
-	for _, d := range detected {
-		for _, p := range vpnProbes {
-			if p.label == d.label && p.adapterKey != "" {
-				keys[p.adapterKey] = true
-			}
-		}
-	}
-	return keys
-}
-
-// ── VPN client detection ──────────────────────────────────────────────────────
-
-type detectedVPN struct {
-	label   string
-	version string
-}
-
-// vpnProbe describes how to locate one VPN client.
-type vpnProbe struct {
-	label       string
-	adapterKey  string
-	binaries    []string
-	searchDirs  []string
-	searchDepth int
-	exeNames    []string
-	args        []string
-}
-
-var vpnProbes = []vpnProbe{
-	{
-		label:      "FortiClient",
-		adapterKey: "forticlient",
-		binaries:   []string{"fortivpn", "forticlientsslvpn", "FortiClient"},
-		searchDirs: []string{
-			`C:\Program Files\Fortinet`,
-			`C:\Program Files (x86)\Fortinet`,
-			"/opt/forticlient",
-			"/opt/fortinet/forticlient",
-			"/usr/share/forticlient",
-			"/usr/lib/forticlient",
-			"/Applications/FortiClient.app/Contents/MacOS",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"FortiClient.exe", "FortiClient", "forticlient"},
-		args:        []string{},
-	},
-	{
-		label:      "OpenVPN",
-		adapterKey: "openvpn",
-		binaries:   []string{"openvpn"},
-		searchDirs: []string{
-			`C:\Program Files\OpenVPN`,
-			`C:\Program Files (x86)\OpenVPN`,
-			`C:\Program Files\OpenVPN Connect`,
-			`C:\Program Files (x86)\OpenVPN Connect`,
-			"/usr/sbin",
-			"/usr/local/sbin",
-			"/opt/homebrew/sbin",
-			"/Applications/Tunnelblick.app/Contents/Resources",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"openvpn.exe", "OpenVPNConnect.exe", "openvpn"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "ProtonVPN",
-		adapterKey: "protonvpn",
-		binaries:   []string{"protonvpn-cli", "protonvpn"},
-		searchDirs: []string{
-			`C:\Program Files\Proton`,
-			`C:\Program Files (x86)\Proton`,
-			`C:\Program Files (x86)\Proton Technologies`,
-			"/usr/bin",
-			"/usr/local/bin",
-			"/opt/protonvpn",
-			"/Applications/ProtonVPN.app/Contents/MacOS",
-		},
-		searchDepth: 3,
-		exeNames:    []string{"ProtonVPN.Launcher.exe", "ProtonVPN.Client.exe", "ProtonVPN.exe", "protonvpn-cli", "protonvpn"},
-		args:        []string{},
-	},
-	{
-		label:      "Cisco AnyConnect",
-		adapterKey: "ciscoanyconnect",
-		binaries:   []string{"vpn", "vpncli"},
-		searchDirs: []string{
-			"/opt/cisco",
-			`C:\Program Files\Cisco`,
-			`C:\Program Files (x86)\Cisco`,
-		},
-		searchDepth: 3,
-		exeNames:    []string{"vpncli.exe", "vpncli", "vpn"},
-		args:        []string{"-v"},
-	},
-	{
-		label:      "WireGuard",
-		adapterKey: "wireguard",
-		binaries:   []string{"wg", "wg-quick", "wireguard"},
-		searchDirs: []string{
-			`C:\Program Files\WireGuard`,
-			"/usr/local/bin",
-			"/opt/homebrew/bin",
-			"/Applications/WireGuard.app/Contents/MacOS",
-		},
-		searchDepth: 1,
-		exeNames:    []string{"wireguard.exe", "wg.exe", "wg", "wireguard"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "GlobalProtect",
-		adapterKey: "globalprotect",
-		binaries:   []string{"globalprotect", "pangpcrypt"},
-		searchDirs: []string{
-			"/opt/paloaltonetworks",
-			`C:\Program Files\Palo Alto Networks`,
-			"/Applications/GlobalProtect.app/Contents/MacOS",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"PanGPA.exe", "pangpcrypt.exe", "GlobalProtect", "globalprotect", "pangpcrypt"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "Tailscale",
-		adapterKey: "tailscale",
-		binaries:   []string{"tailscale"},
-		searchDirs: []string{
-			`C:\Program Files\Tailscale`,
-			"/Applications/Tailscale.app/Contents/MacOS",
-			"/snap/tailscale/current/bin",
-		},
-		searchDepth: 1,
-		exeNames:    []string{"tailscale.exe", "tailscale"},
-		args:        []string{"version"},
-	},
-	{
-		label:      "Cloudflare WARP",
-		adapterKey: "cloudflarewarp",
-		binaries:   []string{"warp-cli"},
-		searchDirs: []string{
-			`C:\Program Files\Cloudflare\Cloudflare WARP`,
-			`C:\Program Files (x86)\Cloudflare\Cloudflare WARP`,
-			"/Applications/Cloudflare WARP.app/Contents/MacOS",
-			"/usr/bin",
-			"/usr/local/bin",
-		},
-		searchDepth: 1,
-		exeNames:    []string{"warp-cli.exe", "warp-cli"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "TunnelBear",
-		adapterKey: "",
-		binaries:   []string{"tunnelbear"},
-		searchDirs: []string{
-			`C:\Program Files\TunnelBear`,
-			`C:\Program Files (x86)\TunnelBear`,
-			"/Applications/TunnelBear.app/Contents/MacOS",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"TunnelBear.exe", "TunnelBear"},
-		args:        []string{"--version"},
-	},
-}
-
-func detectInstalledVPNs() []detectedVPN {
-	var found []detectedVPN
-	for _, p := range vpnProbes {
-		if d, ok := resolveProbe(p); ok {
-			found = append(found, d)
-		}
-	}
-	return found
-}
-
-func resolveProbe(p vpnProbe) (detectedVPN, bool) {
-	for _, bin := range p.binaries {
-		path, err := exec.LookPath(bin)
-		if err != nil {
-			if _, statErr := os.Stat(bin); statErr != nil {
-				continue
-			}
-			path = bin
-		}
-		return detectedVPN{label: p.label, version: versionOf(path, p.args)}, true
-	}
-
-	var candidates []string
-	for _, dir := range p.searchDirs {
-		walkExe(dir, p.exeNames, p.searchDepth, &candidates)
-	}
-	if len(candidates) == 0 {
-		return detectedVPN{}, false
-	}
-	sort.Strings(candidates)
-	path := candidates[len(candidates)-1]
-	return detectedVPN{label: p.label, version: versionOf(path, p.args)}, true
-}
-
-func walkExe(dir string, names []string, depth int, out *[]string) {
-	if depth < 0 {
-		return
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	for _, e := range entries {
-		full := filepath.Join(dir, e.Name())
-		if e.IsDir() {
-			walkExe(full, names, depth-1, out)
-		} else {
-			lower := strings.ToLower(e.Name())
-			for _, want := range names {
-				if lower == strings.ToLower(want) {
-					*out = append(*out, full)
-					break
-				}
-			}
-		}
-	}
-}
-
-func versionOf(path string, args []string) string {
-	if len(args) > 0 {
-		if v := runVersion(path, args); v != "" {
-			return v
-		}
-	}
-	if v := peVersion(path); v != "" {
-		return v
-	}
-	parent := filepath.Base(filepath.Dir(path))
-	if strings.HasPrefix(parent, "v") && len(parent) > 1 {
-		return parent
-	}
-	grandparent := filepath.Base(filepath.Dir(filepath.Dir(path)))
-	if strings.HasPrefix(grandparent, "v") && len(grandparent) > 1 {
-		return grandparent
-	}
-	return "installed"
-}
-
-func runVersion(path string, args []string) string {
-	out, err := exec.Command(path, args...).Output()
-	if err != nil || len(out) == 0 {
-		return ""
-	}
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		lower := strings.ToLower(line)
-		if strings.HasSuffix(lower, ".exe") || strings.HasSuffix(lower, ".dll") ||
-			strings.HasSuffix(lower, ".node") || strings.HasPrefix(lower, "loaded ") {
-			continue
-		}
-		if len(line) > 60 {
-			line = line[:60] + "…"
-		}
-		return line
+// valueOf reads a scalar field out of a profile's yaml.Node mapping — used to
+// summarize a freshly-built node without re-parsing the document.
+func valueOf(node *yaml.Node, key string) string {
+	if v := mappingKey(node, key); v != nil {
+		return v.Value
 	}
 	return ""
 }
 
-// ── YAML document helpers ─────────────────────────────────────────────────────
+// renderReviewPanel renders a rounded-border summary of everything that is
+// about to be written to disk, shown right before the final write confirm so
+// the user isn't confirming blind.
+func renderReviewPanel(lang i18n.Lang, outPath string, profiles []profileSummary, policies []string, sec securitySummary) string {
+	var b strings.Builder
+	b.WriteString(stylePrompt.Render(sym("◎", "#")) + "  " + styleGold.Render(i18n.T(lang, "review.header")))
 
-func loadExistingConfig(path string) (*config.Config, *yaml.Node) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, nil
-	}
-	var root yaml.Node
-	if err := yaml.Unmarshal(data, &root); err != nil {
-		return nil, nil
-	}
-	doc := &root
-	if doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 {
-		doc = doc.Content[0]
-	}
-	var cfg config.Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, doc
-	}
-	return &cfg, doc
-}
-
-func freshDoc() *yaml.Node {
-	return mapNode([][2]string{})
-}
-
-func scalarNode(val string) *yaml.Node {
-	return &yaml.Node{Kind: yaml.ScalarNode, Value: val, Tag: "!!str"}
-}
-
-func boolNode(val bool) *yaml.Node {
-	v := "false"
-	if val {
-		v = "true"
-	}
-	return &yaml.Node{Kind: yaml.ScalarNode, Value: v, Tag: "!!bool"}
-}
-
-func intNode(val string) *yaml.Node {
-	if _, err := strconv.Atoi(val); err != nil {
-		return scalarNode(val)
-	}
-	return &yaml.Node{Kind: yaml.ScalarNode, Value: val, Tag: "!!int"}
-}
-
-func mapNode(pairs [][2]string) *yaml.Node {
-	n := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	for _, p := range pairs {
-		n.Content = append(n.Content, scalarNode(p[0]), autoScalar(p[1]))
-	}
-	return n
-}
-
-func autoScalar(val string) *yaml.Node {
-	switch strings.ToLower(val) {
-	case "true":
-		return boolNode(true)
-	case "false":
-		return boolNode(false)
-	}
-	if _, err := strconv.Atoi(val); err == nil {
-		return intNode(val)
-	}
-	return scalarNode(val)
-}
-
-func mappingKey(n *yaml.Node, key string) *yaml.Node {
-	if n == nil {
-		return nil
-	}
-	for i := 0; i+1 < len(n.Content); i += 2 {
-		if n.Content[i].Value == key {
-			return n.Content[i+1]
+	b.WriteString("\n\n" + styleBright.Render(i18n.T(lang, "review.profiles")) + ":")
+	if len(profiles) == 0 {
+		b.WriteString("\n  " + styleDim.Render(i18n.T(lang, "review.none")))
+	} else {
+		for _, p := range profiles {
+			fmt.Fprintf(&b, "\n  · %s  type=%s  host=%s",
+				styleBright.Render(p.name), styleWarn.Render(p.typ), styleDim.Render(p.host))
 		}
 	}
-	return nil
+
+	b.WriteString("\n\n" + styleBright.Render(i18n.T(lang, "review.policies")) + ":")
+	if len(policies) == 0 {
+		b.WriteString("\n  " + styleDim.Render(i18n.T(lang, "review.none")))
+	} else {
+		for _, name := range policies {
+			b.WriteString("\n  · " + styleBright.Render(name))
+		}
+	}
+
+	b.WriteString("\n\n" + styleBright.Render(i18n.T(lang, "review.security")) + ":")
+	fmt.Fprintf(&b, "\n  kill_switch=%s  dns_guard=%s  audit_log=%s  dashboard=%s",
+		onOff(sec.killSwitch), onOff(sec.dnsGuard), onOff(sec.auditLog), onOff(sec.monitor))
+
+	b.WriteString("\n\n" + styleDim.Render(outPath))
+
+	box := lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(colEmber2).
+		Padding(0, 2).
+		Render(b.String())
+	return "  " + strings.ReplaceAll(box, "\n", "\n  ")
 }
 
-func removePolicyByName(seq *yaml.Node, name string) {
-	if seq == nil {
-		return
+func onOff(v bool) string {
+	if v {
+		return styleOK.Render("on")
 	}
-	for i, item := range seq.Content {
-		if item.Kind != yaml.MappingNode {
-			continue
-		}
-		for j := 0; j+1 < len(item.Content); j += 2 {
-			if item.Content[j].Value == "name" && item.Content[j+1].Value == name {
-				seq.Content = append(seq.Content[:i], seq.Content[i+1:]...)
-				return
-			}
-		}
-	}
-}
-
-func removeMapping(parent *yaml.Node, key string) {
-	if parent == nil {
-		return
-	}
-	for i := 0; i+1 < len(parent.Content); i += 2 {
-		if parent.Content[i].Value == key {
-			parent.Content = append(parent.Content[:i], parent.Content[i+2:]...)
-			return
-		}
-	}
-}
-
-func setMapping(parent *yaml.Node, key string, val *yaml.Node) {
-	if parent == nil {
-		return
-	}
-	for i := 0; i+1 < len(parent.Content); i += 2 {
-		if parent.Content[i].Value == key {
-			parent.Content[i+1] = val
-			return
-		}
-	}
-	parent.Content = append(parent.Content, scalarNode(key), val)
+	return styleDim.Render("off")
 }

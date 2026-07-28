@@ -96,6 +96,7 @@ var messages = map[Lang]map[string]string{
 		"policy.no_profiles":     "No hay perfiles configurados — agrega al menos uno antes de crear políticas.",
 		"policy.add_new":         "¿Agregar una política de enrutamiento?",
 		"policy.name":            "  Nombre de la política (ej: trabajo, streaming)",
+		"policy.name_empty":      "el nombre de la política no puede estar vacío",
 		"policy.via":             "  Perfil VPN para esta política",
 		"policy.domains_hint":    "    Dominio o sufijo (ej: empresa.com, .internal) — deja en blanco para terminar",
 		"policy.domain_prompt":   "  Dominio",
@@ -552,6 +553,25 @@ y endurece la seguridad de red desde un solo CLI.`,
 		"cli.doctor.adapter.empty_status":        "el adaptador devolvió estado vacío (bug de adapter)",
 		"cli.doctor.adapter.error_state":         "estado error — ejecuta `kongtrol up %s --dry-run` para detalle",
 		"cli.doctor.adapter.not_registered":      "tipo %q no registrado — revisa blank imports en main.go",
+
+		// Wizard cancellation
+		"wizard.cancelled": "\nCancelado — no se guardó ningún cambio.",
+
+		// Wizard first-run language notice
+		"wizard.lang.change_hint": "Para cambiar el idioma más adelante: kongtrol config lang <es|en>",
+
+		// Review panel (shown before the final write confirm)
+		"review.header":   "Resumen — esto es lo que se va a escribir",
+		"review.profiles": "Perfiles",
+		"review.policies": "Políticas",
+		"review.security": "Seguridad",
+		"review.none":     "(sin cambios)",
+
+		// Field validation
+		"validate.host_empty":     "el host no puede estar vacío",
+		"validate.host_invalid":   "host inválido — usa un hostname o IP, sin 'http://' ni espacios",
+		"validate.port_invalid":   "el puerto debe ser un número entre 1 y 65535",
+		"validate.path_not_found": "no se encontró el archivo: %s",
 	},
 
 	// ── English ───────────────────────────────────────────────────────────────
@@ -592,6 +612,7 @@ y endurece la seguridad de red desde un solo CLI.`,
 		"policy.no_profiles":     "No profiles configured — add at least one before creating policies.",
 		"policy.add_new":         "Add a routing policy?",
 		"policy.name":            "  Policy name (e.g. work, streaming)",
+		"policy.name_empty":      "policy name cannot be empty",
 		"policy.via":             "  VPN profile for this policy",
 		"policy.domains_hint":    "    Domain or suffix (e.g. company.com, .internal) — leave blank to finish",
 		"policy.domain_prompt":   "  Domain",
@@ -1048,5 +1069,24 @@ Run this before your first connection, or when diagnosing a teammate's setup.`,
 		"cli.doctor.adapter.empty_status":        "empty status returned (adapter bug)",
 		"cli.doctor.adapter.error_state":         "error state — run `kongtrol up %s --dry-run` for details",
 		"cli.doctor.adapter.not_registered":      "type %q not registered — check blank imports in main.go",
+
+		// Wizard cancellation
+		"wizard.cancelled": "\nCancelled — nothing was saved.",
+
+		// Wizard first-run language notice
+		"wizard.lang.change_hint": "To change the language later: kongtrol config lang <es|en>",
+
+		// Review panel (shown before the final write confirm)
+		"review.header":   "Summary — this is what will be written",
+		"review.profiles": "Profiles",
+		"review.policies": "Policies",
+		"review.security": "Security",
+		"review.none":     "(no changes)",
+
+		// Field validation
+		"validate.host_empty":     "host cannot be empty",
+		"validate.host_invalid":   "invalid host — use a hostname or IP, no 'http://' or spaces",
+		"validate.port_invalid":   "port must be a number between 1 and 65535",
+		"validate.path_not_found": "file not found: %s",
 	},
 }
