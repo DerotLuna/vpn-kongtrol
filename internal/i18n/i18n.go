@@ -84,12 +84,21 @@ var messages = map[Lang]map[string]string{
 
 		// Profile management
 		"profile.header":          "\n── Perfil: %s (%s) ──\n",
-		"profile.refresh_any":     "¿Actualizar credenciales de algún perfil existente?",
-		"profile.refresh_creds":   "  ¿Actualizar credenciales de este perfil?",
+		"profile.refresh_select":  "Selecciona los perfiles a los que quieres actualizar credenciales (espacio para marcar, enter para continuar)",
 		"profile.add_new":         "¿Agregar un nuevo perfil VPN?",
 		"profile.already_exists":  "  El perfil '%s' ya existe.",
 		"profile.replace_confirm": "  ¿Reemplazarlo con la nueva configuración?",
 		"profile.replace_skipped": "  Perfil no modificado — elige un nombre diferente si quieres agregar uno nuevo.",
+
+		// Edit menu (re-running init against an existing kongtrol.yaml)
+		"menu.title":            "¿Qué quieres hacer?",
+		"menu.add_profile":      "Agregar un perfil VPN",
+		"menu.refresh_creds":    "Actualizar credenciales de un perfil",
+		"menu.policies":         "Gestionar policies de enrutamiento",
+		"menu.security":         "Configurar seguridad (kill switch, DNS guard, ...)",
+		"menu.review_save":      "Revisar y guardar cambios",
+		"menu.exit":             "Salir sin guardar",
+		"menu.action_cancelled": "Acción cancelada — volviendo al menú.",
 
 		// Routing policies
 		"policy.existing":        "Políticas existentes:",
@@ -556,6 +565,10 @@ y endurece la seguridad de red desde un solo CLI.`,
 
 		// Wizard cancellation
 		"wizard.cancelled": "\nCancelado — no se guardó ningún cambio.",
+		"wizard.quit":      "\nCerrado con Ctrl+C — no se guardó ningún cambio.",
+
+		// Navigation hints (shown under list-style menus)
+		"hint.nav.list": "↑/↓ mover  ·  / filtrar  ·  enter confirmar  ·  esc atrás  ·  ctrl+c cerrar todo",
 
 		// Wizard first-run language notice
 		"wizard.lang.change_hint": "Para cambiar el idioma más adelante: kongtrol config lang <es|en>",
@@ -600,12 +613,21 @@ y endurece la seguridad de red desde un solo CLI.`,
 
 		// Profile management
 		"profile.header":          "\n── Profile: %s (%s) ──\n",
-		"profile.refresh_any":     "Update credentials for any existing profile?",
-		"profile.refresh_creds":   "  Refresh / update credentials for this profile?",
+		"profile.refresh_select":  "Select which profiles to update credentials for (space to toggle, enter to continue)",
 		"profile.add_new":         "Add a new VPN profile?",
 		"profile.already_exists":  "  Profile '%s' already exists.",
 		"profile.replace_confirm": "  Replace it with the new configuration?",
 		"profile.replace_skipped": "  Profile unchanged — choose a different name to add a new one.",
+
+		// Edit menu (re-running init against an existing kongtrol.yaml)
+		"menu.title":            "What would you like to do?",
+		"menu.add_profile":      "Add a VPN profile",
+		"menu.refresh_creds":    "Update credentials for a profile",
+		"menu.policies":         "Manage routing policies",
+		"menu.security":         "Configure security (kill switch, DNS guard, ...)",
+		"menu.review_save":      "Review and save changes",
+		"menu.exit":             "Exit without saving",
+		"menu.action_cancelled": "Action cancelled — back to menu.",
 
 		// Routing policies
 		"policy.existing":        "Existing policies:",
@@ -1072,6 +1094,10 @@ Run this before your first connection, or when diagnosing a teammate's setup.`,
 
 		// Wizard cancellation
 		"wizard.cancelled": "\nCancelled — nothing was saved.",
+		"wizard.quit":      "\nClosed with Ctrl+C — nothing was saved.",
+
+		// Navigation hints (shown under list-style menus)
+		"hint.nav.list": "↑/↓ move  ·  / filter  ·  enter confirm  ·  esc back  ·  ctrl+c close all",
 
 		// Wizard first-run language notice
 		"wizard.lang.change_hint": "To change the language later: kongtrol config lang <es|en>",

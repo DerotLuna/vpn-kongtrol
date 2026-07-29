@@ -204,6 +204,16 @@ func PrintHeader(ver string) {
 	fmt.Println()
 }
 
+// clearScreen wipes the terminal (including scrollback) before redrawing a
+// screen that gets revisited repeatedly — the edit menu loop, notably. Each
+// huh form otherwise renders inline and leaves its own content behind, so
+// bouncing between the menu and an action (add/refresh/esc/add/refresh/...)
+// would otherwise pile up a duplicate of every visit instead of replacing
+// the previous one.
+func clearScreen() {
+	fmt.Print("\033[H\033[2J\033[3J")
+}
+
 // SectionHeader prints a section divider marked with the brand contour ring.
 func SectionHeader(s string) {
 	fmt.Printf("\n  %s  %s\n", stylePrompt.Render(sym("◎", "#")), styleBright.Render(s))
