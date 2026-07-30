@@ -25,10 +25,12 @@ jobs:
       - name: Test
         env:
           CGO_ENABLED: "0"
+        shell: bash
         run: go test -shuffle=on -coverprofile=coverage.out ./cmd/kongtrol ./internal/... ./assets ./web
       - name: Vet
         env:
           CGO_ENABLED: "0"
+        shell: bash
         run: go vet ./cmd/kongtrol ./internal/... ./assets ./web
       - name: Check module files
         shell: bash
