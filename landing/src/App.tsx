@@ -9,7 +9,23 @@ import Security from './components/Security'
 import HowItWorks from './components/HowItWorks'
 import Download from './components/Download'
 import Footer from './components/Footer'
-import TmuxBar from './components/TmuxBar'
+import TmuxBar, { TmuxWindow } from './components/TmuxBar'
+
+// home sections as tmux windows — same IDs the page's own anchors use
+const HOME_WINDOWS_ES: TmuxWindow[] = [
+  { n: 0, name: 'motd', id: 'motd' },
+  { n: 1, name: 'mapa', id: 'map' },
+  { n: 2, name: 'check', id: 'check' },
+  { n: 3, name: 'init', id: 'init' },
+  { n: 4, name: 'instalar', id: 'install' },
+]
+const HOME_WINDOWS_EN: TmuxWindow[] = [
+  { n: 0, name: 'motd', id: 'motd' },
+  { n: 1, name: 'map', id: 'map' },
+  { n: 2, name: 'check', id: 'check' },
+  { n: 3, name: 'init', id: 'init' },
+  { n: 4, name: 'install', id: 'install' },
+]
 
 export default function App() {
   const [os, setOS] = useState<OS>(detectOS)
@@ -33,7 +49,7 @@ export default function App() {
         <Download os={os} setOS={setOS} lang={lang} />
       </main>
       <Footer lang={lang} page="home" />
-      <TmuxBar lang={lang} />
+      <TmuxBar lang={lang} windows={lang === 'es' ? HOME_WINDOWS_ES : HOME_WINDOWS_EN} />
     </>
   )
 }

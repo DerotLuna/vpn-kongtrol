@@ -883,9 +883,12 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .footer-version { color: var(--signal); }
 .footer-meta {
   margin-top: 40px; padding-top: 14px;
-  display: flex; justify-content: flex-end;
+  display: flex; justify-content: flex-end; align-items: center; gap: 20px;
 }
+.footer-meta.has-legal { justify-content: space-between; }
 .footer-wink { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; }
+.footer-legal-link { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; transition: color 0.15s; }
+.footer-legal-link:hover { color: var(--signal); text-decoration: none; }
 
 /* ── Animations ─────────────────────────────────────────────────────────────── */
 @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }

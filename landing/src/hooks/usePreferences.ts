@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Lang } from '../i18n'
+import { detectLang, Lang } from '../i18n'
 import { detectTheme, Theme } from '../theme'
 
 const LANG_KEY = 'kglang'
 const THEME_KEY = 'kgtheme'
-const DEFAULT_LANG: Lang = 'en'
 
 export function usePreferences() {
   const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === 'undefined') return DEFAULT_LANG
+    if (typeof window === 'undefined') return 'en'
     const stored = localStorage.getItem(LANG_KEY)
-    return stored === 'es' || stored === 'en' ? stored : DEFAULT_LANG
+    return stored === 'es' || stored === 'en' ? stored : detectLang()
   })
 
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'dark'
+    if (typeof window === 'undefined') return 'light'
     const stored = localStorage.getItem(THEME_KEY)
     return stored === 'light' || stored === 'dark' ? stored : detectTheme()
   })

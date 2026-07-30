@@ -4,7 +4,7 @@ import { Theme } from '../theme'
 import { GITHUB_RELEASES } from '../links'
 
 interface Props {
-  page: 'home' | 'guide'
+  page: 'home' | 'guide' | 'terminos'
   lang: Lang
   setLang: (lang: Lang) => void
   theme: Theme

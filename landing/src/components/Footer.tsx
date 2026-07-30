@@ -6,7 +6,7 @@ export const SITE_UPDATED = '2026-07-15'
 
 interface Props {
   lang: Lang
-  page?: 'home' | 'guide'
+  page?: 'home' | 'guide' | 'terminos'
 }
 
 export default function Footer({ lang }: Props) {
@@ -15,11 +15,13 @@ export default function Footer({ lang }: Props) {
       tagline: 'Orquestación multi-VPN terminal-first. Un binario, ocho adaptadores, cero fugas.',
       facts: ['beta', '8 adaptadores', 'Win / macOS / Linux', 'ES / EN', 'MIT'],
       wink: 'no place like 127.0.0.1',
+      legal: 'Términos y condiciones',
     }
     : {
       tagline: 'Terminal-first multi-VPN orchestration. One binary, eight adapters, zero leaks.',
       facts: ['beta', '8 adapters', 'Win / macOS / Linux', 'ES / EN', 'MIT'],
       wink: 'no place like 127.0.0.1',
+      legal: 'Terms & conditions',
     }
 
   return (
@@ -59,7 +61,8 @@ export default function Footer({ lang }: Props) {
           </div>
         </div>
 
-        <div className="footer-meta">
+        <div className="footer-meta has-legal">
+          <a href={`${import.meta.env.BASE_URL}terminos`} className="footer-legal-link">{copy.legal}</a>
           <span className="footer-wink mono">{copy.wink}</span>
         </div>
       </div>

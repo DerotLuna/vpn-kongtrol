@@ -37,6 +37,13 @@ export default function Download({ os, setOS, lang }: Props) {
       sub: 'Descarga el binario de tu plataforma directamente y a operar.',
       download: 'Descargar',
       allReleases: 'Ver todos los releases en GitHub',
+      terminalTitle: 'INSTALAR POR TERMINAL',
+      terminalText: 'También puedes instalar kongtrol directo desde la terminal: el script detecta tu sistema operativo y arquitectura, descarga el binario correcto de la última release, verifica su checksum SHA256, y lo deja listo en el PATH.',
+      terminalScript: `# Linux / macOS
+$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+
+# Windows (PowerShell)
+$ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex`,
       beta: 'Beta:',
       betaText: 'Kongtrol está en pruebas activas — no todos los adaptadores ni escenarios están validados. Si algo falla, abre un issue en GitHub.',
       source: 'FUENTE',
@@ -61,6 +68,13 @@ sha256sum -c checksums.txt`,
       sub: 'Grab the binary for your platform directly and you are operating.',
       download: 'Download',
       allReleases: 'View all releases on GitHub',
+      terminalTitle: 'INSTALL FROM TERMINAL',
+      terminalText: 'You can also install kongtrol straight from the terminal: the script detects your OS and architecture, downloads the correct binary from the latest release, verifies its SHA256 checksum, and drops it on your PATH.',
+      terminalScript: `# Linux / macOS
+$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+
+# Windows (PowerShell)
+$ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex`,
       beta: 'Beta:',
       betaText: 'Kongtrol is under active testing — not every adapter and scenario is validated yet. If something breaks, open an issue on GitHub.',
       source: 'SOURCE',
@@ -131,9 +145,19 @@ sha256sum -c checksums.txt`,
         </div>
 
         <div className="source-install reveal" style={{ marginTop: 20 }}>
+          <div className="source-label">{copy.terminalTitle}</div>
+          <div>
+            <p className="section-sub" style={{ marginTop: 8, marginBottom: 12 }}>{copy.terminalText}</p>
+            <CodeBlock lang="bash">{copy.terminalScript}</CodeBlock>
+          </div>
+        </div>
+
+        <div className="source-install reveal">
           <div className="source-label">{copy.verifyTitle}</div>
-          <p className="section-sub" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>
-          <CodeBlock lang="bash">{copy.verifyScript}</CodeBlock>
+          <div>
+            <p className="section-sub" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>
+            <CodeBlock lang="bash">{copy.verifyScript}</CodeBlock>
+          </div>
         </div>
 
         <div className="source-install reveal">

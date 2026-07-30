@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>404 — signal lost | Kongtrol CLI</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0c10; --surface: #12151b; --surface-2: #171b23;
+    --border: #232833; --border-2: #313847;
+    --signal: #ffb020; --signal-hi: #ffc456; --signal-soft: rgba(255,176,32,0.12); --signal-glow: rgba(255,176,32,0.28);
+    --steel: #6ea8c9;
+    --text: #eef1f5; --text-muted: #99a3b3; --text-dim: #616b7b; --danger: #ff5a52;
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  html[data-theme='light'] {
+    --bg: #f1ede4; --surface: #fbf9f4; --surface-2: #f4f0e6;
+    --border: #ddd5c4; --border-2: #c9bfa8;
+    --text: #2a2620; --text-muted: #6b6355; --text-dim: #8f8571;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: var(--font-mono);
+    overflow: hidden;
+  }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .scanlines {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0.5;
+    background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.09) 0 1px, transparent 1px 3px);
+    mix-blend-mode: overlay;
+  }
+  html[data-theme='light'] .scanlines { opacity: 0.15; }
+
+  /* same signature contour treatment as the home hero: concentric rings,
+     masked to a soft radial fade, with a radar sweep + pulsing core.
+     Centered on the "404" glyph (the visual focal point), not the page. */
+  .contour {
+    position: absolute; z-index: 0; pointer-events: none;
+    top: 50%; left: 50%; translate: -50% -50%;
+    width: min(720px, 130vw); height: min(720px, 130vw);
+    background: repeating-radial-gradient(circle at 50% 50%, transparent 0 15px, rgba(255,176,32,0.06) 15px 16px);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 30%, transparent 72%);
+            mask-image: radial-gradient(circle at 50% 50%, #000 30%, transparent 72%);
+    opacity: 0.9;
+  }
+  .contour::before {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 0 78%, var(--signal-glow) 92%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 24%, #000 26% 68%, transparent 72%);
+            mask-image: radial-gradient(circle at 50% 50%, transparent 24%, #000 26% 68%, transparent 72%);
+    animation: radarSweep 8s linear infinite;
+  }
+  .contour::after {
+    content: ''; position: absolute; left: 50%; top: 50%;
+    width: 9px; height: 9px; translate: -50% -50%; border-radius: 50%;
+    background: var(--signal); box-shadow: 0 0 0 5px var(--signal-soft), 0 0 24px var(--signal-glow);
+    animation: corePulse 3.4s ease-in-out infinite;
+  }
+  html[data-theme='light'] .contour::before {
+    background: conic-gradient(from 0deg, transparent 0 78%, rgba(255,176,32,0.55) 92%, transparent 100%);
+  }
+  @keyframes radarSweep { to { transform: rotate(360deg); } }
+  @keyframes corePulse {
+    0%,100% { box-shadow: 0 0 0 5px var(--signal-soft), 0 0 20px var(--signal-glow); }
+    50%     { box-shadow: 0 0 0 9px transparent, 0 0 34px var(--signal-glow); }
+  }
+
+  .wrap { position: relative; z-index: 2; width: min(680px, 92vw); }
+
+  .focal { position: relative; }
+  .glitch-row { display: flex; align-items: baseline; gap: 20px; justify-content: center; margin-bottom: 6px; }
+  .glitch {
+    font-family: var(--font-display); font-weight: 700; font-size: clamp(72px, 16vw, 156px);
+    line-height: 0.9; color: var(--signal); letter-spacing: -0.03em;
+    text-shadow: 0 0 30px var(--signal-glow);
+    position: relative;
+  }
+  .glitch::before, .glitch::after {
+    content: '404'; position: absolute; left: 0; top: 0; width: 100%; overflow: hidden;
+  }
+  .glitch::before { color: var(--steel); clip-path: inset(0 0 55% 0); animation: glitch1 3.2s infinite linear; }
+  .glitch::after  { color: var(--danger); clip-path: inset(55% 0 0 0); animation: glitch2 2.6s infinite linear; }
+  @keyframes glitch1 {
+    0%, 92%, 100% { transform: translate(0,0); opacity: 0; }
+    93% { transform: translate(-3px,-1px); opacity: 0.85; }
+    95% { transform: translate(3px,1px); opacity: 0.85; }
+    97% { transform: translate(-2px,0); opacity: 0; }
+  }
+  @keyframes glitch2 {
+    0%, 90%, 100% { transform: translate(0,0); opacity: 0; }
+    91% { transform: translate(3px,1px); opacity: 0.85; }
+    94% { transform: translate(-3px,-1px); opacity: 0.85; }
+    96% { transform: translate(2px,0); opacity: 0; }
+  }
+
+  .signal-label {
+    text-align: center; font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--text-dim); margin-bottom: 34px;
+  }
+  .signal-label b { color: var(--signal); }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--danger);
+    box-shadow: 0 0 8px var(--danger); margin-right: 8px; animation: blink 1.4s infinite; }
+  @keyframes blink { 0%, 40% { opacity: 1; } 50%, 90% { opacity: 0.25; } 100% { opacity: 1; } }
+
+  .term {
+    position: relative; z-index: 1;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,176,32,0.04);
+    overflow: hidden;
+  }
+  html[data-theme='light'] .term { box-shadow: 0 18px 44px rgba(60,50,25,0.12); }
+  .term-head {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
+  }
+  .term-head .tdot { width: 10px; height: 10px; border-radius: 50%; }
+  .term-head .tdot:nth-child(1) { background: #ff5f57; }
+  .term-head .tdot:nth-child(2) { background: #febc2e; }
+  .term-head .tdot:nth-child(3) { background: #28c840; }
+  .term-head span { margin-left: 8px; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.04em; }
+
+  .term-body { padding: 20px 22px; font-size: 0.86rem; line-height: 1.9; min-height: 168px; }
+  .ln { white-space: pre-wrap; word-break: break-word; }
+  .prompt { color: var(--signal); }
+  .err { color: var(--danger); }
+  .dim { color: var(--text-dim); }
+  .muted { color: var(--text-muted); }
+  .cursor { display: inline-block; width: 8px; height: 1em; background: var(--signal); vertical-align: text-bottom;
+    animation: blink 1s steps(1) infinite; margin-left: 2px; }
+
+  .actions { position: relative; z-index: 1; display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+  .btn {
+    font-family: var(--font-mono); font-size: 0.82rem; text-decoration: none;
+    padding: 11px 20px; border-radius: 7px; border: 1px solid var(--border-2);
+    color: var(--text); background: var(--surface); transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn:hover { border-color: var(--signal); color: var(--signal); transform: translateY(-1px); }
+  .btn.primary { background: var(--signal); border-color: var(--signal); color: #16130a; font-weight: 600; }
+  .btn.primary:hover { background: var(--signal-hi); color: #16130a; }
+
+  .foot { text-align: center; margin-top: 26px; font-size: 0.66rem; color: var(--text-dim); letter-spacing: 0.04em; }
+  .foot a { color: var(--text-dim); }
+</style>
+</head>
+<body>
+  <div class="scanlines"></div>
+  <div class="wrap">
+    <div class="glitch-row"><span class="glitch">404</span></div>
+    <div class="signal-label"><span class="dot"></span><b data-i18n="label">SIGNAL LOST</b> — <span data-i18n="sub">this route does not exist</span></div>
+
+    <div class="focal">
+      <div class="contour"></div>
+      <div class="term">
+        <div class="term-head">
+          <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
+          <span>kongtrol — zsh</span>
+        </div>
+        <div class="term-body" id="termBody"></div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <a href="./" class="btn primary" data-i18n="home">$ cd ~</a>
+      <a href="./guia" class="btn" data-i18n="guide">$ man kongtrol</a>
+      <a href="https://github.com/DerotLuna/vpn-kongtrol" class="btn" data-i18n="gh">$ git remote -v</a>
+    </div>
+
+    <div class="foot" data-i18n="foot">no place like 127.0.0.1</div>
+  </div>
+
+<script>
+(function () {
+  var storedTheme = localStorage.getItem('kgtheme');
+  var theme = storedTheme === 'light' || storedTheme === 'dark'
+    ? storedTheme
+    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+
+  var storedLang = localStorage.getItem('kglang');
+  var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+  var lang = storedLang === 'es' || storedLang === 'en'
+    ? storedLang
+    : (langs.some(function (l) { return l && l.toLowerCase().indexOf('es') === 0; }) ? 'es' : 'en');
+  document.documentElement.lang = lang;
+
+  var path = window.location.pathname;
+
+  var copy = {
+    es: {
+      label: 'SEÑAL PERDIDA', sub: 'esta ruta no existe', home: '$ cd ~', guide: '$ man kongtrol', gh: '$ git remote -v',
+      foot: 'no place like 127.0.0.1',
+      lines: [
+        ['prompt', '$ '], ['muted', 'cd "' + path + '"\n'],
+        ['err', 'bash: cd: ' + path + ': No such file or directory\n\n'],
+        ['prompt', '$ '], ['muted', 'kongtrol route --resolve "' + path + '"\n'],
+        ['dim', '[x] '], ['err', '404 — ninguna política ni página coincide con esta ruta\n\n'],
+        ['prompt', '$ '], ['muted', 'suggest --nearest\n'],
+        ['dim', '→ / '], ['muted', '(inicio)   '], ['dim', '→ /guia '], ['muted', '(guía)   '], ['dim', '→ github.com/DerotLuna/vpn-kongtrol\n'],
+      ],
+    },
+    en: {
+      label: 'SIGNAL LOST', sub: 'this route does not exist', home: '$ cd ~', guide: '$ man kongtrol', gh: '$ git remote -v',
+      foot: 'no place like 127.0.0.1',
+      lines: [
+        ['prompt', '$ '], ['muted', 'cd "' + path + '"\n'],
+        ['err', 'bash: cd: ' + path + ': No such file or directory\n\n'],
+        ['prompt', '$ '], ['muted', 'kongtrol route --resolve "' + path + '"\n'],
+        ['dim', '[x] '], ['err', '404 — no policy or page matches this route\n\n'],
+        ['prompt', '$ '], ['muted', 'suggest --nearest\n'],
+        ['dim', '→ / '], ['muted', '(home)   '], ['dim', '→ /guia '], ['muted', '(guide)   '], ['dim', '→ github.com/DerotLuna/vpn-kongtrol\n'],
+      ],
+    },
+  }[lang];
+
+  document.querySelectorAll('[data-i18n]').forEach(function (el) {
+    var key = el.getAttribute('data-i18n');
+    if (copy[key]) el.textContent = copy[key];
+  });
+
+  var body = document.getElementById('termBody');
+  var flat = [];
+  copy.lines.forEach(function (seg) { flat.push(seg); });
+
+  var container = document.createElement('div');
+  container.className = 'ln';
+  body.appendChild(container);
+
+  var segIdx = 0, charIdx = 0;
+  var cursor = document.createElement('span');
+  cursor.className = 'cursor';
+
+  function typeNext() {
+    if (segIdx >= flat.length) { container.appendChild(cursor); return; }
+    var seg = flat[segIdx];
+    var cls = seg[0], text = seg[1];
+    var span = container.querySelector('span.seg-' + segIdx) || (function () {
+      var s = document.createElement('span');
+      s.className = cls + ' seg-' + segIdx;
+      container.appendChild(s);
+      return s;
+    })();
+    if (charIdx < text.length) {
+      span.textContent += text[charIdx];
+      charIdx++;
+      setTimeout(typeNext, text[charIdx - 1] === '\n' ? 90 : 14);
+    } else {
+      segIdx++; charIdx = 0;
+      setTimeout(typeNext, 40);
+    }
+  }
+  typeNext();
+})();
+</script>
+</body>
+</html>

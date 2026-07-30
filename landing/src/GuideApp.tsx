@@ -8,8 +8,22 @@ import Footer from './components/Footer'
 import TmuxBar, { TmuxWindow } from './components/TmuxBar'
 
 // guide sections as tmux windows — short command-flavored names, same IDs the
-// sidebar and IntersectionObserver already use
-const GUIDE_WINDOWS: TmuxWindow[] = [
+// sidebar and IntersectionObserver already use. `init`, `up`, `doctor` are
+// literal kongtrol CLI subcommands, so they stay unchanged in both languages.
+const GUIDE_WINDOWS_ES: TmuxWindow[] = [
+  { n: 0, name: 'inicio', id: 'quickstart' },
+  { n: 1, name: 'prereqs', id: 'prereqs' },
+  { n: 2, name: 'instalar', id: 'install' },
+  { n: 3, name: 'init', id: 'wizard' },
+  { n: 4, name: 'grupos', id: 'groups' },
+  { n: 5, name: 'politicas', id: 'policies' },
+  { n: 6, name: 'doctor', id: 'doctor' },
+  { n: 7, name: 'up', id: 'connect' },
+  { n: 8, name: 'panel', id: 'dashboard' },
+  { n: 9, name: 'diario', id: 'daily' },
+  { n: 10, name: 'debug', id: 'trouble' },
+]
+const GUIDE_WINDOWS_EN: TmuxWindow[] = [
   { n: 0, name: 'start', id: 'quickstart' },
   { n: 1, name: 'prereqs', id: 'prereqs' },
   { n: 2, name: 'install', id: 'install' },
@@ -52,7 +66,7 @@ export default function GuideApp() {
         <Guide os={os} setOS={setOS} lang={lang} />
       </main>
       <Footer lang={lang} page="guide" />
-      <TmuxBar lang={lang} session="kongtrol:guia" windows={GUIDE_WINDOWS} showStatus={false} />
+      <TmuxBar lang={lang} session="kongtrol:guia" windows={lang === 'es' ? GUIDE_WINDOWS_ES : GUIDE_WINDOWS_EN} showStatus={false} />
     </>
   )
 }
