@@ -307,6 +307,8 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
+Si ya tienes un daemon corriendo (`kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel puntual, `kongtrol reload --tunnel <perfil>`; para políticas, `kongtrol reload --policy`. Ver [CLI.md → Reload](CLI.md#reload).
+
 ---
 
 ## 5b. Políticas de routing
@@ -464,7 +466,7 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-No necesitas reiniciar nada — las políticas se leen al conectar.
+Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → Reload](CLI.md#reload).
 
 ---
 

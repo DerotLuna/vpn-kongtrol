@@ -241,6 +241,7 @@ y endurece la seguridad de red desde un solo CLI.`,
 		"cli.init.short":            "Asistente interactivo para crear o actualizar kongtrol.yaml",
 		"cli.up.short":              "Conecta uno o más perfiles VPN (o todos con --all)",
 		"cli.down.short":            "Desconecta uno o más perfiles VPN (o un grupo con --group)",
+		"cli.reload.short":          "Recarga kongtrol.yaml desde disco en el daemon en ejecución (políticas y/o grupos)",
 		"cli.status.short":          "Muestra el estado de todos los túneles VPN",
 		"cli.routes.short":          "Gestiona reglas de enrutamiento",
 		"cli.routes.list.short":     "Lista rutas activas gestionadas por Kongtrol",
@@ -265,6 +266,10 @@ y endurece la seguridad de red desde un solo CLI.`,
 		"cli.down.examples": `  kongtrol down office
   kongtrol down --group work
   kongtrol down --all`,
+		"cli.reload.examples": `  kongtrol reload
+  kongtrol reload --policy
+  kongtrol reload --group work
+  kongtrol reload --tunnel office`,
 		"cli.status.examples": `  kongtrol status
   kongtrol status --watch
   kongtrol status --watch --dashboard
@@ -289,6 +294,20 @@ y endurece la seguridad de red desde un solo CLI.`,
 		"cli.up.flag.fav":                           "conecta perfiles favoritos guardados",
 		"cli.down.flag.all":                         "desconecta todos los túneles activos",
 		"cli.down.flag.group":                       "desconecta todos los perfiles de un grupo",
+		"cli.reload.flag.group":                     "recarga solo los túneles activos de este grupo",
+		"cli.reload.flag.policy":                    "recarga solo el motor de políticas (omite grupos)",
+		"cli.reload.flag.tunnel":                    "recarga solo este túnel individual (omite grupos y otros túneles)",
+		"cli.reload.error.no_daemon":                "no se encontró un daemon 'kongtrol up' en ejecución — inicia uno primero",
+		"cli.reload.error.policy":                   "no se pudo recargar el motor de políticas",
+		"cli.reload.error.list_groups":              "no se pudo obtener la lista de grupos del daemon",
+		"cli.reload.error.tunnel":                   "no se pudo recargar el túnel %s",
+		"cli.reload.policy_reloaded":                "Políticas recargadas desde kongtrol.yaml",
+		"cli.reload.group_reloaded":                 "Grupo %s reiniciado con la config recargada",
+		"cli.reload.group_failed":                   "grupo %s: %v",
+		"cli.reload.group_restart_required":         "grupo %s: los perfiles [%s] no están registrados en el daemon en ejecución (probablemente añadidos a mano) — requieren reiniciar el proceso completo ('kongtrol down' y luego 'kongtrol up')",
+		"cli.reload.tunnel_reloaded":                "Túnel %s reiniciado con la config recargada",
+		"cli.reload.tunnel_skipped":                 "Túnel %s no estaba conectado — nada que reiniciar (la config igual se recargó)",
+		"cli.reload.tunnel_restart_required":        "túnel %s: no está registrado en el daemon en ejecución (probablemente añadido a mano) — requiere reiniciar el proceso completo ('kongtrol down' y luego 'kongtrol up')",
 		"cli.status.flag.watch":                     "auto-refresh cada 2 segundos",
 		"cli.status.flag.dashboard":                 "levanta dashboard embebido durante --watch",
 		"cli.status.error.dashboard_requires_watch": "--dashboard requiere --watch",
@@ -770,6 +789,7 @@ and enforce network security from one CLI.`,
 		"cli.init.short":            "Interactive setup wizard to create or update kongtrol.yaml",
 		"cli.up.short":              "Connect one or more VPN profiles (or all with --all)",
 		"cli.down.short":            "Disconnect one or more VPN profiles (or a group with --group)",
+		"cli.reload.short":          "Reload kongtrol.yaml from disk into the running daemon (policies and/or groups)",
 		"cli.status.short":          "Show status for all VPN tunnels",
 		"cli.routes.short":          "Manage routing rules",
 		"cli.routes.list.short":     "List active Kongtrol-managed routes",
@@ -794,6 +814,10 @@ Run this before your first connection, or when diagnosing a teammate's setup.`,
 		"cli.down.examples": `  kongtrol down office
   kongtrol down --group work
   kongtrol down --all`,
+		"cli.reload.examples": `  kongtrol reload
+  kongtrol reload --policy
+  kongtrol reload --group work
+  kongtrol reload --tunnel office`,
 		"cli.status.examples": `  kongtrol status
   kongtrol status --watch
   kongtrol status --watch --dashboard
@@ -818,6 +842,20 @@ Run this before your first connection, or when diagnosing a teammate's setup.`,
 		"cli.up.flag.fav":                           "connect saved favorite profiles",
 		"cli.down.flag.all":                         "disconnect all active tunnels",
 		"cli.down.flag.group":                       "disconnect all profiles in a named group",
+		"cli.reload.flag.group":                     "reload only this group's active tunnels",
+		"cli.reload.flag.policy":                    "reload only the policy engine (skip groups)",
+		"cli.reload.flag.tunnel":                    "reload only this single tunnel (skip groups and other tunnels)",
+		"cli.reload.error.no_daemon":                "no running 'kongtrol up' daemon found — start one first",
+		"cli.reload.error.policy":                   "failed to reload the policy engine",
+		"cli.reload.error.list_groups":              "failed to list groups from the daemon",
+		"cli.reload.error.tunnel":                   "failed to reload tunnel %s",
+		"cli.reload.policy_reloaded":                "Policies reloaded from kongtrol.yaml",
+		"cli.reload.group_reloaded":                 "Group %s restarted with the reloaded config",
+		"cli.reload.group_failed":                   "group %s: %v",
+		"cli.reload.group_restart_required":         "group %s: profiles [%s] are not registered with the running daemon (likely added by a hand edit) — they need a full process restart ('kongtrol down' then 'kongtrol up')",
+		"cli.reload.tunnel_reloaded":                "Tunnel %s restarted with the reloaded config",
+		"cli.reload.tunnel_skipped":                 "Tunnel %s wasn't connected — nothing to restart (config was still reloaded)",
+		"cli.reload.tunnel_restart_required":        "tunnel %s: not registered with the running daemon (likely added by a hand edit) — needs a full process restart ('kongtrol down' then 'kongtrol up')",
 		"cli.status.flag.watch":                     "auto-refresh every 2 seconds",
 		"cli.status.flag.dashboard":                 "start embedded dashboard while --watch is running",
 		"cli.status.error.dashboard_requires_watch": "--dashboard requires --watch",

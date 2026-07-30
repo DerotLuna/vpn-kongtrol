@@ -68,7 +68,11 @@
               </div>
               <div id="test-result" class="resolve-result" style="display:none"></div>
 
-              <h2 style="margin-top:16px;" data-i18n="existing.title">Existing Policies</h2>
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-top:16px;">
+                <h2 data-i18n="existing.title">Existing Policies</h2>
+                <button class="action" onclick="reloadPolicies()" data-i18n="actions.reloadFromDisk">Reload from disk</button>
+              </div>
+              <p class="muted" data-i18n="studio.reloadPolicyTip">Picks up policy edits made by hand directly in kongtrol.yaml, without restarting the daemon.</p>
               <table class="policy-table">
                 <thead>
                   <tr>
@@ -197,6 +201,7 @@
 
             <div class="card">
               <h2 data-i18n="groups.existingTitle">Existing Groups</h2>
+              <p class="muted" data-i18n="studio.reloadGroupTip">Reload disconnects and reconnects the group's active tunnels with the config freshly re-read from kongtrol.yaml, picking up hand edits to routes, DNS, and kill-switch settings without restarting the daemon.</p>
               <table class="policy-table">
                 <thead>
                   <tr>

@@ -221,6 +221,111 @@ func (s *Server) handleDisconnectGroup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "group": name})
 }
 
+// POST /api/v1/groups/{name}/reload — re-reads kongtrol.yaml from disk
+// (hot-swapping the policy engine along the way, same as
+// handlePolicyReload), then restarts every currently-connected profile in
+// the group in place: disconnect then reconnect through the existing
+// adapters, so routes/DNS/kill-switch settings edited by hand for the
+// group's profiles take effect without a full daemon restart. Disconnected
+// profiles in the group are left alone (nothing to restart). Profiles whose
+// VPN type isn't already registered in the running daemon's adapters map —
+// e.g. a brand-new profile added by the hand edit — can't be restarted this
+// way (see CLAUDE.md's restart_required note on VPN CRUD: the adapters map
+// is built once at boot and shared, unsynchronized, with the collector and
+// watchdog goroutines) and are reported back as restart_required instead of
+// silently skipped.
+func (s *Server) handleReloadGroup(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	cfg, err := s.reloadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	g, ok := cfg.Groups[name]
+	if !ok {
+		writeError(w, http.StatusNotFound, "group not found")
+		return
+	}
+
+	restarted, skipped, missing, errs := s.restartProfilesInPlace(r, g.Profiles)
+	if len(missing) > 0 {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"status":           "restart_required",
+			"group":            name,
+			"missing_profiles": missing,
+			"message":          "these profiles are not registered with the running daemon (likely added by a hand edit) — a full process restart ('kongtrol down' then 'kongtrol up') is required before they can connect",
+		})
+		return
+	}
+	if errs != nil {
+		writeError(w, http.StatusInternalServerError, strings.Join(errs, "; "))
+		return
+	}
+
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"status":    "restarting",
+		"group":     name,
+		"restarted": restarted,
+		"skipped":   skipped,
+	})
+}
+
+// restartProfilesInPlace disconnects then reconnects every currently
+// connected profile in the given list through the daemon's real
+// connectProfile/disconnectProfile closures, so Watchdog.MarkIntended/
+// MarkActive and DNSManager.OnConnect/OnDisconnect stay correctly balanced.
+// Profiles not registered in s.adapters (e.g. a brand-new VPN type added by
+// a hand edit — the adapters map is built once at boot, per CLAUDE.md) are
+// returned as missing instead of silently skipped; already-disconnected
+// profiles are returned as skipped. Shared by handleReloadGroup (whole
+// group) and handleReloadTunnel (single profile).
+func (s *Server) restartProfilesInPlace(r *http.Request, profiles []string) (restarted, skipped, missing []string, errs []string) {
+	for _, p := range profiles {
+		if _, ok := s.adapters[p]; !ok {
+			missing = append(missing, p)
+		}
+	}
+	if len(missing) > 0 {
+		return nil, nil, missing, nil
+	}
+
+	if s.connectProfile == nil || s.disconnectProfile == nil {
+		return nil, nil, nil, []string{"connection service unavailable"}
+	}
+
+	restarted = make([]string, 0, len(profiles))
+	skipped = make([]string, 0, len(profiles))
+	for _, profile := range profiles {
+		adapter, ok := s.adapters[profile]
+		if !ok || adapter.Status().Normalize() != vpn.StatusConnected {
+			skipped = append(skipped, profile)
+			continue
+		}
+
+		s.cancelPendingConnect(profile)
+		disconnectCtx, disconnectCancel := context.WithTimeout(r.Context(), 30*time.Second)
+		disconnectErr := s.disconnectProfile(disconnectCtx, profile)
+		disconnectCancel()
+		if disconnectErr != nil {
+			errs = append(errs, fmt.Sprintf("%s: disconnect: %v", profile, disconnectErr))
+			continue
+		}
+
+		connectCtx, connectCancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Minute)
+		if !s.startPendingConnect(profile, connectCancel) {
+			connectCancel()
+			errs = append(errs, fmt.Sprintf("%s: connect already in progress", profile))
+			continue
+		}
+		restarted = append(restarted, profile)
+		go func(p string, ctx context.Context) {
+			defer s.clearPendingConnect(p)
+			_ = s.connectProfile(ctx, p)
+		}(profile, connectCtx)
+	}
+	return restarted, skipped, nil, errs
+}
+
 type settingsDTO struct {
 	// Read-only — the dashboard's own bind/port. Changing it from the page
 	// serving this request would cut the connection mid-response, so it's

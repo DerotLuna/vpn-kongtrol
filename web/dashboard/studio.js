@@ -32,6 +32,8 @@ const I18N = {
     'actions.edit': 'Editar',
     'actions.connect': 'Conectar',
     'actions.disconnect': 'Desconectar',
+    'actions.reload': 'Recargar',
+    'actions.reloadFromDisk': 'Recargar desde disco',
     'test.title': 'Probar política antes de guardar',
     'test.targetPlaceholder': 'Objetivo: dominio/IP/URL',
     'test.appPlaceholder': 'o app: chrome.exe',
@@ -54,6 +56,8 @@ const I18N = {
     'result.noMatch': 'Sin match ({reason})',
     'result.noMatchReason': 'la regla no coincide con esta entrada',
     'common.refresh': 'Actualizar',
+    'alerts.policyReloadFailed': 'Error al recargar las políticas desde disco',
+    'toast.policiesReloaded': 'Políticas recargadas desde kongtrol.yaml.',
 
     'profileStudio.restartNote': 'Los cambios aquí actualizan el archivo de config y el keychain del sistema — reinicia el daemon para conectar con un perfil nuevo o editado.',
     'pEditor.name': 'Nombre',
@@ -115,6 +119,11 @@ const I18N = {
     'toast.groupConnecting': 'Conectando grupo "{name}"…',
     'toast.groupDisconnecting': 'Grupo "{name}" desconectado.',
     'toast.groupActionFailed': 'La acción sobre el grupo falló',
+    'toast.groupReloading': 'Recargando grupo "{name}" con la config del disco…',
+    'toast.groupRestartRequired': 'Grupo "{name}": los perfiles [{missing}] no están registrados en el daemon en ejecución — requieren reiniciar el proceso completo.',
+    'alerts.groupReloadFailed': 'Error al recargar el grupo',
+    'studio.reloadPolicyTip': 'Aplica ediciones de políticas hechas a mano directamente en kongtrol.yaml, sin reiniciar el daemon.',
+    'studio.reloadGroupTip': 'Recargar desconecta y reconecta los túneles activos del grupo con la config recién leída de kongtrol.yaml, aplicando ediciones a mano de rutas, DNS y kill switch sin reiniciar el daemon.',
   },
   en: {
     'nav.overview': 'Overview',
@@ -146,6 +155,8 @@ const I18N = {
     'actions.edit': 'Edit',
     'actions.connect': 'Connect',
     'actions.disconnect': 'Disconnect',
+    'actions.reload': 'Reload',
+    'actions.reloadFromDisk': 'Reload from disk',
     'test.title': 'Test Policy Before Saving',
     'test.targetPlaceholder': 'Target: domain/IP/URL',
     'test.appPlaceholder': 'or app: chrome.exe',
@@ -168,6 +179,8 @@ const I18N = {
     'result.noMatch': 'No match ({reason})',
     'result.noMatchReason': 'rule does not match this input',
     'common.refresh': 'Refresh',
+    'alerts.policyReloadFailed': 'Failed to reload policies from disk',
+    'toast.policiesReloaded': 'Policies reloaded from kongtrol.yaml.',
 
     'profileStudio.restartNote': 'Changes here update the config file and OS keychain only — restart the daemon to connect through a new or edited profile.',
     'pEditor.name': 'Name',
@@ -229,6 +242,11 @@ const I18N = {
     'toast.groupConnecting': 'Connecting group "{name}"…',
     'toast.groupDisconnecting': 'Group "{name}" disconnected.',
     'toast.groupActionFailed': 'Group action failed',
+    'toast.groupReloading': 'Reloading group "{name}" with config from disk…',
+    'toast.groupRestartRequired': 'Group "{name}": profiles [{missing}] are not registered with the running daemon — they need a full process restart.',
+    'alerts.groupReloadFailed': 'Failed to reload group',
+    'studio.reloadPolicyTip': 'Picks up policy edits made by hand directly in kongtrol.yaml, without restarting the daemon.',
+    'studio.reloadGroupTip': 'Reload disconnects and reconnects the group\'s active tunnels with the config freshly re-read from kongtrol.yaml, picking up hand edits to routes, DNS, and kill-switch settings without restarting the daemon.',
   },
 };
 
@@ -338,6 +356,22 @@ async function loadPolicies() {
   policies = await res.json();
   policies.sort((a, b) => a.name.localeCompare(b.name));
   renderPolicies();
+}
+
+// reloadPolicies asks the running daemon to re-read kongtrol.yaml from disk
+// and hot-swap the policy engine from it — the same hot-swap every other
+// policy CRUD action here already triggers, but sourced from the file on
+// disk instead of this form's own draft, for changes made by hand outside
+// the dashboard.
+async function reloadPolicies() {
+  const res = await fetch(`${API}/api/v1/policies/reload`, { method: 'POST' });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ error: t('alerts.policyReloadFailed') }));
+    showToast(e.error || t('alerts.policyReloadFailed'), 'error');
+    return;
+  }
+  showToast(t('toast.policiesReloaded'), 'success');
+  await loadPolicies();
 }
 
 async function createPolicy() {
@@ -648,6 +682,7 @@ function renderGroups() {
         <div class="policy-row-actions">
           <button class="action" onclick='connectGroupByIndex(${idx})'>${t('actions.connect')}</button>
           <button class="action disconnect" onclick='disconnectGroupByIndex(${idx})'>${t('actions.disconnect')}</button>
+          <button class="action" onclick='reloadGroupByIndex(${idx})'>${t('actions.reload')}</button>
           <button class="action" onclick='selectGroupByIndex(${idx})'>${t('actions.edit')}</button>
           <button class="action disconnect" onclick='deleteGroupByIndex(${idx})'>${t('actions.delete')}</button>
         </div>
@@ -757,6 +792,31 @@ async function disconnectGroupByIndex(index) {
     return;
   }
   showToast(t('toast.groupDisconnecting', { name: g.name }), 'success');
+}
+
+// reloadGroupByIndex re-reads kongtrol.yaml from disk and restarts (disconnect
+// + reconnect) every currently-connected profile in the group in place,
+// picking up hand-edited routes/DNS/kill-switch settings without a daemon
+// restart. A 409 response means the group now references a profile the
+// running daemon has no adapter for (added by the hand edit) — that case
+// needs a full daemon restart, which this surfaces as a warning rather than
+// silently doing nothing.
+async function reloadGroupByIndex(index) {
+  const g = groups[index];
+  if (!g) return;
+  const res = await fetch(`${API}/api/v1/groups/${encodeURIComponent(g.name)}/reload`, { method: 'POST' });
+  if (res.status === 409) {
+    const e = await res.json().catch(() => ({}));
+    const missing = (e.missing_profiles || []).join(', ');
+    showToast(t('toast.groupRestartRequired', { name: g.name, missing }), 'error');
+    return;
+  }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({ error: t('alerts.groupReloadFailed') }));
+    showToast(e.error || t('alerts.groupReloadFailed'), 'error');
+    return;
+  }
+  showToast(t('toast.groupReloading', { name: g.name }), 'info');
 }
 
 setLang(lang);

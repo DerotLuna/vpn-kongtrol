@@ -117,6 +117,25 @@ func (s *Server) handlePoliciesMeta(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, metaDTO{Profiles: profiles, ConfigPath: cfgPath})
 }
 
+// POST /api/v1/policies/reload — re-reads kongtrol.yaml from disk and
+// hot-swaps the policy engine from it, picking up IP/domain/app routing
+// rules that were hand-edited directly in the YAML file (bypassing the
+// dashboard/CLI) without requiring a full daemon restart. This is
+// deliberately a distinct code path from saveRuntimeConfig (used by every
+// other policy CRUD handler in this file): those mutate an in-memory copy
+// and persist it; this only re-reads and re-applies what's already on disk.
+func (s *Server) handlePolicyReload(w http.ResponseWriter, r *http.Request) {
+	cfg, err := s.reloadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":   "reloaded",
+		"policies": len(cfg.Policies),
+	})
+}
+
 // POST /api/v1/policies
 func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 	var req config.PolicyRule

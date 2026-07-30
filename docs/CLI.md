@@ -22,6 +22,26 @@ kongtrol down --group work           # disconnect all profiles in a group
 kongtrol down --all                  # disconnect everything
 ```
 
+## Reload
+
+`kongtrol reload` picks up a hand-edited `kongtrol.yaml` in an already-running `kongtrol up`
+daemon, without restarting the whole process. It always talks to the running daemon's embedded
+API — if none is reachable, it fails clearly instead of silently reloading a throwaway in-process
+copy nobody is using.
+
+```bash
+kongtrol reload                      # reload the policy engine, then restart every active group in place
+kongtrol reload --policy             # reload only the policy engine (routing rules) — no tunnels touched
+kongtrol reload --group work         # reload policies, then restart only this group's active tunnels
+kongtrol reload --tunnel office      # reload policies, then restart only this one tunnel (if connected)
+```
+
+`--group`, `--tunnel`, and `--policy` are mutually exclusive — pick the narrowest scope for the
+edit you made. A profile that isn't already registered with the running daemon (e.g. a brand-new
+VPN type added by the hand edit — the adapters map is built once at boot) can't be restarted this
+way; `reload` reports it as needing a full process restart (`kongtrol down` then `kongtrol up`)
+instead of silently doing nothing.
+
 ## Status
 
 ```bash
@@ -96,12 +116,14 @@ GET  /api/v1/network/overview                # default egress, local IPs, public
 POST /api/v1/tunnels/{name}/connect
 POST /api/v1/tunnels/{name}/cancel_connect
 POST /api/v1/tunnels/{name}/disconnect
+POST /api/v1/tunnels/{name}/reload           # reload kongtrol.yaml + restart this tunnel in place if connected
 GET  /api/v1/dns/resolve?domain=...&via=...  # split-DNS resolution for a specific tunnel
 GET  /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app + target)
 
 # Policies
 GET/POST  /api/v1/policies
 PUT/DELETE /api/v1/policies/{name}
+POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 
 # VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
@@ -114,6 +136,7 @@ GET/POST  /api/v1/groups
 PUT/DELETE /api/v1/groups/{name}
 POST /api/v1/groups/{name}/connect
 POST /api/v1/groups/{name}/disconnect
+POST /api/v1/groups/{name}/reload            # reload kongtrol.yaml + restart the group's active tunnels in place
 
 # Security — live toggles, immediately re-applied (not just persisted)
 GET  /api/v1/security/status

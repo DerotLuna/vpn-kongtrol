@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -130,6 +131,143 @@ func daemonRequest(method, url string, body io.Reader) (*http.Request, error) {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	return req, nil
+}
+
+// daemonReloadPolicy asks the running daemon to re-read kongtrol.yaml from
+// disk and hot-swap its policy engine from it — the same hot-swap
+// saveRuntimeConfig performs after a dashboard CRUD write, but sourced from
+// the file on disk instead of an in-memory mutation, for the "I hand-edited
+// kongtrol.yaml outside the dashboard/CLI" case `kongtrol reload` exists for.
+func daemonReloadPolicy(base string) error {
+	client := http.Client{Timeout: 10 * time.Second}
+	req, err := daemonRequest(http.MethodPost, base+"/api/v1/policies/reload", nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return daemonAPIError(resp)
+	}
+	return nil
+}
+
+// daemonGroupNames returns the names of every group defined in the running
+// daemon's currently loaded config. Used by `kongtrol reload` with no
+// --group flag to restart every group in place.
+func daemonGroupNames(base string) ([]string, error) {
+	client := http.Client{Timeout: 10 * time.Second}
+	req, err := daemonRequest(http.MethodGet, base+"/api/v1/groups", nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, daemonAPIError(resp)
+	}
+	var groups []struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&groups); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(groups))
+	for _, g := range groups {
+		names = append(names, g.Name)
+	}
+	return names, nil
+}
+
+// daemonGroupReloadResult mirrors the JSON body returned by
+// POST /api/v1/groups/{name}/reload, for both the 202 "restarting" success
+// shape and the 409 "restart_required" shape (a brand-new profile added to
+// the group by the hand edit that the running daemon has no registered
+// adapter for — see handleReloadGroup's doc comment in internal/api).
+type daemonGroupReloadResult struct {
+	Status          string   `json:"status"`
+	Group           string   `json:"group"`
+	Restarted       []string `json:"restarted"`
+	Skipped         []string `json:"skipped"`
+	MissingProfiles []string `json:"missing_profiles"`
+	RestartRequired bool     `json:"-"`
+}
+
+// daemonReloadGroup asks the running daemon to re-read kongtrol.yaml and
+// restart-in-place every currently connected profile in group name.
+func daemonReloadGroup(base, name string) (daemonGroupReloadResult, error) {
+	client := http.Client{Timeout: 35 * time.Second}
+	req, err := daemonRequest(http.MethodPost, base+"/api/v1/groups/"+name+"/reload", nil)
+	if err != nil {
+		return daemonGroupReloadResult{}, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return daemonGroupReloadResult{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		var result daemonGroupReloadResult
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr == nil {
+			result.RestartRequired = true
+			return result, nil
+		}
+	}
+	if resp.StatusCode >= 300 {
+		return daemonGroupReloadResult{}, daemonAPIError(resp)
+	}
+	var result daemonGroupReloadResult
+	_ = json.NewDecoder(resp.Body).Decode(&result)
+	return result, nil
+}
+
+// daemonTunnelReloadResult mirrors the JSON body returned by
+// POST /api/v1/tunnels/{name}/reload — the single-profile counterpart to
+// daemonGroupReloadResult, for restarting one tunnel in place instead of a
+// whole group.
+type daemonTunnelReloadResult struct {
+	Status          string   `json:"status"`
+	Tunnel          string   `json:"tunnel"`
+	Restarted       []string `json:"restarted"`
+	Skipped         []string `json:"skipped"`
+	RestartRequired bool     `json:"-"`
+}
+
+// daemonReloadTunnel asks the running daemon to re-read kongtrol.yaml and
+// restart-in-place profile name if it's currently connected — a hand edit
+// scoped to one tunnel doesn't need its whole group cycled.
+func daemonReloadTunnel(base, name string) (daemonTunnelReloadResult, error) {
+	client := http.Client{Timeout: 35 * time.Second}
+	req, err := daemonRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/reload", nil)
+	if err != nil {
+		return daemonTunnelReloadResult{}, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return daemonTunnelReloadResult{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusConflict {
+		var result daemonTunnelReloadResult
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr == nil {
+			result.RestartRequired = true
+			return result, nil
+		}
+	}
+	if resp.StatusCode >= 300 {
+		return daemonTunnelReloadResult{}, daemonAPIError(resp)
+	}
+	var result daemonTunnelReloadResult
+	_ = json.NewDecoder(resp.Body).Decode(&result)
+	return result, nil
 }
 
 // daemonReconnect disconnects then reconnects profile name through the

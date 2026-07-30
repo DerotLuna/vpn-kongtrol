@@ -80,6 +80,10 @@ const I18N = {
     'actions.connect': 'Conectar',
     'actions.disconnect': 'Desconectar',
     'actions.cancel': 'Cancelar',
+    'actions.reload': 'Recargar',
+    'toast.tunnelReloading': 'Recargando "{name}" con la config del disco…',
+    'toast.tunnelRestartRequired': 'Túnel "{name}" no está registrado en el daemon en ejecución (probablemente añadido a mano) — requiere reiniciar el proceso completo.',
+    'alerts.tunnelReloadFailed': 'Error al recargar el túnel',
     'status.connected': 'conectado',
     'status.connecting': 'conectando',
     'status.disconnected': 'desconectado',
@@ -179,6 +183,10 @@ const I18N = {
     'actions.connect': 'Connect',
     'actions.disconnect': 'Disconnect',
     'actions.cancel': 'Cancel',
+    'actions.reload': 'Reload',
+    'toast.tunnelReloading': 'Reloading "{name}" with config from disk…',
+    'toast.tunnelRestartRequired': 'Tunnel "{name}" is not registered with the running daemon (likely added by a hand edit) — needs a full process restart.',
+    'alerts.tunnelReloadFailed': 'Failed to reload tunnel',
     'status.connected': 'connected',
     'status.connecting': 'connecting',
     'status.disconnected': 'disconnected',
@@ -346,7 +354,8 @@ function renderTunnels(tunnels) {
 
       let btn = `<button class="action" onclick="connectVPN('${name}')">${t('actions.connect')}</button>`;
       if (isConnected) {
-        btn = `<button class="action disconnect" onclick="disconnectVPN('${name}')">${t('actions.disconnect')}</button>`;
+        btn = `<button class="action disconnect" onclick="disconnectVPN('${name}')">${t('actions.disconnect')}</button>
+          <button class="action" onclick="reloadVPN('${name}')">${t('actions.reload')}</button>`;
       } else if (isConnecting) {
         btn = `<button class="action disconnect" onclick="cancelConnectVPN('${name}')">${t('actions.cancel')}</button>`;
       }
@@ -760,6 +769,37 @@ async function disconnectVPN(name) {
   try {
     await fetch(`${API}/api/v1/tunnels/${name}/disconnect`, { method: 'POST' });
   } catch (_) {
+  } finally {
+    setTimeout(() => {
+      refreshRoutes();
+      refreshNetworkOverview();
+    }, 600);
+  }
+}
+
+// reloadVPN re-reads kongtrol.yaml from disk (hot-swapping the policy
+// engine along the way) and, if this one tunnel is currently connected,
+// restarts it in place — disconnect + reconnect through the daemon's real
+// lifecycle — so routes/DNS/kill-switch edits made by hand for just this
+// profile take effect without cycling its whole group. A 409 means the
+// profile isn't registered with the running daemon (added by the hand
+// edit) — that needs a full daemon restart, surfaced as an error toast
+// rather than silently doing nothing.
+async function reloadVPN(name) {
+  try {
+    const res = await fetch(`${API}/api/v1/tunnels/${encodeURIComponent(name)}/reload`, { method: 'POST' });
+    if (res.status === 409) {
+      showToast(t('toast.tunnelRestartRequired', { name }), 'error');
+      return;
+    }
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({ error: t('alerts.tunnelReloadFailed') }));
+      showToast(e.error || t('alerts.tunnelReloadFailed'), 'error');
+      return;
+    }
+    showToast(t('toast.tunnelReloading', { name }), 'info');
+  } catch (_) {
+    showToast(t('alerts.tunnelReloadFailed'), 'error');
   } finally {
     setTimeout(() => {
       refreshRoutes();

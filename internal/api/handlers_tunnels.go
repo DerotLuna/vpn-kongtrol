@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
@@ -122,6 +123,47 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "disconnected", "tunnel": name})
+}
+
+// POST /api/v1/tunnels/{name}/reload — re-reads kongtrol.yaml from disk
+// (hot-swapping the policy engine along the way, same as
+// handlePolicyReload/handleReloadGroup), then restarts this single profile
+// in place if it's currently connected: disconnect then reconnect through
+// the existing adapter, so routes/DNS/kill-switch settings edited by hand
+// for this one tunnel take effect without restarting its whole group or the
+// daemon. This is the single-tunnel counterpart to handleReloadGroup, for
+// picking up a hand edit scoped to one connection instead of a whole group.
+func (s *Server) handleReloadTunnel(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	if _, err := s.reloadRuntimeConfig(); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	restarted, skipped, missing, errs := s.restartProfilesInPlace(r, []string{name})
+	if len(missing) > 0 {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"status":  "restart_required",
+			"tunnel":  name,
+			"message": "this profile is not registered with the running daemon (likely added by a hand edit) — a full process restart ('kongtrol down' then 'kongtrol up') is required before it can connect",
+		})
+		return
+	}
+	if errs != nil {
+		writeError(w, http.StatusInternalServerError, strings.Join(errs, "; "))
+		return
+	}
+
+	status := "restarting"
+	if len(skipped) > 0 {
+		status = "skipped_not_connected"
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"status":    status,
+		"tunnel":    name,
+		"restarted": restarted,
+		"skipped":   skipped,
+	})
 }
 
 func (s *Server) startPendingConnect(name string, cancel context.CancelFunc) bool {
