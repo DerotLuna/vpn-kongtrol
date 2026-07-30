@@ -3,7 +3,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // Multi-page app: landing (/) + setup guide (/guia)
+// Served from a GitHub Pages project page at /vpn-kongtrol/.
 export default defineConfig({
+  base: '/vpn-kongtrol/',
   plugins: [react()],
   build: {
     rollupOptions: {

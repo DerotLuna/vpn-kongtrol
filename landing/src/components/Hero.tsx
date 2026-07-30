@@ -250,7 +250,7 @@ export default function Hero({ os, lang }: Props) {
             {stage >= 4 && (
               <div className="th-ctas">
                 <a href={GITHUB_RELEASES} className="th-btn primary" target="_blank" rel="noreferrer">{copy.ctaDownload}</a>
-                <a href="/guia" className="th-btn">{copy.ctaGuide}</a>
+                <a href={`${import.meta.env.BASE_URL}guia`} className="th-btn">{copy.ctaGuide}</a>
               </div>
             )}
 

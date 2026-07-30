@@ -131,7 +131,7 @@ export default function Features({ lang }: Props) {
             <g className="sb-core" transform="translate(320 180)">
               <circle className="sb-glow" r="50" />
               <circle className="sb-ring" r="56" />
-              <image className="sb-logo" href="/logo-kong.svg" x="-42" y="-42" width="84" height="84" />
+              <image className="sb-logo" href={`${import.meta.env.BASE_URL}logo-kong.svg`} x="-42" y="-42" width="84" height="84" />
             </g>
 
             {/* destination nodes (left) */}

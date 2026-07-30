@@ -89,7 +89,7 @@ $ kongtrol dashboard`,
         <div className="how-cta reveal">
           <p>{copy.ctaLead}</p>
           <div className="how-cta-actions">
-            <a href="/guia" className="btn-download">{copy.cta}</a>
+            <a href={`${import.meta.env.BASE_URL}guia`} className="btn-download">{copy.cta}</a>
             <span className="how-cta-meta">{copy.ctaMeta}</span>
           </div>
         </div>

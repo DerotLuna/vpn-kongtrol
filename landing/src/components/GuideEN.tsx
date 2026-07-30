@@ -238,7 +238,7 @@ $ kongtrol dashboard`}</CodeBlock>
                 <div className="os-panel active">
                   <p>
                     1. Download <IC c="kongtrol_windows_amd64.zip" /> from{' '}
-                    <a href="/#install">the downloads section</a>.
+                    <a href={`${import.meta.env.BASE_URL}#install`}>the downloads section</a>.
                   </p>
                   <p>
                     2. Extract the ZIP. You'll get a <IC c="kongtrol.exe" /> file.

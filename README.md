@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.svg" alt="Kongtrol" width="120" />
+  <img src="assets/logo.png" alt="Kongtrol" width="120" />
   <h1>Kongtrol</h1>
   <p><strong>Multi-VPN orchestration for professionals.</strong><br/>
   Policy-based routing · Security enforcement · Live monitoring — from a single binary.</p>
