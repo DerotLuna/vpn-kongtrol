@@ -31,6 +31,13 @@ archives:
       - configs/example.yaml
       - README.md
 
+  # Raw, uncompressed binary per platform — consumed directly by install.sh/install.ps1
+  # and by the landing page's per-OS download buttons (no unzip step for end users).
+  - id: cli-binary
+    builds: [kongtrol-cli]
+    format: binary
+    name_template: "kongtrol-{{ .Os }}-{{ .Arch }}"
+
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256

@@ -46,7 +46,19 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full feature/status matrix.
 
 ## Quick start
 
-Download the latest release for your platform from [Releases](../../releases), or build from source (requires Go 1.25+):
+Install with one command (downloads the latest release, verifies its checksum):
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
+```
+
+Or grab the binary for your platform from [Releases](../../releases), or build from source (requires Go 1.25+):
 
 ```bash
 git clone https://github.com/vpn-kongtrol/kongtrol
