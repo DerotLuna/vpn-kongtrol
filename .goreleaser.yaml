@@ -38,8 +38,6 @@ checksum:
 release:
   draft: true
   replace_existing_draft: true
-  extra_files:
-    - glob: ./build/tray/*
 
 changelog:
   sort: asc
