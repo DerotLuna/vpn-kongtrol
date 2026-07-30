@@ -16,7 +16,7 @@ type DocumentWithViewTransition = Document & {
 }
 
 export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
-  const logoSrc = '/logo-kong.svg'
+  const logoSrc = `${import.meta.env.BASE_URL}logo-kong.svg`
   const [langPulse, setLangPulse] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const langPulseTimer = useRef<number | null>(null)
@@ -40,8 +40,8 @@ export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
   // Nav links styled as CLI flags. The top nav only navigates ACROSS pages —
   // in-page sections belong to the tmux bar at the bottom on both pages.
   const links = [
-    { flag: lang === 'es' ? '--inicio' : '--home', href: '/', current: page === 'home' },
-    { flag: lang === 'es' ? '--guia' : '--guide', href: '/guia', current: page === 'guide' },
+    { flag: lang === 'es' ? '--inicio' : '--home', href: import.meta.env.BASE_URL, current: page === 'home' },
+    { flag: lang === 'es' ? '--guia' : '--guide', href: `${import.meta.env.BASE_URL}guia`, current: page === 'guide' },
   ]
 
   useEffect(() => {
@@ -75,7 +75,7 @@ export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
   return (
     <nav className={`nav${scrolled ? ' is-sticky' : ''}`}>
       <div className="nav-inner">
-        <a href={page === 'home' ? '#motd' : '/'} className="nav-logo">
+        <a href={page === 'home' ? '#motd' : import.meta.env.BASE_URL} className="nav-logo">
           <img src={logoSrc} alt="Kongtrol" className={theme === 'dark' ? 'logo-dark-invert' : ''} />
           <span className="nav-logo-name">
             <strong>K O N G T R O L</strong>

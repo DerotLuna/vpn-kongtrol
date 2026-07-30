@@ -1,0 +1,40 @@
+/*
+
+██╗  ██╗ ██████╗ ███╗   ██╗ ██████╗ ████████╗██████╗  ██████╗ ██╗
+██║ ██╔╝██╔═══██╗████╗  ██║██╔════╝ ╚══██╔══╝██╔══██╗██╔═══██╗██║
+█████╔╝ ██║   ██║██╔██╗ ██║██║  ███╗   ██║   ██████╔╝██║   ██║██║
+██╔═██╗ ██║   ██║██║╚██╗██║██║   ██║   ██║   ██╔══██╗██║   ██║██║
+██║  ██╗╚██████╔╝██║ ╚████║╚██████╔╝   ██║   ██║  ██║╚██████╔╝███████╗
+╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝ ╚═════╝    ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
+
+    you're reading the source. respect. 🫡
+
+*/
+
+/* TEAM */
+    Builder: Ruben Luna
+    Handle:  @DerotLuna
+    Repo:    https://github.com/DerotLuna/vpn-kongtrol
+    From:    a terminal, most likely
+
+/* THANKS */
+    Everyone running eight different VPN clients and wishing
+    they didn't have to think about which one is "the work one".
+    Coffee. The Go standard library. Whoever invented split-DNS.
+
+/* SITE */
+    Last update: 2026-07-15
+    Language:    English (Español too — flip it top right)
+    Doctype:     HTML5
+    IDE:         Zed
+    Tool:        Claude Code CLI
+    Standards:   humanstxt.org, obviously
+    Components:  React + Vite, no bundler drama
+    Software:    kongtrol — one binary, eight adapters, zero leaks
+
+/* NOW */
+    $ whoami
+    guest@kongtrol — you wish you were root
+
+    $ cat /proc/uptime
+    still shipping.

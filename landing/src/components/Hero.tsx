@@ -183,8 +183,9 @@ export default function Hero({ os, lang }: Props) {
     }
     if (lower === 'github') { window.open(GITHUB_REPO, '_blank'); return out([{ cls: 't-dim', text: `→ ${GITHUB_REPO}` }]) }
     if (lower === 'guia' || lower === 'guide' || lower === 'man kongtrol' || lower === 'man') {
-      window.location.href = '/guia'
-      return out([{ cls: 't-dim', text: '→ /guia' }])
+      const guiaPath = `${import.meta.env.BASE_URL}guia`
+      window.location.href = guiaPath
+      return out([{ cls: 't-dim', text: `→ ${guiaPath}` }])
     }
     if (lower === 'exit' || lower === 'logout' || lower === 'quit' || lower === ':q') {
       return out([{ cls: 't-muted', text: es ? 'logout — es broma. de aquí no hay escape, prueba "guia".' : 'logout — kidding. there is no escape, try "guide".' }])

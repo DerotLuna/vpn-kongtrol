@@ -270,11 +270,11 @@ Move-Item kongtrol.exe C:\\tools\\kongtrol.exe`}</CodeBlock>
               {os === 'macos' && (
                 <div className="os-panel active">
                   <CodeBlock lang="bash">{`# Apple Silicon (M1+)
-$ curl -L https://github.com/vpn-kongtrol/kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
+$ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
 $ sudo mv kongtrol /usr/local/bin/
 
 # Intel
-$ curl -L https://github.com/vpn-kongtrol/kongtrol/releases/latest/download/kongtrol_darwin_amd64.tar.gz | tar xz
+$ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_amd64.tar.gz | tar xz
 $ sudo mv kongtrol /usr/local/bin/
 
 # Verify
@@ -288,7 +288,7 @@ $ kongtrol --help`}</CodeBlock>
 
               {os === 'linux' && (
                 <div className="os-panel active">
-                  <CodeBlock lang="bash">{`$ curl -L https://github.com/vpn-kongtrol/kongtrol/releases/latest/download/kongtrol_linux_amd64.tar.gz | tar xz
+                  <CodeBlock lang="bash">{`$ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_linux_amd64.tar.gz | tar xz
 $ sudo mv kongtrol /usr/local/bin/
 
 # Verify
@@ -630,6 +630,14 @@ kongtrol down --group work`}</CodeBlock>
                 A profile can belong to several groups at once — <IC c="office" /> can be
                 in <IC c="work" /> and also in <IC c="full" /> without any conflict.
               </div>
+
+              <p>
+                If a daemon is already running (<IC c="kongtrol up" /> in the background, or via the
+                dashboard) and you hand-edit the group, you don't need to restart it —{' '}
+                <IC c="kongtrol reload --group work" /> re-reads <IC c="kongtrol.yaml" /> from disk and
+                reconnects only that group's active tunnels. For a single tunnel,{' '}
+                <IC c="kongtrol reload --tunnel office" />.
+              </p>
             </div>
 
             {/* 05 — Routing policies */}
@@ -745,7 +753,10 @@ $ kongtrol config validate
 # [OK] Config is valid.`}</CodeBlock>
 
               <div className="callout">
-                Policies are read on connect — you don't need to restart anything for changes to take effect.
+                If no daemon is running yet, policies are read when you run <IC c="kongtrol up" />.
+                If one is already active, apply the change without restarting it via{' '}
+                <IC c="kongtrol reload --policy" /> — reloads the policy engine from the edited{' '}
+                <IC c="kongtrol.yaml" />, without touching any tunnels.
               </div>
             </div>
 

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { detectLang, Lang } from '../i18n'
+import { Lang } from '../i18n'
 import { detectTheme, Theme } from '../theme'
 
 const LANG_KEY = 'kglang'
 const THEME_KEY = 'kgtheme'
+const DEFAULT_LANG: Lang = 'en'
 
 export function usePreferences() {
   const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === 'undefined') return 'en'
+    if (typeof window === 'undefined') return DEFAULT_LANG
     const stored = localStorage.getItem(LANG_KEY)
-    return stored === 'es' || stored === 'en' ? stored : detectLang()
+    return stored === 'es' || stored === 'en' ? stored : DEFAULT_LANG
   })
 
   const [theme, setThemeState] = useState<Theme>(() => {
