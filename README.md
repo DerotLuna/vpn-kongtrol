@@ -21,6 +21,11 @@ Working with multiple VPNs simultaneously is painful: each client overrides your
 
 ## Features
 
+<div align="center">
+  <img src="assets/switchboard-demo.gif" alt="Kongtrol policy engine resolving a destination to the correct VPN tunnel in real time" width="720" />
+  <p><em>One destination. One rule. The right tunnel.</em></p>
+</div>
+
 - **Policy-based routing** by IP range and domain for WireGuard, with priority-based conflict resolution; app rules currently provide flow resolution and diagnostics, not OS-level per-process enforcement
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
 - **Auto-reconnect watchdog** with exponential backoff and priority failover between profiles
