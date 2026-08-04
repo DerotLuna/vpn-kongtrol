@@ -48,24 +48,28 @@ export default function App() {
         theme={theme}
         setTheme={setTheme}
       />
-      <div className="container">
-        <SectionJumpMenu
-          className="home-jump"
-          label={lang === 'es' ? 'Ir a' : 'Jump to'}
-          value={activeSection}
-          options={windows.map(w => ({ id: w.id, num: String(w.n), label: w.name }))}
-          onChange={id => {
-            setActiveSection(id)
-            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-          }}
-        />
-      </div>
       <main>
         <Hero os={os} lang={lang} />
-        <Features lang={lang} />
-        <Security lang={lang} />
-        <HowItWorks lang={lang} />
-        <Download os={os} setOS={setOS} lang={lang} />
+        {/* wraps every section the jump menu can point to, so its sticky
+            position has room to stay pinned under the header for the whole
+            scroll range — a wrapper limited to just the menu itself has no
+            scrollable height of its own for sticky to hold within */}
+        <div className="home-jump-scope">
+          <SectionJumpMenu
+            className="home-jump"
+            label={lang === 'es' ? 'Ir a' : 'Jump to'}
+            value={activeSection}
+            options={windows.map(w => ({ id: w.id, num: String(w.n), label: w.name }))}
+            onChange={id => {
+              setActiveSection(id)
+              document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+            }}
+          />
+          <Features lang={lang} />
+          <Security lang={lang} />
+          <HowItWorks lang={lang} />
+          <Download os={os} setOS={setOS} lang={lang} />
+        </div>
       </main>
       <Footer lang={lang} page="home" />
       <TmuxBar lang={lang} windows={windows} />

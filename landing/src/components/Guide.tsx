@@ -133,7 +133,7 @@ $ kongtrol dashboard`}</CodeBlock>
 
             {/* 01 — Prerequisitos */}
             <div id="prereqs" className="guide-section">
-              <div className="guide-section-num">01</div>
+              <div className="guide-section-num">1</div>
               <h2 className="guide-section-title">Prerequisitos</h2>
               <p>
                 Kongtrol <strong>orquesta</strong> los clientes VPN existentes — no los reemplaza.
@@ -214,7 +214,7 @@ $ kongtrol dashboard`}</CodeBlock>
 
             {/* 02 — Instalación */}
             <div id="install" className="guide-section">
-              <div className="guide-section-num">02</div>
+              <div className="guide-section-num">2</div>
               <h2 className="guide-section-title">Instalación</h2>
               <OsTabs os={os} setOS={setOS} />
 
@@ -288,7 +288,7 @@ $ kongtrol --help`}</CodeBlock>
 
             {/* 03 — Wizard */}
             <div id="wizard" className="guide-section">
-              <div className="guide-section-num">03</div>
+              <div className="guide-section-num">3</div>
               <h2 className="guide-section-title">Registrar tus VPNs: kongtrol init</h2>
               <p>
                 <IC c="kongtrol init" /> <strong>no configura tus VPNs</strong> — eso ya lo
@@ -591,7 +591,7 @@ $ kongtrol --help`}</CodeBlock>
 
             {/* 04 — Grupos */}
             <div id="groups" className="guide-section">
-              <div className="guide-section-num">04</div>
+              <div className="guide-section-num">4</div>
               <h2 className="guide-section-title">Grupos</h2>
               <p>
                 Agrupan perfiles para levantarlos juntos con un solo comando.
@@ -626,7 +626,7 @@ kongtrol down --group work`}</CodeBlock>
 
             {/* 05 — Políticas de routing */}
             <div id="policies" className="guide-section">
-              <div className="guide-section-num">05</div>
+              <div className="guide-section-num">5</div>
               <h2 className="guide-section-title">Políticas de routing</h2>
 
               <p>
@@ -745,7 +745,7 @@ $ kongtrol config validate
 
             {/* 06 — Doctor */}
             <div id="doctor" className="guide-section">
-              <div className="guide-section-num">06</div>
+              <div className="guide-section-num">6</div>
               <h2 className="guide-section-title">Verificar con doctor</h2>
               <p>
                 Antes de conectar por primera vez, deja que Kongtrol valide que todo esté en orden:
@@ -812,7 +812,7 @@ All checks passed. You're good to go.`}</CodeBlock>
 
             {/* 07 — Primera conexión */}
             <div id="connect" className="guide-section">
-              <div className="guide-section-num">07</div>
+              <div className="guide-section-num">7</div>
               <h2 className="guide-section-title">Primera conexión</h2>
 
               <p><strong>Un grupo completo:</strong></p>
@@ -854,7 +854,7 @@ $ kongtrol status --watch`}</CodeBlock>
 
             {/* 08 — Dashboard */}
             <div id="dashboard" className="guide-section">
-              <div className="guide-section-num">08</div>
+              <div className="guide-section-num">8</div>
               <h2 className="guide-section-title">Dashboard web</h2>
 
               <CodeBlock lang="bash">{`$ kongtrol dashboard
@@ -900,7 +900,7 @@ GET  /api/v1/audit                 # ?profile=&level=&limit=`}</CodeBlock>
 
             {/* 09 — Uso diario */}
             <div id="daily" className="guide-section">
-              <div className="guide-section-num">09</div>
+              <div className="guide-section-num">9</div>
               <h2 className="guide-section-title">Uso diario</h2>
 
               <div className="table-scroll">
