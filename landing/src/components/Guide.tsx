@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { OS } from '../hooks/useOS'
 import { Lang } from '../i18n'
+import { useActiveSection } from '../hooks/useActiveSection'
 import CodeBlock from './CodeBlock'
 import GuideEN from './GuideEN'
+import SectionJumpMenu from './SectionJumpMenu'
 import { GUIDE_SECTIONS_ES } from '../content/guideSections'
 
 interface Props { os: OS; setOS: (os: OS) => void; lang: Lang }
@@ -22,24 +24,8 @@ function OsTabs({ os, setOS }: { os: OS; setOS: (o: OS) => void }) {
 const IC = ({ c }: { c: string }) => <code className="ic">{c}</code>
 
 function GuideES({ os, setOS }: { os: OS; setOS: (os: OS) => void }) {
-  const [activeSection, setActiveSection] = useState('prereqs')
+  const [activeSection, setActiveSection] = useActiveSection(GUIDE_SECTIONS_ES.map(s => s.id), '-20% 0px -70% 0px', 'prereqs')
   const contentRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(e => {
-          if (e.isIntersecting) setActiveSection(e.target.id)
-        })
-      },
-      { rootMargin: '-20% 0px -70% 0px' }
-    )
-    GUIDE_SECTIONS_ES.forEach(s => {
-      const el = document.getElementById(s.id)
-      if (el) observer.observe(el)
-    })
-    return () => observer.disconnect()
-  }, [])
 
   return (
     <section id="guia" style={{ borderTop: '1px solid var(--border)' }}>
@@ -99,21 +85,15 @@ function GuideES({ os, setOS }: { os: OS; setOS: (os: OS) => void }) {
           <div className="guide-content" ref={contentRef}>
 
             {/* ── Mobile section nav (sidebar is hidden on small screens) ── */}
-            <nav className="guide-mobile-nav">
-              <span className="guide-mobile-nav-label">Ir a</span>
-              <select
-                value={activeSection}
-                onChange={e => {
-                  const id = e.target.value
-                  setActiveSection(id)
-                  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-                }}
-              >
-                {GUIDE_SECTIONS_ES.map(s => (
-                  <option key={s.id} value={s.id}>{s.num} — {s.label}</option>
-                ))}
-              </select>
-            </nav>
+            <SectionJumpMenu
+              label="Ir a"
+              value={activeSection}
+              options={GUIDE_SECTIONS_ES}
+              onChange={id => {
+                setActiveSection(id)
+                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
 
             {/* → Inicio rápido */}
             <div id="quickstart" className="guide-section guide-quickstart">

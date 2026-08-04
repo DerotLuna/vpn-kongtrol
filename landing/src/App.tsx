@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { detectOS, OS } from './hooks/useOS'
 import { usePreferences } from './hooks/usePreferences'
 import { useKonami } from './hooks/useKonami'
+import { useActiveSection } from './hooks/useActiveSection'
 import Nav from './components/Nav'
 import Hero from './components/Hero'
 import Features from './components/Features'
@@ -10,6 +11,7 @@ import HowItWorks from './components/HowItWorks'
 import Download from './components/Download'
 import Footer from './components/Footer'
 import TmuxBar, { TmuxWindow } from './components/TmuxBar'
+import SectionJumpMenu from './components/SectionJumpMenu'
 
 // home sections as tmux windows — same IDs the page's own anchors use
 const HOME_WINDOWS_ES: TmuxWindow[] = [
@@ -32,6 +34,11 @@ export default function App() {
   const { lang, setLang, theme, setTheme } = usePreferences()
   useKonami()
 
+  const windows = lang === 'es' ? HOME_WINDOWS_ES : HOME_WINDOWS_EN
+  // same tracking TmuxBar uses below — the tmux bar hides under 720px, so
+  // this feeds the mobile-only jump menu that replaces it there
+  const [activeSection, setActiveSection] = useActiveSection(windows.map(w => w.id), '-40% 0px -55% 0px')
+
   return (
     <>
       <Nav
@@ -41,6 +48,18 @@ export default function App() {
         theme={theme}
         setTheme={setTheme}
       />
+      <div className="container">
+        <SectionJumpMenu
+          className="home-jump"
+          label={lang === 'es' ? 'Ir a' : 'Jump to'}
+          value={activeSection}
+          options={windows.map(w => ({ id: w.id, num: String(w.n), label: w.name }))}
+          onChange={id => {
+            setActiveSection(id)
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+          }}
+        />
+      </div>
       <main>
         <Hero os={os} lang={lang} />
         <Features lang={lang} />
@@ -49,7 +68,7 @@ export default function App() {
         <Download os={os} setOS={setOS} lang={lang} />
       </main>
       <Footer lang={lang} page="home" />
-      <TmuxBar lang={lang} windows={lang === 'es' ? HOME_WINDOWS_ES : HOME_WINDOWS_EN} />
+      <TmuxBar lang={lang} windows={windows} />
     </>
   )
 }

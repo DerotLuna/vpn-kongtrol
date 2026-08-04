@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Lang } from '../i18n'
+import { useActiveSection } from '../hooks/useActiveSection'
 
 export interface TmuxWindow {
   n: number
@@ -24,7 +25,7 @@ interface Props {
 }
 
 export default function TmuxBar({ lang, session = 'kongtrol', windows = HOME_WINDOWS, showStatus = true }: Props) {
-  const [active, setActive] = useState(windows[0]?.id ?? '')
+  const [active] = useActiveSection(windows.map(w => w.id), '-40% 0px -55% 0px')
   const [clock, setClock] = useState('')
 
   useEffect(() => {
@@ -36,18 +37,6 @@ export default function TmuxBar({ lang, session = 'kongtrol', windows = HOME_WIN
     const t = window.setInterval(tick, 20_000)
     return () => window.clearInterval(t)
   }, [])
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id) }),
-      { rootMargin: '-40% 0px -55% 0px' },
-    )
-    windows.forEach(w => {
-      const el = document.getElementById(w.id)
-      if (el) observer.observe(el)
-    })
-    return () => observer.disconnect()
-  }, [windows])
 
   return (
     <div className="tmux-bar" role="navigation" aria-label={lang === 'es' ? 'secciones' : 'sections'}>

@@ -19,6 +19,7 @@ export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
   const logoSrc = `${import.meta.env.BASE_URL}logo-kong.svg`
   const [langPulse, setLangPulse] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const langPulseTimer = useRef<number | null>(null)
   const themeTransitioning = useRef(false)
 
@@ -34,8 +35,8 @@ export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
     })
   }
   const labels = lang === 'es'
-    ? { langTitle: 'Idioma', themeTitle: 'Tema', dark: 'Oscuro', light: 'Claro', toggleTheme: 'Cambiar tema', toggleLang: 'Cambiar idioma', download: 'Descargar' }
-    : { langTitle: 'Language', themeTitle: 'Theme', dark: 'Dark', light: 'Light', toggleTheme: 'Toggle theme', toggleLang: 'Toggle language', download: 'Download' }
+    ? { langTitle: 'Idioma', themeTitle: 'Tema', dark: 'Oscuro', light: 'Claro', toggleTheme: 'Cambiar tema', toggleLang: 'Cambiar idioma', download: 'Descargar', menu: 'Menú' }
+    : { langTitle: 'Language', themeTitle: 'Theme', dark: 'Dark', light: 'Light', toggleTheme: 'Toggle theme', toggleLang: 'Toggle language', download: 'Download', menu: 'Menu' }
 
   // Nav links styled as CLI flags. The top nav only navigates ACROSS pages —
   // in-page sections belong to the tmux bar at the bottom on both pages.
@@ -58,6 +59,13 @@ export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [menuOpen])
 
   const handleLangToggle = () => {
     const next: Lang = lang === 'es' ? 'en' : 'es'
@@ -137,7 +145,30 @@ export default function Nav({ page, lang, setLang, theme, setTheme }: Props) {
               </button>
             </div>
           </div>
+
+          <button
+            type="button"
+            className={`nav-hamburger${menuOpen ? ' open' : ''}`}
+            aria-label={labels.menu}
+            aria-expanded={menuOpen}
+            aria-controls="nav-mobile-menu"
+            onClick={() => setMenuOpen(o => !o)}
+          >
+            <span /><span /><span />
+          </button>
         </div>
+      </div>
+
+      <div id="nav-mobile-menu" className={`nav-mobile-menu${menuOpen ? ' open' : ''}`}>
+        <ul>
+          {links.map(l => (
+            <li key={l.flag}>
+              <a href={l.href} className={l.current ? 'current' : ''} onClick={() => setMenuOpen(false)}>
+                <span className="nav-flag-dashes">--</span>{l.flag.slice(2)}
+              </a>
+            </li>
+          ))}
+        </ul>
       </div>
     </nav>
   )

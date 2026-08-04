@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import { Lang } from '../i18n'
 import { GITHUB_REPO } from '../links'
+import { useActiveSection } from '../hooks/useActiveSection'
+import SectionJumpMenu from './SectionJumpMenu'
 
 interface Props { lang: Lang }
 
@@ -113,25 +115,8 @@ const SECTIONS_EN: Section[] = [
 
 export default function Terminos({ lang }: Props) {
   const sections = lang === 'es' ? SECTIONS_ES : SECTIONS_EN
-  const [activeSection, setActiveSection] = useState(sections[0].id)
+  const [activeSection, setActiveSection] = useActiveSection(sections.map(s => s.id), '-20% 0px -70% 0px', sections[0].id)
   const contentRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(e => {
-          if (e.isIntersecting) setActiveSection(e.target.id)
-        })
-      },
-      { rootMargin: '-20% 0px -70% 0px' }
-    )
-    sections.forEach(s => {
-      const el = document.getElementById(s.id)
-      if (el) observer.observe(el)
-    })
-    return () => observer.disconnect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang])
 
   const copy = lang === 'es'
     ? {
@@ -191,21 +176,15 @@ export default function Terminos({ lang }: Props) {
           </aside>
 
           <div className="guide-content" ref={contentRef}>
-            <nav className="guide-mobile-nav">
-              <span className="guide-mobile-nav-label">{copy.goto}</span>
-              <select
-                value={activeSection}
-                onChange={e => {
-                  const id = e.target.value
-                  setActiveSection(id)
-                  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-                }}
-              >
-                {sections.map(s => (
-                  <option key={s.id} value={s.id}>{s.num} — {s.label}</option>
-                ))}
-              </select>
-            </nav>
+            <SectionJumpMenu
+              label={copy.goto}
+              value={activeSection}
+              options={sections}
+              onChange={id => {
+                setActiveSection(id)
+                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
 
             {sections.map(s => (
               <div key={s.id} id={s.id} className="guide-section">
