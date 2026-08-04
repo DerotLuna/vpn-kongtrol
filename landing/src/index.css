@@ -685,6 +685,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 .download-arch-note { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
 .download-card .btn-download { align-self: flex-start; }
+.download-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.download-item-info { min-width: 0; }
 
 .source-install {
   margin-top: 40px; padding: 26px 30px; border: 1px solid var(--border);
@@ -692,9 +694,17 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start;
 }
 .source-label { font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.12em; color: var(--signal); padding-top: 4px; white-space: nowrap; }
+.source-install > div { min-width: 0; }
+/* body copy inside a source-install block sits right above a code block —
+   .section-sub's 1.06rem (sized for the big intro subtitle under an h2)
+   reads oversized next to the 0.82rem code, so give it its own smaller size */
+.source-desc { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; max-width: 70ch; text-wrap: pretty; }
 
 /* ── Code block ─────────────────────────────────────────────────────────────── */
-.code-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+/* min-width: 0 so unbreakable command lines scroll inside the block (via the
+   pre's own overflow-x) instead of forcing a flex/grid ancestor — and the
+   whole page — wider than the viewport */
+.code-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-width: 0; }
 .code-block-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .code-block-lang { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; }
 .copy-btn { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); background: transparent; border: none; cursor: pointer; letter-spacing: 0.06em; padding: 3px 0; transition: color 0.15s; }
@@ -763,7 +773,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .guide-nav-list a.active { color: var(--signal); border-left-color: var(--signal); background: var(--signal-soft); }
 .guide-num { color: var(--text-dim); margin-right: 8px; }
 
-.guide-content { display: flex; flex-direction: column; gap: 80px; }
+.guide-content { display: flex; flex-direction: column; gap: 80px; min-width: 0; }
 .guide-section { scroll-margin-top: calc(var(--nav-h) + 24px); }
 .guide-section-num { font-family: var(--font-mono); font-size: 0.7rem; color: var(--signal); letter-spacing: 0.14em; margin-bottom: 8px; }
 .guide-section-title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2.1rem); color: var(--text); margin-bottom: 20px; letter-spacing: -0.01em; }
@@ -914,7 +924,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .guide-layout { grid-template-columns: 1fr; }
   .guide-sidebar { display: none; }
   .guide-mobile-nav {
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 10px; min-width: 0;
     position: sticky; top: var(--nav-h); z-index: 20;
     margin: -16px -20px 24px; padding: 12px 20px;
     background: color-mix(in srgb, var(--bg) 92%, transparent);
@@ -922,7 +932,10 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
     border-bottom: 1px solid var(--border);
   }
   .guide-mobile-nav select {
-    flex: 1; font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.02em;
+    /* min-width: 0 so the select can shrink below its longest <option>'s
+       intrinsic width (e.g. "10 — Solución de problemas") instead of forcing
+       the whole content column — and the page — wider than the viewport */
+    flex: 1; min-width: 0; font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.02em;
     color: var(--text); background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius); padding: 9px 12px; appearance: none;
     background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
@@ -942,6 +955,18 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .section { padding: 76px 0; }
 }
 
+/* header math doesn't fit under ~520px: logo + CLI/BETA tags + full download
+   button + theme/lang toggles need ~440px, phones give ~330px — trim to an
+   icon-only download button and drop the tags rather than let it overflow */
+@media (max-width: 520px) {
+  .nav-inner { gap: 10px; padding: 0 16px; }
+  .nav-right { gap: 10px; }
+  .nav-logo-name small { display: none; }
+  .nav-cta { padding: 8px; }
+  .nav-cta-label { display: none; }
+  .nav-cta svg { width: 16px; height: 16px; }
+}
+
 @media (max-width: 640px) {
   .hero-title { font-size: clamp(2.4rem, 12vw, 3.3rem); }
   .hero-status-head, .hero-status-row { grid-template-columns: 1.1fr 1fr 0.8fr 1fr; gap: 8px; padding-inline: 6px; }
@@ -949,6 +974,19 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .footer-grid { grid-template-columns: 1fr; gap: 28px; }
   .footer-meta { justify-content: flex-start; }
   .source-install { grid-template-columns: 1fr; gap: 12px; }
+  .code-block pre { padding: 14px 16px; font-size: 0.76rem; }
+}
+
+@media (max-width: 480px) {
+  /* filename + download button no longer fit side by side without the
+     filename wrapping to 2-3 cramped lines — stack them instead */
+  .download-item { flex-direction: column; }
+  .download-item .btn-download { align-self: center; justify-content: center; }
+
+  /* the routing readout wraps its pieces independently at this width,
+     breaking mid-sentence with an orphaned arrow — stack each piece instead */
+  .sb-readout { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .sb-arrow { display: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

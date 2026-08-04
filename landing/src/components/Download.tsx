@@ -116,8 +116,8 @@ sha256sum -c checksums.txt`,
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                 {bins.map(b => (
-                  <div key={b.filename} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <div>
+                  <div key={b.filename} className="download-item">
+                    <div className="download-item-info">
                       <div className="download-filename">{b.filename}</div>
                       <div className="download-arch-note">{b.archNote}</div>
                     </div>
@@ -147,7 +147,7 @@ sha256sum -c checksums.txt`,
         <div className="source-install reveal" style={{ marginTop: 20 }}>
           <div className="source-label">{copy.terminalTitle}</div>
           <div>
-            <p className="section-sub" style={{ marginTop: 8, marginBottom: 12 }}>{copy.terminalText}</p>
+            <p className="source-desc" style={{ marginTop: 8, marginBottom: 12 }}>{copy.terminalText}</p>
             <CodeBlock lang="bash">{copy.terminalScript}</CodeBlock>
           </div>
         </div>
@@ -155,7 +155,7 @@ sha256sum -c checksums.txt`,
         <div className="source-install reveal">
           <div className="source-label">{copy.verifyTitle}</div>
           <div>
-            <p className="section-sub" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>
+            <p className="source-desc" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>
             <CodeBlock lang="bash">{copy.verifyScript}</CodeBlock>
           </div>
         </div>
