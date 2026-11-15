@@ -26,7 +26,7 @@ func guiConnect(tunnelName, username, password string, allowInsecureCert bool) e
 	defer os.RemoveAll(tmpDir)
 
 	scriptPath := filepath.Join(tmpDir, "fc_connect.ps1")
-	if err := os.WriteFile(scriptPath, []byte(script), 0600); err != nil {
+	if err := os.WriteFile(scriptPath, append([]byte{0xEF, 0xBB, 0xBF}, []byte(script)...), 0600); err != nil {
 		return fmt.Errorf("forticlient gui: write script: %w", err)
 	}
 
@@ -48,6 +48,16 @@ func guiConnect(tunnelName, username, password string, allowInsecureCert bool) e
 // guiDisconnect automates the FortiClient GUI to click Disconnect.
 // When connected, FortiClient replaces the Connect button with Disconnect at the same position.
 func guiDisconnect(tunnelName string) error {
+	fortiVpnExe := filepath.Join(filepath.Dir(binaryPath()), "FortiVPN.exe")
+	if _, err := os.Stat(fortiVpnExe); err == nil {
+		args := []string{"--cli", "--disconnect"}
+		if tunnelName != "" {
+			args = append(args, "--tunnel", tunnelName)
+		}
+		if _, err := runCmd(fortiVpnExe, args...); err == nil {
+			return nil
+		}
+	}
 	script := buildGuiScript("disconnect", tunnelName, "", "", false)
 	tmpDir, err := os.MkdirTemp("", "kongtrol-fcgui-*")
 	if err != nil {
@@ -56,7 +66,7 @@ func guiDisconnect(tunnelName string) error {
 	defer os.RemoveAll(tmpDir)
 
 	scriptPath := filepath.Join(tmpDir, "fc_disconnect.ps1")
-	if err := os.WriteFile(scriptPath, []byte(script), 0600); err != nil {
+	if err := os.WriteFile(scriptPath, append([]byte{0xEF, 0xBB, 0xBF}, []byte(script)...), 0600); err != nil {
 		return fmt.Errorf("forticlient gui: write script: %w", err)
 	}
 
@@ -163,7 +173,7 @@ $tunnel    = '%s'
 $username  = '%s'
 $password  = '%s'
 $action    = '%s'
-$allowInsecureCert = %t
+$allowInsecureCert = $%t
 
 # Minimum plausible size for the actual FortiClient login/main dialog.
 # FortiClient can spin up small helper/tray windows (observed: a stray
@@ -171,21 +181,21 @@ $allowInsecureCert = %t
 # picking the first such handle blindly means clicks and SendKeys land on
 # the wrong window (typing credentials "anywhere"). Only a window whose
 # title mentions FortiClient AND is at least this size is treated as real.
-$minW = 500
-$minH = 400
+$minW = 250
+$minH = 200
 
-# Finds the real FortiClient dialog among all "FortiClient*" processes,
+# Finds the real FortiClient dialog among all "FortiClient*" / "FortiVPN*" processes,
 # filtering out any window that doesn't look like the actual login/main UI.
 function Get-FortiClientWindow {
-    Get-Process -Name "FortiClient*" -ErrorAction SilentlyContinue |
-        Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -match 'FortiClient' } |
+    Get-Process -Name "Forti*" -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 -and ($_.MainWindowTitle -match 'FortiClient|Autenticaci|Authentication') } |
         ForEach-Object {
             $r = New-Object FC+RECT
             [FC]::GetWindowRect([IntPtr]$_.MainWindowHandle, [ref]$r) | Out-Null
             $ww = $r.right - $r.left
             $hh = $r.bottom - $r.top
             if ($ww -ge $minW -and $hh -ge $minH) {
-                [PSCustomObject]@{ Handle = [IntPtr]$_.MainWindowHandle; Rect = $r; W = $ww; H = $hh }
+                [PSCustomObject]@{ Handle = [IntPtr]$_.MainWindowHandle; Rect = $r; W = $ww; H = $hh; Title = $_.MainWindowTitle }
             }
         } |
         Sort-Object -Property @{ Expression = { $_.W * $_.H } } -Descending |
@@ -196,27 +206,31 @@ function Get-FortiClientWindow {
 $found = Get-FortiClientWindow
 
 if (-not $found) {
-    $running = Get-Process -Name "FortiClient*" -ErrorAction SilentlyContinue
-    if (-not $running) {
-        if (-not (Test-Path $binary)) {
-            Write-Output "ERROR: FortiClient not found at $binary"
-            exit 1
-        }
-        # Launch without inheriting our console so Electron debug output
-        # does not appear in the kongtrol terminal.
+    if (-not (Test-Path $binary)) {
+        Write-Output "ERROR: FortiClient not found at $binary"
+        exit 1
+    }
+    # Launch without inheriting our console so Electron debug output
+    # does not appear in the kongtrol terminal.
+    $fortiVpnExe = Join-Path (Split-Path $binary) "FortiVPN.exe"
+    if ((Test-Path $fortiVpnExe) -and ($tunnel -ne '')) {
+        Start-Process $fortiVpnExe -ArgumentList "--cli","--connect","--tunnel",$tunnel -WindowStyle Hidden
+    } else {
         Start-Process $binary -RedirectStandardOutput "$env:TEMP\fc_launch_out.txt" -RedirectStandardError "$env:TEMP\fc_launch_err.txt"
     }
-    $deadline = (Get-Date).AddSeconds(30)
+    $deadline = (Get-Date).AddSeconds(90)
     while (-not $found -and (Get-Date) -lt $deadline) {
-        Start-Sleep -Milliseconds 800
+        Start-Sleep -Milliseconds 500
         $found = Get-FortiClientWindow
     }
     if (-not $found) {
-        Write-Output "ERROR: FortiClient login window did not appear (or stayed smaller than ${minW}x${minH}) within 30s"
+        Write-Output "ERROR: FortiClient login window did not appear (or stayed smaller than ${minW}x${minH}) within 90s"
         exit 1
     }
-    # Extra wait for CEF/Electron to finish rendering the VPN login form.
-    Start-Sleep -Seconds 3
+    if ($found.Title -notmatch 'Autenticaci|Authentication') {
+        # Extra wait for CEF/Electron to finish rendering the VPN login form.
+        Start-Sleep -Seconds 3
+    }
 }
 
 $hwnd = $found.Handle
@@ -246,7 +260,7 @@ $w    = $rect.right  - $rect.left
 $h    = $rect.bottom - $rect.top
 
 if ($w -lt $minW -or $h -lt $minH) {
-    Write-Output "ERROR: Window too small ($($w)x$($h)) — still minimized?"
+    Write-Output ("ERROR: Window too small (" + $w + "x" + $h + ") - still minimized?")
     exit 1
 }
 
@@ -258,6 +272,32 @@ $btnX = $left + [int]($w * 0.497)
 $btnY = $top  + [int]($h * 0.754)
 
 if ($action -eq 'connect') {
+    if ($found.Title -match 'Autenticaci|Authentication') {
+        Write-Output "Detected native FortiClient auth prompt..."
+        [FC]::ForceForeground($hwnd)
+        if ([FC]::GetForegroundWindow() -ne $hwnd) {
+            Write-Output "ERROR: FortiClient auth window lost foreground — aborting"
+            exit 1
+        }
+        $nativeUserX = $left + [int]($w * 0.50)
+        $nativeUserY = $top  + [int]($h * 0.37)
+        [FC]::Click($nativeUserX, $nativeUserY)
+        Start-Sleep -Milliseconds 120
+        [System.Windows.Forms.SendKeys]::SendWait("^a")
+        Start-Sleep -Milliseconds 80
+        [System.Windows.Forms.Clipboard]::SetText($username)
+        [System.Windows.Forms.SendKeys]::SendWait("^v")
+        Start-Sleep -Milliseconds 150
+        [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+        Start-Sleep -Milliseconds 120
+        [System.Windows.Forms.SendKeys]::SendWait("^a")
+        Start-Sleep -Milliseconds 80
+        [System.Windows.Forms.Clipboard]::SetText($password)
+        [System.Windows.Forms.SendKeys]::SendWait("^v")
+        Start-Sleep -Milliseconds 150
+        [System.Windows.Forms.Clipboard]::Clear()
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+    } else {
     $vpnX  = $left + [int]($w * 0.541)
     $vpnY  = $top  + [int]($h * 0.586)
     $userX = $left + [int]($w * 0.541)
@@ -319,6 +359,7 @@ if ($action -eq 'connect') {
 
     Write-Output "Clicking Connect at ($btnX,$btnY)..."
     [FC]::Click($btnX, $btnY)
+    }
 
     # ── 4. Handle Security Alert (untrusted certificate) ──────────────────────
     # Secure default: fail closed on certificate warnings.
