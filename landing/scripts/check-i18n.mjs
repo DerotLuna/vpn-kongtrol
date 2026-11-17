@@ -20,7 +20,18 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const strict = process.argv.includes('--strict')
 const problems = []
 
-const textOf = (el) => renderToStaticMarkup(createElement(Fragment, null, el)).replace(/<[^>]*>/g, '').trim()
+// Visible text only, for comparing ES/EN. Strip tags until none are left so
+// nested or split tags can't leave a partial "<script" behind; the result is
+// compared, never rendered.
+const stripTags = (s) => {
+  let prev
+  do {
+    prev = s
+    s = s.replace(/<[^>]*>/g, '')
+  } while (s !== prev)
+  return s.replace(/[<>]/g, '')
+}
+const textOf = (el) => stripTags(renderToStaticMarkup(createElement(Fragment, null, el))).trim()
 
 function compare(name, es, en, path = '') {
   const where = `${name}${path}`

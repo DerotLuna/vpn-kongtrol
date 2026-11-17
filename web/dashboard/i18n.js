@@ -77,10 +77,18 @@ function applyStaticTranslations() {
     el.textContent = t(key);
   });
 
+  // Rich strings support only <code>…</code>; everything is inserted as text
+  // nodes (never innerHTML), so no markup from a key or translation can run.
   document.querySelectorAll('[data-i18n-html]').forEach((el) => {
     const key = el.getAttribute('data-i18n-html');
     if (!key) return;
-    el.innerHTML = t(key);
+    const parts = t(key).split(/<code>([\s\S]*?)<\/code>/);
+    el.replaceChildren(...parts.map((part, i) => {
+      if (i % 2 === 0) return document.createTextNode(part);
+      const code = document.createElement('code');
+      code.textContent = part;
+      return code;
+    }));
   });
 
   document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {

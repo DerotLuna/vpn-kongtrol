@@ -82,7 +82,7 @@ try {
   const headers = await readFile(resolve(root, 'dist', '_headers'), 'utf8')
   for (const page of ['404.html', ...PAGES.map(p => p.page)]) {
     const html = await readFile(resolve(root, 'dist', page), 'utf8')
-    for (const [, attrs, body] of html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
+    for (const [, attrs, body] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
       if (/\bsrc=|application\/ld\+json/.test(attrs)) continue
       const hash = `'sha256-${createHash('sha256').update(body).digest('base64')}'`
       if (!headers.includes(hash)) throw new Error(`${page}: inline script hash ${hash} missing from public/_headers script-src`)

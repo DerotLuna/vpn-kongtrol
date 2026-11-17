@@ -151,7 +151,7 @@ export default function Hero({ os, lang }: Props) {
       if (!target) return out([{ cls: 't-dim', text: es ? 'uso: map <dominio|ip|app:exe>' : 'usage: map <domain|ip|app:exe>' }])
       const t = target.toLowerCase()
       let line
-      if (t.endsWith('amazonaws.com')) line = `${target} → ${es ? 'regla' : 'rule'} «AWS workloads» → aws (OpenVPN)`
+      if (t === 'amazonaws.com' || t.endsWith('.amazonaws.com')) line = `${target} → ${es ? 'regla' : 'rule'} «AWS workloads» → aws (OpenVPN)`
       else if (t.startsWith('10.')) line = `${target} → longest-prefix 10.10.0.0/16 → office (FortiClient)`
       else if (t.includes('claude')) line = `${target} → ${es ? 'regla' : 'rule'} «US content» → us-content (ProtonVPN)`
       else if (t.startsWith('app:')) line = `${target} → ${es ? 'política por app (experimental)' : 'app policy (experimental)'} → us-content`

@@ -134,14 +134,6 @@ jobs:
           pnpm run build
           pnpm run check:i18n
 
-      - name: Restore lychee cache
-        if: steps.filter.outputs.links == 'true' || github.event_name == 'schedule'
-        uses: actions/cache@v4
-        with:
-          path: .lycheecache
-          key: lychee-${{ github.sha }}
-          restore-keys: lychee-
-
       # Internal links (files, anchors-free paths, landing pages): offline.
       - name: Links — internal
         id: links_internal
