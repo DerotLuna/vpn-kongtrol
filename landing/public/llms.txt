@@ -1,0 +1,55 @@
+# VPN Kongtrol
+
+> VPN Kongtrol (short name: **Kongtrol**; CLI binary: `kongtrol`) is an open-source
+> multi-VPN orchestrator for Windows, Linux and macOS. It runs several VPN tunnels at the
+> same time and decides, per destination, which tunnel each connection leaves through.
+
+It is not a VPN client and not a VPN provider: it orchestrates the VPN clients you already
+have installed (NordVPN, Proton VPN, Surfshark, FortiClient, WireGuard, OpenVPN, Tailscale,
+Cloudflare WARP, Cisco AnyConnect, GlobalProtect — 10 in total), with policy-based routing,
+an OS-level kill switch, a DNS guard, an auto-reconnect watchdog and a web dashboard.
+
+Attach mode: you connect as usual in your VPN app (NordVPN, Proton VPN, Surfshark,
+FortiClient); Kongtrol detects the tunnel and takes over status, auto-reconnect, DNS and
+routing rules. It runs in the background with a tray icon and a web panel; the CLI has full
+parity for automation. A privileged helper (`kongtrol service install`) needs one
+administrator prompt at install time.
+
+- License: Apache License 2.0
+- Language: Go 1.25+
+- Platforms: Windows, Linux, macOS
+- Website: https://kongtrol.app/ (Spanish) · https://kongtrol.app/en/ (English)
+- Source: https://github.com/DerotLuna/vpn-kongtrol
+- Latest release: https://github.com/DerotLuna/vpn-kongtrol/releases/latest
+
+## Docs
+
+- [README](https://github.com/DerotLuna/vpn-kongtrol/blob/main/README.md): what VPN Kongtrol is, features, supported adapters, quick start
+- [Setup guide](https://kongtrol.app/en/guide): end-to-end first-run walkthrough — install, wizard, profiles, policies, doctor (Spanish: https://kongtrol.app/guia)
+- [Privacy policy](https://kongtrol.app/en/privacy): what stays local, which connections Kongtrol makes on its own (public-IP check via api.ipify.org), no telemetry
+- [Security policy](https://kongtrol.app/en/security): private vulnerability reporting and disclosure timelines
+- [Terms](https://kongtrol.app/en/terms): Apache-2.0, no warranty, beta
+- [CLI reference](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/CLI.md): every `kongtrol` subcommand and flag
+- [Configuration](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/CONFIGURATION.md): full `kongtrol.yaml` reference
+- [Security architecture](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/SECURITY.md): network connections Kongtrol makes, privileged helper and leases, kill switch, DNS guard, recovery procedures
+- [Architecture](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/ARCHITECTURE.md): system design and how to add a new VPN adapter
+- [Docker](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/DOCKER.md): headless / server deployment
+- [Development](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/DEVELOPMENT.md): build, test, lint, release
+- [Roadmap](https://github.com/DerotLuna/vpn-kongtrol/blob/main/docs/ROADMAP.md): feature status matrix
+
+## Common commands
+
+```
+kongtrol init                 # interactive wizard: detects installed VPN clients, stores credentials in the OS keychain
+kongtrol up office aws        # connect one or more profiles
+kongtrol status               # tunnel states
+kongtrol map <domain|ip>      # show which tunnel a destination resolves to
+kongtrol doctor               # validate the whole stack before connecting
+kongtrol dashboard            # open the web UI at localhost:9741
+```
+
+## Notes
+
+- Credentials live in the OS keychain, never in `kongtrol.yaml`.
+- The dashboard is embedded in the binary with `//go:embed`; it needs no external server.
+- The binary is unsigned: antivirus and SmartScreen false positives are documented in the security guide.

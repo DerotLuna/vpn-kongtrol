@@ -5,12 +5,14 @@
   "packageManager": "pnpm@10.33.2",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm run brand && vite",
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
-    "build": "tsc && vite build",
+    "build": "pnpm run brand && tsc && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
-    "check": "pnpm run lint && pnpm run build"
+    "check": "pnpm run lint && pnpm run build",
+    "brand": "node scripts/copy-brand.mjs",
+    "check:i18n": "node scripts/check-i18n.mjs"
   },
   "dependencies": {
     "react": "18.3.1",

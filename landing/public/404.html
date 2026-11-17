@@ -4,11 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="robots" content="noindex" />
-<title>404 — signal lost | Kongtrol CLI</title>
-<link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<title>404 — signal lost | VPN Kongtrol</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="stylesheet" href="/fonts/fonts.css" />
 <style>
   :root {
     --bg: #0a0c10; --surface: #12151b; --surface-2: #171b23;
@@ -171,8 +169,8 @@
     </div>
 
     <div class="actions">
-      <a href="./" class="btn primary" data-i18n="home">$ cd ~</a>
-      <a href="./guia" class="btn" data-i18n="guide">$ man kongtrol</a>
+      <a href="/" class="btn primary" data-i18n="home">$ cd ~</a>
+      <a href="/guia" class="btn" data-i18n="guide">$ man kongtrol</a>
       <a href="https://github.com/DerotLuna/vpn-kongtrol" class="btn" data-i18n="gh">$ git remote -v</a>
     </div>
 
@@ -198,7 +196,7 @@
 
   var copy = {
     es: {
-      label: 'SEÑAL PERDIDA', sub: 'esta ruta no existe', home: '$ cd ~', guide: '$ man kongtrol', gh: '$ git remote -v',
+      guideHref: '/guia', label: 'SEÑAL PERDIDA', sub: 'esta ruta no existe', home: '$ cd ~', guide: '$ man kongtrol', gh: '$ git remote -v',
       foot: 'no place like 127.0.0.1',
       lines: [
         ['prompt', '$ '], ['muted', 'cd "' + path + '"\n'],
@@ -210,7 +208,7 @@
       ],
     },
     en: {
-      label: 'SIGNAL LOST', sub: 'this route does not exist', home: '$ cd ~', guide: '$ man kongtrol', gh: '$ git remote -v',
+      guideHref: '/en/guide', label: 'SIGNAL LOST', sub: 'this route does not exist', home: '$ cd ~', guide: '$ man kongtrol', gh: '$ git remote -v',
       foot: 'no place like 127.0.0.1',
       lines: [
         ['prompt', '$ '], ['muted', 'cd "' + path + '"\n'],
@@ -218,10 +216,13 @@
         ['prompt', '$ '], ['muted', 'kongtrol route --resolve "' + path + '"\n'],
         ['dim', '[x] '], ['err', '404 — no policy or page matches this route\n\n'],
         ['prompt', '$ '], ['muted', 'suggest --nearest\n'],
-        ['dim', '→ / '], ['muted', '(home)   '], ['dim', '→ /guia '], ['muted', '(guide)   '], ['dim', '→ github.com/DerotLuna/vpn-kongtrol\n'],
+        ['dim', '→ / '], ['muted', '(home)   '], ['dim', '→ /en/guide '], ['muted', '(guide)   '], ['dim', '→ github.com/DerotLuna/vpn-kongtrol\n'],
       ],
     },
   }[lang];
+
+  document.querySelector('[data-i18n="guide"]').setAttribute('href', copy.guideHref);
+  if (lang === 'en') document.querySelector('[data-i18n="home"]').setAttribute('href', '/en/');
 
   document.querySelectorAll('[data-i18n]').forEach(function (el) {
     var key = el.getAttribute('data-i18n');

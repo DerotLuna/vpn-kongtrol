@@ -18,7 +18,7 @@
     From:    a terminal, most likely
 
 /* THANKS */
-    Everyone running eight different VPN clients and wishing
+    Everyone running ten different VPN clients and wishing
     they didn't have to think about which one is "the work one".
     Coffee. The Go standard library. Whoever invented split-DNS.
 
@@ -30,7 +30,7 @@
     Tool:        Claude Code CLI
     Standards:   humanstxt.org, obviously
     Components:  React + Vite, no bundler drama
-    Software:    kongtrol — one binary, eight adapters, zero leaks
+    Software:    kongtrol — one app, ten VPNs, zero leaks
 
 /* NOW */
     $ whoami

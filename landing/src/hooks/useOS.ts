@@ -14,8 +14,3 @@ export const OS_LABELS: Record<OS, string> = {
   linux:   'Linux',
 }
 
-export const OS_ICON: Record<OS, string> = {
-  windows: '⊞',
-  macos:   '',
-  linux:   '🐧',
-}

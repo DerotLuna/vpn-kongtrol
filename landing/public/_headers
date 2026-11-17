@@ -1,0 +1,20 @@
+# Cloudflare Pages response headers — version 1.0.0 · 2026-11-17
+# Format: https://developers.cloudflare.com/pages/configuration/headers/
+# Rationale for every header: docs/deploy-cloudflare.md.
+#
+# CSP matches what the site loads today: everything from 'self' (self-hosted fonts, no
+# third parties). The two script hashes are the only inline scripts:
+#   - THEME_BOOT in src/seo.ts (first-paint theme, every page)
+#   - the inline script of public/404.html
+# Editing either changes its hash: scripts/prerender.mjs fails the build when an inline
+# script in dist/ has no matching hash here, and prints the hash to paste.
+# style-src keeps 'unsafe-inline' because React style={{}} props are prerendered as style=""
+# attributes (and 404.html has a <style> block); styles cannot execute code.
+
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-WtWYoAxj78iLWIjZMiPOUCURfzV/XmuUDviAHMYt4z8=' 'sha256-wi36Ewm8K6C0UcZcEhUxEakTJaMLtN90wPYKuyZVM68='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  X-Frame-Options: DENY
+  Cross-Origin-Opener-Policy: same-origin
