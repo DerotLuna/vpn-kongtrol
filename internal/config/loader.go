@@ -98,9 +98,6 @@ func applyDefaults(cfg *Config) {
 	if cfg.Monitor.SplitDNS.Interval == "" {
 		cfg.Monitor.SplitDNS.Interval = "60s"
 	}
-	if cfg.Security.LeakDetection.Interval == "" {
-		cfg.Security.LeakDetection.Interval = "60s"
-	}
 	if cfg.Security.IntegrityCheck.Interval == "" {
 		cfg.Security.IntegrityCheck.Interval = "120s"
 	}
@@ -116,6 +113,8 @@ func applyDefaults(cfg *Config) {
 		vpn.Auth.Cert = expandHome(vpn.Auth.Cert, home)
 		vpn.Auth.Key = expandHome(vpn.Auth.Key, home)
 		vpn.ConfigFile = expandHome(vpn.ConfigFile, home)
+		vpn.AppPath = expandHome(vpn.AppPath, home)
+		vpn = vpn.WithDefaults()
 		cfg.VPNs[name] = vpn
 	}
 	if cfg.Security.AuditLog.Path != "" {

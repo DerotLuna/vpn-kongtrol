@@ -1,0 +1,336 @@
+# AGENTS.md
+
+Version 1.4 · 2026-11-17
+
+Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
+
+Public site: https://kongtrol.app (guide `/guia`, terms `/terminos`, privacy `/privacidad`, security `/seguridad`; English under `/en/` with localized slugs: `/en/guide`, `/en/terms`, `/en/privacy`, `/en/security`). `kongtrol.dev` and the old GitHub Pages URL only redirect there — never reference them.
+
+## Module
+
+`github.com/vpn-kongtrol/kongtrol` — Go 1.27+
+
+## Common Commands
+
+```bash
+# Build
+make build                  # current platform → build/dist/kongtrol
+make build-all-cli          # cross-compile CLI for all platforms (CGO_ENABLED=0)
+make build-tray-native      # tray app, native only (requires CGO)
+
+# Test
+go test ./...               # all packages
+go test ./internal/policy/  # single package
+go test -run TestEngine_ResolveIP ./internal/policy/  # single test
+make test-race              # with race detector
+
+# Docs (see docs/DOCS-TOOLING.md)
+make docs                   # regenerate docs/CLI*.md, docs/cli.json, docs/CONFIG*.md
+make docs-check             # report-only: stale generated docs, change impact, i18n parity
+
+# Vet / lint
+go vet ./...
+golangci-lint run ./...
+
+# Tidy
+go mod tidy
+```
+
+The tray binary (`cmd/kongtrol-tray`) requires `CGO_ENABLED=1` and can only be built natively per OS. The CLI binary (`cmd/kongtrol`) is pure Go and cross-compiles freely.
+
+## Architecture
+
+### Adapter pattern
+
+Every VPN is a `vpn.VPNAdapter` (defined in `internal/vpn/adapter.go`). Each adapter package registers itself via `init()` using `vpn.Register(name, factory)`. The binary activates adapters through blank imports in `cmd/kongtrol/main.go`.
+
+When adding a new adapter:
+1. Create `internal/vpn/<name>/adapter.go` + `cli.go` + `util.go`
+2. Call `vpn.Register("name", ...)` inside `func init()`
+3. Add a blank import `_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/<name>"` in `cmd/kongtrol/main.go`
+4. Add the type key to the `oneof` validator in `internal/config/schema.go`
+5. Add an example entry in `configs/example.yaml`
+
+`Status()` must call `.Normalize()` on the internal status field before returning — zero value (`""`) must never escape to callers.
+
+### Product decisions (settled — do not re-ask)
+
+<!-- feature:providers -->
+**Provider adapters vs direct configs.**
+- A provider adapter (`forticlient`, `protonvpn`, `nordvpn`, `surfshark`, …) works with the
+  provider's **official app**. Bringing the connection up and managing the tunnel are separate:
+  however the app's connection gets up, Kongtrol manages the tunnel the same way (detects it by
+  network interface — `interface:` overrides the name pattern — and attaches: status, watchdog,
+  DNS, policies).
+- On `up`: (1) if the tunnel is already up → attach; else (2) if `auto_connect` (default true)
+  → launch the app and try to connect automatically (official CLI, or GUI automation for
+  corporate clients); automation is **best effort** — if it fails (e.g. app version change) it
+  is not an error: fall back to (3); (3) launch the app, tell the user what to do (translated)
+  and **wait**, attaching as soon as the user connects — before or during `up`.
+- If Kongtrol can't disconnect (no CLI), `down` asks the user to disconnect in the app and
+  waits; the watchdog notifies instead of reconnecting.
+- Never GUI-automate a consumer VPN app; GUI automation only for corporate clients with no
+  alternative (e.g. FortiClient).
+- The **direct** way, `type: wireguard` / `type: openvpn` with the provider's downloadable
+  `.conf` / `.ovpn`, stays available and needs no app (e.g. Proton on Windows as `wireguard`).
+
+<!-- feature:daemon_lifecycle feature:tray_exits -->
+**Daemon lifecycle.**
+- `kongtrol up` starts the detached hidden `kongtrol daemon` (or reuses a running one) and then
+  opens a live view. Quitting any view (q / Ctrl+C, `status --watch`, tray, dashboard) **never**
+  stops the daemon or its tunnels. Only `kongtrol down` (or the tray's
+  "Salir y desconectar todo") stops them. No terminal has to stay open.
+- There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
+  (127.0.0.1, token in `~/.kongtrol/api-token`). This local API is IPC on the same machine —
+  nothing leaves the host.
+
+**Standards first, then improve.** Before designing a mechanism, research how others already
+solve it — official docs, RFCs and standards, mature open-source projects, vendor docs,
+papers and known open problems; never limit the search to a fixed list of names. Build on
+and reuse what works (prefer a vetted library over our own code); innovating is welcome
+when it improves on that base or solves problems others still have, and we can say why.
+Cite sources in proposals and say when something is reasoned but unverified.
+
+**Verify, then record.** Nothing is proposed, claimed or applied without verifying it
+(official docs, code, tests); say "no verificado" when you can't. Every decision gets an ADR in
+`docs/adr/` and every investigation a note with sources and access date in `docs/research/`,
+in the same work as the change.
+
+<!-- feature:public_ip -->
+**Nothing stale stays.** Unused or obsolete code, assets, keys, docs and scripts are deleted
+(git is the history). The only exception is ADRs: per the ADR standard (Nygard; MADR status
+`superseded by ADR-NNNN`) a changed decision gets a NEW ADR and the old one only flips its
+status to superseded — never edited otherwise, never deleted, numbers never reused. Research
+notes stay only while an ADR cites them.
+
+**Local only.** The app never sends or processes user data off the machine. Any outbound call
+(other than the VPN connection itself) must be opt-in, documented in `/privacidad` (EN
+`/en/privacy`) and listed in `docs/SECURITY.md`.
+
+**Docs stay in sync.** Every change updates, in the same work, every surface it touches: CLI
+`--help` and `docs/CLI.md`, README, `AGENTS.md`, both dashboards (`web/dashboard`, `web/ui`),
+the tray, the wizard, `configs/example.yaml`, `docs/` and the landing (`landing/`, ES+EN,
+including the guide). The landing only advertises what already works.
+
+**Generated docs — never edit by hand.** `docs/CLI.md`, `docs/CLI.en.md`, `docs/cli.json` (from the
+cobra tree + `internal/i18n`) and `docs/CONFIG.md`, `docs/CONFIG.en.md` (from
+`internal/config/schema.go` + descriptions in `internal/docgen/text.go`) are written by `make docs`
+(`go generate ./cmd/kongtrol`). The landing guide's command reference reads `docs/cli.json`. Change
+the source (help keys, flag texts, schema, `text.go`), then run `make docs`. A new config field needs
+an ES+EN description in `internal/docgen/text.go`.
+
+**Change impact check (required, non-blocking).** Before finishing any change, check
+`docs/impact.yml`: for every feature whose code you touched, update all its surfaces or write
+`no aplica: <motivo>` in the PR/commit description. Run `make docs` if CLI/config changed. CI only
+warns; it never blocks for docs. Mark new user-facing paragraphs with `<!-- feature:<name> -->`
+(Markdown) or `// feature:<name>` (TS/TSX/JS) and list them as `path#name` surfaces; a new
+top-level package goes into a feature or into `internal` (tested). See
+`docs/DOCS-TOOLING.md`.
+
+**Build only what changed.** CI and deploys are scoped by path: a landing-only change builds
+and deploys only the landing; a Go-only change never rebuilds the landing; `web/ui` builds only
+when its sources change. `web/**` and `assets/**` are part of the Go binary (embedded), so they
+do trigger the Go pipeline. Even when a resource is free or unlimited (CI minutes, API quotas,
+tokens, network calls, polling, binary size), use it with judgment — optimal, never at the cost
+of quality, correctness or coverage: cut waste, not checks.
+
+**Product model.** One product, GUI-first, CLI-complete. Everyone (devs included) uses the
+app: installer, tray, dashboard to set up and connect. The CLI has full parity for
+automation. No feature may exist only in the terminal (or only in the GUI).
+
+**User guidance.** Non-technical users rely on Kongtrol: guide a lot, in short lines.
+Every command states what it's doing and suggests the next step; every error adds one
+"what to do" line (never a raw OS/Go error alone); every wait says what's expected from
+the user. Avoid jargon (daemon, API, token) or explain it in a few words. The daemon sends
+phase + i18n key/args; clients render.
+
+**No admin terminal (target).** Kongtrol must work entirely without an elevated terminal: all
+or nothing, never "some commands need admin". Target design: a privileged helper service
+installed once (`kongtrol service install`) runs only a closed list of network operations;
+user-session parts (tray, CLI, dashboard, keychain, GUI automation of corporate clients) stay
+unprivileged because services can't reach the user desktop or keychain.
+
+### Data flow: connect lifecycle
+
+Clients (CLI, tray, dashboard) call the daemon's local API; the daemon runs
+`internal/app/profile_service.go`:
+
+```
+ProfileService.Connect(name)
+  → resolves credentials from OS keychain (config.GetCredential), preflight
+  → adapter.Connect(ctx, AdapterConfig)          // blocks until tunnel up (privileged work via privops)
+  → watchdog.MarkActive(name)                    // re-arms reconnect
+  → dnsMgr.OnConnect(name, info.DNS)             // applies DNS guard if enabled
+  → policy routes + kill switch state updated
+```
+
+```
+ProfileService.Disconnect(name)
+  → watchdog.MarkIntended(name)                  // suppresses reconnect; kill switch won't block
+  → adapter.Disconnect(ctx)
+  → dnsMgr.OnDisconnect(name)                    // restores DNS when last tunnel drops
+```
+
+### Key subsystems
+
+| Package | Responsibility |
+|---|---|
+| `internal/vpn` | `VPNAdapter` interface, `Status` type, registry |
+| `internal/config` | YAML schema (`Config`, `VPNConfig`), loader (env expansion, `~/` paths), keychain access |
+| `internal/policy` | IP longest-prefix match + domain glob → VPN profile name |
+| `internal/app` | `ProfileService` (connect/disconnect lifecycle), `KillSwitchService` |
+| `internal/routing` | Route manager (writes via privops) and no-admin route listing per OS |
+| `internal/security` | Kill switch, DNS guard, blocked destinations (via privops), leak tester, HMAC-signed audit log |
+| `internal/privops` | Closed list of privileged operations: `Local` (elevated) or `Client` (to the helper); per-OS `sys_*.go` |
+| `internal/privhelper` | Privileged helper service (named pipe / unix socket, caller auth, lease, audit) |
+| `internal/daemonctl` | Shared daemon client + spawn logic used by CLI and tray |
+| `internal/vpn/appattach` | Attach mode shared by provider adapters |
+| `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor) |
+| `internal/netstats` | No-admin per-interface traffic counters |
+| `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
+| `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
+| `web/` | legacy dashboard `web/dashboard/` (vanilla JS, embedded by `web/assets.go`, served at `/`) and the new UI `web/ui/` (see below) |
+| `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run assets/brand/generate.go`); `assets/embed.go`, `TrayIcon(size)` in `assets/icon.go` |
+| `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed to Cloudflare Pages |
+| `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
+| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only) |
+
+### OS-specific files
+
+Build tags control OS implementations — never use runtime `switch runtime.GOOS` for system-level operations:
+
+- `internal/privops/sys_windows.go` / `sys_linux.go` / `sys_darwin.go` / `sys_unix.go` — all privileged per-OS work (routes, DNS, kill switch, WireGuard, OpenVPN, hosts)
+- `internal/routing/windows.go` (route listing only) / `list_other.go`; `manager.go` is cross-OS via privops
+- `internal/security/killswitch_priv.go` / `dnsguard_priv.go` are cross-OS via privops
+- `internal/vpn/openvpn/process_windows.go` / `process_linux.go` / `process_darwin.go`
+- `internal/vpn/wireguard/wg_windows.go` / `wg_unix.go` (+ `wg_priv.go` via privops)
+
+### `//go:embed` constraints
+
+Go embed paths are relative to the source file — no `../` allowed. Embed points:
+- `web/assets.go` embeds `dashboard/`; `web/ui_embed.go` embeds `ui/dist/`
+- `assets/embed.go` embeds from `assets/brand/`
+- Never commit duplicate brand files: web clients get logos from `assets/brand` (served by the Go side or copied at build time).
+
+### New dashboard UI (`web/ui/`)
+
+Vite + React + TS (pnpm, oxlint, Vitest), migrating the legacy dashboard page by page. Built to
+`web/ui/dist`, embedded by `web/ui_embed.go`, served at `/app/` by `internal/api/ui_assets.go`;
+legacy `web/dashboard` keeps `/` until migrated. Only `dist/.gitkeep` is tracked, so `go build`
+works without Node (shows a "not built" page); release builds always build the UI. `make ui-dev`
+proxies `/api` to the daemon. Strings in `src/i18n/messages.ts` (ES+EN parity tested); external
+URLs only in `src/links.ts`.
+
+### Config validation
+
+`internal/config/schema.go` uses `go-playground/validator` tags. The `vpns` field has `validate:"required,min=1,dive"` — the `dive` tag is required for validator to recurse into `map[string]VPNConfig` values. Adding a new adapter type requires updating the `oneof` tag on `VPNConfig.Type`.
+
+`config.Validate(cfg)` (in `internal/config/loader.go`) exposes the same struct-tag + semantic
+validation `Load()` runs, for callers that mutate an already-loaded `*Config` in memory before
+persisting it — used by the dashboard API's trial-then-commit pattern (build a modified copy,
+`config.Validate(&trial)`, only write if it passes).
+
+User-facing validation errors are `*config.ValidationError` (`internal/config/errors.go`): an
+i18n key (`config.err.*`, with a `.fix` "what to do" line) + args; `Error()` stays English.
+Clients render it via `config.LocalizeError`: CLI `localizeConfigErr`/`localizedErrText`
+(`cmd/kongtrol/localize.go`), API `writeLocalizedError` (language from `X-Kongtrol-Lang`, then
+`Accept-Language`; body adds `hint` + `error_key`). Provider checks use it; other semantic
+errors are still plain English and can migrate the same way.
+
+### Dashboard REST API + machine-local preferences
+
+`internal/api/handlers_*.go` follow one repeated pattern for every dashboard CRUD endpoint (policies,
+VPN profiles, groups, scheduler rules, settings): `s.loadRuntimeConfig()` → mutate a copy →
+`config.Validate` → `s.saveRuntimeConfig()` (marshals YAML, hot-swaps the policy engine, calls
+`onPolicyUpdate`). Security toggles (`POST /api/v1/security/killswitch|dnsguard`) additionally call
+`s.onSecurityToggle`, which re-runs `applyKillSwitchState()`/`applyDNSGuardState()` in
+`cmd/kongtrol/daemon_runtime.go` so the change takes effect immediately, not just on the next connect.
+
+VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
+adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,
+unsynchronized, with the collector/watchdog goroutines), so responses include a
+`restart_required` flag.
+
+Settings that are genuinely local to one machine — not the shared `kongtrol.yaml` — live in
+`~/.kongtrol/preferences.json` instead (`cmd/kongtrol/preferences.go`): CLI display language,
+favorites, default group, and the dashboard's own bind/port override
+(`kongtrol config dashboard set-port/set-bind`, applied by `config.ApplyDashboardPreferences`
+in both the CLI and the tray). This is intentionally **not** editable from the dashboard itself —
+changing the port from the page serving that request would cut the connection mid-response.
+
+### Credential rule
+
+`AdapterConfig.Password` must be zeroed immediately after `Connect()` returns. Passwords are fetched from the OS keychain (`config.GetCredential`) immediately before calling `Connect()` — never stored in config structs at rest.
+
+<!-- feature:watchdog -->
+### Watchdog internals
+
+`monitor.Watchdog` polls adapter `Status()` every 5 seconds per profile goroutine. Call `MarkIntended(name)` **before** `Disconnect()` to suppress reconnect. Call `MarkActive(name)` **after** a successful `Connect()` to re-arm it. Backoff: `2s × 2^attempt`, capped at 5 minutes.
+
+- It only reconnects profiles that were brought up (`MarkActive`). **No implicit failover** (ADR-0018): profiles reach different networks and are never linked by name, type or `priority`. The only other profiles it may connect are those the user declared on the dropped profile, `vpns.<name>.failover: [backup, …]` (validated: exist, not itself, once, no cycles), tried in order once per outage; a backup that takes over pauses retries of the original until the user connects it again.
+- No declared backup (or none worked): keep retrying the same profile and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard `notices.js`, live view render them). Health-check failures only notify.
+- `MarkIntended` cancels the watchdog's in-flight reconnect/failover for that profile; `ProfileService.Disconnect` also cancels and waits for any running `Connect` of the profile (`trackConnect`/`cancelConnects`), so `down` reports a final status and no provider app opens afterwards.
+- `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset = position (earlier first).
+
+### DNS manager internals
+
+`monitor.DNSManager` is reference-counted across simultaneous tunnels. `OnConnect` merges + deduplicates DNS servers from all active profiles and applies the guard. `OnDisconnect` re-applies with the remaining set, or restores original DNS when the last profile disconnects. Always call `ForceRestore()` on SIGTERM/panic path (it's deferred in `upCmd`).
+
+<!-- feature:openvpn -->
+### OpenVPN adapter internals
+
+- Binary resolution (`FindBinary` in `internal/vpn/openvpn/binary*.go`): profile `binary_path` (must exist) → `PATH` → Windows registry `HKLM\SOFTWARE\OpenVPN\exe_path` / `%ProgramFiles%\OpenVPN\bin\openvpn.exe`; on Unix `/usr/sbin`, `/usr/local/sbin`, `/opt/homebrew/sbin`.
+- openvpn runs with `--cd <config dir>`, so relative `ca`/`cert`/`key`/`tls-crypt` paths inside the `.ovpn` resolve like OpenVPN GUI. Self-contained configs need no `auth.cert`/`auth.key`.
+- Server-pushed routes are always accepted; Kongtrol adds policy routes on top (see Policy routing) and skips a destination the server already routes on the tunnel interface.
+- `binary_path` reaches the adapter via `AdapterConfig.Extra`. `TunnelInfo` reports `InterfaceName` and pushed DNS.
+- Runs via the privileged helper when not elevated (`privops.OpenVPNStart`); Kongtrol answers the management password prompt; interface/DNS come from the helper log tail, falling back to an IP match.
+- An openvpn that exits on its own (killed, crashed) is reaped on the next `Connect`/`Disconnect` (`reapExitedLocked`: management connection closed, helper session stopped), so the watchdog can reconnect instead of getting "already connected".
+
+<!-- feature:helper -->
+### Privileged helper internals
+
+- All privileged ops go through `privops.Default()` (`Local` when elevated, `Client` to the helper otherwise; `ErrHelperNotInstalled` → `GuidanceKey`). Installed once with `kongtrol service install`.
+- The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change — an older installed helper is reported as outdated and the user re-runs `kongtrol service install`) and carries a per-process lease (renew 5s, expire 20s); expiry undoes OpenVPN, DNS, hosts, blocked destinations, kill switch (fail-open, so a crashed daemon never leaves the user offline). WireGuard and routes aren't leased.
+- `block.set` (`SetBlockedDestinations`) replaces the whole set of blocked outbound prefixes: Windows Firewall BLOCK rules `KongtrolBlock`, Linux `KONGTROL_BLOCK` iptables/ip6tables chains (REJECT), macOS pf anchor `com.kongtrol` table. Only block rules: in Windows Defender Firewall a block rule always beats an allow rule, so "block all + allow exceptions" cannot work — a full-tunnel block is sent as the complement of its exceptions. An older helper answers "unknown operation" → `ErrHelperOutdated`.
+- The helper only runs root/admin-owned binaries; Homebrew binaries are refused (user-swappable dylibs), so macOS OpenVPN via the helper needs a bundled signed openvpn (pending).
+
+<!-- feature:killswitch feature:policies feature:routes -->
+### Policy routing, kill switch, on_tunnel_down
+
+The user decides which tunnels are up; a policy whose tunnel is off uses the normal internet unless `on_tunnel_down` says otherwise.
+- `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Overlaps follow the policy engine order. Resolved IPs expire after 6h unseen.
+- `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints (+ LAN with `allow_lan` / legacy `mode: loose`). Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far.
+- `monitor.PolicyWatch` checks open TCP connections (Windows GetExtendedTcpTable, Linux /proc/net/tcp; macOS unsupported) every 15s and emits `monitor.Event`s (i18n key + args, throttled 30 min per policy; `connect` rate-limited 3 min) served by `GET /api/v1/events?after=<seq>` to tray, dashboard (`notices.js`) and the live view.
+
+### Public IP lookup (opt-in)
+
+- `security.LeakTester` (`internal/security/leaktest.go`) is the only code that asks an external service for the public IP. Off by default: `Config.PublicIPCheckEnabled()` = `security.public_ip_check.enabled` or the legacy `security.leak_detection.enabled` (its `interval` is ignored). The kill switch and DNS guard never enable or need it.
+- Never periodic: `Trigger()` after a successful connect/disconnect (`cmd/kongtrol/daemon_runtime.go`; ≥30s apart, coalesced, 3s settle) and `CheckNow()` on demand (`kongtrol check`, `POST /api/v1/security/publicip/check`, dashboard "Revisar", tray line). Disabled → no request, `LastResult()` nil, clients show "—" + `cli.public_ip.enable_hint`.
+- Endpoints: `security.public_ip_check.endpoints` (https only, `config.ValidatePublicIPEndpoint`), default `https://api.ipify.org`; 5s timeout, body ≤64 bytes, must parse as an IP. Toggle: `POST /api/v1/security/publicip`, `kongtrol config public-ip on|off`, wizard, dashboard Security page. Enabling shows `cli.public_ip.notice` ("Usa un servicio externo (<host>) que ve tu IP pública").
+
+### Provider attach mode internals
+
+- `internal/vpn/appattach`: shared by `forticlient`, `protonvpn`, `nordvpn`, `surfshark`. Each adapter embeds an `appattach.Session` and builds an `appattach.Provider` per call: `App` (launch locations), `Matcher` (interface name/description globs, `Exclude`, `RequireIPv4`, macOS `Services` for `scutil --nc list`), `Location`, optional `AutoConnect` / `Disconnect` funcs (nil = none on this OS).
+- `Session.Connect`: (1) interface already up → `PhaseAttached`; (2) `auto_connect` + `AutoConnect` → wait `AutoWait` → `PhaseAuto`; any failure falls through; (3) launch app → `PhaseWaitingUser` (Status `connecting`, `Reason` = short automation error) → wait `wait_timeout` (default 5m) → `PhaseUser`, or `vpn.ErrUserActionTimeout`. No lock is held while waiting.
+- `Session.Disconnect`: `Disconnect` func then wait for the drop; otherwise launch app, `PhaseWaitingDisconnect`, return `vpn.ErrManualDisconnect` (Status stays `connected` until the interface drops). `ProfileService` runs DNS / kill-switch cleanup in the background once it drops; the API answers 202 `{"status":"waiting_user"}`; `daemonctl.Client.Disconnect` maps that back to `ErrManualDisconnect`; `kongtrol down` polls and shows the message.
+- `Session.Status`: interface detection on every call; an external tunnel becomes `PhaseAttached`; an unrequested drop becomes `PhaseDropped` when `Capabilities().ManualReconnect` (no automatic path, or `auto_connect: false`). The watchdog then emits `manual_reconnect_required` once per drop instead of reconnecting.
+- User-facing state: `vpn.AttachState` (`AttachReporter`) → `monitor.TunnelMetrics.Attach` (`json:"attach"`) in `/api/v1/tunnels` and the WebSocket snapshot. Clients render `AttachState.MessageKey()` with `internal/i18n` (`attach.*`) in their own language; the dashboard mirrors it in `attachMessage()` (`web/dashboard/app.js`). Never pre-render these strings in the daemon.
+- Config: standard fields `auto_connect` (*bool, default true), `country`, `city`, `server` (exact), `interface`, `wait_timeout`, `app_path`; nordvpn-only `group`. `VPNConfig.AdapterExtra()` is the single mapping to `AdapterConfig.Extra`; `validateProvider` (`internal/config/semantics.go`) rejects location fields on providers that cannot select (surfshark, forticlient).
+- FortiClient versions (ADR-0020, matrix in `docs/forticlient-support.md` — update it with every change): `DetectInstall` (folder from `app_path` / registry `INSTALLDIR`, `FortiClient.exe` ProductVersion via the Win32 version API, `FortiVPN.exe` presence) → `SelectPlan` (pure, one test case per matrix row): `FortiVPN.exe` → `fortivpn-cli` (`--cli --connect --tunnel` + native auth dialog, contributor-reported); 6.x or unknown → `gui-6.4` (verified on 6.4.10 only); other versions → `attach` (no automation). Never click a layout nobody measured; never pass credentials on a command line (`FortiSSLVPNclient.exe -u user:pass` is rejected for that). `kongtrol doctor` shows version · strategy · status.
+- FortiClient GUI automation (`internal/vpn/forticlient/script.go` generates, `gui_windows.go` runs): the script text holds no user data — FortiClient path, tunnel, username and password go on stdin as base64 lines (a typographic quote also ends a PowerShell single-quoted string); booleans render as `$true`/`$false`; written as UTF-8 **with BOM** (Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which broke parsing and mangled non-ASCII text); golden files in `testdata/` (`go test ./internal/vpn/forticlient -run Golden -update` after a reviewed change) and the Windows PowerShell parser test (fails, not skips, in CI); its failure becomes one line (`scriptErrorLine`: the script's `ERROR:` line or PowerShell's message + script line, never the source excerpt); cancelling the connect kills the script and clears the clipboard.
+- Interface names: FortiClient, NordVPN (NordLynx, TAP-NordVPN) and Proton (TAP-ProtonVPN, Linux proton0/pvpn*) are documented or known; Surfshark ("Surfshark DCO adapter" per its docs, Linux `surfshark*`) and the macOS Network Extension services are best effort, so `interface:` overrides them.
+
+<!-- feature:i18n -->
+## Internationalization (i18n)
+
+All user-visible strings — prompts, error messages, status output, banners — must be internationalized using `internal/i18n`. **Never hardcode strings directly in user-facing code.**
+
+Rules:
+- Add new keys to **both** `ES` and `EN` maps in `internal/i18n/i18n.go`
+- In wizard/CLI code use `i18n.T(lang, key)` or `i18n.F(lang, key, args...)` — never `fmt.Printf("hardcoded string")`
+- `ES` and `EN` are both required (keys in both maps); the language comes from the user's choice or the OS (non-Spanish → `EN`). A new language means a new map, not special cases
+- Language resolution (CLI, wizard, tray): `KONGTROL_LANG` → saved choice in `preferences.json` → OS language (`i18n.System()`, build-tagged). The wizard doesn't ask; it ends with a one-line hint to change it (`kongtrol config lang <es|en>`). Wizard output goes through `w.t(key)` / `w.tF(key, args...)`. The dashboard follows the browser's language and `prefers-color-scheme` until the user picks one explicitly.
+
+## Build on Windows
+
+`make` targets use `SHELL := /usr/bin/bash` and Unix env-var syntax — they must be run from **Git Bash**, not from PowerShell or cmd.exe. Running `make build-all-cli` from PowerShell will fail with "The syntax of the command is incorrect".

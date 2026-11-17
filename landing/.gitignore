@@ -1,15 +1,13 @@
 node_modules/
 dist/
-.vercel/
 
-# Binarios de distribución — demasiado grandes para git.
-# Se actualizan localmente para deploy a Vercel.
-_binaries/kongtrol-*
-_binaries/checksums.txt
-
-# Excepción: mantener el placeholder
-!_binaries/.gitkeep
-
-.vercel
-
-.vercel
+# Brand assets copied from ../assets/brand by scripts/copy-brand.mjs
+public/favicon.svg
+public/logo.svg
+public/logo-kong.svg
+public/logo.png
+public/logo-kong.png
+public/logo-kong-32.png
+public/logo-kong-192.png
+public/og-1200x630.jpg
+public/fonts/

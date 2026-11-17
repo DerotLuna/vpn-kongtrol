@@ -59,6 +59,7 @@ func streamRemoteTunnels(ctx context.Context, p *tea.Program, base string) {
 		case <-done:
 		}
 	}()
+	go pollRemoteSecurity(ctx, p, base, done)
 
 	for {
 		_, data, err := conn.ReadMessage()
@@ -70,5 +71,47 @@ func streamRemoteTunnels(ctx context.Context, p *tea.Program, base string) {
 			continue
 		}
 		p.Send(upRemoteStateMsg{connected: true, apiBase: base, snapshot: snapshot})
+	}
+}
+
+// pollRemoteSecurity keeps the live view's kill switch / DNS guard line in
+// step with the daemon (the WebSocket feed carries tunnels only), so it shows
+// the same state `kongtrol status` reports.
+func pollRemoteSecurity(ctx context.Context, p *tea.Program, base string, done <-chan struct{}) {
+	client := &http.Client{Timeout: 1200 * time.Millisecond}
+	t := time.NewTicker(2 * time.Second)
+	defer t.Stop()
+	var eventSeq int64
+	for {
+		if sec, err := fetchDaemonSecurity(client, base); err == nil && !isClosed(done) {
+			p.Send(upRemoteStateMsg{connected: true, apiBase: base, security: sec})
+		}
+		// Policy and watchdog notices (one line in the live view).
+		if evs, seq, err := fetchDaemonEvents(client, base, eventSeq); err == nil && !isClosed(done) {
+			eventSeq = seq
+			for i := len(evs) - 1; i >= 0; i-- {
+				if k := evs[i].Kind; k == monitor.EventPolicyTunnelDown || k == monitor.EventTunnelWatchdog {
+					e := evs[i]
+					p.Send(upRemoteStateMsg{connected: true, apiBase: base, notice: &e})
+					break
+				}
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-done:
+			return
+		case <-t.C:
+		}
+	}
+}
+
+func isClosed(ch <-chan struct{}) bool {
+	select {
+	case <-ch:
+		return true
+	default:
+		return false
 	}
 }

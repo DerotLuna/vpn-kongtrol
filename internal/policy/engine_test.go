@@ -7,14 +7,6 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
 
-func mustParseCIDR(s string) *net.IPNet {
-	_, n, err := net.ParseCIDR(s)
-	if err != nil {
-		panic(err)
-	}
-	return n
-}
-
 func buildEngine(t *testing.T, policies []config.PolicyRule, vpns map[string]config.VPNConfig) *Engine {
 	t.Helper()
 	cfg := &config.Config{

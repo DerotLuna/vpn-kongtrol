@@ -61,7 +61,7 @@ Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
 | VPN | Cliente requerido | Verificar (Windows) | Verificar (Linux / macOS) |
 |---|---|---|---|
-| FortiClient (oficina) | [FortiClient 6.4.x](https://www.fortinet.com/support/product-downloads) | Abre FortiClient — debe mostrar el túnel configurado | `FortiClient --version` o abre la app |
+| FortiClient (oficina) | [FortiClient](https://www.fortinet.com/support/product-downloads) (cualquier versión; ver [matriz de soporte](forticlient-support.md)) | Abre FortiClient — debe mostrar el túnel configurado | `FortiClient --version` o abre la app |
 | OpenVPN (servidor / AWS) | [OpenVPN Community](https://openvpn.net/community-downloads/) | Busca `openvpn.exe` en `C:\Program Files\OpenVPN\bin\` | `openvpn --version` en terminal |
 | ProtonVPN (contenido US) | [ProtonVPN](https://protonvpn.com/download) (app de escritorio) | Abre ProtonVPN — debe aparecer el botón de conexión | `protonvpn-cli --version` |
 
@@ -75,7 +75,7 @@ Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
 ### Windows
 
-1. Descarga `kongtrol_windows_amd64.zip` de [Releases](../../releases)
+1. Descarga `kongtrol_windows_amd64.zip` de [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases)
 2. Extrae y mueve `kongtrol.exe` a una carpeta en tu PATH, por ejemplo:
    ```
    C:\Users\TuUsuario\bin\kongtrol.exe
@@ -108,7 +108,7 @@ sudo mv kongtrol /usr/local/bin/
 kongtrol --help
 ```
 
-### Desde el código fuente (si tienes Go 1.25+)
+### Desde el código fuente (si tienes Go 1.27+)
 
 ```bash
 git clone https://github.com/yourorg/vpn-kongtrol
@@ -142,6 +142,7 @@ Solo necesitas hacer algo aquí si:
 
 ---
 
+<!-- feature:wizard -->
 ## 4. Registrar tus VPNs: `kongtrol init`
 
 > **¿Ya tienes tus VPNs configuradas?** Perfecto — `kongtrol init` no las toca. Lo que hace es decirle a Kongtrol dónde están y cómo hablarles: qué cliente usar, qué tunnel name tiene, dónde está el `.ovpn`. Si FortiClient ya conecta y OpenVPN ya tiene su `.ovpn`, este paso solo recopila esa información.
@@ -199,10 +200,11 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Ruta al certificado cliente (ej. ~/.kongtrol/certs/oficina.crt): ~/.kongtrol/certs/office.crt
   Ruta a la clave privada (ej. ~/.kongtrol/certs/oficina.key): ~/.kongtrol/certs/office.key
   Usuario: tu_usuario
-  Prioridad (menor = preferido, 1–100) [10]:
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]:
   Contraseña para office (guardada en llavero del sistema, no en YAML): ****
 ```
 
+<!-- feature:openvpn -->
 ### Perfil 2: OpenVPN servidor
 
 ```
@@ -213,7 +215,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Método de autenticación (certificate | credentials | certificate+credentials) [certificate]:
   Ruta al certificado cliente (vacío si está dentro del .ovpn):
   Ruta a la clave privada (vacío si está dentro del .ovpn):
-  Prioridad (menor = preferido, 1–100) [10]: 20
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]: 20
 ```
 
 > Si el `.ovpn` ya tiene `<cert>` y `<key>` embebidas, deja los paths en blanco.
@@ -226,7 +228,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Tipo [openvpn]:
   Ruta al archivo .ovpn (ej. ~/.kongtrol/configs/servidor.ovpn): ~/.kongtrol/configs/aws.ovpn
   Método de autenticación (certificate | credentials | certificate+credentials) [certificate]:
-  Prioridad (menor = preferido, 1–100) [10]: 20
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]: 20
 ```
 
 ### Perfil 4: ProtonVPN
@@ -238,12 +240,13 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Servidor / código de país (ej. US, NL, fastest) [fastest]: US
   Protocolo (wireguard | openvpn) [wireguard]:
   Usuario de ProtonVPN: tu_usuario_proton
-  Prioridad (menor = preferido, 1–100) [10]: 5
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]: 5
   Contraseña para us-content (guardada en llavero del sistema, no en YAML): ****
 
 ¿Agregar un nuevo perfil VPN? [s/N]:
 ```
 
+<!-- feature:killswitch feature:dns_guard -->
 ### Opciones de seguridad y políticas
 
 ```
@@ -307,10 +310,11 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si ya tienes un daemon corriendo (`kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel puntual, `kongtrol reload --tunnel <perfil>`; para políticas, `kongtrol reload --policy`. Ver [CLI.md → Reload](CLI.md#reload).
+Si ya tienes un daemon corriendo (`kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel puntual, `kongtrol reload --tunnel <perfil>`; para políticas, `kongtrol reload --policy`. Ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
+<!-- feature:policies -->
 ## 5b. Políticas de routing
 
 ### ¿Para qué sirven?
@@ -459,6 +463,28 @@ Si dos reglas cubren la misma IP, gana la más específica:
 | `10.10.0.0/16` vía `office` | Todo `10.10.x.x` |
 | `10.10.1.0/24` vía `dev-server` | Solo `10.10.1.x` — gana sobre `/16` |
 
+Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera regla que coincide), desempata la `priority` del perfil: **gana el número mayor**. Si el perfil no tiene `priority`, cuenta la posición de la política (las primeras van antes). `priority` no conecta ni cambia perfiles.
+
+<!-- feature:watchdog -->
+#### Si una VPN se cae y no vuelve (failover)
+
+Kongtrol reintenta solo **esa misma** VPN (espera 2 s, 4 s, 8 s… hasta 5 min) y te avisa una vez en la bandeja, el dashboard y la vista en vivo. Nunca conecta otra VPN por su cuenta: cada perfil llega a redes distintas, aunque los nombres se parezcan.
+
+Si tienes un perfil de respaldo que llega a **las mismas redes**, decláralo en el perfil principal:
+
+```yaml
+vpns:
+  oficina:
+    type: openvpn
+    config: ~/.kongtrol/configs/oficina.ovpn
+    failover: [oficina-respaldo]   # se prueba en orden si oficina no logra reconectarse
+  oficina-respaldo:
+    type: openvpn
+    config: ~/.kongtrol/configs/oficina-b.ovpn
+```
+
+Cuando el respaldo entra, Kongtrol deja de reintentar `oficina` hasta que la conectes otra vez. También se edita en el dashboard (Perfiles → "Perfiles de respaldo").
+
 ### Validar y aplicar
 
 ```bash
@@ -466,7 +492,7 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → Reload](CLI.md#reload).
+Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
@@ -517,6 +543,7 @@ Si hay ✗ en alguna línea, el mensaje te dice exactamente qué falta.
 
 ---
 
+<!-- feature:daemon_lifecycle -->
 ## 7. Primera conexión
 
 ### Modo trabajo (oficina + servidores)
@@ -581,6 +608,7 @@ kongtrol status --watch
 
 ---
 
+<!-- feature:dashboard -->
 ## 8. Dashboard web
 
 ```bash
@@ -593,9 +621,9 @@ monitoreo, con estas páginas:
 
 - **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo
 - **Studio** — pestañas: políticas de routing (CRUD + probador de reglas), perfiles VPN (CRUD, actualiza config + keychain; requiere reiniciar el daemon para conectar con un perfil nuevo/editado), y grupos (CRUD + conectar/desconectar)
-- **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check
+- **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check y consulta de IP pública opcional (apagada por defecto, botón Revisar)
 - **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
-- **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, leak detection, audit log), scheduler (reglas)
+- **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, IP pública y fugas: servicios https opcionales, audit log), scheduler (reglas)
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
 > puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —
@@ -615,7 +643,7 @@ kongtrol down --all               # apagar todo
 
 kongtrol status                   # ver qué está conectado
 kongtrol status --watch           # monitoreo en vivo
-kongtrol check                    # test de leaks ahora mismo
+kongtrol check                    # consulta tu IP pública y prueba fugas (requiere kongtrol config public-ip on)
 kongtrol up --group work --dry-run # simulación completa sin tocar rutas/DNS/firewall
 kongtrol policy explain github.com # explica qué regla de policy aplica y por qué
 kongtrol policy explain github.com --json # salida estructurada
@@ -635,7 +663,7 @@ GET  /api/v1/groups                         # grupos · POST/PUT/DELETE + /conne
 GET  /api/v1/audit?profile=...&level=...    # eventos de auditoría
 ```
 
-Ver [docs/CLI.md](CLI.md#useful-daemondashboard-api-endpoints) para la lista completa.
+Ver [docs/API.md](API.md) para la lista completa.
 
 Para idioma operativo del CLI (mensajes nuevos), usa `KONGTROL_LANG=es` o `KONGTROL_LANG=en`.
 

@@ -1,12 +1,9 @@
 package api
 
 import (
-	"io"
 	"net"
 	"net/http"
 	"sort"
-	"strings"
-	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
@@ -102,10 +99,11 @@ func (s *Server) handleNetworkOverview(w http.ResponseWriter, r *http.Request) {
 		Metric      int    `json:"metric"`
 	}
 	type overviewDTO struct {
-		ConnectedTunnels int               `json:"connected_tunnels"`
-		DefaultRoutes    []defaultRouteDTO `json:"default_routes"`
-		LocalIPs         []string          `json:"local_ips"`
-		PublicIP         string            `json:"public_ip,omitempty"`
+		ConnectedTunnels     int               `json:"connected_tunnels"`
+		DefaultRoutes        []defaultRouteDTO `json:"default_routes"`
+		LocalIPs             []string          `json:"local_ips"`
+		PublicIP             string            `json:"public_ip,omitempty"`
+		PublicIPCheckEnabled bool              `json:"public_ip_check_enabled"`
 	}
 
 	out := overviewDTO{}
@@ -180,31 +178,12 @@ func (s *Server) handleNetworkOverview(w http.ResponseWriter, r *http.Request) {
 		}
 		sort.Strings(out.LocalIPs)
 	}
-	if s.leakTest != nil {
-		if lr := s.leakTest.LastResult(); lr != nil && lr.PublicIP != "" {
-			out.PublicIP = lr.PublicIP
-		}
-	}
-	if out.PublicIP == "" {
-		out.PublicIP = fetchPublicIP()
+	// Only the last opt-in lookup: this endpoint never contacts an
+	// external service itself (Local only rule).
+	out.PublicIPCheckEnabled = s.leakTest.Enabled()
+	if lr := s.leakTest.LastResult(); lr != nil {
+		out.PublicIP = lr.PublicIP
 	}
 
 	writeJSON(w, http.StatusOK, out)
-}
-
-func fetchPublicIP() string {
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("https://api.ipify.org")
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return ""
-	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 64))
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(body))
 }

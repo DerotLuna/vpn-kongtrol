@@ -1,0 +1,179 @@
+name: docs
+
+# Docs freshness, change impact and link check.
+# NEVER blocks a merge (AGENTS.md "Change impact check"): every step that
+# checks docs is continue-on-error and reports through ::warning
+# annotations plus ONE sticky PR comment updated in place.
+# Code correctness (go test, i18n parity, example.yaml) stays in ci.yml.
+#
+# Lean on purpose (public repos get free standard-runner minutes, but we
+# stay lean anyway): one ubuntu job, no matrix, path-filtered, PR-only for
+# the impact part, shallow fetch, Go and pnpm caches.
+#
+# Sources:
+# - generated docs: cobra doc generator https://github.com/spf13/cobra/blob/main/site/content/docgen/_index.md
+# - links: lychee https://lychee.cli.rs · https://github.com/lycheeverse/lychee-action
+# - sticky comment: https://github.com/marocchino/sticky-pull-request-comment
+# - annotations: https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands#setting-a-warning-message
+
+on:
+  pull_request:
+    paths:
+      - "**/*.go"
+      - "docs/**"
+      - "README*"
+      - "AGENTS.md"
+      - "configs/**"
+      - "landing/**"
+      - "web/**"
+      - "lychee.toml"
+      - ".github/workflows/docs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "README*"
+      - "AGENTS.md"
+      - "landing/**"
+      - "lychee.toml"
+      - ".github/workflows/docs.yml"
+  schedule:
+    - cron: "17 6 * * 1" # weekly external link check (links rot without commits)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write # sticky comment only
+    env:
+      COMMENT: ${{ github.workspace }}/docs-comment.md
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            go:
+              - "**/*.go"
+              - "configs/**"
+            links:
+              - "docs/**"
+              - "README*"
+              - "AGENTS.md"
+              - "landing/**"
+              - "lychee.toml"
+            landing:
+              - "landing/**"
+              - "docs/cli.json"
+
+      - name: Fetch the PR base (shallow) for the diff
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=200 origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" "+${{ github.event.pull_request.head.sha }}:refs/remotes/pr/head"
+          echo "# Docs" > "$COMMENT"
+
+      - uses: actions/setup-go@v5
+        if: steps.filter.outputs.go == 'true' || github.event_name == 'pull_request'
+        with:
+          go-version: "1.27"
+          cache: true
+
+      - name: Generated docs (CLI, config) up to date?
+        if: steps.filter.outputs.go == 'true'
+        continue-on-error: true
+        run: |
+          out=$(go run ./cmd/kongtrol gen-docs --check)
+          echo "$out"
+          if [ -f "$COMMENT" ] && echo "$out" | grep -q '::warning'; then
+            {
+              echo "### Docs generados / Generated docs"
+              echo
+              echo "Desactualizados: corre \`make docs\` (o \`go generate ./...\`) y haz commit. / Out of date: run \`make docs\`."
+              echo
+              echo "$out" | sed -n 's/^::warning[^:]*::/- /p'
+            } >> "$COMMENT"
+          fi
+
+      - name: Change impact (docs/impact.yml)
+        id: impact
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        run: |
+          go run ./internal/impact/impactcheck -base "origin/${{ github.base_ref }}" -head pr/head \
+            -out impact.md
+          { echo; cat impact.md; } >> "$COMMENT"
+
+
+      - uses: pnpm/action-setup@v4
+        if: steps.filter.outputs.links == 'true' || steps.filter.outputs.landing == 'true' || github.event_name == 'schedule'
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        if: steps.filter.outputs.links == 'true' || steps.filter.outputs.landing == 'true' || github.event_name == 'schedule'
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: landing/pnpm-lock.yaml
+      - name: Build the landing (for its links) + i18n parity
+        if: steps.filter.outputs.links == 'true' || steps.filter.outputs.landing == 'true' || github.event_name == 'schedule'
+        continue-on-error: true
+        working-directory: landing
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          pnpm run check:i18n
+
+      # Internal links (files, anchors-free paths, landing pages): offline.
+      - name: Links — internal
+        id: links_internal
+        if: steps.filter.outputs.links == 'true' || github.event_name == 'schedule'
+        continue-on-error: true
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config lychee.toml --offline --no-progress
+            --root-dir ${{ github.workspace }}/landing/dist
+            README.md AGENTS.md docs landing/dist
+          output: lychee-internal.md
+          fail: true
+
+      # External links may be flaky: retries + accepted 403/429 (lychee.toml).
+      - name: Links — external
+        id: links_external
+        if: steps.filter.outputs.links == 'true' || github.event_name == 'schedule'
+        continue-on-error: true
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --config lychee.toml --no-progress --scheme https --scheme http
+            README.md AGENTS.md docs landing/dist
+          output: lychee-external.md
+          fail: true
+
+      - name: Link results into the comment
+        if: always() && github.event_name == 'pull_request' && (steps.links_internal.outcome == 'failure' || steps.links_external.outcome == 'failure')
+        run: |
+          for f in lychee-internal.md lychee-external.md; do
+            [ -f "$f" ] || continue
+            echo "::warning title=Links::broken links found, see the PR comment / job summary"
+            { echo; echo "<details><summary>Enlaces rotos / Broken links ($f)</summary>"; echo; cat "$f"; echo; echo "</details>"; } >> "$COMMENT"
+          done
+
+      - name: Sticky PR comment
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true # fork PRs get a read-only token
+        uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: kongtrol-docs
+          path: docs-comment.md

@@ -23,14 +23,11 @@ import (
 // ── command registration ──────────────────────────────────────────────────────
 
 var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Interactive setup wizard — create or update kongtrol.yaml",
-	RunE:  runWizard,
+	Use:  "init",
+	RunE: runWizard,
 }
 
 func init() {
-	initCmd.Short = ct("cli.init.short")
-	initCmd.Example = ct("cli.init.examples")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -96,8 +93,8 @@ func wizardKeyMap() *huh.KeyMap {
 	return km
 }
 
-// wizardLang is the wizard's resolved display language, set once by
-// selectWizardLanguage at the top of runWizard. formGuard reads it to render
+// wizardLang is the wizard's resolved display language, set once at the
+// top of runWizard (saved choice, else the OS language). formGuard reads it to render
 // the nav-hint footer (below) in the right language without threading lang
 // through every one of the wizard's ~15 runForm call sites individually.
 var wizardLang i18n.Lang
@@ -186,10 +183,18 @@ func runForm(form *huh.Form) error {
 func runWizard(_ *cobra.Command, _ []string) (err error) {
 	// Recover the one and only panic runForm ever raises (errWizardQuit, on
 	// Ctrl+C) — see its doc comment for why this unwinds via panic/recover
-	// instead of a second sentinel threaded through every call site. lang
-	// may not be set yet if Ctrl+C hits the very first (language) form, so
-	// the message falls back to the zero value of i18n.Lang (Spanish).
-	var lang i18n.Lang
+	// instead of a second sentinel threaded through every call site.
+	//
+	// The language is never asked: it is the saved choice
+	// (`kongtrol config lang`), else the OS language. The wizard only says
+	// which one it used, in one line on the way out (deferred first so it
+	// prints last, after a Ctrl+C message too).
+	lang, langSource := resolveCLILang()
+	defer func() {
+		if err == nil {
+			fmt.Println(styleDim.Render("  " + wizardLangLine(lang, langSource)))
+		}
+	}()
 	defer func() {
 		if r := recover(); r != nil {
 			quitErr, ok := r.(error)
@@ -201,21 +206,12 @@ func runWizard(_ *cobra.Command, _ []string) (err error) {
 		}
 	}()
 
-	// ── 1. Language selection — only asked the very first time ───────────────
-	var firstRun bool
-	lang, firstRun, err = selectWizardLanguage()
-	if err != nil {
-		return nil // user aborted before there's anything to lose
-	}
 	wizardLang = lang
 	t := func(key string) string { return i18n.T(lang, key) }
 	tf := func(key string, a ...any) string { return i18n.F(lang, key, a...) }
 	cancelled := func() error {
 		fmt.Println(styleWarn.Render(t("wizard.cancelled")))
 		return nil
-	}
-	if firstRun {
-		fmt.Println(styleDim.Render("  " + t("wizard.lang.change_hint")))
 	}
 
 	// ── 2. Banner — the site hero's motd, now in the terminal ─────────────────
@@ -322,52 +318,17 @@ func runWizard(_ *cobra.Command, _ []string) (err error) {
 	return nil
 }
 
-// selectWizardLanguage resolves the CLI's display language: from a saved
-// preference, or by asking (and persisting) it on the very first run. Once a
-// language is on record in preferences.json, every later `init` run (and
-// every other command, via cliLang()) just uses it — changing it after that
-// goes through `kongtrol config lang <es|en>`, not this wizard. Returns
-// errWizardCancelled if the user aborts before anything is at risk.
-func selectWizardLanguage() (i18n.Lang, bool, error) {
-	prefs, prefsErr := loadPreferences()
-	firstRun := prefsErr != nil || strings.TrimSpace(prefs.Language) == ""
-
-	var langChoice string
-	if firstRun {
-		var choice string
-		langForm := newForm(
-			huh.NewGroup(
-				huh.NewSelect[string]().
-					Title("Language / Idioma").
-					Options(
-						huh.NewOption("Español", "es"),
-						huh.NewOption("English", "en"),
-					).
-					Value(&choice),
-			),
-		)
-		if err := runForm(langForm); err != nil {
-			return i18n.ES, firstRun, err
-		}
-		langChoice = choice
-	} else {
-		langChoice = strings.ToLower(strings.TrimSpace(prefs.Language))
+// wizardLangLine is the wizard's closing language note, e.g.
+// "Idioma: español (del sistema) · cámbialo con kongtrol config lang en".
+func wizardLangLine(lang i18n.Lang, source i18n.Source) string {
+	origin := i18n.T(lang, "wizard.lang.source.saved")
+	switch source {
+	case i18n.SourceSystem:
+		origin = i18n.T(lang, "wizard.lang.source.system")
+	case i18n.SourceEnv:
+		origin = i18n.T(lang, "wizard.lang.source.env")
 	}
-
-	lang := i18n.ES
-	if langChoice == "en" {
-		lang = i18n.EN
-	}
-
-	if firstRun {
-		// Persist the choice so every other command (status, up, ...) uses it
-		// too, and won't ask again.
-		if p, err := loadPreferences(); err == nil {
-			p.Language = langChoice
-			_ = savePreferences(p)
-		}
-	}
-	return lang, firstRun, nil
+	return i18n.F(lang, "wizard.lang.summary", i18n.Name(lang), origin, string(i18n.Other(lang)))
 }
 
 // printExistingProfiles lists every profile already in the loaded config,
@@ -481,8 +442,9 @@ func reviewAndWrite(lang i18n.Lang, outPath string, doc *yaml.Node, profiles []p
 
 	fmt.Println(tuiOK(styleBright.Render(tf("write.success", outPath))))
 
-	if _, err := config.Load(outPath); err != nil {
-		fmt.Fprintln(os.Stderr, tuiWarn(tf("write.validation_warn", err)))
+	written, err := config.Load(outPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, tuiWarn(tf("write.validation_warn", localizedErrText(lang, err))))
 		fmt.Fprintln(os.Stderr, styleDim.Render(t("write.validation_hint")))
 	} else {
 		fmt.Println(tuiOK(styleOK.Render(t("write.valid"))))
@@ -493,7 +455,7 @@ func reviewAndWrite(lang i18n.Lang, outPath string, doc *yaml.Node, profiles []p
 	fmt.Println(NextStepsPanel(t("nextsteps.header"), []string{
 		t("nextsteps.init"),
 		t("nextsteps.status"),
-		t("nextsteps.up"),
+		tf("nextsteps.up", nextStepsProfile(lang, profiles, written)),
 		t("nextsteps.dashboard"),
 	}))
 	fmt.Println()
@@ -510,6 +472,8 @@ type profileSummary struct {
 // securitySummary mirrors the four toggles collected in step 3.
 type securitySummary struct {
 	killSwitch, dnsGuard, auditLog, monitor bool
+	// publicIP: opt-in external public IP lookup (off by default).
+	publicIP bool
 }
 
 // valueOf reads a scalar field out of a profile's yaml.Node mapping — used to

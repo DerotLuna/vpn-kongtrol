@@ -6,6 +6,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"gopkg.in/yaml.v3"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 )
 
@@ -31,6 +32,7 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 	enableDNS := current.dnsGuard
 	enableAudit := current.auditLog
 	enableMonitor := current.monitor
+	enablePublicIP := current.publicIP
 
 	if err := runForm(newForm(
 		huh.NewGroup(
@@ -53,6 +55,10 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 				Title(t("monitor.dashboard")).
 				Description(styleDim.Render(t("hint.dashboard"))).
 				Value(&enableMonitor),
+			huh.NewConfirm().
+				Title(t("security.public_ip")).
+				Description(styleDim.Render(i18n.F(lang, "cli.public_ip.notice", config.EndpointHost(config.DefaultPublicIPEndpoint)))).
+				Value(&enablePublicIP),
 		),
 	)); err != nil {
 		return securitySummary{}, err
@@ -77,8 +83,20 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 	if enableMonitor {
 		setMapping(doc, "monitor", mapNode([][2]string{{"enabled", "true"}}))
 	}
+	// Public IP lookup: opt-in; turning it off also clears the legacy
+	// leak_detection.enabled that implied it.
+	// Keeps any custom endpoints already in the file.
+	if pic := mappingKey(secNode, "public_ip_check"); pic != nil && pic.Kind == yaml.MappingNode {
+		setMapping(pic, "enabled", boolNode(enablePublicIP))
+	} else if enablePublicIP {
+		setMapping(secNode, "public_ip_check", mapNode([][2]string{{"enabled", "true"}}))
+	}
+	if ld := mappingKey(secNode, "leak_detection"); !enablePublicIP && ld != nil && ld.Kind == yaml.MappingNode {
+		setMapping(ld, "enabled", boolNode(false))
+	}
 
 	return securitySummary{
 		killSwitch: enableKS, dnsGuard: enableDNS, auditLog: enableAudit, monitor: enableMonitor,
+		publicIP: enablePublicIP,
 	}, nil
 }

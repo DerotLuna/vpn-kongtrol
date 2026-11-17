@@ -1,0 +1,242 @@
+# Change-impact map — version 1.2 · 2026-11-17
+#
+# For every feature: the code that implements it (globs, ** = any depth)
+# and the surfaces that describe it to users. A surface is "path" (the
+# whole file) or "path#name", where the file marks the paragraph with a
+# `feature:<name>` anchor: `<!-- feature:name -->` in Markdown, a
+# `// feature:name` comment in TS/TSX/JS. One anchor line may list several
+# names. Generated files (docs/CLI*.md, docs/CONFIG*.md, docs/cli.json) are
+# not listed: `make docs` keeps them current.
+#
+# Used by internal/impact (go run ./internal/impact/impactcheck): a PR that
+# touches a feature's code but none of its surfaces gets a non-blocking
+# warning ("si no aplica, explica el motivo en el PR"). The test in
+# internal/impact fails only when a top-level package under internal/ or
+# cmd/ is neither covered by a feature nor listed under `internal`.
+
+# Packages with no user-facing surface of their own.
+internal:
+  - internal/docgen      # generates the reference docs
+  - internal/netstats    # traffic counters shown through status/dashboard
+  - internal/vpndetect   # client detection used by wizard/doctor
+  - internal/impact      # this checker
+
+features:
+  killswitch:
+    code:
+      - internal/security/killswitch*.go
+      - internal/security/block_priv.go
+      - internal/app/killswitch_service.go
+      - internal/api/handlers_security.go
+      - web/dashboard/security.js
+      - web/dashboard/shell.js
+    surfaces:
+      - README.md#killswitch
+      - AGENTS.md#killswitch
+      - docs/SETUP.md#killswitch
+      - docs/SECURITY.md
+      - landing/src/content/guide.es.tsx#killswitch
+      - landing/src/content/guide.en.tsx#killswitch
+
+  dns_guard:
+    code:
+      - internal/security/dnsguard*.go
+      - internal/monitor/dnsmanager.go
+      - internal/monitor/splitdns.go
+    surfaces:
+      - README.md#dns_guard
+      - docs/SETUP.md#dns_guard
+      - docs/SECURITY.md
+      - landing/src/content/guide.es.tsx#dns_guard
+      - landing/src/content/guide.en.tsx#dns_guard
+
+  public_ip:
+    code:
+      - internal/config/publicip*.go
+      - internal/security/leaktest*.go
+      - internal/daemonctl/publicip.go
+      - cmd/kongtrol/publicip*.go
+      - cmd/kongtrol/cmd_config_publicip.go
+      - cmd/kongtrol/cmd_check.go
+      - cmd/kongtrol-tray/tray_publicip.go
+      - web/dashboard/publicip.js
+    surfaces:
+      - AGENTS.md#public_ip
+      - docs/SECURITY.md
+      - landing/src/content/legal/privacidad.tsx
+      - landing/src/content/legal/seguridad.tsx
+
+  policies:
+    code:
+      - internal/policy/**
+      - internal/monitor/policywatch.go
+      - internal/api/handlers_policy.go
+      - cmd/kongtrol/policy_cmd.go
+      - cmd/kongtrol/wizard_policies.go
+      - cmd/kongtrol-tray/tray_policy.go
+      - web/dashboard/studio.js
+      - web/dashboard/notices.js
+    surfaces:
+      - AGENTS.md#policies
+      - docs/SETUP.md#policies
+      - landing/src/content/guide.es.tsx#policies
+      - landing/src/content/guide.en.tsx#policies
+
+  routes:
+    code:
+      - internal/routing/**
+      - internal/monitor/policyresolver.go
+      - internal/api/handlers_routes.go
+      - cmd/kongtrol/cmd_routes.go
+      - cmd/kongtrol/traffic_map.go
+    surfaces:
+      - AGENTS.md#routes
+      - docs/SETUP.md#policies
+      - landing/src/content/guide.es.tsx#routes
+      - landing/src/content/guide.en.tsx#routes
+
+  providers:
+    code:
+      - internal/vpn/appattach/**
+      - internal/vpn/forticlient/**
+      - internal/vpn/protonvpn/**
+      - internal/vpn/nordvpn/**
+      - internal/vpn/surfshark/**
+      - internal/vpn/ciscoanyconnect/**
+      - internal/vpn/globalprotect/**
+      - internal/vpn/tailscale/**
+      - internal/vpn/cloudflarewarp/**
+      - internal/vpn/*.go
+      - cmd/kongtrol/wizard_adapters.go
+      - cmd/kongtrol/wizard_profiles.go
+      - cmd/kongtrol/doctor_forti.go
+      - cmd/kongtrol-tray/tray_attach.go
+      - configs/example.yaml
+    surfaces:
+      - README.md#providers
+      - AGENTS.md#providers
+      - docs/forticlient-support.md#providers
+      - docs/CONFIGURATION.md#providers
+      - docs/ARCHITECTURE.md#providers
+      - landing/src/content/guide.es.tsx#providers
+      - landing/src/content/guide.en.tsx#providers
+
+  openvpn:
+    code:
+      - internal/vpn/openvpn/**
+    surfaces:
+      - AGENTS.md#openvpn
+      - docs/SETUP.md#openvpn
+      - landing/src/content/guide.es.tsx#providers
+      - landing/src/content/guide.en.tsx#providers
+
+  wireguard:
+    code:
+      - internal/vpn/wireguard/**
+    surfaces:
+      - docs/CONFIGURATION.md#wireguard
+      - landing/src/content/guide.es.tsx#providers
+      - landing/src/content/guide.en.tsx#providers
+
+  helper:
+    code:
+      - internal/privops/**
+      - internal/privhelper/**
+      - cmd/kongtrol/cmd_service*.go
+    surfaces:
+      - AGENTS.md#helper
+      - docs/SECURITY.md
+      - landing/src/content/guide.es.tsx#helper
+      - landing/src/content/guide.en.tsx#helper
+
+  watchdog:
+    code:
+      - internal/monitor/watchdog*.go
+      - cmd/kongtrol/daemon_watchdog.go
+    surfaces:
+      - README.md#watchdog
+      - AGENTS.md#watchdog
+      - docs/SETUP.md#watchdog
+      - docs/CONFIGURATION.md#watchdog
+      - configs/example.yaml
+
+  daemon_lifecycle:
+    code:
+      - internal/daemonctl/**
+      - internal/app/profile_service.go
+      - internal/monitor/collector.go
+      - internal/monitor/scheduler.go
+      - internal/monitor/events.go
+      - cmd/kongtrol/daemon_*.go
+      - cmd/kongtrol/cmd_up.go
+      - cmd/kongtrol/cmd_down.go
+      - cmd/kongtrol/cmd_reload.go
+      - cmd/kongtrol/up_tui*.go
+    surfaces:
+      - AGENTS.md#daemon_lifecycle
+      - docs/SETUP.md#daemon_lifecycle
+      - landing/src/content/guide.es.tsx#daemon_lifecycle
+      - landing/src/content/guide.en.tsx#daemon_lifecycle
+
+  tray_exits:
+    code:
+      - cmd/kongtrol-tray/**
+    surfaces:
+      - AGENTS.md#tray_exits
+      - landing/src/content/guide.es.tsx#daemon_lifecycle
+      - landing/src/content/guide.en.tsx#daemon_lifecycle
+
+  i18n:
+    code:
+      - internal/i18n/**
+      - cmd/kongtrol/localize.go
+      - cmd/kongtrol/help.go
+      - web/dashboard/i18n.js
+      - web/ui/src/i18n/**
+    surfaces:
+      - AGENTS.md#i18n
+      - landing/src/content/guide.es.tsx#i18n
+      - landing/src/content/guide.en.tsx#i18n
+
+  dashboard_theme:
+    code:
+      - web/dashboard/style.css
+      - web/ui/src/theme/**
+    surfaces:
+      - AGENTS.md#i18n
+      - docs/SETUP.md#dashboard
+
+  dashboard:
+    code:
+      - internal/api/**
+      - web/dashboard/**
+      - web/ui/src/**
+      - cmd/kongtrol/cmd_dashboard.go
+    surfaces:
+      - docs/API.md#api
+      - docs/SETUP.md#dashboard
+      - landing/src/content/guide.es.tsx#dashboard
+      - landing/src/content/guide.en.tsx#dashboard
+
+  config:
+    code:
+      - internal/config/**
+      - cmd/kongtrol/cmd_config*.go
+      - cmd/kongtrol/config_load.go
+      - cmd/kongtrol/preferences.go
+      - cmd/kongtrol/cmd_export.go
+    surfaces:
+      - configs/example.yaml
+      - docs/CONFIGURATION.md
+      - docs/SETUP.md#wizard
+
+  wizard_doctor:
+    code:
+      - cmd/kongtrol/wizard*.go
+      - cmd/kongtrol/doctor*.go
+      - cmd/kongtrol/detect_*.go
+    surfaces:
+      - docs/SETUP.md#wizard
+      - landing/src/content/guide.es.tsx#wizard
+      - landing/src/content/guide.en.tsx#wizard
+

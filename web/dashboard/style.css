@@ -649,6 +649,12 @@ main {
   color: var(--danger);
 }
 
+.toast-detail {
+  margin-top: 4px;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+}
+
 .toast-success {
   border-color: var(--signal-line);
   color: var(--signal-hi);
@@ -1572,4 +1578,167 @@ button.action.disconnect:hover {
   .brand-name small {
     display: none;
   }
+}
+
+/* "Install the helper" banner (see renderHelperBanner in app.js). */
+.helper-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--signal-line);
+  border-radius: var(--radius-lg);
+  background: var(--signal-soft);
+  color: var(--text);
+}
+
+.helper-banner[hidden] {
+  display: none;
+}
+
+.helper-banner.failed {
+  border-color: rgba(255, 90, 82, 0.35);
+  background: rgba(255, 90, 82, 0.08);
+}
+
+.helper-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.helper-banner-text span {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.helper-banner button[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* Last failed connect under a tunnel's status (see renderTunnels). */
+.tunnel-error {
+  margin-top: 4px;
+  max-width: 320px;
+  color: var(--danger);
+  font-size: 0.78em;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Provider attach-mode message under a tunnel's status (see attachMessage). */
+.tunnel-attach {
+  margin-top: 4px;
+  max-width: 320px;
+  color: var(--text-muted);
+  font-size: 0.78em;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.tunnel-attach.waiting {
+  color: var(--signal);
+}
+
+/* "Qué sale por este túnel": per-tunnel routes drawer (see renderTunnelRoutesDrawer). */
+.tunnel-routes-toggle {
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--signal-hi);
+  font: inherit;
+  font-size: 0.78em;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.tunnel-routes-row td {
+  padding-top: 0;
+}
+
+.tunnel-routes {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-2);
+  border-radius: 6px;
+  white-space: normal;
+}
+
+.tunnel-routes-title {
+  font-weight: 600;
+}
+
+.tunnel-routes-all {
+  color: var(--signal);
+  font-weight: 600;
+}
+
+.tunnel-routes-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+}
+
+.tunnel-routes-explain {
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
+.tunnel-routes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tunnel-routes-chips li {
+  padding: 1px 6px;
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.78em;
+}
+
+.tunnel-routes-rest {
+  font-size: 0.85em;
+}
+
+.route-tag.origin-server {
+  border-color: rgba(110, 168, 201, 0.38);
+  color: var(--steel);
+}
+
+.route-tag.origin-policy {
+  border-color: var(--signal-line);
+  color: var(--signal-hi);
+}
+
+.field-hint {
+  grid-column: 1 / -1;
+}
+
+/* Public IP "Revisar" button and the hint shown while the lookup is off. */
+button.action.publicip-check {
+  padding: 3px 9px;
+  margin-left: 8px;
+}
+
+.publicip-hint {
+  display: block;
+  font-size: 0.72rem;
+  margin-top: 2px;
 }

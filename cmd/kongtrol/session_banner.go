@@ -18,14 +18,19 @@ func prepareSessionBanner(now time.Time, cmd *cobra.Command) (greeting, lastUse 
 		}
 		if !lastAt.IsZero() {
 			if strings.TrimSpace(prev.LastCommand) != "" {
-				lastUse = cf("cli.session.last_use", lastAt.Local().Format("Mon Jan 02 15:04:05 2006"), prev.LastCommand)
+				lastUse = cf("cli.session.last_use", formatLocalDate(lastAt.Local()), prev.LastCommand)
 			} else {
-				lastUse = cf("cli.session.last_use_simple", lastAt.Local().Format("Mon Jan 02 15:04:05 2006"))
+				lastUse = cf("cli.session.last_use_simple", formatLocalDate(lastAt.Local()))
 			}
 		}
 	}
 
 	greeting = cf(statusGreetingKeyForHour(now.Hour()), resolveSystemUserName())
+	if isInternalCommand(cmd) {
+		// Hidden plumbing (daemon, helper run…) is launched by kongtrol
+		// itself, not typed by the user — keep the last real command.
+		return greeting, lastUse
+	}
 	_ = saveSessionState(path, cliSessionState{
 		LastCommandAt: now,
 		LastCommand:   cmd.CommandPath(),
@@ -55,4 +60,15 @@ func printSessionBanner() {
 	if sessionGreetingLine != "" || sessionLastUseLine != "" {
 		fmt.Println()
 	}
+}
+
+// isInternalCommand reports whether cmd (or any parent) is a hidden
+// internal command that must not show up as the user's "last use".
+func isInternalCommand(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		if c.Hidden {
+			return true
+		}
+	}
+	return false
 }

@@ -20,10 +20,63 @@ else
   TRAY_LDFLAGS := $(LDFLAGS)
 endif
 
+# ── New UI (web/ui: Vite + React + TypeScript, pnpm) ─────────────────────────
+#
+# web/ui/dist is embedded by web/ui_embed.go and served at /app/. It is
+# rebuilt only when a UI source is newer than dist/index.html (plain make
+# file dependencies), so `make build` with an unchanged UI never runs Node.
+# Without pnpm, the UI step is skipped with a warning and the binary serves a
+# "UI not built" page at /app/; release.yml always builds it.
+
+UI_DIR      := web/ui
+UI_INDEX    := $(UI_DIR)/dist/index.html
+UI_DEPS     := $(UI_DIR)/node_modules/.modules.yaml
+# Recursive wildcard in pure make (no $(shell find)), so the file list also
+# works with make builds whose $(shell) cannot start bash.
+rwildcard    = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
+UI_SOURCES  := $(call rwildcard,$(UI_DIR)/src,*) $(call rwildcard,$(UI_DIR)/public,*) \
+	$(call rwildcard,assets/brand,*) \
+	$(wildcard $(UI_DIR)/index.html $(UI_DIR)/vite.config.ts $(UI_DIR)/tsconfig*.json \
+	           $(UI_DIR)/package.json $(UI_DIR)/pnpm-lock.yaml)
+
+$(UI_DEPS): $(UI_DIR)/package.json $(UI_DIR)/pnpm-lock.yaml
+	cd $(UI_DIR) && pnpm install --frozen-lockfile
+	@touch $@
+
+$(UI_INDEX): $(UI_SOURCES) | $(UI_DEPS)
+	cd $(UI_DIR) && pnpm run build
+
+.PHONY: ui-install
+ui-install: $(UI_DEPS)
+
+.PHONY: ui-build
+ui-build: $(UI_DEPS) $(UI_INDEX)
+
+# Dev server at http://127.0.0.1:5173/app/ with hot reload; /api (REST +
+# WebSocket) is proxied to the running daemon (KONGTROL_DAEMON_URL, default
+# http://127.0.0.1:9741). Open the dashboard once at http://127.0.0.1:9741/
+# first so the browser holds its login cookie.
+.PHONY: ui-dev
+ui-dev: $(UI_DEPS)
+	cd $(UI_DIR) && pnpm run dev
+
+.PHONY: ui-check
+ui-check: $(UI_DEPS)
+	cd $(UI_DIR) && pnpm run lint && pnpm run test && pnpm run build
+
+# Prerequisite of every binary that embeds the UI (not the tray).
+.PHONY: ui-if-available
+ui-if-available:
+	@if command -v pnpm >/dev/null 2>&1; then \
+		"$(MAKE)" --no-print-directory ui-build; \
+	else \
+		echo "⚠ pnpm not found: building without the new UI (/app/ shows how to build it)."; \
+	fi
+
 # ── Local build ──────────────────────────────────────────────────────────────
 
 .PHONY: build
-build:
+build: ui-if-available
 	@mkdir -p $(DIST)
 	go build $(LDFLAGS) -o $(DIST)/kongtrol$(EXT) ./cmd/kongtrol
 	@echo "Built: $(DIST)/kongtrol$(EXT)  ($(VERSION))"
@@ -35,7 +88,7 @@ build-tray:
 	@echo "Built: $(DIST)/kongtrol-tray$(EXT)  ($(VERSION))"
 
 .PHONY: build-all-cli
-build-all-cli:
+build-all-cli: ui-if-available
 	@mkdir -p $(DIST)
 	CGO_ENABLED=0 GOOS=linux   GOARCH=amd64  go build $(LDFLAGS) -o $(DIST)/kongtrol-linux-amd64    ./cmd/kongtrol
 	CGO_ENABLED=0 GOOS=linux   GOARCH=arm64  go build $(LDFLAGS) -o $(DIST)/kongtrol-linux-arm64    ./cmd/kongtrol
@@ -182,3 +235,21 @@ release-snapshot:
 clean:
 	rm -rf $(DIST)
 	@echo "Cleaned $(DIST)/"
+
+# ── Docs that must never drift (see docs/DOCS-TOOLING.md) ────────────────────
+#
+# Regenerates docs/CLI.md, docs/CLI.en.md, docs/cli.json (from the cobra
+# command tree + internal/i18n) and docs/CONFIG.md, docs/CONFIG.en.md (from
+# internal/config/schema.go). Never edit those files by hand.
+.PHONY: docs
+docs:
+	go generate ./cmd/kongtrol
+
+# Report-only checks, like CI's docs job (never fails): generated docs,
+# change impact against main, dashboard + landing i18n parity.
+.PHONY: docs-check
+docs-check:
+	go run ./cmd/kongtrol gen-docs --check
+	go run ./internal/impact/impactcheck -base main -head HEAD
+	node --test 'scripts/i18n/*.test.mjs'
+	@if [ -d landing/node_modules ]; then cd landing && pnpm run check:i18n; fi

@@ -168,3 +168,45 @@ func TestCollector_SubscribeSendIsNonBlocking(t *testing.T) {
 		t.Fatal("expected at least one coalesced notification")
 	}
 }
+
+func TestCollector_FallsBackToInterfaceCounters(t *testing.T) {
+	orig := interfaceCounters
+	t.Cleanup(func() { interfaceCounters = orig })
+	interfaceCounters = func(name string) (uint64, uint64, bool) {
+		if name != "wg-test" {
+			return 0, 0, false
+		}
+		return 111, 222, true
+	}
+	ad := &collectorAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "wg-test"}}
+	c := NewCollector(map[string]vpn.VPNAdapter{"p": ad})
+	c.collect()
+	m := c.Snapshot()["p"]
+	if m.BytesSent != 111 || m.BytesReceived != 222 {
+		t.Fatalf("fallback counters not used: %+v", m)
+	}
+
+	// Adapter-reported counters win over the OS fallback.
+	ad.info = &vpn.TunnelInfo{InterfaceName: "wg-test", BytesSent: 5, BytesReceived: 6}
+	c.collect()
+	m = c.Snapshot()["p"]
+	if m.BytesSent != 5 || m.BytesReceived != 6 {
+		t.Fatalf("adapter counters overridden: %+v", m)
+	}
+}
+
+func TestCollector_KeepsLatencyBetweenProbes(t *testing.T) {
+	ad := &collectorAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{}}
+	c := NewCollector(map[string]vpn.VPNAdapter{"p": ad})
+	c.collect()
+	c.RecordHealth("p", 42*time.Millisecond, true, true)
+	c.collect() // a later 5s pass must not wipe the 30s probe's reading
+	if got := c.Snapshot()["p"].LatencyMS; got != 42 {
+		t.Fatalf("LatencyMS = %d, want 42", got)
+	}
+	ad.status = vpn.StatusDisconnected
+	c.collect()
+	if got := c.Snapshot()["p"].LatencyMS; got != 0 {
+		t.Fatalf("LatencyMS after disconnect = %d, want 0", got)
+	}
+}

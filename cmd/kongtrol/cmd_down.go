@@ -2,10 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/spf13/cobra"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
 // ── down ─────────────────────────────────────────────────────────────────────
@@ -14,45 +20,125 @@ var downAll bool
 var downGroup string
 
 var downCmd = &cobra.Command{
-	Use:   "down [profile...]",
-	Short: "Disconnect one or more VPN profiles (or a group with --group)",
+	Use: "down [profile...]",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := contextWithSignal()
-		disconnectWithSpinner := func(name string) error {
-			spin := newSpinner(cf("cli.down.disconnecting", name))
-			spin.Start()
-			err := disconnectProfile(ctx, name)
-			spin.Stop()
+		return runDown(contextWithSignal(), args)
+	},
+}
+
+// stopDaemonFn is stopDaemon behind an indirection so runDown's
+// stop-or-keep decision can be tested without a real daemon process.
+var stopDaemonFn = stopDaemon
+
+// runDown disconnects the requested profiles and then decides whether the
+// background daemon should be stopped.
+//
+// When a daemon's API is reachable, every disconnect is routed through it:
+// the daemon owns the real adapter instances (and, for process-owning
+// adapters like openvpn, the child process), while this CLI process only
+// has fresh, never-connected copies whose Disconnect would be a no-op and
+// leave the tunnel orphaned. Without a reachable daemon the local adapters
+// are used, as before.
+//
+// Because stopping the daemon now tears down every tunnel it still holds,
+// a targeted `down <profile>` against a live daemon only stops it once no
+// other profile remains active there; --all, and the no-daemon path, keep
+// the previous "always stop the daemon" behavior.
+func runDown(ctx context.Context, args []string) error {
+	base := daemonAPIBase()
+	viaDaemon := daemonProbeFn(base)
+	rawDisconnect := disconnectProfile
+	readState := localTunnelState
+	if viaDaemon {
+		rawDisconnect = func(_ context.Context, name string) error {
+			return daemonDisconnectFn(base, name)
+		}
+		readState = func(name string) (monitor.TunnelMetrics, bool) {
+			states, err := daemonTunnelStatesFn(base)
 			if err != nil {
-				fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error()))
-				return err
+				return monitor.TunnelMetrics{}, false
 			}
-			fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, ct("cli.down.disconnected"))))
-			return nil
+			st, ok := states[name]
+			return st, ok
 		}
-
-		if downAll {
-			names := make([]string, 0, len(adapters))
-			for name := range adapters {
-				names = append(names, name)
-			}
-			disconnectAllConcurrently(ctx, names, disconnectProfile)
-			stopDaemon()
-			return nil
-		}
-
-		targets, err := resolveProfiles(args, downGroup)
-		if err != nil {
+	}
+	// A provider app without a CLI (attach mode) can't be disconnected by
+	// Kongtrol: the user disconnects in the app and `down` waits for the
+	// tunnel to drop, showing what to do.
+	var activeSpin *spinner
+	disconnect := func(ctx context.Context, name string) error {
+		err := rawDisconnect(ctx, name)
+		if !errors.Is(err, vpn.ErrManualDisconnect) {
 			return err
 		}
-		for _, name := range targets {
-			if err := disconnectWithSpinner(name); err != nil {
-				return fmt.Errorf("down %s: %w", name, err)
-			}
+		return waitManualDown(ctx, name, readState, activeSpin)
+	}
+
+	if downAll {
+		names := make([]string, 0, len(adapters))
+		for name := range adapters {
+			names = append(names, name)
 		}
-		stopDaemon()
+		disconnectAllConcurrently(ctx, names, disconnect)
+		stopDaemonFn()
 		return nil
-	},
+	}
+
+	targets, err := resolveProfiles("down", args, downGroup)
+	if err != nil {
+		return err
+	}
+	for _, name := range targets {
+		spin := newSpinner(cf("cli.down.disconnecting", name))
+		spin.Start()
+		activeSpin = spin
+		err := disconnect(ctx, name)
+		activeSpin = nil
+		spin.Stop()
+		if err != nil {
+			if line, ok := errorGuidance(err); ok {
+				fmt.Println(tuiErr(paintBold(cBright, name) + "  " + line))
+			} else {
+				fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error()))
+				fmt.Println(tuiInfo(paint(cDim, ct("cli.down.failed_hint"))))
+			}
+			return alreadyReported(fmt.Errorf("down %s: %w", name, err))
+		}
+		fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, ct("cli.down.disconnected"))))
+	}
+
+	if viaDaemon {
+		if remaining := daemonRemainingAfter(base, targets); len(remaining) > 0 {
+			fmt.Println(tuiInfo(paint(cDim, cf("cli.daemon.down.kept_running", strings.Join(remaining, ", ")))))
+			return nil
+		}
+	}
+	stopDaemonFn()
+	return nil
+}
+
+// daemonRemainingAfter returns the profiles the daemon still reports active
+// once the just-disconnected ones are discounted (its snapshot can lag a
+// synchronous disconnect by one collector poll). If the daemon's state
+// can't be read, it returns nil so the caller falls back to stopping the
+// daemon, matching the pre-existing behavior.
+func daemonRemainingAfter(base string, disconnected []string) []string {
+	active, err := daemonActiveProfilesFn(base)
+	if err != nil {
+		return nil
+	}
+	done := make(map[string]bool, len(disconnected))
+	for _, name := range disconnected {
+		done[name] = true
+	}
+	var remaining []string
+	for _, name := range active {
+		if !done[name] {
+			remaining = append(remaining, name)
+		}
+	}
+	sort.Strings(remaining)
+	return remaining
 }
 
 func init() {
@@ -102,7 +188,11 @@ func disconnectAllConcurrently(ctx context.Context, names []string, disconnect f
 	lines := make([]string, 0, len(names))
 	for r := range results {
 		if r.err != nil {
-			lines = append(lines, tuiErr(paintBold(cBright, r.name)+"  "+r.err.Error()))
+			msg := r.err.Error()
+			if line, ok := errorGuidance(r.err); ok {
+				msg = line
+			}
+			lines = append(lines, tuiErr(paintBold(cBright, r.name)+"  "+msg))
 		} else {
 			lines = append(lines, tuiOK(paintBold(cBright, r.name)+"  "+paint(cDim, ct("cli.down.disconnected"))))
 		}

@@ -169,8 +169,8 @@ func TestWatchdog_ConnectTimeoutBoundsHungConnect(t *testing.T) {
 
 	wd := monitor.NewWatchdog(adapters, connect, zapNop())
 	wd.SetConnectTimeout(200 * time.Millisecond)
-	wd.SetEventCallback(func(_ string, event string, _ int, _ error) {
-		if event == "reconnect_failed" {
+	wd.SetEventCallback(func(e monitor.WatchdogEvent) {
+		if e.Event == "reconnect_failed" {
 			failedEvents.Add(1)
 		}
 	})
@@ -270,51 +270,34 @@ func TestWatchdog_MultipleProfiles(t *testing.T) {
 	}
 }
 
-// TestWatchdog_FailoverOnReconnectFailure verifies watchdog failover to backup profile.
-func TestWatchdog_FailoverOnReconnectFailure(t *testing.T) {
-	primary := newMockAdapter(vpn.StatusConnected)
-	backup := newMockAdapter(vpn.StatusDisconnected)
-	adapters := map[string]vpn.VPNAdapter{
-		"office-a": primary,
-		"office-b": backup,
-	}
+// manualAdapter reports ManualReconnect (provider app without a CLI).
+type manualAdapter struct{ *mockAdapter }
 
-	var backupConnects atomic.Int32
-	connect := func(_ context.Context, name string) error {
-		switch name {
-		case "office-a":
-			return context.DeadlineExceeded
-		case "office-b":
-			backupConnects.Add(1)
-			backup.setStatus(vpn.StatusConnected)
-			return nil
-		default:
-			return nil
+func (manualAdapter) Capabilities() vpn.Capabilities { return vpn.Capabilities{ManualReconnect: true} }
+
+// TestWatchdog_ManualReconnectNotifies verifies that a ManualReconnect
+// adapter gets one manual_reconnect_required event and no reconnect.
+func TestWatchdog_ManualReconnectNotifies(t *testing.T) {
+	adapter := manualAdapter{newMockAdapter(vpn.StatusConnected)}
+	var reconnects, notices atomic.Int32
+	wd := monitor.NewWatchdog(map[string]vpn.VPNAdapter{"surf": adapter},
+		func(context.Context, string) error { reconnects.Add(1); return nil }, zapNop())
+	wd.SetEventCallback(func(e monitor.WatchdogEvent) {
+		if e.Event == "manual_reconnect_required" {
+			notices.Add(1)
 		}
-	}
-
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
-	wd.ConfigureFailover(map[string]int{
-		"office-a": 10,
-		"office-b": 20,
 	})
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	wd.MarkActive("office-a")
+	wd.MarkActive("surf")
 	wd.Start(ctx)
+	adapter.setStatus(vpn.StatusDisconnected)
 
-	primary.setStatus(vpn.StatusDisconnected)
-
-	deadline := time.Now().Add(12 * time.Second)
-	for time.Now().Before(deadline) {
-		if backupConnects.Load() >= 1 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
+	time.Sleep(11 * time.Second) // two 5s polls
+	if reconnects.Load() != 0 {
+		t.Errorf("reconnects = %d, want 0", reconnects.Load())
 	}
-
-	if backupConnects.Load() == 0 {
-		t.Fatal("watchdog did not activate backup profile failover")
+	if notices.Load() != 1 {
+		t.Errorf("notices = %d, want 1", notices.Load())
 	}
 }

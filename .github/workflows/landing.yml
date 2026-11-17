@@ -1,20 +1,32 @@
 name: landing-ci
 
+# The landing is hosted on Cloudflare Pages at https://kongtrol.app (Cloudflare
+# builds it from this repo: root `landing`, `pnpm run build`, output `dist`).
+#
+# This workflow does two things:
+#   1. build-landing — CI check on every PR/push that touches landing/.
+#   2. redirect — on main, publishes tiny redirect stubs to the old GitHub Pages
+#      address (derotluna.github.io/vpn-kongtrol/) so existing links and search
+#      results land on kongtrol.app. Each stub has a meta refresh, a canonical
+#      to the new URL and a plain link; 404.html maps any other old path.
+
 on:
   pull_request:
     paths:
       - "landing/**"
+      - "assets/brand/**"
+      - "docs/cli.json" # the guide command reference is built from it
       - ".github/workflows/landing.yml"
   push:
     branches: [main]
     paths:
       - "landing/**"
+      - "assets/brand/**"
+      - "docs/cli.json" # the guide command reference is built from it
       - ".github/workflows/landing.yml"
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: "pages"
@@ -49,20 +61,51 @@ jobs:
       - name: Build
         run: pnpm run build
 
-      - name: Upload Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: landing/dist
-
-  deploy:
+  redirect:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build-landing
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Generate redirect stubs
+        run: |
+          set -euo pipefail
+          mkdir -p redirect/guia redirect/terminos
+          stub() { # $1 = output file, $2 = target URL
+            cat > "$1" <<HTML
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <title>VPN Kongtrol has moved to kongtrol.app</title>
+          <link rel="canonical" href="$2">
+          <meta http-equiv="refresh" content="0; url=$2">
+          </head>
+          <body>
+          <p>VPN Kongtrol now lives at <a href="$2">$2</a>.</p>
+          </body>
+          </html>
+          HTML
+          }
+          stub redirect/index.html          "https://kongtrol.app/"
+          stub redirect/guia.html           "https://kongtrol.app/guia"
+          stub redirect/guia/index.html     "https://kongtrol.app/guia"
+          stub redirect/terminos.html       "https://kongtrol.app/terminos"
+          stub redirect/terminos/index.html "https://kongtrol.app/terminos"
+          # any other old path: strip the /vpn-kongtrol prefix, keep the hash
+          stub redirect/404.html            "https://kongtrol.app/"
+          sed -i 's#</head>#<script>location.replace("https://kongtrol.app"+location.pathname.replace(/^\\/vpn-kongtrol/,"").replace(/\\.html$/,"")+location.hash)</script>\n</head>#' redirect/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: redirect
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

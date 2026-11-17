@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -122,10 +121,7 @@ type upModel struct {
 	// uncoordinated adapter instance.
 	apiBase string
 
-	leak       *security.LeakTester
-	publicIP   string
-	publicIPAt time.Time
-	ipChecking bool
+	leak *security.LeakTester
 
 	// col is the daemon's already-running metrics collector (nil in
 	// status --watch, a separate viewer process with no collector of its
@@ -150,6 +146,13 @@ type upModel struct {
 	// elsewhere has active tunnels.
 	remoteSnapshot  map[string]monitor.TunnelMetrics
 	remoteConnected bool
+	// remoteSec is the daemon's own kill switch / DNS guard state. The
+	// viewer's local ks/dnsMgr never engage (the daemon owns them), so
+	// while a daemon answers the security line must come from here.
+	remoteSec *apiSecurityStatus
+	// policyNotice is the daemon's latest policy notice (traffic of a
+	// policy whose tunnel is off), shown as one line.
+	policyNotice *monitor.Event
 
 	// topCache/footerCache hold the last-rendered static sections, computed
 	// once per Update and reused by View (which bubbletea always calls right
@@ -202,9 +205,6 @@ func newUpModel(
 
 func (m upModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{upTick()}
-	if m.leak != nil {
-		cmds = append(cmds, checkPublicIPCmd(m.leak))
-	}
 	if c := waitForCollectorChange(m.changes); c != nil {
 		cmds = append(cmds, c)
 	}
@@ -233,42 +233,16 @@ func waitForCollectorChange(ch <-chan struct{}) tea.Cmd {
 	}
 }
 
-// publicIPRefreshInterval controls how often the reference public IP line
-// re-checks — it's a real network call, so this stays well below the 1s
-// status tick.
-const publicIPRefreshInterval = 30 * time.Second
-
-type upPublicIPMsg struct {
-	ip  string
-	err error
-}
-
-// checkPublicIPCmd performs a single (blocking, in its own goroutine) public
-// IP lookup via the same LeakTester used for leak detection.
-func checkPublicIPCmd(leak *security.LeakTester) tea.Cmd {
-	return func() tea.Msg {
-		result := leak.CheckNow()
-		if result.PublicIP == "" {
-			return upPublicIPMsg{err: fmt.Errorf("%s", result.Reason)}
-		}
-		return upPublicIPMsg{ip: result.PublicIP}
-	}
-}
-
-func publicIPTick() tea.Cmd {
-	return tea.Tick(publicIPRefreshInterval, func(t time.Time) tea.Msg { return upPublicIPTickMsg(t) })
-}
-
-type upPublicIPTickMsg time.Time
-
 // upRemoteStateMsg reports a change in status --watch's connection to a
 // real `kongtrol up` daemon: found/streaming (connected, with a fresh
 // snapshot and the apiBase to proxy actions through) or lost (connected
 // == false, back to probing).
 type upRemoteStateMsg struct {
 	connected bool
+	security  *apiSecurityStatus
 	apiBase   string
 	snapshot  map[string]monitor.TunnelMetrics
+	notice    *monitor.Event
 }
 
 func (m upModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -278,20 +252,6 @@ func (m upModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case upTickMsg:
 		m.now = time.Time(msg)
 		cmd = upTick()
-
-	case upPublicIPTickMsg:
-		if m.leak != nil && !m.ipChecking {
-			m.ipChecking = true
-			cmd = checkPublicIPCmd(m.leak)
-		}
-
-	case upPublicIPMsg:
-		m.ipChecking = false
-		if msg.err == nil {
-			m.publicIP = msg.ip
-			m.publicIPAt = m.now
-		}
-		cmd = publicIPTick()
 
 	case upQuitMsg:
 		// External signal received — exit cleanly.
@@ -415,9 +375,18 @@ func (m upModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.remoteConnected = msg.connected
 		if msg.connected {
 			m.apiBase = msg.apiBase
-			m.remoteSnapshot = msg.snapshot
+			if msg.snapshot != nil {
+				m.remoteSnapshot = msg.snapshot
+			}
+			if msg.security != nil {
+				m.remoteSec = msg.security
+			}
+			if msg.notice != nil {
+				m.policyNotice = msg.notice
+			}
 		} else {
 			m.apiBase = ""
+			m.remoteSec = nil
 		}
 	}
 

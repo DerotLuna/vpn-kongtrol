@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -62,15 +63,22 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 5*time.Minute)
+	// Generous: provider adapters (attach mode) may wait for the user to
+	// connect in the app; they bound that wait with the profile's
+	// wait_timeout themselves.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), 30*time.Minute)
 	if !s.startPendingConnect(name, cancel) {
 		cancel()
 		writeError(w, http.StatusConflict, "connect already in progress for "+name)
 		return
 	}
+	// A new attempt supersedes the previous failure; this one's outcome is
+	// recorded when it ends so clients (`up`, dashboard, tray, `status`)
+	// can show why an accepted (202) connect did not come up.
+	s.collector.ClearConnectError(name)
 	go func() {
 		defer s.clearPendingConnect(name)
-		_ = s.connectProfile(ctx, name)
+		s.collector.RecordConnectError(name, connectOutcome(s.connectProfile(ctx, name)))
 	}()
 
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "connecting", "tunnel": name})
@@ -93,7 +101,7 @@ func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
 	if err := s.disconnectProfile(ctx, name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		writeGuidedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -118,7 +126,13 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	if err := s.disconnectProfile(ctx, name); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+		if errors.Is(err, vpn.ErrManualDisconnect) {
+			// Provider app without a CLI: the user disconnects in the app;
+			// the tunnel's attach phase is waiting_disconnect until it drops.
+			writeJSON(w, http.StatusAccepted, map[string]string{"status": "waiting_user", "tunnel": name})
+			return
+		}
+		writeGuidedError(w, r, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -164,6 +178,16 @@ func (s *Server) handleReloadTunnel(w http.ResponseWriter, r *http.Request) {
 		"restarted": restarted,
 		"skipped":   skipped,
 	})
+}
+
+// connectOutcome maps an async connect's result to the error worth keeping
+// as the tunnel's last error: a cancelled connect (cancel_connect,
+// disconnect, shutdown) was a user decision, not a failure.
+func connectOutcome(err error) error {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return nil
+	}
+	return err
 }
 
 func (s *Server) startPendingConnect(name string, cancel context.CancelFunc) bool {

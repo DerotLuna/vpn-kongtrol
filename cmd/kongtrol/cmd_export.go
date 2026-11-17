@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -9,8 +10,7 @@ import (
 // ── export ────────────────────────────────────────────────────────────────────
 
 var exportCmd = &cobra.Command{
-	Use:   "export",
-	Short: "Print a sanitized config template (no secrets) for sharing with teammates",
+	Use: "export",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cfg == nil {
 			return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
@@ -65,6 +65,9 @@ var exportCmd = &cobra.Command{
 			if v.Priority != 0 {
 				pNum("    ", "priority", v.Priority)
 			}
+			if len(v.Failover) > 0 {
+				fmt.Printf("    %s: [%s]\n", yKey("failover"), strings.Join(v.Failover, ", "))
+			}
 			fmt.Printf("    %s:\n", yKey("auth"))
 			p("      ", "method", v.Auth.Method)
 			if v.Auth.Cert != "" {
@@ -112,8 +115,7 @@ var exportCmd = &cobra.Command{
 }
 
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show CLI version",
+	Use: "version",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Piped / quiet output stays a bare, parseable version string.
 		if outputQuiet || outputPlain || !isTerminal() {

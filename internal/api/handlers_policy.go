@@ -57,16 +57,27 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 		Domains       []string `json:"domains"`
 		IPRanges      []string `json:"ip_ranges"`
 		Apps          []string `json:"apps"`
+		OnTunnelDown  string   `json:"on_tunnel_down"`
 		ResolvedCIDRs []string `json:"resolved_cidrs"`
 	}
 
 	// Start from the policy engine rules (static config).
 	var out []policyDTO
+	onDown := map[string]string{} // policy → on_tunnel_down (not in the engine)
+	if cfg, _, err := s.loadRuntimeConfig(); err == nil {
+		for _, p := range cfg.Policies {
+			onDown[p.Name] = p.TunnelDownAction()
+		}
+	}
 	if pe := s.policyEngine.Load(); pe != nil {
 		for _, rule := range pe.Rules() {
 			dto := policyDTO{
-				Name: rule.Name,
-				Via:  rule.Via,
+				Name:         rule.Name,
+				Via:          rule.Via,
+				OnTunnelDown: onDown[rule.Name],
+			}
+			if dto.OnTunnelDown == "" {
+				dto.OnTunnelDown = config.OnTunnelDownAllow
 			}
 			dto.Domains = rule.Match.Domains
 			dto.Apps = rule.Match.Apps
@@ -138,8 +149,8 @@ func (s *Server) handlePolicyReload(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/v1/policies
 func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
-	var req config.PolicyRule
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var patch policyPatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
@@ -148,9 +159,9 @@ func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	req = normalizePolicyRule(req)
+	req := normalizePolicyRule(patch.applyTo(config.PolicyRule{}))
 	if err := validatePolicyRule(req, cfg); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 	for _, p := range cfg.Policies {
@@ -174,8 +185,8 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing policy name")
 		return
 	}
-	var req config.PolicyRule
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var patch policyPatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
@@ -184,9 +195,20 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	req = normalizePolicyRule(req)
+	idx := -1
+	for i := range cfg.Policies {
+		if strings.EqualFold(cfg.Policies[i].Name, name) {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		writeError(w, http.StatusNotFound, "policy not found")
+		return
+	}
+	req := normalizePolicyRule(patch.applyTo(clonePolicyRule(cfg.Policies[idx])))
 	if req.Name == "" {
-		req.Name = name
+		req.Name = cfg.Policies[idx].Name
 	}
 	if !strings.EqualFold(req.Name, name) {
 		for _, p := range cfg.Policies {
@@ -197,21 +219,10 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err := validatePolicyRule(req, cfg); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	updated := false
-	for i := range cfg.Policies {
-		if strings.EqualFold(cfg.Policies[i].Name, name) {
-			cfg.Policies[i] = req
-			updated = true
-			break
-		}
-	}
-	if !updated {
-		writeError(w, http.StatusNotFound, "policy not found")
-		return
-	}
+	cfg.Policies[idx] = req
 	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -251,9 +262,9 @@ func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/policies/test
 func (s *Server) handleTestPolicy(w http.ResponseWriter, r *http.Request) {
 	type testReq struct {
-		Rule   config.PolicyRule `json:"rule"`
-		Target string            `json:"target"`
-		App    string            `json:"app"`
+		Rule   policyPatch `json:"rule"`
+		Target string      `json:"target"`
+		App    string      `json:"app"`
 	}
 	type testResp struct {
 		Matched bool   `json:"matched"`
@@ -266,23 +277,23 @@ func (s *Server) handleTestPolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	req.Rule = normalizePolicyRule(req.Rule)
+	pr := normalizePolicyRule(req.Rule.applyTo(config.PolicyRule{}))
 	cfg, _, err := s.loadRuntimeConfig()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := validatePolicyRule(req.Rule, cfg); err != nil {
+	if err := validatePolicyRule(pr, cfg); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	rule, err := policy.ParseRule(req.Rule.Name, req.Rule.Via, req.Rule.Match.IPRanges, req.Rule.Match.Domains, req.Rule.Match.Apps, 1)
+	rule, err := policy.ParseRule(pr.Name, pr.Via, pr.Match.IPRanges, pr.Match.Domains, pr.Match.Apps, 1)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	target := normalizeResolveTarget(req.Target)
-	resp := testResp{Via: req.Rule.Via, Rule: req.Rule.Name}
+	resp := testResp{Via: pr.Via, Rule: pr.Name}
 	if strings.TrimSpace(req.App) != "" || target != "" {
 		resp.Matched = rule.MatchesFlow(target, req.App)
 		if !resp.Matched {
@@ -432,6 +443,10 @@ func (s *Server) handleDNSResolve(w http.ResponseWriter, r *http.Request) {
 func normalizePolicyRule(r config.PolicyRule) config.PolicyRule {
 	r.Name = strings.TrimSpace(r.Name)
 	r.Via = strings.TrimSpace(r.Via)
+	r.OnTunnelDown = strings.ToLower(strings.TrimSpace(r.OnTunnelDown))
+	if r.OnTunnelDown == config.OnTunnelDownAllow {
+		r.OnTunnelDown = "" // the default stays out of kongtrol.yaml
+	}
 	for i := range r.Match.Domains {
 		r.Match.Domains[i] = strings.TrimSpace(r.Match.Domains[i])
 	}
@@ -470,6 +485,9 @@ func validatePolicyRule(rule config.PolicyRule, cfg *config.Config) error {
 	if len(rule.Match.Domains) == 0 && len(rule.Match.IPRanges) == 0 && len(rule.Match.Apps) == 0 {
 		return fmt.Errorf("policy must define at least one domain, ip_range, or app")
 	}
+	if err := config.ValidateOnTunnelDown(rule); err != nil {
+		return err
+	}
 	_, err := policy.ParseRule(rule.Name, rule.Via, rule.Match.IPRanges, rule.Match.Domains, rule.Match.Apps, 1)
 	if err != nil {
 		return err
@@ -487,4 +505,53 @@ func matchPolicyOrProfileToken(token string, rules []policy.Rule) (via string, r
 		}
 	}
 	return "", "", false
+}
+
+// policyPatch is the JSON body for policy create/update/test. config.PolicyRule
+// carries only yaml tags, so decoding JSON straight into it silently dropped
+// "ip_ranges"; pointer fields also let an update apply only what was sent.
+type policyPatch struct {
+	Name *string `json:"name"`
+	Via  *string `json:"via"`
+	// OnTunnelDown: allow (default) | block | connect.
+	OnTunnelDown *string `json:"on_tunnel_down"`
+	Match        *struct {
+		IPRanges *[]string `json:"ip_ranges"`
+		Domains  *[]string `json:"domains"`
+		Apps     *[]string `json:"apps"`
+	} `json:"match"`
+}
+
+// applyTo overlays the fields present in p onto base and returns the result.
+func (p policyPatch) applyTo(base config.PolicyRule) config.PolicyRule {
+	if p.Name != nil {
+		base.Name = *p.Name
+	}
+	if p.OnTunnelDown != nil {
+		base.OnTunnelDown = *p.OnTunnelDown
+	}
+	if p.Via != nil {
+		base.Via = *p.Via
+	}
+	if p.Match != nil {
+		if p.Match.IPRanges != nil {
+			base.Match.IPRanges = *p.Match.IPRanges
+		}
+		if p.Match.Domains != nil {
+			base.Match.Domains = *p.Match.Domains
+		}
+		if p.Match.Apps != nil {
+			base.Match.Apps = *p.Match.Apps
+		}
+	}
+	return base
+}
+
+// clonePolicyRule deep-copies r so normalizing the copy never mutates the
+// slices still referenced by the loaded config.
+func clonePolicyRule(r config.PolicyRule) config.PolicyRule {
+	r.Match.IPRanges = append([]string(nil), r.Match.IPRanges...)
+	r.Match.Domains = append([]string(nil), r.Match.Domains...)
+	r.Match.Apps = append([]string(nil), r.Match.Apps...)
+	return r
 }

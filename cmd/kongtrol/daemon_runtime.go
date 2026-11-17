@@ -70,6 +70,14 @@ func buildProfileService() *app.ProfileService {
 		EmitStderr: func(message string) {
 			fmt.Fprintln(os.Stderr, message)
 		},
+		// Push a provider's attach phase (waiting for the user, attached,
+		// ...) to live views now instead of on the next collector poll.
+		OnAttach: func(string, vpn.AttachState) {
+			if col != nil {
+				go col.Refresh()
+			}
+		},
+		OnIntent: killSwitchSvc.NoteIntent,
 	})
 }
 
@@ -78,7 +86,11 @@ func disconnectProfile(ctx context.Context, name string) error {
 	if svc == nil {
 		return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
 	}
-	return svc.Disconnect(ctx, name)
+	err := svc.Disconnect(ctx, name)
+	if err == nil {
+		triggerPublicIPCheck() // egress may have changed (no-op unless opted in)
+	}
+	return err
 }
 
 func connectProfile(ctx context.Context, name string) error {
@@ -86,7 +98,11 @@ func connectProfile(ctx context.Context, name string) error {
 	if svc == nil {
 		return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
 	}
-	return svc.Connect(ctx, name)
+	err := svc.Connect(ctx, name)
+	if err == nil {
+		triggerPublicIPCheck() // egress may have changed (no-op unless opted in)
+	}
+	return err
 }
 
 // buildAPIServer wires up the embedded API/dashboard server. onShutdown is
@@ -96,7 +112,7 @@ func connectProfile(ctx context.Context, name string) error {
 // SIGTERM. Pass nil to leave the endpoint disabled (501) for a server
 // instance with no well-defined owning context to cancel.
 func buildAPIServer(onShutdown func()) *api.Server {
-	return api.NewServer(
+	srv := api.NewServer(
 		cfg.Monitor.Dashboard.Bind,
 		cfg.Monitor.Dashboard.Port,
 		adapters,
@@ -111,12 +127,19 @@ func buildAPIServer(onShutdown func()) *api.Server {
 		func(newCfg *config.Config, newEngine *policy.Engine) {
 			cfg = newCfg
 			engine = newEngine
-			killSwitchSvc = app.NewKillSwitchService(cfg, adapters, ks)
+			// Keep the kill switch's memory of dropped tunnels across edits.
+			killSwitchSvc.SetConfig(cfg)
+			if policyResolver != nil {
+				policyResolver.SetConfig(cfg)
+			}
 			profileSvc.Store(buildProfileService())
+			applyPublicIPConfig(cfg)
+			go func() { _ = applyKillSwitchState() }()
 		},
 		func(newCfg *config.Config) {
 			_ = applyKillSwitchState()
 			applyDNSGuardState()
+			applyPublicIPConfig(newCfg)
 		},
 		dnsMgr,
 		cfg.Security.DNSGuard.Enabled,
@@ -125,6 +148,12 @@ func buildAPIServer(onShutdown func()) *api.Server {
 		apiToken,
 		onShutdown,
 	)
+	// One-click helper install from the tray / dashboard.
+	srv.SetHelperInstaller(version, installHelperFromGUI)
+	// Split-tunnel kill switch state and policy notices for every client.
+	srv.SetKillSwitchStatus(killSwitchSvc.Status)
+	srv.SetEventLog(daemonEvents)
+	return srv
 }
 
 func resolveConfigPath(path string) (string, error) {
@@ -193,11 +222,14 @@ func startHistoryPersistence(ctx context.Context) {
 	}()
 }
 
-func profilePriorities() map[string]int {
-	out := make(map[string]int, len(cfg.VPNs))
+// profileFailover returns the backup profiles each profile declares
+// (vpns.<name>.failover). Only these are ever connected by the watchdog in
+// place of a profile that cannot reconnect; priority plays no part.
+func profileFailover() map[string][]string {
+	out := make(map[string][]string, len(cfg.VPNs))
 	for name, vpnCfg := range cfg.VPNs {
-		if vpnCfg.Priority > 0 {
-			out[name] = vpnCfg.Priority
+		if len(vpnCfg.Failover) > 0 {
+			out[name] = append([]string(nil), vpnCfg.Failover...)
 		}
 	}
 	return out
@@ -230,8 +262,10 @@ func healthCheckProfile(ctx context.Context, name string, adapter vpn.VPNAdapter
 		started := time.Now()
 		dialer := net.Dialer{}
 		conn, dialErr := dialer.DialContext(ctx, "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
-		res.Latency = time.Since(started)
 		if dialErr == nil {
+			// Only a completed handshake is a round trip; the time to a
+			// refused/timed-out dial (e.g. a UDP-only OpenVPN server) is not.
+			res.Latency = time.Since(started)
 			res.Reachable = true
 			_ = conn.Close()
 		}
@@ -253,8 +287,12 @@ func healthCheckProfile(ctx context.Context, name string, adapter vpn.VPNAdapter
 					return d.DialContext(c, "udp", net.JoinHostPort(dns.String(), "53"))
 				},
 			}
+			lookupStarted := time.Now()
 			if addrs, lookupErr := resolver.LookupIPAddr(ctx, hostname); lookupErr == nil && len(addrs) > 0 {
 				res.DNSOK = true
+				if res.Latency == 0 {
+					res.Latency = tunnelDNSLatency(ctx, dns, time.Since(lookupStarted))
+				}
 				break
 			}
 		}
@@ -268,6 +306,23 @@ func healthCheckProfile(ctx context.Context, name string, adapter vpn.VPNAdapter
 		col.RecordHealth(name, res.Latency, res.Reachable, res.DNSOK)
 	}
 	return res
+}
+
+// tunnelDNSLatency measures a round trip inside the tunnel when the VPN
+// server itself can't be probed (no host/port, UDP-only server): a TCP
+// handshake with the tunnel's DNS server on port 53, else the time the DNS
+// lookup through it took.
+func tunnelDNSLatency(ctx context.Context, dns net.IP, lookup time.Duration) time.Duration {
+	dctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	started := time.Now()
+	var d net.Dialer
+	if conn, err := d.DialContext(dctx, "tcp", net.JoinHostPort(dns.String(), "53")); err == nil {
+		rtt := time.Since(started)
+		_ = conn.Close()
+		return rtt
+	}
+	return lookup
 }
 
 func applyKillSwitchState() error {

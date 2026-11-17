@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/app"
@@ -24,11 +23,11 @@ func loadConfig() error {
 	}
 	cfg, err = config.Load(activeCfgPath)
 	if err != nil {
-		return err
+		return localizeConfigErr(err)
 	}
-	applyDashboardPreferences(cfg)
+	config.ApplyDashboardPreferences(cfg)
 	if err := config.Validate(cfg); err != nil {
-		return err
+		return localizeConfigErr(err)
 	}
 	apiToken, err = config.LoadOrCreateAPIToken()
 	if err != nil {
@@ -52,10 +51,7 @@ func loadConfig() error {
 				KeyPath:    vpnCfg.Auth.Key,
 				ConfigPath: vpnCfg.ConfigFile,
 				Username:   vpnCfg.Auth.Username,
-				Extra: map[string]string{
-					"protocol":            vpnCfg.Protocol,
-					"allow_insecure_cert": strconv.FormatBool(vpnCfg.AllowInsecureCert),
-				},
+				Extra:      vpnCfg.AdapterExtra(),
 			})
 		}
 		adapters[name] = a
@@ -71,18 +67,18 @@ func loadConfig() error {
 	}
 
 	// Security.
-	ks = security.NewKillSwitch()
-	killSwitchSvc = app.NewKillSwitchService(cfg, adapters, ks)
-	// Enable leak detection: explicit config or auto-enable when any security feature is on.
-	leakEnabled := cfg.Security.LeakDetection.Enabled ||
-		cfg.Security.KillSwitch.Enabled ||
-		cfg.Security.DNSGuard.Enabled
-	if leakEnabled {
-		leak = security.NewLeakTester(
-			parseDuration(cfg.Security.LeakDetection.Interval, 60*time.Second),
-			cfg.Security.IntegrityCheck.ExpectedIPs,
-		)
+	ks = security.NewKillSwitch() // legacy all-traffic rules: only removed
+	if destBlocker == nil {
+		destBlocker = security.NewDestinationBlocker()
 	}
+	killSwitchSvc = app.NewKillSwitchService(cfg, adapters, ks)
+	killSwitchSvc.SetBlocker(destBlocker)
+	killSwitchSvc.SetRouteLister(routeMgr.List)
+	// Public IP lookup (and the leak check built on it): always present so
+	// it can be toggled at runtime, but it makes no request unless the user
+	// opted in (security.public_ip_check). Kill switch and DNS guard never
+	// turn it on.
+	leak = newPublicIPChecker(cfg)
 
 	// Monitor.
 	col = monitor.NewCollector(adapters)
@@ -97,38 +93,8 @@ func loadConfig() error {
 		parseDuration(cfg.Monitor.HealthCheck.Timeout, 10*time.Second),
 		healthCheckProfile,
 	)
-	watchdog.ConfigureFailover(profilePriorities())
-	watchdog.SetEventCallback(func(profile, event string, attempt int, err error) {
-		switch event {
-		case "reconnect_attempt":
-			emitAlert("WARN", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
-			logAudit("WARN", "vpn.reconnect_attempt", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
-		case "reconnect_failed":
-			emitAlert("ERROR", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
-			logAudit("ERROR", "vpn.reconnect_failed", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
-			if svc := profileSvc.Load(); svc != nil {
-				svc.HandleReconnectError(profile, err)
-			}
-		case "reconnected":
-			if col != nil {
-				col.RecordReconnect(profile)
-			}
-			emitAlert("INFO", profile, cf("cli.alert.reconnected", profile, attempt))
-			logAudit("INFO", "vpn.reconnected", profile, cf("cli.alert.reconnected", profile, attempt))
-		case "health_degraded":
-			emitAlert("WARN", profile, cf("cli.alert.health_degraded", profile, err))
-			logAudit("WARN", "vpn.health_degraded", profile, cf("cli.alert.health_degraded", profile, err))
-		case "failover_started":
-			emitAlert("WARN", profile, cf("cli.alert.failover_started", profile))
-			logAudit("WARN", "vpn.failover_started", profile, cf("cli.alert.failover_started", profile))
-		case "failover_failed":
-			emitAlert("ERROR", profile, cf("cli.alert.failover_failed", profile, err))
-			logAudit("ERROR", "vpn.failover_failed", profile, cf("cli.alert.failover_failed", profile, err))
-		case "failover_activated":
-			emitAlert("INFO", profile, cf("cli.alert.failover_activated", profile))
-			logAudit("INFO", "vpn.failover_activated", profile, cf("cli.alert.failover_activated", profile))
-		}
-	})
+	watchdog.ConfigureFailover(profileFailover())
+	watchdog.SetEventCallback(onWatchdogEvent)
 
 	// DNS manager — reference-counted guard across simultaneous tunnels.
 	dnsGuard := security.NewDNSGuard()
@@ -136,6 +102,15 @@ func loadConfig() error {
 
 	// Policy resolver — background DNS re-resolution for domain-based split tunnel.
 	policyResolver = monitor.NewPolicyResolver(cfg, routeMgr, log)
+	policyResolver.SetTunnelProbe(probeTunnel)
+	killSwitchSvc.SetDestinations(policyResolver)
+	policyWatch = &monitor.PolicyWatch{
+		Matcher: policyResolver,
+		Status:  profileStatus,
+		Connect: connectProfile,
+		Events:  daemonEvents,
+		OnEvent: logPolicyEvent,
+	}
 	scheduler = monitor.NewScheduler(
 		cfg,
 		parseDuration(cfg.Monitor.Scheduler.Interval, time.Minute),

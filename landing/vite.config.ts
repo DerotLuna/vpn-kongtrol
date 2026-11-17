@@ -1,19 +1,38 @@
-import { resolve } from 'node:path'
-import { defineConfig } from 'vite'
+import { relative, resolve } from 'node:path'
+import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { ENTRIES, entryFile, entryFor, headFor } from './src/seo'
 
-// Multi-page app: landing (/) + setup guide (/guia) + terms (/terminos)
-// Served from a GitHub Pages project page at /vpn-kongtrol/.
+// Multi-page app (https://vite.dev/guide/build#multi-page-app): every page in
+// Spanish at the root and in English under /en/ — 10 thin HTML entries.
+// Served from the root of https://kongtrol.app (Cloudflare Pages maps clean
+// URLs like /guia to guia.html and /en/guide to en/guide.html on its own).
+
+// Fills each entry's <!--kongtrol:head--> with its title, meta, canonical,
+// hreflang, Open Graph and JSON-LD from src/seo.ts, in dev and build alike.
+function seoHead(): Plugin {
+  let root = __dirname
+  return {
+    name: 'kongtrol-seo-head',
+    configResolved(c) { root = c.root },
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html, ctx) {
+        const file = relative(root, ctx.filename)
+        const entry = entryFor(file)
+        if (!entry) throw new Error(`seo: ${file} is not a known page entry (src/seo.ts)`)
+        return html.replace('<!--kongtrol:head-->', headFor(entry.page, entry.lang).trimStart())
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  base: '/vpn-kongtrol/',
-  plugins: [react()],
+  base: '/',
+  plugins: [react(), seoHead()],
   build: {
     rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html'),
-        guia: resolve(__dirname, 'guia.html'),
-        terminos: resolve(__dirname, 'terminos.html'),
-      },
+      input: Object.fromEntries(ENTRIES.map(({ page, lang }) => [`${lang}-${page}`, resolve(__dirname, entryFile(page, lang))])),
     },
   },
 })

@@ -19,10 +19,7 @@ import (
 const doctorVersionCheckTimeout = 5 * time.Second
 
 var doctorCmd = &cobra.Command{
-	Use:   "doctor",
-	Short: "Check your environment — binaries, certs, keychain, permissions",
-	Long: `doctor validates your full Kongtrol stack without connecting to any VPN.
-Run this before your first connection, or when diagnosing a teammate's setup.`,
+	Use: "doctor",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if doctorFix {
 			n, err := applyDoctorFixes()
@@ -57,9 +54,6 @@ Run this before your first connection, or when diagnosing a teammate's setup.`,
 var doctorFix bool
 
 func init() {
-	doctorCmd.Short = ct("cli.doctor.short")
-	doctorCmd.Long = ct("cli.doctor.long")
-	doctorCmd.Example = ct("cli.doctor.examples")
 	doctorCmd.Flags().BoolVar(&doctorFix, "fix", false, ct("cli.doctor.flag.fix"))
 	rootCmd.AddCommand(doctorCmd)
 }
@@ -126,6 +120,7 @@ type doctor struct {
 	warnings int
 	sectionN string
 	checks   []doctorCheck
+	rt       *doctorRuntime
 }
 
 func (d *doctor) run() {
@@ -136,6 +131,7 @@ func (d *doctor) run() {
 
 	d.section(ct("cli.doctor.section.configuration"))
 	_, cfg := d.checkConfig()
+	d.rt = newDoctorRuntime(cfg)
 
 	d.section(ct("cli.doctor.section.binaries"))
 	d.checkBinaries(cfg)

@@ -8,7 +8,7 @@
 vpns:
   office:
     type: forticlient
-    version: "6.4"               # cli_v6 bindings; use "7" for FortiClient 7.x
+    version: "6.4"               # informational: Kongtrol detects the installed version (docs/forticlient-support.md)
     # SECURITY: keep false in production. true allows auto-accepting
     # untrusted certificate warnings in FortiClient GUI automation (MITM risk).
     # allow_insecure_cert: false
@@ -22,17 +22,36 @@ vpns:
       username: your_username    # or use username_keychain below
       # username_keychain: office.username   # keychain key name
       # password_keychain: office.password   # keychain key name (recommended)
+    # priority only breaks ties between overlapping policies: the higher number
+    # is evaluated first. It never connects or switches profiles.
     priority: 10
     kill_switch: true
+    # Provider attach mode (forticlient, protonvpn, nordvpn, surfshark):
+    # `up` attaches to a tunnel already up in the app; else tries automation
+    # (GUI automation here) and, if that fails, opens the app and waits for
+    # you to connect there.
+    # auto_connect: true          # false = never automate, just wait for you
+    # wait_timeout: 5m            # how long `up` waits for you in the app
+    # interface: "Fortinet*"      # override the tunnel interface name pattern
+    # app_path: "C:\\Program Files\\Fortinet\\FortiClient\\FortiClient.exe"
 
   server:
     type: openvpn
+    # Self-contained profile: certs are embedded (<ca>/<cert>/<key>/<tls-crypt>)
+    # or referenced with paths relative to the .ovpn file. Kongtrol runs
+    # openvpn with --cd <config dir>, so relative paths resolve like OpenVPN GUI.
     config: ~/.kongtrol/configs/server.ovpn
     auth:
-      method: certificate
-      cert: ~/.kongtrol/certs/server.crt
-      key: ~/.kongtrol/certs/server.key
+      method: certificate          # no cert/key needed: the .ovpn references them
+    # Optional: openvpn binary override. Default lookup: PATH, then the Windows
+    # registry / %ProgramFiles%\OpenVPN\bin, or /usr/sbin, /usr/local/sbin,
+    # /opt/homebrew/sbin on Unix.
+    # binary_path: "C:\\Program Files\\OpenVPN\\bin\\openvpn.exe"
     priority: 20
+    # failover: backups that reach the SAME networks, tried in order if this
+    # profile drops and cannot reconnect. Without it Kongtrol only retries this
+    # profile and notifies you; it never connects another VPN on its own.
+    # failover: [dev-server-b]
 
   aws:
     type: openvpn
@@ -45,12 +64,42 @@ vpns:
 
   us-content:
     type: protonvpn
-    server: US       # ISO country code; protonvpn-cli selects fastest server
-    protocol: wireguard
+    # Official Proton VPN app. Linux: connects through the `protonvpn` CLI
+    # (sign in once). Windows / macOS: no CLI, so `up` opens the app and
+    # waits for you to connect there (or use type: wireguard with a .conf).
+    country: US      # code or name; or city: "New York"; or server: "CH#242"
+    # (all empty = fastest; legacy `server: US` still works)
+    protocol: wireguard   # legacy protonvpn-cli only
     auth:
       method: credentials
       username_keychain: proton.username
       # password stored via: kongtrol config set-credential us-content password
+    priority: 5
+
+  nord:
+    type: nordvpn
+    # Official NordVPN app: NordVPN.exe switches on Windows, the `nordvpn`
+    # CLI on Linux (run `nordvpn login` once). macOS: no CLI, so `up` opens
+    # the app and waits for you to connect there.
+    # Target: all empty = quick connect; country / city; group ("P2P",
+    # "Dedicated IP", "Double VPN"); or server ("United States #3710" on
+    # Windows, "us3710" on Linux). Legacy `server: "United States"` still works.
+    # `protocol` is ignored: the NordVPN client keeps its own setting.
+    country: "United States"
+    # group: P2P
+    auth:
+      method: credentials   # session lives in the NordVPN client, nothing in keychain
+    priority: 5
+
+  surf:
+    type: surfshark
+    # Official Surfshark app. Surfshark has no CLI: `up` attaches to a tunnel
+    # already up, or opens the app and waits for you to connect there;
+    # `down` asks you to disconnect in the app. Location is chosen in the app.
+    # wait_timeout: 10m
+    # interface: "Surfshark*"     # if your adapter has another name
+    auth:
+      method: credentials   # session lives in the Surfshark app
     priority: 5
 
   # ── Additional adapters ────────────────────────────────────────────────────
@@ -115,6 +164,12 @@ policies:
         - "*.amazonaws.com"
         - "*.aws.empresa.com"
     via: aws
+    # While the "aws" tunnel is off (you decide which tunnels are up):
+    #   allow   (default) normal internet + a notice in tray/dashboard
+    #   block   never through the normal internet (for domains: only the
+    #           IPs resolved so far — partial protection)
+    #   connect Kongtrol connects the tunnel when the traffic shows up
+    on_tunnel_down: block
 
   - name: "Dev server"
     match:
@@ -149,8 +204,13 @@ policies:
 security:
   kill_switch:
     enabled: true
-    mode: strict    # strict = block ALL non-tunnel traffic; loose = allow LAN
-    allow_lan: true # allow 192.168.x.x / 10.x.x.x even when kill switch is ON
+    # Split-tunnel aware: never blocks a tunnel you turned off. When a
+    # protected tunnel drops unexpectedly, only ITS destinations are blocked
+    # (routes it had + its policies' IPs) until it reconnects or you run
+    # `kongtrol down`. A full-tunnel profile (default route through the
+    # tunnel) blocks all but the VPN endpoints while dropped.
+    mode: strict    # legacy; "loose" now means the same as allow_lan: true
+    allow_lan: true # keep the LAN reachable while a full tunnel is dropped
 
   dns_guard:
     enabled: true
@@ -163,9 +223,21 @@ security:
     # expected_ips:
     #   office: "203.x.x.x"
 
+  # Public IP lookup — OFF by default (opt-in). When on, Kongtrol asks an
+  # external service for your public IP (that service sees it), only when a
+  # tunnel connects or disconnects (at most once per 30 s) and when you ask
+  # (kongtrol check, "Revisar" in the dashboard, the tray). The kill switch
+  # and DNS guard do not need it. Also enables the leak check against
+  # integrity_check.expected_ips. Toggle: kongtrol config public-ip on|off.
+  public_ip_check:
+    enabled: false
+    # endpoints:                  # https only, tried in order; default below
+    #   - https://api.ipify.org
+    #   - https://icanhazip.com
+
+  # Legacy: leak_detection.enabled: true still opts in to the lookup above;
+  # its interval is ignored (no periodic checks any more).
   leak_detection:
-    enabled: true
-    interval: "60s"
     action: notify   # notify | killswitch_and_notify
 
   audit_log:

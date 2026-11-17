@@ -2,15 +2,27 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/privhelper"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
+	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/nordvpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/protonvpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 func (d *doctor) checkConfig() (string, *config.Config) {
@@ -32,7 +44,7 @@ func (d *doctor) checkConfig() (string, *config.Config) {
 
 	cfg, err := config.Load(path)
 	if err != nil {
-		d.fail(ct("cli.doctor.label.config_valid"), err.Error())
+		d.fail(ct("cli.doctor.label.config_valid"), localizedErrText(cliLang(), err))
 		return path, nil
 	}
 	d.ok(ct("cli.doctor.label.config_valid"), cf("cli.doctor.config.profiles_defined", len(cfg.VPNs)))
@@ -41,135 +53,102 @@ func (d *doctor) checkConfig() (string, *config.Config) {
 
 // ── binaries ──────────────────────────────────────────────────────────────────
 
-type binarySpec struct {
-	adapterType string
-	candidates  []string
-	versionArg  string
-	guiApp      bool // if true, read file version via PowerShell instead of launching
-}
-
-func vpnBinarySpecs() []binarySpec {
-	specs := []binarySpec{
-		{adapterType: "openvpn", candidates: []string{"openvpn"}, versionArg: "--version"},
-		{adapterType: "protonvpn", candidates: []string{"protonvpn-cli"}, versionArg: "--version"},
-		{adapterType: "tailscale", candidates: []string{"tailscale"}, versionArg: "version"},
-		{adapterType: "cloudflarewarp", candidates: []string{"warp-cli"}, versionArg: "--version"},
-		{adapterType: "wireguard", candidates: []string{"wg", "wg-quick"}, versionArg: "--version"},
-	}
-
-	switch runtime.GOOS {
-	case "windows":
-		specs = append(specs,
-			binarySpec{
-				adapterType: "forticlient",
-				candidates: []string{
-					`C:\Program Files\Fortinet\FortiClient\FortiClient.exe`,
-					`C:\Program Files (x86)\Fortinet\FortiClient\FortiClient.exe`,
-				},
-				versionArg: "--version",
-				guiApp:     true,
-			},
-			binarySpec{
-				adapterType: "ciscoanyconnect",
-				candidates: []string{
-					`C:\Program Files (x86)\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
-					`C:\Program Files\Cisco\Cisco AnyConnect Secure Mobility Client\vpncli.exe`,
-				},
-				versionArg: "-v",
-			},
-			binarySpec{
-				adapterType: "globalprotect",
-				candidates: []string{
-					`C:\Program Files\Palo Alto Networks\GlobalProtect\PanGPS.exe`,
-				},
-				versionArg: "--version",
-			},
-		)
-	case "darwin":
-		specs = append(specs,
-			binarySpec{
-				adapterType: "forticlient",
-				candidates:  []string{"/Applications/FortiClient.app/Contents/MacOS/FortiClient"},
-				versionArg:  "--version",
-			},
-			binarySpec{
-				adapterType: "ciscoanyconnect",
-				candidates:  []string{"/opt/cisco/anyconnect/bin/vpn"},
-				versionArg:  "-v",
-			},
-			binarySpec{
-				adapterType: "globalprotect",
-				candidates:  []string{"/Applications/GlobalProtect.app/Contents/MacOS/GlobalProtect"},
-				versionArg:  "--version",
-			},
-		)
-	case "linux":
-		specs = append(specs,
-			binarySpec{
-				adapterType: "forticlient",
-				candidates:  []string{"forticlientsslvpn", "/usr/lib/forticlient/forticlientsslvpn"},
-				versionArg:  "--version",
-			},
-			binarySpec{
-				adapterType: "ciscoanyconnect",
-				candidates:  []string{"/opt/cisco/anyconnect/bin/vpn"},
-				versionArg:  "-v",
-			},
-		)
-	}
-	return specs
-}
-
+// checkBinaries checks, per adapter type in use, the binary the adapter will
+// actually execute on this OS (shared knowledge in internal/vpndetect), or the
+// profile's binary_path override when set.
 func (d *doctor) checkBinaries(cfg *config.Config) {
 	if cfg == nil {
 		d.warn(ct("cli.doctor.label.skipped"), ct("cli.doctor.skipped.no_valid_config"))
 		return
 	}
 
-	used := make(map[string]bool)
-	for _, v := range cfg.VPNs {
-		used[v.Type] = true
+	overrides := make(map[string]string) // adapter type → first binary_path seen
+	types := make([]string, 0, len(cfg.VPNs))
+	for _, name := range sortedProfileNames(cfg) {
+		v := cfg.VPNs[name]
+		if _, seen := overrides[v.Type]; !seen {
+			types = append(types, v.Type)
+			overrides[v.Type] = ""
+		}
+		if overrides[v.Type] == "" && v.BinaryPath != "" {
+			overrides[v.Type] = v.BinaryPath
+		}
 	}
+	sort.Strings(types)
 
-	for _, spec := range vpnBinarySpecs() {
-		if !used[spec.adapterType] {
+	for _, adapterType := range types {
+		label := adapterType + " " + ct("cli.doctor.label.binary")
+		// No CLI on this OS is not a failure: the provider adapter opens the
+		// app and waits for the user to connect (attach mode).
+		if adapterType == "protonvpn" && errors.Is(protonvpn.CheckPlatform(), protonvpn.ErrUnsupportedOS) {
+			d.warn(label, ct("cli.doctor.binary.proton_os"))
 			continue
 		}
-		found := ""
-		for _, candidate := range spec.candidates {
-			if _, err := os.Stat(candidate); err == nil {
-				found = candidate
-				break
-			}
-			if path, err := exec.LookPath(candidate); err == nil {
-				found = path
-				break
-			}
-		}
-		if found == "" {
-			d.fail(spec.adapterType+" "+ct("cli.doctor.label.binary"), ct("cli.doctor.binary.not_found"))
+		if adapterType == "nordvpn" && errors.Is(nordvpn.CheckPlatform(), nordvpn.ErrUnsupportedOS) {
+			d.warn(label, ct("cli.doctor.binary.nord_os"))
 			continue
 		}
-		ver := ""
-		versionCtx, cancelVersion := context.WithTimeout(context.Background(), doctorVersionCheckTimeout)
-		if spec.guiApp {
-			if out, err := exec.CommandContext(versionCtx, "powershell", "-NoProfile", "-Command",
-				fmt.Sprintf(`(Get-Item '%s').VersionInfo.ProductVersion`, found)).Output(); err == nil {
-				ver = strings.TrimSpace(string(out))
+		found, ok := doctorFindBinary(adapterType, overrides[adapterType])
+		if !ok {
+			if override := overrides[adapterType]; override != "" {
+				d.fail(label, fmt.Sprintf(ct("cli.doctor.file.not_found"), override))
+			} else if vpndetect.Known(adapterType) {
+				d.fail(label, ct("cli.doctor.binary.not_found"))
 			}
-		} else if out, err := exec.CommandContext(versionCtx, found, spec.versionArg).Output(); err == nil {
-			ver = strings.TrimSpace(strings.Split(string(out), "\n")[0])
+			continue
 		}
-		cancelVersion()
+		ver := doctorBinaryVersion(adapterType, found)
 		if len(ver) > 48 {
 			ver = ver[:48] + "…"
 		}
 		if ver == "" {
-			d.ok(spec.adapterType+" "+ct("cli.doctor.label.binary"), found)
+			d.ok(label, found)
 		} else {
-			d.ok(spec.adapterType+" "+ct("cli.doctor.label.binary"), ver)
+			d.ok(label, ver)
+		}
+		if adapterType == "forticlient" {
+			d.checkFortiSupport(cfg)
 		}
 	}
+}
+
+func doctorFindBinary(adapterType, override string) (string, bool) {
+	if adapterType == "openvpn" {
+		p, err := openvpn.FindBinary(override)
+		return p, err == nil
+	}
+	if override != "" {
+		if fi, err := os.Stat(override); err == nil && fi.Mode().IsRegular() {
+			return override, true
+		}
+		return "", false
+	}
+	return vpndetect.FindStandard(adapterType)
+}
+
+// doctorBinaryVersion runs the binary's version command with a timeout, or
+// reads the file version for GUI apps that must not be launched.
+func doctorBinaryVersion(adapterType, path string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), doctorVersionCheckTimeout)
+	defer cancel()
+	args := vpndetect.VersionArgs(adapterType)
+	if len(args) == 0 {
+		return fileVersion(ctx, path)
+	}
+	out, err := exec.CommandContext(ctx, path, args...).Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(strings.Split(string(out), "\n")[0])
+}
+
+func sortedProfileNames(cfg *config.Config) []string {
+	names := make([]string, 0, len(cfg.VPNs))
+	for name := range cfg.VPNs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // ── certs & keys ──────────────────────────────────────────────────────────────
@@ -247,35 +226,122 @@ func (d *doctor) checkKeychain(cfg *config.Config) {
 
 // ── permissions ───────────────────────────────────────────────────────────────
 
+// checkPermissions reports whether privileged network changes (kill switch,
+// DNS guard, routes, WireGuard/OpenVPN tunnels) can run: this process is
+// elevated, or the Kongtrol helper is installed, answering and the same
+// version. The kill switch / DNS guard lines only warn when neither holds.
 func (d *doctor) checkPermissions() {
-	if hasNetworkAdminPrivileges() {
-		d.ok(ct("cli.doctor.label.kill_switch"), ct("cli.doctor.permission.available"))
+	ready := d.checkHelper()
+	ksDetail, dnsDetail := ct("cli.doctor.permission.available"), ct("cli.doctor.permission.available")
+	if !ready {
+		missing := fmt.Sprintf(ct("cli.doctor.permission.maybe_elevated"), ct("cli.doctor.permission.required"))
+		d.warn(ct("cli.doctor.label.kill_switch"), missing)
+		d.warn(ct("cli.doctor.label.dns_guard"), missing)
 	} else {
-		d.warn(ct("cli.doctor.label.kill_switch"), fmt.Sprintf(ct("cli.doctor.permission.maybe_elevated"), ct("cli.doctor.permission.required")))
-	}
-
-	dnsGuard := security.NewDNSGuard()
-	if dnsGuard.IsActive() {
-		d.ok(ct("cli.doctor.label.dns_guard"), ct("cli.doctor.dns.already_active"))
-		return
-	}
-	if runtime.GOOS == "linux" {
-		f, err := os.OpenFile("/etc/resolv.conf", os.O_WRONLY|os.O_APPEND, 0)
-		if err != nil {
-			d.warn(ct("cli.doctor.label.dns_guard"), ct("cli.doctor.dns.needs_sudo"))
-			return
+		d.ok(ct("cli.doctor.label.kill_switch"), ksDetail)
+		if d.dnsGuardActive() {
+			dnsDetail = ct("cli.doctor.dns.already_active")
 		}
-		f.Close()
-		d.ok(ct("cli.doctor.label.dns_guard"), ct("cli.doctor.dns.writable"))
-		return
+		d.ok(ct("cli.doctor.label.dns_guard"), dnsDetail)
 	}
-	d.ok(ct("cli.doctor.label.dns_guard"), ct("cli.doctor.permission.available"))
+	if runtime.GOOS == "darwin" { // display note only
+		d.warn(ct("cli.doctor.label.kill_switch"), ct("doctor.killswitch.macos_beta"))
+	}
+}
+
+// checkHelper reports the helper line and whether privileged operations
+// are available to the daemon.
+func (d *doctor) checkHelper() bool {
+	label := ct("cli.doctor.label.helper")
+	if privops.IsElevated() {
+		d.ok(label, ct("cli.doctor.helper.elevated"))
+		return true
+	}
+	st := privhelper.QueryStatus()
+	if !st.Installed {
+		d.warn(label, ct("service.error.not_installed"))
+		return false
+	}
+	if !st.Running {
+		d.warn(label, ct("service.status.stopped")+" "+ct("service.status.stopped_hint"))
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	res, err := privops.NewClient().Ping(ctx)
+	switch {
+	case errors.Is(err, privops.ErrDenied):
+		d.warn(label, ct("service.error.denied"))
+		return false
+	case err != nil:
+		d.warn(label, ct("service.install.no_response")+" "+ct("service.install.no_response_hint"))
+		return false
+	case res.Protocol != privops.ProtocolVersion:
+		d.warn(label, cf("service.status.version_mismatch", res.Version, version)+" "+ct("service.error.outdated"))
+		return false
+	case res.Version != version:
+		// Same protocol: everything works, but suggest updating.
+		d.warn(label, cf("service.status.version_mismatch", res.Version, version)+" "+ct("service.status.version_mismatch_hint"))
+		return true
+	}
+	d.ok(label, cf("cli.doctor.helper.ok", res.Version))
+	return true
+}
+
+// doctorRuntime holds what the runtime checks need, built without loadConfig:
+// loadConfig also starts the metrics collector, creates the API token and opens
+// the audit log, none of which a read-only diagnostic should do. Nothing here
+// starts goroutines or connects anything.
+type doctorRuntime struct {
+	adapters map[string]vpn.VPNAdapter
+	initErrs map[string]error
+	routes   routing.RouteManager
+	// daemon* hold the running daemon's own view (nil when none answers).
+	// The daemon owns the tunnels, kill switch and DNS guard, so its state
+	// wins over this process's fresh, never-connected adapters.
+	daemonTunnels map[string]monitor.TunnelMetrics
+	daemonSec     *apiSecurityStatus
+}
+
+func newDoctorRuntime(cfg *config.Config) *doctorRuntime {
+	rt := &doctorRuntime{
+		adapters: make(map[string]vpn.VPNAdapter),
+		initErrs: make(map[string]error),
+		routes:   routing.NewRouteManager(),
+	}
+	if cfg == nil {
+		return rt
+	}
+	rt.loadDaemonState(cfg)
+	for name, vpnCfg := range cfg.VPNs {
+		a, err := vpn.New(vpnCfg.Type)
+		if err != nil {
+			rt.initErrs[name] = err
+			continue
+		}
+		// Same pre-seed as loadConfig so Status() can probe tunnels started
+		// outside this process (no credentials are read).
+		if c, ok := a.(vpn.Configurable); ok {
+			c.Configure(vpn.AdapterConfig{
+				Host:       vpnCfg.Host,
+				Port:       vpnCfg.Port,
+				TunnelName: vpnCfg.TunnelName,
+				CertPath:   vpnCfg.Auth.Cert,
+				KeyPath:    vpnCfg.Auth.Key,
+				ConfigPath: vpnCfg.ConfigFile,
+				Username:   vpnCfg.Auth.Username,
+				Extra:      vpnCfg.AdapterExtra(),
+			})
+		}
+		rt.adapters[name] = a
+	}
+	return rt
 }
 
 func (d *doctor) checkRuntimeNetworking(cfg *config.Config) {
-	if routeMgr == nil {
+	if d.rt == nil || d.rt.routes == nil {
 		d.warn(ct("cli.doctor.label.routes_probe"), ct("cli.doctor.routes.unavailable"))
-	} else if routes, err := routeMgr.List(); err != nil {
+	} else if routes, err := d.rt.routes.List(); err != nil {
 		d.warn(ct("cli.doctor.label.routes_probe"), fmt.Sprintf(ct("cli.doctor.routes.read_failed"), err))
 	} else {
 		d.ok(ct("cli.doctor.label.routes_probe"), fmt.Sprintf(ct("cli.doctor.routes.visible"), len(routes)))
@@ -285,11 +351,15 @@ func (d *doctor) checkRuntimeNetworking(cfg *config.Config) {
 		d.warn(ct("cli.doctor.label.dns_guard_runtime"), ct("cli.doctor.skipped.no_valid_config"))
 		return
 	}
+	if d.rt != nil && d.rt.daemonSec != nil {
+		s := d.rt.daemonSec
+		d.ok(ct("cli.doctor.label.kill_switch_runtime"), killSwitchLabel(s.KillSwitchEnabled, s.KillSwitch, s.KillSwitchStatus))
+	}
 	if !cfg.Security.DNSGuard.Enabled {
 		d.ok(ct("cli.doctor.label.dns_guard_runtime"), ct("cli.doctor.dns.disabled"))
 		return
 	}
-	if dnsMgr != nil && dnsMgr.IsActive() {
+	if d.dnsGuardActive() {
 		d.ok(ct("cli.doctor.label.dns_guard_runtime"), ct("cli.doctor.dns.active"))
 		return
 	}
@@ -301,22 +371,30 @@ func (d *doctor) checkAdapterStatus(cfg *config.Config) {
 		d.warn(ct("cli.doctor.label.adapter_status"), ct("cli.doctor.skipped.no_valid_config"))
 		return
 	}
-	for name := range cfg.VPNs {
-		adapter, ok := adapters[name]
+	for _, name := range sortedProfileNames(cfg) {
+		label := name + ": " + ct("cli.doctor.label.adapter_status")
+		adapter, ok := d.rt.adapters[name]
 		if !ok {
-			d.fail(name+": "+ct("cli.doctor.label.adapter_status"), ct("cli.doctor.adapter.not_initialized"))
+			detail := ct("cli.doctor.adapter.not_initialized")
+			if err := d.rt.initErrs[name]; err != nil {
+				detail += " (" + err.Error() + ")"
+			}
+			d.fail(label, detail)
 			continue
 		}
 		st := adapter.Status().Normalize()
+		if t, ok := d.rt.daemonTunnels[name]; ok {
+			st = t.Status.Normalize()
+		}
 		if st == "" {
-			d.fail(name+": "+ct("cli.doctor.label.adapter_status"), ct("cli.doctor.adapter.empty_status"))
+			d.fail(label, ct("cli.doctor.adapter.empty_status"))
 			continue
 		}
 		if st == vpn.StatusError {
-			d.warn(name+": "+ct("cli.doctor.label.adapter_status"), cf("cli.doctor.adapter.error_state", name))
+			d.warn(label, cf("cli.doctor.adapter.error_state", name))
 			continue
 		}
-		d.ok(name+": "+ct("cli.doctor.label.adapter_status"), string(st))
+		d.ok(label, string(st))
 	}
 }
 
@@ -346,3 +424,38 @@ func (d *doctor) checkAdapters(cfg *config.Config) {
 // ── output helpers ────────────────────────────────────────────────────────────
 
 const checkWidth = 36
+
+// loadDaemonState fills daemonTunnels/daemonSec when a daemon answers on the
+// configured dashboard address. Read-only: the API token is read, never created.
+func (rt *doctorRuntime) loadDaemonState(cfg *config.Config) {
+	if apiToken == "" {
+		tok, err := config.ReadAPIToken()
+		if err != nil {
+			return
+		}
+		apiToken = tok
+	}
+	base := daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
+	tunnels, sec, err := fetchDaemonSnapshotAt(base)
+	if err != nil {
+		return
+	}
+	rt.setDaemonState(tunnels, sec)
+}
+
+func (rt *doctorRuntime) setDaemonState(tunnels []monitor.TunnelMetrics, sec *apiSecurityStatus) {
+	rt.daemonTunnels = make(map[string]monitor.TunnelMetrics, len(tunnels))
+	for _, t := range tunnels {
+		rt.daemonTunnels[t.Name] = t
+	}
+	rt.daemonSec = sec
+}
+
+// dnsGuardActive prefers the daemon's answer; with no daemon it asks the OS
+// whether a guard is in place (doctor has no in-memory manager of its own).
+func (d *doctor) dnsGuardActive() bool {
+	if d.rt != nil && d.rt.daemonSec != nil {
+		return d.rt.daemonSec.DNSGuard
+	}
+	return security.NewDNSGuard().IsActive()
+}

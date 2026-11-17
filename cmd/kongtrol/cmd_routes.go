@@ -12,17 +12,23 @@ import (
 // ── routes ───────────────────────────────────────────────────────────────────
 
 var routesCmd = &cobra.Command{
-	Use:   "routes",
-	Short: "Manage routing rules",
+	Use:  "routes [perfil]",
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		name := ""
+		if len(args) == 1 {
+			name = args[0]
+		}
+		return runTunnelRoutes(name)
+	},
 }
 
 var routesListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List active Kongtrol-managed routes",
+	Use: "list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		routes, err := routeMgr.List()
 		if err != nil {
-			return err
+			return fmt.Errorf("%s", cf("cli.routes.error.list", err))
 		}
 		if outputJSON {
 			return emitJSON(struct {

@@ -2,30 +2,12 @@
 
 package wireguard
 
-import (
-	"fmt"
-	"strings"
-)
+// wgPreUp: nothing to check on Unix; wg-quick runs in the helper.
+func wgPreUp(string) bool { return false }
 
-// wgUp brings up a WireGuard interface using wg-quick.
-func wgUp(configPath string) error {
-	out, err := runCmd("wg-quick", "up", configPath)
-	if err != nil {
-		return fmt.Errorf("wg-quick up: %w\n%s", err, out)
-	}
-	return nil
-}
-
-// wgDown brings down a WireGuard interface using wg-quick.
-func wgDown(ifaceName string) error {
-	out, err := runCmd("wg-quick", "down", ifaceName)
-	if err != nil {
-		return fmt.Errorf("wg-quick down: %w\n%s", err, out)
-	}
-	return nil
-}
-
-// wgShow returns the output of `wg show <iface>`.
+// wgShow returns the output of `wg show <iface>`. It needs root, so it
+// fails for the unprivileged daemon and Status() falls back to the
+// interface check.
 func wgShow(ifaceName string) (string, error) {
 	return runCmd("wg", "show", ifaceName)
 }
@@ -39,12 +21,3 @@ func wgTransfer(ifaceName string) (string, error) {
 // tunnelServiceRunning is a no-op on Unix; WireGuard is managed by wg-quick,
 // not a Windows service. Always returns false.
 func tunnelServiceRunning(_ string) bool { return false }
-
-// WgSetAllowedIPs updates AllowedIPs for a peer on a live WireGuard interface.
-// On Unix, this updates the kernel crypto-routing table only — the caller must
-// also add OS routes via routeMgr.Add() for the new CIDRs.
-func WgSetAllowedIPs(ifaceName, peerPubKey string, cidrs []string) error {
-	_, err := runCmd("wg", "set", ifaceName, "peer", peerPubKey,
-		"allowed-ips", strings.Join(cidrs, ","))
-	return err
-}

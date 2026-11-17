@@ -1,14 +1,77 @@
-# Security Model
+<img src="../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-## No telemetry, no external calls
+# Security architecture
 
-Kongtrol is 100% local. There is no phone-home, no analytics, no update-check ping, no external
-API — the daemon, CLI, tray app, and embedded dashboard talk to your VPN clients, your OS network
-stack, and `127.0.0.1`, and nothing else. Credentials go straight from your prompt into the OS
-keychain (`internal/config`) and are never written to disk in plaintext or logged. The audit log
-(`internal/security`) is local, HMAC-signed for tamper-evidence, and never leaves the machine. You
-can verify this yourself — the whole codebase is open source; grep for `http://` / `https://`
-outside of test fixtures and adapter vendor docs and you'll find nothing that ships data out.
+Version 2.1.0 · 2026-11-17
+
+Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
+supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
+exactly which network connections it makes.
+
+## No telemetry
+
+Kongtrol sends no telemetry, analytics, crash reports or update checks. Credentials go straight
+from your prompt into the OS credential store (`internal/config`) and are never written to disk in
+plaintext or logged. The audit log (`internal/security`) is local, HMAC-signed for
+tamper-evidence, and never leaves the machine.
+
+## Network connections Kongtrol makes
+
+Besides talking to your VPN clients, your OS network stack and the local dashboard on
+`127.0.0.1`, Kongtrol itself opens these connections. None of them carries configuration,
+credentials or usage data.
+
+| Connection | When | Why | Code |
+|---|---|---|---|
+| HTTPS `GET` to the public IP service — `https://api.ipify.org` by default, or the `security.public_ip_check.endpoints` you set (https only) | **Off by default (opt-in).** Only when `security.public_ip_check.enabled: true` (or the legacy `leak_detection.enabled: true`): once after a tunnel connects or disconnects (at most one lookup per 30 s, coalesced) and when you ask (`kongtrol check`, "Revisar" in the dashboard, the tray's public IP line). Never periodic. The kill switch and DNS guard do not use it. | Show your public IP and compare it with `integrity_check.expected_ips` (leak check). That service sees your public IP, as with any website. 5 s timeout; the answer must be a bare IP of at most 64 bytes. | `internal/security/leaktest.go`, `cmd/kongtrol/publicip.go` |
+| TCP connect to the profile's `host:port` (default 443), closed immediately | Before each connect (preflight) and on tunnel health checks | Warn early when the VPN server is unreachable; measure latency. | `internal/app/profile_service.go`, `cmd/kongtrol/daemon_runtime.go` |
+| DNS lookups of policy domains, through the system resolver and the tunnels' DNS servers (UDP/TCP 53) | When domain rules are resolved to routes | Turn `*.example.com` rules into IP routes. | `internal/monitor/policyresolver.go` |
+| DNS lookup of VPN server hostnames | When the per-profile kill switch is applied | Allow-list the VPN server so the tunnel can come up behind the block. | `internal/app/killswitch_service.go` |
+| TCP to the tunnel's DNS server on port 53 | Health checks when the VPN server itself cannot be probed | Measure a round trip inside the tunnel. | `cmd/kongtrol/daemon_runtime.go` |
+
+Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
+plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its
+creator: https://major.io/p/a-new-future-for-icanhazip/). Any HTTPS endpoint that answers with just
+an IP works. Each one sees your public IP; pick the one you trust. See
+`docs/research/2026-11-17-public-ip-services.md`.
+
+Loopback only: the OpenVPN management interface (`internal/vpn/openvpn/management.go`) and the
+privileged helper's socket or named pipe (below). Your VPN clients (NordVPN, FortiClient, OpenVPN,
+WireGuard) make their own connections; those depend on each provider. The dashboard serves its
+fonts and logos from the binary (`/brand/`), so opening it contacts no third party.
+
+## Privileged helper
+
+Routes, DNS, the firewall (kill switch), OpenVPN processes, WireGuard tunnels and the hosts file
+need administrator rights. Instead of running the whole daemon elevated, an optional helper
+(`internal/privhelper`, installed once with `kongtrol service install`) runs as root / SYSTEM and
+exposes a fixed list of operations (`internal/privops/protocol.go`), nothing else — no shell, no
+arbitrary command.
+
+- **Transport.** Unix socket `/run/kongtrol-helper.sock` (Linux) or `/var/run/kongtrol-helper.sock`
+  (macOS), created root-owned with a restrictive umask; named pipe `\.\pipe\kongtrol-helper` on
+  Windows. The Windows client refuses a pipe not owned by SYSTEM or Administrators, so a standard
+  user cannot squat the name.
+- **Authorization.** Only the user who installed the helper, or an elevated administrator / root,
+  may call it (`authorize` in `internal/privhelper/server.go`). The peer is identified by the OS
+  (Unix peer credentials; the pipe client's process token on Windows), not by anything the client claims.
+- **Bounded work.** One request per connection; each operation runs under its own timeout
+  (`privops.OpTimeout`, 15–45 s).
+- **Audit.** Every request — caller, operation, arguments, result, duration — is written to the
+  helper's JSON-lines audit log (`internal/privhelper/audit.go`, rotated at 5 MB).
+
+### Leases: no orphaned state
+
+Every client picks a random lease id and renews it every 5 s. State the helper creates on a
+client's behalf (an OpenVPN process, the kill switch, forced DNS, the hosts block) is owned by that
+lease. A lease not renewed for 20 s expires and the helper undoes everything it owns, so a daemon
+that crashes or is killed never leaves an unmanaged tunnel, a firewall blocking the network or
+resolvers pointing at a dead tunnel (`internal/privops/lease.go`).
+
+Expiry fails **open**: the kill switch is removed rather than left blocking, because a dead daemon
+can no longer turn it off and the Windows firewall rules and static DNS survive reboots. The daemon
+re-applies the kill switch when it comes back. Not leased, on purpose: WireGuard tunnels (an OS
+service a restarted daemon adopts) and routes (they die with the tunnel interface).
 
 ## Unsigned binaries and antivirus false positives
 
@@ -58,6 +121,7 @@ What to do about it:
   at that point — release automation still would not use it automatically, that'd be a deliberate
   addition to `release.yml`.
 
+## Enforcement per OS
 
 | Layer | Windows | Linux | macOS |
 |---|---|---|---|
@@ -81,6 +145,10 @@ uses. Nothing here is exposed on the network by default — the dashboard only b
 loopback addresses. Non-loopback overrides are rejected. Native clients authenticate with the
 mode-`0600` capability in `~/.kongtrol/api-token`; the dashboard receives the same capability in
 an HttpOnly, SameSite=Strict cookie and state-changing cross-origin requests are rejected.
+The cookie is deliberately not `Secure`: the dashboard is plain HTTP on loopback only, and Safari
+has rejected Secure cookies over HTTP even on loopback (https://flaviocopes.com/cookie-not-being-set-in-safari/,
+https://bugs.webkit.org/show_bug.cgi?id=281149), which would lock Safari users out. The related
+CodeQL alert is dismissed with this justification.
 
 ## DNS guard recovery
 

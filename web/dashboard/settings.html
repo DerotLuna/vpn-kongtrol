@@ -5,10 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Settings - VPN Kongtrol</title>
-  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/brand/logo-kong.svg" />
+  <link rel="stylesheet" href="/brand/fonts/fonts.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="settings" data-i18n-title="page.settings.title">
@@ -112,9 +110,10 @@
                   <span data-i18n="settings.enabled">Enabled</span>
                   <label class="switch"><input type="checkbox" id="s-leak-enabled" /><span class="slider"></span></label>
                 </label>
-                <label><span data-i18n="settings.interval">Interval</span>
-                  <input id="s-leak-interval" type="text" placeholder="60s" />
+                <label><span data-i18n="settings.publicIpEndpoints">Public IP services (one https:// URL per line)</span>
+                  <textarea id="s-publicip-endpoints" rows="2" placeholder="https://api.ipify.org"></textarea>
                 </label>
+                <p class="muted" data-i18n="settings.publicIpNote">Off by default. When on, the service sees your public IP; Kongtrol asks only when a tunnel connects or disconnects and when you press Check.</p>
                 <label><span data-i18n="settings.action">Action</span>
                   <select id="s-leak-action">
                     <option value="notify">notify</option>
@@ -220,6 +219,7 @@
   <script src="shell.js"></script>
   <script src="i18n.js"></script>
   <script src="toast.js"></script>
+  <script src="notices.js"></script>
   <script src="select.js"></script>
   <script src="settings.js"></script>
 </body>

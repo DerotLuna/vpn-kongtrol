@@ -5,10 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VPN Kongtrol</title>
-  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/brand/logo-kong.svg" />
+  <link rel="stylesheet" href="/brand/fonts/fonts.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="overview" data-i18n-title="page.overview.title">
@@ -106,7 +104,7 @@
           <li><span class="label" data-i18n="base.defaultEgress">Default egress</span><span id="base-egress" class="mono value"><span class="skeleton" style="width:80px"></span></span></li>
           <li><span class="label" data-i18n="base.gateway">Gateway</span><span id="base-gateway" class="mono value"><span class="skeleton" style="width:90px"></span></span></li>
           <li><span class="label" data-i18n="base.localIps">Local IPs</span><span id="base-local-ips" class="mono value value-wrap"><span class="skeleton" style="width:110px"></span></span></li>
-          <li><span class="label" data-i18n="base.publicIp">Public IP</span><span id="base-public-ip" class="mono value"><span class="skeleton" style="width:90px"></span></span></li>
+          <li class="publicip-row"><span class="label" data-i18n="base.publicIp">Public IP</span><span id="base-public-ip" class="mono value"><span class="skeleton" style="width:90px"></span></span><button type="button" class="action publicip-check" data-publicip-check hidden onclick="checkPublicIPNow(this)">Revisar</button></li>
         </ul>
         <p id="base-routing-note" class="muted" data-i18n="base.note">Unmatched traffic follows your default route.</p>
       </section>
@@ -132,6 +130,7 @@
           <li>
             <span class="label" data-i18n="security.publicIp">Public IP</span>
             <span id="public-ip" class="mono">—</span>
+            <button type="button" class="action publicip-check" data-publicip-check hidden onclick="checkPublicIPNow(this)">Revisar</button>
           </li>
           <li>
             <span class="label" data-i18n="security.lastChecked">Last checked</span>
@@ -166,6 +165,8 @@
   <script src="shell.js"></script>
   <script src="i18n.js"></script>
   <script src="toast.js"></script>
+  <script src="notices.js"></script>
+  <script src="publicip.js"></script>
   <script src="select.js"></script>
   <script src="charts.js"></script>
   <script src="app.js"></script>

@@ -1,5 +1,6 @@
 // Package wireguard implements the VPNAdapter interface for WireGuard.
-// Uses wg-quick on Linux/macOS and wireguard.exe on Windows.
+// Uses wg-quick on Linux/macOS and wireguard.exe on Windows, run through
+// internal/privops (the Kongtrol helper when not elevated).
 // The interface name is derived from the config filename: wg0.conf → wg0.
 //
 // Note: wg-quick may handle DNS internally on some systems (via resolvconf/systemd-resolved).
@@ -30,6 +31,9 @@ type Adapter struct {
 	dnsServers  []net.IP
 	connectedAt time.Time
 	lastCfg     vpn.AdapterConfig
+	// profileConfig is the profile .conf (never a temporary patched copy),
+	// sent on disconnect so the helper can adopt a tunnel it did not start.
+	profileConfig string
 }
 
 // Configure pre-seeds the adapter config so Status() can probe the WireGuard
@@ -37,6 +41,9 @@ type Adapter struct {
 func (a *Adapter) Configure(cfg vpn.AdapterConfig) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if cfg.ConfigPath != "" && !isPatchedCopy(cfg.ConfigPath) {
+		a.profileConfig = cfg.ConfigPath
+	}
 	if a.lastCfg.ConfigPath == "" {
 		a.lastCfg = cfg
 	}
@@ -59,8 +66,8 @@ func (a *Adapter) Version() string {
 
 func (a *Adapter) Capabilities() vpn.Capabilities {
 	return vpn.Capabilities{
-		SupportsSplitTunnel: true,  // WireGuard AllowedIPs is split-tunnel by design
-		SupportsMultiConn:   true,  // multiple wg interfaces can coexist
+		SupportsSplitTunnel: true, // WireGuard AllowedIPs is split-tunnel by design
+		SupportsMultiConn:   true, // multiple wg interfaces can coexist
 		SupportsReconnect:   true,
 	}
 }
@@ -75,6 +82,9 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 
 	a.status = vpn.StatusConnecting
 	a.lastCfg = cfg
+	if cfg.ConfigPath != "" && !isPatchedCopy(cfg.ConfigPath) {
+		a.profileConfig = cfg.ConfigPath
+	}
 
 	// WireGuard uses key-based auth — no password needed.
 	cfg.Password = ""
@@ -96,7 +106,7 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	a.assignedIP, _ = parseConfigAddress(configPath)
 	a.dnsServers = parseConfigDNS(configPath)
 
-	if err := wgUp(configPath); err != nil {
+	if err := wgUp(configPath, a.ifaceName); err != nil {
 		a.status = vpn.StatusError
 		return fmt.Errorf("wireguard: %w", err)
 	}
@@ -116,7 +126,7 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if err := wgDown(a.ifaceName); err != nil {
+	if err := wgDown(a.ifaceName, a.profileConfig); err != nil {
 		a.status = vpn.StatusError
 		return fmt.Errorf("wireguard: disconnect: %w", err)
 	}

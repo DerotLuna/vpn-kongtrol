@@ -11,14 +11,12 @@ import (
 )
 
 var policyCmd = &cobra.Command{
-	Use:   "policy",
-	Short: "Policy tooling and diagnostics",
+	Use: "policy",
 }
 
 var policyExplainCmd = &cobra.Command{
-	Use:   "explain <target|app:exe>",
-	Short: "Explain which policy matched and why",
-	Args:  cobra.ExactArgs(1),
+	Use:  "explain <target|app:exe>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if engine == nil {
 			return fmt.Errorf("%s", ct("cli.policy.engine_not_loaded"))
@@ -35,23 +33,22 @@ var policyExplainCmd = &cobra.Command{
 				fmt.Println("  " + styleDim.Render(ct("cli.policy.rule_label")) + styleBright.Render(ex.RuleName))
 			}
 			if ex.Reason != "" {
-				fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+ex.Reason))
+				fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+policyReasonText(ex)))
 			}
 			return nil
 		}
 
 		fmt.Println(tuiWarn(styleMapName.Render(target) + "  →  " + styleDim.Render(ct("cli.policy.default_route_short"))))
 		if ex.Reason != "" {
-			fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+ex.Reason))
+			fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+policyReasonText(ex)))
 		}
 		return nil
 	},
 }
 
 var policyTestCmd = &cobra.Command{
-	Use:   "test <targets-file>",
-	Short: "Test policies against a target list",
-	Args:  cobra.ExactArgs(1),
+	Use:  "test <targets-file>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if engine == nil {
 			return fmt.Errorf("%s", ct("cli.policy.engine_not_loaded"))
@@ -75,7 +72,7 @@ var policyTestCmd = &cobra.Command{
 				fmt.Println(tuiWarn(styleMapName.Render(target) + "  →  " + styleDim.Render(ct("cli.policy.default_route_short"))))
 			}
 			if ex.Reason != "" {
-				fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+ex.Reason))
+				fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+policyReasonText(ex)))
 			}
 		}
 		return nil
@@ -104,11 +101,6 @@ func readPolicyTargets(path string) ([]string, error) {
 }
 
 func init() {
-	policyCmd.Short = ct("cli.policy.short")
-	policyExplainCmd.Short = ct("cli.policy.explain.short")
-	policyTestCmd.Short = ct("cli.policy.test.short")
-	policyExplainCmd.Example = ct("cli.policy.explain.examples")
-	policyTestCmd.Example = ct("cli.policy.test.examples")
 	policyCmd.AddCommand(policyExplainCmd, policyTestCmd)
 	rootCmd.AddCommand(policyCmd)
 }

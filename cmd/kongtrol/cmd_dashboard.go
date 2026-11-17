@@ -11,8 +11,7 @@ import (
 // ── dashboard ─────────────────────────────────────────────────────────────────
 
 var dashboardCmd = &cobra.Command{
-	Use:   "dashboard",
-	Short: "Start the web dashboard and open it in your browser",
+	Use: "dashboard",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if _, _, err := fetchDaemonSnapshot(); err == nil {
 			addr := dashboardURL()
@@ -34,7 +33,9 @@ var dashboardCmd = &cobra.Command{
 		addr := dashboardURL()
 		fmt.Println(tuiOK(styleBright.Render(ct("cli.dashboard.running")) + "  " + paint(cDim, "→") + "  " + stylePrompt.Render(addr)))
 		fmt.Println(paint(cDim, "  "+ct("cli.dashboard.opening")))
-		openBrowser(addr)
+		if err := openBrowser(addr); err != nil {
+			fmt.Println(tuiWarn(cf("cli.dashboard.open_failed", err)))
+		}
 		fmt.Println(paint(cDim, "  "+ct("cli.dashboard.ctrlc_stop")))
 		fmt.Println()
 

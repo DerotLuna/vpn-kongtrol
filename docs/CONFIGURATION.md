@@ -1,6 +1,7 @@
 # Configuration Reference
 
 Full reference for `~/.kongtrol/kongtrol.yaml`. For a guided walkthrough that builds this file interactively, run `kongtrol init` or see [SETUP.md](SETUP.md).
+Every key with its type and default, generated from the schema: [CONFIG.en.md](CONFIG.en.md) (Español: [CONFIG.md](CONFIG.md)).
 
 ```yaml
 # ~/.kongtrol/kongtrol.yaml
@@ -120,10 +121,22 @@ security:
     enabled: true
     fallback_dns: "1.1.1.1"
 
+  # Public IP lookup — OFF by default (opt-in). When on, Kongtrol asks an
+  # external service for your public IP (that service sees it), only when a
+  # tunnel connects or disconnects (at most once per 30 s) and when you ask
+  # (kongtrol check, "Revisar" in the dashboard, the tray). The kill switch
+  # and DNS guard do not need it. Also enables the leak check against
+  # integrity_check.expected_ips. Toggle: kongtrol config public-ip on|off.
+  public_ip_check:
+    enabled: false
+    # endpoints:                  # https only, tried in order; default below
+    #   - https://api.ipify.org
+    #   - https://icanhazip.com
+
+  # Legacy: leak_detection.enabled: true still opts in to the lookup above;
+  # its interval is ignored (no periodic checks any more).
   leak_detection:
-    enabled: true
-    interval: "60s"
-    action: notify      # notify | killswitch_and_notify
+    action: notify   # notify | killswitch_and_notify
 
   audit_log:
     path: ~/.kongtrol/audit.log
@@ -185,6 +198,7 @@ groups:
 
 ---
 
+<!-- feature:providers feature:wireguard -->
 ## ProtonVPN: GUI vs WireGuard
 
 Two ways to configure a `protonvpn`-routed profile, depending on your team's workflow.
@@ -221,4 +235,24 @@ vpns:
 - If Proton is only for selected domains/apps, keep it in its own profile (e.g. `us-content`) and route only those policies through it.
 - Keep corporate traffic (`forticlient`, `openvpn`, etc.) in separate profiles with explicit policy targets.
 - Prefer policy-based separation over a catch-all default route when combining Proton with work VPNs.
-- Use profile `priority` intentionally if two policies may overlap.
+- Use profile `priority` intentionally if two policies may overlap: the **higher** number is evaluated first (domain and app rules: first match wins; IPs: the longest prefix always wins and `priority` only breaks ties between prefixes of the same length). Without it, the policy's position counts (earlier first). `priority` never connects or switches profiles.
+
+<!-- feature:watchdog -->
+### Failover (`failover:`)
+
+When a profile drops and cannot reconnect, Kongtrol keeps retrying **that profile only** (backoff 2 s → 5 min) and notifies you once. It never brings up another VPN on its own: profiles reach different networks, even with similar names or equal `priority` ([ADR-0018](adr/0018-failover-only-to-declared-profiles.md)).
+
+To allow a backup, declare it on the profile that may fail, in order of preference:
+
+```yaml
+vpns:
+  dev-server:
+    type: openvpn
+    config: ~/.kongtrol/configs/server.ovpn
+    failover: [dev-server-b]       # tried once per outage, in order
+  dev-server-b:
+    type: openvpn
+    config: ~/.kongtrol/configs/server-b.ovpn
+```
+
+Each entry must be an existing profile, not the profile itself, listed once, and the lists must not form a loop (`a → b → a`). When a backup takes over, Kongtrol stops retrying the original until you connect it again. Health-check failures only notify; they never start a failover.

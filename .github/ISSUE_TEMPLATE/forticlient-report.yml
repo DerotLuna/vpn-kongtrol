@@ -1,0 +1,75 @@
+# Version 1.0.0 · 2026-11-17 — FortiClient test report (docs/forticlient-support.md).
+# GitHub issue forms: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/syntax-for-issue-forms
+name: "FortiClient: test report / reporte de prueba"
+description: "Tell us how Kongtrol worked with your FortiClient version. / Cuéntanos cómo funcionó Kongtrol con tu versión de FortiClient."
+title: "[FortiClient] <version> — <works / falls back / fails>"
+labels: ["forticlient", "test-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste passwords, usernames, server addresses or tunnel names.** / **Nunca pegues contraseñas, usuarios, servidores ni nombres de túnel.**
+        Your report fills the support matrix: docs/forticlient-support.md.
+  - type: input
+    id: version
+    attributes:
+      label: "FortiClient version / versión (kongtrol doctor → forticlient binary)"
+      placeholder: "7.2.4.0972"
+    validations:
+      required: true
+  - type: dropdown
+    id: edition
+    attributes:
+      label: "Edition / edición"
+      options:
+        - "FortiClient VPN (free, VPN-only / gratis, solo VPN)"
+        - "FortiClient managed by EMS / administrado por EMS"
+        - "Don't know / no sé"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: "OS and display language / sistema y su idioma"
+      placeholder: "Windows 11 23H2, español"
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: "`kongtrol doctor` lines for forticlient (binary + auto-connect)"
+      render: text
+    validations:
+      required: true
+  - type: dropdown
+    id: connect
+    attributes:
+      label: "`kongtrol up` result / resultado"
+      options:
+        - "Connected automatically / conectó solo"
+        - "Opened FortiClient and waited; I connected / abrió FortiClient y esperó; conecté yo"
+        - "Failed / falló"
+    validations:
+      required: true
+  - type: dropdown
+    id: disconnect
+    attributes:
+      label: "`kongtrol down` result / resultado"
+      options:
+        - "Disconnected automatically / desconectó solo"
+        - "Asked me to disconnect in FortiClient / me pidió desconectar en FortiClient"
+        - "Failed / falló"
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: "What you saw (dialogs, error line) / qué viste (diálogos, línea de error)"
+      description: "Screenshots only with credentials and servers hidden. / Capturas solo con credenciales y servidores ocultos."
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: "I removed passwords, usernames, servers and tunnel names. / Quité contraseñas, usuarios, servidores y nombres de túnel."
+          required: true

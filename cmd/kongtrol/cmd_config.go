@@ -9,29 +9,19 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
 
-// ── audit ─────────────────────────────────────────────────────────────────────
-
-var auditCmd = &cobra.Command{
-	Use:   "audit",
-	Short: "Manage the audit log",
-}
-
 // ── config ────────────────────────────────────────────────────────────────────
 
 var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Config management",
+	Use: "config",
 }
 
 var configFavCmd = &cobra.Command{
 	Use:     "favorites",
 	Aliases: []string{"fav"},
-	Short:   "Manage favorite VPN profiles",
 }
 
 var configFavListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List favorite profiles",
+	Use: "list",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := loadPreferences()
 		if err != nil {
@@ -54,9 +44,8 @@ var configFavListCmd = &cobra.Command{
 }
 
 var configFavAddCmd = &cobra.Command{
-	Use:   "add <profile>",
-	Short: "Add favorite profile",
-	Args:  cobra.ExactArgs(1),
+	Use:  "add <profile>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := addFavorite(args[0]); err != nil {
 			return err
@@ -67,9 +56,8 @@ var configFavAddCmd = &cobra.Command{
 }
 
 var configFavRemoveCmd = &cobra.Command{
-	Use:   "remove <profile>",
-	Short: "Remove favorite profile",
-	Args:  cobra.ExactArgs(1),
+	Use:  "remove <profile>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := removeFavorite(args[0]); err != nil {
 			return err
@@ -80,13 +68,11 @@ var configFavRemoveCmd = &cobra.Command{
 }
 
 var configDefaultsCmd = &cobra.Command{
-	Use:   "defaults",
-	Short: "Manage default CLI behavior",
+	Use: "defaults",
 }
 
 var configDefaultsShowCmd = &cobra.Command{
-	Use:   "show",
-	Short: "Show defaults",
+	Use: "show",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := loadPreferences()
 		if err != nil {
@@ -107,9 +93,8 @@ var configDefaultsShowCmd = &cobra.Command{
 }
 
 var configDefaultsSetGroupCmd = &cobra.Command{
-	Use:   "set-group <group>",
-	Short: "Set default group for 'kongtrol up'",
-	Args:  cobra.ExactArgs(1),
+	Use:  "set-group <group>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := loadPreferences()
 		if err != nil {
@@ -125,9 +110,8 @@ var configDefaultsSetGroupCmd = &cobra.Command{
 }
 
 var configLangCmd = &cobra.Command{
-	Use:   "lang <es|en>",
-	Short: "Set the CLI display language",
-	Args:  cobra.ExactArgs(1),
+	Use:  "lang <es|en>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		lang := strings.ToLower(strings.TrimSpace(args[0]))
 		if lang != "es" && lang != "en" {
@@ -147,13 +131,11 @@ var configLangCmd = &cobra.Command{
 }
 
 var configDashboardCmd = &cobra.Command{
-	Use:   "dashboard",
-	Short: "Manage the dashboard's local bind/port override",
+	Use: "dashboard",
 }
 
 var configDashboardShowCmd = &cobra.Command{
-	Use:   "show",
-	Short: "Show the dashboard bind/port override",
+	Use: "show",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := loadPreferences()
 		if err != nil {
@@ -180,9 +162,8 @@ var configDashboardShowCmd = &cobra.Command{
 }
 
 var configDashboardSetPortCmd = &cobra.Command{
-	Use:   "set-port <port>",
-	Short: "Override the dashboard's local port (applies on next restart)",
-	Args:  cobra.ExactArgs(1),
+	Use:  "set-port <port>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		port, err := strconv.Atoi(args[0])
 		if err != nil || port <= 0 || port > 65535 {
@@ -202,9 +183,8 @@ var configDashboardSetPortCmd = &cobra.Command{
 }
 
 var configDashboardSetBindCmd = &cobra.Command{
-	Use:   "set-bind <address>",
-	Short: "Override the dashboard's bind address (applies on next restart)",
-	Args:  cobra.ExactArgs(1),
+	Use:  "set-bind <address>",
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		bind := strings.TrimSpace(args[0])
 		if err := config.ValidateDashboardBind(bind); err != nil {
@@ -224,8 +204,7 @@ var configDashboardSetBindCmd = &cobra.Command{
 }
 
 var configDashboardResetCmd = &cobra.Command{
-	Use:   "reset",
-	Short: "Clear the dashboard bind/port override",
+	Use: "reset",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := loadPreferences()
 		if err != nil {
@@ -242,8 +221,7 @@ var configDashboardResetCmd = &cobra.Command{
 }
 
 var configValidateCmd = &cobra.Command{
-	Use:   "validate",
-	Short: "Validate kongtrol.yaml without connecting",
+	Use: "validate",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		var spin *spinner
 		if !outputJSON {
@@ -256,7 +234,7 @@ var configValidateCmd = &cobra.Command{
 			spin.Stop()
 		}
 		if err != nil {
-			return err
+			return localizeConfigErr(err)
 		}
 		if outputJSON {
 			return emitJSON(struct {

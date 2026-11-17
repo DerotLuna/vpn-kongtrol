@@ -23,8 +23,7 @@ var (
 )
 
 var logsCmd = &cobra.Command{
-	Use:   "logs",
-	Short: "Stream operational events",
+	Use: "logs",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cfg == nil || cfg.Security.AuditLog.Path == "" {
 			return fmt.Errorf("%s", ct("cli.logs.audit_not_configured"))
@@ -58,7 +57,6 @@ var logsCmd = &cobra.Command{
 }
 
 func init() {
-	logsCmd.Short = ct("cli.logs.short")
 	logsCmd.Flags().BoolVarP(&logsFollow, "follow", "f", false, ct("cli.logs.flag.follow"))
 	logsCmd.Flags().IntVar(&logsTail, "tail", 100, ct("cli.logs.flag.tail"))
 	logsCmd.Flags().StringVar(&logsProfile, "profile", "", ct("cli.logs.flag.profile"))

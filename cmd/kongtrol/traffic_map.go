@@ -11,9 +11,7 @@ import (
 // ── map ──────────────────────────────────────────────────────────────────────
 
 var mapCmd = &cobra.Command{
-	Use:   "map [target|app:<exe>]",
-	Short: "Show traffic routing map — which VPN handles each destination",
-	Long:  "Display all policy rules and their resolved IPs. Optionally query a specific IP/domain or app:<executable>.",
+	Use: "map [target|app:<exe>]",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if engine == nil {
 			return fmt.Errorf("%s", ct("cli.policy.engine_not_loaded"))

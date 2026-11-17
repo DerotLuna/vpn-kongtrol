@@ -7,7 +7,7 @@
 | VPNAdapter interface + registry | ✅ |
 | Config schema · loader · env expansion · `~/` paths | ✅ |
 | OS keychain (Win Credential Manager / macOS Keychain / libsecret) | ✅ |
-| FortiClient 6.4.x (CLI + passive fallback for EMS-locked installs) | ✅ |
+| FortiClient: version detection + per-version auto-connect (6.4 verified, 7.x FortiVPN.exe reported) + attach fallback for any version ([matrix](forticlient-support.md)) | ✅ |
 | OpenVPN (multi-instance · dynamic management port) | ✅ |
 | ProtonVPN CLI (JSON v3.10+ · human-readable fallback) | ✅ |
 | Cisco AnyConnect / Secure Client | ✅ |
@@ -22,9 +22,9 @@
 | DNS guard (netsh · resolv.conf · networksetup) — timeout-bounded | ✅ |
 | Transparent split-DNS (policy domain host injection) | ✅ |
 | Auto-reconnect watchdog (exponential backoff, timeout-bounded reconnects) | ✅ |
-| Health-check + priority failover | ✅ |
+| Health-check (notifies) + failover only to declared backup profiles (`failover:`, ADR-0018) | ✅ |
 | Profile scheduler (weekday/time windows) | ✅ |
-| Leak detection (periodic · configurable action) | ✅ |
+| Leak detection (opt-in public IP lookup on connect/disconnect and on demand · configurable action) | ✅ |
 | Audit log (append-only · HMAC-SHA256 signed, fsnotify-based live tail) | ✅ |
 | Metrics collector + persistent profile history (event-driven change broadcast) | ✅ |
 | Embedded web dashboard — full management UI (dark/light theme, sidebar nav, live WebSocket feed) | ✅ |

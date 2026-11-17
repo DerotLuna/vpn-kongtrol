@@ -1,223 +1,39 @@
 package main
 
 import (
-	"os"
+	"context"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
+	"time"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 // ── VPN client detection ──────────────────────────────────────────────────────
+//
+// Where each client lives per OS is shared with the connect preflight and
+// doctor in internal/vpndetect; this file only adds the wizard's version label.
 
 type detectedVPN struct {
-	label   string
-	version string
-}
-
-// vpnProbe describes how to locate one VPN client.
-type vpnProbe struct {
 	label       string
-	adapterKey  string
-	binaries    []string
-	searchDirs  []string
-	searchDepth int
-	exeNames    []string
-	args        []string
-}
-
-var vpnProbes = []vpnProbe{
-	{
-		label:      "FortiClient",
-		adapterKey: "forticlient",
-		binaries:   []string{"fortivpn", "forticlientsslvpn", "FortiClient"},
-		searchDirs: []string{
-			`C:\Program Files\Fortinet`,
-			`C:\Program Files (x86)\Fortinet`,
-			"/opt/forticlient",
-			"/opt/fortinet/forticlient",
-			"/usr/share/forticlient",
-			"/usr/lib/forticlient",
-			"/Applications/FortiClient.app/Contents/MacOS",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"FortiClient.exe", "FortiClient", "forticlient"},
-		args:        []string{},
-	},
-	{
-		label:      "OpenVPN",
-		adapterKey: "openvpn",
-		binaries:   []string{"openvpn"},
-		searchDirs: []string{
-			`C:\Program Files\OpenVPN`,
-			`C:\Program Files (x86)\OpenVPN`,
-			`C:\Program Files\OpenVPN Connect`,
-			`C:\Program Files (x86)\OpenVPN Connect`,
-			"/usr/sbin",
-			"/usr/local/sbin",
-			"/opt/homebrew/sbin",
-			"/Applications/Tunnelblick.app/Contents/Resources",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"openvpn.exe", "OpenVPNConnect.exe", "openvpn"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "ProtonVPN",
-		adapterKey: "protonvpn",
-		binaries:   []string{"protonvpn-cli", "protonvpn"},
-		searchDirs: []string{
-			`C:\Program Files\Proton`,
-			`C:\Program Files (x86)\Proton`,
-			`C:\Program Files (x86)\Proton Technologies`,
-			"/usr/bin",
-			"/usr/local/bin",
-			"/opt/protonvpn",
-			"/Applications/ProtonVPN.app/Contents/MacOS",
-		},
-		searchDepth: 3,
-		exeNames:    []string{"ProtonVPN.Launcher.exe", "ProtonVPN.Client.exe", "ProtonVPN.exe", "protonvpn-cli", "protonvpn"},
-		args:        []string{},
-	},
-	{
-		label:      "Cisco AnyConnect",
-		adapterKey: "ciscoanyconnect",
-		binaries:   []string{"vpn", "vpncli"},
-		searchDirs: []string{
-			"/opt/cisco",
-			`C:\Program Files\Cisco`,
-			`C:\Program Files (x86)\Cisco`,
-		},
-		searchDepth: 3,
-		exeNames:    []string{"vpncli.exe", "vpncli", "vpn"},
-		args:        []string{"-v"},
-	},
-	{
-		label:      "WireGuard",
-		adapterKey: "wireguard",
-		binaries:   []string{"wg", "wg-quick", "wireguard"},
-		searchDirs: []string{
-			`C:\Program Files\WireGuard`,
-			"/usr/local/bin",
-			"/opt/homebrew/bin",
-			"/Applications/WireGuard.app/Contents/MacOS",
-		},
-		searchDepth: 1,
-		exeNames:    []string{"wireguard.exe", "wg.exe", "wg", "wireguard"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "GlobalProtect",
-		adapterKey: "globalprotect",
-		binaries:   []string{"globalprotect", "pangpcrypt"},
-		searchDirs: []string{
-			"/opt/paloaltonetworks",
-			`C:\Program Files\Palo Alto Networks`,
-			"/Applications/GlobalProtect.app/Contents/MacOS",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"PanGPA.exe", "pangpcrypt.exe", "GlobalProtect", "globalprotect", "pangpcrypt"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "Tailscale",
-		adapterKey: "tailscale",
-		binaries:   []string{"tailscale"},
-		searchDirs: []string{
-			`C:\Program Files\Tailscale`,
-			"/Applications/Tailscale.app/Contents/MacOS",
-			"/snap/tailscale/current/bin",
-		},
-		searchDepth: 1,
-		exeNames:    []string{"tailscale.exe", "tailscale"},
-		args:        []string{"version"},
-	},
-	{
-		label:      "Cloudflare WARP",
-		adapterKey: "cloudflarewarp",
-		binaries:   []string{"warp-cli"},
-		searchDirs: []string{
-			`C:\Program Files\Cloudflare\Cloudflare WARP`,
-			`C:\Program Files (x86)\Cloudflare\Cloudflare WARP`,
-			"/Applications/Cloudflare WARP.app/Contents/MacOS",
-			"/usr/bin",
-			"/usr/local/bin",
-		},
-		searchDepth: 1,
-		exeNames:    []string{"warp-cli.exe", "warp-cli"},
-		args:        []string{"--version"},
-	},
-	{
-		label:      "TunnelBear",
-		adapterKey: "",
-		binaries:   []string{"tunnelbear"},
-		searchDirs: []string{
-			`C:\Program Files\TunnelBear`,
-			`C:\Program Files (x86)\TunnelBear`,
-			"/Applications/TunnelBear.app/Contents/MacOS",
-		},
-		searchDepth: 2,
-		exeNames:    []string{"TunnelBear.exe", "TunnelBear"},
-		args:        []string{"--version"},
-	},
+	version     string
+	adapterType string // "" when Kongtrol has no adapter for the client
+	path        string // detected binary, offered as binary_path default
 }
 
 func detectInstalledVPNs() []detectedVPN {
-	var found []detectedVPN
-	for _, p := range vpnProbes {
-		if d, ok := resolveProbe(p); ok {
-			found = append(found, d)
-		}
+	clients := vpndetect.DetectAll()
+	found := make([]detectedVPN, 0, len(clients))
+	for _, c := range clients {
+		found = append(found, detectedVPN{
+			label:       c.Label,
+			version:     versionOf(c.Path, c.VersionArgs),
+			adapterType: c.AdapterType,
+			path:        c.Path,
+		})
 	}
 	return found
-}
-
-func resolveProbe(p vpnProbe) (detectedVPN, bool) {
-	for _, bin := range p.binaries {
-		path, err := exec.LookPath(bin)
-		if err != nil {
-			if _, statErr := os.Stat(bin); statErr != nil {
-				continue
-			}
-			path = bin
-		}
-		return detectedVPN{label: p.label, version: versionOf(path, p.args)}, true
-	}
-
-	var candidates []string
-	for _, dir := range p.searchDirs {
-		walkExe(dir, p.exeNames, p.searchDepth, &candidates)
-	}
-	if len(candidates) == 0 {
-		return detectedVPN{}, false
-	}
-	sort.Strings(candidates)
-	path := candidates[len(candidates)-1]
-	return detectedVPN{label: p.label, version: versionOf(path, p.args)}, true
-}
-
-func walkExe(dir string, names []string, depth int, out *[]string) {
-	if depth < 0 {
-		return
-	}
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return
-	}
-	for _, e := range entries {
-		full := filepath.Join(dir, e.Name())
-		if e.IsDir() {
-			walkExe(full, names, depth-1, out)
-		} else {
-			lower := strings.ToLower(e.Name())
-			for _, want := range names {
-				if lower == strings.ToLower(want) {
-					*out = append(*out, full)
-					break
-				}
-			}
-		}
-	}
 }
 
 func versionOf(path string, args []string) string {
@@ -241,7 +57,9 @@ func versionOf(path string, args []string) string {
 }
 
 func runVersion(path string, args []string) string {
-	out, err := exec.Command(path, args...).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, path, args...).Output()
 	if err != nil || len(out) == 0 {
 		return ""
 	}
@@ -263,15 +81,38 @@ func runVersion(path string, args []string) string {
 	return ""
 }
 
-// detectedAdapterKeys builds a set of adapterKey values from the detected list.
+// detectedAdapterKeys builds a set of adapter types from the detected list.
 func detectedAdapterKeys(detected []detectedVPN) map[string]bool {
 	keys := make(map[string]bool)
 	for _, d := range detected {
-		for _, p := range vpnProbes {
-			if p.label == d.label && p.adapterKey != "" {
-				keys[p.adapterKey] = true
-			}
+		if d.adapterType != "" {
+			keys[d.adapterType] = true
 		}
 	}
 	return keys
+}
+
+// detectedBinaryPath returns the binary detected for an adapter type, or "".
+func detectedBinaryPath(detected []detectedVPN, adapterType string) string {
+	for _, d := range detected {
+		if d.adapterType == adapterType && d.path != "" {
+			return d.path
+		}
+	}
+	return ""
+}
+
+// binaryPathPlan decides how the wizard handles binary_path for one profile:
+// whether to ask at all, and the value to prefill. The detected path is kept
+// as the suggestion; when the adapter already finds that binary on its own
+// (PATH or its standard install location) nothing is asked and nothing is
+// written, to keep the YAML free of redundant overrides.
+func binaryPathPlan(adapterType, detectedPath string, isStandard func(adapterType, path string) bool) (ask bool, suggestion string) {
+	if adapterType == "cloudflarewarp" {
+		return false, ""
+	}
+	if detectedPath != "" && isStandard(adapterType, detectedPath) {
+		return false, ""
+	}
+	return true, detectedPath
 }

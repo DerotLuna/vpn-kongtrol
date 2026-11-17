@@ -2,132 +2,115 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"log"
-	"os/exec"
-	"runtime"
-	"time"
+	"os"
+	"sync"
+	"sync/atomic"
 
-	"github.com/vpn-kongtrol/kongtrol/internal/api"
-	"github.com/vpn-kongtrol/kongtrol/internal/app"
+	"fyne.io/systray"
+
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
-	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
-	"github.com/vpn-kongtrol/kongtrol/internal/policy"
-	"github.com/vpn-kongtrol/kongtrol/internal/routing"
-	"github.com/vpn-kongtrol/kongtrol/internal/security"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
-	"go.uber.org/zap"
 )
 
-func initDaemon() error {
+// errNoConfig marks the first run: no kongtrol.yaml exists yet.
+var errNoConfig = errors.New("no config file found")
+
+// configExists reports whether any default config file exists.
+func configExists() bool {
+	for _, candidate := range config.DefaultPaths() {
+		if _, err := os.Stat(candidate); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// initClient loads the config (for the API address and the menu's
+// profiles/groups) with the machine-local dashboard bind/port preference
+// applied, the local API token, and locates the kongtrol CLI the tray
+// spawns the daemon with. With no config at all it returns errNoConfig.
+func initClient() error {
 	var err error
+	// The CLI is looked up first so a first-run tray can still offer to
+	// open a terminal running `kongtrol init`.
+	kongtrolExe, err = daemonctl.FindKongtrol(trayLang)
+	if !configExists() {
+		return errNoConfig
+	}
+	if err != nil {
+		return err
+	}
 	cfg, err = config.Load("")
 	if err != nil {
 		return err
 	}
-
-	adapters = make(map[string]vpn.VPNAdapter)
-	for name, vpnCfg := range cfg.VPNs {
-		a, err := vpn.New(vpnCfg.Type)
-		if err != nil {
-			return fmt.Errorf("profile %q: %w", name, err)
-		}
-		adapters[name] = a
-	}
-
-	routeMgr := routing.NewRouteManager()
-	ks = security.NewKillSwitch()
-
-	if cfg.Security.LeakDetection.Enabled ||
-		cfg.Security.KillSwitch.Enabled ||
-		cfg.Security.DNSGuard.Enabled {
-		leak = security.NewLeakTester(60*time.Second, cfg.Security.IntegrityCheck.ExpectedIPs)
-	}
-
-	eng, _ := policy.New(cfg)
-
-	col = monitor.NewCollector(adapters)
-	col.Start(5 * time.Second)
-
-	zapLog, err := zap.NewProduction()
-	if err != nil {
-		return fmt.Errorf("create logger: %w", err)
-	}
-	watchdog = monitor.NewWatchdog(adapters, func(ctx context.Context, name string) error {
-		return trayConnect(ctx, name)
-	}, zapLog)
-	dnsMgr = monitor.NewDNSManager(security.NewDNSGuard(), zapLog)
-	resolver = monitor.NewPolicyResolver(cfg, routeMgr, zapLog)
-	killSvc = app.NewKillSwitchService(cfg, adapters, ks)
-	buildProfileService := func() {
-		profileSvc.Store(app.NewProfileService(app.ProfileServiceDeps{
-			Cfg:            cfg,
-			Adapters:       adapters,
-			Watchdog:       watchdog,
-			PolicyResolver: resolver,
-			DNSManager:     dnsMgr,
-			ApplyKill:      killSvc.Apply,
-			EmitWarn:       func(message string) { log.Println(message) },
-			EmitStderr:     func(message string) { log.Println(message) },
-			LogAudit: func(level, action, profile, message string) {
-				log.Printf("%s %s profile=%s %s", level, action, profile, message)
-			},
-		}))
-	}
-	buildProfileService()
-	daemonCtx, cancel := context.WithCancel(context.Background())
-	daemonCancel = cancel
-	watchdog.Start(daemonCtx)
-	resolver.Start(daemonCtx)
-	if leak != nil {
-		leak.Start(daemonCtx, func(result security.LeakResult) {
-			if result.HasLeak {
-				log.Printf("kongtrol-tray: leak detected: %s", result.Reason)
-			}
-		})
-	}
-	apiToken, err := config.LoadOrCreateAPIToken()
+	config.ApplyDashboardPreferences(cfg)
+	token, err := config.LoadOrCreateAPIToken()
 	if err != nil {
 		return err
 	}
-
-	srv = api.NewServer(
-		cfg.Monitor.Dashboard.Bind,
-		cfg.Monitor.Dashboard.Port,
-		adapters,
-		col,
-		routeMgr,
-		ks,
-		cfg.Security.KillSwitch.Enabled,
-		leak,
-		eng,
-		resolver,
-		"", // config path not used by tray policy editor
-		func(newCfg *config.Config, _ *policy.Engine) {
-			cfg = newCfg
-			killSvc = app.NewKillSwitchService(cfg, adapters, ks)
-			buildProfileService()
-		},
-		func(*config.Config) {
-			_ = killSvc.Apply()
-			applyTrayDNSGuardState()
-		},
-		dnsMgr,
-		cfg.Security.DNSGuard.Enabled,
-		trayConnect,
-		trayDisconnect,
-		apiToken,
-		nil, // graceful /api/v1/shutdown not wired into the tray's systray.Quit() lifecycle
-	)
-	return srv.Start()
+	client = daemonctl.New(daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port), token)
+	return nil
 }
 
+// ensureMu serializes ensureDaemon so concurrent clicks don't each wait on
+// their own spawn; the shared spawn lock already prevents two daemons.
+var ensureMu sync.Mutex
+
+// ensureDaemon makes sure the daemon answers, spawning it detached exactly
+// like `kongtrol up` does when it doesn't.
+func ensureDaemon() error {
+	ensureMu.Lock()
+	defer ensureMu.Unlock()
+	sp := daemonctl.Spawner{
+		Probe: client.Probe,
+		Spawn: func(logPath string) (<-chan error, error) {
+			return daemonctl.Spawn(kongtrolExe, []string{"daemon", "--plain"}, logPath, trayLang)
+		},
+		Lang: trayLang,
+	}
+	started, err := sp.Ensure(context.Background())
+	if err != nil {
+		var se *daemonctl.StartError
+		if errors.As(err, &se) {
+			for _, line := range se.LogTail {
+				log.Printf("kongtrol-tray: daemon.log: %s", line)
+			}
+		}
+		return err
+	}
+	if started {
+		log.Printf("kongtrol-tray: started kongtrol daemon (%s)", client.Base)
+	}
+	return nil
+}
+
+// tunnelStatus returns the daemon's current status for profile name.
+func tunnelStatus(name string) (vpn.Status, error) {
+	statuses, err := client.Statuses()
+	if err != nil {
+		return "", err
+	}
+	return statuses[name], nil
+}
+
+// toggleProfile disconnects a connected profile, or asks the daemon to
+// connect it (asynchronously; a failure shows up as the tunnel's last
+// error on the next status refresh).
 func toggleProfile(name string) {
-	adapter, ok := adapters[name]
-	if !ok {
+	if err := ensureDaemon(); err != nil {
+		notifyError(trayT("tray.err_start"), err)
 		return
 	}
-	if adapter.Status().Normalize() == vpn.StatusConnected {
+	st, err := tunnelStatus(name)
+	if err != nil {
+		notifyError(trayT("tray.err_unreachable"), err)
+		return
+	}
+	if st == vpn.StatusConnected {
 		disconnectProfile(name)
 	} else {
 		connectProfile(name)
@@ -136,18 +119,25 @@ func toggleProfile(name string) {
 
 // toggleGroup connects every disconnected profile in the group, unless every
 // profile in it is already connected, in which case it disconnects all of
-// them — mirroring the dashboard's per-group connect/disconnect behavior
-// (internal/api/handlers.go handleConnectGroup/handleDisconnectGroup) but as
-// a single click since the tray menu has no separate connect/disconnect
-// buttons per group.
+// them — a single click, since the tray menu has no separate
+// connect/disconnect buttons per group.
 func toggleGroup(name string) {
 	g, ok := cfg.Groups[name]
 	if !ok {
 		return
 	}
+	if err := ensureDaemon(); err != nil {
+		notifyError(trayT("tray.err_start"), err)
+		return
+	}
+	statuses, err := client.Statuses()
+	if err != nil {
+		notifyError(trayT("tray.err_unreachable"), err)
+		return
+	}
 	allConnected := true
 	for _, p := range g.Profiles {
-		if a, ok := adapters[p]; !ok || a.Status().Normalize() != vpn.StatusConnected {
+		if statuses[p] != vpn.StatusConnected {
 			allConnected = false
 			break
 		}
@@ -155,57 +145,110 @@ func toggleGroup(name string) {
 	for _, p := range g.Profiles {
 		if allConnected {
 			go disconnectProfile(p)
-		} else {
+		} else if statuses[p] != vpn.StatusConnected {
 			go connectProfile(p)
 		}
 	}
 }
 
 func connectProfile(name string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	if err := trayConnect(ctx, name); err != nil {
-		log.Printf("kongtrol-tray: connect %q: %v", name, err)
+	if _, err := client.Connect(name); err != nil {
+		notifyError(trayF("tray.err_connect", name), err)
 	}
 }
 
 func disconnectProfile(name string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-	if err := trayDisconnect(ctx, name); err != nil {
-		log.Printf("kongtrol-tray: disconnect %q: %v", name, err)
+	// A provider app without a CLI answers ErrManualDisconnect: not an
+	// error, the menu item shows "Disconnect in <App>" until it drops.
+	if err := client.Disconnect(name); err != nil && !errors.Is(err, vpn.ErrManualDisconnect) {
+		notifyError(trayF("tray.err_disconnect", name), err)
 	}
 }
 
-func trayConnect(ctx context.Context, name string) error {
-	svc := profileSvc.Load()
-	if svc == nil {
-		return fmt.Errorf("profile service unavailable")
+// openDashboard starts the daemon if needed and opens its page.
+func openDashboard() {
+	if err := ensureDaemon(); err != nil {
+		notifyError(trayT("tray.err_start"), err)
+		return
 	}
-	return svc.Connect(ctx, name)
+	if err := openBrowser(client.Base); err != nil {
+		notifyError(trayF("tray.err_browser", client.Base), err)
+	}
 }
 
-func trayDisconnect(ctx context.Context, name string) error {
-	svc := profileSvc.Load()
-	if svc == nil {
-		return fmt.Errorf("profile service unavailable")
+// stopKongtrol is the tray's "quit and disconnect everything": it asks the
+// daemon to disconnect all tunnels and stop, then closes the tray. If the
+// shutdown request fails the tray stays open so the user sees it failed.
+func stopKongtrol() {
+	if client.Probe() {
+		if err := client.Shutdown(); err != nil {
+			notifyError(trayT("tray.err_shutdown"), err)
+			return
+		}
+		log.Println("kongtrol-tray: asked the kongtrol daemon to disconnect everything and stop")
 	}
-	return svc.Disconnect(ctx, name)
+	systray.Quit()
 }
 
-// setIcon updates the system tray icon based on connection state.
-// Connected: full logo. Disconnected: dimmed (same icon — OS handles dimming).
-// Icon is resized to 32×32 for systray compatibility.
+var (
+	// helperItem is the "Install helper (once)" menu item; nil until the
+	// full menu is built.
+	helperItem atomic.Pointer[systray.MenuItem]
+	// helperInstalling is true while an install waits on the OS prompt.
+	helperInstalling atomic.Bool
+)
 
-func openBrowser(url string) {
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "windows":
-		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
-	case "darwin":
-		cmd = exec.Command("open", url)
+// refreshHelperItem shows the install item only while the daemon says the
+// privileged helper is missing. An older daemon without the endpoint
+// hides it.
+func refreshHelperItem() {
+	item := helperItem.Load()
+	if item == nil {
+		return
+	}
+	if helperInstalling.Load() {
+		item.SetTitle(trayT("tray.helper_installing"))
+		item.Disable()
+		item.Show()
+		return
+	}
+	st, err := client.HelperStatus()
+	if err != nil || !st.NeedsInstall {
+		item.Hide()
+		return
+	}
+	item.SetTitle(trayT("tray.helper_install"))
+	item.SetTooltip(trayT("tray.helper_install_tip"))
+	item.Enable()
+	item.Show()
+}
+
+// installHelper asks the daemon to install the privileged helper: the OS
+// shows one permission prompt (UAC / macOS / polkit dialog), then the
+// status line says whether it worked and, if not, what to do.
+func installHelper() {
+	if !helperInstalling.CompareAndSwap(false, true) {
+		return
+	}
+	err := func() error {
+		defer helperInstalling.Store(false)
+		if err := ensureDaemon(); err != nil {
+			notifyError(trayT("tray.err_start"), err)
+			return nil
+		}
+		refreshHelperItem()
+		notifyError(trayT("tray.helper_installing"), nil)
+		_, err := client.InstallHelper(trayLang)
+		return err
+	}()
+	var he *daemonctl.HelperInstallError
+	switch {
+	case errors.As(err, &he):
+		notifyError(he.Message+" · "+he.Hint, err)
+	case err != nil:
+		notifyError(trayT("tray.helper_install_failed"), err)
 	default:
-		cmd = exec.Command("xdg-open", url)
+		notifyError(trayT("tray.helper_installed"), nil)
 	}
-	_ = cmd.Start()
+	refreshHelperItem()
 }
