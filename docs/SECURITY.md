@@ -145,6 +145,10 @@ uses. Nothing here is exposed on the network by default — the dashboard only b
 loopback addresses. Non-loopback overrides are rejected. Native clients authenticate with the
 mode-`0600` capability in `~/.kongtrol/api-token`; the dashboard receives the same capability in
 an HttpOnly, SameSite=Strict cookie and state-changing cross-origin requests are rejected.
+The cookie is deliberately not `Secure`: the dashboard is plain HTTP on loopback only, and Safari
+has rejected Secure cookies over HTTP even on loopback (https://flaviocopes.com/cookie-not-being-set-in-safari/,
+https://bugs.webkit.org/show_bug.cgi?id=281149), which would lock Safari users out. The related
+CodeQL alert is dismissed with this justification.
 
 ## DNS guard recovery
 

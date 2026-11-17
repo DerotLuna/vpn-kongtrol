@@ -121,10 +121,18 @@ func TestWGRemove_AdoptionRules(t *testing.T) {
 }
 
 func TestWGSetAllowedIPs_Adopts(t *testing.T) {
-	s := stubWG(t, func(n string) (bool, error) { return n == "us-content-US-FREE-1", nil })
+	testWGSetAllowedIPsAdopts(t, "us-content-1") // valid on every OS (Linux IFNAMSIZ = 15)
+}
+
+// testWGSetAllowedIPsAdopts checks that allowed-IPs can be set on a tunnel Kongtrol
+// did not start (adoption). Windows-only names longer than 15 chars are covered in
+// wgadopt_windows_test.go.
+func testWGSetAllowedIPsAdopts(t *testing.T, name string) {
+	t.Helper()
+	s := stubWG(t, func(n string) (bool, error) { return n == name, nil })
 	l := NewLocal(LocalOptions{StateDir: t.TempDir()})
-	req := WGAllowedIPsRequest{Interface: "us-content-US-FREE-1", PeerPublicKey: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
-		AllowedIPs: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, ConfigPath: profileConf(t, "us-content-US-FREE-1")}
+	req := WGAllowedIPsRequest{Interface: name, PeerPublicKey: "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+		AllowedIPs: []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")}, ConfigPath: profileConf(t, name)}
 	if err := l.WGSetAllowedIPs(context.Background(), req); err != nil {
 		t.Fatal(err)
 	}

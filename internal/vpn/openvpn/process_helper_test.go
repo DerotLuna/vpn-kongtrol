@@ -157,7 +157,15 @@ func TestStartViaHelper_AuthLogAndStop(t *testing.T) {
 	if !h.stopped || !p.hasExited() {
 		t.Fatal("stop did not end the helper session")
 	}
-	cmds := strings.Join(m.sent(), "\n")
+	// The fake management server records commands asynchronously; on slow CI
+	// runners "signal SIGTERM" can land a moment after stop() returns.
+	var cmds string
+	for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+		cmds = strings.Join(m.sent(), "\n")
+		if strings.Contains(cmds, `username "Auth" alice`) && strings.Contains(cmds, "signal SIGTERM") {
+			break
+		}
+	}
 	if !strings.Contains(cmds, `username "Auth" alice`) || !strings.Contains(cmds, "signal SIGTERM") {
 		t.Fatalf("management commands: %s", cmds)
 	}
