@@ -106,6 +106,9 @@ func (d *doctor) checkBinaries(cfg *config.Config) {
 		} else {
 			d.ok(label, ver)
 		}
+		if adapterType == "forticlient" {
+			d.checkFortiSupport(cfg)
+		}
 	}
 }
 

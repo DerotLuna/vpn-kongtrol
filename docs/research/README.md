@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.1.0 · 2026-11-17
+Version 1.2.0 · 2026-11-17
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -25,6 +25,8 @@ reasoned but unverified.
 | [2026-11-17-security-txt](2026-11-17-security-txt.md) | RFC 9116 `security.txt` | ADR-0016 |
 | [2026-11-17-agent-instructions](2026-11-17-agent-instructions.md) | `AGENTS.md` and Claude Code imports | ADR-0002 |
 | [2026-11-17-vpn-failover](2026-11-17-vpn-failover.md) | How VPN clients define failover (OpenVPN, NetworkManager, WireGuard, Cisco) | ADR-0018 |
+| [2026-11-17-forticlient-versions](2026-11-17-forticlient-versions.md) | FortiClient versions, command lines, version detection, test installers | ADR-0020 |
+| [2026-11-17-go-release-support](2026-11-17-go-release-support.md) | Go release support policy and the go.mod `toolchain` line | ADR-0019 |
 
 ## Template
 

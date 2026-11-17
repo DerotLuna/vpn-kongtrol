@@ -2,12 +2,14 @@
 // in attach mode (internal/vpn/appattach): the tunnel is found by its
 // network interface however it came up.
 //
-// Automatic connect (step 2, best effort): on Windows GUI automation of the
-// FortiClient window (EMS policies often block /vpnconnect); on Linux /
-// macOS the forticlientsslvpn CLI. When it fails (e.g. a FortiClient
-// version changed the window layout) Kongtrol opens FortiClient and waits
-// for the user to connect there. Disconnect: GUI automation + CLI; if the
-// tunnel is still up the user is asked to disconnect in FortiClient.
+// Automatic connect (step 2, best effort) depends on the installed version
+// (DetectInstall + SelectPlan, docs/forticlient-support.md): FortiVPN.exe
+// CLI + native auth dialog, GUI automation of the 6.4 window, the Linux /
+// macOS CLI, or none. When it fails (e.g. a FortiClient version changed the
+// window layout) Kongtrol opens FortiClient and waits for the user to
+// connect there, which works on any version. Disconnect uses the same
+// strategy; if the tunnel is still up the user is asked to disconnect in
+// FortiClient.
 package forticlient
 
 import (
@@ -15,7 +17,6 @@ import (
 	"errors"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -37,22 +38,41 @@ const (
 	disconnectGrace = 8 * time.Second
 )
 
+// installTTL is how long a DetectInstall result is reused (Capabilities
+// and Status build the provider often; FortiClient upgrades are rare).
+const installTTL = time.Minute
+
 // Adapter implements vpn.VPNAdapter for FortiClient.
 type Adapter struct {
 	mu      sync.RWMutex
 	lastCfg vpn.AdapterConfig
 	sess    appattach.Session
+
+	instMu  sync.Mutex
+	inst    Install
+	instFor string // app_path the cached install was detected for
+	instAt  time.Time
 }
 
 func (a *Adapter) Name() string { return "forticlient" }
 
+// Version is the installed FortiClient's ProductVersion on Windows, or
+// "unknown".
 func (a *Adapter) Version() string {
-	out, _ := versionCmd()
-	if out != "" {
-		lines := strings.SplitN(out, "\n", 2)
-		return strings.TrimSpace(lines[0])
+	if v := a.install("").Version; v != "" {
+		return v
 	}
-	return "6.4.x"
+	return "unknown"
+}
+
+// install returns DetectInstall(appPath), cached for installTTL.
+func (a *Adapter) install(appPath string) Install {
+	a.instMu.Lock()
+	defer a.instMu.Unlock()
+	if a.instAt.IsZero() || a.instFor != appPath || time.Since(a.instAt) > installTTL {
+		a.inst, a.instFor, a.instAt = DetectInstall(appPath), appPath, time.Now()
+	}
+	return a.inst
 }
 
 // Configure pre-seeds the profile config so Status() attaches to a tunnel
@@ -64,9 +84,10 @@ func (a *Adapter) Configure(cfg vpn.AdapterConfig) {
 	a.lastCfg = cfg
 }
 
-// Capabilities: FortiClient manages its own routing and is exclusive. GUI
-// automation / CLI is the automatic reconnect path, so only
-// auto_connect: false makes the watchdog notify instead.
+// Capabilities: FortiClient manages its own routing and is exclusive. The
+// version's automation strategy is the automatic reconnect path, so
+// auto_connect: false, or a version with no strategy (StrategyAttach),
+// makes the watchdog notify instead.
 func (a *Adapter) Capabilities() vpn.Capabilities {
 	p, o := a.provider("")
 	return vpn.Capabilities{
@@ -77,30 +98,55 @@ func (a *Adapter) Capabilities() vpn.Capabilities {
 	}
 }
 
-// provider builds the attach-mode description; password is only set
-// during Connect and captured by the AutoConnect closure for that call.
+// provider builds the attach-mode description for the installed version's
+// plan (SelectPlan); password is only set during Connect and captured by
+// the AutoConnect closure for that call.
 func (a *Adapter) provider(password string) (appattach.Provider, appattach.Options) {
 	a.mu.RLock()
 	cfg := a.lastCfg
 	a.mu.RUnlock()
 	o := appattach.ParseOptions(cfg.Extra)
 	allowInsecureCert, _ := strconv.ParseBool(cfg.Extra["allow_insecure_cert"])
+	inst := a.install(o.AppPath)
 	p := appattach.Provider{
-		App:      app,
-		Matcher:  matcher.WithOverride(o.Interface),
-		Location: cfg.TunnelName,
-		AutoWait: autoWait,
-		AutoConnect: func(ctx context.Context) error {
-			if runtime.GOOS == "windows" {
-				// GUI automation opens FortiClient, selects the tunnel,
-				// fills credentials and clicks Connect.
-				return tryGUIConnect(ctx, cfg.TunnelName, cfg.Username, password, allowInsecureCert)
-			}
-			return connectV6(cfg.TunnelName, cfg.Host, cfg.Port, cfg.CertPath, cfg.KeyPath, cfg.Username, password)
-		},
+		App:            app,
+		Matcher:        matcher.WithOverride(o.Interface),
+		Location:       cfg.TunnelName,
+		AutoWait:       autoWait,
 		DisconnectWait: 2 * time.Second,
 	}
-	p.Disconnect = func(ctx context.Context) error { return a.disconnectAutomated(ctx, p.Matcher, cfg.TunnelName) }
+	m := p.Matcher
+	tunnelUp := func() bool { _, ok := a.sess.Detect(m); return ok }
+
+	switch SelectPlan(runtime.GOOS, inst).Strategy {
+	case StrategyGUI64:
+		p.AutoConnect = func(ctx context.Context) error {
+			return guiConnect(ctx, inst.Path, cfg.TunnelName, cfg.Username, password, allowInsecureCert)
+		}
+		p.Disconnect = func(ctx context.Context) error {
+			return a.disconnectWith(ctx, m, func(ctx context.Context) {
+				_ = guiDisconnect(ctx, inst.Path)
+				_ = disconnectV6(inst.Path, cfg.TunnelName)
+			})
+		}
+	case StrategyFortiVPN:
+		p.AutoConnect = func(ctx context.Context) error {
+			return fortiVPNConnect(ctx, inst, cfg.TunnelName, cfg.Username, password, allowInsecureCert, tunnelUp)
+		}
+		p.Disconnect = func(ctx context.Context) error {
+			return a.disconnectWith(ctx, m, func(ctx context.Context) {
+				_ = fortiVPNDisconnect(ctx, inst.FortiVPN, cfg.TunnelName)
+			})
+		}
+	case StrategyCLI:
+		p.AutoConnect = func(context.Context) error {
+			return connectV6(inst.Path, cfg.Host, cfg.Port, cfg.CertPath, cfg.KeyPath, cfg.Username, password)
+		}
+		p.Disconnect = func(ctx context.Context) error {
+			return a.disconnectWith(ctx, m, func(context.Context) { _ = disconnectV6(inst.Path, cfg.TunnelName) })
+		}
+	default: // StrategyAttach: open FortiClient and wait for the user.
+	}
 	return p, o
 }
 
@@ -114,21 +160,21 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	return a.sess.Connect(ctx, p, o, cfg.OnAttach)
 }
 
-// disconnectAutomated tries GUI automation (Windows) and the CLI. An error
-// means the tunnel is still up; attach mode then shows the translated "disconnect
-// in FortiClient" guidance and waits. Force-disabling the network adapter
-// was dropped: it needs administrator rights, and the privileged helper
-// only runs a closed list of operations (no "disable any adapter" op).
-func (a *Adapter) disconnectAutomated(ctx context.Context, m appattach.Matcher, tunnelName string) error {
-	_ = tryGUIDisconnect(tunnelName)
-	_ = disconnectV6(tunnelName)
+// disconnectWith runs the strategy's disconnect steps, then waits for the
+// tunnel to drop. An error means the tunnel is still up; attach mode then
+// shows the translated "disconnect in FortiClient" guidance and waits.
+// Force-disabling the network adapter was dropped: it needs administrator
+// rights, and the privileged helper only runs a closed list of operations
+// (no "disable any adapter" op).
+func (a *Adapter) disconnectWith(ctx context.Context, m appattach.Matcher, steps func(context.Context)) error {
+	steps(ctx)
 	if a.sess.WaitDown(ctx, m, disconnectGrace) == nil {
 		return nil
 	}
 	if _, ok := a.sess.Detect(m); !ok {
 		return nil
 	}
-	return errors.New("forticlient: GUI and CLI disconnect did not drop the tunnel")
+	return errors.New("forticlient: automated disconnect did not drop the tunnel")
 }
 
 func (a *Adapter) Disconnect(ctx context.Context) error {

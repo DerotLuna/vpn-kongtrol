@@ -3,6 +3,7 @@ package forticlient
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -26,14 +28,22 @@ func runCmd(name string, args ...string) (string, error) {
 	return out.String(), err
 }
 
-// runCmdContext is runCmd bound to ctx: cancelling ctx kills the command.
-func runCmdContext(ctx context.Context, name string, args ...string) (string, error) {
+// runCmdInput is runCmd bound to ctx (cancelling ctx kills the command),
+// with stdin as the command's standard input.
+func runCmdInput(ctx context.Context, stdin, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Stdin = strings.NewReader(stdin)
 	vpn.HideChildWindow(cmd)
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
+	// A process the script starts (FortiClient) can inherit the output pipe;
+	// do not wait for it once the script itself has exited.
+	cmd.WaitDelay = 3 * time.Second
 	err := cmd.Run()
+	if errors.Is(err, exec.ErrWaitDelay) {
+		err = nil
+	}
 	return out.String(), err
 }
 

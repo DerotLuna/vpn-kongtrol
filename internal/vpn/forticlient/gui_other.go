@@ -4,16 +4,19 @@ package forticlient
 
 import (
 	"context"
-	"fmt"
+	"errors"
 )
 
-// guiConnect is not implemented on non-Windows platforms.
-// The tryGUIConnect wrapper in cli_v6.go returns an error before reaching this.
-func guiConnect(context.Context, string, string, string, bool) error {
-	return fmt.Errorf("forticlient gui: not supported on this platform")
+var errNoGUI = errors.New("forticlient gui: not supported on this platform")
+
+// GUI automation and FortiVPN.exe exist only on Windows; SelectPlan never
+// picks them elsewhere.
+func guiConnect(context.Context, string, string, string, string, bool) error { return errNoGUI }
+
+func guiDisconnect(context.Context, string) error { return errNoGUI }
+
+func fortiVPNConnect(context.Context, Install, string, string, string, bool, func() bool) error {
+	return errNoGUI
 }
 
-// guiDisconnect is not implemented on non-Windows platforms.
-func guiDisconnect(string) error {
-	return fmt.Errorf("forticlient gui: not supported on this platform")
-}
+func fortiVPNDisconnect(context.Context, string, string) error { return errNoGUI }
