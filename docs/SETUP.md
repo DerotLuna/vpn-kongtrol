@@ -200,7 +200,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Ruta al certificado cliente (ej. ~/.kongtrol/certs/oficina.crt): ~/.kongtrol/certs/office.crt
   Ruta a la clave privada (ej. ~/.kongtrol/certs/oficina.key): ~/.kongtrol/certs/office.key
   Usuario: tu_usuario
-  Prioridad (menor = preferido, 1–100) [10]:
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]:
   Contraseña para office (guardada en llavero del sistema, no en YAML): ****
 ```
 
@@ -215,7 +215,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Método de autenticación (certificate | credentials | certificate+credentials) [certificate]:
   Ruta al certificado cliente (vacío si está dentro del .ovpn):
   Ruta a la clave privada (vacío si está dentro del .ovpn):
-  Prioridad (menor = preferido, 1–100) [10]: 20
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]: 20
 ```
 
 > Si el `.ovpn` ya tiene `<cert>` y `<key>` embebidas, deja los paths en blanco.
@@ -228,7 +228,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Tipo [openvpn]:
   Ruta al archivo .ovpn (ej. ~/.kongtrol/configs/servidor.ovpn): ~/.kongtrol/configs/aws.ovpn
   Método de autenticación (certificate | credentials | certificate+credentials) [certificate]:
-  Prioridad (menor = preferido, 1–100) [10]: 20
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]: 20
 ```
 
 ### Perfil 4: ProtonVPN
@@ -240,7 +240,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Servidor / código de país (ej. US, NL, fastest) [fastest]: US
   Protocolo (wireguard | openvpn) [wireguard]:
   Usuario de ProtonVPN: tu_usuario_proton
-  Prioridad (menor = preferido, 1–100) [10]: 5
+  Prioridad entre reglas que se solapan (mayor = gana, 1–100) [10]: 5
   Contraseña para us-content (guardada en llavero del sistema, no en YAML): ****
 
 ¿Agregar un nuevo perfil VPN? [s/N]:
@@ -462,6 +462,28 @@ Si dos reglas cubren la misma IP, gana la más específica:
 |---|---|
 | `10.10.0.0/16` vía `office` | Todo `10.10.x.x` |
 | `10.10.1.0/24` vía `dev-server` | Solo `10.10.1.x` — gana sobre `/16` |
+
+Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera regla que coincide), desempata la `priority` del perfil: **gana el número mayor**. Si el perfil no tiene `priority`, cuenta la posición de la política (las primeras van antes). `priority` no conecta ni cambia perfiles.
+
+<!-- feature:watchdog -->
+#### Si una VPN se cae y no vuelve (failover)
+
+Kongtrol reintenta solo **esa misma** VPN (espera 2 s, 4 s, 8 s… hasta 5 min) y te avisa una vez en la bandeja, el dashboard y la vista en vivo. Nunca conecta otra VPN por su cuenta: cada perfil llega a redes distintas, aunque los nombres se parezcan.
+
+Si tienes un perfil de respaldo que llega a **las mismas redes**, decláralo en el perfil principal:
+
+```yaml
+vpns:
+  oficina:
+    type: openvpn
+    config: ~/.kongtrol/configs/oficina.ovpn
+    failover: [oficina-respaldo]   # se prueba en orden si oficina no logra reconectarse
+  oficina-respaldo:
+    type: openvpn
+    config: ~/.kongtrol/configs/oficina-b.ovpn
+```
+
+Cuando el respaldo entra, Kongtrol deja de reintentar `oficina` hasta que la conectes otra vez. También se edita en el dashboard (Perfiles → "Perfiles de respaldo").
 
 ### Validar y aplicar
 

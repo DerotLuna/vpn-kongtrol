@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.1 · 2026-11-17
+Versión 1.2 · 2026-11-17
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -30,8 +30,9 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 | `vpns.<name>.auth.username` | texto | — | Usuario en texto plano (poco sensible). |
 | `vpns.<name>.auth.username_keychain` | texto | — | Nombre de la entrada del llavero que guarda el usuario. |
 | `vpns.<name>.auth.password_keychain` | texto | — | Nombre de la entrada del llavero que guarda la contraseña. |
-| `vpns.<name>.priority` | entero | — | Prioridad del perfil al resolver conflictos. |
+| `vpns.<name>.priority` | entero | — | Desempate entre políticas que se solapan: las políticas de un perfil con número mayor se evalúan antes (dominios y apps: gana la primera que coincide; IP: siempre gana el rango más específico y la prioridad solo desempata rangos del mismo tamaño). Sin valor, cuenta la posición de la política (las primeras van antes). No conecta ni cambia perfiles. |
 | `vpns.<name>.kill_switch` | booleano | — | Activa o desactiva el kill switch solo para este perfil (si falta, usa `security.kill_switch.enabled`). |
+| `vpns.<name>.failover` | lista de texto | — | Perfiles de respaldo, en orden, que Kongtrol puede conectar si este se cae y no logra reconectarse. Si falta, nunca conecta otro perfil: avisa y sigue reintentando este. Cada uno debe existir, no puede ser el mismo perfil y no puede formar un círculo. |
 | `vpns.<name>.auto_connect` | booleano | — | Proveedores con app oficial: intenta conectar solo (CLI oficial o automatización) antes de pedirte que conectes en la app. Si falta: `true`. |
 | `vpns.<name>.country` | texto | — | País del servidor (código o nombre), para proveedores que permiten elegir. |
 | `vpns.<name>.city` | texto | — | Ciudad del servidor, para proveedores que permiten elegir. |

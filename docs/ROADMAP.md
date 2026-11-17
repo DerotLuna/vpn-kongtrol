@@ -22,7 +22,7 @@
 | DNS guard (netsh · resolv.conf · networksetup) — timeout-bounded | ✅ |
 | Transparent split-DNS (policy domain host injection) | ✅ |
 | Auto-reconnect watchdog (exponential backoff, timeout-bounded reconnects) | ✅ |
-| Health-check + priority failover | ✅ |
+| Health-check (notifies) + failover only to declared backup profiles (`failover:`, ADR-0018) | ✅ |
 | Profile scheduler (weekday/time windows) | ✅ |
 | Leak detection (opt-in public IP lookup on connect/disconnect and on demand · configurable action) | ✅ |
 | Audit log (append-only · HMAC-SHA256 signed, fsnotify-based live tail) | ✅ |

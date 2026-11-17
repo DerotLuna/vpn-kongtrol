@@ -49,10 +49,29 @@ func (a *Adapter) Capabilities() vpn.Capabilities {
 	}
 }
 
+// reapExitedLocked clears an openvpn that exited on its own (killed,
+// crashed, fatal error) while the adapter still recorded it as connected:
+// it frees the dead process/helper session and leaves the adapter in
+// StatusError, so Connect can start a fresh one instead of answering
+// "already connected" forever. Caller holds a.mu.
+func (a *Adapter) reapExitedLocked() {
+	if a.proc == nil || !a.proc.hasExited() {
+		return
+	}
+	a.proc.release()
+	a.proc = nil
+	a.tunnelInfo = nil
+	a.connectedAt = time.Time{}
+	if a.status == vpn.StatusConnected {
+		a.status = vpn.StatusError
+	}
+}
+
 func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	a.reapExitedLocked()
 	if a.status == vpn.StatusConnected || a.status == vpn.StatusConnecting {
 		return fmt.Errorf("openvpn: already %s", a.status)
 	}
@@ -112,6 +131,7 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	a.reapExitedLocked()
 	if a.proc == nil {
 		a.status = vpn.StatusDisconnected
 		return nil

@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
@@ -50,7 +51,24 @@ type ProfileService struct {
 	emitStderr     func(message string)
 	onAttach       func(name string, st vpn.AttachState)
 	onIntent       func(name string, intendedDown bool)
+
+	// inflight tracks running Connect calls per profile so Disconnect can
+	// cancel them (and wait for them) before it reports success.
+	mu       sync.Mutex
+	inflight map[string]map[uint64]*pendingConnect
+	nextID   uint64
 }
+
+// pendingConnect is one running Connect: cancel stops it, done is closed
+// when it has returned.
+type pendingConnect struct {
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
+// disconnectCancelWait bounds how long Disconnect waits for a cancelled
+// Connect to return (an adapter step that ignores its context).
+var disconnectCancelWait = 15 * time.Second
 
 type ProfileServiceDeps struct {
 	Cfg            *config.Config
@@ -101,6 +119,8 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.no_config_for_profile", name))
 	}
+	ctx, done := s.trackConnect(ctx, name)
+	defer done()
 	if s.onIntent != nil {
 		s.onIntent(name, false)
 	}
@@ -166,6 +186,11 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 			return err
 		}
 	}
+	// Cancelled by Disconnect (`down`) while connecting: never re-arm the
+	// watchdog or install routes for a profile the user just turned off.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	if s.watchdog != nil {
 		s.watchdog.MarkActive(name)
@@ -212,10 +237,19 @@ func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
 		return fmt.Errorf("%s", s.f("cli.error.unknown_profile", name))
 	}
 	if s.watchdog != nil {
-		s.watchdog.MarkIntended(name)
+		s.watchdog.MarkIntended(name) // also cancels a watchdog reconnect/failover in flight
 	}
 	if s.onIntent != nil {
 		s.onIntent(name, true) // turned off by the user: never a kill switch block
+	}
+	// Stop any connect still running for this profile (an `up` waiting for
+	// the user in a provider app, a scheduler or policy connect) and wait
+	// for it, so the status is final when `down` reports success and no
+	// app window opens afterwards.
+	if s.cancelConnects(name) && s.watchdog != nil {
+		// A connect that finished just before the cancel may have
+		// re-armed the watchdog: mark the intent again.
+		s.watchdog.MarkIntended(name)
 	}
 	if s.policyResolver != nil {
 		s.policyResolver.UnregisterProfile(name)
@@ -231,6 +265,62 @@ func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
 	}
 	s.afterDisconnect(name)
 	return nil
+}
+
+// trackConnect registers a running Connect for name; Disconnect cancels
+// the returned context. Call the returned func when Connect returns.
+func (s *ProfileService) trackConnect(ctx context.Context, name string) (context.Context, func()) {
+	ctx, cancel := context.WithCancel(ctx)
+	p := &pendingConnect{cancel: cancel, done: make(chan struct{})}
+	s.mu.Lock()
+	if s.inflight == nil {
+		s.inflight = make(map[string]map[uint64]*pendingConnect)
+	}
+	if s.inflight[name] == nil {
+		s.inflight[name] = make(map[uint64]*pendingConnect)
+	}
+	s.nextID++
+	id := s.nextID
+	s.inflight[name][id] = p
+	s.mu.Unlock()
+	return ctx, func() {
+		s.mu.Lock()
+		delete(s.inflight[name], id)
+		if len(s.inflight[name]) == 0 {
+			delete(s.inflight, name)
+		}
+		s.mu.Unlock()
+		cancel()
+		close(p.done)
+	}
+}
+
+// cancelConnects cancels every running Connect for name and waits until
+// they returned (bounded by disconnectCancelWait). It reports whether any
+// was running.
+func (s *ProfileService) cancelConnects(name string) bool {
+	s.mu.Lock()
+	pending := make([]*pendingConnect, 0, len(s.inflight[name]))
+	for _, p := range s.inflight[name] {
+		pending = append(pending, p)
+	}
+	s.mu.Unlock()
+	if len(pending) == 0 {
+		return false
+	}
+	for _, p := range pending {
+		p.cancel()
+	}
+	deadline := time.NewTimer(disconnectCancelWait)
+	defer deadline.Stop()
+	for _, p := range pending {
+		select {
+		case <-p.done:
+		case <-deadline.C:
+			return true
+		}
+	}
+	return true
 }
 
 // notifyAttach reports a provider adapter's attach phase change: the alert

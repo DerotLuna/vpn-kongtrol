@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -63,6 +64,9 @@ var exportCmd = &cobra.Command{
 			}
 			if v.Priority != 0 {
 				pNum("    ", "priority", v.Priority)
+			}
+			if len(v.Failover) > 0 {
+				fmt.Printf("    %s: [%s]\n", yKey("failover"), strings.Join(v.Failover, ", "))
 			}
 			fmt.Printf("    %s:\n", yKey("auth"))
 			p("      ", "method", v.Auth.Method)

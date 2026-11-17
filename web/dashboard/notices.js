@@ -1,5 +1,6 @@
-// Daemon notices (GET /api/v1/events): traffic of a policy whose tunnel is
-// off — "claude.ai sale por internet normal · brainbox está apagado". The
+// Daemon notices (GET /api/v1/events): a tunnel the watchdog cannot
+// reconnect (or that a declared failover backup replaced), and traffic of a
+// policy whose tunnel is off — "claude.ai sale por internet normal · brainbox está apagado". The
 // daemon sends an i18n key + args; this file renders them in the page's
 // language and shows a toast with a "Conectar brainbox" button. Loaded on
 // every dashboard page after toast.js.
@@ -13,6 +14,9 @@ const NOTICE_I18N = {
     'policy.event.action_connect': 'Conectar {0}',
     'notice.connecting': 'Conectando {0}…',
     'notice.connectFailed': 'No se pudo conectar {0} · revisa el panel de túneles',
+    'watchdog.event.reconnect_failing': '{0} no se pudo reconectar · Kongtrol sigue intentando solo; revisa tu internet o el servidor de esa VPN',
+    'watchdog.event.failover': '{0} no se pudo reconectar · se conectó su respaldo {1}. Para volver, conecta {0}',
+    'watchdog.event.reconnected': '{0} se reconectó',
   },
   en: {
     'policy.event.allow': '{0} is going over the normal internet · {1} is off',
@@ -22,6 +26,9 @@ const NOTICE_I18N = {
     'policy.event.action_connect': 'Connect {0}',
     'notice.connecting': 'Connecting {0}…',
     'notice.connectFailed': 'Could not connect {0} · check the tunnels panel',
+    'watchdog.event.reconnect_failing': "{0} could not reconnect · Kongtrol keeps retrying on its own; check your internet or that VPN's server",
+    'watchdog.event.failover': '{0} could not reconnect · its backup {1} is now connected. To go back, connect {0}',
+    'watchdog.event.reconnected': '{0} reconnected',
   },
 };
 
@@ -106,7 +113,7 @@ async function pollNotices() {
     const body = await res.json();
     if (typeof body.seq === 'number') setNoticeSeq(body.seq);
     (body.events || []).forEach((e) => {
-      if (e.kind !== 'policy_tunnel_down') return;
+      if (e.kind !== 'policy_tunnel_down' && e.kind !== 'tunnel_watchdog') return;
       const msg = noticeText(e.key, e.args);
       const variant = e.level === 'WARN' ? 'error' : 'info';
       if (e.can_connect && e.profile) {

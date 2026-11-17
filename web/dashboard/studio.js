@@ -69,6 +69,10 @@ const I18N = {
     'pEditor.namePlaceholder': 'oficina',
     'pEditor.type': 'Tipo',
     'pEditor.priority': 'Prioridad',
+    'pEditor.priorityHint': 'Solo desempata reglas que se solapan: gana el número mayor. Nunca conecta otro perfil.',
+    'pEditor.failover': 'Perfiles de respaldo (opcional)',
+    'pEditor.failoverPlaceholder': 'oficina-respaldo',
+    'pEditor.failoverHint': 'Si este perfil se cae y no logra reconectarse, Kongtrol conecta estos, en orden. Vacío = nunca conecta otro perfil.',
     'pEditor.host': 'Host',
     'pEditor.hostPlaceholder': 'vpn.empresa.com',
     'pEditor.configFile': 'Ruta del archivo de config',
@@ -215,6 +219,10 @@ const I18N = {
     'pEditor.namePlaceholder': 'office',
     'pEditor.type': 'Type',
     'pEditor.priority': 'Priority',
+    'pEditor.priorityHint': 'Only breaks ties between overlapping rules: higher number wins. It never connects another profile.',
+    'pEditor.failover': 'Backup profiles (optional)',
+    'pEditor.failoverPlaceholder': 'office-backup',
+    'pEditor.failoverHint': 'If this profile drops and cannot reconnect, Kongtrol connects these, in order. Empty = it never connects another profile.',
     'pEditor.host': 'Host',
     'pEditor.hostPlaceholder': 'vpn.corp.com',
     'pEditor.configFile': 'Config file path',
@@ -586,6 +594,7 @@ function draftProfile() {
     name: document.getElementById('v-name').value.trim(),
     type,
     priority: parseInt(document.getElementById('v-priority').value, 10) || 0,
+    failover: document.getElementById('v-failover').value.split(',').map((s) => s.trim()).filter(Boolean),
   };
   Object.entries(PROFILE_FIELDS).forEach(([key, id]) => {
     const el = document.getElementById(id);
@@ -611,6 +620,7 @@ function fillProfileForm(p) {
   document.getElementById('v-name').value = p.name || '';
   document.getElementById('v-type').value = p.type || 'openvpn';
   document.getElementById('v-priority').value = p.priority || 0;
+  document.getElementById('v-failover').value = (p.failover || []).join(', ');
   document.getElementById('v-host').value = p.host || '';
   document.getElementById('v-config').value = p.config || '';
   document.getElementById('v-server').value = p.server || '';
@@ -635,7 +645,7 @@ function fillProfileForm(p) {
 
 function clearProfileForm() {
   selectedProfileName = '';
-  ['v-name', 'v-host', 'v-config', 'v-server', 'v-protocol', 'v-cert', 'v-key', 'v-username', 'v-password', 'v-country', 'v-city', 'v-group', 'v-interface', 'v-wait-timeout', 'v-app-path'].forEach((id) => {
+  ['v-name', 'v-host', 'v-config', 'v-server', 'v-protocol', 'v-cert', 'v-key', 'v-username', 'v-password', 'v-country', 'v-city', 'v-group', 'v-interface', 'v-wait-timeout', 'v-app-path', 'v-failover'].forEach((id) => {
     document.getElementById(id).value = '';
   });
   document.getElementById('v-type').value = 'openvpn';

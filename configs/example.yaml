@@ -22,6 +22,8 @@ vpns:
       username: your_username    # or use username_keychain below
       # username_keychain: office.username   # keychain key name
       # password_keychain: office.password   # keychain key name (recommended)
+    # priority only breaks ties between overlapping policies: the higher number
+    # is evaluated first. It never connects or switches profiles.
     priority: 10
     kill_switch: true
     # Provider attach mode (forticlient, protonvpn, nordvpn, surfshark):
@@ -46,6 +48,10 @@ vpns:
     # /opt/homebrew/sbin on Unix.
     # binary_path: "C:\\Program Files\\OpenVPN\\bin\\openvpn.exe"
     priority: 20
+    # failover: backups that reach the SAME networks, tried in order if this
+    # profile drops and cannot reconnect. Without it Kongtrol only retries this
+    # profile and notifies you; it never connects another VPN on its own.
+    # failover: [dev-server-b]
 
   aws:
     type: openvpn

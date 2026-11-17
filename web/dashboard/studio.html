@@ -122,6 +122,11 @@
                 </label>
                 <label><span data-i18n="pEditor.priority">Priority</span>
                   <input id="v-priority" type="number" value="10" />
+                  <small class="muted" data-i18n="pEditor.priorityHint">Only breaks ties between overlapping rules: higher number wins. It never connects another profile.</small>
+                </label>
+                <label><span data-i18n="pEditor.failover">Backup profiles (optional)</span>
+                  <input id="v-failover" type="text" data-i18n-placeholder="pEditor.failoverPlaceholder" placeholder="office-backup" />
+                  <small class="muted" data-i18n="pEditor.failoverHint">If this profile drops and cannot reconnect, Kongtrol connects these, in order. Empty = it never connects another profile.</small>
                 </label>
                 <label data-types="forticlient ciscoanyconnect globalprotect tailscale"><span data-i18n="pEditor.host">Host</span>
                   <input id="v-host" type="text" data-i18n-placeholder="pEditor.hostPlaceholder" placeholder="vpn.corp.com" />

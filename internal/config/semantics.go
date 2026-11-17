@@ -29,6 +29,9 @@ func validateSemantics(cfg *Config) error {
 			return err
 		}
 	}
+	if err := validateFailover(cfg.VPNs, names); err != nil {
+		return err
+	}
 
 	policyNames := make(map[string]struct{}, len(cfg.Policies))
 
@@ -155,6 +158,61 @@ func ValidateOnTunnelDown(pol PolicyRule) error {
 	if pol.OnTunnelDown == OnTunnelDownBlock && len(pol.Match.IPRanges) == 0 && len(pol.Match.Domains) == 0 {
 		// Apps alone give no destination to block.
 		return newValidationError("config.err.on_tunnel_down_apps", pol.Name)
+	}
+	return nil
+}
+
+// validateFailover checks every profile's failover list: each entry is an
+// existing profile, not the profile itself, listed once, and the lists
+// form no cycle (a → b → a). names is the sorted profile list, so the
+// reported error is stable.
+func validateFailover(vpns map[string]VPNConfig, names []string) error {
+	for _, n := range names {
+		seen := make(map[string]bool, len(vpns[n].Failover))
+		for _, target := range vpns[n].Failover {
+			switch {
+			case target == n:
+				return newValidationError("config.err.failover_self", n)
+			case seen[target]:
+				return newValidationError("config.err.failover_duplicate", n, target)
+			}
+			if _, ok := vpns[target]; !ok {
+				return newValidationError("config.err.failover_unknown", n, target)
+			}
+			seen[target] = true
+		}
+	}
+	// Depth-first search; state 1 = on the current path, 2 = done.
+	state := make(map[string]int, len(names))
+	var path []string
+	var visit func(n string) []string
+	visit = func(n string) []string {
+		state[n] = 1
+		path = append(path, n)
+		for _, t := range vpns[n].Failover {
+			switch state[t] {
+			case 1:
+				for i, p := range path {
+					if p == t {
+						return append(append([]string(nil), path[i:]...), t)
+					}
+				}
+			case 0:
+				if c := visit(t); c != nil {
+					return c
+				}
+			}
+		}
+		path = path[:len(path)-1]
+		state[n] = 2
+		return nil
+	}
+	for _, n := range names {
+		if state[n] == 0 {
+			if c := visit(n); c != nil {
+				return newValidationError("config.err.failover_cycle", c[0], strings.Join(c, " → "))
+			}
+		}
 	}
 	return nil
 }

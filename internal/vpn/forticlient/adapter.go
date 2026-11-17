@@ -90,11 +90,11 @@ func (a *Adapter) provider(password string) (appattach.Provider, appattach.Optio
 		Matcher:  matcher.WithOverride(o.Interface),
 		Location: cfg.TunnelName,
 		AutoWait: autoWait,
-		AutoConnect: func(context.Context) error {
+		AutoConnect: func(ctx context.Context) error {
 			if runtime.GOOS == "windows" {
 				// GUI automation opens FortiClient, selects the tunnel,
 				// fills credentials and clicks Connect.
-				return tryGUIConnect(cfg.TunnelName, cfg.Username, password, allowInsecureCert)
+				return tryGUIConnect(ctx, cfg.TunnelName, cfg.Username, password, allowInsecureCert)
 			}
 			return connectV6(cfg.TunnelName, cfg.Host, cfg.Port, cfg.CertPath, cfg.KeyPath, cfg.Username, password)
 		},

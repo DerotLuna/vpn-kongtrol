@@ -22,21 +22,22 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type vpnDTO struct {
-		Name               string `json:"name"`
-		Type               string `json:"type"`
-		Host               string `json:"host,omitempty"`
-		Port               int    `json:"port,omitempty"`
-		Server             string `json:"server,omitempty"`
-		Protocol           string `json:"protocol,omitempty"`
-		ConfigFile         string `json:"config,omitempty"`
-		Priority           int    `json:"priority"`
-		AuthMethod         string `json:"auth_method,omitempty"`
-		Cert               string `json:"cert,omitempty"`
-		Key                string `json:"key,omitempty"`
-		Username           string `json:"username,omitempty"`
-		HasUsernameCred    bool   `json:"has_username_credential"`
-		HasPasswordCred    bool   `json:"has_password_credential"`
-		KillSwitchOverride string `json:"kill_switch_override"` // "inherit" | "on" | "off"
+		Name               string   `json:"name"`
+		Type               string   `json:"type"`
+		Host               string   `json:"host,omitempty"`
+		Port               int      `json:"port,omitempty"`
+		Server             string   `json:"server,omitempty"`
+		Protocol           string   `json:"protocol,omitempty"`
+		ConfigFile         string   `json:"config,omitempty"`
+		Priority           int      `json:"priority"`
+		Failover           []string `json:"failover"`
+		AuthMethod         string   `json:"auth_method,omitempty"`
+		Cert               string   `json:"cert,omitempty"`
+		Key                string   `json:"key,omitempty"`
+		Username           string   `json:"username,omitempty"`
+		HasUsernameCred    bool     `json:"has_username_credential"`
+		HasPasswordCred    bool     `json:"has_password_credential"`
+		KillSwitchOverride string   `json:"kill_switch_override"` // "inherit" | "on" | "off"
 		// Provider attach mode (forticlient, protonvpn, nordvpn, surfshark).
 		AutoConnect bool   `json:"auto_connect"`
 		Country     string `json:"country,omitempty"`
@@ -65,6 +66,7 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 			Protocol:           v.Protocol,
 			ConfigFile:         v.ConfigFile,
 			Priority:           v.Priority,
+			Failover:           append([]string{}, v.Failover...),
 			AuthMethod:         v.Auth.Method,
 			Cert:               v.Auth.Cert,
 			Key:                v.Auth.Key,
@@ -99,10 +101,12 @@ type vpnProfileReq struct {
 	Protocol   *string `json:"protocol"`
 	ConfigFile *string `json:"config"`
 	Priority   *int    `json:"priority"`
-	AuthMethod *string `json:"auth_method"`
-	Cert       *string `json:"cert"`
-	Key        *string `json:"key"`
-	Username   *string `json:"username"`
+	// Failover: the backup profiles, in order; [] clears it.
+	Failover   *[]string `json:"failover"`
+	AuthMethod *string   `json:"auth_method"`
+	Cert       *string   `json:"cert"`
+	Key        *string   `json:"key"`
+	Username   *string   `json:"username"`
 	// Provider attach mode. AutoConnect true is the default and is stored
 	// as "unset" so the YAML stays minimal.
 	AutoConnect *bool   `json:"auto_connect"`
@@ -162,6 +166,14 @@ func (req vpnProfileReq) applyTo(vc *config.VPNConfig) {
 	}
 	if req.Priority != nil {
 		vc.Priority = *req.Priority
+	}
+	if req.Failover != nil {
+		vc.Failover = nil
+		for _, p := range *req.Failover {
+			if p = strings.TrimSpace(p); p != "" {
+				vc.Failover = append(vc.Failover, p)
+			}
+		}
 	}
 }
 

@@ -222,11 +222,14 @@ func startHistoryPersistence(ctx context.Context) {
 	}()
 }
 
-func profilePriorities() map[string]int {
-	out := make(map[string]int, len(cfg.VPNs))
+// profileFailover returns the backup profiles each profile declares
+// (vpns.<name>.failover). Only these are ever connected by the watchdog in
+// place of a profile that cannot reconnect; priority plays no part.
+func profileFailover() map[string][]string {
+	out := make(map[string][]string, len(cfg.VPNs))
 	for name, vpnCfg := range cfg.VPNs {
-		if vpnCfg.Priority > 0 {
-			out[name] = vpnCfg.Priority
+		if len(vpnCfg.Failover) > 0 {
+			out[name] = append([]string(nil), vpnCfg.Failover...)
 		}
 	}
 	return out

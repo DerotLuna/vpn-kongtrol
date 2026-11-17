@@ -93,41 +93,8 @@ func loadConfig() error {
 		parseDuration(cfg.Monitor.HealthCheck.Timeout, 10*time.Second),
 		healthCheckProfile,
 	)
-	watchdog.ConfigureFailover(profilePriorities())
-	watchdog.SetEventCallback(func(profile, event string, attempt int, err error) {
-		switch event {
-		case "reconnect_attempt":
-			emitAlert("WARN", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
-			logAudit("WARN", "vpn.reconnect_attempt", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
-		case "reconnect_failed":
-			emitAlert("ERROR", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
-			logAudit("ERROR", "vpn.reconnect_failed", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
-			if svc := profileSvc.Load(); svc != nil {
-				svc.HandleReconnectError(profile, err)
-			}
-		case "reconnected":
-			if col != nil {
-				col.RecordReconnect(profile)
-			}
-			emitAlert("INFO", profile, cf("cli.alert.reconnected", profile, attempt))
-			logAudit("INFO", "vpn.reconnected", profile, cf("cli.alert.reconnected", profile, attempt))
-		case "health_degraded":
-			emitAlert("WARN", profile, cf("cli.alert.health_degraded", profile, err))
-			logAudit("WARN", "vpn.health_degraded", profile, cf("cli.alert.health_degraded", profile, err))
-		case "failover_started":
-			emitAlert("WARN", profile, cf("cli.alert.failover_started", profile))
-			logAudit("WARN", "vpn.failover_started", profile, cf("cli.alert.failover_started", profile))
-		case "failover_failed":
-			emitAlert("ERROR", profile, cf("cli.alert.failover_failed", profile, err))
-			logAudit("ERROR", "vpn.failover_failed", profile, cf("cli.alert.failover_failed", profile, err))
-		case "failover_activated":
-			emitAlert("INFO", profile, cf("cli.alert.failover_activated", profile))
-			logAudit("INFO", "vpn.failover_activated", profile, cf("cli.alert.failover_activated", profile))
-		case "manual_reconnect_required":
-			emitAlert("WARN", profile, cf("cli.alert.manual_reconnect_required", profile))
-			logAudit("WARN", "vpn.manual_reconnect_required", profile, cf("cli.alert.manual_reconnect_required", profile))
-		}
-	})
+	watchdog.ConfigureFailover(profileFailover())
+	watchdog.SetEventCallback(onWatchdogEvent)
 
 	// DNS manager — reference-counted guard across simultaneous tunnels.
 	dnsGuard := security.NewDNSGuard()

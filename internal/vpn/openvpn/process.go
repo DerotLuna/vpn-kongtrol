@@ -293,6 +293,21 @@ func (p *process) stop() error {
 	return nil
 }
 
+// release frees what an openvpn that already exited left behind, so the
+// profile can be connected again: the management connection and, for a
+// helper session, the session itself (the helper keeps an exited session,
+// with its lease, until it is stopped) and the log poller. A direct
+// child's job handle was already closed by its Wait goroutine before
+// exited was closed, so there is nothing else to free.
+func (p *process) release() {
+	if p.mgmt != nil {
+		_ = p.mgmt.Close()
+	}
+	if p.ops != nil {
+		_ = p.stopHelperSession()
+	}
+}
+
 // stopHelperSession ends the helper session and stops polling.
 func (p *process) stopHelperSession() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

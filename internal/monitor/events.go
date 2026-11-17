@@ -26,6 +26,10 @@ type Event struct {
 // EventPolicyTunnelDown: traffic for a policy whose tunnel is off.
 const EventPolicyTunnelDown = "policy_tunnel_down"
 
+// EventTunnelWatchdog: the watchdog could not reconnect a tunnel (it keeps
+// retrying), a declared failover backup took over, or the tunnel came back.
+const EventTunnelWatchdog = "tunnel_watchdog"
+
 // EventLog keeps the latest events in memory for clients to poll
 // (GET /api/v1/events?after=<seq>).
 type EventLog struct {

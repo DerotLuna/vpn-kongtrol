@@ -235,4 +235,24 @@ vpns:
 - If Proton is only for selected domains/apps, keep it in its own profile (e.g. `us-content`) and route only those policies through it.
 - Keep corporate traffic (`forticlient`, `openvpn`, etc.) in separate profiles with explicit policy targets.
 - Prefer policy-based separation over a catch-all default route when combining Proton with work VPNs.
-- Use profile `priority` intentionally if two policies may overlap.
+- Use profile `priority` intentionally if two policies may overlap: the **higher** number is evaluated first (domain and app rules: first match wins; IPs: the longest prefix always wins and `priority` only breaks ties between prefixes of the same length). Without it, the policy's position counts (earlier first). `priority` never connects or switches profiles.
+
+<!-- feature:watchdog -->
+### Failover (`failover:`)
+
+When a profile drops and cannot reconnect, Kongtrol keeps retrying **that profile only** (backoff 2 s → 5 min) and notifies you once. It never brings up another VPN on its own: profiles reach different networks, even with similar names or equal `priority` ([ADR-0018](adr/0018-failover-only-to-declared-profiles.md)).
+
+To allow a backup, declare it on the profile that may fail, in order of preference:
+
+```yaml
+vpns:
+  dev-server:
+    type: openvpn
+    config: ~/.kongtrol/configs/server.ovpn
+    failover: [dev-server-b]       # tried once per outage, in order
+  dev-server-b:
+    type: openvpn
+    config: ~/.kongtrol/configs/server-b.ovpn
+```
+
+Each entry must be an existing profile, not the profile itself, listed once, and the lists must not form a loop (`a → b → a`). When a backup takes over, Kongtrol stops retrying the original until you connect it again. Health-check failures only notify; they never start a failover.

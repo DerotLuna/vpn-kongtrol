@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.2 · 2026-11-17
+Version 1.3 · 2026-11-17
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -262,9 +262,15 @@ changing the port from the page serving that request would cut the connection mi
 
 `AdapterConfig.Password` must be zeroed immediately after `Connect()` returns. Passwords are fetched from the OS keychain (`config.GetCredential`) immediately before calling `Connect()` — never stored in config structs at rest.
 
+<!-- feature:watchdog -->
 ### Watchdog internals
 
 `monitor.Watchdog` polls adapter `Status()` every 5 seconds per profile goroutine. Call `MarkIntended(name)` **before** `Disconnect()` to suppress reconnect. Call `MarkActive(name)` **after** a successful `Connect()` to re-arm it. Backoff: `2s × 2^attempt`, capped at 5 minutes.
+
+- It only reconnects profiles that were brought up (`MarkActive`). **No implicit failover** (ADR-0018): profiles reach different networks and are never linked by name, type or `priority`. The only other profiles it may connect are those the user declared on the dropped profile, `vpns.<name>.failover: [backup, …]` (validated: exist, not itself, once, no cycles), tried in order once per outage; a backup that takes over pauses retries of the original until the user connects it again.
+- No declared backup (or none worked): keep retrying the same profile and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard `notices.js`, live view render them). Health-check failures only notify.
+- `MarkIntended` cancels the watchdog's in-flight reconnect/failover for that profile; `ProfileService.Disconnect` also cancels and waits for any running `Connect` of the profile (`trackConnect`/`cancelConnects`), so `down` reports a final status and no provider app opens afterwards.
+- `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset = position (earlier first).
 
 ### DNS manager internals
 
@@ -278,6 +284,7 @@ changing the port from the page serving that request would cut the connection mi
 - Server-pushed routes are always accepted; Kongtrol adds policy routes on top (see Policy routing) and skips a destination the server already routes on the tunnel interface.
 - `binary_path` reaches the adapter via `AdapterConfig.Extra`. `TunnelInfo` reports `InterfaceName` and pushed DNS.
 - Runs via the privileged helper when not elevated (`privops.OpenVPNStart`); Kongtrol answers the management password prompt; interface/DNS come from the helper log tail, falling back to an IP match.
+- An openvpn that exits on its own (killed, crashed) is reaped on the next `Connect`/`Disconnect` (`reapExitedLocked`: management connection closed, helper session stopped), so the watchdog can reconnect instead of getting "already connected".
 
 <!-- feature:helper -->
 ### Privileged helper internals
@@ -309,6 +316,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 - `Session.Status`: interface detection on every call; an external tunnel becomes `PhaseAttached`; an unrequested drop becomes `PhaseDropped` when `Capabilities().ManualReconnect` (no automatic path, or `auto_connect: false`). The watchdog then emits `manual_reconnect_required` once per drop instead of reconnecting.
 - User-facing state: `vpn.AttachState` (`AttachReporter`) → `monitor.TunnelMetrics.Attach` (`json:"attach"`) in `/api/v1/tunnels` and the WebSocket snapshot. Clients render `AttachState.MessageKey()` with `internal/i18n` (`attach.*`) in their own language; the dashboard mirrors it in `attachMessage()` (`web/dashboard/app.js`). Never pre-render these strings in the daemon.
 - Config: standard fields `auto_connect` (*bool, default true), `country`, `city`, `server` (exact), `interface`, `wait_timeout`, `app_path`; nordvpn-only `group`. `VPNConfig.AdapterExtra()` is the single mapping to `AdapterConfig.Extra`; `validateProvider` (`internal/config/semantics.go`) rejects location fields on providers that cannot select (surfshark, forticlient).
+- FortiClient GUI automation (`internal/vpn/forticlient/gui_windows.go`): the PowerShell script is written as UTF-8 **with BOM** (Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which broke parsing and mangled non-ASCII text); its failure becomes one line (`scriptErrorLine`: the script's `ERROR:` line or PowerShell's message + script line, never the source excerpt, which can hold credentials); cancelling the connect kills the script and clears the clipboard.
 - Interface names: FortiClient, NordVPN (NordLynx, TAP-NordVPN) and Proton (TAP-ProtonVPN, Linux proton0/pvpn*) are documented or known; Surfshark ("Surfshark DCO adapter" per its docs, Linux `surfshark*`) and the macOS Network Extension services are best effort, so `interface:` overrides them.
 
 <!-- feature:i18n -->

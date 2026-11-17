@@ -3,6 +3,8 @@
 package forticlient
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,66 +13,78 @@ import (
 
 // guiConnect automates the FortiClient GUI to fill credentials and click Connect.
 // Used as primary connect method on Windows when EMS policy blocks /vpnconnect CLI.
+// Cancelling ctx (the user ran `down`, or the attempt timed out) stops the
+// script at once; the clipboard is then cleared because the script may
+// have been stopped while it held the password.
 //
 // Layout measured from FortiClient 6.4.10 at any window size (relative positions):
-//   VPN dropdown center:    54.1% x, 58.6% y
-//   Username field center:  54.1% x, 62.4% y
-//   Password field center:  54.1% x, 66.6% y
-//   Connect button center:  49.7% x, 75.4% y
-func guiConnect(tunnelName, username, password string, allowInsecureCert bool) error {
+//
+//	VPN dropdown center:    54.1% x, 58.6% y
+//	Username field center:  54.1% x, 62.4% y
+//	Password field center:  54.1% x, 66.6% y
+//	Connect button center:  49.7% x, 75.4% y
+func guiConnect(ctx context.Context, tunnelName, username, password string, allowInsecureCert bool) error {
 	script := buildGuiScript("connect", tunnelName, username, password, allowInsecureCert)
-	tmpDir, err := os.MkdirTemp("", "kongtrol-fcgui-*")
-	if err != nil {
-		return fmt.Errorf("forticlient gui: temp dir: %w", err)
+	out, err := runGuiScript(ctx, "fc_connect.ps1", script)
+	if ctx.Err() != nil {
+		clearClipboard()
+		return ctx.Err()
 	}
-	defer os.RemoveAll(tmpDir)
-
-	scriptPath := filepath.Join(tmpDir, "fc_connect.ps1")
-	if err := os.WriteFile(scriptPath, []byte(script), 0600); err != nil {
-		return fmt.Errorf("forticlient gui: write script: %w", err)
-	}
-
-	out, err := runCmd("powershell", "-NoProfile", "-NonInteractive",
-		"-ExecutionPolicy", "Bypass", "-File", scriptPath)
-	if err != nil {
-		return fmt.Errorf("forticlient gui: connect script: %w (output: %s)", err, out)
-	}
-	if strings.Contains(out, "ERROR:") {
-		for _, line := range strings.Split(out, "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "ERROR:") {
-				return fmt.Errorf("forticlient gui: %s", strings.TrimPrefix(strings.TrimSpace(line), "ERROR: "))
-			}
-		}
-	}
-	return nil
+	return scriptResult("connect", out, err)
 }
 
 // guiDisconnect automates the FortiClient GUI to click Disconnect.
 // When connected, FortiClient replaces the Connect button with Disconnect at the same position.
 func guiDisconnect(tunnelName string) error {
 	script := buildGuiScript("disconnect", tunnelName, "", "", false)
+	out, err := runGuiScript(context.Background(), "fc_disconnect.ps1", script)
+	return scriptResult("disconnect", out, err)
+}
+
+// runGuiScript writes script to a private temp file and runs it with
+// Windows PowerShell. The file starts with a UTF-8 BOM: without one,
+// Windows PowerShell 5.1 reads a script in the legacy ANSI code page, which
+// corrupts non-ASCII text (dialog titles such as "Sí", user names,
+// passwords) and can even break parsing (a UTF-8 em dash decodes to a
+// closing smart quote in Windows-1252).
+func runGuiScript(ctx context.Context, name, script string) (string, error) {
 	tmpDir, err := os.MkdirTemp("", "kongtrol-fcgui-*")
 	if err != nil {
-		return fmt.Errorf("forticlient gui: temp dir: %w", err)
+		return "", fmt.Errorf("forticlient gui: temp dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	scriptPath := filepath.Join(tmpDir, "fc_disconnect.ps1")
-	if err := os.WriteFile(scriptPath, []byte(script), 0600); err != nil {
-		return fmt.Errorf("forticlient gui: write script: %w", err)
+	scriptPath := filepath.Join(tmpDir, name)
+	if err := writeScriptFile(scriptPath, script); err != nil {
+		return "", fmt.Errorf("forticlient gui: write script: %w", err)
 	}
-
-	out, err := runCmd("powershell", "-NoProfile", "-NonInteractive",
+	return runCmdContext(ctx, "powershell", "-NoProfile", "-NonInteractive",
 		"-ExecutionPolicy", "Bypass", "-File", scriptPath)
-	if err != nil {
-		return fmt.Errorf("forticlient gui: disconnect script: %w (output: %s)", err, out)
+}
+
+// writeScriptFile writes a PowerShell script as UTF-8 with BOM, readable
+// only by the current user (it may contain the password).
+func writeScriptFile(path, script string) error {
+	return os.WriteFile(path, append([]byte(utf8BOM), script...), 0600)
+}
+
+// clearClipboard empties the clipboard after a cancelled connect script,
+// which may have been stopped between copying the password and clearing
+// it. Best effort.
+func clearClipboard() {
+	_, _ = runCmd("powershell", "-NoProfile", "-NonInteractive", "-Command",
+		"Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::Clear()")
+}
+
+// scriptResult turns the script's output into one short error line: the
+// script's own "ERROR:" line, else the first line of a PowerShell error
+// (see scriptErrorLine), never the whole output.
+func scriptResult(action, out string, err error) error {
+	if line, ok := scriptReportedError(out); ok {
+		return errors.New("forticlient gui: " + line)
 	}
-	if strings.Contains(out, "ERROR:") {
-		for _, line := range strings.Split(out, "\n") {
-			if strings.HasPrefix(strings.TrimSpace(line), "ERROR:") {
-				return fmt.Errorf("forticlient gui: %s", strings.TrimPrefix(strings.TrimSpace(line), "ERROR: "))
-			}
-		}
+	if err != nil {
+		return fmt.Errorf("forticlient gui: %s script failed: %s (%w)", action, scriptErrorLine(out), err)
 	}
 	return nil
 }
@@ -167,7 +181,7 @@ $allowInsecureCert = %t
 
 # Minimum plausible size for the actual FortiClient login/main dialog.
 # FortiClient can spin up small helper/tray windows (observed: a stray
-# 160x28 window) whose process still reports a non-zero MainWindowHandle —
+# 160x28 window) whose process still reports a non-zero MainWindowHandle -
 # picking the first such handle blindly means clicks and SendKeys land on
 # the wrong window (typing credentials "anywhere"). Only a window whose
 # title mentions FortiClient AND is at least this size is treated as real.
@@ -192,7 +206,7 @@ function Get-FortiClientWindow {
         Select-Object -First 1
 }
 
-# ── 1. Ensure FortiClient is running with a real (correctly sized) window ───
+# -- 1. Ensure FortiClient is running with a real (correctly sized) window ---
 $found = Get-FortiClientWindow
 
 if (-not $found) {
@@ -221,7 +235,7 @@ if (-not $found) {
 
 $hwnd = $found.Handle
 
-# ── 2. Restore and force foreground ──────────────────────────────────────────
+# -- 2. Restore and force foreground ------------------------------------------
 # AttachThreadInput bypasses Windows 10/11 focus-steal restrictions so the
 # window actually receives keyboard/mouse input, not just a taskbar flash.
 [FC]::ForceForeground($hwnd)
@@ -230,15 +244,15 @@ $hwnd = $found.Handle
 Start-Sleep -Milliseconds 2500
 
 # Confirm the window we found is actually in the foreground before typing
-# anything into it — if some other window stole focus (or ForceForeground
+# anything into it - if some other window stole focus (or ForceForeground
 # silently failed), abort instead of blindly sending keystrokes into
 # whatever happens to be focused.
 if ([FC]::GetForegroundWindow() -ne $hwnd) {
-    Write-Output "ERROR: could not bring the FortiClient window to the foreground (another window has focus) — aborting instead of typing credentials into the wrong window"
+    Write-Output "ERROR: could not bring the FortiClient window to the foreground (another window has focus) - aborting instead of typing credentials into the wrong window"
     exit 1
 }
 
-# ── 3. Get window rect ────────────────────────────────────────────────────────
+# -- 3. Get window rect --------------------------------------------------------
 $rect = New-Object FC+RECT
 [FC]::GetWindowRect($hwnd, [ref]$rect) | Out-Null
 $left = $rect.left; $top = $rect.top
@@ -246,7 +260,7 @@ $w    = $rect.right  - $rect.left
 $h    = $rect.bottom - $rect.top
 
 if ($w -lt $minW -or $h -lt $minH) {
-    Write-Output "ERROR: Window too small ($($w)x$($h)) — still minimized?"
+    Write-Output "ERROR: Window too small ($($w)x$($h)) - still minimized?"
     exit 1
 }
 
@@ -269,7 +283,7 @@ if ($action -eq 'connect') {
         Write-Output "Selecting VPN tunnel at ($vpnX,$vpnY)..."
         [FC]::ForceForeground($hwnd)
         if ([FC]::GetForegroundWindow() -ne $hwnd) {
-            Write-Output "ERROR: FortiClient window lost foreground before selecting the tunnel — aborting instead of typing into the wrong window"
+            Write-Output "ERROR: FortiClient window lost foreground before selecting the tunnel - aborting instead of typing into the wrong window"
             exit 1
         }
         for ($i = 0; $i -lt 2; $i++) {
@@ -286,10 +300,10 @@ if ($action -eq 'connect') {
     }
 
     Write-Output "Filling username at ($userX,$userY)..."
-    # Re-assert foreground before clicking — CEF may have stolen focus during load.
+    # Re-assert foreground before clicking - CEF may have stolen focus during load.
     [FC]::ForceForeground($hwnd)
     if ([FC]::GetForegroundWindow() -ne $hwnd) {
-        Write-Output "ERROR: FortiClient window lost foreground before filling the username — aborting instead of typing credentials into the wrong window"
+        Write-Output "ERROR: FortiClient window lost foreground before filling the username - aborting instead of typing credentials into the wrong window"
         exit 1
     }
     # Retry click up to 3 times to ensure CEF field gets focus.
@@ -304,7 +318,7 @@ if ($action -eq 'connect') {
     [System.Windows.Forms.SendKeys]::SendWait("^v")
     Start-Sleep -Milliseconds 250
 
-    # Tab to password field — more reliable than coordinate click for the 2nd field.
+    # Tab to password field - more reliable than coordinate click for the 2nd field.
     Write-Output "Tabbing to password field..."
     [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
     Start-Sleep -Milliseconds 200
@@ -320,7 +334,7 @@ if ($action -eq 'connect') {
     Write-Output "Clicking Connect at ($btnX,$btnY)..."
     [FC]::Click($btnX, $btnY)
 
-    # ── 4. Handle Security Alert (untrusted certificate) ──────────────────────
+    # -- 4. Handle Security Alert (untrusted certificate) ----------------------
     # Secure default: fail closed on certificate warnings.
     # Optional override: allow insecure cert warnings only if explicitly enabled.
     Write-Output "Waiting for Security Alert dialog..."
@@ -351,7 +365,7 @@ if ($action -eq 'connect') {
         Write-Output "INFO: No Security Alert dialog appeared within 15s (may not be needed)"
     }
 
-    # ── 5. Fail fast on common auth/access dialogs ────────────────────────────
+    # -- 5. Fail fast on common auth/access dialogs ----------------------------
     # Avoid waiting full tunnel timeout when FortiClient already reported failure.
     $failDeadline = (Get-Date).AddSeconds(20)
     while ((Get-Date) -lt $failDeadline) {

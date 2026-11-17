@@ -32,8 +32,14 @@ type VPNConfig struct {
 	Protocol          string     `yaml:"protocol,omitempty"`    // wireguard|openvpn (protonvpn)
 	BinaryPath        string     `yaml:"binary_path,omitempty"` // override adapter binary location (optional)
 	Auth              AuthConfig `yaml:"auth,omitempty"`
-	Priority          int        `yaml:"priority,omitempty"`
-	KillSwitch        *bool      `yaml:"kill_switch,omitempty"` // optional per-profile override
+	// Priority orders overlapping policies (see policy.New): higher wins.
+	// It never links profiles: failover only follows Failover.
+	Priority   int   `yaml:"priority,omitempty"`
+	KillSwitch *bool `yaml:"kill_switch,omitempty"` // optional per-profile override
+	// Failover lists, in order, the profiles the watchdog may connect when
+	// this one drops and cannot reconnect. Empty (default): never connect
+	// another profile. Profiles are never linked by name, type or priority.
+	Failover []string `yaml:"failover,omitempty"`
 
 	// Provider attach mode (forticlient, protonvpn, nordvpn, surfshark):
 	// Kongtrol works with the provider's official app and attaches to its

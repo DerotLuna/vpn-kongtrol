@@ -38,7 +38,7 @@ Working with multiple VPNs simultaneously is painful: each client overrides your
 
 **Kongtrol solves this.** One orchestrator manages all your VPN connections, routes traffic by destination (IP ranges, domains, or apps), watches for unexpected drops and reconnects automatically, and enforces security at the OS level — from a CLI, tray icon, or browser dashboard.
 
-<!-- feature:killswitch feature:dns_guard -->
+<!-- feature:killswitch feature:dns_guard feature:watchdog -->
 ## Features
 
 <div align="center">
@@ -48,7 +48,7 @@ Working with multiple VPNs simultaneously is painful: each client overrides your
 
 - **Policy-based routing** by IP range and domain for WireGuard, with priority-based conflict resolution; app rules currently provide flow resolution and diagnostics, not OS-level per-process enforcement
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
-- **Auto-reconnect watchdog** with exponential backoff and priority failover between profiles
+- **Auto-reconnect watchdog** with exponential backoff; it only retries the tunnel that dropped and tells you if it can't, and fails over only to backup profiles you declare (`failover:`) — it never brings up an unrelated VPN
 - **Kill switch + DNS guard** enforced at the OS firewall/network layer, with a signed audit log
 - **Embedded web dashboard** — full management UI (profiles, groups, policies, live security toggles, settings, audit log, traffic charts), plus a system tray app; no external server, no Node.js, compiled into the binary
 - **Setup wizard** (`kongtrol init`) that auto-detects installed VPN clients and stores credentials in the OS keychain

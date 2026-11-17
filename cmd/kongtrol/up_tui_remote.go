@@ -86,11 +86,11 @@ func pollRemoteSecurity(ctx context.Context, p *tea.Program, base string, done <
 		if sec, err := fetchDaemonSecurity(client, base); err == nil && !isClosed(done) {
 			p.Send(upRemoteStateMsg{connected: true, apiBase: base, security: sec})
 		}
-		// Policy notices (one line in the live view).
+		// Policy and watchdog notices (one line in the live view).
 		if evs, seq, err := fetchDaemonEvents(client, base, eventSeq); err == nil && !isClosed(done) {
 			eventSeq = seq
 			for i := len(evs) - 1; i >= 0; i-- {
-				if evs[i].Kind == monitor.EventPolicyTunnelDown {
+				if k := evs[i].Kind; k == monitor.EventPolicyTunnelDown || k == monitor.EventTunnelWatchdog {
 					e := evs[i]
 					p.Send(upRemoteStateMsg{connected: true, apiBase: base, notice: &e})
 					break

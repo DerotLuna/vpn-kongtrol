@@ -58,7 +58,7 @@ func pollPolicyEvents(states map[string]monitor.TunnelMetrics) {
 	policySeq = seq
 	policyMu.Unlock()
 	for _, e := range evs {
-		if e.Kind != monitor.EventPolicyTunnelDown {
+		if e.Kind != monitor.EventPolicyTunnelDown && e.Kind != monitor.EventTunnelWatchdog {
 			continue
 		}
 		args := make([]any, len(e.Args))

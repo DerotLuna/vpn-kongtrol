@@ -2,6 +2,7 @@ package forticlient
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -17,6 +18,17 @@ import (
 // runCmd executes a command synchronously and returns combined output.
 func runCmd(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
+	vpn.HideChildWindow(cmd)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	return out.String(), err
+}
+
+// runCmdContext is runCmd bound to ctx: cancelling ctx kills the command.
+func runCmdContext(ctx context.Context, name string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
 	vpn.HideChildWindow(cmd)
 	var out bytes.Buffer
 	cmd.Stdout = &out
