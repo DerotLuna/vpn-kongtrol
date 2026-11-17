@@ -7,7 +7,6 @@ const I18N = {
     'nav.security': 'Seguridad',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
-    'nav.collapse': 'Contraer',
     'page.overview.title': 'Resumen',
     'ws.connecting': 'conectando…',
     'ws.live': 'en vivo',
@@ -32,7 +31,7 @@ const I18N = {
     'chart.received': 'Recibido',
     'stat.reconnects': 'Reconexiones',
     'stat.jitter': 'Jitter',
-    'stat.samples': 'Muestras',
+    'stat.totalConnected': 'Tiempo conectado (total)',
     'policies.policy': 'Política',
     'policies.match': 'Match',
     'policies.vpnProfile': 'Perfil VPN',
@@ -64,6 +63,23 @@ const I18N = {
     'routes.default': 'Ruta predeterminada',
     'routes.policyPrefix': 'Política',
     'routes.defaultTag': 'predeterminada',
+    'routes.profilePrefix': 'Perfil',
+    'routes.originPrefix': 'Origen',
+    'origin.server': 'servidor',
+    'origin.policy': 'política',
+    'origin.vpn': 'vpn',
+    'tunnelRoutes.toggle': 'Qué sale por este túnel ({n})',
+    'tunnelRoutes.toggleAll': 'Qué sale por este túnel (todo)',
+    'tunnelRoutes.title': 'Qué sale por este túnel',
+    'tunnelRoutes.server': 'Del servidor ({n})',
+    'tunnelRoutes.policy': 'Política {name} ({n})',
+    'tunnelRoutes.vpn': 'De la VPN ({n})',
+    'tunnelRoutes.serverExplain': 'Las rutas las envía el servidor de la VPN · no hace falta agregar IPs · si falta algo, agrégalo con una política',
+    'tunnelRoutes.allTraffic': 'Todo tu tráfico sale por este túnel',
+    'tunnelRoutes.none': 'Nada visible por este túnel todavía.',
+    'tunnelRoutes.rest': 'Todo lo demás → internet normal ({iface})',
+    'tunnelRoutes.restUnknown': 'Todo lo demás → internet normal',
+    'tunnelRoutes.restTunnel': 'Todo lo demás → {name} (todo tu tráfico)',
     'resolve.placeholder': 'IP/dominio, URL, política/perfil, o app:proceso — ej. claude.ai, https://chatgpt.com, us-content, app:chrome.exe',
     'resolve.check': 'Revisar',
     'resolve.clear': 'Limpiar',
@@ -71,8 +87,6 @@ const I18N = {
     'resolve.noMatchingPolicy': 'sin política coincidente',
     'resolve.matchedRule': '{lhs} → {via} ({rule})',
     'resolve.unmatchedRule': '{lhs} → {defaultRoute} ({reason}){publicIp}',
-    'empty.connectingDaemon': 'Conectando con el daemon…',
-    'empty.loading': 'Cargando…',
     'empty.noTunnels': 'No hay túneles configurados.',
     'empty.noPolicies': 'No hay políticas configuradas.',
     'empty.noPoliciesForFilter': 'No hay políticas para este filtro.',
@@ -88,8 +102,33 @@ const I18N = {
     'status.connecting': 'conectando',
     'status.disconnected': 'desconectado',
     'status.error': 'error',
-    'badge.disabled': 'DESACTIVADO',
-    'badge.on': 'ACTIVO',
+    'tunnel.lastError': 'Último error ({time})',
+    'lastErrorKey.notInstalled': 'Instala el ayudante una vez: pulsa Instalar ayudante arriba.',
+    'lastErrorKey.outdated': 'El ayudante está desactualizado. Actualízalo: pulsa Instalar ayudante arriba.',
+    'lastErrorKey.denied': 'El ayudante no acepta a tu usuario. Reinstálalo desde tu cuenta: kongtrol service install',
+    'lastErrorKey.wgNotManaged': 'Este túnel WireGuard no coincide con ningún perfil tuyo (el archivo .conf debe llamarse igual que el túnel). Desconéctalo en la app de WireGuard, o corrige el perfil y reintenta.',
+    'lastErrorKey.notWireGuard': 'Ese nombre pertenece a algo que no es un túnel WireGuard, así que Kongtrol no lo toca. Revisa el nombre del túnel en el perfil.',
+    'lastErrorKey.fileOwner': 'El archivo de configuración de la VPN no es tuyo. Cópialo a tu carpeta de usuario (por ejemplo ~/.kongtrol) y apunta el perfil a la copia.',
+    'lastErrorKey.fileWritable': 'Otros usuarios pueden modificar el archivo de configuración de la VPN. Muévelo a tu carpeta de usuario (por ejemplo ~/.kongtrol) y reintenta.',
+    'lastErrorKey.sessionOwner': 'Esa conexión OpenVPN la inició otro usuario. Desconéctala desde la sesión de ese usuario.',
+    'helper.banner': 'Instala el ayudante una vez: kongtrol service install',
+    'helper.install': 'Instalar ayudante',
+    'helper.installing': 'Acepta el permiso de administrador en la ventana que aparece…',
+    'helper.installed': 'Ayudante instalado · ya puedes conectar',
+    'helper.failed': 'No se pudo instalar el ayudante.',
+    'helper.failedHint': 'Qué hacer: pulsa Instalar ayudante otra vez y acepta el permiso.',
+    'attach.attached': '{app} ya conectado · kongtrol lo toma',
+    'attach.auto': 'Conectado con {app}',
+    'attach.auto_location': 'Conectado con {app} ({location})',
+    'attach.user': 'Conectado en {app} · kongtrol lo toma',
+    'attach.waiting_user': 'Esperando conexión en {app}…',
+    'attach.automation_failed': 'Auto-conexión falló ({reason}) · conéctate en {app}',
+    'attach.waiting_disconnect': 'Desconéctate en {app} · esperando…',
+    'attach.dropped': '{app} se cayó · reconéctate en la app',
+    'badge.disabled': 'DESHABILITADO',
+    'badge.active': 'ACTIVO',
+    'badge.armed': 'ARMADO',
+    'badge.off': 'INACTIVO',
     'badge.idle': 'INACTIVO',
     'badge.leak': 'FUGA',
     'badge.clean': 'LIMPIO',
@@ -110,7 +149,6 @@ const I18N = {
     'nav.security': 'Security',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
-    'nav.collapse': 'Collapse',
     'page.overview.title': 'Overview',
     'ws.connecting': 'connecting…',
     'ws.live': 'live',
@@ -135,7 +173,7 @@ const I18N = {
     'chart.received': 'Received',
     'stat.reconnects': 'Reconnects',
     'stat.jitter': 'Jitter',
-    'stat.samples': 'Samples',
+    'stat.totalConnected': 'Total time connected',
     'policies.policy': 'Policy',
     'policies.match': 'Match',
     'policies.vpnProfile': 'VPN Profile',
@@ -167,6 +205,23 @@ const I18N = {
     'routes.default': 'Default route',
     'routes.policyPrefix': 'Policy',
     'routes.defaultTag': 'default',
+    'routes.profilePrefix': 'Profile',
+    'routes.originPrefix': 'Origin',
+    'origin.server': 'server',
+    'origin.policy': 'policy',
+    'origin.vpn': 'vpn',
+    'tunnelRoutes.toggle': 'What goes through this tunnel ({n})',
+    'tunnelRoutes.toggleAll': 'What goes through this tunnel (everything)',
+    'tunnelRoutes.title': 'What goes through this tunnel',
+    'tunnelRoutes.server': 'From the server ({n})',
+    'tunnelRoutes.policy': 'Policy {name} ({n})',
+    'tunnelRoutes.vpn': 'From the VPN ({n})',
+    'tunnelRoutes.serverExplain': 'Routes are sent by the VPN server · no need to add IPs · if something is missing, add it with a policy',
+    'tunnelRoutes.allTraffic': 'All your traffic goes through this tunnel',
+    'tunnelRoutes.none': 'Nothing visible through this tunnel yet.',
+    'tunnelRoutes.rest': 'Everything else → regular internet ({iface})',
+    'tunnelRoutes.restUnknown': 'Everything else → regular internet',
+    'tunnelRoutes.restTunnel': 'Everything else → {name} (all your traffic)',
     'resolve.placeholder': 'IP/domain, URL, policy/profile, or app:process — e.g. claude.ai, https://chatgpt.com, us-content, app:chrome.exe',
     'resolve.check': 'Check',
     'resolve.clear': 'Clear',
@@ -174,8 +229,6 @@ const I18N = {
     'resolve.noMatchingPolicy': 'no matching policy',
     'resolve.matchedRule': '{lhs} → {via} ({rule})',
     'resolve.unmatchedRule': '{lhs} → {defaultRoute} ({reason}){publicIp}',
-    'empty.connectingDaemon': 'Connecting to daemon…',
-    'empty.loading': 'Loading…',
     'empty.noTunnels': 'No tunnels configured.',
     'empty.noPolicies': 'No policies configured.',
     'empty.noPoliciesForFilter': 'No policies match this filter.',
@@ -191,8 +244,33 @@ const I18N = {
     'status.connecting': 'connecting',
     'status.disconnected': 'disconnected',
     'status.error': 'error',
+    'tunnel.lastError': 'Last error ({time})',
+    'lastErrorKey.notInstalled': 'Install the helper once: click Install helper above.',
+    'lastErrorKey.outdated': 'The helper is out of date. Update it: click Install helper above.',
+    'lastErrorKey.denied': 'The helper does not accept your user. Reinstall it from your account: kongtrol service install',
+    'lastErrorKey.wgNotManaged': 'This WireGuard tunnel does not match any of your profiles (the .conf file name must equal the tunnel name). Disconnect it in the WireGuard app, or fix the profile and retry.',
+    'lastErrorKey.notWireGuard': 'That name belongs to something that is not a WireGuard tunnel, so Kongtrol will not touch it. Check the profile tunnel name.',
+    'lastErrorKey.fileOwner': 'The VPN config file is not yours. Copy it into your user folder (e.g. ~/.kongtrol) and point the profile at the copy.',
+    'lastErrorKey.fileWritable': 'Other users can change the VPN config file. Move it into your user folder (e.g. ~/.kongtrol) and retry.',
+    'lastErrorKey.sessionOwner': 'That OpenVPN connection was started by another user. Disconnect it from that user session.',
+    'helper.banner': 'Install the helper once: kongtrol service install',
+    'helper.install': 'Install helper',
+    'helper.installing': 'Accept the admin permission in the window that appears…',
+    'helper.installed': 'Helper installed · you can connect now',
+    'helper.failed': 'Could not install the helper.',
+    'helper.failedHint': 'What to do: click Install helper again and accept the permission.',
+    'attach.attached': '{app} already connected · kongtrol takes over',
+    'attach.auto': 'Connected with {app}',
+    'attach.auto_location': 'Connected with {app} ({location})',
+    'attach.user': 'Connected in {app} · kongtrol takes over',
+    'attach.waiting_user': 'Waiting for connection in {app}…',
+    'attach.automation_failed': 'Auto-connect failed ({reason}) · connect in {app}',
+    'attach.waiting_disconnect': 'Disconnect in {app} · waiting…',
+    'attach.dropped': '{app} dropped · reconnect in the app',
     'badge.disabled': 'DISABLED',
-    'badge.on': 'ON',
+    'badge.active': 'ACTIVE',
+    'badge.armed': 'ARMED',
+    'badge.off': 'OFF',
     'badge.idle': 'IDLE',
     'badge.leak': 'LEAK',
     'badge.clean': 'CLEAN',
@@ -213,7 +291,11 @@ let ws = null;
 let wsReconnectTimer = null;
 let currentPolicies = [];
 let currentRoutes = [];
+let tunnelRoutes = { tunnels: [] }; // GET /api/v1/tunnels/routes
+const openRouteDrawers = new Set();
+let lastPolicyList = [];
 let lastPublicIP = '';
+let publicIPEnabled = false;
 let currentOverview = null;
 let currentPolicyFilter = '';
 let lastTunnels = {};
@@ -228,6 +310,100 @@ function onLangChange() {
   renderPoliciesFromCache();
   renderRoutes();
   renderTrafficCharts();
+  if (lastHelperNeedsInstall && !helperInstalling) renderHelperBanner(true);
+}
+
+// ── Privileged helper (one-click install) ───────────────────────────────────
+
+// Tunnel last_error_key → this page's translated "what to do" line.
+const LAST_ERROR_KEYS = {
+  'service.error.not_installed': 'lastErrorKey.notInstalled',
+  'service.error.outdated': 'lastErrorKey.outdated',
+  'service.error.denied': 'lastErrorKey.denied',
+  'privops.denied.wg_not_managed': 'lastErrorKey.wgNotManaged',
+  'privops.denied.not_wireguard': 'lastErrorKey.notWireGuard',
+  'privops.denied.file_owner': 'lastErrorKey.fileOwner',
+  'privops.denied.file_writable': 'lastErrorKey.fileWritable',
+  'privops.denied.session_owner': 'lastErrorKey.sessionOwner',
+};
+
+function lastErrorText(m) {
+  const key = LAST_ERROR_KEYS[m.last_error_key];
+  return key ? t(key) : (m.last_error || '');
+}
+
+let helperInstalling = false;
+let lastHelperNeedsInstall = false;
+
+async function refreshHelperStatus() {
+  if (helperInstalling) return;
+  try {
+    const res = await fetch(`${API}/api/v1/helper/status`);
+    if (!res.ok) return;
+    const st = await res.json();
+    lastHelperNeedsInstall = !!st.needs_install;
+    renderHelperBanner(lastHelperNeedsInstall);
+  } catch (_) {}
+}
+
+function helperBannerEl() {
+  let el = document.getElementById('helper-banner');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'helper-banner';
+    el.className = 'helper-banner';
+    el.setAttribute('role', 'status');
+    el.hidden = true;
+    document.querySelector('main')?.prepend(el);
+  }
+  return el;
+}
+
+// renderHelperBanner shows the "install the helper" banner; state may carry
+// a busy flag or a translated error message + hint from the daemon.
+function renderHelperBanner(show, state = {}) {
+  const el = helperBannerEl();
+  el.hidden = !show;
+  if (!show) return;
+  const busy = !!state.busy;
+  el.classList.toggle('busy', busy);
+  el.classList.toggle('failed', !!state.hint);
+  el.innerHTML = `
+    <div class="helper-banner-text">
+      <strong>${esc(state.message || t('helper.banner'))}</strong>
+      ${state.hint ? `<span>${esc(state.hint)}</span>` : ''}
+    </div>
+    <button type="button" class="action helper-install-btn"${busy ? ' disabled' : ''}>${esc(t('helper.install'))}</button>`;
+  el.querySelector('button').addEventListener('click', installHelper);
+}
+
+// installHelper asks the daemon to install the helper: the OS shows one
+// permission prompt, so this can take minutes.
+async function installHelper() {
+  if (helperInstalling) return;
+  helperInstalling = true;
+  renderHelperBanner(true, { busy: true, message: t('helper.installing') });
+  let res = null;
+  let body = {};
+  try {
+    res = await fetch(`${API}/api/v1/helper/install`, {
+      method: 'POST',
+      headers: { 'X-Kongtrol-Lang': lang },
+    });
+    body = await res.json().catch(() => ({}));
+  } catch (_) {}
+  helperInstalling = false;
+  if (res && res.ok && !body.needs_install) {
+    lastHelperNeedsInstall = false;
+    renderHelperBanner(false);
+    showToast(t('helper.installed'), 'success');
+    refreshTunnels();
+    return;
+  }
+  const message = body.error || t('helper.failed');
+  const hint = body.hint || t('helper.failedHint');
+  renderHelperBanner(true, { message, hint });
+  showToast(message, 'error', 8000, hint, body.detail || '');
 }
 
 // ── WebSocket live metrics ──────────────────────────────────────────────────
@@ -323,10 +499,11 @@ function recordTunnelSamples(tunnels) {
   });
 }
 
-function renderTunnels(tunnels) {
+function renderTunnels(tunnels, opts = {}) {
   const tbody = document.getElementById('tunnels-body');
   lastTunnels = tunnels || {};
-  recordTunnelSamples(lastTunnels);
+  // Re-renders (route drawer toggle, routes refresh) must not add samples.
+  if (opts.record !== false) recordTunnelSamples(lastTunnels);
 
   if (!tunnels || Object.keys(tunnels).length === 0) {
     tbody.innerHTML = `<tr><td colspan="9" class="empty">${t('empty.noTunnels')}</td></tr>`;
@@ -343,6 +520,26 @@ function renderTunnels(tunnels) {
       const isConnecting = status === 'connecting';
 
       const dot = `<span class="status-dot ${status}"></span>`;
+      // Why the last accepted (async) connect failed; the daemon clears it
+      // when a new connect starts or the tunnel comes up. A known
+      // last_error_key wins with its translated "what to do" line; the raw
+      // error stays in the tooltip.
+      const lastErr = !isConnected && (m.last_error || m.last_error_key)
+        ? `<div class="tunnel-error" title="${esc(m.last_error || '').replace(/"/g, '&quot;')}">${esc(t('tunnel.lastError', { time: m.last_error_at ? new Date(m.last_error_at).toLocaleTimeString() : '' }))}: ${esc(lastErrorText(m))}</div>`
+        : '';
+      // Provider adapters (attach mode): how the tunnel came up, or what
+      // the user must do in the provider app (see attachMessage).
+      const attachMsg = attachMessage(m.attach);
+      const attachLine = attachMsg
+        ? `<div class="tunnel-attach${attachWaiting(m.attach) ? ' waiting' : ''}">${esc(attachMsg)}</div>`
+        : '';
+      const tr = isConnected ? tunnelRoutesFor(name) : null;
+      const routesToggle = tr
+        ? `<div><button class="link-btn tunnel-routes-toggle" aria-expanded="${openRouteDrawers.has(name)}" onclick="toggleTunnelRoutes('${esc(name)}')">${esc(tr.all_traffic ? t('tunnelRoutes.toggleAll') : t('tunnelRoutes.toggle', { n: tr.total }))}</button></div>`
+        : '';
+      const drawer = tr && openRouteDrawers.has(name)
+        ? `<tr class="tunnel-routes-row"><td colspan="9">${renderTunnelRoutesDrawer(tr)}</td></tr>`
+        : '';
       const ip = m.AssignedIP || '<span class="muted">—</span>';
       const up = isConnected && m.UptimeSeconds > 0 ? formatDuration(m.UptimeSeconds) : '<span class="muted">—</span>';
       const sent = m.BytesSent > 0 ? formatBytes(m.BytesSent) : '<span class="muted">—</span>';
@@ -362,7 +559,7 @@ function renderTunnels(tunnels) {
 
       return `<tr>
         <td>${name}</td>
-        <td>${dot}${statusLabel}</td>
+        <td>${dot}${statusLabel}${attachLine}${lastErr}${routesToggle}</td>
         <td>${ip}</td>
         <td>${up}</td>
         <td>${sent}</td>
@@ -370,7 +567,7 @@ function renderTunnels(tunnels) {
         <td>${lat}</td>
         <td>${trend}</td>
         <td>${btn}</td>
-      </tr>`;
+      </tr>${drawer}`;
     });
 
   tbody.innerHTML = rows.join('');
@@ -409,7 +606,7 @@ function renderTrafficCharts() {
       ? `<div class="stat-tiles">
           <div class="stat-tile"><span class="stat-label">${t('stat.reconnects')}</span><span class="stat-value">${hist.reconnects ?? 0}</span></div>
           <div class="stat-tile"><span class="stat-label">${t('stat.jitter')}</span><span class="stat-value">${hist.jitter_ms ?? 0}ms</span></div>
-          <div class="stat-tile"><span class="stat-label">${t('stat.samples')}</span><span class="stat-value">${hist.samples ?? 0}</span></div>
+          <div class="stat-tile"><span class="stat-label">${t('stat.totalConnected')}</span><span class="stat-value">${hist.uptime_seconds > 0 ? formatDuration(hist.uptime_seconds) : '—'}</span></div>
         </div>`
       : '';
     return `<div class="traffic-chart-item">
@@ -453,31 +650,26 @@ async function refreshSecurity() {
     if (!res.ok) return;
     const data = await res.json();
 
-    setFeatureStateBadge('ks-status', data.kill_switch_state);
-    setFeatureStateBadge('dns-status', data.dns_guard_state);
+    // Same states and labels as `kongtrol status` (see shellSecurityBadges).
+    const badges = shellSecurityBadges(data);
+    setBadge('ks-status', badges.ks.text || t(badges.ks.key), badges.ks.cls);
+    setBadge('dns-status', t(badges.dns.key), badges.dns.cls);
+    setBadge('leak-status', t(badges.leak.key), badges.leak.cls);
 
-    if (!data.leak_check_available) {
-      setBadge(
-        'leak-status',
-        data.leak_detection_configured ? t('badge.unavailable') : t('badge.disabled'),
-        data.leak_detection_configured ? 'leak' : 'disabled',
-      );
-      document.getElementById('public-ip').textContent = knownPublicIP() || '—';
-      document.getElementById('base-public-ip').textContent = knownPublicIP() || '—';
+    // Opt-in public IP lookup: the IP, or "—" + a short hint while it is
+    // off. This page never triggers a lookup by itself (only "Revisar").
+    lastPublicIP = (data.public_ip_check_enabled && data.leak_check && data.leak_check.public_ip) || '';
+    publicIPEnabled = !!data.public_ip_check_enabled;
+    renderPublicIPField('public-ip', data);
+    renderPublicIPField('base-public-ip', data);
+
+    if (!data.public_ip_check_enabled) {
       document.getElementById('leak-time').textContent = '—';
       return;
     }
 
     if (data.leak_check) {
       const lk = data.leak_check;
-      if (lk.state === 'error') {
-        setBadge('leak-status', t('badge.error'), 'leak');
-      } else {
-        setBadge('leak-status', lk.has_leak ? t('badge.leak') : t('badge.clean'), lk.has_leak ? 'leak' : 'ok');
-      }
-      lastPublicIP = lk.public_ip || '';
-      document.getElementById('public-ip').textContent = lastPublicIP || '—';
-      document.getElementById('base-public-ip').textContent = lastPublicIP || '—';
       if (lk.checked_at) {
         const d = new Date(lk.checked_at);
         document.getElementById('leak-time').textContent = d.toLocaleTimeString(lang);
@@ -487,29 +679,8 @@ async function refreshSecurity() {
       return;
     }
 
-    setBadge('leak-status', t('badge.pending'), 'pending');
-    document.getElementById('public-ip').textContent = knownPublicIP() || '—';
-    document.getElementById('base-public-ip').textContent = knownPublicIP() || '—';
     document.getElementById('leak-time').textContent = '—';
   } catch (_) {}
-}
-
-function setFeatureBadge(id, enabled, active) {
-  if (!enabled) {
-    setBadge(id, t('badge.disabled'), 'disabled');
-    return;
-  }
-
-  function setFeatureStateBadge(id, state) {
-    if (state === 'disabled') {
-      setBadge(id, t('badge.disabled'), 'disabled');
-    } else if (state === 'armed' || state === 'active') {
-      setBadge(id, t('badge.on'), 'on');
-    } else {
-      setBadge(id, t('badge.idle'), 'pending');
-    }
-  }
-  setBadge(id, active ? t('badge.on') : t('badge.idle'), active ? 'on' : 'off');
 }
 
 function setBadge(id, label, stateClass) {
@@ -520,6 +691,7 @@ function setBadge(id, label, stateClass) {
 }
 
 function knownPublicIP() {
+  if (!publicIPEnabled) return '';
   if (lastPublicIP) return lastPublicIP;
   if (currentOverview && currentOverview.public_ip) return currentOverview.public_ip;
   return '';
@@ -528,6 +700,7 @@ function knownPublicIP() {
 // ── Route list ──────────────────────────────────────────────────────────────
 
 async function refreshRoutes() {
+  refreshTunnelRoutes();
   try {
     const res = await fetch(`${API}/api/v1/routes`);
     if (!res.ok) return;
@@ -536,15 +709,95 @@ async function refreshRoutes() {
   } catch (_) {}
 }
 
+// What goes through each connected tunnel, grouped by origin (server /
+// policy / vpn) — feeds the per-tunnel drawer and the routes card's
+// profile/origin labels.
+async function refreshTunnelRoutes() {
+  try {
+    const res = await fetch(`${API}/api/v1/tunnels/routes`);
+    if (!res.ok) return;
+    const data = await res.json();
+    tunnelRoutes = data && Array.isArray(data.tunnels) ? data : { tunnels: [] };
+    renderTunnels(lastTunnels, { record: false });
+    syncRouteFilter(lastPolicyList);
+    renderRoutes();
+  } catch (_) {}
+}
+
+function tunnelRoutesFor(name) {
+  return (tunnelRoutes.tunnels || []).find((tr) => tr.name === name && tr.connected) || null;
+}
+
+function toggleTunnelRoutes(name) {
+  if (openRouteDrawers.has(name)) openRouteDrawers.delete(name);
+  else openRouteDrawers.add(name);
+  renderTunnels(lastTunnels, { record: false });
+}
+
+// routeOriginIndex maps "iface|destination" (and bare destination) to the
+// tunnel that carries it, so the live routes card can label each row.
+function routeOriginIndex() {
+  const idx = {};
+  (tunnelRoutes.tunnels || []).forEach((tr) => {
+    (tr.routes || []).forEach((r) => {
+      const info = { profile: tr.name, origin: r.origin, policy: r.policy || '' };
+      idx[`${tr.interface || ''}|${r.destination}`] = info;
+      if (!idx[r.destination]) idx[r.destination] = info;
+    });
+  });
+  return idx;
+}
+
+function originTag(origin, policy) {
+  const label = t(`origin.${origin}`);
+  const title = origin === 'policy' && policy ? `${label}: ${policy}` : label;
+  return `<span class="route-tag origin-${esc(origin)}" title="${esc(title)}">${esc(label)}</span>`;
+}
+
+function restLineText() {
+  if (tunnelRoutes.rest_via_tunnel) return t('tunnelRoutes.restTunnel', { name: tunnelRoutes.rest_via_tunnel });
+  if (tunnelRoutes.rest_via) return t('tunnelRoutes.rest', { iface: tunnelRoutes.rest_via });
+  return t('tunnelRoutes.restUnknown');
+}
+
+function renderTunnelRoutesDrawer(tr) {
+  const groups = [];
+  (tr.routes || []).forEach((r) => {
+    const last = groups[groups.length - 1];
+    if (last && last.origin === r.origin && last.policy === (r.policy || '')) last.dests.push(r.destination);
+    else groups.push({ origin: r.origin, policy: r.policy || '', dests: [r.destination] });
+  });
+  const parts = [`<div class="tunnel-routes-title">${esc(t('tunnelRoutes.title'))}${tr.interface ? ` <span class="muted">· ${esc(tr.interface)}</span>` : ''}</div>`];
+  if (tr.all_traffic) parts.push(`<div class="tunnel-routes-all">${esc(t('tunnelRoutes.allTraffic'))}</div>`);
+  if (!groups.length && !tr.all_traffic) parts.push(`<div class="muted">${esc(t('tunnelRoutes.none'))}</div>`);
+  groups.forEach((g) => {
+    let title = t('tunnelRoutes.vpn', { n: g.dests.length });
+    if (g.origin === 'server') title = t('tunnelRoutes.server', { n: g.dests.length });
+    if (g.origin === 'policy') title = t('tunnelRoutes.policy', { name: g.policy, n: g.dests.length });
+    parts.push(`<div class="tunnel-routes-group">
+      <div class="tunnel-routes-group-title">${originTag(g.origin, g.policy)} ${esc(title)}</div>
+      ${g.origin === 'server' ? `<div class="tunnel-routes-explain">${esc(t('tunnelRoutes.serverExplain'))}</div>` : ''}
+      <ul class="tunnel-routes-chips">${g.dests.map((d) => `<li>${esc(d)}</li>`).join('')}</ul>
+    </div>`);
+  });
+  parts.push(`<div class="tunnel-routes-rest muted">${esc(restLineText())}</div>`);
+  return `<div class="tunnel-routes">${parts.join('')}</div>`;
+}
+
 function renderRoutes() {
   const ul = document.getElementById('routes-list');
   const filterSel = document.getElementById('routes-filter');
   const filter = filterSel ? filterSel.value : 'all';
   const routes = Array.isArray(currentRoutes) ? currentRoutes : [];
+  const idx = routeOriginIndex();
+  const infoOf = (r) => idx[`${r.interface || ''}|${r.destination}`] || idx[r.destination] || null;
 
   const filtered = routes.filter((r) => {
     if (filter === 'all') return true;
     if (filter === 'default') return !!r.is_default;
+    const info = infoOf(r);
+    if (filter.startsWith('profile:')) return !!info && info.profile === filter.slice('profile:'.length);
+    if (filter.startsWith('origin:')) return !!info && info.origin === filter.slice('origin:'.length);
     if (!filter.startsWith('policy:')) return true;
     return r.policy_name === filter.slice('policy:'.length);
   });
@@ -555,14 +808,17 @@ function renderRoutes() {
   }
 
   ul.innerHTML = filtered.map((r) => {
-    const tag = r.is_default
-      ? `<span class="route-tag default">${t('routes.defaultTag')}</span>`
-      : (r.policy_name ? `<span class="route-tag policy">${esc(r.policy_name)}</span>` : '');
+    const info = infoOf(r);
+    let tag = '';
+    if (r.is_default) tag = `<span class="route-tag default">${t('routes.defaultTag')}</span>`;
+    else if (info) tag = originTag(info.origin, info.policy) + (info.policy ? `<span class="route-tag policy">${esc(info.policy)}</span>` : '');
+    else if (r.policy_name) tag = `<span class="route-tag policy">${esc(r.policy_name)}</span>`;
+    const via = info ? `${info.profile} · ${r.interface || r.gateway || '—'}` : (r.interface || r.gateway || '—');
     return `<li>
-      <span class="dest">${r.destination}</span>
+      <span class="dest">${esc(r.destination)}</span>
       <span class="route-meta">
         ${tag}
-        <span class="via">→ ${esc(r.interface || r.gateway || '—')}</span>
+        <span class="via">→ ${esc(via)}</span>
       </span>
     </li>`;
   }).join('');
@@ -590,20 +846,25 @@ function renderNetworkOverview() {
 
   const localIPs = Array.isArray(o.local_ips) ? o.local_ips : [];
   document.getElementById('base-local-ips').textContent = localIPs.length ? localIPs.join(', ') : '—';
+  publicIPEnabled = !!o.public_ip_check_enabled;
   if (o.public_ip) lastPublicIP = o.public_ip;
-  const pub = knownPublicIP();
-  document.getElementById('base-public-ip').textContent = pub || '—';
-  document.getElementById('public-ip').textContent = pub || '—';
+  const ipData = { public_ip_check_enabled: publicIPEnabled, public_ip: knownPublicIP() };
+  renderPublicIPField('base-public-ip', ipData);
+  renderPublicIPField('public-ip', ipData);
 }
 
 function syncRouteFilter(policies) {
+  lastPolicyList = policies || [];
   const sel = document.getElementById('routes-filter');
   if (!sel) return;
   const prev = sel.value || 'all';
   const names = [...new Set((policies || []).map((p) => p.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const profiles = (tunnelRoutes.tunnels || []).filter((tr) => tr.connected).map((tr) => tr.name).sort((a, b) => a.localeCompare(b));
   const options = [
     `<option value="all">${t('routes.all')}</option>`,
     `<option value="default">${t('routes.default')}</option>`,
+    ...profiles.map((name) => `<option value="profile:${esc(name)}">${t('routes.profilePrefix')}: ${esc(name)}</option>`),
+    ...['server', 'policy', 'vpn'].map((o) => `<option value="origin:${o}">${t('routes.originPrefix')}: ${t(`origin.${o}`)}</option>`),
     ...names.map((name) => `<option value="policy:${esc(name)}">${t('routes.policyPrefix')}: ${esc(name)}</option>`),
   ];
   sel.innerHTML = options.join('');
@@ -662,7 +923,7 @@ async function resolveTarget() {
       resultDiv.innerHTML = `<strong>${t('resolve.matchedRule', { lhs, via: esc(data.via), rule: esc(data.rule) })}</strong>`;
     } else {
       resultDiv.className = 'resolve-result no-match';
-      const publicIP = lastPublicIP ? t('common.publicIpSuffix', { ip: esc(lastPublicIP) }) : '';
+      const publicIp = knownPublicIP() ? t('common.publicIpSuffix', { ip: esc(knownPublicIP()) }) : '';
       resultDiv.innerHTML = `<strong>${t('resolve.unmatchedRule', {
         lhs,
         defaultRoute: t('resolve.defaultRoute'),
@@ -765,6 +1026,27 @@ async function cancelConnectVPN(name) {
   }
 }
 
+// attachMessage mirrors vpn.AttachState.MessageKey (internal/vpn/adapter.go):
+// a provider adapter's attach phase as one translated line, or ''.
+function attachMessage(a) {
+  if (!a || !a.phase) return '';
+  const vars = { app: a.app || '', location: a.location || '', reason: a.reason || '' };
+  switch (a.phase) {
+    case 'attached': return t('attach.attached', vars);
+    case 'auto': return t(a.location ? 'attach.auto_location' : 'attach.auto', vars);
+    case 'user': return t('attach.user', vars);
+    case 'waiting_user': return t(a.reason ? 'attach.automation_failed' : 'attach.waiting_user', vars);
+    case 'waiting_disconnect': return t('attach.waiting_disconnect', vars);
+    case 'dropped': return t('attach.dropped', vars);
+    default: return '';
+  }
+}
+
+// attachWaiting mirrors vpn.AttachState.Waiting: the user has to act.
+function attachWaiting(a) {
+  return !!a && ['waiting_user', 'waiting_disconnect', 'dropped'].includes(a.phase);
+}
+
 async function disconnectVPN(name) {
   try {
     await fetch(`${API}/api/v1/tunnels/${name}/disconnect`, { method: 'POST' });
@@ -793,8 +1075,8 @@ async function reloadVPN(name) {
       return;
     }
     if (!res.ok) {
-      const e = await res.json().catch(() => ({ error: t('alerts.tunnelReloadFailed') }));
-      showToast(e.error || t('alerts.tunnelReloadFailed'), 'error');
+      const e = await res.json().catch(() => null);
+      showApiError(t('alerts.tunnelReloadFailed'), e);
       return;
     }
     showToast(t('toast.tunnelReloading', { name }), 'info');
@@ -897,7 +1179,9 @@ refreshSecurity();
 refreshMetricsHistory();
 refreshGroupsQuicklaunch();
 
-document.getElementById('theme-toggle')?.addEventListener('click', () => {
+// Fired by shell.js on every effective theme change: the toggle, a server
+// preference, or the OS switching light/dark while following the system.
+window.addEventListener('kongtrol:theme-changed', () => {
   setTimeout(() => {
     document.querySelectorAll('canvas.latency-spark').forEach((c) => {
       const h = tunnelHistory[c.dataset.profile];
@@ -913,3 +1197,5 @@ setInterval(refreshPolicies, 30_000);
 setInterval(refreshNetworkOverview, 30_000);
 setInterval(refreshMetricsHistory, 30_000);
 setInterval(refreshGroupsQuicklaunch, 30_000);
+refreshHelperStatus();
+setInterval(refreshHelperStatus, 30_000);

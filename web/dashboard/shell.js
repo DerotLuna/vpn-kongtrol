@@ -41,8 +41,8 @@ function renderShell() {
   if (sidebar) {
     sidebar.innerHTML = `
       <a href="/" class="brand">
-        <img src="/logo-kong.svg" alt="VPN Kongtrol" class="brand-logo" />
-        <span class="brand-name"><strong>K O N G T R O L</strong><span class="brand-badges"><small>CLI</small><small class="beta">BETA</small></span></span>
+        <img src="/brand/logo-kong.svg" alt="VPN Kongtrol" class="brand-logo" />
+        <span class="brand-name"><strong>K O N G T R O L</strong><span class="brand-badges"><small class="beta">BETA</small></span></span>
       </a>
       <nav class="side-nav">
         ${SHELL_NAV.map((item) => `
@@ -95,14 +95,39 @@ function renderShell() {
   }
 }
 
+// Theme resolution: an explicit choice (the toggle) wins and persists — in
+// localStorage for this browser and in ~/.kongtrol/preferences.json via
+// /api/v1/preferences, which is authoritative once loaded. With no explicit
+// choice the dashboard follows prefers-color-scheme and reacts live when the
+// OS/browser switches.
+function shellStoredTheme() {
+  try {
+    const saved = localStorage.getItem(SHELL_THEME_KEY);
+    return saved === 'light' || saved === 'dark' ? saved : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function shellStoreTheme(theme) {
+  try {
+    if (theme) localStorage.setItem(SHELL_THEME_KEY, theme);
+    else localStorage.removeItem(SHELL_THEME_KEY);
+  } catch (_) {}
+}
+
+function shellSystemTheme() {
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 function shellResolveInitialTheme() {
-  const saved = localStorage.getItem(SHELL_THEME_KEY);
-  if (saved === 'light' || saved === 'dark') return saved;
-  return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  return shellStoredTheme() || shellSystemTheme();
 }
 
 function shellApplyTheme(theme) {
+  const changed = document.documentElement.dataset.theme !== theme;
   document.documentElement.dataset.theme = theme;
+  if (changed) window.dispatchEvent(new CustomEvent('kongtrol:theme-changed', { detail: theme }));
   document.documentElement.style.colorScheme = theme;
   const colorScheme = document.querySelector('meta[name="color-scheme"]');
   if (colorScheme) colorScheme.content = theme;
@@ -115,14 +140,24 @@ function shellApplyTheme(theme) {
 
 function initShellTheme() {
   shellApplyTheme(shellResolveInitialTheme());
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const follow = () => { if (!shellStoredTheme()) shellApplyTheme(shellSystemTheme()); };
+    if (mq.addEventListener) mq.addEventListener('change', follow);
+    else if (mq.addListener) mq.addListener(follow);
+  }
   const btn = document.getElementById('theme-toggle');
   if (!btn) return;
   btn.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    // Choosing the theme the system already uses means "follow the system"
+    // again: the explicit choice is cleared instead of pinned, so a later
+    // OS light/dark switch is still honored.
+    const explicit = next === shellSystemTheme() ? '' : next;
     const apply = () => {
       shellApplyTheme(next);
-      localStorage.setItem(SHELL_THEME_KEY, next);
-      shellSavePreferences({ theme: next });
+      shellStoreTheme(explicit);
+      shellSavePreferences({ theme: explicit });
     };
     // Circular reveal growing from the toggle button — see the
     // ::view-transition-* rules in style.css. Falls back to an instant
@@ -162,10 +197,11 @@ async function shellLoadPreferences() {
     if (!res.ok) return;
     const prefs = await res.json();
     window.kongtrolPreferences = prefs;
-    if (prefs.theme === 'light' || prefs.theme === 'dark') {
-      localStorage.setItem(SHELL_THEME_KEY, prefs.theme);
-      shellApplyTheme(prefs.theme);
-    }
+    // The server copy is authoritative: a cleared theme there also clears a
+    // stale browser copy, otherwise this browser would stay pinned forever.
+    const theme = prefs.theme === 'light' || prefs.theme === 'dark' ? prefs.theme : '';
+    shellStoreTheme(theme);
+    shellApplyTheme(theme || shellSystemTheme());
     window.dispatchEvent(new CustomEvent('kongtrol:preferences-loaded', { detail: prefs }));
   } catch (_) {}
 }
@@ -252,6 +288,38 @@ function initShellNavTooltips() {
   new MutationObserver(sync).observe(nav, { subtree: true, characterData: true, childList: true });
 }
 
+// ── Security badges ──────────────────────────────────────────────────────
+// Maps GET /api/v1/security/status to the same states `kongtrol status`
+// shows (cmd/kongtrol/status_render.go), as i18n keys + badge classes so
+// every page renders them in its own language:
+//   kill switch: ACTIVO (rules in place) / ARMADO (on, engages with a
+//                tunnel) / INACTIVO (off in settings)
+//   DNS guard:   ACTIVO / INACTIVO (on, no tunnel) / DESHABILITADO
+//   leak check:  LIMPIO / FUGA / ERROR / PENDIENTE / NO DISPONIBLE / DESHABILITADO
+function shellSecurityBadges(data) {
+  const d = data || {};
+  let ks = { key: 'badge.off', cls: 'disabled' };
+  if (d.kill_switch) ks = { key: 'badge.active', cls: 'on' };
+  else if (d.kill_switch_enabled) ks = { key: 'badge.armed', cls: 'pending' };
+  // Split-tunnel detail: "ARMADO (protegiendo 2 túneles)" / "ACTIVO
+  // (bloqueando destinos de brainbox)". Pages show ks.text when set.
+  ks.text = shellKillSwitchText(d.kill_switch_status);
+
+  let dns = { key: 'badge.idle', cls: 'pending' };
+  if (!d.dns_guard_enabled) dns = { key: 'badge.disabled', cls: 'disabled' };
+  else if (d.dns_guard) dns = { key: 'badge.active', cls: 'on' };
+
+  let leak = { key: 'badge.disabled', cls: 'disabled' };
+  if (d.leak_detection_configured && !d.leak_check_available) leak = { key: 'badge.unavailable', cls: 'leak' };
+  if (d.leak_check_available) leak = { key: 'badge.pending', cls: 'pending' };
+  const lk = d.leak_check;
+  if (lk && lk.state === 'clean') leak = { key: 'badge.clean', cls: 'ok' };
+  else if (lk && lk.state === 'leak') leak = { key: 'badge.leak', cls: 'leak' };
+  else if (lk && lk.state === 'error') leak = { key: 'badge.error', cls: 'leak' };
+
+  return { ks, dns, leak };
+}
+
 // ── Tabs ─────────────────────────────────────────────────────────────────
 // Generic tab component: <div data-tabs data-tabs-id="studio"> containing
 // buttons [data-tab="x"] and panels [data-tab-panel="x"]. Remembers the last
@@ -277,33 +345,6 @@ function initTabs(root) {
   });
 }
 
-// Returns `rows` <tr> of skeleton placeholders for a `cols`-column table,
-// used as the initial-load state instead of a static "Loading…" text row.
-// widthsPct optionally gives each column a different bar width (e.g. a
-// short status column vs. a long name column) so the skeleton reads more
-// like the real row shape; defaults to varied widths that work for most
-// tables.
-function shellSkeletonRows(cols, rows = 3, widthsPct) {
-  const widths = widthsPct || Array.from({ length: cols }, (_, i) => (i === 0 ? 70 : 45 + ((i * 17) % 40)));
-  let out = '';
-  for (let r = 0; r < rows; r++) {
-    out += '<tr class="skeleton-row">';
-    for (let c = 0; c < cols; c++) {
-      out += `<td><span class="skeleton" style="width:${widths[c % widths.length]}%"></span></td>`;
-    }
-    out += '</tr>';
-  }
-  return out;
-}
-
-// Same idea for non-table lists/paragraphs (e.g. groups quicklaunch).
-function shellSkeletonLines(n = 2, widthsPct) {
-  const widths = widthsPct || Array.from({ length: n }, () => 55 + Math.random() * 30);
-  return Array.from({ length: n }, (_, i) =>
-    `<div style="margin:${i === 0 ? 0 : 10}px 0 0;"><span class="skeleton" style="width:${widths[i % widths.length]}%"></span></div>`
-  ).join('');
-}
-
 renderShell();
 initShellTheme();
 initShellMobileNav();
@@ -311,3 +352,30 @@ initShellCollapse();
 initShellNavTooltips();
 initTabs(document);
 shellLoadPreferences();
+
+// ── Kill switch detail ───────────────────────────────────────────────────
+// Same one-liners as the CLI (internal/i18n killswitch.state.*), from the
+// daemon's kill_switch_status: { state, protected[], blocking[] }.
+const SHELL_KS_I18N = {
+  es: {
+    off: 'INACTIVO',
+    armed: 'ARMADO (protegiendo {n} túnel(es))',
+    armed_none: 'ARMADO (ningún túnel protegido conectado)',
+    active: 'ACTIVO (bloqueando destinos de {names})',
+  },
+  en: {
+    off: 'OFF',
+    armed: 'ARMED (protecting {n} tunnel(s))',
+    armed_none: 'ARMED (no protected tunnel connected)',
+    active: 'ACTIVE (blocking {names} destinations)',
+  },
+};
+
+function shellKillSwitchText(st) {
+  if (!st || !st.state) return '';
+  const dict = SHELL_KS_I18N[typeof lang === 'string' && lang === 'es' ? 'es' : 'en'];
+  const prot = st.protected || [];
+  if (st.state === 'active') return dict.active.replace('{names}', (st.blocking || []).join(', '));
+  if (st.state === 'armed') return prot.length ? dict.armed.replace('{n}', String(prot.length)) : dict.armed_none;
+  return dict.off;
+}

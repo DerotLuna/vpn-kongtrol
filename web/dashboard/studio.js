@@ -8,7 +8,6 @@ const I18N = {
     'nav.security': 'Seguridad',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
-    'nav.collapse': 'Contraer',
     'page.studio.title': 'Estudio',
     'ws.studio': 'editor',
     'studio.tabPolicies': 'Políticas',
@@ -20,6 +19,13 @@ const I18N = {
     'editor.name': 'Nombre',
     'editor.namePlaceholder': 'Contenido US',
     'editor.viaProfile': 'Vía perfil VPN',
+    'editor.onDown': 'Si el túnel está apagado',
+    'editor.onDown.allow': 'Usar internet normal y avisarme',
+    'editor.onDown.block': 'Bloquear este tráfico',
+    'editor.onDown.connect': 'Conectar el túnel cuando haya tráfico',
+    'editor.onDownHint.allow': 'Tú decides qué túneles están encendidos; Kongtrol solo te avisa (máx. 1 vez cada 30 min).',
+    'editor.onDownHint.block': 'Nunca sale por internet normal. Para dominios, solo se bloquean las IPs ya resueltas.',
+    'editor.onDownHint.connect': 'Kongtrol conecta el túnel al detectar tráfico hacia estos destinos.',
     'editor.domains': 'Dominios (uno por línea)',
     'editor.ipRanges': 'Rangos IP (uno por línea)',
     'editor.apps': 'Apps (una por línea)',
@@ -43,7 +49,6 @@ const I18N = {
     'table.match': 'Match',
     'table.via': 'Vía',
     'table.actions': 'Acciones',
-    'empty.loadingPolicies': 'Cargando políticas…',
     'empty.noPolicies': 'No hay políticas configuradas.',
     'alerts.createFailed': 'Error al crear política',
     'alerts.updateFailed': 'Error al actualizar política',
@@ -67,14 +72,35 @@ const I18N = {
     'pEditor.host': 'Host',
     'pEditor.hostPlaceholder': 'vpn.empresa.com',
     'pEditor.configFile': 'Ruta del archivo de config',
+    'pEditor.ovpnRoutesHint': 'Las rutas las envía el servidor de la VPN · no hace falta agregar IPs · si falta algo, agrégalo con una política',
     'pEditor.configPlaceholder': '~/.kongtrol/configs/server.ovpn',
-    'pEditor.server': 'Server (protonvpn)',
+    'pEditor.server': 'Servidor exacto (opcional)',
     'pEditor.protocol': 'Protocolo (protonvpn)',
     'pEditor.authMethod': 'Método de autenticación',
     'pEditor.cert': 'Ruta del certificado',
     'pEditor.key': 'Ruta de la clave',
     'pEditor.username': 'Usuario',
     'pEditor.password': 'Contraseña',
+    'pEditor.yes': 'Sí',
+    'pEditor.no': 'No',
+    'pEditor.autoConnect': 'Conectar automáticamente',
+    'pEditor.autoConnectHint': 'Sí = Kongtrol conecta solo. No = abre la app y tú conectas.',
+    'pEditor.country': 'País (opcional)',
+    'pEditor.countryPlaceholder': 'Ej: CH, United States',
+    'pEditor.countryHint': 'Código o nombre. Vacío = el más rápido.',
+    'pEditor.city': 'Ciudad (opcional)',
+    'pEditor.cityPlaceholder': 'Ej: Zurich',
+    'pEditor.group': 'Grupo de servidores (opcional)',
+    'pEditor.groupPlaceholder': 'Ej: P2P, Dedicated IP',
+    'pEditor.serverPlaceholder': 'Ej: CH#4, us3710',
+    'pEditor.interface': 'Nombre de la conexión de red (opcional)',
+    'pEditor.interfacePlaceholder': 'Ej: NordLynx',
+    'pEditor.interfaceHint': 'Solo si Kongtrol no detecta el túnel.',
+    'pEditor.waitTimeout': 'Tiempo de espera (opcional)',
+    'pEditor.waitTimeoutPlaceholder': 'Ej: 10m (normal: 5m)',
+    'pEditor.waitTimeoutHint': 'Cuánto espera Kongtrol a que conectes en la app.',
+    'pEditor.appPath': 'Ruta de la app (opcional)',
+    'pEditor.appPathPlaceholder': 'Solo si la app está en otra carpeta',
     'pEditor.passwordPlaceholder': 'Dejar en blanco para mantener la actual',
     'pEditor.tip': 'Tip: elige una fila de la tabla para editarla. No todos los campos aplican a todos los tipos de adaptador.',
     'pEditor.search': 'Filtrar por nombre, tipo o host…',
@@ -82,7 +108,6 @@ const I18N = {
     'pTable.type': 'Tipo',
     'pTable.target': 'Host / Server',
     'pTable.credentials': 'Credenciales',
-    'empty.loadingProfiles': 'Cargando perfiles…',
     'empty.noProfiles': 'No hay perfiles configurados.',
     'cred.userPass': 'usuario + contraseña',
     'cred.userOnly': 'solo usuario',
@@ -98,14 +123,12 @@ const I18N = {
     'toast.profileUpdated': 'Perfil "{name}" actualizado. Reinicia el daemon para aplicar los cambios.',
     'toast.profileDeleted': 'Perfil "{name}" eliminado.',
 
-    'groups.title': 'Grupos',
     'groups.editorTitle': 'Editor de Grupo',
     'groups.name': 'Nombre',
     'groups.namePlaceholder': 'trabajo',
     'groups.profiles': 'Perfiles',
     'groups.tip': 'Tip: elige una fila de la tabla para editarla.',
     'groups.existingTitle': 'Grupos existentes',
-    'empty.loadingGroups': 'Cargando grupos…',
     'empty.noGroups': 'No hay grupos configurados.',
     'alerts.groupCreateFailed': 'Error al crear el grupo',
     'alerts.groupUpdateFailed': 'Error al actualizar el grupo',
@@ -131,7 +154,6 @@ const I18N = {
     'nav.security': 'Security',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
-    'nav.collapse': 'Collapse',
     'page.studio.title': 'Studio',
     'ws.studio': 'editor',
     'studio.tabPolicies': 'Policies',
@@ -143,6 +165,13 @@ const I18N = {
     'editor.name': 'Name',
     'editor.namePlaceholder': 'US Content',
     'editor.viaProfile': 'Via VPN profile',
+    'editor.onDown': 'If the tunnel is off',
+    'editor.onDown.allow': 'Use the normal internet and tell me',
+    'editor.onDown.block': 'Block this traffic',
+    'editor.onDown.connect': 'Connect the tunnel when there is traffic',
+    'editor.onDownHint.allow': 'You decide which tunnels are on; Kongtrol only tells you (at most once every 30 min).',
+    'editor.onDownHint.block': 'It never leaves through the normal internet. For domains, only IPs resolved so far are blocked.',
+    'editor.onDownHint.connect': 'Kongtrol connects the tunnel when it sees traffic to these destinations.',
     'editor.domains': 'Domains (one per line)',
     'editor.ipRanges': 'IP ranges (one per line)',
     'editor.apps': 'Apps (one per line)',
@@ -166,7 +195,6 @@ const I18N = {
     'table.match': 'Match',
     'table.via': 'Via',
     'table.actions': 'Actions',
-    'empty.loadingPolicies': 'Loading policies…',
     'empty.noPolicies': 'No policies configured.',
     'alerts.createFailed': 'Failed to create policy',
     'alerts.updateFailed': 'Failed to update policy',
@@ -190,14 +218,35 @@ const I18N = {
     'pEditor.host': 'Host',
     'pEditor.hostPlaceholder': 'vpn.corp.com',
     'pEditor.configFile': 'Config file path',
+    'pEditor.ovpnRoutesHint': 'Routes are sent by the VPN server · no need to add IPs · if something is missing, add it with a policy',
     'pEditor.configPlaceholder': '~/.kongtrol/configs/server.ovpn',
-    'pEditor.server': 'Server (protonvpn)',
+    'pEditor.server': 'Exact server (optional)',
     'pEditor.protocol': 'Protocol (protonvpn)',
     'pEditor.authMethod': 'Auth method',
     'pEditor.cert': 'Certificate path',
     'pEditor.key': 'Key path',
     'pEditor.username': 'Username',
     'pEditor.password': 'Password',
+    'pEditor.yes': 'Yes',
+    'pEditor.no': 'No',
+    'pEditor.autoConnect': 'Connect automatically',
+    'pEditor.autoConnectHint': 'Yes = Kongtrol connects on its own. No = it opens the app and you connect.',
+    'pEditor.country': 'Country (optional)',
+    'pEditor.countryPlaceholder': 'E.g. CH, United States',
+    'pEditor.countryHint': 'Code or name. Empty = fastest.',
+    'pEditor.city': 'City (optional)',
+    'pEditor.cityPlaceholder': 'E.g. Zurich',
+    'pEditor.group': 'Server group (optional)',
+    'pEditor.groupPlaceholder': 'E.g. P2P, Dedicated IP',
+    'pEditor.serverPlaceholder': 'E.g. CH#4, us3710',
+    'pEditor.interface': 'Network connection name (optional)',
+    'pEditor.interfacePlaceholder': 'E.g. NordLynx',
+    'pEditor.interfaceHint': "Only if Kongtrol doesn't detect the tunnel.",
+    'pEditor.waitTimeout': 'Wait time (optional)',
+    'pEditor.waitTimeoutPlaceholder': 'E.g. 10m (normal: 5m)',
+    'pEditor.waitTimeoutHint': 'How long Kongtrol waits for you to connect in the app.',
+    'pEditor.appPath': 'App path (optional)',
+    'pEditor.appPathPlaceholder': 'Only if the app is in another folder',
     'pEditor.passwordPlaceholder': 'Leave blank to keep existing',
     'pEditor.tip': 'Tip: pick a row from the table to edit it. Not every field applies to every adapter type.',
     'pEditor.search': 'Filter by name, type, or host…',
@@ -205,7 +254,6 @@ const I18N = {
     'pTable.type': 'Type',
     'pTable.target': 'Host / Server',
     'pTable.credentials': 'Credentials',
-    'empty.loadingProfiles': 'Loading profiles…',
     'empty.noProfiles': 'No profiles configured.',
     'cred.userPass': 'username + password',
     'cred.userOnly': 'username only',
@@ -221,14 +269,12 @@ const I18N = {
     'toast.profileUpdated': 'Profile "{name}" updated. Restart the daemon to apply the change.',
     'toast.profileDeleted': 'Profile "{name}" deleted.',
 
-    'groups.title': 'Groups',
     'groups.editorTitle': 'Group Editor',
     'groups.name': 'Name',
     'groups.namePlaceholder': 'work',
     'groups.profiles': 'Profiles',
     'groups.tip': 'Tip: pick a row from the table to edit it.',
     'groups.existingTitle': 'Existing Groups',
-    'empty.loadingGroups': 'Loading groups…',
     'empty.noGroups': 'No groups configured.',
     'alerts.groupCreateFailed': 'Failed to create group',
     'alerts.groupUpdateFailed': 'Failed to update group',
@@ -254,9 +300,20 @@ const I18N = {
 // live in the shared i18n.js — this page only supplies the I18N dict and
 // WS_INDICATOR_KEY above, plus the re-render hook below.
 function onLangChange() {
+  updateOnDownHint();
   renderPolicies();
   renderProfiles();
   renderGroups();
+}
+
+// apiErrorText builds a one-line error toast. A config validation error
+// comes back already translated with a "what to do" hint (error_key set):
+// show both. Anything else: the page's own translated text first, the raw
+// server detail after it as secondary information.
+function apiErrorText(e, fallbackKey) {
+  if (e && e.error_key) return e.hint ? `${e.error} ${e.hint}` : e.error;
+  const detail = e && e.error ? ` (${e.error})` : '';
+  return t(fallbackKey) + detail;
 }
 
 function lines(id) {
@@ -277,7 +334,22 @@ function draftPolicyRule() {
       ip_ranges: lines('p-ip-ranges'),
       apps: lines('p-apps'),
     },
+    on_tunnel_down: document.getElementById('p-on-down').value || 'allow',
   };
+}
+
+// updateOnDownHint shows the one-line explanation of the selected
+// on_tunnel_down option.
+function updateOnDownHint() {
+  const v = document.getElementById('p-on-down').value || 'allow';
+  document.getElementById('p-on-down-hint').textContent = t(`editor.onDownHint.${v}`);
+}
+
+function setOnDown(v) {
+  const sel = document.getElementById('p-on-down');
+  sel.value = v || 'allow';
+  enhanceSelect(sel);
+  updateOnDownHint();
 }
 
 function fillPolicyForm(p) {
@@ -288,10 +360,12 @@ function fillPolicyForm(p) {
   document.getElementById('p-ip-ranges').value = (p.ip_ranges || []).join('\n');
   document.getElementById('p-apps').value = (p.apps || []).join('\n');
   enhanceSelect(document.getElementById('p-via'));
+  setOnDown(p.on_tunnel_down);
 }
 
 function clearPolicyForm() {
   selectedPolicyName = '';
+  setOnDown('allow');
   document.getElementById('p-name').value = '';
   document.getElementById('p-domains').value = '';
   document.getElementById('p-ip-ranges').value = '';
@@ -366,8 +440,8 @@ async function loadPolicies() {
 async function reloadPolicies() {
   const res = await fetch(`${API}/api/v1/policies/reload`, { method: 'POST' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.policyReloadFailed') }));
-    showToast(e.error || t('alerts.policyReloadFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.policyReloadFailed'), 'error');
     return;
   }
   showToast(t('toast.policiesReloaded'), 'success');
@@ -378,12 +452,12 @@ async function createPolicy() {
   const rule = draftPolicyRule();
   const res = await fetch(`${API}/api/v1/policies`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
     body: JSON.stringify(rule),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.createFailed') }));
-    showToast(e.error || t('alerts.createFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.createFailed'), 'error');
     return;
   }
   await loadPolicies();
@@ -399,12 +473,12 @@ async function updatePolicy() {
   }
   const res = await fetch(`${API}/api/v1/policies/${encodeURIComponent(key)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
     body: JSON.stringify(rule),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.updateFailed') }));
-    showToast(e.error || t('alerts.updateFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.updateFailed'), 'error');
     return;
   }
   await loadPolicies();
@@ -424,8 +498,8 @@ async function deletePolicyByName(name) {
   if (!confirm(t('confirm.delete', { name }))) return;
   const res = await fetch(`${API}/api/v1/policies/${encodeURIComponent(name)}`, { method: 'DELETE' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.deleteFailed') }));
-    showToast(e.error || t('alerts.deleteFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.deleteFailed'), 'error');
     return;
   }
   if (selectedPolicyName === name) clearPolicyForm();
@@ -446,14 +520,14 @@ async function testDraftPolicy() {
   };
   const res = await fetch(`${API}/api/v1/policies/test`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
     body: JSON.stringify(body),
   });
   const box = document.getElementById('test-result');
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.testFailed') }));
+    const e = await res.json().catch(() => ({}));
     box.className = 'resolve-result no-match';
-    box.innerHTML = esc(e.error || t('alerts.testFailed'));
+    box.innerHTML = esc(apiErrorText(e, 'alerts.testFailed'));
     box.style.display = 'block';
     return;
   }
@@ -473,21 +547,63 @@ async function testDraftPolicy() {
 let profiles = [];
 let selectedProfileName = '';
 
+// PROFILE_FIELDS maps request keys to form inputs. Provider-only fields
+// (attach mode) are cleared when hidden for the chosen type, so switching a
+// profile to another type never leaves stale values that fail validation;
+// other hidden fields are simply not sent (absent = kept server-side).
+const PROFILE_FIELDS = {
+  host: 'v-host', config: 'v-config', server: 'v-server', protocol: 'v-protocol',
+  auth_method: 'v-auth-method', cert: 'v-cert', key: 'v-key', username: 'v-username', password: 'v-password',
+  country: 'v-country', city: 'v-city', group: 'v-group',
+  interface: 'v-interface', wait_timeout: 'v-wait-timeout', app_path: 'v-app-path',
+};
+const PROVIDER_ONLY = ['country', 'city', 'group', 'interface', 'wait_timeout', 'app_path'];
+// Providers that cannot pick a location: a leftover server must be cleared.
+const NO_LOCATION = ['forticlient', 'surfshark'];
+
+function fieldVisible(id, type) {
+  const label = document.getElementById(id).closest('label');
+  if (!label) return true;
+  const only = label.getAttribute('data-types');
+  if (only) return only.split(' ').includes(type);
+  const hide = label.getAttribute('data-hide-types');
+  if (hide) return !hide.split(' ').includes(type);
+  return true;
+}
+
+// updateProfileFields shows only the inputs that apply to the chosen type.
+function updateProfileFields() {
+  const type = document.getElementById('v-type').value;
+  document.querySelectorAll('label[data-types], label[data-hide-types]').forEach((label) => {
+    const input = label.querySelector('input, select');
+    label.style.display = input && fieldVisible(input.id, type) ? '' : 'none';
+  });
+}
+
 function draftProfile() {
-  return {
+  const type = document.getElementById('v-type').value;
+  const draft = {
     name: document.getElementById('v-name').value.trim(),
-    type: document.getElementById('v-type').value,
+    type,
     priority: parseInt(document.getElementById('v-priority').value, 10) || 0,
-    host: document.getElementById('v-host').value.trim(),
-    config: document.getElementById('v-config').value.trim(),
-    server: document.getElementById('v-server').value.trim(),
-    protocol: document.getElementById('v-protocol').value.trim(),
-    auth_method: document.getElementById('v-auth-method').value,
-    cert: document.getElementById('v-cert').value.trim(),
-    key: document.getElementById('v-key').value.trim(),
-    username: document.getElementById('v-username').value.trim(),
-    password: document.getElementById('v-password').value,
   };
+  Object.entries(PROFILE_FIELDS).forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    const value = key === 'password' || key === 'auth_method' ? el.value : el.value.trim();
+    if (fieldVisible(id, type)) draft[key] = value;
+    else if (PROVIDER_ONLY.includes(key) || (key === 'server' && NO_LOCATION.includes(type))) draft[key] = '';
+  });
+  // auto_connect true is the default (stored as unset); hidden = default.
+  draft.auto_connect = !fieldVisible('v-auto-connect', type) || document.getElementById('v-auto-connect').value === 'true';
+  return draft;
+}
+
+// omitEmpty drops empty-string/null fields so a create request never asks the
+// server to persist blank keys. Update sends the full draft on purpose: an
+// empty field there means "clear this value", while fields the form does not
+// expose are simply absent and kept server-side.
+function omitEmpty(obj) {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== '' && v !== null && v !== undefined));
 }
 
 function fillProfileForm(p) {
@@ -500,17 +616,26 @@ function fillProfileForm(p) {
   document.getElementById('v-server').value = p.server || '';
   document.getElementById('v-protocol').value = p.protocol || '';
   document.getElementById('v-auth-method').value = p.auth_method || 'certificate';
-  document.getElementById('v-cert').value = '';
-  document.getElementById('v-key').value = '';
+  document.getElementById('v-cert').value = p.cert || '';
+  document.getElementById('v-key').value = p.key || '';
   document.getElementById('v-username').value = p.username || '';
   document.getElementById('v-password').value = '';
   enhanceSelect(document.getElementById('v-type'));
   enhanceSelect(document.getElementById('v-auth-method'));
+  document.getElementById('v-country').value = p.country || '';
+  document.getElementById('v-city').value = p.city || '';
+  document.getElementById('v-group').value = p.group || '';
+  document.getElementById('v-interface').value = p.interface || '';
+  document.getElementById('v-wait-timeout').value = p.wait_timeout || '';
+  document.getElementById('v-app-path').value = p.app_path || '';
+  document.getElementById('v-auto-connect').value = p.auto_connect === false ? 'false' : 'true';
+  enhanceSelect(document.getElementById('v-auto-connect'));
+  updateProfileFields();
 }
 
 function clearProfileForm() {
   selectedProfileName = '';
-  ['v-name', 'v-host', 'v-config', 'v-server', 'v-protocol', 'v-cert', 'v-key', 'v-username', 'v-password'].forEach((id) => {
+  ['v-name', 'v-host', 'v-config', 'v-server', 'v-protocol', 'v-cert', 'v-key', 'v-username', 'v-password', 'v-country', 'v-city', 'v-group', 'v-interface', 'v-wait-timeout', 'v-app-path'].forEach((id) => {
     document.getElementById(id).value = '';
   });
   document.getElementById('v-type').value = 'openvpn';
@@ -518,6 +643,9 @@ function clearProfileForm() {
   document.getElementById('v-auth-method').value = 'certificate';
   enhanceSelect(document.getElementById('v-type'));
   enhanceSelect(document.getElementById('v-auth-method'));
+  document.getElementById('v-auto-connect').value = 'true';
+  enhanceSelect(document.getElementById('v-auto-connect'));
+  updateProfileFields();
 }
 
 function credentialsLabel(p) {
@@ -581,12 +709,12 @@ async function createProfile() {
   const draft = draftProfile();
   const res = await fetch(`${API}/api/v1/vpns`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(draft),
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
+    body: JSON.stringify(omitEmpty(draft)),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.profileCreateFailed') }));
-    showToast(e.error || t('alerts.profileCreateFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.profileCreateFailed'), 'error');
     return;
   }
   showToast(t('toast.profileCreated', { name: draft.name }), 'success', 7000);
@@ -603,12 +731,12 @@ async function updateProfile() {
   }
   const res = await fetch(`${API}/api/v1/vpns/${encodeURIComponent(key)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.profileUpdateFailed') }));
-    showToast(e.error || t('alerts.profileUpdateFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.profileUpdateFailed'), 'error');
     return;
   }
   showToast(t('toast.profileUpdated', { name: draft.name || key }), 'success', 7000);
@@ -629,8 +757,8 @@ async function deleteProfileByName(name) {
   if (!confirm(t('confirm.deleteProfile', { name }))) return;
   const res = await fetch(`${API}/api/v1/vpns/${encodeURIComponent(name)}`, { method: 'DELETE' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.profileDeleteFailed') }));
-    showToast(e.error || t('alerts.profileDeleteFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.profileDeleteFailed'), 'error');
     return;
   }
   showToast(t('toast.profileDeleted', { name }), 'info');
@@ -708,12 +836,12 @@ async function createGroup() {
   const draft = draftGroup();
   const res = await fetch(`${API}/api/v1/groups`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.groupCreateFailed') }));
-    showToast(e.error || t('alerts.groupCreateFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.groupCreateFailed'), 'error');
     return;
   }
   showToast(t('toast.groupCreated', { name: draft.name }), 'success');
@@ -730,12 +858,12 @@ async function updateGroup() {
   }
   const res = await fetch(`${API}/api/v1/groups/${encodeURIComponent(key)}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Kongtrol-Lang': lang },
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.groupUpdateFailed') }));
-    showToast(e.error || t('alerts.groupUpdateFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.groupUpdateFailed'), 'error');
     return;
   }
   showToast(t('toast.groupUpdated', { name: draft.name || key }), 'success');
@@ -756,8 +884,8 @@ async function deleteGroupByName(name) {
   if (!confirm(t('confirm.deleteGroup', { name }))) return;
   const res = await fetch(`${API}/api/v1/groups/${encodeURIComponent(name)}`, { method: 'DELETE' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.groupDeleteFailed') }));
-    showToast(e.error || t('alerts.groupDeleteFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.groupDeleteFailed'), 'error');
     return;
   }
   showToast(t('toast.groupDeleted', { name }), 'info');
@@ -787,8 +915,8 @@ async function disconnectGroupByIndex(index) {
   if (!g) return;
   const res = await fetch(`${API}/api/v1/groups/${encodeURIComponent(g.name)}/disconnect`, { method: 'POST' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('toast.groupActionFailed') }));
-    showToast(e.error || t('toast.groupActionFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'toast.groupActionFailed'), 'error');
     return;
   }
   showToast(t('toast.groupDisconnecting', { name: g.name }), 'success');
@@ -812,8 +940,8 @@ async function reloadGroupByIndex(index) {
     return;
   }
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.groupReloadFailed') }));
-    showToast(e.error || t('alerts.groupReloadFailed'), 'error');
+    const e = await res.json().catch(() => ({}));
+    showToast(apiErrorText(e, 'alerts.groupReloadFailed'), 'error');
     return;
   }
   showToast(t('toast.groupReloading', { name: g.name }), 'info');
@@ -822,6 +950,8 @@ async function reloadGroupByIndex(index) {
 setLang(lang);
 initLangToggle();
 enhanceAllSelects();
+updateOnDownHint();
 loadPolicies();
+updateProfileFields();
 loadProfiles();
 loadGroups();

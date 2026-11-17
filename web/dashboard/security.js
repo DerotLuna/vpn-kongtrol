@@ -8,7 +8,6 @@ const I18N = {
     'nav.security': 'Seguridad',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
-    'nav.collapse': 'Contraer',
     'page.security.title': 'Seguridad',
     'ws.security': 'controles en vivo',
     'sections.controls': 'Controles',
@@ -19,6 +18,8 @@ const I18N = {
     'security.dnsGuardDesc': 'Fuerza la resolución DNS a través de los resolutores del túnel para evitar fugas de DNS.',
     'security.leakCheck': 'Leak Check',
     'security.publicIp': 'IP pública',
+    'security.publicIpCheck': 'Consulta de IP pública',
+    'security.publicIpCheckDesc': 'Apagada por defecto. Usa un servicio externo ({host}) que ve tu IP pública, solo al conectar o desconectar un túnel y cuando pulsas Revisar. El kill switch y el DNS guard no la necesitan.',
     'security.lastChecked': 'Última revisión',
     'security.perProfile': 'Override de Kill Switch por Perfil',
     'security.perProfileNote': 'Sobrescribe el ajuste global de Kill Switch para un perfil VPN específico.',
@@ -27,12 +28,13 @@ const I18N = {
     'override.on': 'Forzar activado',
     'override.off': 'Forzar desactivado',
     'table.profile': 'Perfil',
-    'empty.loading': 'Cargando…',
     'empty.noProfiles': 'No hay perfiles configurados.',
     'toast.overrideSaved': 'Override de "{name}" actualizado',
     'toast.overrideFailed': 'No se pudo actualizar el override',
-    'badge.disabled': 'DESACTIVADO',
-    'badge.on': 'ACTIVO',
+    'badge.disabled': 'DESHABILITADO',
+    'badge.active': 'ACTIVO',
+    'badge.armed': 'ARMADO',
+    'badge.off': 'INACTIVO',
     'badge.idle': 'INACTIVO',
     'badge.leak': 'FUGA',
     'badge.clean': 'LIMPIO',
@@ -53,7 +55,6 @@ const I18N = {
     'nav.security': 'Security',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
-    'nav.collapse': 'Collapse',
     'page.security.title': 'Security',
     'ws.security': 'live controls',
     'sections.controls': 'Controls',
@@ -64,6 +65,8 @@ const I18N = {
     'security.dnsGuardDesc': "Forces DNS resolution through the tunnel's resolvers to prevent DNS leaks.",
     'security.leakCheck': 'Leak Check',
     'security.publicIp': 'Public IP',
+    'security.publicIpCheck': 'Public IP lookup',
+    'security.publicIpCheckDesc': 'Off by default. Uses an external service ({host}) that sees your public IP, only when a tunnel connects or disconnects and when you press Check. The kill switch and DNS guard do not need it.',
     'security.lastChecked': 'Last checked',
     'security.perProfile': 'Per-Profile Kill Switch Override',
     'security.perProfileNote': 'Overrides the global Kill Switch setting for a specific VPN profile.',
@@ -72,12 +75,13 @@ const I18N = {
     'override.on': 'Force on',
     'override.off': 'Force off',
     'table.profile': 'Profile',
-    'empty.loading': 'Loading…',
     'empty.noProfiles': 'No profiles configured.',
     'toast.overrideSaved': 'Override for "{name}" updated',
     'toast.overrideFailed': 'Failed to update override',
     'badge.disabled': 'DISABLED',
-    'badge.on': 'ON',
+    'badge.active': 'ACTIVE',
+    'badge.armed': 'ARMED',
+    'badge.off': 'OFF',
     'badge.idle': 'IDLE',
     'badge.leak': 'LEAK',
     'badge.clean': 'CLEAN',
@@ -93,8 +97,6 @@ const I18N = {
     'common.refresh': 'Refresh',
   },
 };
-
-let lastPublicIP = '';
 
 // t/setLang/resolveInitialLang/applyStaticTranslations/initLangToggle/esc
 // live in the shared i18n.js — this page only supplies the I18N dict and
@@ -117,48 +119,35 @@ async function refreshSecurity() {
     if (ksToggle && document.activeElement !== ksToggle) ksToggle.checked = !!data.kill_switch_enabled;
     const dnsToggle = document.getElementById('dns-toggle');
     if (dnsToggle && document.activeElement !== dnsToggle) dnsToggle.checked = !!data.dns_guard_enabled;
-    setRuntimeBadge('ks-runtime-status', data.kill_switch_state);
-    setRuntimeBadge('dns-runtime-status', data.dns_guard_state);
+    // Same states and labels as `kongtrol status` (see shellSecurityBadges).
+    const badges = shellSecurityBadges(data);
+    setBadge('ks-runtime-status', badges.ks.text || t(badges.ks.key), badges.ks.cls);
+    setBadge('dns-runtime-status', t(badges.dns.key), badges.dns.cls);
+    setBadge('leak-status', t(badges.leak.key), badges.leak.cls);
 
-    if (!data.leak_check_available) {
-      setBadge(
-        'leak-status',
-        data.leak_detection_configured ? t('badge.unavailable') : t('badge.disabled'),
-        data.leak_detection_configured ? 'leak' : 'disabled',
-      );
-      document.getElementById('public-ip').textContent = lastPublicIP || '—';
+    // Opt-in public IP lookup: switch, its one-line notice, and the IP or
+    // "—" + hint while it is off (no lookup is made from here).
+    const ipToggle = document.getElementById('publicip-toggle');
+    if (ipToggle && document.activeElement !== ipToggle) ipToggle.checked = !!data.public_ip_check_enabled;
+    const ipDesc = document.getElementById('publicip-desc');
+    if (ipDesc) ipDesc.textContent = t('security.publicIpCheckDesc', { host: data.public_ip_check_host || 'api.ipify.org' });
+    renderPublicIPField('public-ip', data);
+
+    if (!data.public_ip_check_enabled) {
       document.getElementById('leak-time').textContent = '—';
       return;
     }
 
     if (data.leak_check) {
       const lk = data.leak_check;
-      if (lk.state === 'error') {
-        setBadge('leak-status', t('badge.error'), 'leak');
-      } else {
-        setBadge('leak-status', lk.has_leak ? t('badge.leak') : t('badge.clean'), lk.has_leak ? 'leak' : 'ok');
-      }
-      lastPublicIP = lk.public_ip || '';
-      document.getElementById('public-ip').textContent = lastPublicIP || '—';
       if (lk.checked_at) {
         document.getElementById('leak-time').textContent = new Date(lk.checked_at).toLocaleTimeString(lang);
       } else {
         document.getElementById('leak-time').textContent = '—';
       }
-
-      function setRuntimeBadge(id, state) {
-        if (state === 'disabled') {
-          setBadge(id, t('badge.disabled'), 'disabled');
-        } else if (state === 'armed' || state === 'active') {
-          setBadge(id, t('badge.on'), 'on');
-        } else {
-          setBadge(id, t('badge.idle'), 'pending');
-        }
-      }
       return;
     }
 
-    setBadge('leak-status', t('badge.pending'), 'pending');
     document.getElementById('leak-time').textContent = '—';
   } catch (_) {}
 }
@@ -170,8 +159,10 @@ async function postToggle(path, enabled) {
     body: JSON.stringify({ enabled }),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('toast.toggleFailed') }));
-    throw new Error(e.error || t('toast.toggleFailed'));
+    const e = await res.json().catch(() => null);
+    const err = new Error(t('toast.toggleFailed'));
+    err.body = e;
+    throw err;
   }
 }
 
@@ -187,7 +178,7 @@ async function onToggleKillSwitch(input) {
     showToast(enabled ? t('toast.killSwitchOn') : t('toast.killSwitchOff'), enabled ? 'success' : 'info');
   } catch (err) {
     input.checked = !enabled;
-    showToast(err.message, 'error');
+    showApiError(t('toast.toggleFailed'), err.body || null);
   } finally {
     input.disabled = false;
     refreshSecurity();
@@ -202,7 +193,7 @@ async function onToggleDNSGuard(input) {
     showToast(enabled ? t('toast.dnsGuardOn') : t('toast.dnsGuardOff'), enabled ? 'success' : 'info');
   } catch (err) {
     input.checked = !enabled;
-    showToast(err.message, 'error');
+    showApiError(t('toast.toggleFailed'), err.body || null);
   } finally {
     input.disabled = false;
     refreshSecurity();
@@ -248,8 +239,8 @@ async function onChangeProfileOverride(name, override) {
     body: JSON.stringify({ override }),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('toast.overrideFailed') }));
-    showToast(e.error || t('toast.overrideFailed'), 'error');
+    const e = await res.json().catch(() => null);
+    showApiError(t('toast.overrideFailed'), e);
     refreshProfileOverrides();
     return;
   }

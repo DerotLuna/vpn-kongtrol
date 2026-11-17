@@ -5,10 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Security - VPN Kongtrol</title>
-  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/brand/logo-kong.svg" />
+  <link rel="stylesheet" href="/brand/fonts/fonts.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="security" data-i18n-title="page.security.title">
@@ -51,6 +49,18 @@
           </label>
         </div>
       </div>
+      <div class="security-row">
+        <div class="security-row-text">
+          <span class="security-row-title" data-i18n="security.publicIpCheck">Public IP lookup</span>
+          <span class="security-row-desc" id="publicip-desc">Off by default. Uses an external service (api.ipify.org) that sees your public IP, only when a tunnel connects or disconnects and when you press Check. The kill switch and DNS guard do not need it.</span>
+        </div>
+        <div class="security-row-control" style="display:flex;align-items:center;gap:12px">
+          <label class="switch">
+            <input type="checkbox" id="publicip-toggle" onchange="togglePublicIP(this)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
     </section>
 
     <section class="card" id="profile-killswitch-section">
@@ -85,6 +95,7 @@
         <li>
           <span class="label" data-i18n="security.publicIp">Public IP</span>
           <span id="public-ip" class="mono"><span class="skeleton" style="width:90px"></span></span>
+          <button type="button" class="action publicip-check" data-publicip-check hidden onclick="checkPublicIPNow(this)">Revisar</button>
         </li>
         <li>
           <span class="label" data-i18n="security.lastChecked">Last checked</span>
@@ -99,6 +110,8 @@
   <script src="shell.js"></script>
   <script src="i18n.js"></script>
   <script src="toast.js"></script>
+  <script src="notices.js"></script>
+  <script src="publicip.js"></script>
   <script src="select.js"></script>
   <script src="security.js"></script>
 </body>

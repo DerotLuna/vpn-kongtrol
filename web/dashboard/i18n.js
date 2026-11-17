@@ -27,10 +27,32 @@
 
 const LANG_KEY = 'kongtrol-dashboard-lang';
 
+// Language resolution mirrors the theme: an explicit choice (the toggle, or
+// `kongtrol config lang`, both stored in ~/.kongtrol/preferences.json) wins;
+// otherwise the browser's preferred languages decide (es* -> es, else en).
+function storedLang() {
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    return saved === 'es' || saved === 'en' ? saved : '';
+  } catch (_) {
+    return '';
+  }
+}
+
+function storeLang(value) {
+  try {
+    if (value) localStorage.setItem(LANG_KEY, value);
+    else localStorage.removeItem(LANG_KEY);
+  } catch (_) {}
+}
+
+function browserLang() {
+  const list = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || ''];
+  return String(list[0] || '').toLowerCase().startsWith('es') ? 'es' : 'en';
+}
+
 function resolveInitialLang() {
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved === 'es' || saved === 'en') return saved;
-  return navigator.language && navigator.language.toLowerCase().startsWith('es') ? 'es' : 'en';
+  return storedLang() || browserLang();
 }
 
 let lang = resolveInitialLang();
@@ -43,7 +65,6 @@ function t(key, vars = {}) {
 
 function setLang(next) {
   lang = next === 'es' ? 'es' : 'en';
-  localStorage.setItem(LANG_KEY, lang);
   document.documentElement.lang = lang;
   applyStaticTranslations();
   if (typeof onLangChange === 'function') onLangChange();
@@ -93,16 +114,25 @@ function initLangToggle() {
   toggle.addEventListener('click', () => {
     const next = lang === 'es' ? 'en' : 'es';
     shellPulseLangButton(next);
+    storeLang(next);
     setLang(next);
     if (typeof shellSavePreferences === 'function') shellSavePreferences({ language: next });
   });
 }
 
 function applyPreferenceLanguage(prefs) {
-  if (!prefs || (prefs.language !== 'es' && prefs.language !== 'en')) return;
-  localStorage.setItem(LANG_KEY, prefs.language);
-  if (prefs.language !== lang) setLang(prefs.language);
+  if (!prefs) return;
+  // The server copy is authoritative: empty means "no explicit choice", so
+  // drop any stale browser copy and follow the browser languages again.
+  const chosen = prefs.language === 'es' || prefs.language === 'en' ? prefs.language : '';
+  storeLang(chosen);
+  const next = chosen || browserLang();
+  if (next !== lang) setLang(next);
 }
+
+window.addEventListener('languagechange', () => {
+  if (!storedLang() && browserLang() !== lang) setLang(browserLang());
+});
 
 window.addEventListener('kongtrol:preferences-loaded', (event) => {
   applyPreferenceLanguage(event.detail);

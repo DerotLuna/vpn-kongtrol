@@ -1,0 +1,190 @@
+/* KONGTROL UI — base + component styles · v0.1.0 · 2026-11-17 */
+@import './tokens.css';
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 16px/1.55 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+img, svg { display: block; max-width: 100%; }
+button { font: inherit; color: inherit; }
+a { color: var(--signal); text-underline-offset: 3px; }
+a:hover { color: var(--signal-hi); }
+:focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius); }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+.skip-link {
+  position: absolute; left: 16px; top: -48px; z-index: 10;
+  padding: 8px 14px; border-radius: var(--radius);
+  background: var(--signal); color: var(--on-signal); font-weight: 600;
+}
+.skip-link:focus { top: 12px; color: var(--on-signal); }
+
+.shell { display: flex; flex-direction: column; min-height: 100dvh; }
+.container { width: 100%; max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+.app-header .container {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; min-height: 64px; flex-wrap: wrap;
+}
+.brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  color: var(--text); text-decoration: none;
+  font: 700 18px/1 var(--font-display); letter-spacing: -0.01em;
+}
+.brand img { width: 32px; height: 32px; filter: var(--logo-filter); }
+.header-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.header-link, .icon-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 40px; padding: 0 12px; border-radius: var(--radius);
+  border: 1px solid transparent; background: none; cursor: pointer;
+  color: var(--text-muted); font-size: 14px; font-weight: 500; text-decoration: none;
+}
+.header-link:hover, .icon-btn:hover { color: var(--text); background: var(--surface-2); }
+.icon-btn { min-width: 40px; justify-content: center; border-color: var(--border); }
+.icon-btn svg, .header-link svg { width: 16px; height: 16px; }
+
+/* ── Main / hero ───────────────────────────────────────────────────────── */
+main { flex: 1; padding: 40px 0 64px; }
+.hero {
+  position: relative; overflow: hidden;
+  padding: 40px 32px; margin-bottom: 32px;
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.hero::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  --cx: 100%; --cy: 0%;
+  background: var(--contour);
+  mask-image: radial-gradient(circle at 100% 0%, #000 0, transparent 70%);
+}
+.hero > * { position: relative; }
+.eyebrow {
+  font: 600 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--signal); margin-bottom: 12px;
+}
+.hero h1 {
+  font: 700 clamp(28px, 4.5vw, 44px)/1.1 var(--font-display);
+  letter-spacing: -0.02em; margin-bottom: 12px; max-width: 18ch;
+}
+.lead { color: var(--text-muted); font-size: 18px; max-width: 56ch; margin-bottom: 16px; }
+
+.section-title {
+  font: 600 20px/1.2 var(--font-display); margin: 0 0 16px;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.grid-2 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); margin-bottom: 40px; }
+.grid-3 { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.card {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 24px; border-radius: var(--radius-lg);
+  background: var(--surface); border: 1px solid var(--border);
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.card h2 { font: 600 18px/1.25 var(--font-display); }
+.step-num {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; margin-right: 10px;
+  border-radius: 50%; border: 1px solid var(--signal-line); color: var(--signal);
+  font: 600 13px/1 var(--font-mono); vertical-align: 2px;
+}
+.muted { color: var(--text-muted); }
+.small { font-size: 14px; }
+.card .help { margin-top: auto; font-size: 14px; }
+
+/* Big action tiles */
+.action {
+  display: flex; flex-direction: column; gap: 8px; min-height: 160px;
+  padding: 24px; border-radius: var(--radius-lg); text-decoration: none;
+  background: var(--surface-2); border: 1px solid var(--border-2); color: var(--text);
+  transition: border-color 0.2s var(--expo-out), transform 0.2s var(--expo-out);
+}
+.action:hover { color: var(--text); border-color: var(--signal-line); transform: translateY(-2px); }
+.action-icon {
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: var(--radius);
+  background: var(--signal-soft); color: var(--signal);
+}
+.action-icon svg { width: 22px; height: 22px; }
+.action strong { font: 600 20px/1.2 var(--font-display); }
+.action .note { margin-top: auto; font-size: 13px; color: var(--text-dim); }
+.action.primary { background: var(--signal); border-color: var(--signal); color: var(--on-signal); }
+.action.primary .action-icon { background: color-mix(in srgb, var(--on-signal) 14%, transparent); color: var(--on-signal); }
+.action.primary .muted, .action.primary .note { color: color-mix(in srgb, var(--on-signal) 78%, transparent); }
+.action.primary:hover { color: var(--on-signal); }
+
+/* ── Status pill ───────────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  font: 500 12px/1.2 var(--font-mono); white-space: nowrap;
+  background: var(--surface-3); color: var(--text-muted);
+}
+.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.ok { background: var(--live-soft); color: var(--live); }
+.pill.warn { background: var(--signal-soft); color: var(--signal); }
+.pill.bad { background: var(--danger-soft); color: var(--danger); }
+
+/* ── Tunnel list ───────────────────────────────────────────────────────── */
+.tunnel-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.tunnel-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border-radius: var(--radius); background: var(--surface-2);
+}
+.tunnel-name { font: 500 14px/1.3 var(--font-mono); overflow-wrap: anywhere; }
+.summary { font: 600 28px/1.1 var(--font-display); }
+
+/* ── Buttons / notices ─────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 0 18px; border-radius: var(--radius); cursor: pointer;
+  border: 1px solid var(--signal); background: var(--signal); color: var(--on-signal);
+  font-weight: 600; font-size: 15px; align-self: flex-start;
+}
+.btn:hover:not(:disabled) { background: var(--signal-hi); border-color: var(--signal-hi); }
+.btn:disabled { opacity: 0.6; cursor: progress; }
+.btn.ghost { background: none; color: var(--text); border-color: var(--border-2); }
+.notice {
+  display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--radius);
+  border: 1px solid var(--border-2); background: var(--surface-2); font-size: 14px;
+}
+.notice.bad { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-soft); }
+.notice.ok { border-color: color-mix(in srgb, var(--live) 45%, transparent); background: var(--live-soft); }
+.notice strong { font-weight: 600; }
+.notice-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.page-notice { margin-bottom: 24px; }
+
+/* ── Footer ────────────────────────────────────────────────────────────── */
+.app-footer { border-top: 1px solid var(--border); padding: 20px 0; font-size: 13px; color: var(--text-dim); }
+.app-footer .container { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.ext::after { content: ' ↗'; }
+
+@media (max-width: 640px) {
+  .container { padding: 0 16px; }
+  main { padding-top: 24px; }
+  .hero { padding: 28px 20px; }
+  .lead { font-size: 16px; }
+  /* Icon-only on phones; the label stays for screen readers. */
+  .header-link .label {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}

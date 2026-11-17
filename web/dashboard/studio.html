@@ -5,10 +5,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Studio - VPN Kongtrol</title>
-  <link rel="icon" type="image/svg+xml" href="/logo-kong.svg" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="/brand/logo-kong.svg" />
+  <link rel="stylesheet" href="/brand/fonts/fonts.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body data-page="studio" data-i18n-title="page.studio.title">
@@ -38,6 +36,14 @@
                 </label>
                 <label><span data-i18n="editor.viaProfile">Via VPN profile</span>
                   <select id="p-via"></select>
+                </label>
+                <label><span data-i18n="editor.onDown">If the tunnel is off</span>
+                  <select id="p-on-down" onchange="updateOnDownHint()">
+                    <option value="allow" data-i18n="editor.onDown.allow">Use the normal internet and tell me</option>
+                    <option value="block" data-i18n="editor.onDown.block">Block</option>
+                    <option value="connect" data-i18n="editor.onDown.connect">Connect the tunnel when there is traffic</option>
+                  </select>
+                  <small class="muted" id="p-on-down-hint"></small>
                 </label>
                 <label><span data-i18n="editor.domains">Domains (one per line)</span>
                   <textarea id="p-domains" rows="5" placeholder="*.java.com&#10;chatgpt.com"></textarea>
@@ -101,10 +107,12 @@
                   <input id="v-name" type="text" data-i18n-placeholder="pEditor.namePlaceholder" placeholder="office" />
                 </label>
                 <label><span data-i18n="pEditor.type">Type</span>
-                  <select id="v-type">
+                  <select id="v-type" onchange="updateProfileFields()">
                     <option value="openvpn">openvpn</option>
                     <option value="wireguard">wireguard</option>
                     <option value="protonvpn">protonvpn</option>
+                    <option value="nordvpn">nordvpn</option>
+                    <option value="surfshark">surfshark</option>
                     <option value="ciscoanyconnect">ciscoanyconnect</option>
                     <option value="forticlient">forticlient</option>
                     <option value="globalprotect">globalprotect</option>
@@ -115,35 +123,64 @@
                 <label><span data-i18n="pEditor.priority">Priority</span>
                   <input id="v-priority" type="number" value="10" />
                 </label>
-                <label><span data-i18n="pEditor.host">Host</span>
+                <label data-types="forticlient ciscoanyconnect globalprotect tailscale"><span data-i18n="pEditor.host">Host</span>
                   <input id="v-host" type="text" data-i18n-placeholder="pEditor.hostPlaceholder" placeholder="vpn.corp.com" />
                 </label>
-                <label><span data-i18n="pEditor.configFile">Config file path</span>
+                <label data-types="openvpn wireguard"><span data-i18n="pEditor.configFile">Config file path</span>
                   <input id="v-config" type="text" data-i18n-placeholder="pEditor.configPlaceholder" placeholder="~/.kongtrol/configs/server.ovpn" />
                 </label>
-                <label><span data-i18n="pEditor.server">Server (protonvpn)</span>
-                  <input id="v-server" type="text" placeholder="US" />
+                <label data-types="openvpn" class="field-hint"><small class="muted" data-i18n="pEditor.ovpnRoutesHint">Routes are sent by the VPN server · no need to add IPs · if something is missing, add it with a policy</small></label>
+                <label data-types="protonvpn nordvpn"><span data-i18n="pEditor.server">Exact server (optional)</span>
+                  <input id="v-server" type="text" data-i18n-placeholder="pEditor.serverPlaceholder" placeholder="E.g. CH#4, us3710" />
                 </label>
-                <label><span data-i18n="pEditor.protocol">Protocol (protonvpn)</span>
+                <label data-types="protonvpn"><span data-i18n="pEditor.protocol">Protocol (protonvpn)</span>
                   <input id="v-protocol" type="text" placeholder="wireguard" />
                 </label>
-                <label><span data-i18n="pEditor.authMethod">Auth method</span>
+                <label data-types="forticlient protonvpn nordvpn"><span data-i18n="pEditor.autoConnect">Connect automatically</span>
+                  <select id="v-auto-connect">
+                    <option value="true" data-i18n="pEditor.yes">Yes</option>
+                    <option value="false" data-i18n="pEditor.no">No</option>
+                  </select>
+                  <small class="muted" data-i18n="pEditor.autoConnectHint">Yes = Kongtrol connects on its own. No = it opens the app and you connect.</small>
+                </label>
+                <label data-types="protonvpn nordvpn"><span data-i18n="pEditor.country">Country (optional)</span>
+                  <input id="v-country" type="text" data-i18n-placeholder="pEditor.countryPlaceholder" placeholder="E.g. CH, United States" />
+                  <small class="muted" data-i18n="pEditor.countryHint">Code or name. Empty = fastest.</small>
+                </label>
+                <label data-types="protonvpn nordvpn"><span data-i18n="pEditor.city">City (optional)</span>
+                  <input id="v-city" type="text" data-i18n-placeholder="pEditor.cityPlaceholder" placeholder="E.g. Zurich" />
+                </label>
+                <label data-types="nordvpn"><span data-i18n="pEditor.group">Server group (optional)</span>
+                  <input id="v-group" type="text" data-i18n-placeholder="pEditor.groupPlaceholder" placeholder="E.g. P2P, Dedicated IP" />
+                </label>
+                <label data-types="forticlient protonvpn nordvpn surfshark"><span data-i18n="pEditor.interface">Network connection name (optional)</span>
+                  <input id="v-interface" type="text" data-i18n-placeholder="pEditor.interfacePlaceholder" placeholder="E.g. NordLynx" />
+                  <small class="muted" data-i18n="pEditor.interfaceHint">Only if Kongtrol doesn't detect the tunnel.</small>
+                </label>
+                <label data-types="forticlient protonvpn nordvpn surfshark"><span data-i18n="pEditor.waitTimeout">Wait time (optional)</span>
+                  <input id="v-wait-timeout" type="text" data-i18n-placeholder="pEditor.waitTimeoutPlaceholder" placeholder="E.g. 10m (normal: 5m)" />
+                  <small class="muted" data-i18n="pEditor.waitTimeoutHint">How long Kongtrol waits for you to connect in the app.</small>
+                </label>
+                <label data-types="forticlient protonvpn nordvpn surfshark"><span data-i18n="pEditor.appPath">App path (optional)</span>
+                  <input id="v-app-path" type="text" data-i18n-placeholder="pEditor.appPathPlaceholder" placeholder="Only if the app is in another folder" />
+                </label>
+                <label data-hide-types="protonvpn nordvpn surfshark"><span data-i18n="pEditor.authMethod">Auth method</span>
                   <select id="v-auth-method">
                     <option value="certificate">certificate</option>
                     <option value="credentials">credentials</option>
                     <option value="certificate+credentials">certificate+credentials</option>
                   </select>
                 </label>
-                <label><span data-i18n="pEditor.cert">Certificate path</span>
+                <label data-hide-types="protonvpn nordvpn surfshark"><span data-i18n="pEditor.cert">Certificate path</span>
                   <input id="v-cert" type="text" placeholder="~/.kongtrol/certs/server.crt" />
                 </label>
-                <label><span data-i18n="pEditor.key">Key path</span>
+                <label data-hide-types="protonvpn nordvpn surfshark"><span data-i18n="pEditor.key">Key path</span>
                   <input id="v-key" type="text" placeholder="~/.kongtrol/certs/server.key" />
                 </label>
-                <label><span data-i18n="pEditor.username">Username</span>
+                <label data-hide-types="protonvpn nordvpn surfshark"><span data-i18n="pEditor.username">Username</span>
                   <input id="v-username" type="text" autocomplete="off" />
                 </label>
-                <label><span data-i18n="pEditor.password">Password</span>
+                <label data-hide-types="protonvpn nordvpn surfshark"><span data-i18n="pEditor.password">Password</span>
                   <input id="v-password" type="password" autocomplete="new-password" data-i18n-placeholder="pEditor.passwordPlaceholder" placeholder="Leave blank to keep existing" />
                 </label>
                 <div class="form-actions">
@@ -227,6 +264,7 @@
   <script src="shell.js"></script>
   <script src="i18n.js"></script>
   <script src="toast.js"></script>
+  <script src="notices.js"></script>
   <script src="select.js"></script>
   <script src="studio.js"></script>
 </body>

@@ -8,7 +8,6 @@ const I18N = {
     'nav.security': 'Seguridad',
     'nav.auditLog': 'Registro de Auditoría',
     'nav.settings': 'Configuración',
-    'nav.collapse': 'Contraer',
     'page.settings.title': 'Configuración',
     'ws.settings': 'configuración',
     'settings.tabGeneral': 'General',
@@ -29,7 +28,9 @@ const I18N = {
     'settings.killSwitchNote': 'Activa/desactiva el kill switch en sí desde la página de Seguridad.',
     'settings.dnsGuardTuning': 'Ajustes de DNS Guard',
     'settings.fallbackDns': 'DNS de respaldo',
-    'settings.leakDetection': 'Detección de Fugas',
+    'settings.leakDetection': 'IP pública y fugas',
+    'settings.publicIpEndpoints': 'Servicios de IP pública (una URL https:// por línea)',
+    'settings.publicIpNote': 'Apagado por defecto. Encendido, el servicio ve tu IP pública; Kongtrol solo pregunta al conectar o desconectar un túnel y cuando pulsas Revisar.',
     'settings.action': 'Acción',
     'settings.auditLog': 'Registro de Auditoría',
     'settings.path': 'Ruta del archivo de log',
@@ -55,7 +56,6 @@ const I18N = {
     'actions.delete': 'Eliminar',
     'actions.clear': 'Limpiar',
     'actions.edit': 'Editar',
-    'empty.loading': 'Cargando…',
     'empty.noRules': 'No hay reglas configuradas.',
     'alerts.saveFailed': 'No se pudo guardar la configuración',
     'alerts.ruleCreateFailed': 'Error al crear la regla',
@@ -76,7 +76,6 @@ const I18N = {
     'nav.security': 'Security',
     'nav.auditLog': 'Audit Log',
     'nav.settings': 'Settings',
-    'nav.collapse': 'Collapse',
     'page.settings.title': 'Settings',
     'ws.settings': 'settings',
     'settings.tabGeneral': 'General',
@@ -97,7 +96,9 @@ const I18N = {
     'settings.killSwitchNote': 'Enable/disable the kill switch itself from the Security page.',
     'settings.dnsGuardTuning': 'DNS Guard Tuning',
     'settings.fallbackDns': 'Fallback DNS',
-    'settings.leakDetection': 'Leak Detection',
+    'settings.leakDetection': 'Public IP and leaks',
+    'settings.publicIpEndpoints': 'Public IP services (one https:// URL per line)',
+    'settings.publicIpNote': 'Off by default. When on, the service sees your public IP; Kongtrol asks only when a tunnel connects or disconnects and when you press Check.',
     'settings.action': 'Action',
     'settings.auditLog': 'Audit Log',
     'settings.path': 'Log file path',
@@ -123,7 +124,6 @@ const I18N = {
     'actions.delete': 'Delete',
     'actions.clear': 'Clear',
     'actions.edit': 'Edit',
-    'empty.loading': 'Loading…',
     'empty.noRules': 'No rules configured.',
     'alerts.saveFailed': 'Failed to save settings',
     'alerts.ruleCreateFailed': 'Failed to create rule',
@@ -166,7 +166,7 @@ function fillSettingsForm(s) {
   document.getElementById('s-ks-allowlan').checked = !!s.kill_switch_allow_lan;
   document.getElementById('s-dns-fallback').value = s.dns_guard_fallback_dns || '';
   document.getElementById('s-leak-enabled').checked = !!s.leak_detection_enabled;
-  document.getElementById('s-leak-interval').value = s.leak_detection_interval || '';
+  document.getElementById('s-publicip-endpoints').value = (s.public_ip_endpoints || []).join('\n');
   document.getElementById('s-leak-action').value = s.leak_detection_action || 'notify';
   document.getElementById('s-audit-path').value = s.audit_log_path || '';
   document.getElementById('s-audit-maxsize').value = s.audit_log_max_size_mb || '';
@@ -187,7 +187,7 @@ function draftSettings() {
     kill_switch_allow_lan: document.getElementById('s-ks-allowlan').checked,
     dns_guard_fallback_dns: document.getElementById('s-dns-fallback').value.trim(),
     leak_detection_enabled: document.getElementById('s-leak-enabled').checked,
-    leak_detection_interval: document.getElementById('s-leak-interval').value.trim(),
+    public_ip_endpoints: document.getElementById('s-publicip-endpoints').value.split('\n').map((l) => l.trim()).filter(Boolean),
     leak_detection_action: document.getElementById('s-leak-action').value,
     audit_log_path: document.getElementById('s-audit-path').value.trim(),
     audit_log_max_size_mb: parseInt(document.getElementById('s-audit-maxsize').value, 10) || 0,
@@ -208,8 +208,8 @@ async function saveSettings() {
     body: JSON.stringify(draftSettings()),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.saveFailed') }));
-    showToast(e.error || t('alerts.saveFailed'), 'error');
+    const e = await res.json().catch(() => null);
+    showApiError(t('alerts.saveFailed'), e);
     return;
   }
   fillSettingsForm(await res.json());
@@ -291,8 +291,8 @@ async function createRule() {
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.ruleCreateFailed') }));
-    showToast(e.error || t('alerts.ruleCreateFailed'), 'error');
+    const e = await res.json().catch(() => null);
+    showApiError(t('alerts.ruleCreateFailed'), e);
     return;
   }
   showToast(t('toast.ruleCreated', { name: draft.name }), 'success');
@@ -313,8 +313,8 @@ async function updateRule() {
     body: JSON.stringify(draft),
   });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.ruleUpdateFailed') }));
-    showToast(e.error || t('alerts.ruleUpdateFailed'), 'error');
+    const e = await res.json().catch(() => null);
+    showApiError(t('alerts.ruleUpdateFailed'), e);
     return;
   }
   showToast(t('toast.ruleUpdated', { name: draft.name || key }), 'success');
@@ -335,8 +335,8 @@ async function deleteRuleByName(name) {
   if (!confirm(t('confirm.deleteRule', { name }))) return;
   const res = await fetch(`${API}/api/v1/scheduler/rules/${encodeURIComponent(name)}`, { method: 'DELETE' });
   if (!res.ok) {
-    const e = await res.json().catch(() => ({ error: t('alerts.ruleDeleteFailed') }));
-    showToast(e.error || t('alerts.ruleDeleteFailed'), 'error');
+    const e = await res.json().catch(() => null);
+    showApiError(t('alerts.ruleDeleteFailed'), e);
     return;
   }
   showToast(t('toast.ruleDeleted', { name }), 'info');
