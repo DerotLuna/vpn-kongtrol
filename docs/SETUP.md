@@ -75,7 +75,7 @@ Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
 ### Windows
 
-1. Descarga `kongtrol_windows_amd64.zip` de [Releases](../../releases)
+1. Descarga `kongtrol_windows_amd64.zip` de [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases)
 2. Extrae y mueve `kongtrol.exe` a una carpeta en tu PATH, por ejemplo:
    ```
    C:\Users\TuUsuario\bin\kongtrol.exe
@@ -142,6 +142,7 @@ Solo necesitas hacer algo aquí si:
 
 ---
 
+<!-- feature:wizard -->
 ## 4. Registrar tus VPNs: `kongtrol init`
 
 > **¿Ya tienes tus VPNs configuradas?** Perfecto — `kongtrol init` no las toca. Lo que hace es decirle a Kongtrol dónde están y cómo hablarles: qué cliente usar, qué tunnel name tiene, dónde está el `.ovpn`. Si FortiClient ya conecta y OpenVPN ya tiene su `.ovpn`, este paso solo recopila esa información.
@@ -203,6 +204,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Contraseña para office (guardada en llavero del sistema, no en YAML): ****
 ```
 
+<!-- feature:openvpn -->
 ### Perfil 2: OpenVPN servidor
 
 ```
@@ -244,6 +246,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 ¿Agregar un nuevo perfil VPN? [s/N]:
 ```
 
+<!-- feature:killswitch feature:dns_guard -->
 ### Opciones de seguridad y políticas
 
 ```
@@ -307,10 +310,11 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si ya tienes un daemon corriendo (`kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel puntual, `kongtrol reload --tunnel <perfil>`; para políticas, `kongtrol reload --policy`. Ver [CLI.md → Reload](CLI.md#reload).
+Si ya tienes un daemon corriendo (`kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel puntual, `kongtrol reload --tunnel <perfil>`; para políticas, `kongtrol reload --policy`. Ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
+<!-- feature:policies -->
 ## 5b. Políticas de routing
 
 ### ¿Para qué sirven?
@@ -466,7 +470,7 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → Reload](CLI.md#reload).
+Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
@@ -517,6 +521,7 @@ Si hay ✗ en alguna línea, el mensaje te dice exactamente qué falta.
 
 ---
 
+<!-- feature:daemon_lifecycle -->
 ## 7. Primera conexión
 
 ### Modo trabajo (oficina + servidores)
@@ -581,6 +586,7 @@ kongtrol status --watch
 
 ---
 
+<!-- feature:dashboard -->
 ## 8. Dashboard web
 
 ```bash
@@ -593,9 +599,9 @@ monitoreo, con estas páginas:
 
 - **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo
 - **Studio** — pestañas: políticas de routing (CRUD + probador de reglas), perfiles VPN (CRUD, actualiza config + keychain; requiere reiniciar el daemon para conectar con un perfil nuevo/editado), y grupos (CRUD + conectar/desconectar)
-- **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check
+- **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check y consulta de IP pública opcional (apagada por defecto, botón Revisar)
 - **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
-- **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, leak detection, audit log), scheduler (reglas)
+- **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, IP pública y fugas: servicios https opcionales, audit log), scheduler (reglas)
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
 > puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —
@@ -615,7 +621,7 @@ kongtrol down --all               # apagar todo
 
 kongtrol status                   # ver qué está conectado
 kongtrol status --watch           # monitoreo en vivo
-kongtrol check                    # test de leaks ahora mismo
+kongtrol check                    # consulta tu IP pública y prueba fugas (requiere kongtrol config public-ip on)
 kongtrol up --group work --dry-run # simulación completa sin tocar rutas/DNS/firewall
 kongtrol policy explain github.com # explica qué regla de policy aplica y por qué
 kongtrol policy explain github.com --json # salida estructurada
@@ -635,7 +641,7 @@ GET  /api/v1/groups                         # grupos · POST/PUT/DELETE + /conne
 GET  /api/v1/audit?profile=...&level=...    # eventos de auditoría
 ```
 
-Ver [docs/CLI.md](CLI.md#useful-daemondashboard-api-endpoints) para la lista completa.
+Ver [docs/API.md](API.md) para la lista completa.
 
 Para idioma operativo del CLI (mensajes nuevos), usa `KONGTROL_LANG=es` o `KONGTROL_LANG=en`.
 

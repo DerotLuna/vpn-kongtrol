@@ -1,6 +1,7 @@
 # Configuration Reference
 
 Full reference for `~/.kongtrol/kongtrol.yaml`. For a guided walkthrough that builds this file interactively, run `kongtrol init` or see [SETUP.md](SETUP.md).
+Every key with its type and default, generated from the schema: [CONFIG.en.md](CONFIG.en.md) (Español: [CONFIG.md](CONFIG.md)).
 
 ```yaml
 # ~/.kongtrol/kongtrol.yaml
@@ -120,10 +121,22 @@ security:
     enabled: true
     fallback_dns: "1.1.1.1"
 
+  # Public IP lookup — OFF by default (opt-in). When on, Kongtrol asks an
+  # external service for your public IP (that service sees it), only when a
+  # tunnel connects or disconnects (at most once per 30 s) and when you ask
+  # (kongtrol check, "Revisar" in the dashboard, the tray). The kill switch
+  # and DNS guard do not need it. Also enables the leak check against
+  # integrity_check.expected_ips. Toggle: kongtrol config public-ip on|off.
+  public_ip_check:
+    enabled: false
+    # endpoints:                  # https only, tried in order; default below
+    #   - https://api.ipify.org
+    #   - https://icanhazip.com
+
+  # Legacy: leak_detection.enabled: true still opts in to the lookup above;
+  # its interval is ignored (no periodic checks any more).
   leak_detection:
-    enabled: true
-    interval: "60s"
-    action: notify      # notify | killswitch_and_notify
+    action: notify   # notify | killswitch_and_notify
 
   audit_log:
     path: ~/.kongtrol/audit.log
@@ -185,6 +198,7 @@ groups:
 
 ---
 
+<!-- feature:providers feature:wireguard -->
 ## ProtonVPN: GUI vs WireGuard
 
 Two ways to configure a `protonvpn`-routed profile, depending on your team's workflow.

@@ -1,16 +1,127 @@
 name: ci
 
+# Build only what changed.
+# - push to main: workflow-level `paths` skips the run when nothing here is touched
+#   (landing/** has its own landing.yml). pull_request has NO paths filter so the
+#   required `ci-ok` check always reports (see the ci-ok job).
+#   https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#onpushpull_requestpull_request_targetpathspaths-ignore
+# - Job level: `paths` cannot gate single jobs, so the `changes` job
+#   (dorny/paths-filter) decides which of go / ui run. A job skipped by `if:`
+#   reports success, so it does not block required checks the way a workflow
+#   skipped by `paths` would.
+#   https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/troubleshooting-required-status-checks#handling-skipped-but-required-checks
 on:
   push:
     branches: [main]
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "web/**"
+      - "assets/**"
+      - "configs/**"
+      - "Makefile"
+      - "docs/impact.yml"
+      - "scripts/i18n/**"
+      - ".github/workflows/ci.yml"
   pull_request:
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      go: ${{ steps.filter.outputs.go }}
+      ui: ${{ steps.filter.outputs.ui }}
+      dashboard: ${{ steps.filter.outputs.dashboard }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            go:
+              - "**/*.go"
+              - "go.mod"
+              - "go.sum"
+              - "web/**"
+              - "assets/**"
+              - "configs/**"
+              - "Makefile"
+              - "docs/impact.yml"
+              - ".github/workflows/ci.yml"
+            dashboard:
+              - "web/dashboard/**"
+              - "scripts/i18n/**"
+              - ".github/workflows/ci.yml"
+            ui:
+              - "web/ui/**"
+              - "assets/brand/**"
+              - ".github/workflows/ci.yml"
+
+  # Legacy dashboard (web/dashboard): ES/EN parity of every dictionary
+  # (Node built-in test runner, no install: https://nodejs.org/api/test.html).
+  dashboard-i18n:
+    needs: changes
+    if: needs.changes.outputs.dashboard == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: i18n parity
+        run: node --test 'scripts/i18n/*.test.mjs'
+
+  # New dashboard UI (web/ui): lint + typecheck, unit tests, production build.
+  # The build is handed to the Go test job so the binary is tested with the
+  # real embedded UI instead of the "not built" placeholder.
+  ui:
+    needs: changes
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web/ui
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: web/ui/pnpm-lock.yaml
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Lint (tsc + oxlint)
+        run: pnpm run lint
+      - name: Test
+        run: pnpm run test
+      - name: Build
+        run: pnpm run build
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-ui-dist
+          path: web/ui/dist
+          include-hidden-files: true
+          retention-days: 3
+
   test:
     name: test (${{ matrix.os }})
+    needs: [changes, ui]
+    # Run after `ui` when it ran, without it when it was skipped; never after
+    # a failed UI build.
+    if: ${{ !cancelled() && needs.changes.outputs.go == 'true' && needs.ui.result != 'failure' }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -18,6 +129,12 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+      - name: Use the UI built in this run
+        if: needs.ui.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: web-ui-dist
+          path: web/ui/dist
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25"
@@ -39,6 +156,8 @@ jobs:
           git diff --exit-code -- go.mod go.sum
 
   race:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -50,6 +169,8 @@ jobs:
         run: go test -race -shuffle=on ./cmd/kongtrol ./internal/...
 
   security:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -61,3 +182,17 @@ jobs:
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./cmd/... ./internal/...
+
+  # Single required check for branch rulesets ("ci-ok"). It always runs and
+  # passes when every job either succeeded or was skipped by the `changes`
+  # filter, so path-scoped PRs (e.g. landing-only) are never left pending.
+  # A workflow skipped by `on.pull_request.paths` never reports a status,
+  # which would block required checks — hence no paths filter on pull_request.
+  ci-ok:
+    if: always()
+    needs: [changes, dashboard-i18n, ui, test, race, security]
+    runs-on: ubuntu-latest
+    steps:
+      - name: All jobs passed or were skipped
+        run: |
+          echo '${{ toJSON(needs) }}' | grep -E '"result": "(failure|cancelled)"' && exit 1 || exit 0

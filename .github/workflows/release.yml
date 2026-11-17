@@ -22,6 +22,28 @@ jobs:
         with:
           go-version: "1.25"
 
+      # Released binaries always embed the new UI (web/ui → web/ui/dist,
+      # see web/ui_embed.go). Built before any Go step so tests and
+      # GoReleaser see it; the build keeps the git tree clean.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+          cache-dependency-path: web/ui/pnpm-lock.yaml
+
+      - name: Build UI
+        working-directory: web/ui
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          test -f dist/index.html || { echo "web/ui/dist/index.html missing: the release would ship without the UI"; exit 1; }
+
       - name: Test release sources
         run: go test -race ./cmd/kongtrol ./internal/...
 

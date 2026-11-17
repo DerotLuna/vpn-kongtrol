@@ -24,7 +24,7 @@
 | Auto-reconnect watchdog (exponential backoff, timeout-bounded reconnects) | ✅ |
 | Health-check + priority failover | ✅ |
 | Profile scheduler (weekday/time windows) | ✅ |
-| Leak detection (periodic · configurable action) | ✅ |
+| Leak detection (opt-in public IP lookup on connect/disconnect and on demand · configurable action) | ✅ |
 | Audit log (append-only · HMAC-SHA256 signed, fsnotify-based live tail) | ✅ |
 | Metrics collector + persistent profile history (event-driven change broadcast) | ✅ |
 | Embedded web dashboard — full management UI (dark/light theme, sidebar nav, live WebSocket feed) | ✅ |

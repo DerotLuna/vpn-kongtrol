@@ -1,0 +1,24 @@
+# Link check config (lychee, https://lychee.cli.rs) — version 1.0 · 2026-11-17.
+# Used by .github/workflows/docs.yml over README*, AGENTS.md, docs/ and the
+# built landing (landing/dist). Run locally: lychee --offline <files>
+# Non-blocking in CI (AGENTS.md: docs never block a merge).
+
+# Never check the local daemon or placeholders.
+exclude = [
+  '^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)',
+  '^https?://\[::1\]',
+  '^https?://(.*\.)?example\.(com|org)',
+]
+exclude_path = ['node_modules', '(^|/)\.agents?/', '(^|/)agent/', 'landing/dist/assets']
+
+# Clean URLs (/guia → guia.html, /en/guide → en/guide.html), like Cloudflare Pages.
+fallback_extensions = ["html"]
+index_files = ["index.html"]
+
+# External links are allowed to be flaky: retry, accept rate limits / bot walls.
+max_retries = 3
+retry_wait_time = 5
+timeout = 20
+accept = ["100..=103", "200..=299", "403", "429"]
+cache = true
+max_cache_age = "1d"

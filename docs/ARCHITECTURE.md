@@ -1,5 +1,7 @@
 # Architecture
 
+Decisions: [docs/adr/](adr/README.md) · Research: [docs/research/](research/README.md)
+
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
 │                          KONGTROL CORE                               │
@@ -45,9 +47,11 @@ The `up` command owns the daemon lifecycle: it starts the metrics collector, wat
 
 ```
 vpn-kongtrol/
-├── assets/                        # Brand assets
-│   ├── logo.png                   # Source logo (1024×1024)
-│   ├── embed.go                   # //go:embed logo.png → assets.LogoPNG
+├── assets/
+│   ├── brand/                     # single source: logo/mark SVG + PNG, fonts/, source/ masters,
+│   │                              #   generate.go (rasters); landing + web/ui copy/import from here
+│   ├── logo.ico                   # Windows exe icon (make build-tray-native → rsrc)
+│   ├── embed.go                   # //go:embed brand/... → LogoPNG, LogoKongPNG, Brand() FS
 │   └── icon.go                    # TrayIcon(size) — resizes for systray
 │
 ├── cmd/
@@ -119,8 +123,8 @@ vpn-kongtrol/
 │       ├── security.html / .js    # live kill switch/DNS guard toggles, per-profile override
 │       ├── settings.html / .js    # tabbed: general/security tuning + scheduler rules CRUD
 │       ├── audit.html / .js       # audit log viewer (filter by profile/level)
-│       ├── style.css              # shared styles (light/dark theme via [data-theme])
-│       └── logo.png
+│       └── style.css              # shared styles (light/dark theme via [data-theme]);
+│                                  #   logos + fonts come from /brand/ (assets.Brand())
 │
 ├── configs/
 │   └── example.yaml
@@ -138,6 +142,7 @@ vpn-kongtrol/
 └── go.sum
 ```
 
+<!-- feature:providers -->
 ## Adding a new VPN adapter
 
 The adapter interface is the only contract:
