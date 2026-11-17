@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.1.0 · 2026-11-17
+Version 1.2.0 · 2026-11-17
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -29,8 +29,11 @@ decision live in [`docs/research/`](../research/README.md).
 | [0014](0014-i18n-language-resolution.md) | i18n: saved choice, then OS; dashboards follow the browser | Accepted | 2026-11-17 |
 | [0015](0015-ci-scoped-builds-generated-docs.md) | CI: build only what changed, generated docs, non-blocking doc checks | Accepted | 2026-11-17 |
 | [0016](0016-legal-contact-model.md) | Legal and contact: individual open-source project, Apache-2.0 | Accepted | 2026-11-17 |
-| [0017](0017-dependabot-and-github-security.md) | Dependabot grouped weekly; GitHub security features | Accepted | 2026-11-17 |
+| [0017](0017-dependabot-and-github-security.md) | Dependabot grouped weekly; GitHub security features | Superseded by 0021 | 2026-11-17 |
 | [0018](0018-failover-only-to-declared-profiles.md) | Failover only to explicitly declared profiles | Accepted | 2026-11-17 |
+| [0019](0019-track-supported-go-release.md) | Track a supported Go release (1.27) | Accepted | 2026-11-17 |
+| [0020](0020-forticlient-multi-version-strategies.md) | FortiClient multi-version support: detect the version, pick a strategy, keep attach fallback | Accepted | 2026-11-17 |
+| [0021](0021-renovate-for-dependency-updates.md) | Renovate for dependency updates; Dependabot only for alerts | Accepted | 2026-11-17 |
 
 ## Statuses
 

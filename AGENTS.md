@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.3 · 2026-11-17
+Version 1.4 · 2026-11-17
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -8,7 +8,7 @@ Public site: https://kongtrol.app (guide `/guia`, terms `/terminos`, privacy `/p
 
 ## Module
 
-`github.com/vpn-kongtrol/kongtrol` — Go 1.25+
+`github.com/vpn-kongtrol/kongtrol` — Go 1.27+
 
 ## Common Commands
 
@@ -316,7 +316,8 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 - `Session.Status`: interface detection on every call; an external tunnel becomes `PhaseAttached`; an unrequested drop becomes `PhaseDropped` when `Capabilities().ManualReconnect` (no automatic path, or `auto_connect: false`). The watchdog then emits `manual_reconnect_required` once per drop instead of reconnecting.
 - User-facing state: `vpn.AttachState` (`AttachReporter`) → `monitor.TunnelMetrics.Attach` (`json:"attach"`) in `/api/v1/tunnels` and the WebSocket snapshot. Clients render `AttachState.MessageKey()` with `internal/i18n` (`attach.*`) in their own language; the dashboard mirrors it in `attachMessage()` (`web/dashboard/app.js`). Never pre-render these strings in the daemon.
 - Config: standard fields `auto_connect` (*bool, default true), `country`, `city`, `server` (exact), `interface`, `wait_timeout`, `app_path`; nordvpn-only `group`. `VPNConfig.AdapterExtra()` is the single mapping to `AdapterConfig.Extra`; `validateProvider` (`internal/config/semantics.go`) rejects location fields on providers that cannot select (surfshark, forticlient).
-- FortiClient GUI automation (`internal/vpn/forticlient/gui_windows.go`): the PowerShell script is written as UTF-8 **with BOM** (Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which broke parsing and mangled non-ASCII text); its failure becomes one line (`scriptErrorLine`: the script's `ERROR:` line or PowerShell's message + script line, never the source excerpt, which can hold credentials); cancelling the connect kills the script and clears the clipboard.
+- FortiClient versions (ADR-0020, matrix in `docs/forticlient-support.md` — update it with every change): `DetectInstall` (folder from `app_path` / registry `INSTALLDIR`, `FortiClient.exe` ProductVersion via the Win32 version API, `FortiVPN.exe` presence) → `SelectPlan` (pure, one test case per matrix row): `FortiVPN.exe` → `fortivpn-cli` (`--cli --connect --tunnel` + native auth dialog, contributor-reported); 6.x or unknown → `gui-6.4` (verified on 6.4.10 only); other versions → `attach` (no automation). Never click a layout nobody measured; never pass credentials on a command line (`FortiSSLVPNclient.exe -u user:pass` is rejected for that). `kongtrol doctor` shows version · strategy · status.
+- FortiClient GUI automation (`internal/vpn/forticlient/script.go` generates, `gui_windows.go` runs): the script text holds no user data — FortiClient path, tunnel, username and password go on stdin as base64 lines (a typographic quote also ends a PowerShell single-quoted string); booleans render as `$true`/`$false`; written as UTF-8 **with BOM** (Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which broke parsing and mangled non-ASCII text); golden files in `testdata/` (`go test ./internal/vpn/forticlient -run Golden -update` after a reviewed change) and the Windows PowerShell parser test (fails, not skips, in CI); its failure becomes one line (`scriptErrorLine`: the script's `ERROR:` line or PowerShell's message + script line, never the source excerpt); cancelling the connect kills the script and clears the clipboard.
 - Interface names: FortiClient, NordVPN (NordLynx, TAP-NordVPN) and Proton (TAP-ProtonVPN, Linux proton0/pvpn*) are documented or known; Surfshark ("Surfshark DCO adapter" per its docs, Linux `surfshark*`) and the macOS Network Extension services are best effort, so `interface:` overrides them.
 
 <!-- feature:i18n -->

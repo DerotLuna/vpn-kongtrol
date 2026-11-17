@@ -61,7 +61,7 @@ Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
 | VPN | Cliente requerido | Verificar (Windows) | Verificar (Linux / macOS) |
 |---|---|---|---|
-| FortiClient (oficina) | [FortiClient 6.4.x](https://www.fortinet.com/support/product-downloads) | Abre FortiClient — debe mostrar el túnel configurado | `FortiClient --version` o abre la app |
+| FortiClient (oficina) | [FortiClient](https://www.fortinet.com/support/product-downloads) (cualquier versión; ver [matriz de soporte](forticlient-support.md)) | Abre FortiClient — debe mostrar el túnel configurado | `FortiClient --version` o abre la app |
 | OpenVPN (servidor / AWS) | [OpenVPN Community](https://openvpn.net/community-downloads/) | Busca `openvpn.exe` en `C:\Program Files\OpenVPN\bin\` | `openvpn --version` en terminal |
 | ProtonVPN (contenido US) | [ProtonVPN](https://protonvpn.com/download) (app de escritorio) | Abre ProtonVPN — debe aparecer el botón de conexión | `protonvpn-cli --version` |
 
@@ -108,7 +108,7 @@ sudo mv kongtrol /usr/local/bin/
 kongtrol --help
 ```
 
-### Desde el código fuente (si tienes Go 1.25+)
+### Desde el código fuente (si tienes Go 1.27+)
 
 ```bash
 git clone https://github.com/yourorg/vpn-kongtrol

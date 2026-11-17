@@ -47,7 +47,7 @@ $ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 
       beta: 'Beta:',
       betaText: 'Kongtrol está en pruebas activas — no todos los adaptadores ni escenarios están validados. Si algo falla, abre un issue en GitHub.',
       source: 'FUENTE',
-      sourceScript: `# Requiere Go 1.25+ — desde Git Bash en Windows
+      sourceScript: `# Requiere Go 1.27+ — desde Git Bash en Windows
 $ git clone ${GITHUB_REPO}
 $ cd vpn-kongtrol
 $ make build-all-cli
@@ -78,7 +78,7 @@ $ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 
       beta: 'Beta:',
       betaText: 'Kongtrol is under active testing — not every adapter and scenario is validated yet. If something breaks, open an issue on GitHub.',
       source: 'SOURCE',
-      sourceScript: `# Requires Go 1.25+ — run from Git Bash on Windows
+      sourceScript: `# Requires Go 1.27+ — run from Git Bash on Windows
 $ git clone ${GITHUB_REPO}
 $ cd vpn-kongtrol
 $ make build-all-cli

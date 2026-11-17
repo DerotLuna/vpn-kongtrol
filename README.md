@@ -7,7 +7,7 @@
   <p><sub>Kongtrol is the short name. The binary you install is <code>kongtrol</code>.</sub></p>
 
   <p>
-    <img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat-square&logo=go" />
+    <img src="https://img.shields.io/badge/Go-1.27+-00ADD8?style=flat-square&logo=go" />
     <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Linux%20%7C%20macOS-informational?style=flat-square" />
     <img src="https://img.shields.io/badge/License-Apache%202.0-green?style=flat-square" />
   </p>
@@ -61,7 +61,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full feature/status matrix.
 
 | Adapter | Type key | Platforms |
 |---|---|---|
-| FortiClient 6.4.x | `forticlient` | Win / Linux / macOS |
+| FortiClient (any version; automatic connect per version, see [support matrix](docs/forticlient-support.md)) | `forticlient` | Win / Linux / macOS |
 | OpenVPN | `openvpn` | Win / Linux / macOS |
 | ProtonVPN | `protonvpn` | Win / Linux / macOS |
 | Cisco AnyConnect / Secure Client | `ciscoanyconnect` | Win / Linux / macOS |
@@ -84,7 +84,7 @@ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install
 iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
 ```
 
-Or grab the binary for your platform from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases), or build from source (requires Go 1.25+):
+Or grab the binary for your platform from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases), or build from source (requires Go 1.27+):
 
 ```bash
 git clone https://github.com/DerotLuna/vpn-kongtrol

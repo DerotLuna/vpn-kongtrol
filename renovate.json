@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "group:allNonMajor", "schedule:weekly"],
+  "prConcurrentLimit": 5,
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Keep the go directive on a supported Go release (ADR-0019)",
+      "matchDatasources": ["golang-version"],
+      "rangeStrategy": "bump"
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-17
 
-Status: Accepted · Date: 2026-11-17 · Decision-makers: project maintainer
+Status: Superseded by [ADR-0021](0021-renovate-for-dependency-updates.md) · Date: 2026-11-17 · Decision-makers: project maintainer
 
 ## Context and Problem Statement
 

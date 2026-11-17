@@ -1,5 +1,5 @@
 # ── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.27-alpine AS builder
 
 RUN apk add --no-cache git ca-certificates
 
@@ -14,7 +14,7 @@ RUN CGO_ENABLED=0 go build \
     ./cmd/kongtrol
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
-FROM alpine:3.20
+FROM alpine:3.24
 
 # OpenVPN binary (for OpenVPN adapter).
 # protonvpn-cli must be installed separately if ProtonVPN is used.

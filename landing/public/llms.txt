@@ -16,7 +16,7 @@ parity for automation. A privileged helper (`kongtrol service install`) needs on
 administrator prompt at install time.
 
 - License: Apache License 2.0
-- Language: Go 1.25+
+- Language: Go 1.27+
 - Platforms: Windows, Linux, macOS
 - Website: https://kongtrol.app/ (Spanish) · https://kongtrol.app/en/ (English)
 - Source: https://github.com/DerotLuna/vpn-kongtrol

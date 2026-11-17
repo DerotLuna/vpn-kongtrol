@@ -7,7 +7,7 @@
 | VPNAdapter interface + registry | ✅ |
 | Config schema · loader · env expansion · `~/` paths | ✅ |
 | OS keychain (Win Credential Manager / macOS Keychain / libsecret) | ✅ |
-| FortiClient 6.4.x (CLI + passive fallback for EMS-locked installs) | ✅ |
+| FortiClient: version detection + per-version auto-connect (6.4 verified, 7.x FortiVPN.exe reported) + attach fallback for any version ([matrix](forticlient-support.md)) | ✅ |
 | OpenVPN (multi-instance · dynamic management port) | ✅ |
 | ProtonVPN CLI (JSON v3.10+ · human-readable fallback) | ✅ |
 | Cisco AnyConnect / Secure Client | ✅ |

@@ -1,4 +1,4 @@
-# Change-impact map — version 1.1 · 2026-11-17
+# Change-impact map — version 1.2 · 2026-11-17
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -109,11 +109,13 @@ features:
       - internal/vpn/*.go
       - cmd/kongtrol/wizard_adapters.go
       - cmd/kongtrol/wizard_profiles.go
+      - cmd/kongtrol/doctor_forti.go
       - cmd/kongtrol-tray/tray_attach.go
       - configs/example.yaml
     surfaces:
       - README.md#providers
       - AGENTS.md#providers
+      - docs/forticlient-support.md#providers
       - docs/CONFIGURATION.md#providers
       - docs/ARCHITECTURE.md#providers
       - landing/src/content/guide.es.tsx#providers
