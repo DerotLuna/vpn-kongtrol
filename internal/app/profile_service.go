@@ -2,18 +2,21 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/wireguard"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 type Watchdog interface {
@@ -23,6 +26,7 @@ type Watchdog interface {
 
 type PolicyResolver interface {
 	RegisterProfile(name, ifaceName, configPath string) error
+	RegisterTunnel(name, iface string, dns []net.IP) error
 	UnregisterProfile(name string)
 }
 
@@ -44,6 +48,8 @@ type ProfileService struct {
 	logAudit       func(level, action, profile, message string)
 	emitWarn       func(message string)
 	emitStderr     func(message string)
+	onAttach       func(name string, st vpn.AttachState)
+	onIntent       func(name string, intendedDown bool)
 }
 
 type ProfileServiceDeps struct {
@@ -59,6 +65,11 @@ type ProfileServiceDeps struct {
 	LogAudit       func(level, action, profile, message string)
 	EmitWarn       func(message string)
 	EmitStderr     func(message string)
+	// OnAttach is called on every provider attach-phase change (optional).
+	OnAttach func(name string, st vpn.AttachState)
+	// OnIntent records that the user turned a tunnel on (false) or off
+	// (true): the kill switch never blocks a tunnel the user turned off.
+	OnIntent func(name string, intendedDown bool)
 }
 
 func NewProfileService(deps ProfileServiceDeps) *ProfileService {
@@ -75,6 +86,8 @@ func NewProfileService(deps ProfileServiceDeps) *ProfileService {
 		logAudit:       deps.LogAudit,
 		emitWarn:       deps.EmitWarn,
 		emitStderr:     deps.EmitStderr,
+		onAttach:       deps.OnAttach,
+		onIntent:       deps.OnIntent,
 	}
 }
 
@@ -88,6 +101,9 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.no_config_for_profile", name))
 	}
+	if s.onIntent != nil {
+		s.onIntent(name, false)
+	}
 
 	aCfg := vpn.AdapterConfig{
 		Host:       vpnCfg.Host,
@@ -97,10 +113,10 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 		KeyPath:    vpnCfg.Auth.Key,
 		ConfigPath: vpnCfg.ConfigFile,
 		Username:   vpnCfg.Auth.Username,
-		Extra: map[string]string{
-			"protocol":            vpnCfg.Protocol,
-			"allow_insecure_cert": strconv.FormatBool(vpnCfg.AllowInsecureCert),
-		},
+		Extra:      vpnCfg.AdapterExtra(),
+		// Provider adapters (attach mode) call this when they start waiting
+		// for the user to connect in the provider's app.
+		OnAttach: func(st vpn.AttachState) { s.notifyAttach(name, st) },
 	}
 
 	if vpnCfg.Auth.UsernameKeychain != "" {
@@ -141,6 +157,9 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	if adapter.Status().Normalize() != vpn.StatusConnected {
 		err := adapter.Connect(ctx, aCfg)
 		aCfg.Password = ""
+		if errors.Is(err, vpn.ErrUserActionTimeout) {
+			err = fmt.Errorf("%s: %w", s.f("cli.attach.wait_timeout", name), err)
+		}
 		if err != nil {
 			s.maybeEmitReauthAssistance(name, err)
 			s.audit("ERROR", "vpn.connect_failed", name, s.f("cli.audit.connect_failed", name, err))
@@ -166,9 +185,16 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 		}
 	}
 
-	if s.policyResolver != nil && vpnCfg.Type == "wireguard" {
-		ifaceName := interfaceFromWGConfig(vpnCfg)
-		if err := s.policyResolver.RegisterProfile(name, ifaceName, vpnCfg.ConfigFile); err != nil {
+	// Policy routes for every adapter type: WireGuard also gets AllowedIPs;
+	// the others get OS routes through the tunnel interface.
+	if s.policyResolver != nil {
+		var err error
+		if vpnCfg.Type == "wireguard" {
+			err = s.policyResolver.RegisterProfile(name, interfaceFromWGConfig(vpnCfg), vpnCfg.ConfigFile)
+		} else if info, ierr := adapter.TunnelInfo(); ierr == nil && info != nil && info.InterfaceName != "" {
+			err = s.policyResolver.RegisterTunnel(name, info.InterfaceName, info.DNS)
+		}
+		if err != nil {
 			s.stderr(s.f("cli.policyresolver.warn", name, err))
 		}
 	}
@@ -188,12 +214,82 @@ func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
 	if s.watchdog != nil {
 		s.watchdog.MarkIntended(name)
 	}
+	if s.onIntent != nil {
+		s.onIntent(name, true) // turned off by the user: never a kill switch block
+	}
 	if s.policyResolver != nil {
 		s.policyResolver.UnregisterProfile(name)
 	}
 	if err := adapter.Disconnect(ctx); err != nil {
+		if errors.Is(err, vpn.ErrManualDisconnect) {
+			// Provider app without a CLI: the user disconnects in the app
+			// (the adapter opened it). Returned as-is so callers show the
+			// waiting state; cleanup runs once the tunnel drops.
+			s.manualDisconnect(name, adapter)
+		}
 		return err
 	}
+	s.afterDisconnect(name)
+	return nil
+}
+
+// notifyAttach reports a provider adapter's attach phase change: the alert
+// feed and audit log get a one-line message (daemon language), and
+// onAttach (e.g. a collector refresh) lets live views show it at once.
+// Live views render the phase themselves from TunnelMetrics.Attach in
+// their own language.
+func (s *ProfileService) notifyAttach(name string, st vpn.AttachState) {
+	key, args := st.MessageKey()
+	if key == "" {
+		return
+	}
+	msg := name + ": " + s.f(key, args...)
+	level := "INFO"
+	if st.Phase == vpn.PhaseWaitingUser && st.Reason != "" {
+		level = "WARN"
+	}
+	if s.emitAlert != nil {
+		s.emitAlert(level, name, msg)
+	}
+	s.audit(level, "vpn.attach."+string(st.Phase), name, msg)
+	if s.onAttach != nil {
+		s.onAttach(name, st)
+	}
+}
+
+// manualDisconnect handles a provider tunnel the user must close in the
+// app (adapter returned vpn.ErrManualDisconnect): tell the user, and run
+// the post-disconnect cleanup (DNS, kill switch, audit) in the background
+// once the tunnel drops, bounded by the profile's wait_timeout. It does
+// not block: callers show the waiting state and poll the tunnel status.
+func (s *ProfileService) manualDisconnect(name string, adapter vpn.VPNAdapter) {
+	st := vpn.AttachState{Phase: vpn.PhaseWaitingDisconnect, App: name, Since: time.Now()}
+	if r, ok := adapter.(vpn.AttachReporter); ok {
+		if cur := r.AttachState(); cur != nil {
+			st = *cur
+		}
+	}
+	s.notifyAttach(name, st)
+
+	timeout := 5 * time.Minute
+	if d, err := time.ParseDuration(s.cfg.VPNs[name].WaitTimeout); err == nil && d > 0 {
+		timeout = d
+	}
+	go func() {
+		deadline := time.Now().Add(timeout)
+		for adapter.Status().Normalize() == vpn.StatusConnected {
+			if time.Now().After(deadline) {
+				s.audit("WARN", "vpn.disconnect_timeout", name, s.f("cli.attach.disconnect_timeout", name))
+				return
+			}
+			time.Sleep(time.Second)
+		}
+		s.afterDisconnect(name)
+	}()
+}
+
+// afterDisconnect is the cleanup shared by Disconnect and manualDisconnect.
+func (s *ProfileService) afterDisconnect(name string) {
 	if s.dnsMgr != nil {
 		s.dnsMgr.OnDisconnect(name)
 	}
@@ -201,7 +297,6 @@ func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
 		_ = s.applyKill()
 	}
 	s.audit("INFO", "vpn.disconnect", name, s.f("cli.audit.disconnect", name))
-	return nil
 }
 
 func (s *ProfileService) HandleReconnectError(profile string, err error) {
@@ -231,15 +326,25 @@ func (s *ProfileService) runProfilePreflight(name string, vpnCfg config.VPNConfi
 	if vpnCfg.Auth.PasswordKeychain != "" && strings.TrimSpace(aCfg.Password) == "" {
 		return fmt.Errorf("%s", s.f("cli.preflight.missing_password", name))
 	}
-	if vpnCfg.BinaryPath != "" {
+	// Consumer provider adapters (protonvpn, nordvpn, surfshark) need no
+	// CLI: without one they open the app and wait for the user (attach
+	// mode), so a missing CLI is neither an error nor worth a warning.
+	consumerApp := config.ProviderTypes[vpnCfg.Type] && vpnCfg.Type != "forticlient"
+	if vpnCfg.Type == "openvpn" {
+		if err := s.openvpnPreflight(name, vpnCfg); err != nil {
+			return err
+		}
+	} else if vpnCfg.BinaryPath != "" {
 		if _, err := os.Stat(vpnCfg.BinaryPath); err != nil {
 			return fmt.Errorf("%s", s.f("cli.preflight.missing_binary", name, vpnCfg.BinaryPath))
 		}
-	} else {
-		if bin := adapterBinaryByType(vpnCfg.Type); bin != "" {
-			if _, err := exec.LookPath(bin); err != nil {
-				s.warn(s.f("cli.preflight.binary_warning", name, bin))
-			}
+	} else if vpndetect.Known(vpnCfg.Type) && !consumerApp {
+		// Check the exact locations the adapter executes on this OS (e.g.
+		// wireguard.exe under Program Files on Windows, wg-quick on PATH on
+		// Linux) instead of Linux binary names on PATH everywhere.
+		if _, ok := vpndetect.FindStandard(vpnCfg.Type); !ok {
+			s.warn(s.f("cli.preflight.binary_not_found_warning", name,
+				strings.Join(vpndetect.StandardLocations(vpnCfg.Type), ", ")))
 		}
 	}
 	if aCfg.Host != "" {
@@ -258,25 +363,37 @@ func (s *ProfileService) runProfilePreflight(name string, vpnCfg config.VPNConfi
 	return nil
 }
 
-func adapterBinaryByType(adapterType string) string {
-	switch adapterType {
-	case "openvpn":
-		return "openvpn"
-	case "protonvpn":
-		return "protonvpn-cli"
-	case "tailscale":
-		return "tailscale"
-	case "cloudflarewarp":
-		return "warp-cli"
-	case "wireguard":
-		return "wg"
-	case "forticlient":
-		return "forticlientsslvpn"
-	case "ciscoanyconnect":
-		return "vpn"
-	default:
-		return ""
+// openvpnPreflight replaces the generic binary check for OpenVPN: the binary
+// is usually not on PATH (Windows installer, Homebrew sbin), openvpn creates
+// the tunnel device and routes itself so it needs admin/root, and a second
+// instance of a profile already running (e.g. in OpenVPN GUI) would fight
+// over the same routes. Each case gets an actionable, translated message
+// instead of openvpn's raw console error.
+func (s *ProfileService) openvpnPreflight(name string, vpnCfg config.VPNConfig) error {
+	if !privops.IsElevated() {
+		// The helper runs its own trusted openvpn; it only has to answer.
+		// The error keeps the privops sentinel so clients render the
+		// translated "install the helper once" line (GuidanceKey).
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err := privops.Available(ctx)
+		cancel()
+		if err != nil {
+			key, _ := privops.GuidanceKey(err)
+			if key == "" {
+				key = "service.error.not_installed"
+			}
+			return fmt.Errorf("%s (%w)", s.t(key), err)
+		}
+	} else if _, err := openvpn.FindBinary(vpnCfg.BinaryPath); err != nil {
+		if vpnCfg.BinaryPath != "" {
+			return fmt.Errorf("%s", s.f("cli.preflight.missing_binary", name, vpnCfg.BinaryPath))
+		}
+		return fmt.Errorf("%s", s.f("cli.preflight.openvpn_not_found", name))
 	}
+	if openvpn.RunningWithConfig(vpnCfg.ConfigFile) {
+		return fmt.Errorf("%s", s.f("cli.preflight.openvpn_already_running", name, filepath.Base(vpnCfg.ConfigFile)))
+	}
+	return nil
 }
 
 func (s *ProfileService) maybeEmitReauthAssistance(profile string, err error) {
@@ -319,7 +436,7 @@ func (s *ProfileService) reauthHint(vpnCfg config.VPNConfig) string {
 		return s.t("cli.reauth.hint.gui")
 	case "openvpn", "wireguard":
 		return s.t("cli.reauth.hint.credentials")
-	case "protonvpn", "cloudflarewarp", "tailscale":
+	case "protonvpn", "nordvpn", "cloudflarewarp", "tailscale":
 		return s.t("cli.reauth.hint.session")
 	default:
 		return s.t("cli.reauth.hint.generic")

@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	fyne.io/systray v1.11.0
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/huh v1.0.0

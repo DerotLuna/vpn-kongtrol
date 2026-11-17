@@ -318,3 +318,35 @@ func TestWatchdog_FailoverOnReconnectFailure(t *testing.T) {
 		t.Fatal("watchdog did not activate backup profile failover")
 	}
 }
+
+// manualAdapter reports ManualReconnect (provider app without a CLI).
+type manualAdapter struct{ *mockAdapter }
+
+func (manualAdapter) Capabilities() vpn.Capabilities { return vpn.Capabilities{ManualReconnect: true} }
+
+// TestWatchdog_ManualReconnectNotifies verifies that a ManualReconnect
+// adapter gets one manual_reconnect_required event and no reconnect.
+func TestWatchdog_ManualReconnectNotifies(t *testing.T) {
+	adapter := manualAdapter{newMockAdapter(vpn.StatusConnected)}
+	var reconnects, notices atomic.Int32
+	wd := monitor.NewWatchdog(map[string]vpn.VPNAdapter{"surf": adapter},
+		func(context.Context, string) error { reconnects.Add(1); return nil }, zapNop())
+	wd.SetEventCallback(func(_, event string, _ int, _ error) {
+		if event == "manual_reconnect_required" {
+			notices.Add(1)
+		}
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wd.MarkActive("surf")
+	wd.Start(ctx)
+	adapter.setStatus(vpn.StatusDisconnected)
+
+	time.Sleep(11 * time.Second) // two 5s polls
+	if reconnects.Load() != 0 {
+		t.Errorf("reconnects = %d, want 0", reconnects.Load())
+	}
+	if notices.Load() != 1 {
+		t.Errorf("notices = %d, want 1", notices.Load())
+	}
+}

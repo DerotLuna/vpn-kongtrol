@@ -33,6 +33,7 @@ func runEditMenu(lang i18n.Lang, doc *yaml.Node, existing *config.Config, detect
 		dnsGuard:   existing.Security.DNSGuard.Enabled,
 		auditLog:   existing.Security.AuditLog.Sign,
 		monitor:    existing.Monitor.Enabled,
+		publicIP:   existing.PublicIPCheckEnabled(),
 	}
 
 	for {

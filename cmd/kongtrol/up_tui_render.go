@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -60,10 +62,12 @@ func (m upModel) filteredRows() []tunnelRow {
 	for _, name := range sortedAdapterNames(m.adapters) {
 		status := vpn.StatusDisconnected
 		ip, uptime := "—", "—"
+		var attach *vpn.AttachState
 
 		if snapshot != nil {
 			if tm, ok := snapshot[name]; ok {
 				status = tm.Status.Normalize()
+				attach = tm.Attach
 				if tm.AssignedIP != "" {
 					ip = tm.AssignedIP
 				}
@@ -73,6 +77,9 @@ func (m upModel) filteredRows() []tunnelRow {
 			}
 		} else if adapter, ok := m.adapters[name]; ok {
 			status = adapter.Status().Normalize()
+			if r, ok := adapter.(vpn.AttachReporter); ok {
+				attach = r.AttachState()
+			}
 			if info, err := adapter.TunnelInfo(); err == nil && info != nil {
 				if info.AssignedIP != nil {
 					ip = info.AssignedIP.String()
@@ -86,7 +93,7 @@ func (m upModel) filteredRows() []tunnelRow {
 		if !m.passesFilter(status) {
 			continue
 		}
-		rows = append(rows, tunnelRow{Name: name, Status: status, IP: ip, Uptime: uptime})
+		rows = append(rows, tunnelRow{Name: name, Status: status, IP: ip, Uptime: uptime, Attach: attach})
 	}
 	return rows
 }
@@ -142,16 +149,15 @@ func (m upModel) renderTmuxBar(w int, rows []tunnelRow) string {
 	}
 
 	connected, _, _, _ := statusCounts(rows)
-	ksActive := m.ks != nil && m.ks.IsEnabled()
-	dnsActive := m.dnsMgr != nil && m.dnsMgr.IsActive()
+	_, ksActive, dnsOn, dnsActive := m.securityState()
 	mark := func(on bool) (lipgloss.Color, string) {
 		if on {
 			return colSignal, sym("●", "*")
 		}
 		return colDim, sym("○", "o")
 	}
-	ksCol, ksMark := mark(m.ksOn && ksActive)
-	dnsCol, dnsMark := mark(m.dnsOn && dnsActive)
+	ksCol, ksMark := mark(ksActive)
+	dnsCol, dnsMark := mark(dnsOn && dnsActive)
 	right := seg(ksCol, false, "KS "+ksMark) +
 		seg(colDim, false, " │ ") +
 		seg(dnsCol, false, "DNS "+dnsMark) +
@@ -173,11 +179,16 @@ const upLogsHeaderHeight = 3 // blank separator + title line + rule
 // point: when no tunnel is connected it's the "default" (no-VPN) address;
 // once a tunnel is up it's labeled as the current (possibly VPN) egress IP
 // so it isn't mistaken for the baseline.
+//
+// The view never looks the IP up itself: it shows the last opt-in lookup
+// (made on tunnel connect/disconnect or `kongtrol check`), or a hint to
+// turn the lookup on.
 func (m *upModel) renderPublicIPLine(rowsData []tunnelRow) string {
-	if m.leak == nil {
-		return ""
+	enabled, ip := m.publicIPState()
+	if !enabled {
+		return styleDim.Render(ct("cli.up.tui.public_ip.off"))
 	}
-	if m.publicIP == "" {
+	if ip == "" {
 		return styleDim.Render(ct("cli.up.tui.public_ip.checking"))
 	}
 	connected, _, _, _ := statusCounts(rowsData)
@@ -185,7 +196,26 @@ func (m *upModel) renderPublicIPLine(rowsData []tunnelRow) string {
 	if connected > 0 {
 		key = "cli.up.tui.public_ip.current"
 	}
-	return styleInfo.Render(cf(key, m.publicIP))
+	return styleInfo.Render(cf(key, ip))
+}
+
+// publicIPState reads the daemon's state in a remote view, else this
+// process's checker. No network call.
+func (m *upModel) publicIPState() (enabled bool, ip string) {
+	if m.remoteSec != nil {
+		s := m.remoteSec
+		if s.LeakCheck != nil {
+			ip = s.LeakCheck.PublicIP
+		}
+		return s.PublicIPCheckEnabled || s.LeakCheckAvailable, ip
+	}
+	if m.leak == nil || !m.leak.Enabled() {
+		return false, ""
+	}
+	if lr := m.leak.LastResult(); lr != nil {
+		ip = lr.PublicIP
+	}
+	return true, ip
 }
 
 // renderStaticTop renders everything above the log panel: header, tunnel
@@ -209,10 +239,12 @@ func (m *upModel) renderStaticTop(w int, rowsData []tunnelRow) string {
 
 	b.WriteString(renderStatusSummary(rowsData) + "\n\n")
 
-	ksActive := m.ks != nil && m.ks.IsEnabled()
-	dnsActive := m.dnsMgr != nil && m.dnsMgr.IsActive()
-	b.WriteString("  " + renderSecurityLine(m.ksOn, ksActive, m.dnsOn, dnsActive))
+	ksOn, ksActive, dnsOn, dnsActive := m.securityState()
+	b.WriteString("  " + renderSecurityLine(ksOn, ksActive, dnsOn, dnsActive, m.killSwitchDetail()))
 	b.WriteString("\n")
+	if line := policyNoticeLine(m.policyNotice, time.Now()); line != "" {
+		b.WriteString("  " + tuiWarn(line) + "\n")
+	}
 	if line := m.renderPublicIPLine(rowsData); line != "" {
 		b.WriteString("  " + line + "\n")
 	}
@@ -238,6 +270,9 @@ func (m *upModel) renderStaticTop(w int, rowsData []tunnelRow) string {
 		b.WriteString(line + "\n")
 	}
 	b.WriteString("  " + rule + "\n")
+	for _, line := range renderAttachRowLines(rowsData) {
+		b.WriteString(line + "\n")
+	}
 
 	if m.notice != "" {
 		b.WriteString("  " + styleInfo.Render(">  "+m.notice) + "\n")
@@ -300,4 +335,25 @@ func (m upModel) View() string {
 		content += "\n"
 	}
 	return content + m.footerCache
+}
+
+// securityState returns kill switch / DNS guard (enabled, active) for the
+// security line. The daemon owns both features, so its reported state wins
+// whenever it answers; the local objects are only a fallback when no daemon
+// is reachable (this viewer process never engages them itself).
+func (m *upModel) securityState() (ksOn, ksActive, dnsOn, dnsActive bool) {
+	if m.remoteSec != nil {
+		s := m.remoteSec
+		return s.KillSwitchEnabled, s.KillSwitch, s.DNSGuardEnabled, s.DNSGuard
+	}
+	return m.ksOn, m.ks != nil && m.ks.IsEnabled(),
+		m.dnsOn, m.dnsMgr != nil && m.dnsMgr.IsActive()
+}
+
+// killSwitchDetail is the daemon's split-tunnel kill switch detail, or nil.
+func (m *upModel) killSwitchDetail() *security.KillSwitchStatus {
+	if m.remoteSec != nil {
+		return m.remoteSec.KillSwitchStatus
+	}
+	return nil
 }

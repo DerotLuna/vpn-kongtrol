@@ -17,13 +17,17 @@ type Engine struct {
 
 // ExplainResult contains human-friendly resolution metadata for a target.
 type ExplainResult struct {
-	Target    string
-	Kind      string // ip | domain | app
-	Matched   bool
-	Via       string
-	RuleName  string
-	Reason    string
-	DefaultTo string
+	Target   string
+	Kind     string // ip | domain | app
+	Matched  bool
+	Via      string
+	RuleName string
+	Reason   string // English, kept for JSON/API compatibility
+	// ReasonCode and ReasonArgs let clients render Reason translated:
+	// the i18n key is "policy.reason." + ReasonCode.
+	ReasonCode string
+	ReasonArgs []string
+	DefaultTo  string
 }
 
 // New builds an Engine from the loaded configuration.
@@ -105,7 +109,7 @@ func (e *Engine) ResolveFlow(target, app string) (vpnName string, ruleName strin
 func (e *Engine) ExplainTarget(target string) ExplainResult {
 	target = strings.TrimSpace(target)
 	if target == "" {
-		return ExplainResult{Target: target, Reason: "empty target", DefaultTo: "default route"}
+		return ExplainResult{Target: target, Reason: "empty target", ReasonCode: "empty_target", DefaultTo: "default route"}
 	}
 
 	if ip := net.ParseIP(target); ip != nil {
@@ -130,12 +134,14 @@ func (e *Engine) ExplainIP(ip net.IP) ExplainResult {
 	rule, network, ok := e.resolveIPMatch(ip)
 	if !ok {
 		out.Reason = "no matching ip_ranges rule"
+		out.ReasonCode = "no_ip_rule"
 		return out
 	}
 	out.Matched = true
 	out.Via = rule.Via
 	out.RuleName = rule.Name
 	out.Reason = fmt.Sprintf("matched CIDR %s (longest-prefix wins)", network.String())
+	out.ReasonCode, out.ReasonArgs = "matched_cidr", []string{network.String()}
 	return out
 }
 
@@ -149,12 +155,14 @@ func (e *Engine) ExplainDomain(domain string) ExplainResult {
 	rule, pattern, ok := e.resolveDomainMatch(domain)
 	if !ok {
 		out.Reason = "no matching domains rule"
+		out.ReasonCode = "no_domain_rule"
 		return out
 	}
 	out.Matched = true
 	out.Via = rule.Via
 	out.RuleName = rule.Name
 	out.Reason = fmt.Sprintf("matched domain pattern %q", pattern)
+	out.ReasonCode, out.ReasonArgs = "matched_domain", []string{pattern}
 	return out
 }
 
@@ -168,12 +176,14 @@ func (e *Engine) ExplainApp(app string) ExplainResult {
 	rule, pattern, ok := e.resolveAppMatch(app)
 	if !ok {
 		out.Reason = "no matching apps rule"
+		out.ReasonCode = "no_app_rule"
 		return out
 	}
 	out.Matched = true
 	out.Via = rule.Via
 	out.RuleName = rule.Name
 	out.Reason = fmt.Sprintf("matched app pattern %q", pattern)
+	out.ReasonCode, out.ReasonArgs = "matched_app", []string{pattern}
 	return out
 }
 

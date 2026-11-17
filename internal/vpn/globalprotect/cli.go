@@ -72,40 +72,6 @@ func disconnect() error {
 	return nil
 }
 
-func statusOutput() (string, error) {
-	binary, err := binaryPath()
-	if err != nil {
-		return "", err
-	}
-	return runCmd(binary, "status")
-}
-
-// parseStatus parses `globalprotect status` output.
-// Returns (connected, assignedIP, gateway).
-func parseStatus(raw string) (connected bool, assignedIP, gateway string) {
-	for _, line := range strings.Split(raw, "\n") {
-		line = strings.TrimSpace(line)
-		lower := strings.ToLower(line)
-
-		if strings.HasPrefix(lower, "status:") {
-			connected = strings.Contains(lower, "connected")
-		}
-		if strings.HasPrefix(lower, "assigned-ip:") || strings.HasPrefix(lower, "assigned ip:") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				assignedIP = strings.TrimSpace(parts[1])
-			}
-		}
-		if strings.HasPrefix(lower, "gateway:") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				gateway = strings.TrimSpace(parts[1])
-			}
-		}
-	}
-	return
-}
-
 // detectInterface polls for a GlobalProtect tunnel interface (gpd0).
 func detectInterface(timeout time.Duration) (string, net.IP, error) {
 	deadline := time.Now().Add(timeout)

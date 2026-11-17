@@ -15,7 +15,7 @@ import (
 // adapter type without false-positive validation errors.
 func TestLoad_AllAdapterTypes(t *testing.T) {
 	types := []string{
-		"forticlient", "openvpn", "protonvpn",
+		"forticlient", "openvpn", "protonvpn", "nordvpn",
 		"ciscoanyconnect", "wireguard", "globalprotect",
 		"tailscale", "cloudflarewarp",
 	}

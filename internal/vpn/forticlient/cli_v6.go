@@ -1,12 +1,8 @@
 package forticlient
 
 import (
-	"context"
 	"fmt"
-	"net"
 	"runtime"
-	"strings"
-	"time"
 )
 
 // binaryPath returns the FortiClient CLI binary for the current OS.
@@ -92,102 +88,4 @@ func tryGUIDisconnect(tunnelName string) error {
 		return fmt.Errorf("gui automation not supported on %s", runtime.GOOS)
 	}
 	return guiDisconnect(tunnelName)
-}
-
-// disableFortiAdapter disables a Fortinet network adapter as a fallback when
-// CLI /vpndisconnect is blocked by EMS policy. On Windows, uses PowerShell
-// Disable-NetAdapter which requires admin privileges but reliably drops the tunnel.
-// On Linux/macOS, falls back to ifconfig down.
-func disableFortiAdapter(ifaceName string) error {
-	switch runtime.GOOS {
-	case "windows":
-		// Disable-NetAdapter by name drops the tunnel without killing FortiClient.
-		_, err := runCmd("powershell", "-NoProfile", "-Command",
-			fmt.Sprintf(`Disable-NetAdapter -Name '%s' -Confirm:$false`, ifaceName))
-		return err
-	default:
-		_, err := runCmd("ifconfig", ifaceName, "down")
-		return err
-	}
-}
-
-// detectTunnelInterface polls network interfaces until a FortiClient
-// tunnel interface appears. ctx cancellation (e.g. Ctrl+C) stops the loop early.
-func detectTunnelInterface(ctx context.Context, timeout time.Duration) (string, net.IP, error) {
-	if runtime.GOOS == "windows" {
-		return detectTunnelInterfaceWindows(ctx, timeout)
-	}
-	return detectTunnelInterfaceUnix(ctx, timeout)
-}
-
-// detectTunnelInterfaceUnix matches by interface name prefix (Linux/macOS).
-func detectTunnelInterfaceUnix(ctx context.Context, timeout time.Duration) (string, net.IP, error) {
-	deadline := time.Now().Add(timeout)
-	candidates := []string{"fortissl", "vpnssl0", "ssl0", "ppp0"}
-
-	for time.Now().Before(deadline) {
-		select {
-		case <-ctx.Done():
-			return "", nil, ctx.Err()
-		default:
-		}
-		ifaces, err := net.Interfaces()
-		if err != nil {
-			return "", nil, err
-		}
-		for _, iface := range ifaces {
-			name := strings.ToLower(iface.Name)
-			for _, c := range candidates {
-				if strings.HasPrefix(name, c) {
-					addrs, _ := iface.Addrs()
-					for _, addr := range addrs {
-						if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-							return iface.Name, ipnet.IP, nil
-						}
-					}
-				}
-			}
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	return "", nil, fmt.Errorf("forticlient: tunnel interface not found within %s", timeout)
-}
-
-// detectTunnelInterfaceWindows uses PowerShell to find Fortinet adapters by
-// description, then reads their IP via the standard net package.
-// FortiClient creates adapters with descriptions like "Fortinet SSL VPN Virtual
-// Ethernet Adapter" or "Fortinet Virtual Ethernet Adapter (NDIS 6.30)".
-func detectTunnelInterfaceWindows(ctx context.Context, timeout time.Duration) (string, net.IP, error) {
-	deadline := time.Now().Add(timeout)
-
-	// PowerShell command to find a Fortinet adapter that is Up and has an IPv4 address.
-	psCmd := `Get-NetAdapter | Where-Object { $_.InterfaceDescription -like '*Fortinet*' -and $_.Status -eq 'Up' } | ` +
-		`Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue | ` +
-		`Select-Object -First 1 -ExpandProperty InterfaceAlias`
-
-	for time.Now().Before(deadline) {
-		select {
-		case <-ctx.Done():
-			return "", nil, ctx.Err()
-		default:
-		}
-		out, err := runCmd("powershell", "-NoProfile", "-Command", psCmd)
-		if err == nil {
-			name := strings.TrimSpace(out)
-			if name != "" {
-				// Resolve IP via Go's net package for consistency.
-				iface, err := net.InterfaceByName(name)
-				if err == nil {
-					addrs, _ := iface.Addrs()
-					for _, addr := range addrs {
-						if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-							return name, ipnet.IP, nil
-						}
-					}
-				}
-			}
-		}
-		time.Sleep(1 * time.Second)
-	}
-	return "", nil, fmt.Errorf("forticlient: tunnel interface not found within %s", timeout)
 }

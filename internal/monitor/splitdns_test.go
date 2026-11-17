@@ -1,30 +1,19 @@
 package monitor
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
-func TestSplitDNS_RemoveAndRenderBlock(t *testing.T) {
-	original := "127.0.0.1 localhost\n" +
-		splitDNSStartMarker + "\n" +
-		"1.1.1.1 api.example.com\n" +
-		splitDNSEndMarker + "\n" +
-		"::1 localhost\n"
-
-	clean := removeSplitDNSBlock(original)
-	if clean == "" {
-		t.Fatal("expected non-empty hosts content after removing split-dns block")
+func TestSplitDNS_HostEntries(t *testing.T) {
+	got := hostEntries(map[string]string{"www.Example.com": "1.1.1.1", "api.example.com": "::ffff:2.2.2.2", "bad.example.com": "nope"})
+	if len(got) != 2 {
+		t.Fatalf("got %+v", got)
 	}
-	if clean == original {
-		t.Fatal("expected split-dns block to be removed")
+	if got[0].Host != "api.example.com" || got[0].IP.String() != "2.2.2.2" {
+		t.Fatalf("first entry %+v", got[0])
 	}
-
-	block := renderSplitDNSBlock(map[string]string{"api.example.com": "1.1.1.1"})
-	if block == "" {
-		t.Fatal("expected rendered split-dns block")
+	if got[1].Host != "www.example.com" || got[1].IP.String() != "1.1.1.1" {
+		t.Fatalf("second entry %+v", got[1])
 	}
-	if !strings.Contains(block, splitDNSStartMarker) || !strings.Contains(block, splitDNSEndMarker) {
-		t.Fatal("rendered block missing markers")
+	if len(hostEntries(nil)) != 0 {
+		t.Fatal("empty map must give no entries")
 	}
 }

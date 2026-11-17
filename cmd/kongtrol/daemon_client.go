@@ -1,282 +1,150 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"strconv"
-	"strings"
-	"time"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
-// daemonAPIBase returns the address the running `kongtrol up` daemon's
-// embedded API server binds to, per the loaded config. It's a fixed,
-// well-known address (default 127.0.0.1:9741) — every kongtrol process reads
-// the same config, so this is how a `status --watch` viewer finds a daemon
-// that's already running in another process.
+// The daemon REST client lives in internal/daemonctl so the tray drives the
+// same daemon the same way. These wrappers bind it to this process's API
+// token and keep the CLI's call sites and test seams unchanged.
+
+// daemonAPIBase returns the address the running daemon's embedded API
+// server binds to, per the loaded config. It's a fixed, well-known address
+// (default 127.0.0.1:9741) — every kongtrol process reads the same config,
+// so this is how any viewer finds a daemon that's already running.
 func daemonAPIBase() string {
-	return "http://" + net.JoinHostPort(cfg.Monitor.Dashboard.Bind, strconv.Itoa(cfg.Monitor.Dashboard.Port))
+	return daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
 }
 
+// daemonClient returns an API client for base using this process's token.
+func daemonClient(base string) *daemonctl.Client { return daemonctl.New(base, apiToken) }
+
 // probeDaemonAPI reports whether a kongtrol daemon's API server is reachable
-// at base. Used by `status --watch` to decide whether connect/disconnect
-// actions can be safely proxied to the real daemon instead of being run
-// in-process (which would spawn a second, uncoordinated adapter instance and
-// risk a duplicate tunnel — see the `up_tui.go` daemonMode comment).
-func probeDaemonAPI(base string) bool {
-	client := http.Client{Timeout: 800 * time.Millisecond}
-	req, err := daemonRequest(http.MethodGet, base+"/api/v1/tunnels", nil)
-	if err != nil {
-		return false
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false
-	}
-	defer resp.Body.Close()
-	return resp.StatusCode < 500
-}
+// at base.
+func probeDaemonAPI(base string) bool { return daemonClient(base).Probe() }
 
 // daemonWSURL converts the daemon API's http(s) base address into the
 // ws(s) URL for its live metrics feed.
-func daemonWSURL(base string) string {
-	url := strings.Replace(base, "http://", "ws://", 1)
-	url = strings.Replace(url, "https://", "wss://", 1)
-	return url + "/api/v1/ws/metrics"
-}
+func daemonWSURL(base string) string { return daemonctl.WSURL(base) }
 
-// daemonAPIError reads a JSON error body of the shape {"error": "..."} and
-// falls back to the raw body / status text if it doesn't parse.
-func daemonAPIError(resp *http.Response) error {
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	if len(body) == 0 {
-		return fmt.Errorf("%s", resp.Status)
-	}
-	return fmt.Errorf("%s: %s", resp.Status, string(body))
-}
+// daemonAPIError reads a JSON error body and falls back to the raw body /
+// status text if it doesn't parse.
+func daemonAPIError(resp *http.Response) error { return daemonctl.APIError(resp) }
 
-// daemonConnect asks the running daemon to (re)connect profile name via its
-// REST API. The daemon's handler runs the connect asynchronously (202
-// Accepted) — this call only confirms the request was accepted; the tunnel
-// table picks up the resulting state change on its own next poll, since
-// adapter.Status() reflects real OS-level tunnel state regardless of which
-// process initiated the connection.
+// daemonConnect asks the running daemon to (re)connect profile name. The
+// daemon connects asynchronously (202 Accepted) — this only confirms the
+// request was accepted.
 func daemonConnect(base, name string) error {
-	client := http.Client{Timeout: 10 * time.Second}
-	req, err := daemonRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/connect", nil)
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return daemonAPIError(resp)
-	}
-	return nil
+	_, err := daemonRequestConnect(base, name)
+	return err
 }
 
-// daemonDisconnect asks the running daemon to disconnect profile name via
-// its REST API. Unlike connect, the daemon's handler disconnects
-// synchronously (bounded to 30s server-side), so a successful return means
-// the tunnel is already down.
-func daemonDisconnect(base, name string) error {
-	client := http.Client{Timeout: 35 * time.Second}
-	req, err := daemonRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/disconnect", nil)
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return daemonAPIError(resp)
-	}
-	return nil
+// daemonRequestConnect is daemonConnect that also reports whether the
+// daemon answered "already_connected" (200) instead of starting a new
+// asynchronous connect (202).
+func daemonRequestConnect(base, name string) (alreadyConnected bool, err error) {
+	return daemonClient(base).Connect(name)
 }
+
+// daemonCancelConnect aborts a pending connect for profile name.
+func daemonCancelConnect(base, name string) error { return daemonClient(base).CancelConnect(name) }
+
+// daemonDisconnect disconnects profile name synchronously (bounded to 30s
+// server-side), so a successful return means the tunnel is already down.
+func daemonDisconnect(base, name string) error { return daemonClient(base).Disconnect(name) }
 
 // daemonShutdown asks a running daemon to terminate gracefully via its
 // REST API — see handleShutdown's doc comment for why this is preferred
 // over an OS-level kill/signal.
-func daemonShutdown(base string) error {
-	client := http.Client{Timeout: 5 * time.Second}
-	req, err := daemonRequest(http.MethodPost, base+"/api/v1/shutdown", nil)
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return daemonAPIError(resp)
-	}
-	return nil
-}
+func daemonShutdown(base string) error { return daemonClient(base).Shutdown() }
 
+// daemonRequest builds a request authenticated with this process's token.
 func daemonRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("X-Kongtrol-Token", apiToken)
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
-	}
-	return req, nil
+	return daemonClient("").NewRequest(method, url, body)
 }
 
 // daemonReloadPolicy asks the running daemon to re-read kongtrol.yaml from
-// disk and hot-swap its policy engine from it — the same hot-swap
-// saveRuntimeConfig performs after a dashboard CRUD write, but sourced from
-// the file on disk instead of an in-memory mutation, for the "I hand-edited
+// disk and hot-swap its policy engine from it, for the "I hand-edited
 // kongtrol.yaml outside the dashboard/CLI" case `kongtrol reload` exists for.
-func daemonReloadPolicy(base string) error {
-	client := http.Client{Timeout: 10 * time.Second}
-	req, err := daemonRequest(http.MethodPost, base+"/api/v1/policies/reload", nil)
-	if err != nil {
-		return err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return daemonAPIError(resp)
-	}
-	return nil
-}
+func daemonReloadPolicy(base string) error { return daemonClient(base).ReloadPolicy() }
 
 // daemonGroupNames returns the names of every group defined in the running
-// daemon's currently loaded config. Used by `kongtrol reload` with no
-// --group flag to restart every group in place.
-func daemonGroupNames(base string) ([]string, error) {
-	client := http.Client{Timeout: 10 * time.Second}
-	req, err := daemonRequest(http.MethodGet, base+"/api/v1/groups", nil)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, daemonAPIError(resp)
-	}
-	var groups []struct {
-		Name string `json:"name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&groups); err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(groups))
-	for _, g := range groups {
-		names = append(names, g.Name)
-	}
-	return names, nil
-}
+// daemon's currently loaded config.
+func daemonGroupNames(base string) ([]string, error) { return daemonClient(base).GroupNames() }
 
-// daemonGroupReloadResult mirrors the JSON body returned by
-// POST /api/v1/groups/{name}/reload, for both the 202 "restarting" success
-// shape and the 409 "restart_required" shape (a brand-new profile added to
-// the group by the hand edit that the running daemon has no registered
-// adapter for — see handleReloadGroup's doc comment in internal/api).
-type daemonGroupReloadResult struct {
-	Status          string   `json:"status"`
-	Group           string   `json:"group"`
-	Restarted       []string `json:"restarted"`
-	Skipped         []string `json:"skipped"`
-	MissingProfiles []string `json:"missing_profiles"`
-	RestartRequired bool     `json:"-"`
-}
+// daemonGroupReloadResult mirrors POST /api/v1/groups/{name}/reload.
+type daemonGroupReloadResult = daemonctl.GroupReloadResult
 
 // daemonReloadGroup asks the running daemon to re-read kongtrol.yaml and
 // restart-in-place every currently connected profile in group name.
 func daemonReloadGroup(base, name string) (daemonGroupReloadResult, error) {
-	client := http.Client{Timeout: 35 * time.Second}
-	req, err := daemonRequest(http.MethodPost, base+"/api/v1/groups/"+name+"/reload", nil)
-	if err != nil {
-		return daemonGroupReloadResult{}, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return daemonGroupReloadResult{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusConflict {
-		var result daemonGroupReloadResult
-		if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr == nil {
-			result.RestartRequired = true
-			return result, nil
-		}
-	}
-	if resp.StatusCode >= 300 {
-		return daemonGroupReloadResult{}, daemonAPIError(resp)
-	}
-	var result daemonGroupReloadResult
-	_ = json.NewDecoder(resp.Body).Decode(&result)
-	return result, nil
+	return daemonClient(base).ReloadGroup(name)
 }
 
-// daemonTunnelReloadResult mirrors the JSON body returned by
-// POST /api/v1/tunnels/{name}/reload — the single-profile counterpart to
-// daemonGroupReloadResult, for restarting one tunnel in place instead of a
-// whole group.
-type daemonTunnelReloadResult struct {
-	Status          string   `json:"status"`
-	Tunnel          string   `json:"tunnel"`
-	Restarted       []string `json:"restarted"`
-	Skipped         []string `json:"skipped"`
-	RestartRequired bool     `json:"-"`
-}
+// daemonTunnelReloadResult mirrors POST /api/v1/tunnels/{name}/reload.
+type daemonTunnelReloadResult = daemonctl.TunnelReloadResult
 
 // daemonReloadTunnel asks the running daemon to re-read kongtrol.yaml and
-// restart-in-place profile name if it's currently connected — a hand edit
-// scoped to one tunnel doesn't need its whole group cycled.
+// restart-in-place profile name if it's currently connected.
 func daemonReloadTunnel(base, name string) (daemonTunnelReloadResult, error) {
-	client := http.Client{Timeout: 35 * time.Second}
-	req, err := daemonRequest(http.MethodPost, base+"/api/v1/tunnels/"+name+"/reload", nil)
-	if err != nil {
-		return daemonTunnelReloadResult{}, err
-	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return daemonTunnelReloadResult{}, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusConflict {
-		var result daemonTunnelReloadResult
-		if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr == nil {
-			result.RestartRequired = true
-			return result, nil
-		}
-	}
-	if resp.StatusCode >= 300 {
-		return daemonTunnelReloadResult{}, daemonAPIError(resp)
-	}
-	var result daemonTunnelReloadResult
-	_ = json.NewDecoder(resp.Body).Decode(&result)
-	return result, nil
+	return daemonClient(base).ReloadTunnel(name)
 }
 
 // daemonReconnect disconnects then reconnects profile name through the
-// daemon's API — there's no dedicated reconnect endpoint since /connect
-// already reconnects a non-connected tunnel, but for an already-connected
-// one we need the explicit disconnect first to match "reconnect" semantics.
+// daemon's API — /connect alone doesn't restart an already-connected one.
 func daemonReconnect(base, name string) error {
 	if err := daemonDisconnect(base, name); err != nil {
 		return err
 	}
 	return daemonConnect(base, name)
 }
+
+// daemonTunnelStatuses returns the running daemon's view of every tunnel's
+// status, keyed by profile name. It comes from the daemon's collector
+// snapshot, so it can lag a real state change by up to one collector poll.
+func daemonTunnelStatuses(base string) (map[string]vpn.Status, error) {
+	return daemonClient(base).Statuses()
+}
+
+// daemonTunnelStates is daemonTunnelStatuses with each tunnel's full
+// metrics, including its last connect error.
+func daemonTunnelStates(base string) (map[string]monitor.TunnelMetrics, error) {
+	return daemonClient(base).TunnelStates()
+}
+
+// daemonActiveProfiles returns the names of every profile the running
+// daemon currently reports as connected or connecting. Because the list
+// comes from the collector snapshot it can lag a just-finished disconnect —
+// callers that just disconnected profiles subtract those themselves (see
+// daemonRemainingAfter).
+func daemonActiveProfiles(base string) ([]string, error) {
+	statuses, err := daemonTunnelStatusesFn(base)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for name, st := range statuses {
+		if st == vpn.StatusConnected || st == vpn.StatusConnecting {
+			names = append(names, name)
+		}
+	}
+	return names, nil
+}
+
+// Indirections over the daemon client calls used by `up`, `down` and
+// `daemon`, so their daemon-vs-local decision logic can be tested without
+// a real daemon.
+var (
+	daemonProbeFn          = probeDaemonAPI
+	daemonConnectFn        = daemonRequestConnect
+	daemonCancelConnectFn  = daemonCancelConnect
+	daemonDisconnectFn     = daemonDisconnect
+	daemonTunnelStatusesFn = daemonTunnelStatuses
+	daemonTunnelStatesFn   = daemonTunnelStates
+	daemonActiveProfilesFn = daemonActiveProfiles
+)

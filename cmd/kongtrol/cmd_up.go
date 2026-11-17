@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/vpn-kongtrol/kongtrol/internal/security"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -17,20 +16,21 @@ var upGroup string
 var upDryRun bool
 var upFavorites bool
 
+// upCmd is a client of the background daemon (`kongtrol daemon`, see
+// daemon_cmd.go), the Docker/Tailscale model: it makes sure a daemon is
+// running — spawning a detached one when none answers — connects the
+// requested profiles through the daemon's API, and then attaches the live
+// view. Quitting the view never stops the daemon or its tunnels; only
+// `kongtrol down` does, and no terminal has to stay open.
 var upCmd = &cobra.Command{
-	Use:   "up [profile...]",
-	Short: "Connect one or more VPN profiles (or all with --all)",
+	Use: "up [profile...]",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		startedAll := time.Now()
 		var (
 			targets []string
 			err     error
 		)
 		if upAll {
-			targets = make([]string, 0, len(adapters))
-			for name := range adapters {
-				targets = append(targets, name)
-			}
+			targets = sortedAdapterNames(adapters)
 		} else {
 			targets, err = resolveUpProfiles(args, upGroup, upFavorites)
 			if err != nil {
@@ -40,119 +40,7 @@ var upCmd = &cobra.Command{
 		if upDryRun {
 			return runUpDryRun(targets)
 		}
-		signalCtx := contextWithSignal()
-		ctx, cancelCtx := context.WithCancel(signalCtx)
-		defer cancelCtx()
-
-		// Write PID so `kongtrol down` can stop this daemon.
-		writePIDFile()
-		defer removePIDFile()
-
-		// Restore DNS on any exit (SIGTERM, panic path).
-		defer func() {
-			if dnsMgr != nil {
-				dnsMgr.ForceRestore()
-			}
-		}()
-
-		for _, name := range targets {
-			startedProfile := time.Now()
-			spin := newSpinner(fmt.Sprintf("Connecting %s", name))
-			spin.Start()
-			wasConnected := adapters[name].Status().Normalize() == vpn.StatusConnected
-			connectCtx, cancelConnect := context.WithTimeout(ctx, 5*time.Minute)
-			connectDone := make(chan error, 1)
-			go func() {
-				connectDone <- connectProfile(connectCtx, name)
-			}()
-			select {
-			case err = <-connectDone:
-			case <-ctx.Done():
-				err = ctx.Err()
-			}
-			cancelConnect()
-			spin.Stop()
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					fmt.Println(tuiWarn(ct("cli.up.cancelled")))
-					return nil
-				}
-				if errors.Is(err, context.DeadlineExceeded) || errors.Is(connectCtx.Err(), context.DeadlineExceeded) {
-					err = fmt.Errorf("%s", ct("cli.up.timeout"))
-				}
-				fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error() + "  " + paint(cDim, "("+time.Since(startedProfile).Round(time.Second).String()+")")))
-				return fmt.Errorf("up %s: %w", name, err)
-			}
-			if wasConnected {
-				fmt.Println(tuiInfo(paintBold(cBright, name) + "  " + paint(cDim, "already connected ("+time.Since(startedProfile).Round(time.Second).String()+")")))
-			} else {
-				fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, "connected in "+time.Since(startedProfile).Round(time.Second).String())))
-			}
-		}
-		fmt.Println(tuiInfo(paint(cDim, cf("cli.up.connected_all", time.Since(startedAll).Round(time.Second)))))
-
-		// Keep kill switch synchronized to active protected profiles.
-		_ = applyKillSwitchState()
-		if ks != nil {
-			defer func() { _ = ks.Disable() }()
-		}
-
-		// Start watchdog after all profiles are up.
-		if watchdog != nil {
-			watchdog.Start(ctx)
-			defer watchdog.Stop()
-		}
-		if scheduler != nil && cfg.Monitor.Scheduler.Enabled {
-			scheduler.Start(ctx)
-			defer scheduler.Stop()
-		}
-
-		// Start background DNS resolver for domain-based split tunneling.
-		if policyResolver != nil {
-			policyResolver.Start(ctx)
-			defer policyResolver.Stop()
-		}
-		if splitDNSMgr != nil && cfg.Monitor.SplitDNS.Enabled {
-			splitDNSMgr.Start(ctx)
-			defer splitDNSMgr.Stop()
-		}
-		startHistoryPersistence(ctx)
-
-		// Start background leak detection.
-		if leak != nil {
-			leak.Start(ctx, func(result security.LeakResult) {
-				if result.HasLeak {
-					if col != nil {
-						for name, a := range adapters {
-							if a.Status().Normalize() == vpn.StatusConnected {
-								col.RecordLeak(name)
-							}
-						}
-					}
-					emitAlert("ERROR", "", cf("cli.alert.leak_detected", result.Reason, result.PublicIP))
-					logAudit("SECURITY", "security.leak", "", cf("cli.alert.leak_detected", result.Reason, result.PublicIP))
-				}
-			})
-			defer leak.Stop()
-		}
-
-		// Start the API server / dashboard alongside the daemon.
-		var dashURL string
-		srv := buildAPIServer(cancelCtx)
-		if err := srv.Start(); err != nil {
-			fmt.Fprintln(os.Stderr, tuiWarn(cf("cli.up.warn.dashboard_server", err)))
-		} else {
-			dashURL = srv.Addr()
-			defer func() {
-				shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				_ = srv.Shutdown(shutCtx)
-			}()
-		}
-
-		// Block until signal — show live daemon view on interactive terminals.
-		runUpTUI(ctx, cancelCtx, adapters, ks, dnsMgr, dashURL, true)
-		return nil
+		return runUp(contextWithSignal(), targets)
 	},
 }
 
@@ -161,4 +49,189 @@ func init() {
 	upCmd.Flags().StringVar(&upGroup, "group", "", ct("cli.up.flag.group"))
 	upCmd.Flags().BoolVar(&upDryRun, "dry-run", false, ct("cli.up.dry_run_help"))
 	upCmd.Flags().BoolVar(&upFavorites, "fav", false, ct("cli.up.flag.fav"))
+}
+
+// Indirections so runUp is testable without a terminal or a real daemon.
+var (
+	attachViewerFn = func(ctx context.Context, cancel context.CancelFunc, base string) {
+		runUpTUI(ctx, cancel, adapters, ks, dnsMgr, base, false)
+	}
+	upIsTerminalFn = isTerminal
+	// upPollInterval is how often a pending connect's state is re-read.
+	upPollInterval = time.Second
+	// upConnectTimeout matches the daemon's own per-connect bound.
+	upConnectTimeout = 5 * time.Minute
+	// upNoProgressGrace is how long a profile may still read
+	// "disconnected" after its connect was accepted before that is taken
+	// as a failure; it covers one collector poll (5s) of snapshot lag.
+	upNoProgressGrace = 15 * time.Second
+)
+
+// runUp ensures the daemon, connects targets through it with a spinner and
+// result line per profile (as `up` always showed), then attaches the live
+// view on interactive terminals, or prints a hint and exits otherwise.
+func runUp(ctx context.Context, targets []string) error {
+	startedAll := time.Now()
+	base := daemonAPIBase()
+
+	spin := newSpinner(ct("cli.daemon.up.starting"))
+	spin.Start()
+	started, err := ensureDaemon(ctx, base)
+	spin.Stop()
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			fmt.Println(tuiWarn(ct("cli.up.cancelled")))
+			return nil
+		}
+		var startErr *errDaemonStart
+		if errors.As(err, &startErr) {
+			printDaemonStartFailure(err)
+			fmt.Println(tuiInfo(paint(cDim, ct("cli.up.failed_hint"))))
+			return alreadyReported(err)
+		}
+		return err
+	}
+	if started {
+		fmt.Println(tuiOK(ct("cli.daemon.up.started")))
+	} else {
+		fmt.Println(tuiInfo(ct("cli.daemon.up.attached")))
+	}
+
+	for _, name := range targets {
+		startedProfile := time.Now()
+		baseLabel := cf("cli.daemon.up.connecting", name)
+		spin := newSpinner(baseLabel)
+		spin.Start()
+		// Provider adapters (attach mode) explain each step: waiting for
+		// the user in the app replaces the spinner text; how the tunnel
+		// came up replaces the generic "connected" line.
+		var attach *vpn.AttachState
+		already, err := connectViaDaemonProgress(ctx, base, name, func(m monitor.TunnelMetrics) {
+			attach = m.Attach
+			if l := attachSpinnerLabel(name, m.Attach, "attach.hint.cancel"); l != "" {
+				spin.SetLabel(l)
+			} else {
+				spin.SetLabel(baseLabel)
+			}
+		})
+		spin.Stop()
+		elapsed := time.Since(startedProfile).Round(time.Second)
+		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				fmt.Println(tuiWarn(ct("cli.up.cancelled")))
+				return nil
+			}
+			fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error() + "  " + paint(cDim, "("+elapsed.String()+")")))
+			fmt.Println(tuiInfo(paint(cDim, ct("cli.up.failed_hint"))))
+			return alreadyReported(fmt.Errorf("up %s: %w", name, err))
+		}
+		if already {
+			fmt.Println(tuiInfo(paintBold(cBright, name) + "  " + paint(cDim, cf("cli.daemon.up.already_connected", elapsed))))
+		} else if line := attachDoneLine(attach); line != "" {
+			fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, line+"  ("+elapsed.String()+")")))
+		} else {
+			fmt.Println(tuiOK(paintBold(cBright, name) + "  " + paint(cDim, cf("cli.daemon.up.connected_in", elapsed))))
+		}
+		if !already {
+			if line := upRoutesLine(base, name); line != "" {
+				fmt.Println(tuiInfo(paint(cDim, line)))
+			}
+		}
+	}
+	if len(targets) > 0 {
+		fmt.Println(tuiInfo(paint(cDim, cf("cli.up.connected_all", time.Since(startedAll).Round(time.Second)))))
+	}
+
+	if !upIsTerminalFn() {
+		fmt.Println(tuiInfo(paint(cDim, ct("cli.daemon.up.hint"))))
+		return nil
+	}
+	viewCtx, cancelView := context.WithCancel(ctx)
+	defer cancelView()
+	attachViewerFn(viewCtx, cancelView, base)
+	return nil
+}
+
+// connectViaDaemon asks the daemon to connect name and follows the tunnel's
+// state through the daemon's API until it is connected, fails, or times
+// out. Cancelling ctx (Ctrl+C) aborts the daemon-side connect too.
+func connectViaDaemon(ctx context.Context, base, name string) (alreadyConnected bool, err error) {
+	return connectViaDaemonProgress(ctx, base, name, nil)
+}
+
+// connectViaDaemonProgress is connectViaDaemon that hands every state read
+// of the tunnel to onState (nil to skip). While a provider adapter waits
+// for the user in its app (attach phase waiting_user), `up`'s own timeout
+// is suspended: the adapter bounds that wait with wait_timeout.
+func connectViaDaemonProgress(ctx context.Context, base, name string, onState func(monitor.TunnelMetrics)) (alreadyConnected bool, err error) {
+	already, err := daemonConnectFn(base, name)
+	if err != nil || already {
+		return already, err
+	}
+
+	start := time.Now()
+	tick := time.NewTicker(upPollInterval)
+	defer tick.Stop()
+	seenProgress := false
+	for {
+		select {
+		case <-ctx.Done():
+			_ = daemonCancelConnectFn(base, name)
+			return false, ctx.Err()
+		case <-tick.C:
+		}
+		states, err := daemonTunnelStatesFn(base)
+		if err != nil {
+			// Transient read failure; the timeout still bounds this.
+			states = nil
+		}
+		state, ok := states[name]
+		if ok && state.Status == vpn.StatusConnecting {
+			seenProgress = true
+		}
+		if ok && onState != nil {
+			onState(state)
+		}
+		done, err := upConnectDecision(state, ok, seenProgress, time.Since(start))
+		if done {
+			return false, err
+		}
+		if ok && attachWaitingUser(state.Attach) {
+			continue
+		}
+		if time.Since(start) > upConnectTimeout {
+			_ = daemonCancelConnectFn(base, name)
+			return false, fmt.Errorf("%s", ct("cli.up.timeout"))
+		}
+	}
+}
+
+// upConnectDecision decides, from one read of the daemon's view of a
+// tunnel after its connect was accepted, whether `up` is done waiting and
+// with which result. The daemon clears a tunnel's last error when the
+// connect starts, so any LastError seen here belongs to this attempt and
+// is shown verbatim instead of only pointing at the daemon log.
+func upConnectDecision(state monitor.TunnelMetrics, known, seenProgress bool, elapsed time.Duration) (done bool, err error) {
+	if !known {
+		return false, nil
+	}
+	failed := func() error {
+		if state.LastError != "" {
+			return fmt.Errorf("%s", cf("cli.daemon.up.connect_failed_reason", tunnelErrorText(state)))
+		}
+		return fmt.Errorf("%s", ct("cli.daemon.up.connect_failed"))
+	}
+	switch state.Status {
+	case vpn.StatusConnected:
+		return true, nil
+	case vpn.StatusError:
+		return true, failed()
+	case vpn.StatusConnecting:
+		return false, nil
+	default:
+		if state.LastError != "" || seenProgress || elapsed > upNoProgressGrace {
+			return true, failed()
+		}
+		return false, nil
+	}
 }

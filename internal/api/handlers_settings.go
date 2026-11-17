@@ -33,7 +33,9 @@ func settingsToDTO(cfg *config.Config) settingsDTO {
 		KillSwitchMode:        cfg.Security.KillSwitch.Mode,
 		KillSwitchAllowLAN:    cfg.Security.KillSwitch.AllowLAN,
 		DNSGuardFallbackDNS:   cfg.Security.DNSGuard.FallbackDNS,
-		LeakDetectionEnabled:  cfg.Security.LeakDetection.Enabled,
+		LeakDetectionEnabled:  cfg.PublicIPCheckEnabled(),
+		PublicIPCheckEnabled:  cfg.PublicIPCheckEnabled(),
+		PublicIPEndpoints:     cfg.PublicIPEndpoints(),
 		LeakDetectionInterval: cfg.Security.LeakDetection.Interval,
 		LeakDetectionAction:   cfg.Security.LeakDetection.Action,
 		AuditLogPath:          cfg.Security.AuditLog.Path,
@@ -45,13 +47,14 @@ func settingsToDTO(cfg *config.Config) settingsDTO {
 // PUT /api/v1/settings — everything except the dashboard bind/port, which is
 // read-only here (see settingsDTO comment).
 func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
-	var req settingsDTO
+	var req settingsPatch
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
-	for _, d := range []string{req.HealthCheckInterval, req.HealthCheckTimeout, req.SchedulerInterval, req.SplitDNSInterval, req.LeakDetectionInterval} {
+	for _, p := range []*string{req.HealthCheckInterval, req.HealthCheckTimeout, req.SchedulerInterval, req.SplitDNSInterval, req.LeakDetectionInterval} {
+		d := strVal(p)
 		if d == "" {
 			continue
 		}
@@ -68,23 +71,9 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	trial := *cfg
-	trial.Monitor.HealthCheck.Interval = req.HealthCheckInterval
-	trial.Monitor.HealthCheck.Timeout = req.HealthCheckTimeout
-	trial.Monitor.Scheduler.Enabled = req.SchedulerEnabled
-	trial.Monitor.Scheduler.Interval = req.SchedulerInterval
-	trial.Monitor.SplitDNS.Enabled = req.SplitDNSEnabled
-	trial.Monitor.SplitDNS.Interval = req.SplitDNSInterval
-	trial.Security.KillSwitch.Mode = req.KillSwitchMode
-	trial.Security.KillSwitch.AllowLAN = req.KillSwitchAllowLAN
-	trial.Security.DNSGuard.FallbackDNS = req.DNSGuardFallbackDNS
-	trial.Security.LeakDetection.Enabled = req.LeakDetectionEnabled
-	trial.Security.LeakDetection.Interval = req.LeakDetectionInterval
-	trial.Security.LeakDetection.Action = req.LeakDetectionAction
-	trial.Security.AuditLog.Path = req.AuditLogPath
-	trial.Security.AuditLog.MaxSizeMB = req.AuditLogMaxSizeMB
-	trial.Security.AuditLog.Sign = req.AuditLogSign
+	req.applyTo(&trial)
 	if err := config.Validate(&trial); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 
@@ -152,4 +141,73 @@ type scheduleRuleDTO struct {
 	Weekdays []string `json:"weekdays,omitempty"`
 	Start    string   `json:"start,omitempty"`
 	End      string   `json:"end,omitempty"`
+}
+
+// settingsPatch is the PUT /api/v1/settings body: the editable subset of
+// settingsDTO with pointer fields, so a field absent from the request keeps
+// its stored value instead of being reset to the zero value. The dashboard
+// bind/port are intentionally not part of it (read-only, see settingsDTO).
+type settingsPatch struct {
+	HealthCheckInterval   *string   `json:"health_check_interval"`
+	HealthCheckTimeout    *string   `json:"health_check_timeout"`
+	SchedulerEnabled      *bool     `json:"scheduler_enabled"`
+	SchedulerInterval     *string   `json:"scheduler_interval"`
+	SplitDNSEnabled       *bool     `json:"split_dns_enabled"`
+	SplitDNSInterval      *string   `json:"split_dns_interval"`
+	KillSwitchMode        *string   `json:"kill_switch_mode"`
+	KillSwitchAllowLAN    *bool     `json:"kill_switch_allow_lan"`
+	DNSGuardFallbackDNS   *string   `json:"dns_guard_fallback_dns"`
+	LeakDetectionEnabled  *bool     `json:"leak_detection_enabled"`
+	LeakDetectionInterval *string   `json:"leak_detection_interval"`
+	LeakDetectionAction   *string   `json:"leak_detection_action"`
+	PublicIPCheckEnabled  *bool     `json:"public_ip_check_enabled"`
+	PublicIPEndpoints     *[]string `json:"public_ip_endpoints"`
+	AuditLogPath          *string   `json:"audit_log_path"`
+	AuditLogMaxSizeMB     *int      `json:"audit_log_max_size_mb"`
+	AuditLogSign          *bool     `json:"audit_log_sign"`
+}
+
+func setBool(dst *bool, src *bool) {
+	if src != nil {
+		*dst = *src
+	}
+}
+
+// applyTo overlays the fields present in p onto cfg.
+func (p settingsPatch) applyTo(cfg *config.Config) {
+	setTrimmed(&cfg.Monitor.HealthCheck.Interval, p.HealthCheckInterval)
+	setTrimmed(&cfg.Monitor.HealthCheck.Timeout, p.HealthCheckTimeout)
+	setBool(&cfg.Monitor.Scheduler.Enabled, p.SchedulerEnabled)
+	setTrimmed(&cfg.Monitor.Scheduler.Interval, p.SchedulerInterval)
+	setBool(&cfg.Monitor.SplitDNS.Enabled, p.SplitDNSEnabled)
+	setTrimmed(&cfg.Monitor.SplitDNS.Interval, p.SplitDNSInterval)
+	setTrimmed(&cfg.Security.KillSwitch.Mode, p.KillSwitchMode)
+	setBool(&cfg.Security.KillSwitch.AllowLAN, p.KillSwitchAllowLAN)
+	setTrimmed(&cfg.Security.DNSGuard.FallbackDNS, p.DNSGuardFallbackDNS)
+	// leak_detection_enabled is the legacy name of the public IP opt-in.
+	if p.LeakDetectionEnabled != nil {
+		cfg.SetPublicIPCheck(*p.LeakDetectionEnabled)
+	}
+	if p.PublicIPCheckEnabled != nil {
+		cfg.SetPublicIPCheck(*p.PublicIPCheckEnabled)
+	}
+	if p.PublicIPEndpoints != nil {
+		var eps []string
+		for _, ep := range *p.PublicIPEndpoints {
+			if ep = strings.TrimSpace(ep); ep != "" {
+				eps = append(eps, ep)
+			}
+		}
+		if len(eps) == 1 && eps[0] == config.DefaultPublicIPEndpoint {
+			eps = nil // the default needs no entry
+		}
+		cfg.Security.PublicIPCheck.Endpoints = eps
+	}
+	setTrimmed(&cfg.Security.LeakDetection.Interval, p.LeakDetectionInterval)
+	setTrimmed(&cfg.Security.LeakDetection.Action, p.LeakDetectionAction)
+	setTrimmed(&cfg.Security.AuditLog.Path, p.AuditLogPath)
+	if p.AuditLogMaxSizeMB != nil {
+		cfg.Security.AuditLog.MaxSizeMB = *p.AuditLogMaxSizeMB
+	}
+	setBool(&cfg.Security.AuditLog.Sign, p.AuditLogSign)
 }

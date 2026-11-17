@@ -26,9 +26,18 @@ var reloadTunnel string
 var reloadPolicyOnly bool
 
 var reloadCmd = &cobra.Command{
-	Use:   "reload",
-	Short: "Reload kongtrol.yaml from disk into the running daemon (policies, groups, and/or a single tunnel)",
+	Use: "reload",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if reloadTunnel != "" {
+			if err := validateProfileNames([]string{reloadTunnel}); err != nil {
+				return err
+			}
+		}
+		if reloadGroup != "" && cfg != nil {
+			if _, ok := cfg.Groups[reloadGroup]; !ok {
+				return fmt.Errorf("%s", cf("cli.error.unknown_group", reloadGroup))
+			}
+		}
 		base := daemonAPIBase()
 		if !probeDaemonAPI(base) {
 			return fmt.Errorf("%s", ct("cli.reload.error.no_daemon"))

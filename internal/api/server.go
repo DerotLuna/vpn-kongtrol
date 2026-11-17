@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	brand "github.com/vpn-kongtrol/kongtrol/assets"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
@@ -57,6 +58,14 @@ type Server struct {
 	upgrader          websocket.Upgrader
 	srv               *http.Server
 	onShutdown        func()
+	// helperInstall / helperVersion back /api/v1/helper/*; see
+	// SetHelperInstaller.
+	helperInstall func(context.Context) error
+	helperVersion string
+	// ksStatus / events back the split-tunnel kill switch state and the
+	// policy notices; see SetKillSwitchStatus / SetEventLog.
+	ksStatus func() security.KillSwitchStatus
+	events   *monitor.EventLog
 }
 
 // NewServer creates a new API server.
@@ -130,11 +139,15 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/cancel_connect", s.handleCancelConnect)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/disconnect", s.handleDisconnect)
 	mux.HandleFunc("POST /api/v1/tunnels/{name}/reload", s.handleReloadTunnel)
+	mux.HandleFunc("GET /api/v1/tunnels/routes", s.handleAllTunnelRoutes)
+	mux.HandleFunc("GET /api/v1/tunnels/{name}/routes", s.handleTunnelRoutes)
 	mux.HandleFunc("GET /api/v1/routes", s.handleListRoutes)
 	mux.HandleFunc("GET /api/v1/network/overview", s.handleNetworkOverview)
 	mux.HandleFunc("GET /api/v1/security/status", s.handleSecurityStatus)
 	mux.HandleFunc("POST /api/v1/security/killswitch", s.handleToggleKillSwitch)
 	mux.HandleFunc("POST /api/v1/security/dnsguard", s.handleToggleDNSGuard)
+	mux.HandleFunc("POST /api/v1/security/publicip", s.handleTogglePublicIP)
+	mux.HandleFunc("POST /api/v1/security/publicip/check", s.handleCheckPublicIP)
 	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
 	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
@@ -166,6 +179,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)
 	mux.HandleFunc("GET /api/v1/dns/resolve", s.handleDNSResolve)
 	mux.HandleFunc("POST /api/v1/shutdown", s.handleShutdown)
+	mux.HandleFunc("GET /api/v1/helper/status", s.handleHelperStatus)
+	mux.HandleFunc("POST /api/v1/helper/install", s.handleHelperInstall)
+	mux.HandleFunc("GET /api/v1/events", s.handleEvents)
 
 	// WebSocket live metrics feed.
 	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)
@@ -177,15 +193,22 @@ func (s *Server) Start() error {
 	}
 	fileServer := http.FileServer(http.FS(dashFS))
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "kongtrol_control",
-			Value:    s.apiToken,
-			Path:     "/",
-			HttpOnly: true,
-			SameSite: http.SameSiteStrictMode,
-		})
+		s.setControlCookie(w)
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		fileServer.ServeHTTP(w, r)
+	}))
+
+	// Brand files (logo marks, fonts) from assets/brand, linked by the
+	// dashboard as /brand/... so web/dashboard keeps no copies of its own.
+	mux.Handle(brandPrefix, newBrandHandler(brand.Brand()))
+
+	// New UI (web/ui) under /app/, coexisting with the dashboard above
+	// while pages migrate; same cookie, same secureHandler checks.
+	uiFS, uiBuilt := assets.UI()
+	uiHandler := newUIHandler(uiFS, uiBuilt)
+	mux.Handle(uiPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.setControlCookie(w)
+		uiHandler.ServeHTTP(w, r)
 	}))
 
 	addr := net.JoinHostPort(s.bind, fmt.Sprintf("%d", s.port))
@@ -212,7 +235,7 @@ func (s *Server) Start() error {
 
 func (s *Server) secureHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -295,7 +318,10 @@ func isMutation(method string) bool {
 }
 
 func isConfigMutation(path string) bool {
-	if strings.HasPrefix(path, "/api/v1/tunnels/") || path == "/api/v1/shutdown" {
+	// The helper install waits minutes on an OS prompt; it must not hold
+	// the config lock.
+	if strings.HasPrefix(path, "/api/v1/tunnels/") || strings.HasPrefix(path, "/api/v1/helper/") ||
+		path == "/api/v1/shutdown" {
 		return false
 	}
 	if strings.HasPrefix(path, "/api/v1/groups/") &&

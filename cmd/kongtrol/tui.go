@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
@@ -35,13 +36,10 @@ func sym(pretty, plain string) string {
 	return pretty
 }
 
-func tuiOK(s string) string     { return styleOK.Render(sym("✓", "[OK]")) + "  " + s }
-func tuiErr(s string) string    { return styleErr.Render(sym("✗", "[ERR]")) + "  " + s }
-func tuiWarn(s string) string   { return styleWarn.Render(sym("!", "[WARN]")) + "  " + s }
-func tuiInfo(s string) string   { return styleInfo.Render(">") + "  " + s }
-func tuiLabel(s string) string  { return stylePrompt.Render(s) }
-func tuiDim(s string) string    { return styleDim.Render(s) }
-func tuiBright(s string) string { return styleBright.Render(s) }
+func tuiOK(s string) string   { return styleOK.Render(sym("✓", "[OK]")) + "  " + s }
+func tuiErr(s string) string  { return styleErr.Render(sym("✗", "[ERR]")) + "  " + s }
+func tuiWarn(s string) string { return styleWarn.Render(sym("!", "[WARN]")) + "  " + s }
+func tuiInfo(s string) string { return styleInfo.Render(">") + "  " + s }
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +51,7 @@ var (
 )
 
 type spinner struct {
+	mu        sync.Mutex
 	label     string
 	stop      chan struct{}
 	startedAt time.Time
@@ -84,7 +83,7 @@ func (s *spinner) Start() {
 				elapsed := time.Since(s.startedAt).Round(time.Second)
 				fmt.Printf("\r\033[2K%s %s",
 					stylePrompt.Render(frames[i%len(frames)]),
-					styleDim.Render(fmt.Sprintf("%s (%s)", s.label, elapsed)))
+					styleDim.Render(fmt.Sprintf("%s (%s)", s.getLabel(), elapsed)))
 				time.Sleep(80 * time.Millisecond)
 			}
 		}
@@ -275,4 +274,22 @@ func paint(color lipgloss.Color, s string) string {
 
 func paintBold(color lipgloss.Color, s string) string {
 	return lipgloss.NewStyle().Foreground(color).Bold(true).Render(s)
+}
+
+// SetLabel changes the spinner text while it runs (e.g. a provider adapter
+// now waits for the user). On non-terminals the new label is printed once.
+func (s *spinner) SetLabel(label string) {
+	s.mu.Lock()
+	changed := s.label != label
+	s.label = label
+	s.mu.Unlock()
+	if changed && !outputQuiet && !isTerminal() {
+		fmt.Println(label + "...")
+	}
+}
+
+func (s *spinner) getLabel() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.label
 }

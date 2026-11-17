@@ -28,9 +28,11 @@ func (s *Server) handleListGroups(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// groupReq is the group create/update body. Profiles is a pointer so an update
+// that omits it keeps the stored member list instead of failing or wiping it.
 type groupReq struct {
-	Name     string   `json:"name"`
-	Profiles []string `json:"profiles"`
+	Name     string    `json:"name"`
+	Profiles *[]string `json:"profiles"`
 }
 
 // POST /api/v1/groups
@@ -54,7 +56,11 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "group already exists")
 		return
 	}
-	if err := s.saveGroup(cfg, cfgPath, req.Name, req.Profiles); err != nil {
+	var profiles []string
+	if req.Profiles != nil {
+		profiles = *req.Profiles
+	}
+	if err := s.saveGroup(cfg, cfgPath, req.Name, profiles); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -78,11 +84,16 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if _, exists := cfg.Groups[name]; !exists {
+	existing, exists := cfg.Groups[name]
+	if !exists {
 		writeError(w, http.StatusNotFound, "group not found")
 		return
 	}
-	if err := s.saveGroup(cfg, cfgPath, name, req.Profiles); err != nil {
+	profiles := existing.Profiles
+	if req.Profiles != nil {
+		profiles = *req.Profiles
+	}
+	if err := s.saveGroup(cfg, cfgPath, name, profiles); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -167,9 +178,10 @@ func (s *Server) handleConnectGroup(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		started = append(started, profile)
+		s.collector.ClearConnectError(profile)
 		go func(p string, ctx context.Context) {
 			defer s.clearPendingConnect(p)
-			_ = s.connectProfile(ctx, p)
+			s.collector.RecordConnectError(p, connectOutcome(s.connectProfile(ctx, p)))
 		}(profile, ctx)
 	}
 
@@ -351,6 +363,11 @@ type settingsDTO struct {
 	LeakDetectionEnabled  bool   `json:"leak_detection_enabled"`
 	LeakDetectionInterval string `json:"leak_detection_interval"`
 	LeakDetectionAction   string `json:"leak_detection_action"`
+
+	// Public IP lookup opt-in (leak_detection_enabled mirrors it) and its
+	// endpoints (default https://api.ipify.org).
+	PublicIPCheckEnabled bool     `json:"public_ip_check_enabled"`
+	PublicIPEndpoints    []string `json:"public_ip_endpoints"`
 
 	AuditLogPath      string `json:"audit_log_path"`
 	AuditLogMaxSizeMB int    `json:"audit_log_max_size_mb"`

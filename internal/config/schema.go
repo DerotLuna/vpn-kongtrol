@@ -1,169 +1,288 @@
 package config
 
+import "strconv"
+
 // Config is the root configuration structure for VPN Kongtrol.
 type Config struct {
 	VPNs     map[string]VPNConfig   `yaml:"vpns"     validate:"required,min=1,dive"`
-	Groups   map[string]GroupConfig `yaml:"groups"`
-	Policies []PolicyRule           `yaml:"policies"`
-	Security SecurityConfig         `yaml:"security"`
-	Monitor  MonitorConfig          `yaml:"monitor"`
+	Groups   map[string]GroupConfig `yaml:"groups,omitempty"`
+	Policies []PolicyRule           `yaml:"policies,omitempty"`
+	Security SecurityConfig         `yaml:"security,omitempty"`
+	Monitor  MonitorConfig          `yaml:"monitor,omitempty"`
 }
 
 // GroupConfig defines a named set of VPN profiles that can be
 // connected / disconnected together with --group <name>.
 type GroupConfig struct {
-	Profiles []string `yaml:"profiles" validate:"required,min=1"`
+	Profiles []string `yaml:"profiles,omitempty" validate:"required,min=1"`
 }
 
 // VPNConfig holds the configuration for a single VPN profile.
 type VPNConfig struct {
-	Type       string `yaml:"type"        validate:"required,oneof=forticlient openvpn protonvpn ciscoanyconnect wireguard globalprotect tailscale cloudflarewarp"`
-	Version    string `yaml:"version"`
-	Host       string `yaml:"host"`
-	Port       int    `yaml:"port"`
-	TunnelName string `yaml:"tunnel_name"`
+	Type       string `yaml:"type,omitempty"        validate:"required,oneof=forticlient openvpn protonvpn nordvpn surfshark ciscoanyconnect wireguard globalprotect tailscale cloudflarewarp"`
+	Version    string `yaml:"version,omitempty"`
+	Host       string `yaml:"host,omitempty"`
+	Port       int    `yaml:"port,omitempty"`
+	TunnelName string `yaml:"tunnel_name,omitempty"`
 	// FortiClient-only: when true, GUI automation accepts certificate warnings.
 	// Keep false in production to avoid MITM risk.
-	AllowInsecureCert bool       `yaml:"allow_insecure_cert"`
-	ConfigFile        string     `yaml:"config"`      // .ovpn / wg .conf file path
-	Server            string     `yaml:"server"`      // server identifier (protonvpn)
-	Protocol          string     `yaml:"protocol"`    // wireguard|openvpn (protonvpn)
-	BinaryPath        string     `yaml:"binary_path"` // override adapter binary location (optional)
-	Auth              AuthConfig `yaml:"auth"`
-	Priority          int        `yaml:"priority"`
-	KillSwitch        *bool      `yaml:"kill_switch"` // optional per-profile override
+	AllowInsecureCert bool       `yaml:"allow_insecure_cert,omitempty"`
+	ConfigFile        string     `yaml:"config,omitempty"`      // .ovpn / wg .conf file path
+	Server            string     `yaml:"server,omitempty"`      // server identifier (protonvpn); target country/group/server (nordvpn)
+	Protocol          string     `yaml:"protocol,omitempty"`    // wireguard|openvpn (protonvpn)
+	BinaryPath        string     `yaml:"binary_path,omitempty"` // override adapter binary location (optional)
+	Auth              AuthConfig `yaml:"auth,omitempty"`
+	Priority          int        `yaml:"priority,omitempty"`
+	KillSwitch        *bool      `yaml:"kill_switch,omitempty"` // optional per-profile override
+
+	// Provider attach mode (forticlient, protonvpn, nordvpn, surfshark):
+	// Kongtrol works with the provider's official app and attaches to its
+	// tunnel by network interface. See ProviderTypes / validateProvider.
+
+	// AutoConnect (default true) tries the official CLI or, for corporate
+	// clients, GUI automation before asking the user to connect in the app.
+	AutoConnect *bool `yaml:"auto_connect,omitempty"`
+	// Country / City are the standard location fields, mapped to each
+	// provider's syntax (country code or name; city name). Server (above)
+	// names one exact server. Only for providers whose CLI can select.
+	Country string `yaml:"country,omitempty"`
+	City    string `yaml:"city,omitempty"`
+	// Group is a NordVPN server group ("P2P", "Dedicated IP", "Double VPN",
+	// "Onion Over VPN"): nordvpn only.
+	Group string `yaml:"group,omitempty"`
+	// Interface overrides the tunnel interface name patterns
+	// (comma-separated, case-insensitive globs on name or description).
+	Interface string `yaml:"interface,omitempty"`
+	// WaitTimeout bounds how long `up` waits for the user to connect in the
+	// app (Go duration, default 5m, minimum 10s).
+	WaitTimeout string `yaml:"wait_timeout,omitempty"`
+	// AppPath overrides where the provider's app is launched from.
+	AppPath string `yaml:"app_path,omitempty"`
+}
+
+// ProviderTypes are the adapter types that run in attach mode over the
+// provider's official app.
+var ProviderTypes = map[string]bool{
+	"forticlient": true, "protonvpn": true, "nordvpn": true, "surfshark": true,
+}
+
+// AdapterExtra returns the AdapterConfig.Extra map for this profile — the
+// one place profile fields are mapped to adapter parameters.
+func (v VPNConfig) AdapterExtra() map[string]string {
+	extra := map[string]string{
+		"protocol":            v.Protocol,
+		"allow_insecure_cert": strconv.FormatBool(v.AllowInsecureCert),
+		"binary_path":         v.BinaryPath,
+		"server":              v.Server,
+		"country":             v.Country,
+		"city":                v.City,
+		"group":               v.Group,
+		"interface":           v.Interface,
+		"wait_timeout":        v.WaitTimeout,
+		"app_path":            v.AppPath,
+	}
+	if v.AutoConnect != nil {
+		extra["auto_connect"] = strconv.FormatBool(*v.AutoConnect)
+	}
+	return extra
 }
 
 // AuthConfig defines authentication credentials for a VPN profile.
 // Passwords are never stored here — they live in the OS keychain.
 type AuthConfig struct {
 	// certificate | credentials | certificate+credentials
-	Method           string `yaml:"method" validate:"required"`
-	Cert             string `yaml:"cert"`              // path to client certificate
-	Key              string `yaml:"key"`               // path to private key
-	Username         string `yaml:"username"`          // plaintext username (low-sensitivity)
-	UsernameKeychain string `yaml:"username_keychain"` // keychain key name for username
-	PasswordKeychain string `yaml:"password_keychain"` // keychain key name for password
+	Method           string `yaml:"method,omitempty" validate:"required"`
+	Cert             string `yaml:"cert,omitempty"`              // path to client certificate
+	Key              string `yaml:"key,omitempty"`               // path to private key
+	Username         string `yaml:"username,omitempty"`          // plaintext username (low-sensitivity)
+	UsernameKeychain string `yaml:"username_keychain,omitempty"` // keychain key name for username
+	PasswordKeychain string `yaml:"password_keychain,omitempty"` // keychain key name for password
 }
 
 // PolicyRule maps traffic to a specific VPN profile.
 type PolicyRule struct {
-	Name  string    `yaml:"name" validate:"required"`
-	Match MatchSpec `yaml:"match"`
-	Via   string    `yaml:"via"  validate:"required"`
+	Name  string    `yaml:"name,omitempty" validate:"required"`
+	Match MatchSpec `yaml:"match,omitempty"`
+	Via   string    `yaml:"via,omitempty"  validate:"required"`
+	// OnTunnelDown is what happens to this policy's traffic while its
+	// tunnel is not connected (the user decides which tunnels are up):
+	//   allow   (default) normal internet, and Kongtrol notifies;
+	//   block   the traffic must not leave through the normal internet;
+	//   connect Kongtrol connects the tunnel when the traffic shows up.
+	OnTunnelDown string `yaml:"on_tunnel_down,omitempty"`
+}
+
+// On-tunnel-down actions (PolicyRule.OnTunnelDown).
+const (
+	OnTunnelDownAllow   = "allow"
+	OnTunnelDownBlock   = "block"
+	OnTunnelDownConnect = "connect"
+)
+
+// TunnelDownAction returns the policy's on_tunnel_down action ("allow"
+// when unset).
+func (p PolicyRule) TunnelDownAction() string {
+	if p.OnTunnelDown == "" {
+		return OnTunnelDownAllow
+	}
+	return p.OnTunnelDown
 }
 
 // MatchSpec defines which traffic a policy rule matches.
 type MatchSpec struct {
-	IPRanges []string `yaml:"ip_ranges"` // CIDR notation
-	Domains  []string `yaml:"domains"`   // glob patterns (*.example.com)
-	Apps     []string `yaml:"apps"`      // executable names or glob patterns (experimental)
+	IPRanges []string `yaml:"ip_ranges,omitempty"` // CIDR notation
+	Domains  []string `yaml:"domains,omitempty"`   // glob patterns (*.example.com)
+	Apps     []string `yaml:"apps,omitempty"`      // executable names or glob patterns (experimental)
 }
 
 // SecurityConfig holds all security-related settings.
 type SecurityConfig struct {
-	KillSwitch     KillSwitchConfig     `yaml:"kill_switch"`
-	DNSGuard       DNSGuardConfig       `yaml:"dns_guard"`
-	IntegrityCheck IntegrityCheckConfig `yaml:"integrity_check"`
-	LeakDetection  LeakDetectionConfig  `yaml:"leak_detection"`
-	AuditLog       AuditLogConfig       `yaml:"audit_log"`
+	KillSwitch     KillSwitchConfig     `yaml:"kill_switch,omitempty"`
+	DNSGuard       DNSGuardConfig       `yaml:"dns_guard,omitempty"`
+	IntegrityCheck IntegrityCheckConfig `yaml:"integrity_check,omitempty"`
+	LeakDetection  LeakDetectionConfig  `yaml:"leak_detection,omitempty"`
+	PublicIPCheck  PublicIPCheckConfig  `yaml:"public_ip_check,omitempty"`
+	AuditLog       AuditLogConfig       `yaml:"audit_log,omitempty"`
 }
 
 // KillSwitchConfig configures the kill switch behavior.
+//
+// Split-tunnel semantics: the kill switch never blocks a tunnel the user
+// turned off (`down`). When a protected tunnel drops unexpectedly, only
+// that tunnel's destinations (routes captured while it was up + its
+// policies' IPs/CIDRs) are blocked until it reconnects or the user runs
+// `down`; the rest of the internet keeps working. A full-tunnel profile
+// (default route through the tunnel) blocks everything except the VPN
+// endpoints (and the LAN when allowed) while dropped.
+//
+// Mode stays for backward compatibility: "loose" now means the same as
+// allow_lan: true (LAN reachable while a full tunnel is dropped);
+// "strict" or empty leaves it to allow_lan.
 type KillSwitchConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Mode     string `yaml:"mode" validate:"omitempty,oneof=strict loose"` // strict blocks all; loose allows LAN
-	AllowLAN bool   `yaml:"allow_lan"`
+	Enabled  bool   `yaml:"enabled,omitempty"`
+	Mode     string `yaml:"mode,omitempty" validate:"omitempty,oneof=strict loose"`
+	AllowLAN bool   `yaml:"allow_lan,omitempty"`
 }
+
+// LANAllowed reports whether the LAN stays reachable while a full-tunnel
+// profile is blocked (allow_lan, or the legacy mode: loose).
+func (k KillSwitchConfig) LANAllowed() bool { return k.AllowLAN || k.Mode == "loose" }
 
 // DNSGuardConfig configures DNS leak prevention.
 type DNSGuardConfig struct {
-	Enabled     bool   `yaml:"enabled"`
-	FallbackDNS string `yaml:"fallback_dns"`
+	Enabled     bool   `yaml:"enabled,omitempty"`
+	FallbackDNS string `yaml:"fallback_dns,omitempty"`
 }
 
 // IntegrityCheckConfig configures tunnel integrity verification.
 type IntegrityCheckConfig struct {
-	Enabled     bool              `yaml:"enabled"`
-	Interval    string            `yaml:"interval"`     // e.g. "120s"
-	ExpectedIPs map[string]string `yaml:"expected_ips"` // vpn_name → expected public IP
+	Enabled     bool              `yaml:"enabled,omitempty"`
+	Interval    string            `yaml:"interval,omitempty"`     // e.g. "120s"
+	ExpectedIPs map[string]string `yaml:"expected_ips,omitempty"` // vpn_name → expected public IP
 }
 
-// LeakDetectionConfig configures continuous IP/DNS leak detection.
+// LeakDetectionConfig is the legacy leak detection block. Leak detection
+// compares the public IP (see PublicIPCheckConfig) with
+// integrity_check.expected_ips, so it needs the public IP lookup:
+// enabled: true here still counts as opting in to that lookup
+// (Config.PublicIPCheckEnabled). Interval is ignored: the lookup runs only
+// on tunnel connect/disconnect and on demand, never periodically.
 type LeakDetectionConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Interval string `yaml:"interval"` // e.g. "60s"
+	Enabled  bool   `yaml:"enabled,omitempty"`
+	Interval string `yaml:"interval,omitempty"` // deprecated, ignored
 	// notify | killswitch_and_notify
-	Action string `yaml:"action" validate:"omitempty,oneof=notify killswitch_and_notify"`
+	Action string `yaml:"action,omitempty" validate:"omitempty,oneof=notify killswitch_and_notify"`
+}
+
+// PublicIPCheckConfig configures the opt-in public IP lookup: an HTTPS GET
+// to an external service that answers with the caller's public IP in plain
+// text. Off by default (Local only rule): that service sees the user's
+// public IP. It runs only on tunnel connect/disconnect (rate-limited) and
+// when the user asks (`kongtrol check`, dashboard "Revisar", tray).
+type PublicIPCheckConfig struct {
+	Enabled bool `yaml:"enabled,omitempty"`
+	// Endpoints are tried in order until one answers with a valid IP.
+	// Empty = DefaultPublicIPEndpoint. Each must be an https:// URL.
+	Endpoints []string `yaml:"endpoints,omitempty"`
 }
 
 // AuditLogConfig configures the tamper-evident audit log.
 type AuditLogConfig struct {
-	Path      string `yaml:"path"`
-	MaxSizeMB int    `yaml:"max_size_mb"`
-	Sign      bool   `yaml:"sign"` // HMAC-SHA256 per entry
+	Path      string `yaml:"path,omitempty"`
+	MaxSizeMB int    `yaml:"max_size_mb,omitempty"`
+	Sign      bool   `yaml:"sign,omitempty"` // HMAC-SHA256 per entry
 }
 
 // MonitorConfig holds monitoring and dashboard settings.
 type MonitorConfig struct {
-	Enabled     bool              `yaml:"enabled"`
-	Dashboard   DashboardConfig   `yaml:"dashboard"`
-	HealthCheck HealthCheckConfig `yaml:"health_check"`
-	History     HistoryConfig     `yaml:"history"`
-	Scheduler   SchedulerConfig   `yaml:"scheduler"`
-	SplitDNS    SplitDNSConfig    `yaml:"split_dns"`
-	Alerts      AlertsConfig      `yaml:"alerts"`
+	Enabled     bool              `yaml:"enabled,omitempty"`
+	Dashboard   DashboardConfig   `yaml:"dashboard,omitempty"`
+	HealthCheck HealthCheckConfig `yaml:"health_check,omitempty"`
+	History     HistoryConfig     `yaml:"history,omitempty"`
+	Scheduler   SchedulerConfig   `yaml:"scheduler,omitempty"`
+	SplitDNS    SplitDNSConfig    `yaml:"split_dns,omitempty"`
+	Alerts      AlertsConfig      `yaml:"alerts,omitempty"`
 }
 
 // DashboardConfig configures the embedded web dashboard.
 type DashboardConfig struct {
-	Port int    `yaml:"port"` // default 9741
-	Bind string `yaml:"bind"` // default 127.0.0.1
+	Port int    `yaml:"port,omitempty"` // default 9741
+	Bind string `yaml:"bind,omitempty"` // default 127.0.0.1
 }
 
 // HealthCheckConfig configures per-tunnel health checks.
 type HealthCheckConfig struct {
-	Interval string `yaml:"interval"` // e.g. "30s"
-	Timeout  string `yaml:"timeout"`  // e.g. "10s"
+	Interval string `yaml:"interval,omitempty"` // e.g. "30s"
+	Timeout  string `yaml:"timeout,omitempty"`  // e.g. "10s"
 }
 
 // HistoryConfig stores rolling profile stability metrics.
 type HistoryConfig struct {
-	Path          string `yaml:"path"`           // e.g. ~/.kongtrol/history.json
-	FlushInterval string `yaml:"flush_interval"` // e.g. "30s"
+	Path          string `yaml:"path,omitempty"`           // e.g. ~/.kongtrol/history.json
+	FlushInterval string `yaml:"flush_interval,omitempty"` // e.g. "30s"
 }
 
 // SchedulerConfig activates profile groups by schedule windows.
 type SchedulerConfig struct {
-	Enabled  bool           `yaml:"enabled"`
-	Interval string         `yaml:"interval"` // e.g. "1m"
-	Rules    []ScheduleRule `yaml:"rules"`
+	Enabled  bool           `yaml:"enabled,omitempty"`
+	Interval string         `yaml:"interval,omitempty"` // e.g. "1m"
+	Rules    []ScheduleRule `yaml:"rules,omitempty"`
 }
 
 // ScheduleRule defines when a set of profiles should stay connected.
 type ScheduleRule struct {
-	Name     string   `yaml:"name"`
-	Profiles []string `yaml:"profiles"`
-	Weekdays []string `yaml:"weekdays"` // mon,tue,wed,thu,fri,sat,sun (optional)
-	Start    string   `yaml:"start"`    // HH:MM 24h (optional)
-	End      string   `yaml:"end"`      // HH:MM 24h (optional)
+	Name     string   `yaml:"name,omitempty"`
+	Profiles []string `yaml:"profiles,omitempty"`
+	Weekdays []string `yaml:"weekdays,omitempty"` // mon,tue,wed,thu,fri,sat,sun (optional)
+	Start    string   `yaml:"start,omitempty"`    // HH:MM 24h (optional)
+	End      string   `yaml:"end,omitempty"`      // HH:MM 24h (optional)
 }
 
 // SplitDNSConfig enables transparent host-level split DNS injection.
 type SplitDNSConfig struct {
-	Enabled  bool   `yaml:"enabled"`
-	Interval string `yaml:"interval"` // e.g. "60s"
+	Enabled  bool   `yaml:"enabled,omitempty"`
+	Interval string `yaml:"interval,omitempty"` // e.g. "60s"
 }
 
 // AlertsConfig defines alert thresholds and actions.
 type AlertsConfig struct {
-	OnVPNDrop           AlertAction `yaml:"on_vpn_drop"`
-	OnLeakDetected      AlertAction `yaml:"on_leak_detected"`
-	OnHighLatencyMS     int         `yaml:"on_high_latency_ms"`
-	OnReconnectAttempts int         `yaml:"on_reconnect_attempts"`
+	OnVPNDrop           AlertAction `yaml:"on_vpn_drop,omitempty"`
+	OnLeakDetected      AlertAction `yaml:"on_leak_detected,omitempty"`
+	OnHighLatencyMS     int         `yaml:"on_high_latency_ms,omitempty"`
+	OnReconnectAttempts int         `yaml:"on_reconnect_attempts,omitempty"`
 }
 
 // AlertAction specifies what to do when an alert fires.
 type AlertAction struct {
-	Actions []string `yaml:"actions"` // notify | log | kill_switch
+	Actions []string `yaml:"actions,omitempty"` // notify | log | kill_switch
+}
+
+// WithDefaults fills profile defaults that may be left out of the YAML. App
+// providers whose login lives in the official app (protonvpn, nordvpn,
+// surfshark) need no auth block: auth.method defaults to "credentials".
+func (v VPNConfig) WithDefaults() VPNConfig {
+	if v.Auth.Method == "" && (v.Type == "protonvpn" || v.Type == "nordvpn" || v.Type == "surfshark") {
+		v.Auth.Method = "credentials"
+	}
+	return v
 }

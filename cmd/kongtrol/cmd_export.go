@@ -9,8 +9,7 @@ import (
 // ── export ────────────────────────────────────────────────────────────────────
 
 var exportCmd = &cobra.Command{
-	Use:   "export",
-	Short: "Print a sanitized config template (no secrets) for sharing with teammates",
+	Use: "export",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if cfg == nil {
 			return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
@@ -112,8 +111,7 @@ var exportCmd = &cobra.Command{
 }
 
 var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show CLI version",
+	Use: "version",
 	Run: func(cmd *cobra.Command, args []string) {
 		// Piped / quiet output stays a bare, parseable version string.
 		if outputQuiet || outputPlain || !isTerminal() {

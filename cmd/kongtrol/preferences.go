@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"slices"
-	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
@@ -51,23 +50,6 @@ func loadPreferences() (*preferences, error) {
 
 func savePreferences(p *preferences) error {
 	return config.SavePreferences("", p)
-}
-
-// applyDashboardPreferences overrides cfg.Monitor.Dashboard with any
-// machine-local preference set via `kongtrol config dashboard`. Called right
-// after config.Load in loadConfig(), before anything reads the dashboard
-// bind/port.
-func applyDashboardPreferences(cfg *config.Config) {
-	p, err := loadPreferences()
-	if err != nil {
-		return
-	}
-	if p.DashboardPort > 0 {
-		cfg.Monitor.Dashboard.Port = p.DashboardPort
-	}
-	if strings.TrimSpace(p.DashboardBind) != "" {
-		cfg.Monitor.Dashboard.Bind = p.DashboardBind
-	}
 }
 
 func addFavorite(name string) error {

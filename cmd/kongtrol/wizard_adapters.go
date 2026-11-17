@@ -112,6 +112,7 @@ func collectFortiFields(lang i18n.Lang, name string, fields *[][2]string, auth *
 			Validate(validateHost(lang)).
 			Value(&host),
 		huh.NewInput().Title(i18n.T(lang, "collect.port")).
+			Description(styleDim.Render(i18n.T(lang, "hint.port"))).
 			Placeholder("443").Validate(validatePort(lang)).Value(&port),
 		huh.NewInput().Title(i18n.T(lang, "collect.tunnel_name")).
 			Placeholder("Office").Value(&tunnelName),
@@ -171,6 +172,8 @@ func collectOpenVPNFields(lang i18n.Lang, name string, fields *[][2]string, auth
 		return err
 	}
 	*fields = append(*fields, [2]string{"config", ovpnConfig})
+	// Why no IPs/domains are asked: the server pushes the routes.
+	fmt.Println(styleDim.Render("  " + i18n.T(lang, "routes.server_explain")))
 
 	method, err := selectAuthMethod(lang, "certificate")
 	if err != nil {
@@ -189,30 +192,6 @@ func collectOpenVPNFields(lang i18n.Lang, name string, fields *[][2]string, auth
 		return promptCredentialAuth(lang, name, "collect.username", auth)
 	}
 	return nil
-}
-
-func collectProtonFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	var (
-		server   string = "fastest"
-		protocol string = "wireguard"
-	)
-	if err := runForm(newForm(huh.NewGroup(
-		huh.NewInput().Title(i18n.T(lang, "collect.proton_srv")).
-			Description(styleDim.Render(i18n.T(lang, "hint.proton_srv"))).
-			Placeholder("fastest").Value(&server),
-		huh.NewSelect[string]().Title(i18n.T(lang, "collect.proton_proto")).
-			Options(
-				huh.NewOption("WireGuard — "+i18n.T(lang, "proto.hint.wireguard"), "wireguard"),
-				huh.NewOption("OpenVPN — "+i18n.T(lang, "proto.hint.openvpn"), "openvpn"),
-			).Value(&protocol),
-	))); err != nil {
-		return err
-	}
-	if server == "" {
-		server = "fastest"
-	}
-	*fields = append(*fields, [2]string{"server", server}, [2]string{"protocol", protocol})
-	return promptCredentialAuth(lang, name, "collect.proton_user", auth)
 }
 
 func collectCiscoFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {

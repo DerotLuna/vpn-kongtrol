@@ -10,6 +10,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 // ── Profile collection ────────────────────────────────────────────────────────
@@ -23,7 +24,7 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 	SectionHeader(t("section.new_profile"))
 
 	// Build adapter options — detected ones first, with a note.
-	allAdapters := []string{"forticlient", "openvpn", "protonvpn", "ciscoanyconnect", "wireguard", "globalprotect", "tailscale", "cloudflarewarp"}
+	allAdapters := []string{"forticlient", "openvpn", "protonvpn", "nordvpn", "surfshark", "ciscoanyconnect", "wireguard", "globalprotect", "tailscale", "cloudflarewarp"}
 	detectedKeys := detectedAdapterKeys(detected)
 
 	var adapterOpts []huh.Option[string]
@@ -59,12 +60,11 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		huh.NewGroup(
 			huh.NewInput().
 				Title(t("collect.profile_name")).
-				Description(styleDim.Render("e.g. work-vpn, office-forti")).
 				Validate(validateProfileName(lang)).
 				Value(&name),
 			huh.NewSelect[string]().
 				Title(t("collect.type")).
-				Description(styleDim.Render("✓ = detected on this machine")).
+				Description(styleDim.Render(t("hint.type"))).
 				Options(adapterOpts...).
 				Value(&adapterType),
 		),
@@ -77,6 +77,13 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		return "", nil, fmt.Errorf("%s", t("collect.profile_name_empty"))
 	}
 
+	// Consumer providers: official app or the direct way (wireguard /
+	// openvpn with the provider's downloaded file).
+	adapterType, err := selectProviderMode(lang, adapterType)
+	if err != nil {
+		return "", nil, err
+	}
+
 	// Type-specific fields
 	fields := [][2]string{{"type", adapterType}}
 	auth := config.AuthConfig{}
@@ -86,14 +93,19 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		if err := collectFortiFields(lang, name, &fields, &auth); err != nil {
 			return "", nil, err
 		}
+		if err := collectProviderFields(lang, adapterType, &fields); err != nil {
+			return "", nil, err
+		}
 
 	case "openvpn":
 		if err := collectOpenVPNFields(lang, name, &fields, &auth); err != nil {
 			return "", nil, err
 		}
 
-	case "protonvpn":
-		if err := collectProtonFields(lang, name, &fields, &auth); err != nil {
+	case "protonvpn", "nordvpn", "surfshark":
+		// Login lives in the official app: no auth block is written
+		// (config defaults auth.method for these types).
+		if err := collectProviderFields(lang, adapterType, &fields); err != nil {
 			return "", nil, err
 		}
 
@@ -126,37 +138,48 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		return "", nil, fmt.Errorf("%s", i18n.F(lang, "collect.unknown_adapter", adapterType))
 	}
 
-	// Binary path override (when not auto-detected) + priority — one
-	// multi-group form so Shift+Tab moves between them instead of committing
-	// each in its own isolated prompt.
-	needsBinaryPath := adapterType != "cloudflarewarp" && !detectedKeys[adapterType]
+	// Binary path override + priority — one multi-group form so Shift+Tab
+	// moves between them instead of committing each in its own isolated
+	// prompt. The detected binary is kept as the prefilled suggestion; when
+	// the adapter already finds it on its own, nothing is asked or written.
+	detectedPath := detectedBinaryPath(detected, adapterType)
+	needsBinaryPath, binPath := binaryPathPlan(adapterType, detectedPath, vpndetect.IsStandard)
+	if directCapable[adapterType] {
+		// App providers find their app on their own; app_path is in the
+		// advanced options.
+		needsBinaryPath, binPath = false, ""
+	}
+	binHint := t("wizard.binary_path.empty_hint")
 	if needsBinaryPath {
-		fmt.Println(tuiWarn(i18n.T(lang, "collect.not_detected")))
+		if detectedPath == "" {
+			fmt.Println(tuiWarn(t("collect.not_detected")))
+		} else {
+			binHint = t("wizard.binary_path.detected_hint")
+		}
 	}
 
-	var (
-		binPath     string
-		priorityStr string = "10"
-	)
+	priorityStr := "10"
 	groups := make([]*huh.Group, 0, 2)
 	if needsBinaryPath {
 		groups = append(groups, huh.NewGroup(
 			huh.NewInput().
-				Title(i18n.T(lang, "collect.binary_path")).
-				Description(styleDim.Render("Leave empty to skip")).
+				Title(t("collect.binary_path")).
+				Description(styleDim.Render(binHint)).
 				Value(&binPath),
 		))
 	}
 	groups = append(groups, huh.NewGroup(
 		huh.NewInput().
 			Title(i18n.T(lang, "collect.priority")).
+			Description(styleDim.Render(t("hint.priority"))).
 			Placeholder("10").
 			Value(&priorityStr),
 	))
 	if err := runForm(newForm(groups...)); err != nil {
 		return "", nil, err
 	}
-	if binPath != "" {
+	binPath = strings.TrimSpace(binPath)
+	if binPath != "" && !vpndetect.IsStandard(adapterType, binPath) {
 		fields = append(fields, [2]string{"binary_path", binPath})
 	}
 	if priorityStr == "" {
@@ -180,7 +203,9 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 	}
 
 	node := mapNode(fields)
-	node.Content = append(node.Content, scalarNode("auth"), mapNode(authFields))
+	if auth.Method != "" {
+		node.Content = append(node.Content, scalarNode("auth"), mapNode(authFields))
+	}
 
 	if auth.PasswordKeychain != "" {
 		if err := collectCredentialsHuh(lang, name, adapterType, auth); err != nil {

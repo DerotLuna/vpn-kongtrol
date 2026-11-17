@@ -9,6 +9,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -20,32 +21,6 @@ const (
 	minIPColW      = 12
 	minUptimeColW  = 10
 )
-
-func statusDot(s vpn.Status) string {
-	switch s {
-	case vpn.StatusConnected:
-		return styleStatusUp.Render(sym("●", "*"))
-	case vpn.StatusConnecting:
-		return styleInfo.Render(sym("◐", "~"))
-	case vpn.StatusError:
-		return styleStatusErr.Render(sym("✗", "x"))
-	default:
-		return styleStatusDown.Render(sym("○", "o"))
-	}
-}
-
-func statusLabel(s vpn.Status) string {
-	switch s {
-	case vpn.StatusConnected:
-		return styleStatusUp.Render(string(s))
-	case vpn.StatusConnecting:
-		return styleInfo.Render(string(s))
-	case vpn.StatusError:
-		return styleStatusErr.Render(string(s))
-	default:
-		return styleStatusDown.Render(string(s))
-	}
-}
 
 func formatUptime(now, connectedAt time.Time) string {
 	if connectedAt.IsZero() {
@@ -73,6 +48,10 @@ func formatElapsedCompact(d time.Duration) string {
 	return fmt.Sprintf("%dm", m)
 }
 
+// statusLongDuration is where the TIEMPO column switches from an elapsed
+// count ("down 3h 5m") to a localized date — hundreds of hours are unreadable.
+const statusLongDuration = 24 * time.Hour
+
 func formatStatusUptime(now time.Time, status vpn.Status, connectedAt time.Time, h monitor.ProfileHistory) string {
 	if status == vpn.StatusConnected {
 		since := connectedAt
@@ -82,14 +61,20 @@ func formatStatusUptime(now time.Time, status vpn.Status, connectedAt time.Time,
 		if since.IsZero() {
 			return "—"
 		}
+		if now.Sub(since) >= statusLongDuration {
+			return cf("cli.status.uptime.connected_since", formatLocalDate(since.Local()))
+		}
 		return cf("cli.status.uptime.connected", formatElapsedCompact(now.Sub(since)), since.Local().Format("15:04:05"))
 	}
 
 	if !h.LastDownAt.IsZero() {
+		if now.Sub(h.LastDownAt) >= statusLongDuration {
+			return cf("cli.status.uptime.down_since", formatLocalDate(h.LastDownAt.Local()))
+		}
 		return cf("cli.status.uptime.disconnected", formatElapsedCompact(now.Sub(h.LastDownAt)), h.LastDownAt.Local().Format("15:04:05"))
 	}
 	if !h.LastConnectedAt.IsZero() {
-		return cf("cli.status.uptime.last_up", h.LastConnectedAt.Local().Format("2006-01-02 15:04:05"))
+		return cf("cli.status.uptime.last_up", formatLocalDate(h.LastConnectedAt.Local()))
 	}
 	return "—"
 }
@@ -99,6 +84,9 @@ type tunnelRow struct {
 	Status vpn.Status
 	IP     string
 	Uptime string
+	// Attach is a provider adapter's attach phase (nil for others); the
+	// live view prints its message under the table.
+	Attach *vpn.AttachState
 }
 
 type tunnelTableLayout struct {
@@ -307,15 +295,45 @@ func renderStatusSummary(rows []tunnelRow) string {
 	return "  " + strings.Join(parts, styleDim.Render("  ·  "))
 }
 
-func renderSecurityLine(ksEnabled, ksActive, dnsEnabled, dnsActive bool) string {
-	killState := ct("cli.status.security.idle_caps")
-	killStateStyle := styleStatusDown
-	if !ksEnabled {
-		killState = ct("cli.status.security.disabled_caps")
-		killStateStyle = styleDim
-	} else if ksActive {
-		killState = ct("cli.status.security.armed")
-		killStateStyle = styleStatusUp
+// killSwitchStateKey maps the daemon's kill switch state to its label
+// (fallback when the daemon sends no detail):
+// ACTIVO = blocking a dropped tunnel's destinations now,
+// ARMADO = enabled, protects connected tunnels if they drop,
+// INACTIVO = turned off in settings.
+func killSwitchStateKey(enabled, active bool) string {
+	switch {
+	case active:
+		return "cli.status.security.active_caps"
+	case enabled:
+		return "cli.status.security.armed"
+	default:
+		return "cli.status.security.off_caps"
+	}
+}
+
+// killSwitchLabel is the translated one-liner for the kill switch: with
+// the daemon's detail "ARMADO (protegiendo 2 túneles)" / "ACTIVO
+// (bloqueando destinos de brainbox)", else the plain state.
+func killSwitchLabel(enabled, active bool, detail *security.KillSwitchStatus) string {
+	if detail != nil {
+		key, args := detail.StateKey()
+		return cf(key, args...)
+	}
+	return ct(killSwitchStateKey(enabled, active))
+}
+
+func renderSecurityLine(ksEnabled, ksActive, dnsEnabled, dnsActive bool, ksDetail ...*security.KillSwitchStatus) string {
+	var detail *security.KillSwitchStatus
+	if len(ksDetail) > 0 {
+		detail = ksDetail[0]
+	}
+	killState := killSwitchLabel(ksEnabled, ksActive, detail)
+	killStateStyle := styleStatusUp
+	if !ksActive {
+		killStateStyle = styleInfo
+		if !ksEnabled {
+			killStateStyle = styleDim
+		}
 	}
 	dnsState := ct("cli.status.security.idle_caps")
 	dnsStateStyle := styleStatusDown
@@ -327,7 +345,7 @@ func renderSecurityLine(ksEnabled, ksActive, dnsEnabled, dnsActive bool) string 
 		dnsStateStyle = styleStatusUp
 	}
 	killIcon := styleDim.Render(sym("○", "o"))
-	if ksEnabled {
+	if ksEnabled || ksActive {
 		killIcon = killStateStyle.Render(sym("●", "*"))
 	}
 	return killIcon + " " +
@@ -360,9 +378,19 @@ func renderLeakCheckLine(configured, available bool, check *apiLeakCheck) string
 			stateStyle = styleStatusErr
 		}
 	}
-	return styleBright.Render(ct("cli.status.leak_check")) + " " + stateStyle.Render(state)
+	line := styleBright.Render(ct("cli.status.leak_check")) + " " + stateStyle.Render(state)
+	// Public IP: "—" plus a short hint while the opt-in lookup is off.
+	ip := "—"
+	if check != nil && check.PublicIP != "" {
+		ip = check.PublicIP
+	}
+	line += styleDim.Render("  ·  ") + styleBright.Render(ct("cli.check.public_ip")) + styleStatusIP.Render(ip)
+	if !configured && !available {
+		line += "  " + styleDim.Render(ct("cli.public_ip.enable_hint"))
+	}
+	return line
 }
 
 func renderWatchdogLine() string {
-	return styleInfo.Render(sym("●", "~")) + " " + styleBright.Render(cf("cli.status.watchdog.line", "5s", "2s", "5m"))
+	return styleInfo.Render(sym("●", "~")) + " " + styleBright.Render(ct("cli.status.watchdog.line"))
 }

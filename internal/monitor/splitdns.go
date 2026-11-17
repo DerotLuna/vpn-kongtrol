@@ -2,10 +2,8 @@ package monitor
 
 import (
 	"context"
-	"fmt"
 	"net"
-	"os"
-	"runtime"
+	"net/netip"
 	"sort"
 	"strings"
 	"time"
@@ -13,10 +11,8 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
-
-const splitDNSStartMarker = "# kongtrol split-dns start"
-const splitDNSEndMarker = "# kongtrol split-dns end"
 
 var splitDNSCommonSubdomains = []string{"www.", "api.", "cdn.", "app.", "docs.", "console.", "static.", "assets."}
 
@@ -98,66 +94,6 @@ func (m *SplitDNSManager) restore() error {
 	return m.writeHosts(map[string]string{})
 }
 
-func (m *SplitDNSManager) writeHosts(entries map[string]string) error {
-	path := hostsFilePath()
-	if path == "" {
-		return fmt.Errorf("unsupported OS for hosts file")
-	}
-	current, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	clean := removeSplitDNSBlock(string(current))
-	block := renderSplitDNSBlock(entries)
-	next := clean
-	if strings.TrimSpace(block) != "" {
-		if !strings.HasSuffix(next, "\n") {
-			next += "\n"
-		}
-		next += block
-	}
-	return os.WriteFile(path, []byte(next), 0o644)
-}
-
-func renderSplitDNSBlock(entries map[string]string) string {
-	if len(entries) == 0 {
-		return ""
-	}
-	var domains []string
-	for d := range entries {
-		domains = append(domains, d)
-	}
-	sort.Strings(domains)
-	var b strings.Builder
-	b.WriteString(splitDNSStartMarker + "\n")
-	for _, d := range domains {
-		b.WriteString(entries[d] + " " + d + "\n")
-	}
-	b.WriteString(splitDNSEndMarker + "\n")
-	return b.String()
-}
-
-func removeSplitDNSBlock(in string) string {
-	var out []string
-	inBlock := false
-	for _, line := range strings.Split(in, "\n") {
-		trim := strings.TrimSpace(line)
-		if trim == splitDNSStartMarker {
-			inBlock = true
-			continue
-		}
-		if trim == splitDNSEndMarker {
-			inBlock = false
-			continue
-		}
-		if !inBlock {
-			out = append(out, line)
-		}
-	}
-	return strings.TrimRight(strings.Join(out, "\n"), "\n") + "\n"
-}
-
 func expandSplitDNSDomainPattern(pattern string) []string {
 	p := strings.TrimSpace(strings.ToLower(pattern))
 	if p == "" {
@@ -186,17 +122,34 @@ func pickPreferredIP(ips []net.IP) net.IP {
 	return nil
 }
 
-func hostsFilePath() string {
-	switch runtime.GOOS {
-	case "windows":
-		root := os.Getenv("SystemRoot")
-		if root == "" {
-			root = `C:\Windows`
-		}
-		return root + `\System32\drivers\etc\hosts`
-	case "linux", "darwin":
-		return "/etc/hosts"
-	default:
-		return ""
+// hostEntries converts domain → IP into the hosts block entries, sorted by
+// domain; invalid IPs are skipped.
+func hostEntries(entries map[string]string) []privops.HostEntry {
+	domains := make([]string, 0, len(entries))
+	for d := range entries {
+		domains = append(domains, d)
 	}
+	sort.Strings(domains)
+	out := make([]privops.HostEntry, 0, len(domains))
+	for _, d := range domains {
+		ip, err := netip.ParseAddr(entries[d])
+		if err != nil {
+			continue
+		}
+		out = append(out, privops.HostEntry{IP: ip.Unmap(), Host: strings.ToLower(d)})
+	}
+	return out
+}
+
+// writeHosts replaces only the Kongtrol-marked block of the system hosts
+// file through privops (helper or in-process when elevated). Empty entries
+// remove the block.
+func (m *SplitDNSManager) writeHosts(entries map[string]string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	ops, err := privops.Default(ctx)
+	if err != nil {
+		return err
+	}
+	return ops.WriteHostsBlock(ctx, hostEntries(entries))
 }

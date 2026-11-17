@@ -174,42 +174,6 @@ func ParseConfigAddress(configPath string) (net.IP, error) { return parseConfigA
 // ParseConfigDNS is the exported form of parseConfigDNS for cross-package use.
 func ParseConfigDNS(configPath string) []net.IP { return parseConfigDNS(configPath) }
 
-// parseHandshake checks if wg show output contains a recent handshake (< 3 min).
-func parseHandshake(wgShowOutput string) bool {
-	for _, line := range strings.Split(wgShowOutput, "\n") {
-		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "latest handshake:") {
-			// "latest handshake: 1 minute, 30 seconds ago"
-			// "latest handshake: 2 minutes, 5 seconds ago"
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) < 2 {
-				return false
-			}
-			// Very rough heuristic: handshake is recent if < 3 minutes mentioned.
-			text := strings.ToLower(parts[1])
-			if strings.Contains(text, "second") {
-				return true
-			}
-			if strings.Contains(text, "minute") {
-				// Extract the minute number.
-				words := strings.Fields(text)
-				for i, w := range words {
-					if w == "minute" || w == "minutes" {
-						if i > 0 {
-							n, err := strconv.Atoi(words[i-1])
-							if err == nil && n < 3 {
-								return true
-							}
-						}
-					}
-				}
-			}
-			return false
-		}
-	}
-	return false
-}
-
 // parseTransfer extracts (sent, received) byte counts from `wg show <iface> transfer`.
 func parseTransfer(raw string) (sent, recv uint64) {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")

@@ -74,7 +74,9 @@ type Watchdog struct {
 // SetEventCallback registers an optional callback for watchdog lifecycle events.
 // event values:
 // reconnect_attempt, reconnect_failed, reconnected,
-// health_degraded, failover_started, failover_failed, failover_activated.
+// health_degraded, failover_started, failover_failed, failover_activated,
+// manual_reconnect_required (adapter Capabilities().ManualReconnect: the
+// watchdog notifies once per drop and does not reconnect).
 func (w *Watchdog) SetEventCallback(fn func(profile, event string, attempt int, err error)) {
 	w.mu.Lock()
 	w.onEvent = fn
@@ -224,6 +226,7 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 	defer ticker.Stop()
 
 	attempt := 0
+	manualNotified := false
 
 	for {
 		select {
@@ -233,6 +236,7 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 			status := adapter.Status().Normalize()
 			if status == vpn.StatusConnected {
 				attempt = 0 // reset backoff on healthy state
+				manualNotified = false
 				w.runHealthCheck(ctx, name, adapter)
 				continue
 			}
@@ -248,6 +252,24 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 			if skip {
 				// User requested disconnect — do not reconnect.
 				attempt = 0
+				continue
+			}
+
+			// Provider app with no automatic connect path (no CLI, or
+			// auto_connect: false): only the user can bring it back, so
+			// notify once per drop instead of reconnecting.
+			if adapter.Capabilities().ManualReconnect {
+				if !manualNotified {
+					manualNotified = true
+					w.mu.Lock()
+					cb := w.onEvent
+					w.mu.Unlock()
+					if cb != nil {
+						cb(name, "manual_reconnect_required", 0, nil)
+					}
+					w.log.Warn("watchdog: tunnel dropped; reconnect required in the provider app",
+						zap.String("profile", name), zap.String("status", string(status)))
+				}
 				continue
 			}
 

@@ -85,6 +85,7 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 			via        string = profileList[0]
 			domainsRaw string
 			ipsRaw     string
+			onDown     string = config.OnTunnelDownAllow
 		)
 
 		if err := runForm(newForm(
@@ -103,6 +104,16 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 					Title(i18n.T(lang, "policy.via")).
 					Options(viaOpts...).
 					Value(&via),
+				// What happens to this traffic while the tunnel is off;
+				// each option carries its one-line explanation.
+				huh.NewSelect[string]().
+					Title(i18n.T(lang, "policy.on_down")).
+					Options(
+						huh.NewOption(i18n.T(lang, "policy.on_down.allow"), config.OnTunnelDownAllow),
+						huh.NewOption(i18n.T(lang, "policy.on_down.block"), config.OnTunnelDownBlock),
+						huh.NewOption(i18n.T(lang, "policy.on_down.connect"), config.OnTunnelDownConnect),
+					).
+					Value(&onDown),
 			),
 			huh.NewGroup(
 				huh.NewNote().
@@ -162,7 +173,7 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 			removePolicyByName(policiesNode, policyName)
 		}
 
-		policiesNode.Content = append(policiesNode.Content, policyNode(policyName, via, domains, ipRanges))
+		policiesNode.Content = append(policiesNode.Content, policyNode(policyName, via, domains, ipRanges, onDown))
 		knownPolicies[policyName] = true
 		added = append(added, policyName)
 		addedCount++
@@ -173,8 +184,9 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 	return added, nil
 }
 
-// policyNode builds a YAML mapping node for a single policy rule.
-func policyNode(name, via string, domains, ipRanges []string) *yaml.Node {
+// policyNode builds a YAML mapping node for a single policy rule. onDown
+// (optional) is on_tunnel_down; "allow" (the default) is left out.
+func policyNode(name, via string, domains, ipRanges []string, onDown ...string) *yaml.Node {
 	matchNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	if len(domains) > 0 {
 		seq := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
@@ -196,6 +208,9 @@ func policyNode(name, via string, domains, ipRanges []string) *yaml.Node {
 		scalarNode("match"), matchNode,
 		scalarNode("via"), scalarNode(via),
 	)
+	if len(onDown) > 0 && onDown[0] != "" && onDown[0] != config.OnTunnelDownAllow {
+		n.Content = append(n.Content, scalarNode("on_tunnel_down"), scalarNode(onDown[0]))
+	}
 	return n
 }
 

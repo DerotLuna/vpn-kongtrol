@@ -20,8 +20,7 @@ var statusWatch bool
 var statusDashboard bool
 
 var statusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Show the status of all VPN tunnels",
+	Use: "status",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if statusDashboard && !statusWatch {
 			return fmt.Errorf("%s", ct("cli.status.error.dashboard_requires_watch"))
@@ -55,6 +54,12 @@ type apiSecurityStatus struct {
 	LeakDetectionConfigured bool          `json:"leak_detection_configured"`
 	LeakCheckAvailable      bool          `json:"leak_check_available"`
 	LeakCheck               *apiLeakCheck `json:"leak_check,omitempty"`
+	// Opt-in public IP lookup (off by default) and the service it uses.
+	PublicIPCheckEnabled bool   `json:"public_ip_check_enabled"`
+	PublicIPCheckHost    string `json:"public_ip_check_host,omitempty"`
+	// KillSwitchStatus: split-tunnel kill switch detail (protected /
+	// blocking tunnels), rendered with killSwitchLabel.
+	KillSwitchStatus *security.KillSwitchStatus `json:"kill_switch_status,omitempty"`
 }
 
 type apiLeakCheck struct {
@@ -87,6 +92,13 @@ type statusTunnelJSON struct {
 	AssignedIP  string    `json:"assigned_ip,omitempty"`
 	ConnectedAt time.Time `json:"connected_at,omitempty"`
 	UptimeSec   int64     `json:"uptime_sec"`
+	LastError   string    `json:"last_error,omitempty"`
+	LastErrorAt time.Time `json:"last_error_at,omitzero"`
+	// LastErrorKey: i18n key of the guidance line for LastError, if any.
+	LastErrorKey string `json:"last_error_key,omitempty"`
+	// Attach is a provider adapter's attach phase (how it came up / what
+	// the user must do in the app); render with its MessageKey.
+	Attach *vpn.AttachState `json:"attach,omitempty"`
 }
 
 type statusSecurityJSON struct {
@@ -97,6 +109,7 @@ type statusSecurityJSON struct {
 	LeakDetectionConfigured bool          `json:"leak_detection_configured"`
 	LeakCheckAvailable      bool          `json:"leak_check_available"`
 	LeakCheck               *apiLeakCheck `json:"leak_check,omitempty"`
+	PublicIPCheckEnabled    bool          `json:"public_ip_check_enabled"`
 }
 
 type statusReportJSON struct {
@@ -122,8 +135,9 @@ func collectStatusReport() (statusReportJSON, error) {
 		Security: statusSecurityJSON{
 			KillSwitchEnabled:       cfg.Security.KillSwitch.Enabled,
 			DNSGuardEnabled:         cfg.Security.DNSGuard.Enabled,
-			LeakDetectionConfigured: cfg.Security.LeakDetection.Enabled,
-			LeakCheckAvailable:      leak != nil,
+			LeakDetectionConfigured: cfg.PublicIPCheckEnabled(),
+			LeakCheckAvailable:      leak.Enabled(),
+			PublicIPCheckEnabled:    leak.Enabled(),
 		},
 	}
 	report.User = resolveSystemUserName()
@@ -140,11 +154,16 @@ func collectStatusReport() (statusReportJSON, error) {
 		report.Security.LeakDetectionConfigured = sec.LeakDetectionConfigured
 		report.Security.LeakCheckAvailable = sec.LeakCheckAvailable
 		report.Security.LeakCheck = sec.LeakCheck
+		report.Security.PublicIPCheckEnabled = sec.PublicIPCheckEnabled || sec.LeakCheckAvailable
 		for _, t := range tunnels {
 			item := statusTunnelJSON{
-				Name:       t.Name,
-				Status:     string(t.Status.Normalize()),
-				AssignedIP: t.AssignedIP,
+				Name:         t.Name,
+				Status:       string(t.Status.Normalize()),
+				AssignedIP:   t.AssignedIP,
+				LastError:    t.LastError,
+				LastErrorAt:  t.LastErrorAt,
+				LastErrorKey: t.LastErrorKey,
+				Attach:       t.Attach,
 			}
 			if !t.ConnectedAt.IsZero() {
 				item.ConnectedAt = t.ConnectedAt
@@ -178,6 +197,9 @@ func collectStatusReport() (statusReportJSON, error) {
 		item := statusTunnelJSON{
 			Name:   name,
 			Status: string(status),
+		}
+		if r, ok := adapter.(vpn.AttachReporter); ok {
+			item.Attach = r.AttachState()
 		}
 		if info, err := adapter.TunnelInfo(); err == nil && info != nil {
 			if info.AssignedIP != nil {
@@ -222,8 +244,12 @@ func fetchDaemonHistory() (map[string]monitor.ProfileHistory, error) {
 }
 
 func fetchDaemonSnapshot() ([]monitor.TunnelMetrics, *apiSecurityStatus, error) {
+	return fetchDaemonSnapshotAt(dashboardURL())
+}
+
+// fetchDaemonSnapshotAt reads tunnels + security state from the daemon at base.
+func fetchDaemonSnapshotAt(base string) ([]monitor.TunnelMetrics, *apiSecurityStatus, error) {
 	client := &http.Client{Timeout: 1200 * time.Millisecond}
-	base := dashboardURL()
 
 	tReq, err := daemonRequest(http.MethodGet, base+"/api/v1/tunnels", nil)
 	if err != nil {
@@ -246,25 +272,33 @@ func fetchDaemonSnapshot() ([]monitor.TunnelMetrics, *apiSecurityStatus, error) 
 		return tunnels[i].Name < tunnels[j].Name
 	})
 
-	sReq, err := daemonRequest(http.MethodGet, base+"/api/v1/security/status", nil)
+	sec, err := fetchDaemonSecurity(client, base)
 	if err != nil {
 		return nil, nil, err
+	}
+	return tunnels, sec, nil
+}
+
+// fetchDaemonSecurity reads the daemon's kill switch / DNS guard state —
+// the single source both `status` and the live view use.
+func fetchDaemonSecurity(client *http.Client, base string) (*apiSecurityStatus, error) {
+	sReq, err := daemonRequest(http.MethodGet, base+"/api/v1/security/status", nil)
+	if err != nil {
+		return nil, err
 	}
 	sResp, err := client.Do(sReq)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	defer sResp.Body.Close()
 	if sResp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("security status unavailable")
+		return nil, fmt.Errorf("security status unavailable")
 	}
-
 	sec := &apiSecurityStatus{}
 	if err := json.NewDecoder(sResp.Body).Decode(sec); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return tunnels, sec, nil
+	return sec, nil
 }
 
 func printStatus() {
@@ -309,7 +343,7 @@ func printStatus() {
 		layout := computeTunnelTableLayout(rows, width)
 		sep := tableRule(layout.RuleW)
 		fmt.Println(renderStatusSummary(rows))
-		fmt.Println("  " + renderSecurityLine(sec.KillSwitchEnabled, sec.KillSwitch, sec.DNSGuardEnabled, sec.DNSGuard))
+		fmt.Println("  " + renderSecurityLine(sec.KillSwitchEnabled, sec.KillSwitch, sec.DNSGuardEnabled, sec.DNSGuard, sec.KillSwitchStatus))
 		fmt.Println("  " + renderLeakCheckLine(sec.LeakDetectionConfigured, sec.LeakCheckAvailable, sec.LeakCheck))
 		fmt.Println("  " + renderWatchdogLine())
 		fmt.Println()
@@ -319,6 +353,18 @@ func printStatus() {
 			fmt.Println(renderTunnelRow(layout, r))
 		}
 		fmt.Println("  " + sep)
+		for _, line := range renderAttachLines(tunnels) {
+			fmt.Println(line)
+		}
+		for _, line := range renderStatusRoutesLines(dashboardURL()) {
+			fmt.Println(line)
+		}
+		for _, line := range renderLastErrorLines(tunnels, now) {
+			fmt.Println(line)
+		}
+		if hint := nothingConnectedHint(rows); hint != "" {
+			fmt.Println(hint)
+		}
 		return
 	}
 
@@ -369,7 +415,7 @@ func printStatus() {
 			leakCheck = leakResultToAPI(result)
 		}
 	}
-	fmt.Println("  " + renderLeakCheckLine(cfg != nil && cfg.Security.LeakDetection.Enabled, leak != nil, leakCheck))
+	fmt.Println("  " + renderLeakCheckLine(cfg.PublicIPCheckEnabled(), leak.Enabled(), leakCheck))
 	fmt.Println("  " + renderWatchdogLine())
 	fmt.Println()
 	fmt.Println(renderTunnelHeader(layout))
@@ -378,33 +424,38 @@ func printStatus() {
 		fmt.Println(renderTunnelRow(layout, r))
 	}
 	fmt.Println("  " + sep)
+	local := make([]monitor.TunnelMetrics, 0, len(adapters))
+	for _, name := range sortedAdapterNames(adapters) {
+		if m, ok := localTunnelState(name); ok {
+			local = append(local, m)
+		}
+	}
+	for _, line := range renderAttachLines(local) {
+		fmt.Println(line)
+	}
+	if hint := nothingConnectedHint(rows); hint != "" {
+		fmt.Println(hint)
+	}
 }
 
-func ternaryStatus(active bool) string {
-	if active {
-		return styleStatusUp.Render(ct("cli.status.security.active"))
+// renderAttachLines lists, under the status table, each provider tunnel's
+// attach message ("NordVPN ya conectado · kongtrol lo toma", "Esperando
+// conexión en Surfshark…"), waiting phases highlighted.
+func renderAttachLines(tunnels []monitor.TunnelMetrics) []string {
+	var lines []string
+	for _, t := range tunnels {
+		line := attachLine(t.Attach)
+		if line == "" {
+			continue
+		}
+		label := paintBold(cBright, t.Name) + "  " + line
+		if t.Attach.Waiting() {
+			lines = append(lines, "  "+tuiWarn(label))
+		} else {
+			lines = append(lines, "  "+tuiInfo(paint(cDim, label)))
+		}
 	}
-	return styleStatusDown.Render(ct("cli.status.off"))
-}
-
-func featureStatus(enabled, active bool) string {
-	if !enabled {
-		return styleDim.Render(ct("cli.status.security.disabled"))
-	}
-	if active {
-		return styleStatusUp.Render(ct("cli.status.security.active"))
-	}
-	return styleStatusDown.Render(ct("cli.status.security.idle"))
-}
-
-func securityGlyph(enabled, active bool) string {
-	if !enabled {
-		return styleDim.Render(sym("·", "-"))
-	}
-	if active {
-		return styleStatusUp.Render(sym("●", "*"))
-	}
-	return styleStatusDown.Render(sym("○", "o"))
+	return lines
 }
 
 // runStatusWatch shows the same live Bubble Tea daemon view as `up` — a
@@ -441,4 +492,19 @@ func runStatusWatch() error {
 
 	runUpTUI(ctx, cancel, adapters, ks, dnsMgr, dashURL, false)
 	return nil
+}
+
+// renderLastErrorLines lists, under the status table, why each tunnel that
+// is not connected failed its last connect, so a failed async connect
+// (dashboard, tray, `up`) is visible without opening the daemon log.
+func renderLastErrorLines(tunnels []monitor.TunnelMetrics, now time.Time) []string {
+	var lines []string
+	for _, t := range tunnels {
+		if t.LastError == "" || t.Status.Normalize() == vpn.StatusConnected {
+			continue
+		}
+		ago := formatElapsedCompact(now.Sub(t.LastErrorAt))
+		lines = append(lines, "  "+tuiErr(paintBold(cBright, t.Name)+"  "+cf("cli.status.last_error", ago, tunnelErrorText(t))))
+	}
+	return lines
 }

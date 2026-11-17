@@ -95,3 +95,13 @@ func readAPIToken(path string) (string, error) {
 	}
 	return token, nil
 }
+
+// ReadAPIToken returns the existing per-user API token without creating one,
+// for read-only callers (doctor) that only talk to an already-running daemon.
+func ReadAPIToken() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("api token: home directory: %w", err)
+	}
+	return readAPIToken(filepath.Join(home, ".kongtrol", "api-token"))
+}

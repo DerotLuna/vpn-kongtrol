@@ -24,8 +24,10 @@ import (
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/cloudflarewarp"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/forticlient"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/globalprotect"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/nordvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/protonvpn"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/surfshark"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/tailscale"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/wireguard"
 )
@@ -52,6 +54,9 @@ var (
 	dnsMgr              *monitor.DNSManager
 	policyResolver      *monitor.PolicyResolver
 	splitDNSMgr         *monitor.SplitDNSManager
+	destBlocker         security.DestinationBlocker
+	daemonEvents        = monitor.NewEventLog(100)
+	policyWatch         *monitor.PolicyWatch
 	alertBell           bool
 	apiToken            string
 	sessionGreetingLine string
@@ -59,8 +64,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "kongtrol",
-	Short: "Multi-VPN orchestration — route traffic, enforce security, monitor tunnels",
+	Use: "kongtrol",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if outputPlain {
 			_ = os.Setenv("NO_COLOR", "1")
@@ -78,7 +82,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		// Skip config load for commands that self-handle config discovery.
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" {
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" || prefsOnlyCommand(cmd) {
 			return nil
 		}
 		return loadConfig()
@@ -91,53 +95,13 @@ func init() {
 	rootCmd.SilenceErrors = true
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.SuggestionsMinimumDistance = 2
-	rootCmd.SetFlagErrorFunc(func(cmd *cobra.Command, err error) error {
-		return fmt.Errorf("%s: %w", ct("cli.flag.error"), err)
-	})
-	rootCmd.Short = ct("cli.root.short")
-	rootCmd.Long = ct("cli.root.long")
-	rootCmd.Example = ct("cli.root.examples")
+	rootCmd.SetFlagErrorFunc(flagError)
 
 	rootCmd.PersistentFlags().StringVarP(&cfgPath, "config", "c", "", ct("cli.flag.config"))
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, ct("cli.flag.json"))
 	rootCmd.PersistentFlags().BoolVarP(&outputQuiet, "quiet", "q", false, ct("cli.flag.quiet"))
 	rootCmd.PersistentFlags().BoolVar(&outputPlain, "plain", false, ct("cli.flag.plain"))
 	rootCmd.PersistentFlags().BoolVar(&alertBell, "alert-bell", false, ct("cli.flag.alert_bell"))
-	upCmd.Example = ct("cli.up.examples")
-	downCmd.Example = ct("cli.down.examples")
-	reloadCmd.Example = ct("cli.reload.examples")
-	statusCmd.Example = ct("cli.status.examples")
-	routesListCmd.Example = ct("cli.routes.list.examples")
-	mapCmd.Example = ct("cli.map.examples")
-	dashboardCmd.Example = ct("cli.dashboard.examples")
-	configValidateCmd.Example = ct("cli.config.validate.examples")
-	upCmd.Short = ct("cli.up.short")
-	downCmd.Short = ct("cli.down.short")
-	reloadCmd.Short = ct("cli.reload.short")
-	statusCmd.Short = ct("cli.status.short")
-	routesCmd.Short = ct("cli.routes.short")
-	routesListCmd.Short = ct("cli.routes.list.short")
-	checkCmd.Short = ct("cli.check.short")
-	mapCmd.Short = ct("cli.map.short")
-	dashboardCmd.Short = ct("cli.dashboard.short")
-	auditCmd.Short = ct("cli.audit.short")
-	configCmd.Short = ct("cli.config.short")
-	configValidateCmd.Short = ct("cli.config.validate.short")
-	exportCmd.Short = ct("cli.export.short")
-	versionCmd.Short = ct("cli.version.short")
-	configFavCmd.Short = ct("cli.favorites.short")
-	configFavListCmd.Short = ct("cli.favorites.list.short")
-	configFavAddCmd.Short = ct("cli.favorites.add.short")
-	configFavRemoveCmd.Short = ct("cli.favorites.remove.short")
-	configDefaultsCmd.Short = ct("cli.defaults.short")
-	configDefaultsShowCmd.Short = ct("cli.defaults.show.short")
-	configDefaultsSetGroupCmd.Short = ct("cli.defaults.set_group.short")
-	configLangCmd.Short = ct("cli.lang.short")
-	configDashboardCmd.Short = ct("cli.config.dashboard.short")
-	configDashboardShowCmd.Short = ct("cli.config.dashboard.show.short")
-	configDashboardSetPortCmd.Short = ct("cli.config.dashboard.set_port.short")
-	configDashboardSetBindCmd.Short = ct("cli.config.dashboard.set_bind.short")
-	configDashboardResetCmd.Short = ct("cli.config.dashboard.reset.short")
 
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(downCmd)
@@ -146,7 +110,6 @@ func init() {
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(mapCmd)
 	rootCmd.AddCommand(dashboardCmd)
-	rootCmd.AddCommand(auditCmd)
 	rootCmd.AddCommand(configCmd)
 	rootCmd.AddCommand(exportCmd)
 	rootCmd.AddCommand(versionCmd)
@@ -162,8 +125,11 @@ func sortedAdapterNames(m map[string]vpn.VPNAdapter) []string {
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, tuiErr(err.Error()))
+	setupHelp(rootCmd, cliLang())
+	if cmd, err := rootCmd.ExecuteC(); err != nil {
+		if !isReported(err) {
+			fmt.Fprintln(os.Stderr, tuiErr(userFacingError(cmd, err)))
+		}
 		os.Exit(1)
 	}
 }

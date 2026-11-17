@@ -11,6 +11,7 @@ import (
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/cloudflarewarp"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/forticlient"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/globalprotect"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/nordvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/protonvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/tailscale"
@@ -21,6 +22,7 @@ var allAdapterTypes = []string{
 	"forticlient",
 	"openvpn",
 	"protonvpn",
+	"nordvpn",
 	"ciscoanyconnect",
 	"wireguard",
 	"globalprotect",

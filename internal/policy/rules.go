@@ -120,15 +120,6 @@ func (r *Rule) MatchesFlow(target string, app string) bool {
 	return needsApp
 }
 
-func appMatchesPattern(app, pattern string) bool {
-	full, base, baseNoExt := normalizeApp(app)
-	if full == "" {
-		return false
-	}
-	p := normalizePattern(pattern)
-	return appMatchesNormalized(full, base, baseNoExt, p)
-}
-
 func appMatchesNormalized(full, base, baseNoExt, pattern string) bool {
 	if full == "" {
 		return false

@@ -17,8 +17,35 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
+// writeError answers {"error": msg, "code": ...}. "error" stays the raw
+// English detail (older clients read it); "code" is a stable identifier the
+// dashboard maps to translated ES/EN text with a "what to do" hint.
 func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
+	writeJSON(w, status, map[string]string{"error": msg, "code": errorCode(status, msg)})
+}
+
+// errorCode derives the stable error code for writeError from the status
+// and, for the most common bad request, the message.
+func errorCode(status int, msg string) string {
+	switch status {
+	case http.StatusBadRequest:
+		if msg == "invalid JSON body" {
+			return "invalid_json"
+		}
+		return "bad_request"
+	case http.StatusNotFound:
+		return "not_found"
+	case http.StatusConflict:
+		return "conflict"
+	case http.StatusServiceUnavailable:
+		return "unavailable"
+	case http.StatusNotImplemented:
+		return "not_supported"
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return "forbidden"
+	default:
+		return "internal"
+	}
 }
 
 func (s *Server) loadRuntimeConfig() (*config.Config, string, error) {

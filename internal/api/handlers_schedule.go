@@ -30,12 +30,12 @@ func (s *Server) handleListScheduleRules(w http.ResponseWriter, r *http.Request)
 
 // POST /api/v1/scheduler/rules
 func (s *Server) handleCreateScheduleRule(w http.ResponseWriter, r *http.Request) {
-	var req scheduleRuleDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var patch scheduleRulePatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	req.Name = strings.TrimSpace(req.Name)
+	req := patch.applyTo(config.ScheduleRule{})
 	if req.Name == "" {
 		writeError(w, http.StatusBadRequest, "rule name is required")
 		return
@@ -61,8 +61,8 @@ func (s *Server) handleCreateScheduleRule(w http.ResponseWriter, r *http.Request
 // PUT /api/v1/scheduler/rules/{name}
 func (s *Server) handleUpdateScheduleRule(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	var req scheduleRuleDTO
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var patch scheduleRulePatch
+	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
@@ -82,6 +82,10 @@ func (s *Server) handleUpdateScheduleRule(w http.ResponseWriter, r *http.Request
 		writeError(w, http.StatusNotFound, "scheduler rule not found")
 		return
 	}
+	req := patch.applyTo(cfg.Monitor.Scheduler.Rules[idx])
+	if req.Name == "" {
+		req.Name = cfg.Monitor.Scheduler.Rules[idx].Name
+	}
 	if err := s.saveScheduleRule(cfg, cfgPath, idx, req); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -89,14 +93,7 @@ func (s *Server) handleUpdateScheduleRule(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "rule": name})
 }
 
-func (s *Server) saveScheduleRule(cfg *config.Config, cfgPath string, idx int, req scheduleRuleDTO) error {
-	rule := config.ScheduleRule{
-		Name:     strings.TrimSpace(req.Name),
-		Profiles: req.Profiles,
-		Weekdays: req.Weekdays,
-		Start:    strings.TrimSpace(req.Start),
-		End:      strings.TrimSpace(req.End),
-	}
+func (s *Server) saveScheduleRule(cfg *config.Config, cfgPath string, idx int, rule config.ScheduleRule) error {
 
 	trial := *cfg
 	trialRules := make([]config.ScheduleRule, len(cfg.Monitor.Scheduler.Rules))
@@ -140,4 +137,28 @@ func (s *Server) handleDeleteScheduleRule(w http.ResponseWriter, r *http.Request
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "deleted", "rule": name})
+}
+
+// scheduleRulePatch is the create/update body. Pointer fields let an update
+// apply only what was sent, keeping the stored values for omitted fields.
+type scheduleRulePatch struct {
+	Name     *string   `json:"name"`
+	Profiles *[]string `json:"profiles"`
+	Weekdays *[]string `json:"weekdays"`
+	Start    *string   `json:"start"`
+	End      *string   `json:"end"`
+}
+
+// applyTo overlays the fields present in p onto base (trimming strings).
+func (p scheduleRulePatch) applyTo(base config.ScheduleRule) config.ScheduleRule {
+	setTrimmed(&base.Name, p.Name)
+	setTrimmed(&base.Start, p.Start)
+	setTrimmed(&base.End, p.End)
+	if p.Profiles != nil {
+		base.Profiles = filterNonEmpty(*p.Profiles)
+	}
+	if p.Weekdays != nil {
+		base.Weekdays = filterNonEmpty(*p.Weekdays)
+	}
+	return base
 }

@@ -1,11 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"runtime"
+	"sort"
 	"time"
 
 	"fyne.io/systray"
@@ -30,17 +31,24 @@ func onReady() {
 		time.Sleep(150 * time.Millisecond)
 	}
 	setIcon(false)
+	setupMenu()
+}
 
-	if err := initDaemon(); err != nil {
-		systray.SetTitle(trayT("tray.config_error"))
-		systray.SetTooltip(err.Error())
-		log.Printf("kongtrol-tray: init: %v", err)
-
-		mQuit := systray.AddMenuItem(trayT("tray.quit"), trayT("tray.exit"))
-		go func() {
-			<-mQuit.ClickedCh
-			systray.Quit()
-		}()
+// setupMenu builds the full menu, or the first-run / error menu when the
+// tray cannot work yet. It runs again (after systray.ResetMenu) once a
+// first-run user has created the config.
+func setupMenu() {
+	if err := initClient(); err != nil {
+		switch {
+		case errors.Is(err, errNoConfig):
+			showFirstRun()
+		case cfg != nil:
+			showFatal(trayT("tray.daemon_error"), trayT("tray.daemon_error_hint"), err)
+		case kongtrolExe == "":
+			showFatal(trayT("tray.cli_missing"), trayT("tray.cli_missing_hint"), err)
+		default:
+			showFatal(trayT("tray.config_error"), trayT("tray.config_error_hint"), err)
+		}
 		return
 	}
 
@@ -48,7 +56,13 @@ func onReady() {
 
 	mDashboard := systray.AddMenuItem(trayT("tray.open_dashboard"), trayT("tray.open_dashboard_tip"))
 	labels := trayMenuLabels{dashboard: mDashboard}
-	onClick(mDashboard, func() { openBrowser(srv.Addr()) })
+	onClick(mDashboard, openDashboard)
+	// Shown only while the daemon reports the privileged helper missing
+	// (see refreshHelperItem).
+	mHelper := systray.AddMenuItem(trayT("tray.helper_install"), trayT("tray.helper_install_tip"))
+	mHelper.Hide()
+	helperItem.Store(mHelper)
+	onClick(mHelper, installHelper)
 	systray.AddSeparator()
 
 	// Groups submenu — one entry per named group in kongtrol.yaml. Clicking
@@ -58,7 +72,7 @@ func onReady() {
 	if len(cfg.Groups) > 0 {
 		mGroups := systray.AddMenuItem(trayT("tray.groups"), trayT("tray.groups_tip"))
 		labels.groups = mGroups
-		for name := range cfg.Groups {
+		for _, name := range sortedKeys(cfg.Groups) {
 			item := mGroups.AddSubMenuItem(name, "")
 			groupItems[name] = item
 			onClick(item, func() { toggleGroup(name) })
@@ -70,7 +84,7 @@ func onReady() {
 	mTunnels := systray.AddMenuItem(trayT("tray.tunnels"), trayT("tray.tunnels_tip"))
 	labels.tunnels = mTunnels
 	profileItems := make(map[string]*systray.MenuItem)
-	for name := range cfg.VPNs {
+	for _, name := range sortedKeys(cfg.VPNs) {
 		item := mTunnels.AddSubMenuItem(name, "")
 		profileItems[name] = item
 		onClick(item, func() { toggleProfile(name) })
@@ -79,18 +93,99 @@ func onReady() {
 	systray.AddSeparator()
 	mStatus := systray.AddMenuItem(trayT("tray.status_loading"), "")
 	mStatus.Disable()
+	noticeMu.Lock()
+	statusItem = mStatus
+	noticeMu.Unlock()
+	// "Conectar <perfil>" after a policy notice (see tray_policy.go).
+	addPolicyMenuItem()
+	addKillSwitchMenuItem()
+	addPublicIPMenuItem()
 	systray.AddSeparator()
+	mStopAll := systray.AddMenuItem(trayT("tray.stop_all"), trayT("tray.stop_all_tip"))
+	labels.stopAll = mStopAll
+	onClick(mStopAll, stopKongtrol)
 	mQuit := systray.AddMenuItem(trayT("tray.quit"), trayT("tray.quit_tip"))
 	labels.quit = mQuit
+	// Quitting closes only the tray; the daemon keeps its tunnels up.
 	onClick(mQuit, systray.Quit)
 
-	// ── Background: status refresh ────────────────────────────────────────
+	// ── Background: daemon start + status refresh ─────────────────────────
 
 	go func() {
+		if err := ensureDaemon(); err != nil {
+			notifyError(trayT("tray.err_start"), err)
+		}
+		updateTrayStatus(mStatus, profileItems, groupItems, labels)
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
 			updateTrayStatus(mStatus, profileItems, groupItems, labels)
+		}
+	}()
+}
+
+// showFatal leaves a tray with only an error title, a short translated
+// "what to do" line and a close item, for when the tray cannot work at all
+// (bad config, kongtrol CLI missing). The raw error only goes to the
+// line's tooltip and tray.log.
+func showFatal(title, hint string, err error) {
+	systray.SetTitle(title)
+	systray.SetTooltip(title + " · " + hint)
+	log.Printf("kongtrol-tray: init: %v", err)
+
+	mErr := systray.AddMenuItem(hint, err.Error())
+	mErr.Disable()
+	mQuit := systray.AddMenuItem(trayT("tray.exit"), trayT("tray.exit"))
+	go func() {
+		<-mQuit.ClickedCh
+		systray.Quit()
+	}()
+}
+
+// showFirstRun is the menu before any config exists: a translated "set
+// it up" line, an item opening a terminal with `kongtrol init` where the
+// OS allows it, and a close item. When the config appears the full menu
+// replaces this one.
+func showFirstRun() {
+	msg := trayT("tray.first_run")
+	systray.SetTooltip(msg)
+	log.Println("kongtrol-tray: no config file found; waiting for kongtrol init")
+
+	mMsg := systray.AddMenuItem(msg, trayT("tray.first_run_tip"))
+	mMsg.Disable()
+	if canRunInit && kongtrolExe != "" {
+		mInit := systray.AddMenuItem(trayT("tray.run_init"), trayT("tray.run_init_tip"))
+		onClick(mInit, func() {
+			if err := runInitInTerminal(kongtrolExe); err != nil {
+				log.Printf("kongtrol-tray: open kongtrol init: %v", err)
+				mMsg.SetTitle(trayT("tray.run_init_failed"))
+				systray.SetTooltip(trayT("tray.run_init_failed"))
+			}
+		})
+	}
+	mQuit := systray.AddMenuItem(trayT("tray.exit"), trayT("tray.exit"))
+	done := make(chan struct{})
+	go func() {
+		<-mQuit.ClickedCh
+		close(done)
+		systray.Quit()
+	}()
+
+	// Rebuild the full menu as soon as `kongtrol init` saved the config.
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if configExists() {
+					systray.ResetMenu()
+					setupMenu()
+					return
+				}
+			}
 		}
 	}()
 }
@@ -102,10 +197,8 @@ func onReady() {
 // non-blocking channel send (`select { case ch <- struct{}{}: default: }`,
 // see systrayMenuItemSelected in the vendored library) — if nothing is
 // actively receiving on ClickedCh at that exact instant, the click is
-// dropped, not queued. A shared loop that polls many items with short
-// sleeps in between (the previous approach here) is blocked most of the
-// time, so most clicks were silently lost. One goroutine per item blocked
-// in `for range item.ClickedCh` is the only way to reliably catch every
+// dropped, not queued. One goroutine per item blocked in
+// `for range item.ClickedCh` is the only way to reliably catch every
 // click, and matches the pattern from systray's own examples.
 func onClick(item *systray.MenuItem, fn func()) {
 	go func() {
@@ -120,25 +213,64 @@ func updateTrayStatus(
 	profileItems, groupItems map[string]*systray.MenuItem,
 	labels trayMenuLabels,
 ) {
-	snapshot := col.Snapshot()
+	if refreshTrayLanguage() {
+		applyTrayMenuLanguage(labels)
+	}
+
+	notice := activeNotice()
+	states, err := client.TunnelStates()
+	if err != nil {
+		if notice != "" {
+			mStatus.SetTitle(notice)
+			systray.SetTooltip(notice)
+		} else {
+			mStatus.SetTitle(trayT("tray.daemon_unreachable"))
+			systray.SetTooltip(trayT("tray.daemon_unreachable"))
+		}
+		setIcon(false)
+		for name, item := range profileItems {
+			item.SetTitle(name)
+		}
+		return
+	}
+	systray.SetTooltip(trayT("tray.tooltip"))
+	refreshHelperItem()
+	pollPolicyEvents(states)
+	refreshKillSwitchItem()
+	refreshPublicIPItem()
+	notice = activeNotice() // a new policy notice shows at once
+
 	connectedCount := 0
-	for _, m := range snapshot {
+	for _, m := range states {
 		if m.Status == vpn.StatusConnected {
 			connectedCount++
 		}
 	}
-
-	if refreshTrayLanguage() {
-		applyTrayMenuLanguage(labels)
+	if notice != "" {
+		mStatus.SetTitle(notice)
+	} else {
+		mStatus.SetTitle(trayF("tray.status_active", connectedCount))
 	}
-	label := trayF("tray.status_active", connectedCount)
-	mStatus.SetTitle(label)
 	setIcon(connectedCount > 0)
 
+	names := make([]string, 0, len(profileItems))
 	for name, item := range profileItems {
-		if m, ok := snapshot[name]; ok {
-			item.SetTitle(fmt.Sprintf("%s [%s]", name, m.Status))
+		m, ok := states[name]
+		if !ok {
+			continue
 		}
+		names = append(names, name)
+		title, tooltip := trayTunnelLabel(name, m)
+		item.SetTitle(title)
+		item.SetTooltip(tooltip)
+	}
+	// A provider waiting for the user in its app (or dropped) is the most
+	// useful thing the icon tooltip can say.
+	sort.Strings(names)
+	if notice != "" {
+		systray.SetTooltip(notice)
+	} else if tip := trayWaitingTooltip(states, names); tip != "" {
+		systray.SetTooltip(tip)
 	}
 
 	for name, item := range groupItems {
@@ -148,11 +280,10 @@ func updateTrayStatus(
 		}
 		connected := 0
 		for _, p := range g.Profiles {
-			if m, ok := snapshot[p]; ok && m.Status == vpn.StatusConnected {
+			if m, ok := states[p]; ok && m.Status == vpn.StatusConnected {
 				connected++
 			}
 		}
-
 		item.SetTitle(fmt.Sprintf("%s (%d/%d)", name, connected, len(g.Profiles)))
 	}
 }
@@ -170,8 +301,13 @@ func refreshTrayLanguage() bool {
 	if err != nil {
 		return false
 	}
-	next := i18n.ES
-	if prefs.Language == "en" {
+	// A saved choice (kongtrol config lang, dashboard toggle) wins; with none
+	// the tray follows the OS language, same as the CLI.
+	next := i18n.System()
+	switch prefs.Language {
+	case "es":
+		next = i18n.ES
+	case "en":
 		next = i18n.EN
 	}
 	changed := next != trayLang
@@ -182,56 +318,28 @@ func refreshTrayLanguage() bool {
 
 func applyTrayMenuLanguage(labels trayMenuLabels) {
 	systray.SetTooltip(trayT("tray.tooltip"))
-	if labels.dashboard != nil {
-		labels.dashboard.SetTitle(trayT("tray.open_dashboard"))
-		labels.dashboard.SetTooltip(trayT("tray.open_dashboard_tip"))
+	set := func(item *systray.MenuItem, title, tip string) {
+		if item != nil {
+			item.SetTitle(trayT(title))
+			item.SetTooltip(trayT(tip))
+		}
 	}
-	if labels.groups != nil {
-		labels.groups.SetTitle(trayT("tray.groups"))
-		labels.groups.SetTooltip(trayT("tray.groups_tip"))
-	}
-	if labels.tunnels != nil {
-		labels.tunnels.SetTitle(trayT("tray.tunnels"))
-		labels.tunnels.SetTooltip(trayT("tray.tunnels_tip"))
-	}
-	if labels.quit != nil {
-		labels.quit.SetTitle(trayT("tray.quit"))
-		labels.quit.SetTooltip(trayT("tray.quit_tip"))
-	}
+	set(labels.dashboard, "tray.open_dashboard", "tray.open_dashboard_tip")
+	set(labels.groups, "tray.groups", "tray.groups_tip")
+	set(labels.tunnels, "tray.tunnels", "tray.tunnels_tip")
+	set(labels.stopAll, "tray.stop_all", "tray.stop_all_tip")
+	set(labels.quit, "tray.quit", "tray.quit_tip")
 }
 
-func applyTrayDNSGuardState() {
-	if dnsMgr == nil || cfg == nil {
-		return
+// sortedKeys returns m's keys in order, so the menu is stable across runs.
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
 	}
-	if !cfg.Security.DNSGuard.Enabled {
-		dnsMgr.ForceRestore()
-		return
-	}
-	for name, adapter := range adapters {
-		vpnCfg, ok := cfg.VPNs[name]
-		if !ok || vpnCfg.Type == "wireguard" || adapter.Status().Normalize() != vpn.StatusConnected {
-			continue
-		}
-		info, err := adapter.TunnelInfo()
-		if err != nil || info == nil {
-			continue
-		}
-		dnsServers := info.DNS
-		if len(dnsServers) == 0 && cfg.Security.DNSGuard.FallbackDNS != "" {
-			if ip := net.ParseIP(cfg.Security.DNSGuard.FallbackDNS); ip != nil {
-				dnsServers = []net.IP{ip}
-			}
-		}
-		if len(dnsServers) > 0 {
-			dnsMgr.OnConnect(name, info.InterfaceName, dnsServers)
-		}
-	}
+	sort.Strings(keys)
+	return keys
 }
-
-// toggleProfile connects a disconnected profile (fetching credentials from
-// the OS keychain via ProfileService.Connect, exactly like `kongtrol up`)
-// or disconnects a connected one.
 
 func setIcon(connected bool) {
 	size := 32

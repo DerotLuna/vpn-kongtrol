@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/netstats"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -23,6 +25,32 @@ type TunnelMetrics struct {
 	BytesReceived uint64
 	LatencyMS     int64
 	UpdatedAt     time.Time
+	// LastError is the message of the most recent failed asynchronous
+	// connect (API, dashboard, tray, `up`) and LastErrorAt when it failed.
+	// Both are cleared when a new connect starts or one succeeds.
+	LastError   string    `json:"last_error,omitempty"`
+	LastErrorAt time.Time `json:"last_error_at,omitzero"`
+	// LastErrorKey is the i18n key of a one-line "what to do" message for
+	// LastError when one exists (e.g. "service.error.not_installed" when
+	// the privileged helper is missing). Clients render it translated
+	// instead of the raw English LastError.
+	LastErrorKey string `json:"last_error_key,omitempty"`
+	// Attach is a provider adapter's (attach mode) phase: how the tunnel
+	// came up (attached / auto / user) or what the user must do
+	// (waiting_user / waiting_disconnect / dropped). Clients render it with
+	// Attach.MessageKey() + i18n in their own language.
+	Attach *vpn.AttachState `json:"attach,omitempty"`
+}
+
+// interfaceCounters is the OS byte-counter source; a variable so tests can
+// stub it.
+var interfaceCounters = netstats.Counters
+
+// connectFailure is the last failed connect recorded for one profile.
+type connectFailure struct {
+	msg string
+	key string
+	at  time.Time
 }
 
 // ProfileHistory holds rolling historical stability metrics per profile.
@@ -48,6 +76,7 @@ type Collector struct {
 	adapters map[string]vpn.VPNAdapter
 	metrics  map[string]*TunnelMetrics
 	history  map[string]*ProfileHistory
+	lastErr  map[string]connectFailure
 	stop     chan struct{}
 
 	subMu sync.Mutex
@@ -129,9 +158,45 @@ func (c *Collector) Snapshot() map[string]TunnelMetrics {
 
 	out := make(map[string]TunnelMetrics, len(c.metrics))
 	for k, v := range c.metrics {
-		out[k] = *v
+		m := *v
+		if f, ok := c.lastErr[k]; ok {
+			m.LastError = f.msg
+			m.LastErrorAt = f.at
+			m.LastErrorKey = f.key
+		}
+		out[k] = m
 	}
 	return out
+}
+
+// RecordConnectError stores err as profile name's last connect failure and
+// notifies subscribers, so live views show it without waiting for a poll.
+// A nil err clears it. Safe on a nil Collector.
+func (c *Collector) RecordConnectError(name string, err error) {
+	if c == nil {
+		return
+	}
+	c.mu.Lock()
+	_, had := c.lastErr[name]
+	if err == nil {
+		delete(c.lastErr, name)
+	} else {
+		if c.lastErr == nil {
+			c.lastErr = make(map[string]connectFailure)
+		}
+		key, _ := privops.GuidanceKey(err)
+		c.lastErr[name] = connectFailure{msg: err.Error(), key: key, at: time.Now()}
+	}
+	c.mu.Unlock()
+	if err != nil || had {
+		c.notifyChange()
+	}
+}
+
+// ClearConnectError forgets profile name's last connect failure. Safe on a
+// nil Collector.
+func (c *Collector) ClearConnectError(name string) {
+	c.RecordConnectError(name, nil)
 }
 
 // HistorySnapshot returns a copy of historical profile metrics.
@@ -214,6 +279,14 @@ func (c *Collector) collect() {
 			m.InterfaceName = info.InterfaceName
 			m.BytesSent = info.BytesSent
 			m.BytesReceived = info.BytesReceived
+			// Adapters whose own tooling can't report traffic unprivileged
+			// (wg show needs admin, attach-mode providers have no API) get
+			// the OS interface counters, readable by any user.
+			if m.BytesSent == 0 && m.BytesReceived == 0 && m.InterfaceName != "" {
+				if sent, recv, ok := interfaceCounters(m.InterfaceName); ok {
+					m.BytesSent, m.BytesReceived = sent, recv
+				}
+			}
 			m.ConnectedAt = info.ConnectedAt
 			if !info.ConnectedAt.IsZero() {
 				m.UptimeSeconds = now.Sub(info.ConnectedAt).Seconds()
@@ -222,13 +295,30 @@ func (c *Collector) collect() {
 				m.AssignedIP = info.AssignedIP.String()
 			}
 		}
+		if r, ok := adapter.(vpn.AttachReporter); ok {
+			m.Attach = r.AttachState()
+		}
+		// Latency comes from the watchdog health probe (RecordHealth), once
+		// per health interval; keep the last reading between probes instead of
+		// wiping it on every 5s collection pass.
+		if m.Status == vpn.StatusConnected {
+			if h, ok := c.history[name]; ok {
+				m.LatencyMS = h.LastLatencyMS
+			}
+		}
 
 		if !hadPrev ||
 			prevStatus != m.Status ||
 			prev.InterfaceName != m.InterfaceName ||
 			prev.AssignedIP != m.AssignedIP ||
-			!prev.ConnectedAt.Equal(m.ConnectedAt) {
+			!prev.ConnectedAt.Equal(m.ConnectedAt) ||
+			attachKey(prev.Attach) != attachKey(m.Attach) {
 			changed = true
+		}
+		// A tunnel that came up (e.g. a watchdog reconnect) no longer has
+		// a relevant last connect error.
+		if m.Status == vpn.StatusConnected {
+			delete(c.lastErr, name)
 		}
 
 		c.metrics[name] = m
@@ -255,6 +345,7 @@ func (c *Collector) collect() {
 			default:
 				if prevStatus == vpn.StatusConnected {
 					h.LastDownAt = now
+					h.LastLatencyMS = 0 // stale once the tunnel is gone
 				}
 			}
 		}
@@ -320,4 +411,22 @@ func (c *Collector) SaveHistory(path string) error {
 		return err
 	}
 	return os.WriteFile(path, data, 0o600)
+}
+
+// attachKey identifies an attach state for change detection.
+func attachKey(a *vpn.AttachState) string {
+	if a == nil {
+		return ""
+	}
+	return string(a.Phase) + "|" + a.App + "|" + a.Reason
+}
+
+// Refresh runs one collection pass now (e.g. when a provider adapter
+// changes its attach phase) so subscribers see the change without waiting
+// for the next poll. Safe on a nil Collector.
+func (c *Collector) Refresh() {
+	if c == nil {
+		return
+	}
+	c.collect()
 }
