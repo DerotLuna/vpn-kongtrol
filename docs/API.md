@@ -58,7 +58,11 @@ PUT/DELETE /api/v1/vpns/{name}              # PUT with a different "name" rename
                                              #   failover lists, scheduler rules, expected_ips, keychain entries and favorites follow;
                                              #   409 api.err.vpn_exists | api.err.vpn_rename_busy (tunnel up or connecting).
                                              # DELETE: 409 api.err.vpn_in_use listing policies, groups, failover and schedules at once;
-                                             #   409 api.err.vpn_last; its expected IP is dropped; trial config validated first.PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
+                                             #   409 api.err.vpn_last; its expected IP is dropped; trial config validated first.
+POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openvpn","content_base64","overwrite":false} → 201
+                                             #   {"status":"imported","path","type","overwritten"}: stored 0600 as ~/.kongtrol/configs/<name>.conf|.ovpn;
+                                             #   validated like the helper does (no PostUp/…; no up/down/plugin/script-security>1/log/config…;
+                                             #   an .ovpn must inline its certs/keys). 409 api.err.import_exists unless overwrite; 400 api.err.import_*PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 
 # Groups
 GET/POST  /api/v1/groups

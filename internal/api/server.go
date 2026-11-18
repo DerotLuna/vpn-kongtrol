@@ -74,6 +74,9 @@ type Server struct {
 	auditVerify func(security.AuditEvent) bool
 	// blockedList returns the prefixes blocked now (SetBlockedList).
 	blockedList func() []string
+	// importDir is where POST /api/v1/vpns/import stores files
+	// ("" = ~/.kongtrol/configs; SetImportDir).
+	importDir string
 	// setupMode / restart back /api/v1/setup and /api/v1/restart; see
 	// SetSetupMode and SetRestarter.
 	setupMode atomic.Bool
@@ -174,6 +177,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
 	mux.HandleFunc("GET /api/v1/vpns/detect", s.handleDetectVPNs)
 	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
+	mux.HandleFunc("POST /api/v1/vpns/import", s.handleImportVPNFile)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
 	mux.HandleFunc("DELETE /api/v1/vpns/{name}", s.handleDeleteVPN)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}/killswitch", s.handleSetProfileKillSwitch)
