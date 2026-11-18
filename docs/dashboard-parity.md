@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.1.0 · 2026-11-18
+Version 1.2.0 · 2026-11-18
 
 ## 1. Purpose and how to use
 
@@ -407,11 +407,11 @@ Table / states / notices
 
 #### `notices.js` (live notices)
 
-- [ ] Poll events every 5 s on every page; `after` seq kept in sessionStorage (`kongtrol.noticeSeq`), fresh tab = no backlog — legacy notices.js:98-137 — API GET /api/v1/events?after= (handlers_events.go:28) `events[], seq` — target shell (all pages), list in `/activity` — status: missing
-- [ ] Kinds shown: `policy_tunnel_down`, `tunnel_watchdog`, `update_available`; WARN → error style — legacy notices.js:122-124 — target shell — status: missing
-- [ ] Keys `policy.event.allow|block|connect|connect_failed`, `watchdog.event.reconnect_failing|failover|reconnected|no_response|responding`, `update.event.available` (args `{0}{1}{2}`) — legacy notices.js:8-39 — target `src/i18n/messages.ts` — status: missing
-- [ ] Action toast "Connect {profile}" when `can_connect`, stays 60 s — legacy notices.js:48-81, 125-126 — target shell — status: missing
-- [ ] Action → connect with `notice.connecting` / `notice.connectFailed` — legacy notices.js:83-94 — API POST /api/v1/tunnels/{name}/connect — target shell — status: missing
+- [x] Poll events every 5 s on every page; `after` seq kept in sessionStorage (`kongtrol.noticeSeq`), fresh tab = no backlog — legacy notices.js:98-137 — API GET /api/v1/events?after= (handlers_events.go:28) `events[], seq` — target shell (all pages), list in `/activity` — status: done (web/ui/src/data/home.ts `useDaemonNotices`, mounted once by web/ui/src/components/layout/AppShell.tsx; list on `/` and `/activity`)
+- [x] Kinds shown: `policy_tunnel_down`, `tunnel_watchdog`, `update_available`; WARN → error style — legacy notices.js:122-124 — target shell — status: done (web/ui/src/data/home.ts `NOTICE_KINDS`, WARN → error tone)
+- [x] Keys `policy.event.allow|block|connect|connect_failed`, `watchdog.event.reconnect_failing|failover|reconnected|no_response|responding`, `update.event.available` (args `{0}{1}{2}`) — legacy notices.js:8-39 — target `src/i18n/messages.ts` — status: done (web/ui/src/i18n/pages/home.ts `home.notice.*`)
+- [x] Action toast "Connect {profile}" when `can_connect`, stays 60 s — legacy notices.js:48-81, 125-126 — target shell — status: done (web/ui/src/data/home.ts `useNoticeToasts`, `ACTION_TOAST_MS`)
+- [x] Action → connect with `notice.connecting` / `notice.connectFailed` — legacy notices.js:83-94 — API POST /api/v1/tunnels/{name}/connect — target shell — status: done (web/ui/src/data/home.ts `useNoticeToasts` → tunnel actions with their own progress and error toasts)
 - [ ] Watchdog `manual_reconnect_required` / attach drop notices — legacy not filtered in (kind list notices.js:122) — `no verificado` whether daemon emits other kinds — target shell — status: missing
 
 #### `toast.js`

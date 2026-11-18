@@ -1,4 +1,4 @@
-// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.0 · 2026-11-18
+// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.1 · 2026-11-18
 //
 // Everything the Home page reads or changes that the shared layer
 // (resources.ts) does not have yet: network overview, what goes through each
@@ -531,7 +531,10 @@ export function noticeText(e: DaemonEvent, t: Translate): string {
 /** A notice with an action waits this long (legacy notices.js: 60 s). */
 export const ACTION_TOAST_MS = 60_000
 
-/** Polls the daemon's notices and toasts each new one. Mount once per page. */
+/**
+ * Polls the daemon's notices and toasts each new one. Mounted once, by the
+ * shell (AppShell), so every page gets them and Inicio's list shares the poll.
+ */
 export function useNoticeToasts(): void {
   const { t } = usePreferences()
   const run = useTunnelActions()

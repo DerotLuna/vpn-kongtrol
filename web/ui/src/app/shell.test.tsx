@@ -101,6 +101,26 @@ describe('shell and routes', () => {
     expect(screen.getByRole('button', { name: 'Install helper' })).toBeEnabled()
   })
 
+  it('toasts daemon notices on every page, not only on Home', async () => {
+    sessionStorage.clear()
+    stubFetch({
+      ...base,
+      'GET /api/v1/helper/status': () => json(helperReady),
+      'GET /api/v1/events?after=-1': () =>
+        json({
+          seq: 3,
+          events: [
+            { seq: 3, time: '2026-11-18T10:00:00Z', kind: 'tunnel_watchdog', level: 'INFO', key: 'watchdog.event.reconnected', args: ['work'], profile: 'work' },
+          ],
+        }),
+    })
+    window.history.replaceState(null, '', '/rules')
+    render(<App />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Rules' })).toBeInTheDocument()
+    const region = document.querySelector<HTMLElement>('.k-toaster [role="status"]')!
+    expect(await within(region).findByText('work reconnected')).toBeInTheDocument()
+  })
+
   it('says Kongtrol stopped answering, with what to do, over every page', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
     window.history.replaceState(null, '', '/traffic')

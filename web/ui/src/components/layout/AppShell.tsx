@@ -1,4 +1,4 @@
-// Kongtrol UI — app shell · v0.2.0 · 2026-11-18
+// Kongtrol UI — app shell · v0.3.0 · 2026-11-18
 //
 // Layout route for every page (ADR-0038):
 // - Header: logo top-left, aggregate VPN status, help (same place on every
@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
 import { SECTIONS } from '../../app/sections'
+import { useNoticeToasts } from '../../data/home'
 import { useHelperReadyToast } from '../../data/resources'
 import { GUIDE_URL, LEGACY } from '../../links'
 import { IconButton } from '../ui/Button'
@@ -109,6 +110,9 @@ export function AppShell() {
   const { pathname } = useLocation()
   const first = useRef(true)
   useHelperReadyToast()
+  // Daemon notices (policy, watchdog, update) toast on every page, like the
+  // classic notices.js; one poll for the whole app, shared with Inicio's list.
+  useNoticeToasts()
 
   // Move focus to the new page's heading after a navigation (not on load).
   useEffect(() => {
