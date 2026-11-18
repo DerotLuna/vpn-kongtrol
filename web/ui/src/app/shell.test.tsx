@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
@@ -25,6 +25,20 @@ describe('shell and routes', () => {
     expect((await screen.findAllByText('Version v0.7.0'))[0]).toBeInTheDocument()
     const nav = screen.getAllByRole('navigation', { name: 'Sections' })[0]!
     expect(within(nav).getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('the status link keeps its visible words in its name while the live feed reconnects', async () => {
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    render(<App />)
+    await screen.findByRole('link', { name: 'Your VPNs status: 1 of 2 connected' })
+    const socket = FakeSocket.last()
+    act(() => {
+      socket.open()
+      socket.drop()
+    })
+    const link = await screen.findByRole('link', { name: /Reconnecting to Kongtrol…$/ })
+    // WCAG 2.5.3: the accessible name contains the visible text.
+    expect(link).toHaveAccessibleName('Your VPNs status: 1 of 2 connected Reconnecting to Kongtrol…')
   })
 
   it('navigates without reload, focuses the new heading and sets the title', async () => {
