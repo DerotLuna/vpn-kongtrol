@@ -27,6 +27,9 @@ const CORE_R = 56
 const PORT_DOT = 3
 const PORT_L = 320 - CORE_R - PORT_DOT
 const PORT_R = 320 + CORE_R + PORT_DOT
+// port labels: baseline just under the dots (core-relative y); a halo in the
+// board colour (paint-order, routeboard.css) keeps them legible over wires
+const PORT_LABEL_Y = PORT_DOT + 17
 
 export default function Features({ lang }: Props) {
   const [active, setActive] = useState(0)
@@ -49,8 +52,8 @@ export default function Features({ lang }: Props) {
       boardIn: 'Destino',
       boardCore: 'Reglas de Kongtrol',
       boardOut: 'Sale por',
-      portIn: 'tus apps',
-      portOut: 'VPN o internet',
+      portIn: 'tus apps →',
+      portOut: '→ VPN o internet',
       readoutRule: 'regla',
       readoutNoRule: 'sin regla — sale directo, sin VPN',
       hint: 'Toca un destino para ver por dónde sale',
@@ -68,8 +71,8 @@ export default function Features({ lang }: Props) {
       boardIn: 'Destination',
       boardCore: 'Kongtrol rules',
       boardOut: 'Goes through',
-      portIn: 'your apps',
-      portOut: 'VPN or internet',
+      portIn: 'your apps →',
+      portOut: '→ VPN or internet',
       readoutRule: 'rule',
       readoutNoRule: 'no rule — goes out directly, no VPN',
       hint: 'Tap a destination to see where it goes out',
@@ -153,8 +156,10 @@ export default function Features({ lang }: Props) {
               <image className="sb-logo" href={`${import.meta.env.BASE_URL}logo-kong.svg`} x="-40" y="-40" width="80" height="80" />
               <circle className="sb-port in" cx={-CORE_R} r={PORT_DOT} />
               <circle className="sb-port out" cx={CORE_R} r={PORT_DOT} />
-              <text className="sb-port-label" x={-CORE_R} y={CORE_R + 26} textAnchor="middle">{copy.portIn}</text>
-              <text className="sb-port-label" x={CORE_R} y={CORE_R + 26} textAnchor="middle">{copy.portOut}</text>
+              {/* each label hangs right under its port: "→" ends at the IN dot
+                  and starts at the OUT dot, so the arrows read as the flow */}
+              <text className="sb-port-label in" x={-CORE_R + PORT_DOT} y={PORT_LABEL_Y} textAnchor="end">{copy.portIn}</text>
+              <text className="sb-port-label out" x={CORE_R - PORT_DOT} y={PORT_LABEL_Y} textAnchor="start">{copy.portOut}</text>
             </g>
 
             {/* destination nodes (left) */}

@@ -1,4 +1,4 @@
-/* Routing switchboard (#map) — version 1.3.0 · 2026-11-18.
+/* Routing switchboard (#map) — version 1.4.0 · 2026-11-18.
    Only .switchboard / .sb-* rules live here; tokens come from index.css.
    v1.1: ports are small dots on the ring; below 768px the SVG gives way to
    an HTML list (.sb-list) so no label renders under the 11px floor.
@@ -43,7 +43,17 @@
    solid signal so the wire's landing point still reads */
 .sb-port { fill: var(--surface); stroke: var(--signal); stroke-width: 1.25; transition: stroke 0.3s ease; }
 .sb-core.direct .sb-port.out { stroke: var(--steel); }
-.sb-port-label { font-family: var(--font-mono); font-size: 11px; fill: var(--text-dim); letter-spacing: 0.03em; }
+/* v1.4: each label hangs right under its port. The label on the active
+   route's side takes that wire's colour (amber; the OUT side is steel for a
+   direct route, like its wire); a halo in the board colour keeps it legible
+   where wires pass behind it. */
+.sb-port-label {
+  font-family: var(--font-mono); font-size: 11px; fill: var(--text-dim); letter-spacing: 0.03em;
+  paint-order: stroke; stroke: var(--surface); stroke-width: 5px; stroke-linejoin: round;
+  transition: fill var(--dur-medium) var(--ease-standard);
+}
+.sb-core .sb-port-label.in, .sb-core .sb-port-label.out { fill: var(--signal); }
+.sb-core.direct .sb-port-label.out { fill: var(--steel); }
 
 /* nodes */
 .sb-node { cursor: pointer; }
@@ -88,6 +98,15 @@
   /* only while the board is on screen (.is-live, Features.tsx) — ADR-0031 */
   .switchboard.is-live .sb-wire-group.active .sb-wire { animation: sbFlow 0.7s linear infinite; }
   .switchboard.is-live .sb-core .sb-pulse { animation: sbPulse 3.2s ease-out infinite; }
+  /* v1.4: the ports breathe with the flow — same loop gate, transform +
+     opacity only, half a beat apart so IN leads OUT */
+  .switchboard.is-live .sb-port { animation: sbPort 1.4s ease-in-out infinite; }
+  .switchboard.is-live .sb-port.out { animation-delay: 0.35s; }
+}
+.sb-port { transform-box: fill-box; transform-origin: center; }
+@keyframes sbPort {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.45); opacity: 0.7; }
 }
 @keyframes sbFlow { to { stroke-dashoffset: -22; } }
 /* r 48 × 0.92…1.06 = 44…51: outside the logo (r 40), inside the ports (r 53) */
