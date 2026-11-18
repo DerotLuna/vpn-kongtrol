@@ -188,6 +188,23 @@ func DailyAuditLogCandidates(basePath string, limit int) []string {
 	return paths
 }
 
+// AuditLogFiles lists the files the audit logger actually wrote for
+// basePath: only "<base>-YYYY-MM-DD<ext>" names (the logger never writes
+// basePath itself). Used by purge, so a user-set path never makes it
+// delete anything but these files.
+func AuditLogFiles(basePath string) []string {
+	if basePath == "" {
+		return nil
+	}
+	var out []string
+	for _, p := range DailyAuditLogCandidates(basePath, 64) {
+		if _, ok := parseDailyAuditDateKey(basePath, p); ok {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 func parseDailyAuditDateKey(basePath, path string) (string, bool) {
 	ext := filepath.Ext(basePath)
 	baseNoExt := strings.TrimSuffix(basePath, ext)

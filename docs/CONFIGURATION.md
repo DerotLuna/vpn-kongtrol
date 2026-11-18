@@ -3,6 +3,10 @@
 Full reference for `~/.kongtrol/kongtrol.yaml`. For a guided walkthrough that builds this file interactively, run `kongtrol init` or see [SETUP.md](SETUP.md).
 Every key with its type and default, generated from the schema: [CONFIG.en.md](CONFIG.en.md) (Español: [CONFIG.md](CONFIG.md)).
 
+Names of VPN profiles, policies, groups and scheduler rules: 1–64 characters; letters, numbers,
+spaces and `- _ .` are fine; `<`, `>`, `"`, `'`, `` ` ``, `&`, `\` and control characters are refused (they are shown in
+the dashboards and the tray; [ADR-0040](adr/0040-local-hardening-review-2026-11.md)).
+
 ```yaml
 # ~/.kongtrol/kongtrol.yaml
 # Run 'kongtrol init' to generate this file interactively.
@@ -139,7 +143,7 @@ security:
     action: notify   # notify | killswitch_and_notify
 
   audit_log:
-    path: ~/.kongtrol/audit.log
+    path: ~/.kongtrol/audit.log   # a file, never a folder; daily files audit-YYYY-MM-DD.log
     max_size_mb: 100
     sign: true          # HMAC-SHA256 per entry
 

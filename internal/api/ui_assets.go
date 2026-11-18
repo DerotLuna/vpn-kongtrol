@@ -36,19 +36,6 @@ var uiContentTypes = map[string]string{
 	".txt":   "text/plain; charset=utf-8",
 }
 
-// setControlCookie gives a page served by this daemon (legacy dashboard or
-// the new UI) the API capability as an HttpOnly, SameSite=Strict cookie, so
-// page scripts never see the token.
-func (s *Server) setControlCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "kongtrol_control",
-		Value:    s.apiToken,
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-	})
-}
-
 // newUIHandler serves the built single-page app from fsys (rooted at the
 // Vite outDir) under uiPrefix. built=false serves a translated page telling
 // developers to build the UI. Auth and Host/Origin checks stay in

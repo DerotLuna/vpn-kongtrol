@@ -16,6 +16,7 @@ import { AppShell } from './components/layout/AppShell'
 import { ActivityPage } from './pages/ActivityPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { SecurityPage } from './pages/SecurityPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { TrayPage } from './pages/TrayPage'
 import { WelcomePage } from './pages/WelcomePage'
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route index element={<WelcomePage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="security" element={<SecurityPage />} />
         {Object.entries(PLACEHOLDERS).map(([path, spec]) => (
           <Route key={path} path={path} element={<PlaceholderPage spec={spec} />} />
         ))}

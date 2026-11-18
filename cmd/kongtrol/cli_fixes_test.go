@@ -27,13 +27,18 @@ func TestDashboard_UsesSharedDaemon(t *testing.T) {
 	t.Cleanup(func() { openBrowserFn = oldOpen })
 	var opened string
 	openBrowserFn = func(u string) error { opened = u; return nil }
+	oldPanel := daemonPanelURLFn
+	t.Cleanup(func() { daemonPanelURLFn = oldPanel })
+	daemonPanelURLFn = func(base, path string) string { return base + path + "#k=nonce" }
 
 	out, err := captureStdout(t, func() error { return dashboardCmd.RunE(dashboardCmd, nil) })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opened != daemonAPIBase() {
-		t.Fatalf("opened %q, want the daemon's %q", opened, daemonAPIBase())
+	// Opens the daemon's page with a one-time sign-in nonce, never the
+	// plain address (the page no longer hands out credentials).
+	if want := daemonAPIBase() + "/#k=nonce"; opened != want {
+		t.Fatalf("opened %q, want %q", opened, want)
 	}
 	if !strings.Contains(out, ct("cli.dashboard.keeps_running")) {
 		t.Errorf("output lacks the keeps-running line:\n%s", out)
@@ -102,5 +107,19 @@ func TestDoctorFix_InstallsMissingHelper(t *testing.T) {
 	_, _ = captureStdout(t, func() error { _, err := applyDoctorFixes(); return err })
 	if *installs != 0 {
 		t.Fatalf("installed a helper that already answers (%d)", *installs)
+	}
+}
+
+// Uninstall refuses sudo: HOME may be root's or the user's depending on the OS.
+func TestRunViaSudo(t *testing.T) {
+	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	if !runViaSudo(0, env(map[string]string{"SUDO_USER": "ana"})) {
+		t.Error("sudo from ana not detected")
+	}
+	if runViaSudo(0, env(nil)) || runViaSudo(0, env(map[string]string{"SUDO_USER": "root"})) {
+		t.Error("plain root must be allowed")
+	}
+	if runViaSudo(1000, env(map[string]string{"SUDO_USER": "ana"})) || runViaSudo(-1, env(map[string]string{"SUDO_USER": "ana"})) {
+		t.Error("non-root must be allowed")
 	}
 }
