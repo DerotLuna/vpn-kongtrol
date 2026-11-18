@@ -173,6 +173,10 @@ func ManagerCommand(manager string) string {
 		return "brew uninstall kongtrol"
 	case "npm":
 		return "npm uninstall -g kongtrol"
+	case "scoop": // .goreleaser.yaml scoops
+		return "scoop uninstall kongtrol"
+	case "winget": // .goreleaser.yaml winget package_identifier
+		return "winget uninstall Kongtrol.Kongtrol"
 	}
 	return ""
 }

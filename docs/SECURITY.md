@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.3.0 · 2026-11-18
+Version 2.4.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -10,7 +10,8 @@ exactly which network connections it makes.
 
 ## No telemetry
 
-Kongtrol sends no telemetry, analytics, crash reports or update checks. Credentials go straight
+Kongtrol sends no telemetry, analytics or crash reports, and no update check unless you turn the
+optional new version notice on (off by default, see below). Credentials go straight
 from your prompt into the OS credential store (`internal/config`) and are never written to disk in
 plaintext or logged. The audit log (`internal/security`) is local, HMAC-signed for
 tamper-evidence, and never leaves the machine.
@@ -24,14 +25,24 @@ credentials or usage data.
 | Connection | When | Why | Code |
 |---|---|---|---|
 | HTTPS `GET` to the public IP service — `https://api.ipify.org` by default, or the `security.public_ip_check.endpoints` you set (https only) | **Off by default (opt-in).** Only when `security.public_ip_check.enabled: true` (or the legacy `leak_detection.enabled: true`): once after a tunnel connects or disconnects (at most one lookup per 30 s, coalesced) and when you ask (`kongtrol check`, "Revisar" in the dashboard, the tray's public IP line). Never periodic. The kill switch and DNS guard do not use it. | Show your public IP and compare it with `integrity_check.expected_ips` (leak check). That service sees your public IP, as with any website. 5 s timeout; the answer must be a bare IP of at most 64 bytes. | `internal/security/leaktest.go`, `cmd/kongtrol/publicip.go` |
+| HTTPS `GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest` with only `User-Agent: kongtrol/<version>` and `Accept: application/vnd.github+json` (no token, cookie or user data) | **Off by default (opt-in).** Only when `updates.check_enabled: true` (`kongtrol config update-check on`, the dashboard's Ajustes, or "Sí" in `kongtrol init`): at most once every 24 h (the last attempt is remembered in `~/.kongtrol/update-check.json`, failures included), plus once right after you turn it on if 24 h have passed. | Tell you a newer stable version exists (pre-releases ignored), once per version, with how to update. It never downloads or installs anything. GitHub sees your public IP, the time and that User-Agent. 5 s timeout; at most 1 MiB of the answer is read. [ADR-0034](adr/0034-uninstall-and-update-notice.md) | `internal/update/update.go`, `cmd/kongtrol/daemon_update.go` |
 | TCP connect to the profile's `host:port` (default 443), closed immediately | Before each connect (preflight) and on tunnel health checks | Warn early when the VPN server is unreachable; measure latency. | `internal/app/profile_service.go`, `cmd/kongtrol/daemon_runtime.go` |
 | DNS lookups of policy domains, through the system resolver and the tunnels' DNS servers (UDP/TCP 53) | When domain rules are resolved to routes | Turn `*.example.com` rules into IP routes. | `internal/monitor/policyresolver.go` |
 | DNS lookup of VPN server hostnames | When the per-profile kill switch is applied | Allow-list the VPN server so the tunnel can come up behind the block. | `internal/app/killswitch_service.go` |
 | TCP to the tunnel's DNS server on port 53 | Health checks when the VPN server itself cannot be probed | Measure a round trip inside the tunnel. | `cmd/kongtrol/daemon_runtime.go` |
 
-No update check: Kongtrol never asks a server whether a new version exists. Updates come from the
-channel you installed with (winget, Scoop, Homebrew, AUR, apt/dnf, npm, the Windows installer or
-`install.sh`); see [ADR-0025](adr/0025-desktop-release-channels-first-run.md).
+<!-- feature:update_check -->
+Updates come from the channel you installed with (winget, Scoop, Homebrew, AUR, apt/dnf, npm, the
+Windows installer or `install.sh`); see [ADR-0025](adr/0025-desktop-release-channels-first-run.md).
+Kongtrol asks GitHub whether a new version exists only when you turned the optional notice on (row
+above); it never updates itself.
+
+<!-- feature:uninstall -->
+Uninstalling keeps your data unless you ask: `kongtrol uninstall --purge`, "Borrar todos mis datos"
+in the dashboard, or "Sí" in the Windows uninstaller delete `~/.kongtrol` and exactly Kongtrol's
+keychain entries (`vpn-kongtrol` / `<profile>.username`, `<profile>.password` for every profile
+named in `kongtrol.yaml` and its backups, and `_system.audit_hmac_key`). Files owned by a package
+manager are never deleted. See [ADR-0034](adr/0034-uninstall-and-update-notice.md).
 
 Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
 plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its

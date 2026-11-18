@@ -1,4 +1,4 @@
-# Change-impact map — version 1.3 · 2026-11-18
+# Change-impact map — version 1.4 · 2026-11-18
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -270,3 +270,35 @@ features:
       - docs/SETUP.md#distribution
       - docs/DEVELOPMENT.md#distribution
       - docs/SECURITY.md#distribution
+
+  update_check:
+    code:
+      - internal/update/**
+      - internal/config/updates.go
+      - internal/daemonctl/updates.go
+      - cmd/kongtrol/cmd_config_update.go
+      - cmd/kongtrol/daemon_update.go
+      - web/ui/src/components/settings/UpdatesCard.tsx
+    surfaces:
+      - README.md#update_check
+      - AGENTS.md#update_check
+      - docs/SECURITY.md
+      - docs/API.md#update_check
+      - landing/src/content/legal/privacidad.tsx
+      - landing/src/content/guide.es.tsx#update_check
+      - landing/src/content/guide.en.tsx#update_check
+
+  uninstall:
+    code:
+      - internal/uninstall/**
+      - internal/api/handlers_lifecycle.go
+      - cmd/kongtrol/cmd_uninstall*.go
+      - packaging/windows/kongtrol.iss
+      - web/ui/src/components/settings/DataCard.tsx
+    surfaces:
+      - README.md#uninstall
+      - AGENTS.md#uninstall
+      - docs/SETUP.md#uninstall
+      - docs/API.md#uninstall
+      - landing/src/content/guide.es.tsx#uninstall
+      - landing/src/content/guide.en.tsx#uninstall
