@@ -184,12 +184,12 @@ func (req vpnProfileReq) applyTo(vc *config.VPNConfig) {
 func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
 	var req vpnProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
 	name := strVal(req.Name)
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "profile name is required")
+		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.name_required"})
 		return
 	}
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -198,7 +198,7 @@ func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, exists := cfg.VPNs[name]; exists {
-		writeError(w, http.StatusConflict, "vpn profile already exists")
+		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_exists", Args: []any{name}})
 		return
 	}
 	if err := s.saveVPNProfile(cfg, cfgPath, name, config.VPNConfig{}, req); err != nil {
@@ -214,12 +214,12 @@ func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		writeError(w, http.StatusBadRequest, "missing profile name")
+		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.name_required"})
 		return
 	}
 	var req vpnProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -229,7 +229,16 @@ func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 	}
 	existing, exists := cfg.VPNs[name]
 	if !exists {
-		writeError(w, http.StatusNotFound, "vpn profile not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.vpn_not_found", Args: []any{name}})
+		return
+	}
+	// A different "name" in the body renames the profile (ADR-0041).
+	if newName := strVal(req.Name); newName != "" && newName != name {
+		if status, err := s.renameVPNProfile(cfg, cfgPath, name, newName, req); err != nil {
+			writeLocalizedError(w, r, status, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "renamed", "profile": newName, "previous": name, "restart_required": true})
 		return
 	}
 	if err := s.saveVPNProfile(cfg, cfgPath, name, existing, req); err != nil {
@@ -355,41 +364,57 @@ func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 	}
 	existing, ok := cfg.VPNs[name]
 	if !ok {
-		writeError(w, http.StatusNotFound, "vpn profile not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.vpn_not_found", Args: []any{name}})
 		return
 	}
 	if len(cfg.VPNs) <= 1 {
-		writeError(w, http.StatusConflict, "cannot delete the last remaining VPN profile")
+		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_last", Args: []any{name}})
 		return
 	}
-	for _, p := range cfg.Policies {
-		if strings.EqualFold(p.Via, name) {
-			writeError(w, http.StatusConflict, fmt.Sprintf("profile %q is referenced by policy %q", name, p.Name))
-			return
-		}
-	}
-	for groupName, g := range cfg.Groups {
-		for _, prof := range g.Profiles {
-			if strings.EqualFold(prof, name) {
-				writeError(w, http.StatusConflict, fmt.Sprintf("profile %q is referenced by group %q", name, groupName))
-				return
-			}
-		}
+	// Every reference is listed at once: policies, groups, other profiles'
+	// failover, scheduler rules (ADR-0041).
+	if refs := findProfileRefs(cfg, name); !refs.empty() {
+		writeLocalizedError(w, r, http.StatusConflict, inUseError(name, refs))
+		return
 	}
 
-	delete(cfg.VPNs, name)
+	// Trial-then-commit: the expected IP of the profile goes with it; the
+	// rest must still validate.
+	trial := *cfg
+	trial.VPNs = make(map[string]config.VPNConfig, len(cfg.VPNs))
+	for k, v := range cfg.VPNs {
+		if k != name {
+			trial.VPNs[k] = v
+		}
+	}
+	if ips := cfg.Security.IntegrityCheck.ExpectedIPs; ips[name] != "" {
+		m := make(map[string]string, len(ips))
+		for k, v := range ips {
+			if k != name {
+				m[k] = v
+			}
+		}
+		trial.Security.IntegrityCheck.ExpectedIPs = m
+	}
+	if err := config.Validate(&trial); err != nil {
+		writeLocalizedError(w, r, http.StatusConflict, err)
+		return
+	}
+	*cfg = trial
 	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	var cleanupErrs []error
-	if existing.Auth.UsernameKeychain != "" {
-		if err := config.DeleteCredential(name, "username"); err != nil {
-			cleanupErrs = append(cleanupErrs, err)
+	for key, named := range map[string]bool{
+		"username": existing.Auth.UsernameKeychain != "",
+		"password": existing.Auth.PasswordKeychain != "",
+	} {
+		if !named {
+			continue
 		}
-	}
-	if existing.Auth.PasswordKeychain != "" {
-		if err := config.DeleteCredential(name, "password"); err != nil {
+		// An entry that was never stored is already gone, not a failure.
+		if err := config.DeleteCredential(name, key); err != nil && !errors.Is(err, config.ErrCredentialNotFound) {
 			cleanupErrs = append(cleanupErrs, err)
 		}
 	}

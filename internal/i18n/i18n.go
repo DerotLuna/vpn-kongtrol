@@ -409,6 +409,16 @@ var messages = map[Lang]map[string]string{
 		"api.err.audit_date.fix":                "Escribe el día como AAAA-MM-DD (por ejemplo 2026-11-18) o una fecha y hora completas.",
 		"api.err.audit_range":                   "La fecha de inicio es posterior a la de fin.",
 		"api.err.audit_range.fix":               "Intercambia las fechas o elige una fecha de fin posterior.",
+		"api.err.vpn_not_found":                 "No existe el perfil %[1]q.",
+		"api.err.vpn_not_found.fix":             "Recarga la página: puede que lo hayan borrado o renombrado.",
+		"api.err.vpn_exists":                    "Ya hay un perfil llamado %[1]q.",
+		"api.err.vpn_exists.fix":                "Usa otro nombre o edita el perfil que ya existe.",
+		"api.err.vpn_last":                      "%[1]q es el único perfil: Kongtrol necesita al menos uno.",
+		"api.err.vpn_last.fix":                  "Crea otro perfil primero y después borra este.",
+		"api.err.vpn_in_use":                    "El perfil %[1]q está en uso · políticas: %[2]s · grupos: %[3]s · respaldo (failover) de: %[4]s · horarios: %[5]s.",
+		"api.err.vpn_in_use.fix":                "Quítalo de esos lugares (o cámbialos a otro perfil) y vuelve a borrarlo.",
+		"api.err.vpn_rename_busy":               "%[1]q está conectada o conectándose: no se puede renombrar ahora.",
+		"api.err.vpn_rename_busy.fix":           "Desconéctala y vuelve a guardar el nuevo nombre.",
 
 		// Policies whose tunnel is off (on_tunnel_down) — daemon notices
 		"policy.on_down":              "  Si el túnel está apagado",
@@ -1442,6 +1452,16 @@ var messages = map[Lang]map[string]string{
 		"api.err.audit_date.fix":                "Write a day as YYYY-MM-DD (for example 2026-11-18) or a full date and time.",
 		"api.err.audit_range":                   "the start date is after the end date",
 		"api.err.audit_range.fix":               "Swap the dates or pick a later end date.",
+		"api.err.vpn_not_found":                 "profile %[1]q does not exist",
+		"api.err.vpn_not_found.fix":             "Reload the page: it may have been deleted or renamed.",
+		"api.err.vpn_exists":                    "a profile named %[1]q already exists",
+		"api.err.vpn_exists.fix":                "Use another name or edit the existing profile.",
+		"api.err.vpn_last":                      "%[1]q is the only profile: Kongtrol needs at least one",
+		"api.err.vpn_last.fix":                  "Create another profile first, then delete this one.",
+		"api.err.vpn_in_use":                    "profile %[1]q is in use · policies: %[2]s · groups: %[3]s · failover backup of: %[4]s · schedules: %[5]s",
+		"api.err.vpn_in_use.fix":                "Remove it from those places (or switch them to another profile) and delete it again.",
+		"api.err.vpn_rename_busy":               "%[1]q is connected or connecting: it cannot be renamed now",
+		"api.err.vpn_rename_busy.fix":           "Disconnect it and save the new name again.",
 
 		// Policies whose tunnel is off (on_tunnel_down) — daemon notices
 		"policy.on_down":              "  If the tunnel is off",

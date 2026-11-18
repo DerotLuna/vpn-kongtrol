@@ -54,8 +54,11 @@ GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, do
 # VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
 GET/POST  /api/v1/vpns
 GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing)
-PUT/DELETE /api/v1/vpns/{name}
-PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
+PUT/DELETE /api/v1/vpns/{name}              # PUT with a different "name" renames (→ {"status":"renamed","profile","previous"}): policies, groups,
+                                             #   failover lists, scheduler rules, expected_ips, keychain entries and favorites follow;
+                                             #   409 api.err.vpn_exists | api.err.vpn_rename_busy (tunnel up or connecting).
+                                             # DELETE: 409 api.err.vpn_in_use listing policies, groups, failover and schedules at once;
+                                             #   409 api.err.vpn_last; its expected IP is dropped; trial config validated first.PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 
 # Groups
 GET/POST  /api/v1/groups

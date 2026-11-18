@@ -8,6 +8,10 @@ import (
 
 const keychainService = "vpn-kongtrol"
 
+// ErrCredentialNotFound: no such entry in the keychain (wrapped by the
+// functions below; test with errors.Is).
+var ErrCredentialNotFound = keyring.ErrNotFound
+
 // GetCredential retrieves a credential from the OS keychain.
 // service is scoped to the VPN profile name; key is "username" or "password".
 func GetCredential(profile, key string) (string, error) {
