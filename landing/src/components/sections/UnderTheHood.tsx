@@ -11,7 +11,7 @@ export default function UnderTheHood({ lang }: Props) {
   const t = es
     ? {
       label: '$ kongtrol --verbose',
-      title: 'Bajo el capó',
+      title: 'Detalles técnicos',
       sub: 'Para quien quiere saber exactamente cómo funciona.',
       rows: [
         { k: 'Ruteo determinista', v: 'Longest-prefix match para IP y globs para dominios, con prioridad para resolver conflictos. El mismo destino siempre resuelve al mismo perfil.', m: 'LPM + prioridad' },
@@ -27,7 +27,7 @@ export default function UnderTheHood({ lang }: Props) {
     }
     : {
       label: '$ kongtrol --verbose',
-      title: 'Under the hood',
+      title: 'Technical details',
       sub: 'For anyone who wants to know exactly how it works.',
       rows: [
         { k: 'Deterministic routing', v: 'Longest-prefix match for IPs and globs for domains, with priority to settle conflicts. The same destination always resolves to the same profile.', m: 'LPM + priority' },
