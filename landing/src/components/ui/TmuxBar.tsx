@@ -8,26 +8,16 @@ export interface TmuxWindow {
   id: string
 }
 
-// landing sections as tmux windows — names match the URL hashes
-const HOME_WINDOWS: TmuxWindow[] = [
-  { n: 0, name: 'motd', id: 'motd' },
-  { n: 1, name: 'start', id: 'start' },
-  { n: 2, name: 'steps', id: 'steps' },
-  { n: 3, name: 'vpns', id: 'vpns' },
-  { n: 4, name: 'map', id: 'map' },
-  { n: 5, name: 'check', id: 'check' },
-  { n: 6, name: 'hood', id: 'hood' },
-  { n: 7, name: 'install', id: 'install' },
-]
-
+// each page passes its own sections as windows (pages/*/App.tsx, legal.tsx);
+// names are plain words in the visitor's language, ids are the URL hashes
 interface Props {
   lang: Lang
   session?: string
-  windows?: TmuxWindow[]
+  windows: TmuxWindow[]
   showStatus?: boolean // security + tunnel counters (landing demo)
 }
 
-export default function TmuxBar({ lang, session = 'kongtrol', windows = HOME_WINDOWS, showStatus = true }: Props) {
+export default function TmuxBar({ lang, session = 'kongtrol', windows, showStatus = true }: Props) {
   const [active] = useActiveSection(windows.map(w => w.id), '-40% 0px -55% 0px')
   const [clock, setClock] = useState('')
 

@@ -91,7 +91,7 @@ export default function SectionJumpMenu({ label, value, options, onChange, class
           onClick={() => setOpen(o => !o)}
           onKeyDown={onTriggerKey}
         >
-          <span className="jump-select-value">{current.num} — {current.label}</span>
+          <span className="jump-select-value"><span className="guide-num">{current.num}</span>{current.label}</span>
           <svg className="jump-select-arrow" viewBox="0 0 10 6" aria-hidden="true">
             <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>

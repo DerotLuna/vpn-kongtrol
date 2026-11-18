@@ -11,50 +11,50 @@ import IC from '../components/ui/InlineCode'
 export default function guideES(os: OS) {
   return {
     intro1: <><span className="guide-intro-badge">Cómo funciona</span></>,
-    intro2: <>Kongtrol no es un cliente VPN — es la capa que se sienta entre tus apps y los
+    intro2: <>Kongtrol no es un cliente VPN: es la capa que se sienta entre tus apps y los
             clientes VPN que ya tienes instalados (FortiClient, OpenVPN, ProtonVPN, etc.).
             El <strong>policy engine</strong> mira cada conexión saliente (dominio, IP o app) y
             decide por cuál túnel debe salir; el resto de comandos (<IC c="up" />, <IC c="doctor" />,
             <IC c="status" />) solo controlan ese enrutamiento y el ciclo de vida de los túneles.</>,
     intro3: <>tus apps</>,
     intro4: <>Chrome, Slack, terminal, código…</>,
-    intro5: <>policy engine — dominios · IPs · apps</>,
+    intro5: <>policy engine: dominios · IPs · apps</>,
     intro6: <>tus VPNs</>,
     intro7: <>kill switch · dns guard · audit log firmado</>,
     intro8: <>Contenido</>,
     intro9: "Ir a",
     quickstart1: <><span className="guide-quickstart-badge">Inicio rápido</span></>,
-    quickstart2: <>Ya tienes tus VPNs instaladas y funcionando. Kongtrol solo las orquesta — tres comandos y estás operando. Las 10 secciones de abajo son referencia; vuelve a ellas solo si algo no calza.</>,
+    quickstart2: <>Ya tienes tus VPNs instaladas y funcionando. Kongtrol solo las orquesta: tres comandos y estás operando. Las 10 secciones de abajo son referencia; vuelve a ellas solo si algo no calza.</>,
     quickstart3: <><strong>Registra tus perfiles</strong></>,
     quickstart4: <>Detecta clientes, guarda credenciales en el keychain, arma políticas.</>,
     quickstart5: <><strong>Valida el stack</strong></>,
-    quickstart6: <>Binarios, certificados, keychain y permisos — antes de conectar.</>,
+    quickstart6: <>Binarios, certificados, keychain y permisos, antes de conectar.</>,
     quickstart7: <><strong>Conecta y opera</strong></>,
     quickstart8: <>Levanta un grupo, mira el estado en vivo, abre el panel.</>,
     // feature:providers
     prereqs1: <>Prerequisitos</>,
-    prereqs2: <>Kongtrol <strong>orquesta</strong> los clientes VPN existentes — no los reemplaza.
+    prereqs2: <>Kongtrol <strong>orquesta</strong> los clientes VPN existentes, no los reemplaza.
                 Deben estar instalados antes de correr <IC c="kongtrol init" />.</>,
     prereqs3: 'Cliente requerido',
     prereqs4: 'Verificar',
-    prereqs5: <>Abrir FortiClient — debe aparecer al menos una conexión guardada en la lista.
+    prereqs5: <>Abrir FortiClient: debe aparecer al menos una conexión guardada en la lista.
                       Si puedes conectarte manualmente desde la GUI, está listo.</>,
     prereqs6: <>{os === 'windows'
-                        ? <>CLI o GUI según instalador. Community: <IC c="openvpn --version" /> en terminal (agrega al PATH). OpenVPN Connect: solo GUI — Kongtrol lo detecta automáticamente.</>
+                        ? <>CLI o GUI según instalador. Community: <IC c="openvpn --version" /> en terminal (agrega al PATH). OpenVPN Connect: solo GUI. Kongtrol lo detecta automáticamente.</>
                         : <IC c="openvpn --version" />}</>,
     prereqs7: 'App oficial de ProtonVPN (o WireGuard con su .conf)',
     prereqs8: <>{os === 'linux'
                         ? <>Inicia sesión en la app. En Linux Kongtrol puede conectar por ti; si no, conectas tú y lo detecta.</>
                         : <>Inicia sesión en la app. Conectas tú y Kongtrol detecta el túnel solo.</>}
                       {' '}Sin app: perfil <IC c="wireguard" /> con el <IC c=".conf" /> de Proton.</>,
-    prereqs9: <><strong>Nota:</strong> si el wizard muestra ✓ para un cliente, está detectado y listo — no necesitas verificar manualmente en terminal.</>,
+    prereqs9: <><strong>Nota:</strong> si el wizard muestra ✓ para un cliente, está detectado y listo: no necesitas verificar manualmente en terminal.</>,
     prereqs10: <><strong>No cierres la app de tu VPN:</strong> Kongtrol trabaja con ella.
                 Si el túnel ya está arriba, se engancha a él. Si no, abre la app y conecta por ti
                 donde se puede; si no puede, te dice qué hacer y espera a que conectes.</>,
     prereqs11: <>Comando</>,
     prereqs12: <>Estado requerido de los clientes</>,
-    prereqs13: <>Cualquiera — solo lee archivos y keychain</>,
-    prereqs14: <>Cualquiera — solo valida, no conecta</>,
+    prereqs13: <>Cualquiera: solo lee archivos y keychain</>,
+    prereqs14: <>Cualquiera: solo valida, no conecta</>,
     prereqs15: <>kongtrol up &lt;perfil&gt;</>,
     prereqs16: <>App instalada; abierta o cerrada da igual (Kongtrol la abre si hace falta)</>,
     // feature:helper
@@ -62,7 +62,7 @@ export default function guideES(os: OS) {
     install2: <>1. Descarga <IC c="kongtrol_windows_amd64.zip" /> desde{' '}
                     <a href="/#install">la sección de descargas</a>.</>,
     install3: <>2. Extrae el ZIP. Verás un archivo <IC c="kongtrol.exe" />.
-                    Muévelo a una carpeta fija — por ejemplo crea{' '}
+                    Muévelo a una carpeta fija; por ejemplo, crea{' '}
                     <IC c="C:\tools\" /> si no tienes una:</>,
     install4: `# Crea la carpeta (si no existe) y mueve el binario
 New-Item -ItemType Directory -Force "C:\\tools"
@@ -77,7 +77,7 @@ Move-Item kongtrol.exe C:\\tools\\kongtrol.exe`,
 )`,
     install7: <>4. Abre una terminal <strong>nueva</strong> y verifica:</>,
     install8: <><strong>¿Por qué una terminal nueva?</strong> Los cambios al PATH solo
-                    aplican en terminales abiertas después del cambio — las que ya estaban
+                    aplican en terminales abiertas después del cambio; las que ya estaban
                     abiertas no lo ven.</>,
     install9: `# Apple Silicon (M1+)
 $ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
@@ -101,7 +101,7 @@ $ kongtrol --help`,
                     Después ningún comando necesita una terminal de administrador ni <IC c="sudo" />.</>,
     // feature:wizard
     wizard1: <>Registrar tus VPNs: kongtrol init</>,
-    wizard2: <><IC c="kongtrol init" /> <strong>no configura tus VPNs</strong> — eso ya lo
+    wizard2: <><IC c="kongtrol init" /> <strong>no configura tus VPNs</strong>: eso ya lo
                 tienes hecho. Lo que hace es decirle a Kongtrol dónde están y cómo hablarles:
                 qué cliente usar, qué tunnel name tiene, dónde está el <IC c=".ovpn" />,
                 y guarda las credenciales en el <strong>keychain del OS</strong> (nunca en el YAML).</>,
@@ -109,7 +109,7 @@ $ kongtrol --help`,
                 <IC c=".ovpn" />, este paso solo recopila esa información.</>,
     wizard4: <>Archivos de conexión</>,
     wizard5: <><strong>Si ya tienes tus VPNs configuradas, no necesitas hacer nada especial aquí.</strong>{' '}
-                Kongtrol apunta a los archivos donde ya están — en el wizard simplemente
+                Kongtrol apunta a los archivos donde ya están. En el wizard simplemente
                 escribes la ruta actual de cada archivo. Solo hace falta actuar si recibes
                 archivos nuevos de un compañero o de IT y no tienes dónde guardarlos, o si
                 quieres reorganizar todo en un directorio único.</>,
@@ -118,7 +118,7 @@ $ kongtrol --help`,
     wizard8: '¿Tienes que hacer algo?',
     wizard9: os === 'windows' ? 'Nombre del túnel + usuario/contraseña' : 'Ruta al cert, ruta a la key, credenciales',
     wizard10: <>{os === 'windows'
-                        ? <>No. El túnel ya está en la GUI de FortiClient — Kongtrol lo activa por nombre. Sin certs.</>
+                        ? <>No. El túnel ya está en la GUI de FortiClient. Kongtrol lo activa por nombre. Sin certs.</>
                         : <>Tener el <IC c=".crt" /> y <IC c=".key" /> en alguna ruta accesible y anotarla.</>}</>,
     wizard11: <>Ruta al <IC c=".ovpn" /></>,
     wizard12: <>{os === 'windows'
@@ -142,7 +142,7 @@ $ kongtrol --help`,
     ✓  ProtonVPN               4.3.14
 
 ¿Agregar un nuevo perfil VPN? [s/N]: s`,
-    wizard22: <>El wizard usa <strong>menús numerados</strong> donde aplica — no tienes que
+    wizard22: <>El wizard usa <strong>menús numerados</strong> donde aplica, así no tienes que
                 recordar los valores válidos:</>,
     wizard23: `  Nombre del perfil: office
 
@@ -255,7 +255,7 @@ $ kongtrol --help`,
     wizard35: <><strong>¿Dónde encuentro el Host y el Tunnel Name de FortiClient?</strong><br />
                 Abre FortiClient → pestaña <strong>Remote Access</strong>. Verás una lista de conexiones guardadas.
                 El <strong>nombre de la conexión</strong> (ej. "Office VPN") es el <em>tunnel name</em>.
-                Haz clic en el ícono de lápiz (editar) junto a esa conexión — ahí verás el campo{' '}
+                Haz clic en el ícono de lápiz (editar) junto a esa conexión; ahí verás el campo{' '}
                 <strong>Remote Gateway</strong> o <strong>Server</strong>: ese es el <em>host</em>.</>,
     wizard36: <>Si un cliente no fue detectado automáticamente, el wizard te avisa y pide
                 la ruta al binario. También puedes ponerla después en el YAML con <IC c="binary_path" />.</>,
@@ -308,7 +308,7 @@ $ kongtrol --help`,
 
 [✓] Configuración escrita en ~/.kongtrol/kongtrol.yaml
 [✓] Configuración válida.`,
-    wizard40: <><strong>Puedes escribir varios dominios separados por coma</strong> en un solo prompt —
+    wizard40: <><strong>Puedes escribir varios dominios separados por coma</strong> en un solo prompt:
                 el wizard los divide automáticamente. <IC c="claude.ai, *.anthropic.com" /> → dos entradas.</>,
     wizard41: <>Para agregar otro perfil o política después: vuelve a correr <IC c="kongtrol init" />.
                 El wizard detecta el config existente y no sobreescribe nada sin confirmación.</>,
@@ -317,10 +317,10 @@ $ kongtrol --help`,
                 Edita <IC c={os === 'windows' ? 'C:\\Users\\TU\\.kongtrol\\kongtrol.yaml' : '~/.kongtrol/kongtrol.yaml'} /> y añade al final:</>,
     groups3: `kongtrol up --group work     # levanta office + dev-server + aws en paralelo
 kongtrol down --group work`,
-    groups4: <>Un perfil puede pertenecer a varios grupos a la vez — <IC c="office" /> puede
+    groups4: <>Un perfil puede pertenecer a varios grupos a la vez: <IC c="office" /> puede
                 estar en <IC c="work" /> y también en <IC c="full" /> sin conflicto.</>,
     groups5: <>Si ya tienes un daemon corriendo (<IC c="kongtrol up" /> en background, o vía dashboard) y
-                editas el grupo a mano, no hace falta reiniciarlo — <IC c="kongtrol reload --group work" />{' '}
+                editas el grupo a mano, no hace falta reiniciarlo: <IC c="kongtrol reload --group work" />{' '}
                 recarga el <IC c="kongtrol.yaml" /> desde disco y reconecta solo los túneles activos de ese
                 grupo. Para un solo túnel puntual, <IC c="kongtrol reload --tunnel office" />.</>,
     // feature:policies feature:routes
@@ -332,7 +332,7 @@ kongtrol down --group work`,
   claude.ai            ──▶   domains: claude.ai            ──▶  us-content (ProtonVPN)
   10.10.4.12           ──▶   ip_ranges: 10.10.0.0/16        ──▶  office     (FortiClient)
   api.tuempresa.com    ──▶   sin coincidencia               ──▶  conexión directa (sin VPN)`,
-    policies4: <>Sin políticas, cada VPN instala sus propias rutas al conectarse — el último
+    policies4: <>Sin políticas, cada VPN instala sus propias rutas al conectarse, y el último
                 en conectar suele ganar el tráfico general, y no puedes kongtrolar qué va por dónde.
                 Con políticas, Kongtrol enruta de forma precisa:</>,
     policies5: <><IC c="claude.ai" /> y <IC c="*.anthropic.com" /> → van por <IC c="us-content" /> (ProtonVPN)</>,
@@ -397,8 +397,8 @@ kongtrol down --group work`,
   #     ip_ranges: [0.0.0.0/0]
   #   via: office`,
     policies11: <><strong>¿Cómo funciona el matching?</strong><br />
-                Dominios: glob exacto o con prefijo <IC c="*." /> — <IC c="*.empresa.com" /> cubre todos los subdominios pero no <IC c="empresa.com" /> solo (agrega ambos si los necesitas).<br />
-                IPs: longest-prefix match — gana la regla más específica. <IC c="10.10.1.0/24" /> tiene prioridad sobre <IC c="10.0.0.0/8" />.</>,
+                Dominios: glob exacto o con prefijo <IC c="*." />. <IC c="*.empresa.com" /> cubre todos los subdominios pero no <IC c="empresa.com" /> solo (agrega ambos si los necesitas).<br />
+                IPs: longest-prefix match: gana la regla más específica. <IC c="10.10.1.0/24" /> tiene prioridad sobre <IC c="10.0.0.0/8" />.</>,
     policies12: <><strong>Reglas por app (experimental):</strong> puedes escribir <IC c="apps" /> en una regla,
                 pero hoy no cambia el ruteo: solo cuentan <IC c="domains" /> e <IC c="ip_ranges" />.
                 Por ahora <IC c="apps" /> solo se ve en <IC c="kongtrol map app:<exe>" />.</>,
@@ -409,7 +409,7 @@ kongtrol down --group work`,
 $ kongtrol config validate
 # [OK] Config is valid.`,
     policies15: <>Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar <IC c="kongtrol up" />.
-                Si ya tienes uno activo, aplica el cambio sin reiniciarlo con <IC c="kongtrol reload --policy" /> —
+                Si ya tienes uno activo, aplica el cambio sin reiniciarlo con <IC c="kongtrol reload --policy" />:
                 recarga el motor de políticas desde el <IC c="kongtrol.yaml" /> editado, sin tocar túneles.</>,
     doctor1: <>Verificar con doctor</>,
     doctor2: <>Antes de conectar por primera vez, deja que Kongtrol valide que todo esté en orden:</>,
@@ -519,11 +519,11 @@ GET  /api/v1/vpns                  # perfiles · POST/PUT/DELETE para CRUD
 GET  /api/v1/groups                # grupos · POST/PUT/DELETE + /connect /disconnect
 GET  /api/v1/settings              # PUT para guardar
 GET  /api/v1/audit                 # ?profile=&level=&limit=`,
-    dashboard11: <>El dashboard está compilado dentro del binario — no necesitas instalar nada
+    dashboard11: <>El dashboard está compilado dentro del binario: no necesitas instalar nada
                 extra. Es gestión completa (crear/editar perfiles, políticas, grupos, activar
                 kill switch en vivo), no solo lectura. El puerto/bind del propio dashboard
                 sigue siendo CLI-only (<code>kongtrol config dashboard set-port &lt;puerto&gt;</code>)
-                — cambiarlo desde la página que sirve la petición rompería la conexión.</>,
+                porque cambiarlo desde la página que sirve la petición rompería la conexión.</>,
     // feature:i18n
     daily1: <>Uso diario</>,
     daily2: <>Comando</>,
