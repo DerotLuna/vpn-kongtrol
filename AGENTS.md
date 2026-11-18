@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.8 · 2026-11-18
+Version 1.9 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -117,8 +117,28 @@ Setup per-user installer (native), GoReleaser OSS for the rest (CLI, Linux/Windo
 archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, Homebrew
 **formula** (never a cask: casks get the quarantine flag) and npm (esbuild-style
 `optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
-Upgrades in place keep `~/.kongtrol`, keychain entries and the helper; uninstall never deletes
-user config. No in-app update check (it would be an outbound call).
+Upgrades in place keep `~/.kongtrol`, keychain entries and the helper.
+
+<!-- feature:uninstall -->
+**Uninstall keeps data unless asked (ADR-0034).** `internal/uninstall`: `Detect` picks the channel
+(install.sh/ps1 via `~/.kongtrol/install.manifest`, Windows installer = `unins000.exe` next to the
+exe, package manager by path, else manual) and only script-installed files are ever deleted;
+`Purge` deletes `~/.kongtrol` + exactly `vpn-kongtrol` keychain items `<profile>.username|password`
+(profiles read from `kongtrol.yaml`, `config.yaml` and backups — go-keyring cannot list) +
+`_system.audit_hmac_key`. Surfaces: `kongtrol uninstall [--purge|--data-only] [--yes] [--dry-run]`,
+`install.sh --uninstall [--purge]`, `install.ps1 -Uninstall [-Purge]`, the Inno uninstaller
+(asks, default No; silent never deletes), web/ui Ajustes "Borrar todos mis datos" →
+`POST /api/v1/data/purge {"confirm":true}` (daemon keeps api-token/run/logs, then restarts into
+setup). The tray has no uninstall item on purpose.
+
+<!-- feature:update_check -->
+**Update notice: opt-in, never auto-update (ADR-0034).** `updates.check_enabled` (default false;
+`kongtrol config update-check on|off|status`, web/ui Ajustes, one question in `init`).
+`internal/update` asks `api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest` at most once
+per 24 h (state `~/.kongtrol/update-check.json`), generic `User-Agent: kongtrol/<version>` only,
+https, 5 s, 1 MiB, pre-releases ignored. Newer → `monitor.Event` `update_available`
+(`update.event.available`, args latest/current/url) once per version; `version`/`status` show a
+line from the remembered state (no request).
 
 **Standards first, then improve.** Before designing a mechanism, research how others already
 solve it — official docs, RFCs and standards, mature open-source projects, vendor docs,
@@ -222,6 +242,8 @@ ProfileService.Disconnect(name)
 | `internal/daemonctl` | Shared daemon client + spawn logic used by CLI and tray |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
 | `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
+| `internal/update` | Opt-in new version notice: GitHub Releases latest, ≤1 request/24 h, semver compare, never downloads (ADR-0034) |
+| `internal/uninstall` | Uninstall plan per channel (install.manifest, Windows installer, package managers) and data purge with the exact keychain entries (ADR-0034) |
 | `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
 | `internal/configexport` | `Write(w, cfg, lang, Style)`: the config as YAML that loads back unchanged (no secrets: passwords live in the keychain); `kongtrol export` and `GET /api/v1/config/export` |
 | `internal/netstats` | No-admin per-interface traffic counters |

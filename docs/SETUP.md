@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.1 · 2026-11-18
+Versión 1.2 · 2026-11-18
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -36,6 +36,7 @@ Un solo comando. Sin tocar cada cliente VPN por separado.
 9. [Uso diario](#9-uso-diario)
 10. [Para compañeros de equipo](#10-para-compañeros-de-equipo)
 11. [Solución de problemas](#11-solución-de-problemas)
+12. [Actualizar y desinstalar](#12-actualizar-y-desinstalar)
 
 ---
 
@@ -903,6 +904,39 @@ archivo de hosts del sistema para dominios de policy, de modo que apps normales
 
 Por defecto se guarda en `~/.kongtrol/history.json` y se actualiza en background
 (`monitor.history.flush_interval`).
+
+---
+
+<!-- feature:uninstall feature:update_check -->
+## 12. Actualizar y desinstalar
+
+**Actualizar:** usa lo mismo con lo que instalaste (vuelve a correr el instalador de Windows o
+`install.sh`, `brew upgrade kongtrol`, `npm update -g kongtrol`, `scoop update kongtrol`,
+`winget upgrade Kongtrol.Kongtrol` o tu gestor de paquetes). Tu configuración se queda.
+
+**Aviso de versión nueva (opcional, apagado):** `kongtrol config update-check on` o el panel
+(Ajustes). Consulta api.github.com una vez al día como máximo; GitHub ve tu IP y
+`kongtrol/<versión>`. Nunca descarga ni instala. `kongtrol config update-check status` muestra la
+última revisión.
+
+**Desinstalar (tus datos se quedan):**
+
+```bash
+kongtrol uninstall --dry-run   # muestra qué haría, sin cambiar nada
+kongtrol uninstall             # quita la app; guarda ~/.kongtrol y tus contraseñas
+kongtrol uninstall --purge     # también borra tus datos y contraseñas (pregunta [s/N])
+kongtrol uninstall --data-only # solo borra tus datos; la app queda instalada
+```
+
+- Windows: Configuración › Aplicaciones › Kongtrol › Desinstalar. Pregunta «¿Borrar también tu
+  configuración y las contraseñas guardadas? Si piensas reinstalar, elige No.» (por defecto No; en
+  modo silencioso nunca borra datos).
+- Instalado con `install.sh`/`install.ps1`: `… | sh -s -- --uninstall [--purge]`, o
+  `kongtrol uninstall`.
+- Homebrew, npm, Scoop, winget, `.deb`/`.rpm`, AUR: Kongtrol no toca esos archivos. Si quieres
+  borrar tus datos, corre `kongtrol uninstall --purge` **antes** de quitar el paquete.
+- Desde el panel: Ajustes › «Borrar todos mis datos» (la app queda instalada y empieza de cero).
+- La bandeja no tiene opción de desinstalar: lo hace el desinstalador de tu sistema.
 
 ---
 

@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-18
 
-Status: Accepted · Date: 2026-11-18 · Decision-makers: project maintainer
+Status: Accepted; "uninstall never deletes user config" and "No in-app update check" superseded by [ADR-0034](0034-uninstall-and-update-notice.md) · Date: 2026-11-18 · Decision-makers: project maintainer
 
 ## Context and Problem Statement
 

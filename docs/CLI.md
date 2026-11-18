@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.4 · 2026-11-18
+Versión 2.5 · 2026-11-18
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -378,6 +378,22 @@ kongtrol config dns-guard on
 kongtrol config dns-guard status
 ```
 
+### `kongtrol config update-check`
+
+Viene apagado. Encendido, Kongtrol pregunta a api.github.com como máximo una vez al día cuál es la última versión publicada; GitHub ve tu IP y «kongtrol/<versión>», nada más. Si hay una nueva te avisa (bandeja, panel, kongtrol version y status). Nunca descarga ni instala: actualizas con tu instalador o tu gestor de paquetes.
+
+```text
+kongtrol config update-check <on|off|status> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol config update-check on
+kongtrol config update-check off
+kongtrol config update-check status
+```
+
 ### `kongtrol policy`
 
 Muestra tus políticas, qué VPN usa cada destino y por qué, y prueba listas de destinos. Empieza con: kongtrol policy list.
@@ -616,6 +632,31 @@ kongtrol service status [opciones]
 
 ```bash
 kongtrol service status
+```
+
+### `kongtrol uninstall`
+
+Desconecta tus VPN, cierra Kongtrol, quita el ayudante de red, el inicio automático y el PATH que agregó su instalador. Borra la app solo si la instaló install.sh o install.ps1; si vino de un gestor de paquetes (Homebrew, npm…) o del instalador de Windows, te dice cómo terminar. Tu configuración y tus contraseñas se quedan, para que todo vuelva al reinstalar; --purge también las borra.
+
+```text
+kongtrol uninstall [opciones]
+```
+
+**Opciones**
+
+| Opciones | Descripción |
+|---|---|
+| `--data-only` | solo borra tus datos y contraseñas; la app queda instalada |
+| `--dry-run` | muestra qué haría, sin cambiar nada |
+| `--purge` | también borra tu configuración (~/.kongtrol) y las contraseñas guardadas |
+| `-y, --yes` | no pregunta (para scripts) |
+
+**Ejemplos**
+
+```bash
+kongtrol uninstall --dry-run      # muestra qué haría, sin cambiar nada
+kongtrol uninstall                # quita la app, guarda tus datos
+kongtrol uninstall --purge        # quita la app y borra tus datos y contraseñas
 ```
 
 ### `kongtrol version`

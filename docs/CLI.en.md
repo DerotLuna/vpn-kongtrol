@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.3 · 2026-11-18
+Version 1.4 · 2026-11-18
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -378,6 +378,22 @@ kongtrol config dns-guard on
 kongtrol config dns-guard status
 ```
 
+### `kongtrol config update-check`
+
+Off by default. When on, Kongtrol asks api.github.com at most once a day for the latest published version; GitHub sees your IP and "kongtrol/<version>", nothing else. If there is a newer one it tells you (tray, dashboard, kongtrol version and status). It never downloads or installs: you update with your installer or package manager.
+
+```text
+kongtrol config update-check <on|off|status> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol config update-check on
+kongtrol config update-check off
+kongtrol config update-check status
+```
+
 ### `kongtrol policy`
 
 Shows your policies, which VPN each destination uses and why, and tests lists of destinations. Start with: kongtrol policy list.
@@ -616,6 +632,31 @@ kongtrol service status [flags]
 
 ```bash
 kongtrol service status
+```
+
+### `kongtrol uninstall`
+
+Disconnects your VPNs, closes Kongtrol, removes the network helper, the autostart entry and the PATH entry its installer added. It deletes the app only when install.sh or install.ps1 installed it; if it came from a package manager (Homebrew, npm…) or the Windows installer, it tells you how to finish. Your settings and passwords stay, so everything comes back if you reinstall; --purge deletes them too.
+
+```text
+kongtrol uninstall [flags]
+```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--data-only` | only delete your data and passwords; the app stays installed |
+| `--dry-run` | show what it would do, change nothing |
+| `--purge` | also delete your settings (~/.kongtrol) and saved passwords |
+| `-y, --yes` | do not ask (for scripts) |
+
+**Examples**
+
+```bash
+kongtrol uninstall --dry-run      # shows what it would do, changes nothing
+kongtrol uninstall                # removes the app, keeps your data
+kongtrol uninstall --purge        # removes the app and deletes your data and passwords
 ```
 
 ### `kongtrol version`

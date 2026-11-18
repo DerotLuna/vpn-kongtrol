@@ -140,6 +140,28 @@ of commands and flags: **[docs/CLI.en.md](docs/CLI.en.md)** (Español: [docs/CLI
 
 For a full guided walkthrough (multiple VPNs, profile groups, routing policies), see **[docs/SETUP.md](docs/SETUP.md)**.
 
+<!-- feature:update_check -->
+### Updating
+
+Update with what you installed with: run the Windows installer or `install.sh` again,
+`brew upgrade kongtrol`, `npm update -g kongtrol`, `scoop update kongtrol`, `winget upgrade
+Kongtrol.Kongtrol`, or your Linux package manager. Your settings stay. Kongtrol can tell you when
+a new version is out — **off by default**: turn it on in the dashboard (Ajustes) or with
+`kongtrol config update-check on`. Then it asks api.github.com at most once a day (GitHub sees
+your IP and `kongtrol/<version>`, nothing else) and never downloads or installs anything.
+
+<!-- feature:uninstall -->
+### Uninstalling
+
+Your settings and saved passwords **stay** unless you ask, so a reinstall brings everything back.
+Windows: Settings › Apps › Kongtrol › Uninstall (it asks whether to delete your data; default
+No). Elsewhere: `kongtrol uninstall` (add `--purge` to also delete `~/.kongtrol` and the saved
+passwords, `--dry-run` to see the plan). Installed with a package manager? Run
+`kongtrol uninstall --purge` first if you want your data gone, then remove the package (`brew
+uninstall kongtrol`, `npm uninstall -g kongtrol`…). To only wipe your data and keep the app:
+dashboard › Ajustes › "Borrar todos mis datos", or `kongtrol uninstall --data-only`. The tray has
+no uninstall item: your system's uninstaller does that.
+
 ## Documentation
 
 | Doc | Covers |

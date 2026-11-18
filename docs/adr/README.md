@@ -37,7 +37,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0022](0022-landing-on-workers-static-assets.md) | Landing on Cloudflare Workers static assets (Workers Builds) | Accepted | 2026-11-17 |
 | [0023](0023-provider-logos-on-landing.md) | No third-party logos on the landing: our own monograms for every VPN | Accepted | 2026-11-18 |
 | [0024](0024-landing-motion-a11y-performance.md) | Landing polish: CSS-only motion without layout shift, WCAG 2.2 AA, Core Web Vitals | Accepted (boot resume superseded by 0026) | 2026-11-18 |
-| [0025](0025-desktop-release-channels-first-run.md) | Desktop release, package managers, signing, safe upgrades and first run without a terminal | Accepted | 2026-11-18 |
+| [0025](0025-desktop-release-channels-first-run.md) | Desktop release, package managers, signing, safe upgrades and first run without a terminal | Accepted; uninstall data and update check superseded by 0034 | 2026-11-18 |
 | [0026](0026-landing-hydrate-prerendered-html.md) | Landing hydrates its prerendered HTML (hydrateRoot) with a hydration check in CI | Accepted | 2026-11-18 |
 | [0027](0027-landing-download-ctas.md) | Landing download buttons: one primary per view, recommended OS, phones send the page to a computer | Accepted | 2026-11-18 |
 | [0028](0028-landing-hig-material3-review.md) | Landing review with Apple HIG and Material 3: 11px text floor, 44px targets, state layers, readable guide on phones | Accepted | 2026-11-18 |
@@ -46,6 +46,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0031](0031-landing-load-performance.md) | Landing load performance: inline CSS, hashed fonts, immutable caching, composited and on-screen-only demo loops, Suspense-split hydration | Accepted | 2026-11-18 |
 | [0032](0032-shared-diagnostics-and-export.md) | Shared diagnostics (`internal/doctor`, hint + only `helper_install` fix) and round-trip config export (`internal/configexport`) for CLI, API and dashboard; tray offers the helper without a daemon | Accepted | 2026-11-18 |
 | [0033](0033-cli-command-restructure.md) | Reestructura de comandos del CLI: nombres unificados (policy list/show, ip, routes --system, config default-group, reload [perfil]), alias viejos ocultos con aviso traducido, preguntas solo en terminal (--yes), init/up ofrecen el ayudante, config killswitch/dns-guard | Accepted | 2026-11-18 |
+| [0034](0034-uninstall-and-update-notice.md) | Uninstall keeps data unless asked (purge with exact keychain entries, never package-manager files); opt-in update notice from GitHub Releases, ≤1/24 h, never auto-update | Accepted | 2026-11-18 |
 
 ## Statuses
 

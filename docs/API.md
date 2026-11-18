@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.3 · 2026-11-18
+Version 1.4 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -76,7 +76,20 @@ GET  /api/v1/config/export                   # kongtrol.yaml as a download (appl
 # First run and restart (ADR-0025)
 GET  /api/v1/setup                           # {"setup_mode","needs_setup","restart_pending","config_path"}: daemon started with no kongtrol.yaml
 POST /api/v1/restart                         # 202 {"status":"restarting"}: starts a fresh daemon (re-reads kongtrol.yaml, reconnects the tunnels that were up), then this one stops; 500 if the replacement could not start (this daemon keeps running)
+
+# Update notice and "delete all my data" (ADR-0034)
+GET  /api/v1/updates                         # {"check_enabled","host","current","latest","url","newer","checked_at"} from the remembered last check; never contacts GitHub
+POST /api/v1/updates                         # {"enabled": true|false}: saves updates.check_enabled (opt-in, off by default); 409 cli.update.no_config before the first profile
+POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): disconnects every tunnel, deletes ~/.kongtrol data and Kongtrol's keychain entries, then restarts into setup mode → {"status":"purged","restarting":bool}
 ```
+
+<!-- feature:update_check feature:uninstall -->
+**Update notice and purge.** Reading `/api/v1/updates` never makes a request; with
+`check_enabled` the daemon asks GitHub at most once per 24 h and emits one `update_available`
+event (`update.event.available`, args latest, current, release page) per new version on
+`/api/v1/events`. `/api/v1/data/purge` uses the same auth as every route (token or control
+cookie, same origin, `application/json`) plus the explicit `confirm`; the running daemon keeps
+`api-token`, `run/` and its logs until it restarts.
 
 <!-- feature:first_run -->
 **Setup mode.** A daemon started with no config file (the tray spawns it on first run) serves the

@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.2 · 2026-11-17
+Versión 1.3 · 2026-11-18
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -111,5 +111,13 @@ Monitoreo, dashboard, programador y alertas.
 | `monitor.alerts.on_leak_detected.actions` | lista de texto | — | Acciones al detectar una fuga: `notify`, `log`, `kill_switch`. |
 | `monitor.alerts.on_high_latency_ms` | entero | — | Alerta cuando la latencia supera estos milisegundos. |
 | `monitor.alerts.on_reconnect_attempts` | entero | — | Alerta tras este número de intentos de reconexión. |
+
+## `updates`
+
+Aviso de versión nueva (opcional).
+
+| Clave | Tipo | Por defecto | Descripción |
+|---|---|---|---|
+| `updates.check_enabled` | booleano | — | Avisa cuando hay una versión nueva: consulta api.github.com como máximo una vez al día (solo envía tu IP y `kongtrol/<versión>`). Nunca descarga ni instala. Apagado si falta. |
 
 Las rutas `~/` se expanden a tu carpeta de usuario y `${VAR}` a variables de entorno. Las contraseñas nunca van aquí: viven en el llavero del sistema.
