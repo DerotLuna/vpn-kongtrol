@@ -98,3 +98,6 @@ audit.log
 
 # lychee link-check cache (lychee.toml)
 .lycheecache
+
+# Wrangler local cache/state (account id, dev state) — machine-local
+.wrangler/

@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-17
 
-Status: Accepted · Date: 2026-11-17 · Decision-makers: project maintainer
+Status: Accepted; hosting superseded by [ADR-0022](0022-landing-on-workers-static-assets.md) · Date: 2026-11-17 · Decision-makers: project maintainer
 
 ## Context and Problem Statement
 

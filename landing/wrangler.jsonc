@@ -1,0 +1,20 @@
+// Public site https://kongtrol.app — a Cloudflare Worker with static assets only
+// (no Worker script). Cloudflare Workers Builds deploys it from this repo:
+// root `landing`, build `pnpm run build`, deploy `npx wrangler deploy`.
+// Pages is Cloudflare's legacy flow; Workers static assets is the current one:
+// https://developers.cloudflare.com/workers/static-assets/migration-guides/migrate-from-pages/
+{
+	"name": "kongtrol",
+	"compatibility_date": "2026-11-17",
+	"assets": {
+		"directory": "./dist",
+		// /guia serves guia.html, /en/ serves en/index.html; /guia.html → 307 /guia
+		"html_handling": "auto-trailing-slash",
+		// unknown paths get dist/404.html with status 404
+		"not_found_handling": "404-page"
+	},
+	// apex only; www and kongtrol.dev redirect here (Cloudflare Redirect Rules)
+	"routes": [{ "pattern": "kongtrol.app", "custom_domain": true }],
+	"workers_dev": false,
+	"preview_urls": true
+}

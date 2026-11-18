@@ -90,7 +90,7 @@ const es: LegalDocContent = {
       body: [<>Este sitio no usa cookies, analíticas ni píxeles de seguimiento, y sirve sus propias tipografías (no
         carga nada de Google). Solo guarda en tu navegador el idioma o tema que elijas explícitamente
         (<IC c="kglang" />, <IC c="kgtheme" />).</>,
-      <>El sitio está alojado en Cloudflare Pages: Cloudflare procesa los datos técnicos de cada visita (como la IP y
+      <>El sitio está alojado en Cloudflare (Workers): Cloudflare procesa los datos técnicos de cada visita (como la IP y
         el navegador) para servir y proteger el sitio, según su{' '}
         {ext('https://www.cloudflare.com/privacypolicy/', 'política de privacidad')}.</>,
       <>Las descargas y el código están en GitHub; al usarlos aplica la{' '}
@@ -180,7 +180,7 @@ const en: LegalDocContent = {
       body: [<>This site uses no cookies, analytics or tracking pixels, and serves its own fonts (nothing is loaded
         from Google). It only stores in your browser the language or theme you explicitly pick (<IC c="kglang" />,{' '}
         <IC c="kgtheme" />).</>,
-      <>The site is hosted on Cloudflare Pages: Cloudflare processes the technical data of each visit (such as IP
+      <>The site is hosted on Cloudflare (Workers): Cloudflare processes the technical data of each visit (such as IP
         address and browser) to serve and protect the site, under its{' '}
         {ext('https://www.cloudflare.com/privacypolicy/', 'privacy policy')}.</>,
       <>Downloads and source code live on GitHub; using them is covered by the{' '}
