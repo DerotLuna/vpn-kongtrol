@@ -54,7 +54,7 @@
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
     transparent 0 15px, rgba(255,176,32,0.05) 15px 16px);
 
-  /* Motion (ADR-0036): Material 3 standard easing and short durations —
+  /* Motion (ADR-0037): Material 3 standard easing and short durations —
      state feedback only, transform/opacity, off with reduced motion. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --dur-fast: 150ms;

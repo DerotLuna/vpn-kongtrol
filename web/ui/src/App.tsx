@@ -1,6 +1,6 @@
 // Kongtrol UI — providers + routes · v0.2.0 · 2026-11-18
 //
-// React Router (declarative mode) under /app (ADR-0036); the daemon serves
+// React Router (declarative mode) under /app (ADR-0037); the daemon serves
 // index.html for any /app/... path (internal/api/ui_assets.go), so deep
 // links and reloads work. Every section has its route now; phase 2 replaces
 // the placeholders page by page (src/app/placeholders.ts).

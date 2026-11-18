@@ -1,5 +1,5 @@
 /* KONGTROL UI — app shell (header, navigation, page frame) · v0.1.0 · 2026-11-18
-   Navigation by width (ADR-0036): bottom bar < 600px · rail 600–839px ·
+   Navigation by width (ADR-0037): bottom bar < 600px · rail 600–839px ·
    sidebar with labels ≥ 840px. The header and nav are tonal (surface),
    flat, with 1px hairlines; the active section is the amber selection. */
 

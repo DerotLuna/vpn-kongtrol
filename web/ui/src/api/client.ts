@@ -6,7 +6,7 @@
 //
 // Every request also reports reachability to data/connection.ts: a network
 // failure means the daemon that serves this page stopped answering.
-// Caching, de-dup, retries and the live feed live in src/data/ (ADR-0036).
+// Caching, de-dup, retries and the live feed live in src/data/ (ADR-0037).
 import { connection } from '../data/connection'
 import { authReady, noteAuthStatus } from './auth'
 import type { Lang } from '../i18n/messages'
