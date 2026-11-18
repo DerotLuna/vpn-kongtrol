@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,9 +14,10 @@ import (
 // blockingAdapter's Connect waits like a provider adapter waiting for the
 // user in the app: it only returns when its context ends.
 type blockingAdapter struct {
-	mu      sync.Mutex
-	status  vpn.Status
-	started chan struct{}
+	mu       sync.Mutex
+	status   vpn.Status
+	started  chan struct{}
+	returned atomic.Bool // set inside Connect, before it returns
 }
 
 func (a *blockingAdapter) Name() string                   { return "blocking" }
@@ -36,6 +38,7 @@ func (a *blockingAdapter) Status() vpn.Status {
 	return a.status.Normalize()
 }
 func (a *blockingAdapter) Connect(ctx context.Context, _ vpn.AdapterConfig) error {
+	defer a.returned.Store(true)
 	a.set(vpn.StatusConnecting)
 	close(a.started)
 	<-ctx.Done()
@@ -86,14 +89,19 @@ func TestDisconnect_CancelsInflightConnect(t *testing.T) {
 	if err := svc.Disconnect(context.Background(), "forti"); err != nil {
 		t.Fatal(err)
 	}
-	// Connect must already have returned when Disconnect did.
+	// The adapter's Connect must already have returned when Disconnect did.
+	// Checked inside the adapter: the goroutine above may not have sent on
+	// connectErr yet (scheduler timing, seen on Windows CI).
+	if !adapter.returned.Load() {
+		t.Fatal("Disconnect returned while the connect was still running")
+	}
 	select {
 	case err := <-connectErr:
 		if err == nil {
 			t.Fatal("cancelled connect reported success")
 		}
-	default:
-		t.Fatal("Disconnect returned while the connect was still running")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Connect never returned")
 	}
 	if st := adapter.Status(); st != vpn.StatusDisconnected {
 		t.Fatalf("status right after down = %s, want disconnected", st)
