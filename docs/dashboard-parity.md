@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.0.0 · 2026-11-18
+Version 1.1.0 · 2026-11-18
 
 ## 1. Purpose and how to use
 
@@ -187,7 +187,7 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 #### Shared
 
 - [ ] Tabs Profiles / Policies / Groups, last tab remembered (localStorage `kongtrol-dashboard-tab-studio`) — legacy studio.html:20-25, shell.js:327-346 — API — — target `/profiles`, `/profiles/groups`, `/rules` (routes replace tabs) — status: missing
-- [ ] Active config file path line (read-only, `--config`) — legacy studio.html:27, studio.js:448-451 — API GET /api/v1/policies/meta (handlers_policy.go:113) `config_path` — target `/settings` (also shown on `/profiles`) **IA: revisar** — status: missing
+- [x] Active config file path line (read-only, `--config`) — legacy studio.html:27, studio.js:448-451 — API GET /api/v1/policies/meta (handlers_policy.go:113) `config_path` — target `/settings` (also shown on `/profiles`) **IA: revisar** — status: done (pages/SettingsPage.tsx, components/settings/SystemSection.tsx: from GET /api/v1/setup `config_path`)
 - [ ] Error toast text: localized `error`+`hint` when `error_key` set, else page text + raw detail — legacy studio.js:341-345 — API `writeLocalizedError` body `error, hint, error_key` (errors_i18n.go) — target `/profiles`, `/rules` — status: partial (components/ui/ErrorNotice.tsx)
 - [ ] Requests send `X-Kongtrol-Lang` — legacy studio.js:483, 504, 551, 742, 772, 967, 989 — API — — target shell (api/client.ts) — status: new UI has it (api/client.ts `setApiLang`)
 
@@ -232,7 +232,7 @@ Actions
 - [ ] Clear form (defaults: openvpn, priority 10, certificate, auto_connect yes) — legacy studio.html:209, studio.js:666-679 — API — — target `/profiles` — status: missing
 - [ ] Row Edit (fills form) / row Delete — legacy studio.js:714-718, 724-728, 897-901 — API — — target `/profiles` — status: missing
 - [ ] Filter by name, type, host, server (live) — legacy studio.html:217, studio.js:695-700 — API — — target `/profiles` — status: missing
-- [ ] Restart now: disable button, wait old daemon gone (≤240×500 ms) and new one back (≤120×500 ms), then reload lists — legacy studio.js:846-895 — API POST /api/v1/restart (handlers_setup.go:54; 501 unsupported), GET /api/v1/setup as liveness — target `/settings` (button also in `/profiles` banner) — status: missing
+- [x] Restart now: disable button, wait old daemon gone (≤240×500 ms) and new one back (≤120×500 ms), then reload lists — legacy studio.js:846-895 — API POST /api/v1/restart (handlers_setup.go:54; 501 unsupported), GET /api/v1/setup as liveness — target `/settings` (button also in `/profiles` banner) — status: done (components/settings/SystemSection.tsx + data/settings.ts useRestart, confirm dialog; the `/profiles` banner button belongs to that page)
 
 Table fields
 
@@ -244,7 +244,7 @@ States / notices
 - [ ] Skeleton rows; empty `empty.noProfiles` (also when filter matches nothing) — legacy studio.html:229-230, studio.js:690-705 — target `/profiles` — status: missing; **fix**: empty-filter state reuses "no profiles configured"
 - [ ] Toasts `toast.profileCreated|Updated` (7 s), `toast.profileDeleted`, `alerts.profileCreateFailed|UpdateFailed|DeleteFailed`, `alerts.profileSelectFirst|SelectDelete` — legacy studio.js:747-803 — target `/profiles` — status: missing
 - [ ] Confirm `confirm.deleteProfile` — legacy studio.js:796 — target `/profiles` — status: missing; **fix**: native `confirm()` (untranslated buttons) → app dialog
-- [ ] Restart toasts `restart.running` (10 s), `restart.done`, `restart.failed` (apiErrorText), `restart.timeout` (15 s) — legacy studio.js:864-884 — target `/settings` — status: missing
+- [x] Restart toasts `restart.running` (10 s), `restart.done`, `restart.failed` (apiErrorText), `restart.timeout` (15 s) — legacy studio.js:864-884 — target `/settings` — status: done (components/settings/SystemSection.tsx: running and timeout banners with what to do, done toast, failure via ErrorNotice)
 - [ ] Hints `pEditor.tip`, field hints (priority, failover, autoConnect, country, interface, waitTimeout, ovpnRoutes) — legacy studio.html:139, 143, 151, 163, 167, 177, 181, 212 — target `/profiles` — status: missing
 
 Cadence
@@ -327,10 +327,10 @@ Table / states / notices
 
 #### Section: General
 
-- [ ] Dashboard bind + port (read-only) + note + CLI commands `kongtrol config dashboard set-port|set-bind` — legacy settings.html:28-38, settings.js:165-166 — API GET /api/v1/settings (handlers_settings.go:14) `dashboard_bind, dashboard_port` — target `/settings` — status: missing
-- [ ] Diagnostics link "Open Diagnostics" (to `/app/`) — legacy settings.html:46 — API GET /api/v1/doctor (handlers_doctor.go:21) — target `/settings` — status: new UI has it (components/welcome/DiagnosticsCard.tsx)
-- [ ] Export configuration (download `kongtrol-export.yaml`, no secrets) — legacy settings.html:47 — API GET /api/v1/config/export (handlers_doctor.go:52; 404 `export.err.no_config`) — target `/settings` — status: new UI has it (components/welcome/DiagnosticsCard.tsx)
-- [ ] Health check interval (text, e.g. 30s) + timeout (e.g. 10s) — legacy settings.html:52-64, settings.js:167-168, 188-189 — API PUT /api/v1/settings (handlers_settings.go:49) `health_check_interval, health_check_timeout`; `time.ParseDuration` (:57-64), `config.Validate` (:74-77) — target `/settings` — status: missing
+- [x] Dashboard bind + port (read-only) + note + CLI commands `kongtrol config dashboard set-port|set-bind` — legacy settings.html:28-38, settings.js:165-166 — API GET /api/v1/settings (handlers_settings.go:14) `dashboard_bind, dashboard_port` — target `/settings` — status: done (components/settings/SystemSection.tsx: read-only address + both CLI commands)
+- [x] Diagnostics link "Open Diagnostics" (to `/app/`) — legacy settings.html:46 — API GET /api/v1/doctor (handlers_doctor.go:21) — target `/settings` — status: done (pages/SettingsPage.tsx: DiagnosticsCard runs the checks in place)
+- [x] Export configuration (download `kongtrol-export.yaml`, no secrets) — legacy settings.html:47 — API GET /api/v1/config/export (handlers_doctor.go:52; 404 `export.err.no_config`) — target `/settings` — status: done (pages/SettingsPage.tsx: DiagnosticsCard export)
+- [x] Health check interval (text, e.g. 30s) + timeout (e.g. 10s) — legacy settings.html:52-64, settings.js:167-168, 188-189 — API PUT /api/v1/settings (handlers_settings.go:49) `health_check_interval, health_check_timeout`; `time.ParseDuration` (:57-64), `config.Validate` (:74-77) — target `/settings` — status: done (components/settings/HealthSection.tsx: validated like time.ParseDuration, at least 1s)
 - [ ] Split DNS enabled + interval (e.g. 60s) — legacy settings.html:66-79, settings.js:171-172, 192-193 — API `split_dns_enabled, split_dns_interval` (duration check :57-64) — target `/security` — status: missing
 
 #### Section: Security tuning
@@ -343,7 +343,7 @@ Table / states / notices
 - [ ] Public IP services (one https:// URL per line; default collapsed to empty) — legacy settings.html:124-126, settings.js:177, 198 — API `public_ip_endpoints` (handlers_settings.go:194-205; `config.ValidatePublicIPEndpoint` via `config.Validate`) — target `/security` — status: missing
 - [ ] Public IP note `settings.publicIpNote` — legacy settings.html:127 — target `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx `publicip.notice`)
 - [ ] Leak action notify / killswitch_and_notify — legacy settings.html:128-133 — API `leak_detection_action` (`oneof`, internal/config/schema.go:208) — target `/security` — status: missing; **fix**: raw labels; effect with on-demand lookup `no verificado`
-- [ ] Audit log path, max size MB (number), HMAC sign switch — legacy settings.html:137-153, settings.js:179-181, 200-202 — API `audit_log_path, audit_log_max_size_mb, audit_log_sign` — target `/activity` **IA: revisar** (config of the log shown there; could stay in `/settings`) — status: missing; **fix**: empty max size sends 0 (settings.js:201)
+- [x] Audit log path, max size MB (number), HMAC sign switch — legacy settings.html:137-153, settings.js:179-181, 200-202 — API `audit_log_path, audit_log_max_size_mb, audit_log_sign` — target `/activity` **IA: revisar** (config of the log shown there; could stay in `/settings`) — status: done (components/activity/AuditConfig.tsx on `/activity` (IA decided: next to the log); **fix** done: an empty or non-integer size is refused with what to do, never sent as 0)
 
 #### Section: Scheduler → `/rules/schedule`
 
@@ -360,31 +360,31 @@ Table / states / notices
 
 #### Page actions / states
 
-- [ ] Tabs General / Security / Scheduler (remembered) — legacy settings.html:20-25 — target split across `/settings`, `/security`, `/rules/schedule` — status: missing
-- [ ] Save settings (one PUT for all fields; response refills form) + `toast.saved` / `alerts.saveFailed` via `showApiError` — legacy settings.html:222, settings.js:212-225 — API PUT /api/v1/settings (handlers_settings.go:49) — target `/settings`, `/security`, `/rules/schedule` (per-section save sending only that section's fields) — status: missing
-- [ ] Revert (reload from server) — legacy settings.html:223, settings.js:206-210 — API GET /api/v1/settings — target `/settings` (also `/security`, `/rules/schedule`) — status: missing
-- [ ] Unsaved changes warning when leaving — legacy none — API — — target `/settings` (also `/security`, `/rules/schedule`) — status: missing (new requirement, optional) **IA: revisar**
-- [ ] Load once; no polling — legacy settings.js:361-365 — API GET /api/v1/settings, GET /api/v1/scheduler/rules — target `/settings` — status: missing
+- [x] Tabs General / Security / Scheduler (remembered) — legacy settings.html:20-25 — target split across `/settings`, `/security`, `/rules/schedule` — status: done (`/settings` part: sections on one page with an index (pages/SettingsPage.tsx); the security and scheduler parts belong to their pages)
+- [x] Save settings (one PUT for all fields; response refills form) + `toast.saved` / `alerts.saveFailed` via `showApiError` — legacy settings.html:222, settings.js:212-225 — API PUT /api/v1/settings (handlers_settings.go:49) — target `/settings`, `/security`, `/rules/schedule` (per-section save sending only that section's fields) — status: done (`/settings` + `/activity` part: per-section PUT with only that section fields (data/settings.ts useSaveSettings, optimistic + rollback, toast))
+- [x] Revert (reload from server) — legacy settings.html:223, settings.js:206-210 — API GET /api/v1/settings — target `/settings` (also `/security`, `/rules/schedule`) — status: done (components/settings/SettingsSection.tsx FormBar "Deshacer cambios" per section)
+- [x] Unsaved changes warning when leaving — legacy none — API — — target `/settings` (also `/security`, `/rules/schedule`) — status: done (components/settings/form.ts: browser warning on close/reload + "Cambios sin guardar" in the bar; in-app navigation is not blocked (declarative router has no blocker))
+- [x] Load once; no polling — legacy settings.js:361-365 — API GET /api/v1/settings, GET /api/v1/scheduler/rules — target `/settings` — status: done (data/settings.ts: staleTime Infinity, no polling)
 
 #### Settings items the spec lists for `/settings` that legacy lacks (new UI already ahead)
 
-- [ ] Update notice opt-in — legacy none (only `update.event.available` notice, notices.js:22) — API GET/POST /api/v1/updates (handlers_lifecycle.go:52, :63) — target `/settings` — status: new UI has it (components/settings/UpdatesCard.tsx)
-- [ ] Delete all my data (confirm dialog) — legacy none — API POST /api/v1/data/purge (handlers_lifecycle.go:92; `confirm:true` required) — target `/settings` — status: new UI has it (components/settings/DataCard.tsx)
-- [ ] Helper status + install — legacy app.js:346-415 (banner) — API GET /api/v1/helper/status, POST /api/v1/helper/install — target `/settings` — status: new UI has it (components/welcome/HelperCard.tsx)
-- [ ] Language + theme controls — legacy shell.js:79-83 — API GET/PUT /api/v1/preferences — target `/settings` (also header) — status: new UI has it (components/layout/AppShell.tsx)
-- [ ] Shutdown ("quit and disconnect all") — legacy none — API POST /api/v1/shutdown (handlers_tunnels.go:21) — target `/settings` — status: missing (tray-only today; GUI parity gap)
+- [x] Update notice opt-in — legacy none (only `update.event.available` notice, notices.js:22) — API GET/POST /api/v1/updates (handlers_lifecycle.go:52, :63) — target `/settings` — status: done (pages/SettingsPage.tsx (UpdatesCard))
+- [x] Delete all my data (confirm dialog) — legacy none — API POST /api/v1/data/purge (handlers_lifecycle.go:92; `confirm:true` required) — target `/settings` — status: done (pages/SettingsPage.tsx (DataCard))
+- [x] Helper status + install — legacy app.js:346-415 (banner) — API GET /api/v1/helper/status, POST /api/v1/helper/install — target `/settings` — status: done (components/settings/SystemSection.tsx: shared install flow)
+- [x] Language + theme controls — legacy shell.js:79-83 — API GET/PUT /api/v1/preferences — target `/settings` (also header) — status: done (components/settings/SettingsGroups.tsx: segmented language + theme)
+- [x] Shutdown ("quit and disconnect all") — legacy none — API POST /api/v1/shutdown (handlers_tunnels.go:21) — target `/settings` — status: done (components/settings/SystemSection.tsx: confirm dialog, then guidance to reopen Kongtrol)
 
 ### 3.5 `audit.html` + `audit.js` → `/activity`
 
-- [ ] Filter by profile (text, Enter applies) — legacy audit.html:25, audit.js:117-119 — API GET /api/v1/audit?profile= (handlers_security.go:284, :301) — target `/activity` — status: missing
-- [ ] Level filter All / INFO / WARN / ERROR / SECURITY — legacy audit.html:26-32 — API `level` (uppercased, handlers_security.go:302) — target `/activity` — status: missing; **fix**: changing the level needs Apply; level names untranslated
-- [ ] Apply + refresh buttons — legacy audit.html:22, audit.html:33 — target `/activity` — status: missing
-- [ ] Limit 300 — legacy audit.js:104 — API `limit` (handlers_security.go:317) — target `/activity` — status: missing; **fix**: no paging / "load more"
-- [ ] Table: Time (`toLocaleString(lang)`), Level badge, Action, Profile, Message, Signed (signed / unsigned) — legacy audit.html:36-51, audit.js:80-94 — API `timestamp, level, action, profile, message, hmac` — target `/activity` — status: missing
-- [ ] Level badge classes INFO ok, WARN pending, ERROR off, SECURITY on — legacy audit.js:61-66 — target `/activity` — status: missing
-- [ ] Note "Showing {count} events"; empty `empty.noEvents`; skeleton — legacy audit.js:72-78, audit.html:48-49 — target `/activity` — status: missing
-- [ ] Error → toast `audit.notConfigured` — legacy audit.js:108-110 — API 500 (handlers_security.go:287, :297); unconfigured returns `[]` (:291) — target `/activity` — status: missing; **fix**: any error is reported as "not configured"; empty-because-unconfigured is never explained
-- [ ] Events feed (history of daemon notices) — legacy none (toasts only, notices.js) — API GET /api/v1/events?after= (handlers_events.go:28) — target `/activity` — status: missing
+- [x] Filter by profile (text, Enter applies) — legacy audit.html:25, audit.js:117-119 — API GET /api/v1/audit?profile= (handlers_security.go:284, :301) — target `/activity` — status: done (components/activity/AuditPanel.tsx: Enter or leaving the field applies; profile suggestions)
+- [x] Level filter All / INFO / WARN / ERROR / SECURITY — legacy audit.html:26-32 — API `level` (uppercased, handlers_security.go:302) — target `/activity` — status: done (components/activity/AuditPanel.tsx; **fix** done: applies at once, translated names)
+- [x] Apply + refresh buttons — legacy audit.html:22, audit.html:33 — target `/activity` — status: done (components/activity/AuditPanel.tsx: filters apply at once; Refresh icon button)
+- [x] Limit 300 — legacy audit.js:104 — API `limit` (handlers_security.go:317) — target `/activity` — status: done (components/activity/AuditPanel.tsx; **fix** done: "Mostrar más" adds 300)
+- [x] Table: Time (`toLocaleString(lang)`), Level badge, Action, Profile, Message, Signed (signed / unsigned) — legacy audit.html:36-51, audit.js:80-94 — API `timestamp, level, action, profile, message, hmac` — target `/activity` — status: done (components/activity/AuditPanel.tsx DataList (cards under 640px); signature as word + icon)
+- [x] Level badge classes INFO ok, WARN pending, ERROR off, SECURITY on — legacy audit.js:61-66 — target `/activity` — status: done (components/activity/AuditPanel.tsx; INFO neutral (Green Means Up), WARN caution, ERROR red, SECURITY emphasized neutral)
+- [x] Note "Showing {count} events"; empty `empty.noEvents`; skeleton — legacy audit.js:72-78, audit.html:48-49 — target `/activity` — status: done (components/activity/AuditPanel.tsx: count, empty states per cause, skeleton on first load)
+- [x] Error → toast `audit.notConfigured` — legacy audit.js:108-110 — API 500 (handlers_security.go:287, :297); unconfigured returns `[]` (:291) — target `/activity` — status: done (components/activity/AuditPanel.tsx; **fix** done: unconfigured is explained with where to turn it on; other errors show message + what to do)
+- [x] Events feed (history of daemon notices) — legacy none (toasts only, notices.js) — API GET /api/v1/events?after= (handlers_events.go:28) — target `/activity` — status: done (components/activity/EventsPanel.tsx + data/activity.ts: history grouped by day, plain language, Conectar in place, refreshed every 5 s)
 
 ### 3.6 Cross-cutting
 
@@ -545,6 +545,9 @@ Used by no dashboard client: `GET /api/v1/dns/resolve` (no client at all), `GET 
 21. Settings DTO structs are declared in the wrong files: `settingsDTO` in handlers_groups.go:341, `groupDTO` in handlers_security.go:329. Code hygiene only.
 22. Deleting a VPN profile checks policy and group references (handlers_vpn.go:362-376), but not other profiles' `failover` lists or scheduler rules. The delete path does not call `config.Validate`. `no verificado`.
 23. `leak_detection_action` (`killswitch_and_notify`) is still editable. Whether it does anything now that the lookup is on demand only is `no verificado`. Confirm or remove.
+24. Audit HMAC is never verified for the dashboard: `security.VerifyEvent` (internal/security/audit.go:220) has no API caller and `GET /api/v1/audit` (handlers_security.go:284) sends only `hmac`. `/activity` shows "Firmada · sin comprobar" and is ready for a per-entry `verified` boolean. Missing endpoint/field.
+25. `security.audit_log.max_size_mb` is stored and defaulted (internal/config/loader.go:115) but nothing enforces it: rotation is daily only (internal/security/audit.go:122). Verified by search, not by test. Enforce it or drop the field.
+26. `GET /api/v1/audit` reads only today's and yesterday's files (`ReadRecentAuditEvents(path, 2)`, handlers_security.go:296) and has no date parameter; `/activity` filters dates in the page and says so.
 
 ### 5.4 CLI parity (AGENTS.md "CLI-complete")
 

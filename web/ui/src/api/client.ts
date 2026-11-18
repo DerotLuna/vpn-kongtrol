@@ -1,4 +1,4 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.4.0 · 2026-11-18
+// Kongtrol UI — typed client for the daemon's local API · v0.5.0 · 2026-11-18
 //
 // Same-origin only; requests carry no token in JS. Authentication (cookie,
 // session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
@@ -154,4 +154,15 @@ export const api = {
     if (!res.ok) return parse<Blob>(res)
     return res.blob()
   },
+}
+
+/**
+ * Generic JSON calls for page data modules (src/data/<page>.ts) that add
+ * their own endpoints without editing the shared `api` object above. Same
+ * auth, language header and reachability reporting as every other call.
+ */
+export const apiCall = {
+  get: <T>(path: string) => request<T>(path),
+  send: <T>(method: 'PUT' | 'POST', path: string, payload?: unknown) =>
+    payload === undefined ? request<T>(path, { method }) : sendJSON<T>(method, path, payload),
 }
