@@ -204,29 +204,6 @@ func (c *Client) Statuses() (map[string]vpn.Status, error) {
 	return out, nil
 }
 
-// GroupNames returns the names of every group in the daemon's config.
-func (c *Client) GroupNames() ([]string, error) {
-	resp, err := c.do(http.MethodGet, "/api/v1/groups", 10*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, APIError(resp)
-	}
-	var groups []struct {
-		Name string `json:"name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&groups); err != nil {
-		return nil, err
-	}
-	names := make([]string, 0, len(groups))
-	for _, g := range groups {
-		names = append(names, g.Name)
-	}
-	return names, nil
-}
-
 // GroupReloadResult mirrors POST /api/v1/groups/{name}/reload, for both the
 // 202 "restarting" shape and the 409 "restart_required" shape.
 type GroupReloadResult struct {

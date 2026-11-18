@@ -43,7 +43,7 @@ const annotationPrefsOnly = "kongtrol.prefs-only"
 func init() {
 	for _, c := range []*cobra.Command{
 		configFavListCmd, configFavAddCmd, configFavRemoveCmd,
-		configDefaultsShowCmd, configDefaultsSetGroupCmd,
+		configDefaultGroupCmd, configDefaultsShowCmd, configDefaultsSetGroupCmd,
 		configLangCmd,
 		configDashboardShowCmd, configDashboardSetPortCmd, configDashboardSetBindCmd, configDashboardResetCmd,
 	} {

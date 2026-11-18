@@ -10,71 +10,77 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 )
 
-// ── check ─────────────────────────────────────────────────────────────────────
+// ── ip ───────────────────────────────────────────────────────────────────────
 
-// checkCmd looks up the public IP once, on demand (and compares it with
+// ipCmd looks up the public IP once, on demand (and compares it with
 // integrity_check.expected_ips). The lookup is opt-in: while it is off no
 // request is made and the command says how to turn it on.
-var checkCmd = &cobra.Command{
-	Use: "check",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		var spin *spinner
-		if !outputJSON {
-			spin = newSpinner(ct("cli.check.spinner"))
-			spin.Start()
+var ipCmd = &cobra.Command{
+	Use:  "ip",
+	Args: cobra.NoArgs,
+	RunE: runIPCheck,
+}
+
+// checkCmd is the deprecated name of ip.
+var checkCmd = deprecatedCommand("check", "kongtrol check", "kongtrol ip", cobra.NoArgs, runIPCheck)
+
+func runIPCheck(cmd *cobra.Command, args []string) error {
+	var spin *spinner
+	if !outputJSON {
+		spin = newSpinner(ct("cli.check.spinner"))
+		spin.Start()
+	}
+	result, host, err := runPublicIPCheck()
+	if spin != nil {
+		spin.Stop()
+	}
+	if err != nil {
+		return err
+	}
+	if result.Disabled {
+		if outputJSON {
+			_ = emitJSON(struct {
+				Enabled bool `json:"public_ip_check_enabled"`
+			}{false})
+		} else {
+			fmt.Println(tuiWarn(ct("cli.check.disabled")))
+			fmt.Println(tuiInfo(paint(cDim, ct("cli.check.enable_how"))))
 		}
-		result, host, err := runPublicIPCheck()
-		if spin != nil {
-			spin.Stop()
-		}
-		if err != nil {
+		return alreadyReported(errors.New(ct("cli.check.disabled")))
+	}
+	if outputJSON {
+		if err := emitJSON(struct {
+			Leak     bool   `json:"leak"`
+			Reason   string `json:"reason,omitempty"`
+			PublicIP string `json:"public_ip,omitempty"`
+			Service  string `json:"service,omitempty"`
+		}{
+			Leak:     result.HasLeak,
+			Reason:   result.Reason,
+			PublicIP: result.PublicIP,
+			Service:  host,
+		}); err != nil {
 			return err
 		}
-		if result.Disabled {
-			if outputJSON {
-				_ = emitJSON(struct {
-					Enabled bool `json:"public_ip_check_enabled"`
-				}{false})
-			} else {
-				fmt.Println(tuiWarn(ct("cli.check.disabled")))
-				fmt.Println(tuiInfo(paint(cDim, ct("cli.check.enable_how"))))
-			}
-			return alreadyReported(errors.New(ct("cli.check.disabled")))
-		}
-		if outputJSON {
-			if err := emitJSON(struct {
-				Leak     bool   `json:"leak"`
-				Reason   string `json:"reason,omitempty"`
-				PublicIP string `json:"public_ip,omitempty"`
-				Service  string `json:"service,omitempty"`
-			}{
-				Leak:     result.HasLeak,
-				Reason:   result.Reason,
-				PublicIP: result.PublicIP,
-				Service:  host,
-			}); err != nil {
-				return err
-			}
-			if result.HasLeak {
-				return fmt.Errorf("%s", ct("cli.check.leak_detected"))
-			}
-			return nil
-		}
 		if result.HasLeak {
-			fmt.Println(tuiErr(paintBold(cBright, ct("cli.check.leak_detected")) + "  " + paint(cDim, result.Reason)))
-			fmt.Println(tuiInfo(paint(cDim, ct("cli.check.leak_hint"))))
-			return alreadyReported(fmt.Errorf("%s", ct("cli.check.leak_detected")))
+			return fmt.Errorf("%s", ct("cli.check.leak_detected"))
 		}
-		if result.PublicIP == "" {
-			fmt.Println(tuiErr(paintBold(cBright, cf("cli.check.failed", host)) + "  " + paint(cDim, result.Reason)))
-			fmt.Println(tuiInfo(paint(cDim, ct("cli.check.failed_hint"))))
-			return alreadyReported(errors.New(cf("cli.check.failed", host)))
-		}
-		fmt.Println(tuiOK(paintBold(cBright, ct("cli.check.no_leak")) +
-			"  " + paint(cDim, ct("cli.check.public_ip")) + styleStatusIP.Render(result.PublicIP)))
-		fmt.Println(tuiInfo(paint(cDim, cf("cli.public_ip.notice", host))))
 		return nil
-	},
+	}
+	if result.HasLeak {
+		fmt.Println(tuiErr(paintBold(cBright, ct("cli.check.leak_detected")) + "  " + paint(cDim, result.Reason)))
+		fmt.Println(tuiInfo(paint(cDim, ct("cli.check.leak_hint"))))
+		return alreadyReported(fmt.Errorf("%s", ct("cli.check.leak_detected")))
+	}
+	if result.PublicIP == "" {
+		fmt.Println(tuiErr(paintBold(cBright, cf("cli.check.failed", host)) + "  " + paint(cDim, result.Reason)))
+		fmt.Println(tuiInfo(paint(cDim, ct("cli.check.failed_hint"))))
+		return alreadyReported(errors.New(cf("cli.check.failed", host)))
+	}
+	fmt.Println(tuiOK(paintBold(cBright, ct("cli.check.no_leak")) +
+		"  " + paint(cDim, ct("cli.check.public_ip")) + styleStatusIP.Render(result.PublicIP)))
+	fmt.Println(tuiInfo(paint(cDim, cf("cli.public_ip.notice", host))))
+	return nil
 }
 
 // runPublicIPCheck asks the running daemon (so every client sees the new

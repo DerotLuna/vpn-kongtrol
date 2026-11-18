@@ -73,10 +73,6 @@ func daemonRequest(method, url string, body io.Reader) (*http.Request, error) {
 // kongtrol.yaml outside the dashboard/CLI" case `kongtrol reload` exists for.
 func daemonReloadPolicy(base string) error { return daemonClient(base).ReloadPolicy() }
 
-// daemonGroupNames returns the names of every group defined in the running
-// daemon's currently loaded config.
-func daemonGroupNames(base string) ([]string, error) { return daemonClient(base).GroupNames() }
-
 // daemonGroupReloadResult mirrors POST /api/v1/groups/{name}/reload.
 type daemonGroupReloadResult = daemonctl.GroupReloadResult
 

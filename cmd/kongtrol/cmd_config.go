@@ -67,46 +67,45 @@ var configFavRemoveCmd = &cobra.Command{
 	},
 }
 
-var configDefaultsCmd = &cobra.Command{
-	Use: "defaults",
+// configDefaultGroupCmd shows (no argument) or sets the group kongtrol up
+// connects when no profile is named. It replaces config defaults show and
+// config defaults set-group, kept as hidden deprecated aliases.
+var configDefaultGroupCmd = &cobra.Command{
+	Use:  "default-group [group]",
+	Args: cobra.MaximumNArgs(1),
+	RunE: runDefaultGroup,
 }
 
-var configDefaultsShowCmd = &cobra.Command{
-	Use: "show",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := loadPreferences()
-		if err != nil {
-			return err
-		}
-		if outputJSON {
-			return emitJSON(struct {
-				DefaultGroup string `json:"default_group"`
-			}{DefaultGroup: p.DefaultGroup})
-		}
-		if p.DefaultGroup == "" {
-			fmt.Println(styleDim.Render(ct("cli.defaults.none")))
-			return nil
-		}
-		fmt.Println(tuiInfo(cf("cli.defaults.group", p.DefaultGroup)))
-		return nil
-	},
-}
+var (
+	configDefaultsCmd         = &cobra.Command{Use: "defaults", Hidden: true}
+	configDefaultsShowCmd     = deprecatedCommand("show", "kongtrol config defaults show", "kongtrol config default-group", cobra.NoArgs, runDefaultGroup)
+	configDefaultsSetGroupCmd = deprecatedCommand("set-group <group>", "kongtrol config defaults set-group", "kongtrol config default-group", cobra.ExactArgs(1), runDefaultGroup)
+)
 
-var configDefaultsSetGroupCmd = &cobra.Command{
-	Use:  "set-group <group>",
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := loadPreferences()
-		if err != nil {
-			return err
-		}
+func runDefaultGroup(cmd *cobra.Command, args []string) error {
+	p, err := loadPreferences()
+	if err != nil {
+		return err
+	}
+	if len(args) == 1 {
 		p.DefaultGroup = args[0]
 		if err := savePreferences(p); err != nil {
 			return err
 		}
 		fmt.Println(tuiOK(cf("cli.defaults.group_set", args[0])))
 		return nil
-	},
+	}
+	if outputJSON {
+		return emitJSON(struct {
+			DefaultGroup string `json:"default_group"`
+		}{DefaultGroup: p.DefaultGroup})
+	}
+	if p.DefaultGroup == "" {
+		fmt.Println(styleDim.Render(ct("cli.defaults.none")))
+		return nil
+	}
+	fmt.Println(tuiInfo(cf("cli.defaults.group", p.DefaultGroup)))
+	return nil
 }
 
 var configLangCmd = &cobra.Command{
@@ -263,5 +262,5 @@ func init() {
 	configFavCmd.AddCommand(configFavListCmd, configFavAddCmd, configFavRemoveCmd)
 	configDefaultsCmd.AddCommand(configDefaultsShowCmd, configDefaultsSetGroupCmd)
 	configDashboardCmd.AddCommand(configDashboardShowCmd, configDashboardSetPortCmd, configDashboardSetBindCmd, configDashboardResetCmd)
-	configCmd.AddCommand(configFavCmd, configDefaultsCmd, configLangCmd, configDashboardCmd)
+	configCmd.AddCommand(configFavCmd, configDefaultGroupCmd, configLangCmd, configDashboardCmd, configDefaultsCmd)
 }

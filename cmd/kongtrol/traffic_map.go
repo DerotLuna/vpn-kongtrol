@@ -10,25 +10,27 @@ import (
 
 // ── map ──────────────────────────────────────────────────────────────────────
 
-var mapCmd = &cobra.Command{
-	Use: "map [target|app:<exe>]",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if engine == nil {
-			return fmt.Errorf("%s", ct("cli.policy.engine_not_loaded"))
-		}
-		if outputJSON {
-			return emitJSON(buildMapReport(args))
-		}
+// mapCmd is the deprecated kongtrol map: kongtrol policy list (all) and
+// kongtrol policy show <destino> (one) replace it. It keeps its old output
+// (and --json shape) for scripts.
+var mapCmd = deprecatedCommand("map [target|app:<exe>]", "kongtrol map", "kongtrol policy list · kongtrol policy show", cobra.MaximumNArgs(1), runMap)
 
-		// If a target is given, resolve it and print the result.
-		if len(args) > 0 {
-			printResolve(args[0])
-			fmt.Println()
-		}
+func runMap(cmd *cobra.Command, args []string) error {
+	if engine == nil {
+		return fmt.Errorf("%s", ct("cli.policy.engine_not_loaded"))
+	}
+	if outputJSON {
+		return emitJSON(buildMapReport(args))
+	}
 
-		printTrafficMap()
-		return nil
-	},
+	// If a target is given, resolve it and print the result.
+	if len(args) > 0 {
+		printResolve(args[0])
+		fmt.Println()
+	}
+
+	printTrafficMap()
+	return nil
 }
 
 type mapRuleJSON struct {

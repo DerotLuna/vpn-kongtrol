@@ -130,6 +130,7 @@ func init() {
 	rootCmd.AddCommand(downCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(routesCmd)
+	rootCmd.AddCommand(ipCmd)
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(mapCmd)
 	rootCmd.AddCommand(dashboardCmd)

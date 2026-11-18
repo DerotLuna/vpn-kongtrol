@@ -76,26 +76,6 @@ func TestDaemonReloadPolicy_PropagatesError(t *testing.T) {
 	}
 }
 
-func TestDaemonGroupNames(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/v1/groups", func(w http.ResponseWriter, r *http.Request) {
-		_ = json.NewEncoder(w).Encode([]map[string]any{
-			{"name": "work", "profiles": []string{"office"}},
-			{"name": "home", "profiles": []string{"aws"}},
-		})
-	})
-	ts := httptest.NewServer(mux)
-	defer ts.Close()
-
-	names, err := daemonGroupNames(ts.URL)
-	if err != nil {
-		t.Fatalf("daemonGroupNames: %v", err)
-	}
-	if len(names) != 2 || names[0] != "work" || names[1] != "home" {
-		t.Fatalf("names=%v, want [work home]", names)
-	}
-}
-
 func TestDaemonReloadGroup_Restarting(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/groups/work/reload", func(w http.ResponseWriter, r *http.Request) {
