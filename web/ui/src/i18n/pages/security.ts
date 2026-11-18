@@ -8,16 +8,8 @@
 import type { Strings } from '../module'
 
 const es = {
-  'publicip.title': 'Salida a internet',
-  'publicip.label': 'IP pública:',
-  'publicip.pill.on': 'Activada',
-  'publicip.pill.off': 'Apagada',
   'publicip.hint': 'Actívalo para ver tu IP pública.',
   'publicip.notice': 'Usa un servicio externo ({host}) que ve tu IP pública',
-  'publicip.check': 'Revisar',
-  'publicip.checking': 'Revisando…',
-  'publicip.turnOn': 'Activar',
-  'publicip.turnOff': 'Apagar',
   'publicip.enabled': 'Listo: Kongtrol consultará tu IP al conectar o desconectar y cuando pulses Revisar.',
   'page.security.lead': 'Qué te protege, cuándo actúa y qué hacer si algo se cae.',
 
@@ -167,16 +159,8 @@ const es = {
 } as const
 
 const en: Strings<typeof es> = {
-  'publicip.title': 'Internet egress',
-  'publicip.label': 'Public IP:',
-  'publicip.pill.on': 'On',
-  'publicip.pill.off': 'Off',
   'publicip.hint': 'Turn it on to see your public IP.',
   'publicip.notice': 'Uses an external service ({host}) that sees your public IP',
-  'publicip.check': 'Check',
-  'publicip.checking': 'Checking…',
-  'publicip.turnOn': 'Turn on',
-  'publicip.turnOff': 'Turn off',
   'publicip.enabled': 'Done: Kongtrol will look up your IP when you connect or disconnect and when you press Check.',
   'page.security.lead': 'What protects you, when it acts and what to do if something drops.',
 

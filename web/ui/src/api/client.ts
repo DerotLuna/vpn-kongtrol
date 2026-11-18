@@ -67,7 +67,7 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   return res
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await send(path, init, 'application/json')
   return parse<T>(res)
 }

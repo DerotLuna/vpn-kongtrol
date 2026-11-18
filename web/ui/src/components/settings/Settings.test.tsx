@@ -1,7 +1,12 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { App } from '../../App'
+import { MemoryRouter } from 'react-router'
+import { usePurgeData, useUpdates } from '../../api/lifecycle-hooks'
+import { DataProvider } from '../../app/DataProvider'
+import { PreferencesProvider } from '../../app/PreferencesProvider'
+import { DataCard } from './DataCard'
+import { UpdatesCard } from './UpdatesCard'
 import type { UpdateStatus } from '../../api/types'
 
 function json(body: unknown, status = 200) {
@@ -30,7 +35,31 @@ const base = {
   'GET /api/v1/tunnels': () => json([]),
 }
 
-const off: UpdateStatus = { check_enabled: false, host: 'api.github.com', current: 'v1.0.0', newer: false }
+// The cards on their own: Inicio no longer shows them (they move to /settings).
+function Cards() {
+  const updates = useUpdates()
+  const purge = usePurgeData()
+  return (
+    <>
+      <UpdatesCard state={updates} />
+      <DataCard state={purge} />
+    </>
+  )
+}
+
+function SettingsCards() {
+  return (
+    <PreferencesProvider>
+      <DataProvider>
+        <MemoryRouter>
+          <Cards />
+        </MemoryRouter>
+      </DataProvider>
+    </PreferencesProvider>
+  )
+}
+
+const off: UpdateStatus ={ check_enabled: false, host: 'api.github.com', current: 'v1.0.0', newer: false }
 
 describe('Settings', () => {
   beforeEach(() => {
@@ -44,7 +73,7 @@ describe('Settings', () => {
       'POST /api/v1/updates': () =>
         json({ ...off, check_enabled: true, latest: 'v1.1.0', newer: true, checked_at: '2026-11-18T10:00:00Z', url: 'https://github.com/DerotLuna/vpn-kongtrol/releases/tag/v1.1.0' }),
     })
-    render(<App />)
+    render(<SettingsCards />)
 
     const card = (await screen.findByRole('heading', { name: 'Aviso de versión nueva' })).closest('section')!
     expect(await within(card).findByText('Apagado')).toBeInTheDocument()
@@ -62,7 +91,7 @@ describe('Settings', () => {
       'GET /api/v1/updates': () => json(off),
       'POST /api/v1/data/purge': () => json({ status: 'purged', restarting: true }),
     })
-    render(<App />)
+    render(<SettingsCards />)
 
     await userEvent.click(await screen.findByRole('button', { name: 'Borrar todos mis datos' }))
     const dialog = screen.getByRole('alertdialog', { name: '¿Borrar todos tus datos?' })
