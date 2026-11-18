@@ -864,6 +864,12 @@ var messages = map[Lang]map[string]string{
 		"doctor.hint.update":                     "Actualiza Kongtrol a la última versión.",
 		"doctor.hint.adapter_error":              "Vuelve a conectarla; el motivo sale en el panel o con kongtrol up %s --dry-run.",
 		"doctor.hint.forti_fallback":             "Si no conecta sola, conecta en FortiClient: Kongtrol lo detecta.",
+		"export.header.title":                    "Configuración de Kongtrol (exportada). Sirve como plantilla para otro equipo.",
+		"export.header.secrets":                  "No lleva contraseñas: Kongtrol las guarda en el llavero del sistema, no en este archivo.",
+		"export.header.paths":                    "Las rutas de archivos (.ovpn, .conf, certificados) son de este equipo: cópialos y ajústalas.",
+		"export.header.import":                   "En el otro equipo: guárdalo como kongtrol.yaml y vuelve a guardar las contraseñas (panel o kongtrol init).",
+		"export.err.no_config":                   "Todavía no hay configuración que exportar.",
+		"export.err.no_config.fix":               "Crea tu primera VPN desde el panel o con kongtrol init.",
 
 		// Wizard cancellation
 		"wizard.cancelled": "\nCancelado — no se guardó ningún cambio.",
@@ -1786,6 +1792,12 @@ var messages = map[Lang]map[string]string{
 		"doctor.hint.update":                     "Update Kongtrol to the latest version.",
 		"doctor.hint.adapter_error":              "Connect it again; the reason shows in the dashboard or with kongtrol up %s --dry-run.",
 		"doctor.hint.forti_fallback":             "If it doesn't connect by itself, connect in FortiClient: Kongtrol detects it.",
+		"export.header.title":                    "Kongtrol configuration (exported). Use it as a template on another computer.",
+		"export.header.secrets":                  "No passwords inside: Kongtrol keeps them in the system keychain, not in this file.",
+		"export.header.paths":                    "File paths (.ovpn, .conf, certificates) belong to this computer: copy the files and adjust them.",
+		"export.header.import":                   "On the other computer: save it as kongtrol.yaml and store the passwords again (dashboard or kongtrol init).",
+		"export.err.no_config":                   "There is no configuration to export yet.",
+		"export.err.no_config.fix":               "Create your first VPN from the dashboard or with kongtrol init.",
 
 		// Wizard cancellation
 		"wizard.cancelled": "\nCancelled — nothing was saved.",
