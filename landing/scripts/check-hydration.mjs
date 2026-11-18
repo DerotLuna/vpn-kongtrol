@@ -1,4 +1,4 @@
-// Hydration check for the built landing — version 1.0.0 · 2026-11-18.
+// Hydration check for the built landing — version 1.1.0 · 2026-11-18.
 //
 // Every entry hydrates the HTML that scripts/prerender.mjs wrote (hydrateRoot,
 // ADR-0026). React requires the first client render to match that HTML
@@ -7,10 +7,11 @@
 // (https://react.dev/reference/react-dom/client/hydrateRoot).
 //
 // This runs the real entry (src/pages/<page>/main.tsx) against each built page
-// in jsdom — every page × language, for three visitors:
+// in jsdom — every page × language, for four visitors:
 //   - default:  no stored choice, light OS theme, Windows, browser in the page language
 //   - stored:   dark theme + page language stored, macOS
 //   - system:   dark OS theme, Linux, browser in the other language (language banner)
+//   - mobile:   iPhone (touch): download buttons become "send to my computer" (ADR-0027)
 // The inline theme boot script in <head> runs first, as in a browser. The
 // check FAILS (exit 1) on any console.error/console.warn from React (the
 // development build reports every mismatch, text and attributes alike), any
@@ -34,13 +35,18 @@ const VISITORS = [
   { name: 'default', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', dark: false, store: {}, browserLang: lang => lang, theme: 'light', os: 'windows' },
   { name: 'stored', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)', dark: false, store: lang => ({ kgtheme: 'dark', kglang: lang }), browserLang: lang => lang, theme: 'dark', os: 'darwin' },
   { name: 'system', ua: 'Mozilla/5.0 (X11; Linux x86_64)', dark: true, store: {}, browserLang: lang => (lang === 'es' ? 'en' : 'es'), theme: 'dark', os: 'linux' },
+  { name: 'mobile', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1', dark: false, store: {}, browserLang: lang => lang, theme: 'light', os: 'darwin', mobile: true },
 ]
+
+// hero download button label once the OS is known (src/components/ui/downloadCta.tsx)
+const OS_WORD = { windows: 'Windows', darwin: 'Mac', linux: 'Linux' }
 
 // Browser APIs jsdom lacks and the landing touches during hydration/effects.
 function stubBrowser(window, visitor, lang) {
   const browserLang = visitor.browserLang(lang)
   const nav = window.navigator
   Object.defineProperty(nav, 'userAgent', { get: () => visitor.ua })
+  Object.defineProperty(nav, 'maxTouchPoints', { get: () => (visitor.mobile ? 5 : 0) })
   Object.defineProperty(nav, 'language', { get: () => browserLang })
   Object.defineProperty(nav, 'languages', { get: () => [browserLang] })
   window.matchMedia = query => ({
@@ -129,6 +135,17 @@ try {
       if (theme !== visitor.theme) record('theme', [`data-theme=${theme} after hydration, expected ${visitor.theme}`])
       if (page === 'home' && !container.querySelector('.th-body')?.textContent.includes(`kongtrol-${visitor.os}-`)) {
         record('os', [`hero does not show the ${visitor.os} binary after hydration`])
+      }
+      if (page === 'home') {
+        const heroCta = container.querySelector('#hero-cta')
+        const sendsToComputer = !!heroCta?.querySelector('[data-send-to-computer]')
+        if (visitor.mobile && !sendsToComputer) record('mobile', ['hero still shows download buttons on a phone'])
+        if (!visitor.mobile) {
+          const primary = heroCta?.querySelector('a.primary')?.textContent ?? ''
+          if (sendsToComputer || !primary.includes(OS_WORD[visitor.os])) {
+            record('cta', [`hero download button is "${primary}", expected one for ${OS_WORD[visitor.os]}`])
+          }
+        }
       }
 
       window.close()

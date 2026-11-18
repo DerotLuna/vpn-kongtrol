@@ -1,0 +1,104 @@
+/* Download entry points shared by the header, hero, "Para todos" and the
+   download section (ADR-0027). Button hierarchy: one filled primary
+   (.btn-download / .th-btn.primary), outlined secondaries (.btn-ghost /
+   .th-btn). Every target is ≥44px (Apple HIG 44×44 pt hit region). */
+
+/* ── Header: GitHub link — always visible, icon only, named by aria-label ── */
+.nav-gh {
+  position: relative;
+  display: inline-grid; place-items: center;
+  width: 38px; height: 38px; flex-shrink: 0;
+  color: var(--text-muted); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+}
+/* the box matches the theme/lang switchers; the hit region reaches 44×44 */
+.nav-gh::before { content: ''; position: absolute; inset: -3px; }
+.nav-gh:hover { color: var(--signal); background: var(--signal-soft); border-color: var(--signal-line); text-decoration: none; }
+
+/* ── Header: download button, revealed once the hero's own one scrolls away ──
+   It always keeps its box (no layout shift); hidden = visibility:hidden, so it
+   is not focusable nor read by screen readers. visibility flips after the
+   fade-out and before the fade-in (transition delay). */
+.nav-dl-slot {
+  position: relative; display: inline-flex; flex-shrink: 0;
+  transition: opacity 0.22s var(--quart-out), transform 0.22s var(--quart-out), visibility 0s linear 0s;
+}
+.nav-dl-slot.is-hidden {
+  visibility: hidden; opacity: 0; transform: translateY(-6px);
+  transition: opacity 0.18s ease-in, transform 0.18s ease-in, visibility 0s linear 0.18s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-dl-slot, .nav-dl-slot.is-hidden { transition: none; transform: none; }
+}
+
+.nav-dl {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 38px; padding: 0 14px;
+  background: var(--signal); color: var(--on-signal);
+  font-family: var(--font-mono); font-weight: 600;
+  font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase;
+  border-radius: var(--radius); position: relative;
+  transition: background-color 0.16s, box-shadow 0.16s;
+}
+.nav-dl::before { content: ''; position: absolute; inset: -3px; }
+.nav-dl:hover { background: var(--signal-hi); text-decoration: none; box-shadow: 0 6px 20px -4px var(--signal-glow); }
+
+/* phones: icon only, the label stays for screen readers */
+@media (max-width: 520px) {
+  .nav-dl { width: 38px; padding: 0; justify-content: center; }
+  .nav-dl-label {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+}
+
+/* ── Buttons with an icon (hero) ── */
+.th-btn svg { flex-shrink: 0; }
+
+/* ── "Send to my computer" (phones and tablets) ── */
+.stc { display: grid; gap: 12px; max-width: 34rem; }
+.stc-note {
+  margin: 0; color: var(--text); font-size: 0.95rem; line-height: 1.5;
+  text-wrap: pretty;
+}
+.stc-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.stc-btn { cursor: pointer; }
+.stc-status {
+  margin: 0; min-height: 1.4em; /* reserved: the confirmation never shifts the layout */
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--live);
+}
+.stc-status.failed { color: var(--danger); }
+
+/* inside the hero terminal: same voice as the terminal lines */
+.th-stc { max-width: none; }
+.th-stc .stc-note { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); }
+.th-stc .stc-actions > * { flex: 1 1 100%; }
+
+/* header (compact): icon button + a small bubble for the copy confirmation */
+.stc-compact { position: relative; display: inline-flex; }
+.stc-icon-btn {
+  position: relative; display: inline-grid; place-items: center;
+  width: 38px; height: 38px; padding: 0; cursor: pointer;
+  background: var(--signal); color: var(--on-signal);
+  border: none; border-radius: var(--radius);
+}
+.stc-icon-btn::before { content: ''; position: absolute; inset: -3px; }
+.stc-icon-btn:hover { background: var(--signal-hi); }
+.stc-bubble {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 5;
+  width: max-content; max-width: min(18rem, calc(100vw - 32px));
+  padding: 8px 12px; border-radius: var(--radius);
+  background: var(--surface-3); color: var(--text); border: 1px solid var(--border-2);
+  font-family: var(--font-mono); font-size: 0.72rem; line-height: 1.4;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.35);
+  opacity: 0; visibility: hidden; transform: translateY(-4px);
+  transition: opacity 0.2s var(--quart-out), transform 0.2s var(--quart-out), visibility 0s linear 0.2s;
+}
+.stc-bubble.show { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) {
+  .stc-bubble, .stc-bubble.show { transition: none; transform: none; }
+}
+
+/* "Para todos" card */
+.path-stc { margin-top: 18px; }

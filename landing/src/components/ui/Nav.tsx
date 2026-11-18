@@ -1,9 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Lang } from '../../i18n'
 import { Theme } from '../../theme'
-import { GITHUB_RELEASES } from '../../links'
+import { GITHUB_REPO } from '../../links'
 import { PageId, pathFor } from '../../site'
 import { chooseLang } from '../../hooks/usePreferences'
+import { useIsMobile } from '../../hooks/useVisitor'
+import { CTA_COPY, downloadHref, DownloadIcon, GitHubIcon } from './downloadCta'
+import SendToComputer from './SendToComputer'
+import './download-cta.css'
 
 interface Props {
   page: PageId
@@ -25,6 +29,14 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   const themeTransitioning = useRef(false)
   const navRef = useRef<HTMLElement>(null)
   const menuButton = useRef<HTMLButtonElement>(null)
+  const mobile = useIsMobile()
+  const cta = CTA_COPY[lang]
+  // On the home page the header's download button waits until the hero's own
+  // download button (#hero-cta) has left the viewport, so the two never
+  // compete. It keeps its space while hidden (no layout shift) and is
+  // visibility:hidden, so it is neither focusable nor announced. Other pages
+  // show it from the start. Starts hidden on home in the prerender too.
+  const [heroCtaInView, setHeroCtaInView] = useState(page === 'home')
 
   const toggleTheme = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (themeTransitioning.current) return
@@ -47,8 +59,8 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     })
   }
   const labels = lang === 'es'
-    ? { langTitle: 'Idioma', themeTitle: 'Tema', dark: 'Oscuro', light: 'Claro', toggleTheme: 'Cambiar tema', toggleLang: 'Cambiar idioma', download: 'Descargar', menu: 'Menú' }
-    : { langTitle: 'Language', themeTitle: 'Theme', dark: 'Dark', light: 'Light', toggleTheme: 'Toggle theme', toggleLang: 'Toggle language', download: 'Download', menu: 'Menu' }
+    ? { langTitle: 'Idioma', themeTitle: 'Tema', dark: 'Oscuro', light: 'Claro', toggleTheme: 'Cambiar tema', toggleLang: 'Cambiar idioma', menu: 'Menú' }
+    : { langTitle: 'Language', themeTitle: 'Theme', dark: 'Dark', light: 'Light', toggleTheme: 'Toggle theme', toggleLang: 'Toggle language', menu: 'Menu' }
 
   // Nav links styled as CLI flags. The top nav only navigates ACROSS pages —
   // in-page sections belong to the tmux bar at the bottom on both pages.
@@ -63,6 +75,20 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  useEffect(() => {
+    if (page !== 'home') return
+    const target = document.getElementById('hero-cta')
+    if (!target || typeof IntersectionObserver === 'undefined') { setHeroCtaInView(false); return }
+    // the sticky header covers the top --nav-h px: a button under it is not "in view"
+    const navH = navRef.current?.offsetHeight ?? 0
+    const io = new IntersectionObserver(
+      ([entry]) => setHeroCtaInView(entry.isIntersecting),
+      { rootMargin: `-${navH}px 0px 0px 0px` },
+    )
+    io.observe(target)
+    return () => io.disconnect()
+  }, [page])
 
   useEffect(() => {
     return () => {
@@ -127,11 +153,19 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
             ))}
           </ul>
 
-          <a href={GITHUB_RELEASES} className="nav-cta" target="_blank" rel="noreferrer" aria-label={labels.download}>
-            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
-            </svg>
-            <span className="nav-cta-label">{labels.download}</span>
+          <span className={`nav-dl-slot${page === 'home' && heroCtaInView ? ' is-hidden' : ''}`}>
+            {mobile ? (
+              <SendToComputer lang={lang} variant="compact" />
+            ) : (
+              <a href={downloadHref(page, lang)} className="nav-dl">
+                <DownloadIcon size={14} />
+                <span className="nav-dl-label">{cta.navDownload}</span>
+              </a>
+            )}
+          </span>
+
+          <a href={GITHUB_REPO} className="nav-gh" target="_blank" rel="noreferrer" aria-label={cta.githubLabel} title={cta.githubLabel}>
+            <GitHubIcon size={18} />
           </a>
 
           <div className="nav-controls nav-utils">

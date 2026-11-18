@@ -1,6 +1,8 @@
 import { Lang } from '../../i18n'
-import { GITHUB_RELEASES } from '../../links'
 import { pathFor } from '../../site'
+import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
+import { downloadHref, downloadLabel, DownloadIcon } from '../ui/downloadCta'
+import SendToComputer from '../ui/SendToComputer'
 import AttachDemo from './AttachDemo'
 import CodeBlock from '../ui/CodeBlock'
 
@@ -11,6 +13,8 @@ interface Props {
 // The plain-language promise right under the terminal hero, plus the two
 // ways in: the app (everyone) and the CLI (devs). Same product, same engine.
 export default function Start({ lang }: Props) {
+  const detectedOS = useDetectedOS()
+  const mobile = useIsMobile()
   const es = lang === 'es'
   const t = es
     ? {
@@ -24,7 +28,6 @@ export default function Start({ lang }: Props) {
         'Corre kongtrol init una vez: detecta tus VPN y te guía.',
         'Corre kongtrol dashboard: el panel se abre en tu navegador para conectar y ajustar todo.',
       ],
-      everyoneCta: 'Descargar gratis',
       everyoneNote: 'Cerrar el panel o la terminal no desconecta: Kongtrol sigue en segundo plano.',
       devsTitle: 'Para devs',
       devsLead: 'La misma app, con una CLI que hace todo lo que hace el panel. Ideal para scripts.',
@@ -44,7 +47,6 @@ $ kongtrol status --watch # estado en vivo`,
         'Run kongtrol init once: it detects your VPNs and guides you.',
         'Run kongtrol dashboard: the panel opens in your browser to connect and adjust everything.',
       ],
-      everyoneCta: 'Download free',
       everyoneNote: 'Closing the panel or the terminal does not disconnect: Kongtrol keeps running in the background.',
       devsTitle: 'For devs',
       devsLead: 'The same app, with a CLI that does everything the panel does. Built for scripts.',
@@ -72,14 +74,17 @@ $ kongtrol status --watch # live status`,
             <ol className="path-list">
               {t.everyone.map((s, i) => <li key={i}>{s}</li>)}
             </ol>
-            <div className="path-actions">
-              <a href={GITHUB_RELEASES} className="btn-download" target="_blank" rel="noreferrer">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-                  <path d="M8 1a.5.5 0 0 1 .5.5v7.793l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V1.5A.5.5 0 0 1 8 1ZM2.5 13a.5.5 0 0 0 0 1h11a.5.5 0 0 0 0-1h-11Z"/>
-                </svg>
-                {t.everyoneCta}
-              </a>
-            </div>
+            {/* same as the hero: scroll to the download section; phones get "send to my computer" */}
+            {mobile ? (
+              <SendToComputer lang={lang} className="path-stc" />
+            ) : (
+              <div className="path-actions">
+                <a href={downloadHref('home', lang)} className="btn-download">
+                  <DownloadIcon size={14} />
+                  {downloadLabel(lang, detectedOS)}
+                </a>
+              </div>
+            )}
             <p className="path-note">{t.everyoneNote}</p>
           </div>
 

@@ -286,21 +286,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 .nav-right { display: flex; align-items: center; justify-self: end; gap: 18px; }
 
-/* the header's one action: grab the binary */
-.nav-cta {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--signal); color: var(--on-signal);
-  font-family: var(--font-mono); font-weight: 600;
-  font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase;
-  padding: 8px 14px; border-radius: var(--radius);
-  transition: background 0.16s, transform 0.16s, box-shadow 0.16s;
-}
-.nav-cta svg { width: 14px; height: 14px; }
-.nav-cta:hover {
-  background: var(--signal-hi); text-decoration: none;
-  transform: translateY(-1px); box-shadow: 0 6px 20px var(--signal-glow);
-}
-
 .nav-lang-switcher, .nav-theme-switcher {
   display: flex; align-items: center; gap: 3px;
   background: var(--surface); border: 1px solid var(--border);
@@ -565,35 +550,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .sb-arrow { color: var(--text-dim); flex-shrink: 0; }
 .sb-hint { margin-top: 10px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
 
-/* ── Download ───────────────────────────────────────────────────────────────── */
-.download-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
-  margin-top: 48px; background: var(--border);
-  border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;
-}
-.download-card {
-  background: var(--surface); padding: 34px 30px;
-  display: flex; flex-direction: column; gap: 20px; transition: background 0.2s;
-}
-.download-card:hover { background: var(--surface-2); }
-.download-card.current { background: var(--surface-2); position: relative; box-shadow: inset 0 2px 0 var(--signal); }
-.download-card.current::after {
-  content: attr(data-current-label); position: absolute; top: 16px; right: 16px;
-  font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.12em;
-  color: var(--signal); background: var(--signal-soft); border: 1px solid var(--signal-line);
-  padding: 3px 8px; border-radius: 3px;
-}
-.download-os-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; letter-spacing: 0.01em; color: var(--text); }
-.download-filename {
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);
-  padding: 9px 12px; background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius); word-break: break-all;
-}
-.download-arch-note { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
-.download-card .btn-download { align-self: flex-start; }
-.download-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.download-item-info { min-width: 0; }
-
 .source-install {
   margin-top: 40px; padding: 26px 30px; border: 1px solid var(--border);
   border-radius: var(--radius-lg); background: var(--surface);
@@ -836,7 +792,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .nav-links { display: none; }
   .nav-inner { grid-template-columns: auto auto; }
   .nav-utils { border-inline-start: none; padding-inline-start: 0; }
-  .download-grid { grid-template-columns: 1fr; }
 
   /* header wordmark drops on mobile/tablet — the hamburger below covers
      home/guide navigation, so the full logo lockup isn't needed — but the
@@ -900,17 +855,11 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .home-jump { display: none; }
 }
 
-/* header math doesn't fit under ~520px: hamburger + full download button +
-   theme/lang toggles need more room than phones give — collapse the
-   download button to icon-only (the wordmark is already gone by 960px) */
+/* header math doesn't fit under ~520px: the download button collapses to
+   icon-only there (src/components/ui/download-cta.css) */
 @media (max-width: 520px) {
   .nav-inner { gap: 10px; padding: 0 16px; }
   .nav-right { gap: 10px; }
-  /* 37×37 to match the theme/lang/hamburger buttons exactly, instead of
-     shrink-wrapping to icon+padding (which read visibly smaller) */
-  .nav-cta { width: 37px; height: 37px; padding: 0; justify-content: center; }
-  .nav-cta-label { display: none; }
-  .nav-cta svg { width: 16px; height: 16px; }
 }
 
 /* the homepage tmux bar hides under 720px — show the jump menu instead */
@@ -969,11 +918,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 
 @media (max-width: 480px) {
-  /* filename + download button no longer fit side by side without the
-     filename wrapping to 2-3 cramped lines — stack them instead */
-  .download-item { flex-direction: column; }
-  .download-item .btn-download { align-self: center; justify-content: center; }
-
   /* the routing readout wraps its pieces independently at this width,
      breaking mid-sentence with an orphaned arrow — stack each piece instead */
   .sb-readout { flex-direction: column; align-items: flex-start; gap: 6px; }

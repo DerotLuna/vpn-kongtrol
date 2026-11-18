@@ -42,7 +42,7 @@ const HOME_WINDOWS_EN: TmuxWindow[] = [
 ]
 
 export default function App({ lang }: { lang: Lang }) {
-  const [os, setOS] = useOS()
+  const [os] = useOS()
   const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting('home', lang)
   useKonami()
@@ -85,7 +85,7 @@ export default function App({ lang }: { lang: Lang }) {
           <Features lang={lang} />
           <Security lang={lang} />
           <UnderTheHood lang={lang} />
-          <Download os={os} setOS={setOS} lang={lang} />
+          <Download lang={lang} />
         </div>
       </main>
       <Footer lang={lang} page="home" />

@@ -1,8 +1,11 @@
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react'
 import { OS } from '../../hooks/useOS'
+import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_RELEASES, GITHUB_REPO } from '../../links'
+import { GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey } from '../../links'
 import { pathFor, SITE_UPDATED, SITE_VERSION } from '../../site'
+import { CTA_COPY, downloadHref, downloadLabel, DownloadIcon, GitHubIcon } from '../ui/downloadCta'
+import SendToComputer from '../ui/SendToComputer'
 
 interface Props {
   os: OS
@@ -25,10 +28,10 @@ const TUNNELS: Tunnel[] = [
   { profile: 'aws', adapter: 'OpenVPN', ip: '10.42.7.3' },
 ]
 
-const BIN: Record<OS, string> = {
-  windows: 'kongtrol-windows-amd64.exe',
-  macos: 'kongtrol-darwin-arm64',
-  linux: 'kongtrol-linux-amd64',
+const BIN: Record<OS, ReleaseAssetKey> = {
+  windows: 'windows-amd64',
+  macos: 'macos-arm64',
+  linux: 'linux-amd64',
 }
 
 // Boot timeline (ms after first paint). The meaningful content (banner, the
@@ -71,6 +74,12 @@ export default function Hero({ os, lang }: Props) {
     if (el && shell.length > 0) el.scrollTop = el.scrollHeight
   }, [shell])
 
+  // download CTA: label follows the detected OS after hydration ("Descargar
+  // gratis" in the prerender); phones/tablets get "send to my computer"
+  const detectedOS = useDetectedOS()
+  const mobile = useIsMobile()
+  const cta = CTA_COPY[lang]
+
   const es = lang === 'es'
   const copy = es
     ? {
@@ -78,12 +87,10 @@ export default function Hero({ os, lang }: Props) {
       tag1: '# torre de kongtrol multi-VPN · 10 VPN · Win / macOS / Linux (según la VPN)',
       tag2: '# panel web + CLI completa',
       sub: 'Conecta tus VPN como siempre. Kongtrol las detecta, las vigila, las reconecta si caen y manda cada sitio por la VPN correcta.',
-      ctaDownload: '[ ⇩ Descargar en GitHub ]',
-      ctaGuide: '[ man kongtrol — guía completa ]',
       resolving: '→ resolviendo credenciales desde el keychain… ok',
       security: ['⛨ kill switch', 'ARMADO', '· DNS guard', 'ACTIVO'],
       watchdog: '♺ watchdog: sondeo cada 5s · backoff 2s → 5m',
-      binHint: `→ binario para tu sistema: ${BIN[os]}`,
+      binHint: `→ binario para tu sistema: ${RELEASE_ASSETS[BIN[os]]}`,
       hint: 'escribe "help" y presiona Enter ↵',
       srTitle: 'VPN Kongtrol — todas tus VPN en un solo lugar',
     }
@@ -92,12 +99,10 @@ export default function Hero({ os, lang }: Props) {
       tag1: '# multi-VPN kongtrol tower · 10 VPNs · Win / macOS / Linux (varies by VPN)',
       tag2: '# web panel + full CLI',
       sub: 'Connect your VPNs the way you always do. Kongtrol detects them, watches them, reconnects them if they drop, and sends each site through the right VPN.',
-      ctaDownload: '[ ⇩ Download on GitHub ]',
-      ctaGuide: '[ man kongtrol — full guide ]',
       resolving: '→ resolving credentials from the keychain… ok',
       security: ['⛨ kill switch', 'ARMED', '· DNS guard', 'ACTIVE'],
       watchdog: '♺ watchdog: poll every 5s · backoff 2s → 5m',
-      binHint: `→ binary for your system: ${BIN[os]}`,
+      binHint: `→ binary for your system: ${RELEASE_ASSETS[BIN[os]]}`,
       hint: 'type "help" and press Enter ↵',
       srTitle: 'VPN Kongtrol — all your VPNs in one place',
     }
@@ -237,9 +242,25 @@ export default function Hero({ os, lang }: Props) {
               <p className="th-sub boot-step" style={at(BOOT.sub)}>{copy.sub}</p>
             </div>
 
-            <div className="th-ctas boot-step" style={at(BOOT.ctas)}>
-              <a href={GITHUB_RELEASES} className="th-btn primary" target="_blank" rel="noreferrer">{copy.ctaDownload}</a>
-              <a href={pathFor('guia', lang)} className="th-btn">{copy.ctaGuide}</a>
+            {/* id="hero-cta" stays on the same element across the desktop/mobile
+                swap: the header watches it to reveal its own download button */}
+            <div id="hero-cta" className="th-ctas boot-step" style={at(BOOT.ctas)}>
+              {mobile ? (
+                <SendToComputer lang={lang} className="th-stc">
+                  <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
+                    <GitHubIcon />{cta.github}
+                  </a>
+                </SendToComputer>
+              ) : (
+                <>
+                  <a href={downloadHref('home', lang)} className="th-btn primary">
+                    <DownloadIcon />{downloadLabel(lang, detectedOS)}
+                  </a>
+                  <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
+                    <GitHubIcon />{cta.github}
+                  </a>
+                </>
+              )}
             </div>
 
             <div className="hero-cmd-line th-cmd boot-step" style={at(BOOT.cmd)}>
