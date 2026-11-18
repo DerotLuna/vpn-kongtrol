@@ -295,7 +295,9 @@ behaviour, tick each row with the new file; nothing dropped without an ADR):
 - Data only via `src/data` (TanStack Query, cache keyed by resource in `keys.ts` or a
   per-domain `src/data/<domain>.ts`); the one WebSocket (`live.ts`) writes into the same cache.
   Pages never fetch on their own; changes use `useOptimisticMutation` (rollback + toast with the
-  "what to do" line); errors render through `describeError`.
+  "what to do" line); errors render through `describeError` (on screen: kit `ErrorState`).
+  Requests only through `http.get/post/put/delete` in `src/api/client.ts` (language header,
+  auth, reachability, `ApiError`); data modules keep their endpoints next to their hooks.
 - Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
 - UI kit in `src/components/ui` (review at `/app/_kit`, dev builds only); shell in
   `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.

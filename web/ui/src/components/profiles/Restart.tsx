@@ -1,4 +1,4 @@
-// Kongtrol UI — "Reiniciar ahora" after profile changes · v1.0.0 · 2026-11-18
+// Kongtrol UI — "Reiniciar ahora" after profile changes · v1.0.1 · 2026-11-18
 //
 // The daemon builds its VPN adapters at start, so a new or edited profile
 // connects only after a restart (AGENTS.md "Dashboard REST API"). One banner
@@ -31,7 +31,7 @@ export function RestartBanner() {
       tone="info"
       title={t('profiles.restart.pending')}
       actions={
-        <Button icon={<RefreshIcon />} loading={busy} onClick={() => void restart()}>
+        <Button variant="tonal" icon={<RefreshIcon />} loading={busy} onClick={() => void restart()}>
           {t('profiles.restart.button')}
         </Button>
       }

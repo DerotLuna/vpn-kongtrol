@@ -1,4 +1,4 @@
-// Kongtrol UI — Tráfico (/traffic): reads, live samples and lookups · v1.0.0 · 2026-11-18
+// Kongtrol UI — Tráfico (/traffic): reads, live samples and lookups · v1.0.1 · 2026-11-18
 //
 // Everything the Traffic page reads from the daemon, on the shared cache
 // (ADR-0038): routes, what goes through each tunnel, policies (with their
@@ -11,7 +11,7 @@
 // so they are tested without rendering.
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { apiCall } from '../api/client'
+import { http } from '../api/client'
 import type { TunnelMetrics } from '../api/types'
 import type { Lang } from '../i18n/messages'
 import { keys } from './keys'
@@ -136,20 +136,20 @@ export const ROUTE_SETTLE_MS = 600
 const enc = encodeURIComponent
 
 export const trafficApi = {
-  routes: () => apiCall.get<RouteRow[] | null>('/api/v1/routes').then((r) => r ?? []),
+  routes: () => http.get<RouteRow[] | null>('/api/v1/routes').then((r) => r ?? []),
   tunnelRoutes: () =>
-    apiCall.get<TunnelRoutesResponse>('/api/v1/tunnels/routes').then((r) => ({ ...r, tunnels: r?.tunnels ?? [] })),
+    http.get<TunnelRoutesResponse>('/api/v1/tunnels/routes').then((r) => ({ ...r, tunnels: r?.tunnels ?? [] })),
   // Same key and same result as data/security.ts (sorted by name), so both pages share one entry.
   policies: () =>
-    apiCall.get<Policy[] | null>('/api/v1/policies').then((l) => [...(l ?? [])].sort((a, b) => a.name.localeCompare(b.name))),
-  overview: () => apiCall.get<NetworkOverview>('/api/v1/network/overview'),
-  history: () => apiCall.get<Record<string, ProfileHistory> | null>('/api/v1/metrics/history').then((h) => h ?? {}),
+    http.get<Policy[] | null>('/api/v1/policies').then((l) => [...(l ?? [])].sort((a, b) => a.name.localeCompare(b.name))),
+  overview: () => http.get<NetworkOverview>('/api/v1/network/overview'),
+  history: () => http.get<Record<string, ProfileHistory> | null>('/api/v1/metrics/history').then((h) => h ?? {}),
   resolve: (q: LookupQuery) =>
-    apiCall.get<ResolveResult>(
+    http.get<ResolveResult>(
       q.app ? `/api/v1/resolve?app=${enc(q.app)}` : `/api/v1/resolve?target=${enc(q.target ?? '')}`,
     ),
   dns: (domain: string, via: string) =>
-    apiCall.get<DnsResolveResult>(`/api/v1/dns/resolve?domain=${enc(domain)}&via=${enc(via)}`),
+    http.get<DnsResolveResult>(`/api/v1/dns/resolve?domain=${enc(domain)}&via=${enc(via)}`),
 }
 
 // ── Hooks ────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-// Kongtrol UI — Seguridad (/security) data: queries + mutations · v1.0.0 · 2026-11-18
+// Kongtrol UI — Seguridad (/security) data: queries + mutations · v1.0.1 · 2026-11-18
 //
 // Everything the Security page reads or changes, on the shared cache
 // (ADR-0038). Cache keys name resources, so another page reading the same
@@ -143,7 +143,7 @@ export function useKillSwitchToggle() {
   const { t } = usePreferences()
   return useOptimisticMutation<boolean, unknown, SecurityState>({
     queryKey: securityKeys.status,
-    mutationFn: (enabled) => http.send('POST', '/api/v1/security/killswitch', { enabled }),
+    mutationFn: (enabled) => http.post('/api/v1/security/killswitch', { enabled }),
     apply: (st, enabled) => ({
       ...st,
       kill_switch_enabled: enabled,
@@ -162,7 +162,7 @@ export function useDNSGuardToggle() {
   const { t } = usePreferences()
   return useOptimisticMutation<boolean, unknown, SecurityState>({
     queryKey: securityKeys.status,
-    mutationFn: (enabled) => http.send('POST', '/api/v1/security/dnsguard', { enabled }),
+    mutationFn: (enabled) => http.post('/api/v1/security/dnsguard', { enabled }),
     apply: (st, enabled) => ({
       ...st,
       dns_guard_enabled: enabled,
@@ -182,7 +182,7 @@ export function usePublicIPToggle() {
   const client = useQueryClient()
   return useOptimisticMutation<boolean, { public_ip_check_host?: string }, SecurityState>({
     queryKey: securityKeys.status,
-    mutationFn: (enabled) => http.send('POST', '/api/v1/security/publicip', { enabled }),
+    mutationFn: (enabled) => http.post('/api/v1/security/publicip', { enabled }),
     apply: (st, enabled) => ({ ...st, public_ip_check_enabled: enabled, ...(enabled ? {} : { leak_check: null }) }),
     successMessage: (enabled) => {
       // The settings form shows the same opt-in; keep it in step.
@@ -196,7 +196,7 @@ export function usePublicIPToggle() {
 export function usePublicIPCheck() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: () => http.send<{ leak_check?: LeakCheck | null }>('POST', '/api/v1/security/publicip/check', {}),
+    mutationFn: () => http.post<{ leak_check?: LeakCheck | null }>('/api/v1/security/publicip/check', {}),
     onSuccess: (res) => {
       client.setQueryData<SecurityState>(securityKeys.status, (st) => (st ? { ...st, leak_check: res.leak_check ?? null } : st))
     },
@@ -210,7 +210,7 @@ export function useOverride() {
   const client = useQueryClient()
   return useOptimisticMutation<{ name: string; override: KillSwitchOverride }, unknown, ProfileSummary[]>({
     queryKey: securityKeys.vpns,
-    mutationFn: ({ name, override }) => http.send('PUT', `/api/v1/vpns/${enc(name)}/killswitch`, { override }),
+    mutationFn: ({ name, override }) => http.put(`/api/v1/vpns/${enc(name)}/killswitch`, { override }),
     apply: (list, { name, override }) => list.map((p) => (p.name === name ? { ...p, kill_switch_override: override } : p)),
     successMessage: ({ name }) => {
       void client.invalidateQueries({ queryKey: securityKeys.status })
@@ -224,7 +224,7 @@ export function useSettingsToggle() {
   const client = useQueryClient()
   return useOptimisticMutation<SettingsPatch, SecuritySettings, SecuritySettings>({
     queryKey: securityKeys.settings,
-    mutationFn: (patch) => http.send<SecuritySettings>('PUT', '/api/v1/settings', patch),
+    mutationFn: (patch) => http.put<SecuritySettings>('/api/v1/settings', patch),
     apply: (st, patch) => ({ ...st, ...patch }),
     successMessage: () => {
       void client.invalidateQueries({ queryKey: securityKeys.status })
@@ -241,7 +241,7 @@ export function useSettingsToggle() {
 export function useSettingsSave() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: (patch: SettingsPatch) => http.send<SecuritySettings>('PUT', '/api/v1/settings', patch),
+    mutationFn: (patch: SettingsPatch) => http.put<SecuritySettings>('/api/v1/settings', patch),
     onSuccess: (dto) => {
       client.setQueryData(securityKeys.settings, dto)
       void client.invalidateQueries({ queryKey: securityKeys.status })

@@ -11,7 +11,7 @@
 // Forms only register here; they never need the router, so they also work
 // in tests rendered without one.
 import { useEffect, useId } from 'react'
-import { createStore, useStore } from '../data/store'
+import { createStore } from '../data/store'
 
 const dirtyForms = createStore<ReadonlySet<string>>(new Set())
 
@@ -50,9 +50,4 @@ export function useUnsavedChanges(dirty: boolean): void {
       window.removeEventListener('beforeunload', listener)
     }
   }, [id, dirty])
-}
-
-/** Whether any form has unsaved edits (re-renders on change). */
-export function useHasUnsavedChanges(): boolean {
-  return useStore(dirtyForms).size > 0
 }

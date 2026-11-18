@@ -1,4 +1,4 @@
-/* KONGTROL UI — base + shared card styles · v0.4.0 · 2026-11-18
+/* KONGTROL UI — base + shared card styles · v0.5.0 · 2026-11-18
    Kit: kit.css · shell: shell.css */
 @import './tokens.css';
 
@@ -17,6 +17,10 @@ button { font: inherit; color: inherit; }
 a { color: var(--signal); text-underline-offset: 3px; }
 a:hover { color: var(--signal-hi); }
 :focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius); }
+
+/* No lone last words in prose; balanced headings (CSS Text 4). */
+p, li, dd, figcaption { text-wrap: pretty; }
+h1, h2, h3 { text-wrap: balance; }
 
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; overflow: hidden;
@@ -81,7 +85,6 @@ a:hover { color: var(--signal-hi); }
 .check-section { margin-left: auto; font: 400 12px/1.2 var(--font-mono); color: var(--text-dim); }
 .check-detail { font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
 .check-hint { font-size: 14px; }
-.check .btn { margin-top: 4px; }
 .check-list.compact .check { padding: 8px 12px; }
 .check-ok summary { cursor: pointer; min-height: 32px; font-size: 14px; color: var(--text-muted); }
 .check-ok summary:hover { color: var(--text); }
@@ -91,19 +94,7 @@ a:hover { color: var(--signal-hi); }
   padding-top: 16px; border-top: 1px solid var(--border);
 }
 
-/* ── Buttons / notices ─────────────────────────────────────────────────── */
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  min-height: 44px; padding: 0 18px; border-radius: var(--radius); cursor: pointer;
-  border: 1px solid var(--signal); background: var(--signal); color: var(--on-signal);
-  font-weight: 600; font-size: 15px; align-self: flex-start;
-}
-.btn:hover:not(:disabled) { background: var(--signal-hi); border-color: var(--signal-hi); }
-.btn:disabled { opacity: 0.6; cursor: progress; }
-.btn.ghost { background: none; color: var(--text); border-color: var(--border-2); }
-/* destructive action ("Borrar todos mis datos"): outlined red, never the default look */
-.btn.danger { background: none; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
-.btn.danger:hover:not(:disabled) { background: var(--danger-soft); border-color: var(--danger); }
+/* ── Notices ──────────────────────────────────────────────────────── */
 .danger-zone ul { margin: 4px 0 4px 20px; }
 .settings { margin-top: 32px; display: flex; flex-direction: column; gap: 16px; }
 .notice {

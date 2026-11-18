@@ -1,4 +1,4 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.5.0 · 2026-11-18
+// Kongtrol UI — typed client for the daemon's local API · v0.6.0 · 2026-11-18
 //
 // Same-origin only; requests carry no token in JS. Authentication (cookie,
 // session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
@@ -70,7 +70,7 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   return res
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await send(path, init, 'application/json')
   return parse<T>(res)
 }
@@ -98,21 +98,24 @@ async function parse<T>(res: Response): Promise<T> {
   return body as T
 }
 
-export function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Promise<T> {
-  return request<T>(path, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  })
+function withJSON(method: string, payload: unknown): RequestInit {
+  if (payload === undefined) return { method }
+  return { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
 }
 
 /**
- * Low-level JSON calls for page data modules (src/data/<page>.ts) that keep
- * their endpoints next to their hooks, so parallel pages never edit `api`.
+ * The one way to call the daemon's JSON API. Every call carries the same
+ * language header and auth, reports reachability to data/connection.ts and
+ * throws ApiError (offline / unauthorized / server, with the daemon's
+ * translated `hint`) on failure. Data modules (src/data/<domain>.ts) keep
+ * their endpoints next to their hooks and call these; pages never fetch.
+ * `post` without a body sends none (several actions take no payload).
  */
 export const http = {
   get: <T>(path: string) => request<T>(path),
-  send: <T>(method: 'PUT' | 'POST', path: string, payload: unknown) => sendJSON<T>(method, path, payload),
+  post: <T>(path: string, payload?: unknown) => request<T>(path, withJSON('POST', payload)),
+  put: <T>(path: string, payload: unknown) => request<T>(path, withJSON('PUT', payload)),
+  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 
 const enc = encodeURIComponent
@@ -123,58 +126,43 @@ export function sortTunnels(list: TunnelMetrics[]): TunnelMetrics[] {
 }
 
 export const api = {
-  tunnels: () => request<TunnelMetrics[] | null>('/api/v1/tunnels').then((l) => sortTunnels(l ?? [])),
+  tunnels: () => http.get<TunnelMetrics[] | null>('/api/v1/tunnels').then((l) => sortTunnels(l ?? [])),
   /** Accepted (202) at once; the tunnel feed reports when it is up. */
-  connect: (name: string) => request<TunnelActionResult>(`/api/v1/tunnels/${enc(name)}/connect`, { method: 'POST' }),
+  connect: (name: string) => http.post<TunnelActionResult>(`/api/v1/tunnels/${enc(name)}/connect`),
   /** 202 waiting_user: the provider app must be disconnected by hand. */
   disconnect: (name: string) =>
-    request<TunnelActionResult>(`/api/v1/tunnels/${enc(name)}/disconnect`, { method: 'POST' }),
+    http.post<TunnelActionResult>(`/api/v1/tunnels/${enc(name)}/disconnect`),
   cancelConnect: (name: string) =>
-    request<unknown>(`/api/v1/tunnels/${enc(name)}/cancel_connect`, { method: 'POST' }),
-  helperStatus: () => request<HelperStatus>('/api/v1/helper/status'),
+    http.post<unknown>(`/api/v1/tunnels/${enc(name)}/cancel_connect`),
+  helperStatus: () => http.get<HelperStatus>('/api/v1/helper/status'),
   /** Shows one OS permission prompt; may take minutes. Empty body by design. */
-  installHelper: () => request<HelperStatus>('/api/v1/helper/install', { method: 'POST' }),
+  installHelper: () => http.post<HelperStatus>('/api/v1/helper/install'),
   /** Daemon build (version, commit, date); same as `kongtrol version`. */
-  version: () => request<VersionInfo>('/api/v1/version'),
-  preferences: () => request<Preferences>('/api/v1/preferences'),
+  version: () => http.get<VersionInfo>('/api/v1/version'),
+  preferences: () => http.get<Preferences>('/api/v1/preferences'),
   savePreferences: (update: Partial<Preferences>) =>
-    sendJSON<Preferences>('PUT', '/api/v1/preferences', update),
+    http.put<Preferences>('/api/v1/preferences', update),
   /** Kill switch, DNS guard and public IP state. Reads state only; no external lookup. */
-  security: () => request<SecurityStatus>('/api/v1/security/status'),
-  setKillSwitch: (enabled: boolean) => sendJSON<unknown>('POST', '/api/v1/security/killswitch', { enabled }),
-  setDNSGuard: (enabled: boolean) => sendJSON<unknown>('POST', '/api/v1/security/dnsguard', { enabled }),
-  /** Reads state only; no external lookup. */
-  publicIP: () => request<PublicIPStatus>('/api/v1/security/status'),
-  /** Opt in/out of the external public IP lookup. */
-  setPublicIP: (enabled: boolean) => sendJSON<PublicIPStatus>('POST', '/api/v1/security/publicip', { enabled }),
+  security: () => http.get<SecurityStatus>('/api/v1/security/status'),
+  setKillSwitch: (enabled: boolean) => http.post<unknown>('/api/v1/security/killswitch', { enabled }),
+  setDNSGuard: (enabled: boolean) => http.post<unknown>('/api/v1/security/dnsguard', { enabled }),
   /** One lookup now (the user's "Revisar"). */
-  checkPublicIP: () => request<PublicIPStatus>('/api/v1/security/publicip/check', { method: 'POST' }),
+  checkPublicIP: () => http.post<PublicIPStatus>('/api/v1/security/publicip/check'),
   /** Remembered state only; reading never contacts GitHub. */
-  updates: () => request<UpdateStatus>('/api/v1/updates'),
+  updates: () => http.get<UpdateStatus>('/api/v1/updates'),
   /** Opt in/out of the update notice (updates.check_enabled). */
-  setUpdates: (enabled: boolean) => sendJSON<UpdateStatus>('POST', '/api/v1/updates', { enabled }),
+  setUpdates: (enabled: boolean) => http.post<UpdateStatus>('/api/v1/updates', { enabled }),
   /** "Borrar todos mis datos": the daemon then restarts into first-run setup. */
-  purgeData: () => sendJSON<PurgeResult>('POST', '/api/v1/data/purge', { confirm: true }),
-  groups: () => request<Group[]>('/api/v1/groups'),
-  connectGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}/connect`, { method: 'POST' }),
-  disconnectGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}/disconnect`, { method: 'POST' }),
+  purgeData: () => http.post<PurgeResult>('/api/v1/data/purge', { confirm: true }),
+  groups: () => http.get<Group[]>('/api/v1/groups'),
+  connectGroup: (name: string) => http.post<unknown>(`/api/v1/groups/${enc(name)}/connect`),
+  disconnectGroup: (name: string) => http.post<unknown>(`/api/v1/groups/${enc(name)}/disconnect`),
   /** Same checks as `kongtrol doctor`, run by the daemon; takes a few seconds. */
-  doctor: () => request<DoctorReport>('/api/v1/doctor'),
+  doctor: () => http.get<DoctorReport>('/api/v1/doctor'),
   /** kongtrol.yaml as a file (no passwords); errors arrive translated. */
   exportConfig: async (): Promise<Blob> => {
     const res = await send('/api/v1/config/export', {}, 'application/yaml, application/json')
     if (!res.ok) return parse<Blob>(res)
     return res.blob()
   },
-}
-
-/**
- * Generic JSON calls for page data modules (src/data/<page>.ts) that add
- * their own endpoints without editing the shared `api` object above. Same
- * auth, language header and reachability reporting as every other call.
- */
-export const apiCall = {
-  get: <T>(path: string) => request<T>(path),
-  send: <T>(method: 'PUT' | 'POST', path: string, payload?: unknown) =>
-    payload === undefined ? request<T>(path, { method }) : sendJSON<T>(method, path, payload),
 }

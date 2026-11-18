@@ -1,4 +1,4 @@
-// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.0.0 · 2026-11-18
+// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.0.1 · 2026-11-18
 //
 // Policies, policy meta, the scheduler rules and the scheduler's two
 // settings, read and changed only through these hooks (ADR-0038). Keys
@@ -8,7 +8,7 @@
 // daemon refuses); a refusal is also returned to the form (mutateAsync)
 // so it shows inline next to the fields, not only as a toast.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { request, sendJSON } from '../api/client'
+import { http } from '../api/client'
 import { describeError } from '../api/errors'
 import { usePreferences } from '../app/preferences-context'
 import {
@@ -51,27 +51,27 @@ export const rulesKeys = {
 const enc = encodeURIComponent
 
 export const rulesApi = {
-  policies: () => request<Policy[] | null>('/api/v1/policies').then((l) => l ?? []),
-  policyMeta: () => request<PolicyMeta>('/api/v1/policies/meta'),
-  createPolicy: (p: PolicyPayload) => sendJSON<unknown>('POST', '/api/v1/policies', p),
-  updatePolicy: (name: string, p: PolicyPayload) => sendJSON<unknown>('PUT', `/api/v1/policies/${enc(name)}`, p),
-  deletePolicy: (name: string) => request<unknown>(`/api/v1/policies/${enc(name)}`, { method: 'DELETE' }),
+  policies: () => http.get<Policy[] | null>('/api/v1/policies').then((l) => l ?? []),
+  policyMeta: () => http.get<PolicyMeta>('/api/v1/policies/meta'),
+  createPolicy: (p: PolicyPayload) => http.post<unknown>('/api/v1/policies', p),
+  updatePolicy: (name: string, p: PolicyPayload) => http.put<unknown>(`/api/v1/policies/${enc(name)}`, p),
+  deletePolicy: (name: string) => http.delete<unknown>(`/api/v1/policies/${enc(name)}`),
   /** Re-reads kongtrol.yaml (rules edited by hand) without restarting. */
-  reloadPolicies: () => request<{ policies: number }>('/api/v1/policies/reload', { method: 'POST' }),
+  reloadPolicies: () => http.post<{ policies: number }>('/api/v1/policies/reload'),
   /** Dry run of an unsaved rule against one destination or app. */
   testPolicy: (rule: PolicyPayload, target: string, app: string) =>
-    sendJSON<DraftTestResult>('POST', '/api/v1/policies/test', { rule, target, app }),
+    http.post<DraftTestResult>('/api/v1/policies/test', { rule, target, app }),
   /** Which saved rule a destination uses and why (`kongtrol policy show`). */
-  explain: (target: string) => request<ExplainResult>(`/api/v1/policies/explain?target=${enc(target)}`),
-  scheduleRules: () => request<ScheduleRule[] | null>('/api/v1/scheduler/rules').then((l) => l ?? []),
-  createSchedule: (p: SchedulePayload) => sendJSON<unknown>('POST', '/api/v1/scheduler/rules', p),
+  explain: (target: string) => http.get<ExplainResult>(`/api/v1/policies/explain?target=${enc(target)}`),
+  scheduleRules: () => http.get<ScheduleRule[] | null>('/api/v1/scheduler/rules').then((l) => l ?? []),
+  createSchedule: (p: SchedulePayload) => http.post<unknown>('/api/v1/scheduler/rules', p),
   updateSchedule: (name: string, p: SchedulePayload) =>
-    sendJSON<unknown>('PUT', `/api/v1/scheduler/rules/${enc(name)}`, p),
-  deleteSchedule: (name: string) => request<unknown>(`/api/v1/scheduler/rules/${enc(name)}`, { method: 'DELETE' }),
-  settings: () => request<SchedulerSettings>('/api/v1/settings'),
+    http.put<unknown>(`/api/v1/scheduler/rules/${enc(name)}`, p),
+  deleteSchedule: (name: string) => http.delete<unknown>(`/api/v1/scheduler/rules/${enc(name)}`),
+  settings: () => http.get<SchedulerSettings>('/api/v1/settings'),
   /** Sends only the fields given (per-section save; the daemon keeps the rest). */
   saveSettings: (patch: Partial<Pick<SchedulerSettings, 'scheduler_enabled' | 'scheduler_interval'>>) =>
-    sendJSON<SchedulerSettings>('PUT', '/api/v1/settings', patch),
+    http.put<SchedulerSettings>('/api/v1/settings', patch),
 }
 
 // ── Policies ──────────────────────────────────────────────────────────────

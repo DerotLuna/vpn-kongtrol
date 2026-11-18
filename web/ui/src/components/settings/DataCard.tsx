@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PurgeState } from '../../api/lifecycle-hooks'
 import { usePreferences } from '../../app/preferences-context'
-import { ErrorNotice } from '../ui/ErrorNotice'
+import { Button } from '../ui/Button'
+import { ErrorState } from '../ui/States'
 
 // feature:uninstall
 /**
@@ -36,9 +37,9 @@ export function DataCard({ state }: { state: PurgeState }) {
       <div aria-live="polite">{done && <p className="notice ok">{t('data.done')}</p>}</div>
       {!done && !asking && (
         <div className="notice-actions">
-          <button ref={openerRef} type="button" className="btn danger" onClick={() => setAsking(true)} disabled={busy}>
+          <Button ref={openerRef} variant="danger" onClick={() => setAsking(true)} disabled={busy}>
             {busy ? t('data.busy') : t('data.button')}
-          </button>
+          </Button>
         </div>
       )}
       {asking && !done && (
@@ -63,12 +64,11 @@ export function DataCard({ state }: { state: PurgeState }) {
             <p>{t('data.dialog.keep')}</p>
           </div>
           <div className="notice-actions">
-            <button ref={cancelRef} type="button" className="btn ghost" onClick={close} disabled={busy}>
+            <Button ref={cancelRef} variant="outlined" onClick={close} disabled={busy}>
               {t('data.dialog.cancel')}
-            </button>
-            <button
-              type="button"
-              className="btn danger"
+            </Button>
+            <Button
+              variant="danger"
               onClick={() => {
                 purge()
                 setAsking(false)
@@ -76,11 +76,11 @@ export function DataCard({ state }: { state: PurgeState }) {
               disabled={busy}
             >
               {t('data.dialog.confirm')}
-            </button>
+            </Button>
           </div>
         </div>
       )}
-      {error && <ErrorNotice error={error} />}
+      {error && <ErrorState help error={error} />}
     </section>
   )
 }

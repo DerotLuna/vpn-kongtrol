@@ -47,13 +47,6 @@ export const ClockIcon = () => (
   </Icon>
 )
 
-export const TargetIcon = () => (
-  <Icon>
-    <circle cx="11" cy="11" r="6.5" />
-    <path d="M20 20l-4.4-4.4" />
-  </Icon>
-)
-
 export const FileIcon = () => (
   <Icon>
     <path d="M14 3H6v18h12V7l-4-4z" />

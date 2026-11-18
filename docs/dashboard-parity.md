@@ -160,7 +160,7 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 - [x] Loading skeleton rows (tunnels, policies, routes, base network, groups) — legacy index.html:43-44, 55, 90-91, 103-107, 155-156 — API — — target `/`, `/traffic` — status: done (web/ui/src/components/home/*: Skeleton per card on first load)
 - [x] Empty: no tunnels / no policies / no policies for filter / no routes for filter / no groups / chart no data — legacy app.js:517, 959, 970, 822, 1143, 615 — API — — target `/`, `/traffic` — status: done (web/ui/src/components/home/*: no VPNs, no groups, no notices, sparkline "Midiendo"; policies/routes/chart empties are /traffic)
-- [ ] Fetch errors: legacy silently ignores (`catch (_) {}`) — legacy app.js:459-468, 652-659, 718-726 … — API all — target shell (every page) — status: new UI has it (components/ui/ErrorNotice.tsx); **fix**: every card shows an error + "what to do"
+- [ ] Fetch errors: legacy silently ignores (`catch (_) {}`) — legacy app.js:459-468, 652-659, 718-726 … — API all — target shell (every page) — status: new UI has it (components/ui/States.tsx `ErrorState`); **fix**: every card shows an error + "what to do"
 - [x] Button state per tunnel status (connect / cancel / disconnect+reload) — legacy app.js:568-574 — API `Status` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
 - [x] First-run redirect: `needs_setup` → profile editor — legacy app.js:1242-1247 — API GET /api/v1/setup (handlers_setup.go:39) `needs_setup` — target `/` → `/profiles` — status: done (web/ui/src/components/home/TunnelsCard.tsx: first-run step "Agregar VPN" → /profiles, no automatic redirect)
 
@@ -244,7 +244,7 @@ States / notices
 - [x] Skeleton rows; empty `empty.noProfiles` (also when filter matches nothing) — legacy studio.html:229-230, studio.js:690-705 — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx: Skeleton; first-run guide when empty; own "no match" state with "Borrar búsqueda") — **fix** applied
 - [x] Toasts `toast.profileCreated|Updated` (7 s), `toast.profileDeleted`, `alerts.profileCreateFailed|UpdateFailed|DeleteFailed`, `alerts.profileSelectFirst|SelectDelete` — legacy studio.js:747-803 — target `/profiles` — status: done (web/ui/src/i18n/pages/profiles.ts `profiles.toast.*`, failures via the optimistic toast or inline in the form; "select first" alerts not applicable: actions are per row)
 - [x] Confirm `confirm.deleteProfile` — legacy studio.js:796 — target `/profiles` — status: done (web/ui/src/components/profiles/ConfirmDelete.tsx, app dialog) — **fix** applied
-- [x] Restart toasts `restart.running` (10 s), `restart.done`, `restart.failed` (apiErrorText), `restart.timeout` (15 s) — legacy studio.js:864-884 — target `/settings` — status: done (components/settings/SystemSection.tsx: running and timeout banners with what to do, done toast, failure via ErrorNotice)
+- [x] Restart toasts `restart.running` (10 s), `restart.done`, `restart.failed` (apiErrorText), `restart.timeout` (15 s) — legacy studio.js:864-884 — target `/settings` — status: done (components/settings/SystemSection.tsx: running and timeout banners with what to do, done toast, failure via ErrorState)
 - [x] Hints `pEditor.tip`, field hints (priority, failover, autoConnect, country, interface, waitTimeout, ovpnRoutes) — legacy studio.html:139, 143, 151, 163, 167, 177, 181, 212 — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx, web/ui/src/i18n/pages/profiles.ts `profiles.hint.*`)
 
 Cadence
@@ -417,7 +417,7 @@ Table / states / notices
 #### `toast.js`
 
 - [ ] Toast stack: message, optional detail line, raw API error as tooltip, click to dismiss, default 4.5 s — legacy toast.js:41-74 — target shell (`aria-live` region) — status: missing; **fix**: no `role=status`/`aria-live`
-- [ ] `showApiError`: context message + translated hint per API `code` (8 codes) + raw detail as tooltip — legacy toast.js:6-39 — API `code` from `writeError` (handlers_common.go:23-48) — target shell — status: partial (components/ui/ErrorNotice.tsx)
+- [ ] `showApiError`: context message + translated hint per API `code` (8 codes) + raw detail as tooltip — legacy toast.js:6-39 — API `code` from `writeError` (handlers_common.go:23-48) — target shell — status: partial (components/ui/States.tsx `ErrorState`)
 
 #### `publicip.js`
 

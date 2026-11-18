@@ -1,4 +1,4 @@
-// Kongtrol UI — Diagnostics card · v0.1.0 · 2026-11-18
+// Kongtrol UI — Diagnostics card · v0.1.1 · 2026-11-18
 //
 // GUI parity for `kongtrol doctor` (GET /api/v1/doctor) and
 // `kongtrol export` (GET /api/v1/config/export). The daemon sends every
@@ -10,8 +10,9 @@ import { useEffect, useRef } from 'react'
 import type { DoctorState, ExportState, HelperState } from '../../api/hooks'
 import type { DoctorCheck } from '../../api/types'
 import { usePreferences } from '../../app/preferences-context'
+import { Button } from '../ui/Button'
 import { guideLink } from '../../links'
-import { ErrorNotice } from '../ui/ErrorNotice'
+import { ErrorState } from '../ui/States'
 import { ExternalLink } from '../ui/ExternalLink'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
 
@@ -57,7 +58,7 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
 
       <div role="status" aria-live="polite">
         {running && <p>{t('diag.running')}</p>}
-        {!running && !report && !error && <p className="muted">{t('diag.idle')}</p>}
+        {!running && !report && !error && <p className="muted small">{t('diag.idle')}</p>}
         {!running && report && (
           <p>
             {problems.length === 0
@@ -67,7 +68,7 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
         )}
       </div>
 
-      {error && <ErrorNotice error={error} onRetry={run} />}
+      {error && <ErrorState help error={error} onRetry={run} />}
 
       {report && problems.length > 0 && (
         <ul className="check-list">
@@ -85,9 +86,9 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
                 </p>
               )}
               {i === firstFix && (
-                <button type="button" className="btn" onClick={helper.install} disabled={helper.installing}>
+                <Button variant="tonal" onClick={helper.install} disabled={helper.installing}>
                   {t('diag.fix')}
-                </button>
+                </Button>
               )}
             </li>
           ))}
@@ -118,18 +119,18 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
       )}
 
       <div className="notice-actions">
-        <button type="button" className="btn" onClick={run} disabled={running}>
+        <Button variant="tonal" onClick={run} disabled={running}>
           {report || error ? t('diag.rerun') : t('diag.run')}
-        </button>
+        </Button>
       </div>
 
       <div className="diag-export">
         <p className="muted small">{t('diag.export.what')}</p>
-        <button type="button" className="btn ghost" onClick={exporter.download} disabled={exporter.busy}>
+        <Button variant="outlined" onClick={exporter.download} disabled={exporter.busy}>
           {exporter.busy ? t('diag.export.busy') : t('diag.export')}
-        </button>
+        </Button>
         <div aria-live="polite">{exporter.done && <p className="notice ok">{t('diag.export.done')}</p>}</div>
-        {exporter.error && <ErrorNotice error={exporter.error} />}
+        {exporter.error && <ErrorState help error={exporter.error} />}
       </div>
 
       <p className="help">
