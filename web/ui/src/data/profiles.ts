@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.0.0 · 2026-11-18
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.0.1 · 2026-11-18
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -10,7 +10,7 @@
 // the same file; they are plain resource names, so another page reading
 // ['vpns'] (e.g. /security's override table) shares the same entry.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, request, sendJSON } from '../api/client'
+import { ApiError, http } from '../api/client'
 import type { Group } from '../api/types'
 import { keys } from './keys'
 import { useOptimisticMutation } from './optimistic'
@@ -128,33 +128,33 @@ export interface GroupReloadResult {
 const enc = encodeURIComponent
 
 export const profilesApi = {
-  list: () => request<VPNProfile[] | null>('/api/v1/vpns').then((l) => l ?? []),
-  create: (body: ProfileRequest) => sendJSON<ProfileChangeResult>('POST', '/api/v1/vpns', body),
+  list: () => http.get<VPNProfile[] | null>('/api/v1/vpns').then((l) => l ?? []),
+  create: (body: ProfileRequest) => http.post<ProfileChangeResult>('/api/v1/vpns', body),
   update: (name: string, body: ProfileRequest) =>
-    sendJSON<ProfileChangeResult>('PUT', `/api/v1/vpns/${enc(name)}`, body),
-  remove: (name: string) => request<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`, { method: 'DELETE' }),
-  setup: () => request<SetupStatus>('/api/v1/setup'),
+    http.put<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`, body),
+  remove: (name: string) => http.delete<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`),
+  setup: () => http.get<SetupStatus>('/api/v1/setup'),
   /** Older daemons have no detect endpoint: a 404 means "nothing to suggest". */
   detect: () =>
-    request<DetectedClient[] | null>('/api/v1/vpns/detect').then(
+    http.get<DetectedClient[] | null>('/api/v1/vpns/detect').then(
       (l) => l ?? [],
       (err: unknown) => {
         if (err instanceof ApiError && err.status === 404) return []
         throw err
       },
     ),
-  restart: () => request<{ status: string }>('/api/v1/restart', { method: 'POST' }),
-  groups: () => request<Group[] | null>('/api/v1/groups').then((l) => l ?? []),
-  createGroup: (name: string, profiles: string[]) => sendJSON<unknown>('POST', '/api/v1/groups', { name, profiles }),
+  restart: () => http.post<{ status: string }>('/api/v1/restart'),
+  groups: () => http.get<Group[] | null>('/api/v1/groups').then((l) => l ?? []),
+  createGroup: (name: string, profiles: string[]) => http.post<unknown>('/api/v1/groups', { name, profiles }),
   updateGroup: (name: string, profiles: string[]) =>
-    sendJSON<unknown>('PUT', `/api/v1/groups/${enc(name)}`, { name, profiles }),
-  removeGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}`, { method: 'DELETE' }),
-  connectGroup: (name: string) => request<GroupConnectResult>(`/api/v1/groups/${enc(name)}/connect`, { method: 'POST' }),
-  disconnectGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}/disconnect`, { method: 'POST' }),
+    http.put<unknown>(`/api/v1/groups/${enc(name)}`, { name, profiles }),
+  removeGroup: (name: string) => http.delete<unknown>(`/api/v1/groups/${enc(name)}`),
+  connectGroup: (name: string) => http.post<GroupConnectResult>(`/api/v1/groups/${enc(name)}/connect`),
+  disconnectGroup: (name: string) => http.post<unknown>(`/api/v1/groups/${enc(name)}/disconnect`),
   /** A 409 restart_required is an answer (which profiles need a restart), not a failure. */
   reloadGroup: async (name: string): Promise<GroupReloadResult> => {
     try {
-      return await request<GroupReloadResult>(`/api/v1/groups/${enc(name)}/reload`, { method: 'POST' })
+      return await http.post<GroupReloadResult>(`/api/v1/groups/${enc(name)}/reload`)
     } catch (err) {
       if (err instanceof ApiError && err.status === 409 && err.body.status === 'restart_required') {
         return err.body as unknown as GroupReloadResult

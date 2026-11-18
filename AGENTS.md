@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.13 · 2026-11-18
+Version 1.14 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -287,13 +287,17 @@ proxies `/api` to the daemon. External URLs only in `src/links.ts`.
 
 Architecture (ADR-0038); the migration contract is `docs/dashboard-parity.md` (every legacy
 behaviour, tick each row with the new file; nothing dropped without an ADR):
-- Routes: `react-router` (declarative mode, `basename` `/app`) in `src/App.tsx`; sections in
-  `src/app/sections.ts`; unmigrated pages are entries in `src/app/placeholders.ts` (delete the
-  entry when the real page lands). `/app/tray` is the tray flyout (ADR-0036), outside the shell.
+- Routes: `react-router` data router (`createBrowserRouter`, `basename` `/app`, ADR-0041) in
+  `src/App.tsx`, pages loaded with route `lazy` (Inicio eager); sections in `src/app/sections.ts`.
+  `/app/tray` is the tray flyout (ADR-0036), outside the shell.
+- A form with edits calls `useUnsavedChanges(dirty)` (`src/app/unsaved.ts`): the tab-close prompt
+  and the shell's "Tienes cambios sin guardar" dialog (`useBlocker`) follow from it.
 - Data only via `src/data` (TanStack Query, cache keyed by resource in `keys.ts` or a
   per-domain `src/data/<domain>.ts`); the one WebSocket (`live.ts`) writes into the same cache.
   Pages never fetch on their own; changes use `useOptimisticMutation` (rollback + toast with the
-  "what to do" line); errors render through `describeError`.
+  "what to do" line); errors render through `describeError` (on screen: kit `ErrorState`).
+  Requests only through `http.get/post/put/delete` in `src/api/client.ts` (language header,
+  auth, reachability, `ApiError`); data modules keep their endpoints next to their hooks.
 - Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
 - UI kit in `src/components/ui` (review at `/app/_kit`, dev builds only); shell in
   `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.

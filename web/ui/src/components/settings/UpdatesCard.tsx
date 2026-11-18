@@ -1,6 +1,7 @@
 import type { UpdatesState } from '../../api/lifecycle-hooks'
 import { usePreferences } from '../../app/preferences-context'
-import { ErrorNotice } from '../ui/ErrorNotice'
+import { Button } from '../ui/Button'
+import { ErrorState } from '../ui/States'
 import { ExternalLink } from '../ui/ExternalLink'
 import { StatusPill } from '../ui/StatusPill'
 
@@ -22,7 +23,7 @@ export function UpdatesCard({ state }: { state: UpdatesState }) {
         {status && <StatusPill tone={on ? 'on' : 'idle'}>{on ? t('updates.pill.on') : t('updates.pill.off')}</StatusPill>}
       </div>
       {error ? (
-        <ErrorNotice error={error} onRetry={reload} />
+        <ErrorState help error={error} onRetry={reload} />
       ) : (
         <>
           <p>{t('updates.what')}</p>
@@ -41,14 +42,14 @@ export function UpdatesCard({ state }: { state: UpdatesState }) {
           </div>
           {status && (
             <div className="notice-actions">
-              <button type="button" className="btn ghost" onClick={() => setEnabled(!on)} disabled={busy}>
+              <Button variant="outlined" onClick={() => setEnabled(!on)} disabled={busy}>
                 {on ? t('updates.turnOff') : t('updates.turnOn')}
-              </button>
+              </Button>
             </div>
           )}
         </>
       )}
-      {actionError && <ErrorNotice error={actionError} />}
+      {actionError && <ErrorState help error={actionError} />}
     </section>
   )
 }

@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Shared by every page: app, shell (header, navigation, status, notices), errors, help links, helper, tunnels, kit and placeholder pages · v1.0.0 · 2026-11-18
+// Kongtrol UI strings — Shared by every page: app, shell (header, navigation, status, notices), errors, help links, helper, tunnels, kit and the unsaved-changes prompt · v1.1.0 · 2026-11-18
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -76,9 +76,10 @@ const es = {
   'tunnels.toast.manualDisconnect': 'Desconecta {name} en su app; Kongtrol lo detecta solo.',
   'kit.close': 'Cerrar',
   'kit.dismiss': 'Descartar aviso',
-  'page.soon': 'Esta sección llega pronto al panel nuevo.',
-  'page.soon.body': 'Mientras tanto, todo esto ya funciona en el panel clásico:',
-  'page.openClassic': 'Abrir en el panel clásico',
+  'unsaved.title': 'Tienes cambios sin guardar',
+  'unsaved.body': 'Si sales ahora, se pierden. Para quedártelos, sigue editando y pulsa Guardar.',
+  'unsaved.keep': 'Seguir editando',
+  'unsaved.discard': 'Descartar',
   'page.notFound.title': 'No encontramos esta página',
   'page.notFound.body': 'Puede que el enlace sea viejo. Vuelve al inicio para seguir.',
   'page.notFound.action': 'Ir al inicio',
@@ -155,9 +156,10 @@ const en: Strings<typeof es> = {
   'tunnels.toast.manualDisconnect': 'Disconnect {name} in its app; Kongtrol notices by itself.',
   'kit.close': 'Close',
   'kit.dismiss': 'Dismiss notice',
-  'page.soon': 'This section is coming to the new dashboard soon.',
-  'page.soon.body': 'Meanwhile, all of this already works in the classic dashboard:',
-  'page.openClassic': 'Open in the classic dashboard',
+  'unsaved.title': 'You have unsaved changes',
+  'unsaved.body': 'If you leave now, they are lost. To keep them, keep editing and press Save.',
+  'unsaved.keep': 'Keep editing',
+  'unsaved.discard': 'Discard',
   'page.notFound.title': 'We could not find this page',
   'page.notFound.body': 'The link may be old. Go back home to continue.',
   'page.notFound.action': 'Go home',

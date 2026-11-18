@@ -1,4 +1,4 @@
-// Kongtrol UI — Actividad data: audit log + daemon notices · v1.0.0 · 2026-11-18
+// Kongtrol UI — Actividad data: audit log + daemon notices · v1.0.1 · 2026-11-18
 //
 // Two resources, one cache entry each (ADR-0038):
 // - GET /api/v1/audit?limit&profile&level (internal/api/handlers_security.go
@@ -10,7 +10,7 @@
 //   asks after=0 (the backlog); later reads only what is new. A lower seq
 //   means the daemon restarted: the list starts over.
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiCall } from '../api/client'
+import { http } from '../api/client'
 import { messages, type MessageKey } from '../i18n/messages'
 
 // ── Audit log ─────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ export function auditURL({ profile, level, limit }: AuditQuery): string {
 export function useAuditLog(q: AuditQuery, live: boolean) {
   return useQuery({
     queryKey: activityKeys.audit(q),
-    queryFn: () => apiCall.get<AuditEvent[] | null>(auditURL(q)).then((l) => l ?? []),
+    queryFn: () => http.get<AuditEvent[] | null>(auditURL(q)).then((l) => l ?? []),
     refetchInterval: live ? LIVE_MS : false,
     // A new filter keeps the last rows on screen until the answer arrives:
     // no skeleton flash, no layout jump.
@@ -162,10 +162,10 @@ export function useEventsHistory() {
     queryFn: async (): Promise<EventsHistory> => {
       const prev = client.getQueryData<EventsHistory>(activityKeys.events)
       const after = prev?.seq ?? 0
-      let res = await apiCall.get<EventsResponse>(`/api/v1/events?after=${after}`)
+      let res = await http.get<EventsResponse>(`/api/v1/events?after=${after}`)
       if (prev && res.seq < prev.seq) {
         // The daemon restarted (its sequence starts again): read it all.
-        res = await apiCall.get<EventsResponse>('/api/v1/events?after=0')
+        res = await http.get<EventsResponse>('/api/v1/events?after=0')
         return { seq: res.seq, events: mergeEvents([], res.events ?? []) }
       }
       return { seq: res.seq, events: mergeEvents(prev?.events ?? [], res.events ?? []) }

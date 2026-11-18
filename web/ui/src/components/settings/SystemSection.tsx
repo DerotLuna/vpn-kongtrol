@@ -1,4 +1,4 @@
-// Kongtrol UI — Ajustes: Kongtrol on this computer · v1.0.0 · 2026-11-18
+// Kongtrol UI — Ajustes: Kongtrol on this computer · v1.0.1 · 2026-11-18
 //
 // Version, helper (shared install flow, ADR-0038 §5), config file
 // (GET /api/v1/setup config_path), the panel's own address (read-only: it is
@@ -15,7 +15,7 @@ import { useRestart, useSetupStatus, useShutdown, type Settings } from '../../da
 import { toasts } from '../../data/toast'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
-import { ErrorNotice } from '../ui/ErrorNotice'
+import { ErrorState } from '../ui/States'
 import { HelperInstallButton, HelperInstallProgress } from '../ui/HelperInstall'
 import { Banner } from '../ui/States'
 import { StatusPill } from '../ui/StatusPill'
@@ -48,7 +48,7 @@ function HelperRow({ helper }: { helper: HelperState }) {
         )}
       </SettingRow>
       <HelperInstallProgress helper={helper} />
-      {helper.error && <ErrorNotice error={helper.error} onRetry={helper.reload} />}
+      {helper.error && <ErrorState help error={helper.error} onRetry={helper.reload} />}
     </>
   )
 }
@@ -111,8 +111,8 @@ export function SystemSection({ settings, helper }: { settings: Settings | undef
         )}
         {quit.phase === 'done' && <Banner tone="info" title={t('settings.quit.done')} />}
       </div>
-      {restart.error && <ErrorNotice error={restart.error} />}
-      {quit.error && <ErrorNotice error={quit.error} />}
+      {restart.error && <ErrorState help error={restart.error} />}
+      {quit.error && <ErrorState help error={quit.error} />}
 
       <div className="k-set__actions">
         <div className="k-set__action">

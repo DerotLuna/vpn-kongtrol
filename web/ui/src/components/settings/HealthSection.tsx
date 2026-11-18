@@ -7,7 +7,8 @@ import { useRef, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { useSaveSettings, validateDuration, type Invalid, type Settings } from '../../data/settings'
 import { TextField, type FieldError } from '../ui/Field'
-import { focusFirstInvalid, useUnsavedWarning } from './form'
+import { useUnsavedChanges } from '../../app/unsaved'
+import { focusFirstInvalid } from './form'
 import { FormBar, SettingsSection } from './SettingsSection'
 
 type Draft = { interval: string; timeout: string }
@@ -25,7 +26,7 @@ export function HealthSection({ settings }: { settings: Settings }) {
   // No local edits = show the daemon's values (and follow them after a save).
   const value = draft ?? saved
   const dirty = draft !== null && (draft.interval !== saved.interval || draft.timeout !== saved.timeout)
-  useUnsavedWarning(dirty)
+  useUnsavedChanges(dirty)
 
   const err = (k: keyof Draft): FieldError | null => {
     const e = errors[k]

@@ -10,6 +10,7 @@ import { useId, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../../api/client'
 import { usePreferences } from '../../app/preferences-context'
+import { useUnsavedChanges } from '../../app/unsaved'
 import { useSavePolicy, useTestDraft } from '../../data/rules'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
@@ -48,6 +49,7 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
   const save = useSavePolicy()
   const formRef = useRef<HTMLFormElement>(null)
   const [draft, setDraft] = useState<PolicyDraft>(initial)
+  useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(initial))
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<unknown>(null)
   const [template, setTemplate] = useState<TemplateId | null>(null)

@@ -1,4 +1,4 @@
-// Kongtrol UI kit — Skeleton, EmptyState, ErrorState, Banner, Kbd · v0.1.0 · 2026-11-18
+// Kongtrol UI kit — Skeleton, EmptyState, ErrorState, Banner, Kbd · v0.2.0 · 2026-11-18
 //
 // Loading: skeletons only on the first load (they reserve the final space,
 // no layout shift); later refreshes keep the last data on screen
@@ -8,8 +8,10 @@
 // stopped, helper missing), never as a modal.
 import type { ReactNode } from 'react'
 import { describeError } from '../../api/errors'
+import { guideLink } from '../../links'
 import { usePreferences } from '../../app/preferences-context'
 import { Button } from './Button'
+import { ExternalLink } from './ExternalLink'
 import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon } from './icons'
 
 export function Skeleton({ lines = 3, label }: { lines?: number; label: string }) {
@@ -40,7 +42,11 @@ export function EmptyState({ title, body, action, icon }: EmptyStateProps) {
   )
 }
 
-export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
+/**
+ * The one error block: what happened + what to do (+ Retry). `help` adds the
+ * troubleshooting guide link for errors the user may need to dig into.
+ */
+export function ErrorState({ error, onRetry, help = false }: { error: unknown; onRetry?: () => void; help?: boolean }) {
   const { t } = usePreferences()
   const { message, fix } = describeError(error, t)
   return (
@@ -49,6 +55,11 @@ export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () =>
       <div>
         <strong>{message}</strong>
         <p>{fix}</p>
+        {help && (
+          <p>
+            <ExternalLink href={guideLink('trouble')}>{t('help.trouble')}</ExternalLink>
+          </p>
+        )}
       </div>
       {onRetry && (
         <Button variant="outlined" size="sm" icon={<RefreshIcon />} onClick={onRetry}>

@@ -1,4 +1,4 @@
-// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.0 · 2026-11-18
+// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.1 · 2026-11-18
 //
 // Everything the Home page reads or changes that the shared layer
 // (resources.ts) does not have yet: network overview, what goes through each
@@ -8,7 +8,7 @@
 // /traffic can read the same cache entries.
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { ApiError, api, request } from '../api/client'
+import { ApiError, api, http } from '../api/client'
 import { describeError } from '../api/errors'
 import type { SecurityStatus, TunnelMetrics } from '../api/types'
 import { usePreferences } from '../app/preferences-context'
@@ -110,13 +110,13 @@ export interface SecuritySummary extends SecurityStatus {
 const enc = encodeURIComponent
 
 export const homeApi = {
-  networkOverview: () => request<NetworkOverview>('/api/v1/network/overview'),
-  tunnelRoutes: () => request<TunnelRoutesResponse>('/api/v1/tunnels/routes'),
-  events: (after: number) => request<EventsResponse>(`/api/v1/events?after=${after}`),
-  reload: (name: string) => request<ReloadResult>(`/api/v1/tunnels/${enc(name)}/reload`, { method: 'POST' }),
+  networkOverview: () => http.get<NetworkOverview>('/api/v1/network/overview'),
+  tunnelRoutes: () => http.get<TunnelRoutesResponse>('/api/v1/tunnels/routes'),
+  events: (after: number) => http.get<EventsResponse>(`/api/v1/events?after=${after}`),
+  reload: (name: string) => http.post<ReloadResult>(`/api/v1/tunnels/${enc(name)}/reload`),
   connectGroup: (name: string) =>
-    request<GroupConnectResult>(`/api/v1/groups/${enc(name)}/connect`, { method: 'POST' }),
-  disconnectGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}/disconnect`, { method: 'POST' }),
+    http.post<GroupConnectResult>(`/api/v1/groups/${enc(name)}/connect`),
+  disconnectGroup: (name: string) => http.post<unknown>(`/api/v1/groups/${enc(name)}/disconnect`),
 }
 
 export const homeKeys = {
@@ -532,7 +532,10 @@ export function noticeText(e: DaemonEvent, t: Translate): string {
 /** A notice with an action waits this long (legacy notices.js: 60 s). */
 export const ACTION_TOAST_MS = 60_000
 
-/** Polls the daemon's notices and toasts each new one. Mount once per page. */
+/**
+ * Polls the daemon's notices and toasts each new one. Mounted once, by the
+ * shell (AppShell), so every page gets them and Inicio's list shares the poll.
+ */
 export function useNoticeToasts(): void {
   const { t } = usePreferences()
   const run = useTunnelActions()

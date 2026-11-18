@@ -1,4 +1,4 @@
-// Kongtrol UI — Ajustes data: settings, setup, restart, shutdown · v1.0.0 · 2026-11-18
+// Kongtrol UI — Ajustes data: settings, setup, restart, shutdown · v1.0.1 · 2026-11-18
 //
 // GET/PUT /api/v1/settings (internal/api/handlers_settings.go). The PUT is a
 // patch: every section sends only its own fields, so saving one section never
@@ -12,7 +12,7 @@
 // an empty box can never be saved as 0 (legacy bug: settings.js:201).
 import { useCallback, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { apiCall } from '../api/client'
+import { http } from '../api/client'
 import { toApiError } from '../api/errors'
 import type { ApiError } from '../api/client'
 import { usePreferences } from '../app/preferences-context'
@@ -51,7 +51,7 @@ export const settingsKeys = {
 export function useSettingsQuery() {
   return useQuery({
     queryKey: settingsKeys.settings,
-    queryFn: () => apiCall.get<Settings>('/api/v1/settings'),
+    queryFn: () => http.get<Settings>('/api/v1/settings'),
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   })
@@ -61,7 +61,7 @@ export function useSaveSettings() {
   const { t } = usePreferences()
   return useOptimisticMutation<SettingsPatch, Settings, Settings>({
     queryKey: settingsKeys.settings,
-    mutationFn: (patch) => apiCall.send<Settings>('PUT', '/api/v1/settings', patch),
+    mutationFn: (patch) => http.put<Settings>('/api/v1/settings', patch),
     apply: (current, patch) => ({ ...current, ...patch }),
     successMessage: () => t('settings.toast.saved'),
   })
@@ -70,7 +70,7 @@ export function useSaveSettings() {
 export function useSetupStatus() {
   return useQuery({
     queryKey: settingsKeys.setup,
-    queryFn: () => apiCall.get<SetupStatus>('/api/v1/setup'),
+    queryFn: () => http.get<SetupStatus>('/api/v1/setup'),
     staleTime: Infinity,
   })
 }
@@ -124,7 +124,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 async function answers(): Promise<boolean> {
   try {
-    await apiCall.get<SetupStatus>('/api/v1/setup')
+    await http.get<SetupStatus>('/api/v1/setup')
     return true
   } catch {
     return false
@@ -155,7 +155,7 @@ export function useRestart(onBack?: () => void): LifecycleState {
     setError(null)
     void (async () => {
       try {
-        await apiCall.send<unknown>('POST', '/api/v1/restart')
+        await http.post<unknown>('/api/v1/restart')
       } catch (err) {
         setError(toApiError(err))
         setPhase('failed')
@@ -189,7 +189,7 @@ export function useShutdown(): LifecycleState {
   const run = useCallback(() => {
     setPhase('running')
     setError(null)
-    apiCall.send<unknown>('POST', '/api/v1/shutdown').then(
+    http.post<unknown>('/api/v1/shutdown').then(
       () => setPhase('done'),
       (err: unknown) => {
         setError(toApiError(err))

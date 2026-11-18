@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
+import { useUnsavedChanges } from '../../app/unsaved'
 import { useSaveProfile, type AdapterType, type DetectedClient, type VPNProfile } from '../../data/profiles'
 import { toasts } from '../../data/toast'
 import { Button } from '../ui/Button'
@@ -42,6 +43,9 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
   const { restart } = useRestartAction()
   const [step, setStep] = useState<'pick' | 'form'>(editing || initialType ? 'form' : 'pick')
   const [draft, setDraft] = useState<Draft>(() => (editing ? fromProfile(editing) : emptyDraft(initialType ?? 'openvpn')))
+  // What the sheet opened with: any difference is an unsaved edit.
+  const [pristine] = useState(draft)
+  useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(pristine))
   const [tried, setTried] = useState(false)
   const [serverErrors, setServerErrors] = useState<Partial<Record<DraftField, FieldError>>>({})
   const [formError, setFormError] = useState<unknown>(null)

@@ -7,6 +7,7 @@ import { useId, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError } from '../../api/client'
 import { usePreferences } from '../../app/preferences-context'
+import { useUnsavedChanges } from '../../app/unsaved'
 import { useSaveSchedule } from '../../data/rules'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
@@ -48,6 +49,7 @@ export function ScheduleEditor({ original, initial, rules, profiles, onClose }: 
   const save = useSaveSchedule()
   const formRef = useRef<HTMLFormElement>(null)
   const [draft, setDraft] = useState<ScheduleDraft>(initial)
+  useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(initial))
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<unknown>(null)
   const id = useId()

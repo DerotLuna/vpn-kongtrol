@@ -1,4 +1,4 @@
-// Kongtrol UI — app shell · v0.2.0 · 2026-11-18
+// Kongtrol UI — app shell · v0.3.0 · 2026-11-18
 //
 // Layout route for every page (ADR-0038):
 // - Header: logo top-left, aggregate VPN status, help (same place on every
@@ -6,7 +6,9 @@
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent
 //   NavigationView): sidebar with labels ≥ 840px, rail 600–839px, bottom
 //   bar under 600px with four sections + "Más" (a sheet with the rest).
-// - App-wide notices (daemon stopped, helper missing/outdated) above the page.
+// - App-wide notices (daemon stopped, helper missing/outdated) above the page;
+//   daemon notices as toasts; "Tienes cambios sin guardar" before leaving a
+//   form with edits (UnsavedChangesGuard).
 // - After navigation, focus moves to the new page's h1 so screen readers
 //   announce it; the page fades in (opacity/transform, 150ms, none with
 //   reduced motion).
@@ -14,6 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
 import { SECTIONS } from '../../app/sections'
+import { useNoticeToasts } from '../../data/home'
 import { useHelperReadyToast } from '../../data/resources'
 import { GUIDE_URL, LEGACY } from '../../links'
 import { IconButton } from '../ui/Button'
@@ -23,6 +26,7 @@ import { Logo } from '../ui/Logo'
 import { Toaster } from '../ui/Toaster'
 import { AggregateStatus, VersionTag } from './AggregateStatus'
 import { AppNotices } from './AppNotices'
+import { UnsavedChangesGuard } from './UnsavedChangesGuard'
 
 function SideNav() {
   const { t } = usePreferences()
@@ -109,6 +113,9 @@ export function AppShell() {
   const { pathname } = useLocation()
   const first = useRef(true)
   useHelperReadyToast()
+  // Daemon notices (policy, watchdog, update) toast on every page, like the
+  // classic notices.js; one poll for the whole app, shared with Inicio's list.
+  useNoticeToasts()
 
   // Move focus to the new page's heading after a navigation (not on load).
   useEffect(() => {
@@ -165,6 +172,7 @@ export function AppShell() {
       </main>
       <BottomBar />
       <Toaster />
+      <UnsavedChangesGuard />
     </div>
   )
 }

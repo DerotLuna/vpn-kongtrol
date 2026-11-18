@@ -1,4 +1,4 @@
-/* Kongtrol UI — Seguridad (/security) · v1.0.0 · 2026-11-18
+/* Kongtrol UI — Seguridad (/security) · v1.0.1 · 2026-11-18
    Kit tokens only (theme/tokens.css); flat cards, hairlines, 11px floor,
    44px targets, motion only from the kit (off with reduced motion). */
 
@@ -18,10 +18,7 @@
 .sec-lead { color: var(--text-muted); font-size: 14px; max-width: 70ch; }
 
 /* State: pill + sentence. The pill keeps its width so text never jumps. */
-.sec-state {
-  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
-  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
-}
+.sec-state { display: flex; align-items: flex-start; gap: 12px; }
 .sec-state .pill { flex: none; margin-top: 1px; }
 .sec-state__text { display: flex; flex-direction: column; gap: 4px; font-size: 14px; min-width: 0; }
 .sec-fix { color: var(--text-muted); }

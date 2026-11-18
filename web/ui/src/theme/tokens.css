@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   KONGTROL UI — design tokens · v0.3.0 · 2026-11-18
+   KONGTROL UI — design tokens · v0.4.0 · 2026-11-18
    Copied from the landing's "Signal Contour" system (landing/src/index.css,
    v2.6.0 · 2026-11-18, palette "Sesión en la Torre" in DESIGN.md) so both
    read as one brand. Keep values in sync until
@@ -57,8 +57,12 @@
   /* Motion (ADR-0038): Material 3 standard easing and short durations —
      state feedback only, transform/opacity, off with reduced motion. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter:    cubic-bezier(0, 0, 0, 1);   /* M3 standard decelerate: things arriving */
+  --ease-exit:     cubic-bezier(0.3, 0, 1, 1); /* M3 standard accelerate: things leaving */
   --dur-fast: 150ms;
   --dur-med:  250ms;
+  --dur-exit: 120ms;  /* exits are shorter than entrances */
+  --rise: 6px;        /* how far an arriving element travels */
 
   /* State layers (Material 3): text-colored veil over the surface. */
   --state-hover:  color-mix(in srgb, var(--text) 8%, transparent);

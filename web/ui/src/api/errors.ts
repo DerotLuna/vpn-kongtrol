@@ -1,6 +1,6 @@
-// Kongtrol UI — one error = what happened + one "what to do" line · v0.1.0 · 2026-11-18
+// Kongtrol UI — one error = what happened + one "what to do" line · v0.1.1 · 2026-11-18
 //
-// Shared by ErrorNotice, ErrorState and the mutation toasts so an error reads
+// Shared by ErrorState and the mutation toasts so an error reads
 // the same everywhere (AGENTS.md "User guidance"). Uses the daemon's
 // translated message and hint when it sent them; otherwise our own text.
 // Never shows a raw transport error alone.
