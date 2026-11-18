@@ -5,7 +5,7 @@
 // landing/public/). assets/brand/ is now the only committed copy; the landing
 // receives its files at build time and public/ copies are git-ignored.
 //
-// Cloudflare Pages builds with root directory `landing`: the build command
+// Cloudflare Workers Builds uses root directory `landing`: the build command
 // runs inside landing/ of the cloned repository, so ../assets/brand resolves.
 // If it is missing the build fails loudly instead of shipping a page without
 // logos.

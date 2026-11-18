@@ -22,6 +22,7 @@ reasoned but unverified.
 | [2026-11-17-windows-network-configuration-operators](2026-11-17-windows-network-configuration-operators.md) | What that Windows group can and cannot do | ADR-0005 |
 | [2026-11-17-public-ip-services](2026-11-17-public-ip-services.md) | ipify and alternatives | ADR-0010 |
 | [2026-11-17-cloudflare-pages](2026-11-17-cloudflare-pages.md) | Cloudflare Pages build config and headers | ADR-0012, ADR-0015 |
+| [2026-11-17-cloudflare-workers-static-assets](2026-11-17-cloudflare-workers-static-assets.md) | Workers static assets, Workers Builds, redirects | ADR-0022 |
 | [2026-11-17-security-txt](2026-11-17-security-txt.md) | RFC 9116 `security.txt` | ADR-0016 |
 | [2026-11-17-agent-instructions](2026-11-17-agent-instructions.md) | `AGENTS.md` and Claude Code imports | ADR-0002 |
 | [2026-11-17-vpn-failover](2026-11-17-vpn-failover.md) | How VPN clients define failover (OpenVPN, NetworkManager, WireGuard, Cisco) | ADR-0018 |

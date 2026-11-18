@@ -11,7 +11,7 @@ exclude = [
 ]
 exclude_path = ['node_modules', '(^|/)\.agents?/', '(^|/)agent/', 'landing/dist/assets']
 
-# Clean URLs (/guia → guia.html, /en/guide → en/guide.html), like Cloudflare Pages.
+# Clean URLs (/guia → guia.html, /en/guide → en/guide.html), like Cloudflare (html_handling auto-trailing-slash).
 fallback_extensions = ["html"]
 index_files = ["index.html"]
 
