@@ -1,10 +1,11 @@
 //go:build ignore
 
-// Brand asset generator — version 1.0.0 · 2026-11-17.
+// Brand asset generator — version 1.1.0 · 2026-11-18.
 //
 // Regenerates the raster fallbacks in assets/brand/ from the masters in
-// assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg) are
-// the masters for anything that can render vectors; the rasters exist only
+// assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg, plus
+// logo-kong-on-dark.svg, the white-ink mark the README shows on GitHub's dark
+// theme) are the masters for anything that can render vectors; the rasters exist only
 // for consumers that cannot (OS tray icons, Open Graph cards, app manifests,
 // README images).
 //
@@ -64,12 +65,20 @@ func main() {
 		{"source/social-preview.png", "og-1200x630.jpg", 1200, 630, photoJPEG},
 	}
 	for _, name := range []string{"logo.svg", "logo-kong.svg", "favicon.svg"} {
-		n, err := minifySVG(filepath.Join(dir, "source", name), filepath.Join(dir, name))
+		n, err := minifySVG(filepath.Join(dir, "source", name), filepath.Join(dir, name), false)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("%-20s %9s %7d bytes\n", name, "vector", n)
 	}
+	// White-ink copy of the mark for dark backgrounds where the page picks the
+	// image (README <picture> with prefers-color-scheme sources), since an SVG
+	// in <img> follows the OS theme, not the site's theme.
+	n, err := minifySVG(filepath.Join(dir, "source", "logo-kong.svg"), filepath.Join(dir, "logo-kong-on-dark.svg"), true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%-20s %9s %7d bytes\n", "logo-kong-on-dark.svg", "vector", n)
 	for _, j := range jobs {
 		src, err := load(filepath.Join(dir, j.src))
 		if err != nil {
@@ -154,8 +163,9 @@ var (
 // drops the XML prolog, DOCTYPE and comments, collapses whitespace, removes
 // the space before negative path numbers ("c-38 -5" -> "c-38-5", valid per
 // the SVG path grammar: https://www.w3.org/TR/SVG2/paths.html#PathDataBNF)
-// and redundant zero fractions. Geometry is unchanged.
-func minifySVG(src, dst string) (int, error) {
+// and redundant zero fractions. Geometry is unchanged. inverse turns the
+// black ink (potrace fill="#000000") white.
+func minifySVG(src, dst string, inverse bool) (int, error) {
 	b, err := os.ReadFile(src)
 	if err != nil {
 		return 0, err
@@ -166,6 +176,12 @@ func minifySVG(src, dst string) (int, error) {
 	s = strings.ReplaceAll(s, " -", "-")
 	s = svgZeroFrac.ReplaceAllString(s, "$1$2")
 	s = svgTrailing.ReplaceAllString(s, "$1$2")
+	if inverse {
+		if !strings.Contains(s, `fill="#000000"`) {
+			return 0, fmt.Errorf("%s: no fill=\"#000000\" to invert", src)
+		}
+		s = strings.ReplaceAll(s, `fill="#000000"`, `fill="#ffffff"`)
+	}
 	s = strings.TrimSpace(s) + "\n"
 	return len(s), os.WriteFile(dst, []byte(s), 0o644)
 }
