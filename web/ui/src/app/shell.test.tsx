@@ -41,15 +41,20 @@ describe('shell and routes', () => {
   })
 
   it('routes tabs as sub-pages and unknown paths to a guided 404', async () => {
-    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    stubFetch({
+      ...base,
+      'GET /api/v1/helper/status': () => json(helperReady),
+      'GET /api/v1/groups': () => json([]),
+      'GET /api/v1/vpns': () => json([]),
+    })
     window.history.replaceState(null, '', '/profiles/groups')
     render(<App />)
     const tabs = await screen.findByRole('navigation', { name: 'Profiles' })
     expect(within(tabs).getByRole('link', { name: 'Groups' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByText('Connect, disconnect and reload a whole group')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Your groups' })).toBeInTheDocument()
 
     await userEvent.click(within(tabs).getByRole('link', { name: 'VPN profiles' }))
-    expect(await screen.findByText('Create, edit and delete VPN profiles')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Create your first VPN' })).toBeInTheDocument()
 
     window.history.pushState(null, '', '/nope')
     window.dispatchEvent(new PopStateEvent('popstate'))

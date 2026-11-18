@@ -13,8 +13,10 @@ import { DataProvider } from './app/DataProvider'
 import { BASENAME, PLACEHOLDERS } from './app/placeholders'
 import { PreferencesProvider } from './app/PreferencesProvider'
 import { AppShell } from './components/layout/AppShell'
+import { GroupsPage } from './pages/GroupsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { ProfilesPage } from './pages/ProfilesPage'
 import { TrayPage } from './pages/TrayPage'
 import { WelcomePage } from './pages/WelcomePage'
 
@@ -27,6 +29,8 @@ function AppRoutes() {
       <Route path="tray" element={<TrayPage />} />
       <Route element={<AppShell />}>
         <Route index element={<WelcomePage />} />
+        <Route path="profiles" element={<ProfilesPage />} />
+        <Route path="profiles/groups" element={<GroupsPage />} />
         {Object.entries(PLACEHOLDERS).map(([path, spec]) => (
           <Route key={path} path={path} element={<PlaceholderPage spec={spec} />} />
         ))}

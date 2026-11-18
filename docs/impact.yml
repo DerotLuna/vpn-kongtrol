@@ -1,4 +1,4 @@
-# Change-impact map — version 1.5 · 2026-11-18
+# Change-impact map — version 1.6 · 2026-11-18
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -267,6 +267,9 @@ features:
       - cmd/kongtrol-tray/tray_actions.go
       - cmd/kongtrol-tray/tray_menu.go
       - web/dashboard/studio.js
+      - web/ui/src/components/profiles/FirstRun.tsx
+      - web/ui/src/components/profiles/useRestartAction.ts
+      - internal/api/handlers_detect.go
     surfaces:
       - AGENTS.md#first_run
       - README.md#first_run

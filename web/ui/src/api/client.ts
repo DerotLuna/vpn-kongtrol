@@ -33,6 +33,8 @@ export class ApiError extends Error {
   /** Already translated by the daemon when it sent one. */
   readonly hint: string
   readonly key: string
+  /** The whole JSON body, for answers with extra fields (e.g. 409 restart_required). */
+  readonly body: ApiErrorBody & { [key: string]: unknown }
 
   constructor(kind: ApiErrorKind, status: number, body: ApiErrorBody = {}) {
     super(body.error ?? `HTTP ${status}`)
@@ -41,6 +43,7 @@ export class ApiError extends Error {
     this.status = status
     this.hint = body.hint ?? ''
     this.key = body.error_key ?? body.code ?? ''
+    this.body = { ...body }
   }
 }
 
@@ -67,7 +70,7 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   return res
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await send(path, init, 'application/json')
   return parse<T>(res)
 }
@@ -95,7 +98,7 @@ async function parse<T>(res: Response): Promise<T> {
   return body as T
 }
 
-function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Promise<T> {
+export function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Promise<T> {
   return request<T>(path, {
     method,
     headers: { 'Content-Type': 'application/json' },
