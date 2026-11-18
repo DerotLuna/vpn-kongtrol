@@ -1,21 +1,24 @@
-// Kongtrol UI — Actividad data: audit log + daemon notices · v1.0.1 · 2026-11-18
+// Kongtrol UI — Actividad data: audit log + daemon notices · v1.1.0 · 2026-11-18
 //
 // Two resources, one cache entry each (ADR-0038):
-// - GET /api/v1/audit?limit&profile&level (internal/api/handlers_security.go
-//   handleAuditLog): the signed log, newest first. The daemon reads the last
-//   two daily files only. "En vivo" re-reads it every 5 s; earlier rows keep
-//   their identity (structural sharing), so only new rows render.
+// - GET /api/v1/audit?limit&profile&level&from&to&before (internal/api/
+//   handlers_audit.go, ADR-0042): the signed log, newest first, across every
+//   retained day, with `signed` / `verified` per entry. Pages by cursor:
+//   `before` = the last timestamp of a page; the X-Kongtrol-Audit-More
+//   header says whether an older page exists ("Cargar más"). Dates filter
+//   on the daemon (`from` / `to`, local days). "En vivo" re-reads every 5 s;
+//   unchanged rows keep their identity (structural sharing).
 // - GET /api/v1/events?after=<seq> (handlers_events.go): the notices the
 //   daemon keeps in memory (last 100, cmd/kongtrol/main.go). The first read
 //   asks after=0 (the backlog); later reads only what is new. A lower seq
 //   means the daemon restarted: the list starts over.
-import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { http } from '../api/client'
 import { messages, type MessageKey } from '../i18n/messages'
 
 // ── Audit log ─────────────────────────────────────────────────────────────
 
-/** internal/security/audit.go `AuditEvent`. */
+/** internal/api/handlers_audit.go `auditEntryDTO` (security.AuditEvent + signature check). */
 export interface AuditEvent {
   id: string
   timestamp: string
@@ -23,30 +26,35 @@ export interface AuditEvent {
   action: string
   profile: string
   message: string
-  /** Hex HMAC-SHA256; empty when the log is not signed. */
+  /** Hex HMAC-SHA256; empty when the entry is not signed. */
   hmac: string
-  /**
-   * Result of checking the HMAC with the key. The daemon does not send it
-   * yet (security.VerifyEvent has no API caller): until it does, a signed
-   * entry reads "firmada · sin comprobar", never "válida".
-   */
+  /** The entry carries a signature. */
+  signed?: boolean
+  /** Its signature checks out against the key in the OS keychain. */
   verified?: boolean
 }
 
 export const AUDIT_LEVELS = ['INFO', 'WARN', 'ERROR', 'SECURITY'] as const
 export type AuditLevel = (typeof AUDIT_LEVELS)[number]
-export type AuditRange = 'all' | 'hour' | 'today' | 'yesterday'
-export const AUDIT_RANGES: readonly AuditRange[] = ['all', 'hour', 'today', 'yesterday']
 
-/** Rows per read, as the classic panel; "Mostrar más" asks for the next page. */
-export const AUDIT_PAGE = 300
+/** Rows per page ("Cargar más" asks for the next older one); the API allows 1–1000. */
+export const AUDIT_PAGE = 200
 /** "En vivo": same cadence as the daemon's heartbeat. */
 export const LIVE_MS = 5_000
+/** The paging header (handlers_audit.go auditMoreHeader). */
+export const AUDIT_MORE_HEADER = 'X-Kongtrol-Audit-More'
 
 export interface AuditQuery {
   profile: string
   level: AuditLevel | ''
-  limit: number
+  /** Local day YYYY-MM-DD, or '' (no bound). */
+  from: string
+  to: string
+}
+
+export interface AuditPage {
+  events: AuditEvent[]
+  more: boolean
 }
 
 export const activityKeys = {
@@ -54,17 +62,32 @@ export const activityKeys = {
   events: ['events', 'history'] as const,
 }
 
-export function auditURL({ profile, level, limit }: AuditQuery): string {
-  const params = new URLSearchParams({ limit: String(limit) })
+export function auditURL({ profile, level, from, to }: AuditQuery, before = ''): string {
+  const params = new URLSearchParams({ limit: String(AUDIT_PAGE) })
   if (profile.trim()) params.set('profile', profile.trim())
   if (level) params.set('level', level)
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
+  if (before) params.set('before', before)
   return `/api/v1/audit?${params.toString()}`
 }
 
-export function useAuditLog(q: AuditQuery, live: boolean) {
-  return useQuery({
+/** The cursor for the page after `page`, or undefined when it was the last. */
+export function nextCursor(page: AuditPage): string | undefined {
+  const last = page.events.at(-1)
+  return page.more && last ? last.timestamp : undefined
+}
+
+export function useAuditLog(q: AuditQuery, live: boolean, enabled = true) {
+  return useInfiniteQuery({
     queryKey: activityKeys.audit(q),
-    queryFn: () => http.get<AuditEvent[] | null>(auditURL(q)).then((l) => l ?? []),
+    queryFn: async ({ pageParam }): Promise<AuditPage> => {
+      const { data, headers } = await http.getWithHeaders<AuditEvent[] | null>(auditURL(q, pageParam))
+      return { events: data ?? [], more: headers.get(AUDIT_MORE_HEADER) === 'true' }
+    },
+    initialPageParam: '',
+    getNextPageParam: nextCursor,
+    enabled,
     refetchInterval: live ? LIVE_MS : false,
     // A new filter keeps the last rows on screen until the answer arrives:
     // no skeleton flash, no layout jump.
@@ -72,33 +95,18 @@ export function useAuditLog(q: AuditQuery, live: boolean) {
   })
 }
 
-function startOfDay(d: Date): number {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+/** "Desde" after "Hasta" (the daemon refuses it with api.err.audit_range). */
+export function badRange(from: string, to: string): boolean {
+  return from !== '' && to !== '' && from > to
 }
 
-/** Date filter, applied in the page (the API has no date parameter). */
-export function inRange(ev: Pick<AuditEvent, 'timestamp'>, range: AuditRange, now: Date = new Date()): boolean {
-  if (range === 'all') return true
-  const at = new Date(ev.timestamp).getTime()
-  if (Number.isNaN(at)) return false
-  const today = startOfDay(now)
-  switch (range) {
-    case 'hour':
-      return at >= now.getTime() - 3_600_000
-    case 'today':
-      return at >= today
-    case 'yesterday':
-      return at >= today - 86_400_000 && at < today
-  }
-}
+export type SignatureState = 'verified' | 'tampered' | 'unsigned'
 
-export type SignatureState = 'verified' | 'tampered' | 'signed' | 'unsigned'
-
-export function signatureState(ev: Pick<AuditEvent, 'hmac' | 'verified'>): SignatureState {
-  if (!ev.hmac) return 'unsigned'
-  if (ev.verified === true) return 'verified'
-  if (ev.verified === false) return 'tampered'
-  return 'signed'
+/** Firma válida / no válida / sin firma (a signed entry the daemon could not verify is "no válida"). */
+export function signatureState(ev: Pick<AuditEvent, 'hmac' | 'signed' | 'verified'>): SignatureState {
+  const signed = ev.signed ?? ev.hmac !== ''
+  if (!signed) return 'unsigned'
+  return ev.verified ? 'verified' : 'tampered'
 }
 
 /** One JSON object per line, the format of the log file itself (and `kongtrol logs --json`). */

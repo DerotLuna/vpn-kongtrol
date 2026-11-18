@@ -1,4 +1,4 @@
-/* Kongtrol UI — Actividad: notices timeline + audit log · v1.0.0 · 2026-11-18
+/* Kongtrol UI — Actividad: notices timeline + audit log · v1.1.0 · 2026-11-18
    Operate mode: flat surface, hairlines, mono for machine data (times,
    actions, profiles), states as word + icon + color (Four States Rule). */
 
@@ -46,10 +46,12 @@
   display: grid; gap: 16px; align-items: start;
   padding: 16px 0; border-block: 1px solid var(--border);
 }
-@media (min-width: 720px) { .k-audit__filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (min-width: 1080px) { .k-audit__filters { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); } }
+@media (min-width: 720px) { .k-audit__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1080px) {
+  .k-audit__filters { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.9fr); }
+}
 .k-audit__live { align-self: center; }
-@media (min-width: 720px) and (max-width: 1079px) { .k-audit__live { grid-column: 1 / -1; } }
+@media (min-width: 720px) { .k-audit__live { grid-column: 1 / -1; } }
 
 .k-audit__time { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px; }
 .k-audit__msg { display: block; max-width: 56ch; overflow-wrap: anywhere; }
@@ -64,5 +66,4 @@
 .k-sig svg { width: 14px; height: 14px; flex: none; }
 .k-sig[data-state='ok'] { color: var(--live); }
 .k-sig[data-state='bad'] { color: var(--danger); }
-.k-sig[data-state='signed'] { color: var(--text); }
 .k-sig[data-state='none'] { color: var(--text-dim); }

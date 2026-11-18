@@ -1,26 +1,24 @@
-// Kongtrol UI — Actividad: signed audit log viewer · v1.0.0 · 2026-11-18
+// Kongtrol UI — Actividad: signed audit log viewer · v1.1.0 · 2026-11-18
 //
-// GET /api/v1/audit (same reader as `kongtrol logs`). Fixes of the classic
-// page (docs/dashboard-parity.md §3.5): level and date apply at once (no
-// "Aplicar"), level names are translated, "Mostrar más" pages past 300, an
-// unconfigured log is explained (the API answers 200 [] for it) and any
-// other error says what happened instead of "not configured". Signing is
-// shown per entry with a word + icon; a signed entry is "sin comprobar"
-// until the daemon reports verification (see data/activity.ts).
+// GET /api/v1/audit (same reader as `kongtrol logs`, ADR-0042). Level,
+// profile and dates filter on the daemon (from / to = local days, across
+// every retained day); "Cargar más" asks for the next older page with the
+// `before` cursor while X-Kongtrol-Audit-More says there is one. Level
+// names are translated; an unconfigured log is explained (the API answers
+// 200 [] for it) and any other error says what happened. Each entry shows
+// its signature in a word + icon: "Firma válida", "Firma no válida"
+// (danger: edited, or signed with another key) or "Sin firma".
 import { useMemo, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import {
   AUDIT_LEVELS,
-  AUDIT_PAGE,
-  AUDIT_RANGES,
   auditToJSONL,
+  badRange,
   downloadText,
-  inRange,
   signatureState,
   useAuditLog,
   type AuditEvent,
   type AuditLevel,
-  type AuditRange,
   type SignatureState,
 } from '../../data/activity'
 import type { Settings } from '../../data/settings'
@@ -29,7 +27,7 @@ import type { MessageKey } from '../../i18n/messages'
 import { Button, IconButton } from '../ui/Button'
 import { DataList, type Column } from '../ui/DataList'
 import { SelectField, TextField } from '../ui/Field'
-import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon, ShieldIcon } from '../ui/icons'
+import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon } from '../ui/icons'
 import { Banner, EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
 import { Switch } from '../ui/Switch'
@@ -47,7 +45,6 @@ const LEVEL: Record<AuditLevel, { tone: PillTone; label: MessageKey }> = {
 const SIGN: Record<SignatureState, { label: MessageKey; tone: string }> = {
   verified: { label: 'activity.sign.verified', tone: 'ok' },
   tampered: { label: 'activity.sign.tampered', tone: 'bad' },
-  signed: { label: 'activity.sign.signed', tone: 'signed' },
   unsigned: { label: 'activity.sign.unsigned', tone: 'none' },
 }
 
@@ -60,9 +57,9 @@ function LevelPill({ level }: { level: string }) {
 function Signature({ ev }: { ev: AuditEvent }) {
   const { t } = usePreferences()
   const state = signatureState(ev)
-  const icon = state === 'verified' ? <CheckIcon /> : state === 'tampered' ? <AlertIcon /> : state === 'signed' ? <ShieldIcon /> : null
+  const icon = state === 'verified' ? <CheckIcon /> : state === 'tampered' ? <AlertIcon /> : null
   return (
-    <span className="k-sig" data-state={SIGN[state].tone} title={ev.hmac || undefined}>
+    <span className="k-sig" data-state={SIGN[state].tone} title={state === 'tampered' ? t('activity.sign.tampered.why') : undefined}>
       {icon}
       {t(SIGN[state].label)}
     </span>
@@ -74,18 +71,22 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
   const [profileInput, setProfileInput] = useState('')
   const [profile, setProfile] = useState('')
   const [level, setLevel] = useState<AuditLevel | ''>('')
-  const [range, setRange] = useState<AuditRange>('all')
-  const [limit, setLimit] = useState(AUDIT_PAGE)
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
   const [live, setLive] = useState(true)
   const configured = settings ? settings.audit_log_path.trim() !== '' : undefined
   // Without the settings (they failed to load) the log is still worth showing.
   const showLog = configured === true || (settingsError != null && !settings)
+  const rangeBad = badRange(from, to)
 
-  const query = useAuditLog({ profile, level, limit }, live && configured !== false)
-  const all = query.data
-  const rows = useMemo(() => (all ?? []).filter((ev) => inRange(ev, range)), [all, range])
-  const profiles = useMemo(() => [...new Set((all ?? []).map((e) => e.profile).filter(Boolean))].sort(), [all])
-  const filtered = profile !== '' || level !== '' || range !== 'all'
+  const query = useAuditLog(
+    { profile, level, from: rangeBad ? '' : from, to: rangeBad ? '' : to },
+    live && configured !== false,
+    configured !== false,
+  )
+  const rows = useMemo(() => query.data?.pages.flatMap((p) => p.events), [query.data])
+  const profiles = useMemo(() => [...new Set((rows ?? []).map((e) => e.profile).filter(Boolean))].sort(), [rows])
+  const filtered = profile !== '' || level !== '' || from !== '' || to !== ''
 
   const fmt = useMemo(() => new Intl.DateTimeFormat(lang, { dateStyle: 'short', timeStyle: 'medium' }), [lang])
   const columns = useMemo<Column<AuditEvent>[]>(
@@ -111,36 +112,40 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
   const applyProfile = (e: FormEvent) => {
     e.preventDefault()
     setProfile(profileInput.trim())
-    setLimit(AUDIT_PAGE)
   }
   const clear = () => {
     setProfileInput('')
     setProfile('')
     setLevel('')
-    setRange('all')
-    setLimit(AUDIT_PAGE)
+    setFrom('')
+    setTo('')
   }
   const exportRows = () => {
+    if (!rows) return
     const stamp = new Date().toISOString().slice(0, 10)
     const file = `kongtrol-audit-${stamp}.jsonl`
     downloadText(file, auditToJSONL(rows))
     toasts.show({ tone: 'ok', message: t('activity.audit.exported', { file, count: rows.length }) })
   }
+  const tampered = useMemo(() => (rows ?? []).filter((ev) => signatureState(ev) === 'tampered').length, [rows])
 
   let body
   if (configured === false) {
     body = <EmptyState icon={<InfoIcon />} title={t('activity.audit.off.title')} body={t('activity.audit.off.body')} action={<a className="k-set__link" href="#log-settings">{t('activity.config.title')}</a>} />
-  } else if (query.error && !all) {
+  } else if (query.error && !rows) {
     body = <ErrorState error={query.error} onRetry={() => void query.refetch()} />
-  } else if (!all) {
+  } else if (!rows) {
     body = <Skeleton lines={6} label={t('activity.audit.loading')} />
   } else {
     body = (
       <>
+        {tampered > 0 && (
+          <Banner tone="bad" title={t('activity.sign.tamperedCount', { n: tampered })}>
+            <p>{t('activity.sign.tampered.why')}</p>
+          </Banner>
+        )}
         <p className="k-act__count" aria-live="polite">
-          {rows.length === all.length
-            ? t('activity.audit.count', { shown: rows.length })
-            : t('activity.audit.countOf', { shown: rows.length, total: all.length })}
+          {t(query.hasNextPage ? 'activity.audit.countMore' : 'activity.audit.count', { shown: rows.length })}
         </p>
         <DataList
           caption={t('activity.audit.caption')}
@@ -162,9 +167,10 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
             />
           }
         />
-        {all.length >= limit && (
+        {query.error && <ErrorState error={query.error} onRetry={() => void query.refetch()} />}
+        {query.hasNextPage && (
           <div className="k-act__more">
-            <Button variant="outlined" loading={query.isFetching} onClick={() => setLimit((n) => n + AUDIT_PAGE)}>
+            <Button variant="outlined" loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
               {t('activity.audit.more')}
             </Button>
           </div>
@@ -174,7 +180,7 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
   }
 
   return (
-    <section className="k-act" aria-labelledby="audit-title" aria-busy={configured !== false && !all && !query.error}>
+    <section className="k-act" aria-labelledby="audit-title" aria-busy={configured !== false && !rows && !query.error}>
       <header className="k-act__head">
         <div>
           <h2 id="audit-title" className="k-act__title">
@@ -185,7 +191,7 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
         {showLog && (
           <div className="k-act__tools">
             <IconButton label={t('activity.audit.refresh')} icon={<RefreshIcon />} onClick={() => void query.refetch()} />
-            <Button variant="outlined" onClick={exportRows} disabled={rows.length === 0}>
+            <Button variant="outlined" onClick={exportRows} disabled={!rows?.length}>
               {t('activity.audit.export')}
             </Button>
           </div>
@@ -217,10 +223,7 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
               value={profileInput}
               onChange={(e) => setProfileInput(e.target.value)}
               onBlur={() => {
-                if (profileInput.trim() !== profile) {
-                  setProfile(profileInput.trim())
-                  setLimit(AUDIT_PAGE)
-                }
+                if (profileInput.trim() !== profile) setProfile(profileInput.trim())
               }}
             />
             <datalist id="audit-profiles">
@@ -229,14 +232,7 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
               ))}
             </datalist>
           </form>
-          <SelectField
-            label={t('activity.audit.level')}
-            value={level}
-            onChange={(e) => {
-              setLevel(e.target.value as AuditLevel | '')
-              setLimit(AUDIT_PAGE)
-            }}
-          >
+          <SelectField label={t('activity.audit.level')} value={level} onChange={(e) => setLevel(e.target.value as AuditLevel | '')}>
             <option value="">{t('activity.audit.level.all')}</option>
             {AUDIT_LEVELS.map((l) => (
               <option key={l} value={l}>
@@ -244,18 +240,22 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
               </option>
             ))}
           </SelectField>
-          <SelectField
-            label={t('activity.audit.range')}
+          <TextField
+            type="date"
+            label={t('activity.audit.from')}
+            value={from}
+            max={to || undefined}
+            onChange={(e) => setFrom(e.target.value)}
+            error={rangeBad ? { message: t('activity.audit.range.invalid'), fix: t('activity.audit.range.invalid.fix') } : null}
+          />
+          <TextField
+            type="date"
+            label={t('activity.audit.to')}
             hint={t('activity.audit.range.note')}
-            value={range}
-            onChange={(e) => setRange(e.target.value as AuditRange)}
-          >
-            {AUDIT_RANGES.map((r) => (
-              <option key={r} value={r}>
-                {t(`activity.audit.range.${r}` as MessageKey)}
-              </option>
-            ))}
-          </SelectField>
+            value={to}
+            min={from || undefined}
+            onChange={(e) => setTo(e.target.value)}
+          />
           <div className="k-audit__live">
             <Switch
               checked={live}

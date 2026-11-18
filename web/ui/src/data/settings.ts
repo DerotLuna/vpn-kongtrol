@@ -1,4 +1,4 @@
-// Kongtrol UI — Ajustes data: settings, setup, restart, shutdown · v1.0.1 · 2026-11-18
+// Kongtrol UI — Ajustes data: settings, setup, restart, shutdown · v1.1.0 · 2026-11-18
 //
 // GET/PUT /api/v1/settings (internal/api/handlers_settings.go). The PUT is a
 // patch: every section sends only its own fields, so saving one section never
@@ -115,6 +115,17 @@ export function validateMaxSize(value: string): Invalid | null {
   if (!/^\d+$/.test(v)) return { message: 'settings.err.size', fix: 'settings.err.sizeFix' }
   const n = Number(v)
   if (n < MAX_SIZE_MB.min || n > MAX_SIZE_MB.max) return { message: 'settings.err.size', fix: 'settings.err.sizeFix' }
+  return null
+}
+
+export const RETENTION_DAYS = { min: 0, max: 365 } as const
+
+/** Whole days 0–365 (0 = today and yesterday, the daemon default). Empty is an error. */
+export function validateRetention(value: string): Invalid | null {
+  const v = value.trim()
+  if (!/^\d+$/.test(v) || Number(v) > RETENTION_DAYS.max) {
+    return { message: 'activity.config.retention.err', fix: 'activity.config.retention.err.fix' }
+  }
   return null
 }
 

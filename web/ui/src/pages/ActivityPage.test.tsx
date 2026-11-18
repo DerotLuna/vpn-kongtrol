@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
-import { activityKeys, auditToJSONL, auditURL, inRange, mergeEvents, signatureState, type AuditEvent, type DaemonEvent } from '../data/activity'
+import { activityKeys, auditToJSONL, auditURL, badRange, mergeEvents, nextCursor, signatureState, type AuditEvent, type DaemonEvent } from '../data/activity'
 import { createQueryClient } from '../data/queryClient'
 import { FakeSocket, helperReady, json, stubFetch } from '../test/fakes'
 
@@ -105,31 +105,80 @@ describe('Actividad · avisos', () => {
   })
 })
 
+/** An audit page: the JSON array plus the paging header the daemon sends. */
+const page = (events: AuditEvent[], more = false) =>
+  Promise.resolve(new Response(JSON.stringify(events), { status: 200, headers: { 'X-Kongtrol-Audit-More': String(more) } }))
+
 describe('Actividad · registro de auditoría', () => {
+  const all = [
+    audit('1', 'INFO', { signed: true, verified: true }),
+    audit('2', 'WARN', { hmac: '', signed: false, verified: false }),
+    audit('3', 'SECURITY', { profile: 'casa', signed: true, verified: false }),
+  ]
   const auditRoutes = {
     ...base,
     'GET /api/v1/events?after=0': () => json({ seq: 0, events: [] }),
-    'GET /api/v1/audit?limit=300': () =>
-      json([audit('1', 'INFO'), audit('2', 'WARN', { hmac: '' }), audit('3', 'SECURITY', { profile: 'casa' })]),
-    'GET /api/v1/audit?limit=300&level=WARN': () => json([audit('2', 'WARN', { hmac: '' })]),
-    'GET /api/v1/audit?limit=300&profile=casa': () => json([audit('3', 'SECURITY', { profile: 'casa' })]),
+    'GET /api/v1/audit?limit=200': () => page(all),
+    'GET /api/v1/audit?limit=200&level=WARN': () => page([all[1]!]),
+    'GET /api/v1/audit?limit=200&profile=casa': () => page([all[2]!]),
   }
 
-  it('shows signing state per entry and filters by level at once (no Apply)', async () => {
+  it('shows the verified signature state per entry and filters by level at once (no Apply)', async () => {
     const fetchMock = stubFetch(auditRoutes)
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
 
     expect(await screen.findByText('Mostrando 3 entradas')).toBeInTheDocument()
     expect(screen.getByText('Firma activada')).toBeInTheDocument()
-    expect(screen.getAllByText('Firmada · sin comprobar')).toHaveLength(2)
+    expect(screen.getByText('Firma válida')).toBeInTheDocument()
+    expect(screen.getByText('Firma no válida')).toBeInTheDocument()
     expect(screen.getByText('Sin firma')).toBeInTheDocument()
+    expect(screen.getByText('1 entradas con firma no válida en lo que ves')).toBeInTheDocument()
     // translated level names, never raw INFO/WARN
     expect(screen.getAllByText('Seguridad').length).toBeGreaterThan(0)
 
     await userEvent.selectOptions(screen.getByLabelText('Nivel'), 'WARN')
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
-    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=300&level=WARN')).toBe(true)
+    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&level=WARN')).toBe(true)
+  })
+
+  it('pages with the before cursor while the daemon says there is more', async () => {
+    const older = audit('0', 'INFO', { timestamp: '2026-11-01T08:00:00Z', message: 'older entry' })
+    const first = [audit('9', 'INFO', { timestamp: '2026-11-17T10:00:00Z' })]
+    stubFetch({
+      ...auditRoutes,
+      'GET /api/v1/audit?limit=200': () => page(first, true),
+      'GET /api/v1/audit?limit=200&before=2026-11-17T10%3A00%3A00Z': () => page([older], false),
+    })
+    window.history.replaceState(null, '', '/activity?tab=audit')
+    render(<App />)
+    expect(await screen.findByText('Mostrando las 1 más nuevas · hay más antiguas')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Cargar más' }))
+    expect(await screen.findByText('older entry')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 2 entradas')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cargar más' })).not.toBeInTheDocument()
+  })
+
+  it('filters dates on the daemon and refuses From after To', async () => {
+    const fetchMock = stubFetch({
+      ...auditRoutes,
+      'GET /api/v1/audit?limit=200&from=2026-11-10': () => page([all[0]!]),
+      'GET /api/v1/audit?limit=200&from=2026-11-10&to=2026-11-12': () => page([]),
+    })
+    window.history.replaceState(null, '', '/activity?tab=audit')
+    render(<App />)
+    await screen.findByText('Mostrando 3 entradas')
+    const from = screen.getByLabelText('Desde')
+    await userEvent.type(from, '2026-11-10')
+    expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText('Hasta'), '2026-11-12')
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&from=2026-11-10&to=2026-11-12')).toBe(true),
+    )
+    await userEvent.clear(from)
+    await userEvent.type(from, '2026-11-20')
+    expect(await screen.findByText('«Desde» es posterior a «Hasta».')).toBeInTheDocument()
+    expect(from).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('filters by profile on Enter', async () => {
@@ -143,7 +192,7 @@ describe('Actividad · registro de auditoría', () => {
   })
 
   it('explains an unconfigured log instead of "no events"', async () => {
-    stubFetch({ ...auditRoutes, 'GET /api/v1/settings': () => json({ ...settings, audit_log_path: '' }), 'GET /api/v1/audit?limit=300': () => json([]) })
+    stubFetch({ ...auditRoutes, 'GET /api/v1/settings': () => json({ ...settings, audit_log_path: '' }) })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
     expect(await screen.findByRole('heading', { name: 'El registro de auditoría está apagado' })).toBeInTheDocument()
@@ -152,7 +201,7 @@ describe('Actividad · registro de auditoría', () => {
   it('reports a read error with what to do, not "not configured"', async () => {
     stubFetch({
       ...auditRoutes,
-      'GET /api/v1/audit?limit=300': () => json({ error: 'permiso denegado', hint: 'Revisa los permisos del archivo.' }, 400),
+      'GET /api/v1/audit?limit=200': () => json({ error: 'permiso denegado', hint: 'Revisa los permisos del archivo.' }, 400),
     })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
@@ -161,24 +210,34 @@ describe('Actividad · registro de auditoría', () => {
     expect(alert).toHaveTextContent('Revisa los permisos del archivo.')
   })
 
-  it('refuses an empty max size instead of saving 0', async () => {
+  it('refuses an empty max size or bad days instead of saving them; saves size and retention', async () => {
     const fetchMock = stubFetch({ ...auditRoutes, 'PUT /api/v1/settings': () => json(settings) })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
-    const size = await screen.findByLabelText('Tamaño máximo (MB)')
+    const size = await screen.findByLabelText('Tamaño máximo por archivo (MB)')
+    const days = screen.getByLabelText('Días que se guardan')
+    expect(days).toHaveValue('0')
+    expect(screen.getByText('Se guardan hoy y ayer; los días más viejos se borran.')).toBeInTheDocument()
     await userEvent.clear(size)
+    await userEvent.clear(days)
+    await userEvent.type(days, '400')
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByText('Escribe un tamaño.')).toBeInTheDocument()
+    expect(screen.getByText('Esa cantidad de días no vale.')).toBeInTheDocument()
     expect(size).toHaveAttribute('aria-invalid', 'true')
     expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(false)
 
     await userEvent.type(size, '50')
+    await userEvent.clear(days)
+    await userEvent.type(days, '30')
+    expect(screen.getByText('Se guardan los últimos 30 días, contando hoy; los más viejos se borran.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(true))
     const put = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')
     expect(JSON.parse(String(put?.[1]?.body))).toEqual({
       audit_log_path: settings.audit_log_path,
       audit_log_max_size_mb: 50,
+      audit_log_retention_days: 30,
       audit_log_sign: true,
     })
   })
@@ -186,28 +245,27 @@ describe('Actividad · registro de auditoría', () => {
 
 describe('activity data helpers', () => {
   it('builds the audit URL with only the filters in use', () => {
-    expect(auditURL({ profile: ' ', level: '', limit: 300 })).toBe('/api/v1/audit?limit=300')
-    expect(auditURL({ profile: 'a b', level: 'ERROR', limit: 600 })).toBe('/api/v1/audit?limit=600&profile=a+b&level=ERROR')
+    expect(auditURL({ profile: ' ', level: '', from: '', to: '' })).toBe('/api/v1/audit?limit=200')
+    expect(auditURL({ profile: 'a b', level: 'ERROR', from: '2026-11-01', to: '2026-11-02' }, '2026-11-02T10:00:00Z')).toBe(
+      '/api/v1/audit?limit=200&profile=a+b&level=ERROR&from=2026-11-01&to=2026-11-02&before=2026-11-02T10%3A00%3A00Z',
+    )
   })
 
-  it('date ranges', () => {
-    const at = new Date(2026, 10, 18, 12, 0, 0)
-    const iso = (d: Date) => ({ timestamp: d.toISOString() })
-    expect(inRange(iso(new Date(2026, 10, 18, 11, 30)), 'hour', at)).toBe(true)
-    expect(inRange(iso(new Date(2026, 10, 18, 10, 0)), 'hour', at)).toBe(false)
-    expect(inRange(iso(new Date(2026, 10, 18, 0, 1)), 'today', at)).toBe(true)
-    expect(inRange(iso(new Date(2026, 10, 17, 23, 59)), 'today', at)).toBe(false)
-    expect(inRange(iso(new Date(2026, 10, 17, 23, 59)), 'yesterday', at)).toBe(true)
-    expect(inRange(iso(new Date(2026, 10, 16, 23, 59)), 'yesterday', at)).toBe(false)
-    expect(inRange({ timestamp: 'nope' }, 'all', at)).toBe(true)
+  it('cursor and date range', () => {
+    expect(nextCursor({ events: [audit('1', 'INFO', { timestamp: 't1' })], more: true })).toBe('t1')
+    expect(nextCursor({ events: [audit('1', 'INFO')], more: false })).toBeUndefined()
+    expect(nextCursor({ events: [], more: true })).toBeUndefined()
+    expect(badRange('2026-11-02', '2026-11-01')).toBe(true)
+    expect(badRange('2026-11-01', '')).toBe(false)
   })
 
-  it('signature states never claim "valid" without a verification', () => {
-    expect(signatureState({ hmac: '' })).toBe('unsigned')
-    expect(signatureState({ hmac: 'x' })).toBe('signed')
-    expect(signatureState({ hmac: 'x', verified: true })).toBe('verified')
-    expect(signatureState({ hmac: 'x', verified: false })).toBe('tampered')
+  it('signature states: valid only when the daemon verified it', () => {
+    expect(signatureState({ hmac: '', signed: false })).toBe('unsigned')
+    expect(signatureState({ hmac: 'x', signed: true, verified: true })).toBe('verified')
+    expect(signatureState({ hmac: 'x', signed: true, verified: false })).toBe('tampered')
+    expect(signatureState({ hmac: 'x' })).toBe('tampered')
   })
+
 
   it('merges notices without duplicates, newest first, capped', () => {
     const a = ev(1, 'k', [])
