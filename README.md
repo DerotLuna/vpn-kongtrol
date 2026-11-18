@@ -184,7 +184,7 @@ restarts on its own once the VPN is saved.
 kongtrol init           # wizard: finds your VPN clients, saves passwords in the keychain
 kongtrol up office      # connect a profile (or: --group work, --all)
 kongtrol status         # see each tunnel's state, IP and traffic
-kongtrol dashboard      # open the panel in your browser (localhost:9741)
+kongtrol dashboard      # open the panel in your browser (already signed in)
 ```
 
 Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
