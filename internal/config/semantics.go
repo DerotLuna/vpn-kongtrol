@@ -7,7 +7,30 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
+
+// maxNameRunes bounds names of profiles, policies, groups and rules.
+const maxNameRunes = 64
+
+// ValidateName checks a user-chosen name (VPN profile, policy, group,
+// scheduler rule). Names are shown in the dashboards, the tray and the
+// terminal and travel in URLs, so they may not hold control characters or
+// the markup/quoting characters < > " ' ` & \ (defense in depth against
+// injection in any client). Spaces and accents stay allowed.
+func ValidateName(kind, name string) error {
+	if strings.TrimSpace(name) == "" || utf8.RuneCountInString(name) > maxNameRunes || !utf8.ValidString(name) ||
+		strings.ContainsAny(name, "<>\"'`&\\") {
+		return newValidationError("config.err.name_chars", kind, name)
+	}
+	for _, r := range name {
+		if unicode.IsControl(r) || r == ' ' || r == ' ' {
+			return newValidationError("config.err.name_chars", kind, name)
+		}
+	}
+	return nil
+}
 
 // ValidateAuditLogPath rejects a security.audit_log.path that is a folder
 // (existing, or written with a trailing separator): it must name a file.
@@ -48,8 +71,28 @@ func validateSemantics(cfg *Config) error {
 	}
 	sort.Strings(names)
 	for _, n := range names {
+		if err := ValidateName("vpn", n); err != nil {
+			return err
+		}
 		if err := validateProvider(n, cfg.VPNs[n]); err != nil {
 			return err
+		}
+	}
+	for _, p := range cfg.Policies {
+		if err := ValidateName("policy", p.Name); err != nil {
+			return err
+		}
+	}
+	for g := range cfg.Groups {
+		if err := ValidateName("group", g); err != nil {
+			return err
+		}
+	}
+	for _, r := range cfg.Monitor.Scheduler.Rules {
+		if r.Name != "" {
+			if err := ValidateName("rule", r.Name); err != nil {
+				return err
+			}
 		}
 	}
 	if err := validateFailover(cfg.VPNs, names); err != nil {
