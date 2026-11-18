@@ -301,7 +301,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   border-color: color-mix(in srgb, var(--steel) 40%, transparent);
 }
 
-.nav-links { display: flex; align-items: center; gap: 22px; list-style: none; }
+.nav-links { display: flex; align-items: center; gap: 22px; list-style: none; justify-self: start; margin-left: 8px; }
 .nav-links a {
   font-family: var(--font-mono); font-size: 0.76rem;
   color: var(--text-muted); letter-spacing: 0.04em;

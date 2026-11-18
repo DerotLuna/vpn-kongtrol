@@ -170,17 +170,19 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
           </span>
         </a>
 
-        <div className="nav-right">
-          <ul className="nav-links">
-            {links.map(l => (
-              <li key={l.flag}>
-                <a href={l.href} className={l.current ? 'current' : ''} aria-current={l.current ? 'page' : undefined}>
-                  <span className="nav-flag-dashes">--</span>{l.flag.slice(2)}
-                </a>
-              </li>
-            ))}
-          </ul>
+        {/* Links sit next to the logo; the flexible middle column absorbs the
+            reserved slot of the hidden download CTA, so no hole shows (ADR-0027). */}
+        <ul className="nav-links">
+          {links.map(l => (
+            <li key={l.flag}>
+              <a href={l.href} className={l.current ? 'current' : ''} aria-current={l.current ? 'page' : undefined}>
+                <span className="nav-flag-dashes">--</span>{l.flag.slice(2)}
+              </a>
+            </li>
+          ))}
+        </ul>
 
+        <div className="nav-right">
           <span className={`nav-dl-slot${page === 'home' && ownCtaInView ? ' is-hidden' : ''}`}>
             {mobile ? (
               <SendToComputer lang={lang} variant="compact" />
