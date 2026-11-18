@@ -1406,3 +1406,11 @@ html { accent-color: var(--signal); color-scheme: dark; }
 
 /* tabular numerals wherever numbers tick */
 .boot-uptime, .tmux-right, .attach-taskbar .tb-clock, .footer-term-out { font-variant-numeric: tabular-nums; }
+
+/* "desde v0.6.0" note on guide sections that describe the next release (remove at v0.6.0) */
+.guide-since {
+  display: inline-block; margin: 0 0 16px; padding: 4px 10px;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.02em;
+  color: var(--caution); background: var(--caution-soft);
+  border: 1px solid color-mix(in srgb, var(--caution) 40%, transparent); border-radius: var(--radius);
+}

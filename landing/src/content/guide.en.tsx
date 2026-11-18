@@ -613,6 +613,8 @@ Passwords stored in:
   Linux   → libsecret / GNOME Keyring`,
     // feature:update_check
     update1: <>Updating</>,
+    // Remove when v0.6.0 final ships (checklist in docs/DEVELOPMENT.md).
+    sinceV060: <>Available from version 0.6.0, coming soon. The current 0.5.0 does not have these commands yet.</>,
     update2: <>Update the same way you installed. Your settings and passwords stay.</>,
     update3: <><strong>Windows installer:</strong> download the new one from{' '}
                 <a href="/en/#install">the downloads section</a> and open it.</>,

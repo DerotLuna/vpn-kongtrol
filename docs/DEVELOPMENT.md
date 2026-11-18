@@ -53,6 +53,8 @@ Release checklist:
   `curl -sI https://kongtrol.app/install.sh` answers 302 → the release asset, and replace the
   `raw.githubusercontent.com/…/main/install.sh` commands in `README.md` and `docs/SETUP.md` with it.
   Until then the landing stays pinned to the v0.5.0 tag (the scripts on `main` need v0.6.0 assets).
+  Also remove the "desde v0.6.0" note (`sinceV060` in `landing/src/content/guide.*.tsx`, its two
+  uses in `Guide.tsx` and the `.guide-since` rule in `landing/src/index.css`).
 
 Every channel is optional: its step skips itself while its secret is missing. To turn them on
 (all free; create once):

@@ -548,6 +548,7 @@ $ kongtrol up us-content`}</CodeBlock>
             <div id="update" className="guide-section">
               <div className="guide-section-num">11</div>
               <h2 className="guide-section-title">{t.update1}</h2>
+              <p className="guide-since">{t.sinceV060}</p>
               <p>{t.update2}</p>
               <p>{t.update3}</p>
               <CodeBlock ui={lang} lang="bash">{t.update4}</CodeBlock>
@@ -559,6 +560,7 @@ $ kongtrol up us-content`}</CodeBlock>
             <div id="uninstall" className="guide-section">
               <div className="guide-section-num">12</div>
               <h2 className="guide-section-title">{t.uninstall1}</h2>
+              <p className="guide-since">{t.sinceV060}</p>
               <div className="callout">{t.uninstall2}</div>
               <p style={{ marginTop: 24 }}>{t.uninstall3}</p>
               <p style={{ marginTop: 24 }}>{t.uninstall4}</p>

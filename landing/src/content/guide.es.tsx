@@ -611,6 +611,8 @@ Contraseñas guardadas en:
   Linux   → libsecret / GNOME Keyring`,
     // feature:update_check
     update1: <>Actualizar</>,
+    // Quitar al publicar v0.6.0 final (checklist en docs/DEVELOPMENT.md).
+    sinceV060: <>Disponible desde la versión 0.6.0, que sale pronto. En la 0.5.0 actual estos comandos todavía no existen.</>,
     update2: <>Actualiza por el mismo camino por el que instalaste. Tu configuración y tus contraseñas se quedan.</>,
     update3: <><strong>Instalador de Windows:</strong> descarga el nuevo desde{' '}
                 <a href="/#install">la sección de descargas</a> y ábrelo.</>,
