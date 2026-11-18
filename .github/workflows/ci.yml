@@ -23,6 +23,10 @@ on:
       - "Makefile"
       - "docs/impact.yml"
       - "scripts/i18n/**"
+      - ".goreleaser.yaml"
+      - "packaging/**"
+      - "install.sh"
+      - ".github/workflows/release.yml"
       - ".github/workflows/ci.yml"
   pull_request:
 
@@ -39,6 +43,7 @@ jobs:
       go: ${{ steps.filter.outputs.go }}
       ui: ${{ steps.filter.outputs.ui }}
       dashboard: ${{ steps.filter.outputs.dashboard }}
+      packaging: ${{ steps.filter.outputs.packaging }}
     steps:
       - uses: actions/checkout@v4
       - id: filter
@@ -63,6 +68,51 @@ jobs:
               - "web/ui/**"
               - "assets/brand/**"
               - ".github/workflows/ci.yml"
+            packaging:
+              - ".goreleaser.yaml"
+              - "packaging/**"
+              - "install.sh"
+              - ".github/workflows/release.yml"
+              - ".github/workflows/ci.yml"
+
+  # Release packaging (docs/adr/0025): GoReleaser config, installer/app/npm
+  # scripts and install.sh, checked without publishing anything. The macOS
+  # app and the Windows installer are built for real only on version tags.
+  packaging:
+    needs: changes
+    if: needs.changes.outputs.packaging == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27"
+          cache: true
+      - name: GoReleaser config
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
+      - name: Shell scripts parse
+        run: |
+          bash -n packaging/macos/build-app.sh
+          bash -n packaging/homebrew/publish.sh
+          sh -n install.sh
+      - name: npm packages build
+        run: |
+          mkdir -p /tmp/kt-dist
+          for t in linux-amd64 linux-arm64 darwin-amd64 darwin-arm64; do
+            GOOS="${t%-*}" GOARCH="${t#*-}" CGO_ENABLED=0 go build -o "/tmp/kt-dist/kongtrol-$t" ./cmd/kongtrol
+          done
+          for a in amd64 arm64; do
+            GOOS=windows GOARCH="$a" CGO_ENABLED=0 go build -o "/tmp/kt-dist/kongtrol-windows-$a.exe" ./cmd/kongtrol
+          done
+          node packaging/npm/build.mjs 0.0.0-ci /tmp/kt-dist /tmp/kt-npm
+          mkdir -p /tmp/kt-npm/kongtrol/node_modules/@kongtrol
+          cp -r /tmp/kt-npm/cli-linux-x64 /tmp/kt-npm/kongtrol/node_modules/@kongtrol/
+          node /tmp/kt-npm/kongtrol/bin/kongtrol.js version --plain
+          (cd /tmp/kt-npm/kongtrol && npm pack --dry-run)
 
   # Legacy dashboard (web/dashboard): ES/EN parity of every dictionary
   # (Node built-in test runner, no install: https://nodejs.org/api/test.html).
@@ -153,6 +203,13 @@ jobs:
           CGO_ENABLED: "0"
         shell: bash
         run: go vet ./cmd/kongtrol ./internal/... ./assets ./web
+      # The tray: pure Go on Linux/Windows, cgo (Cocoa) on macOS (default
+      # CGO_ENABLED=1 there). Released by release.yml (docs/adr/0025).
+      - name: Tray (vet + test)
+        shell: bash
+        run: |
+          go vet ./cmd/kongtrol-tray
+          go test ./cmd/kongtrol-tray
       - name: Check module files
         shell: bash
         run: |
@@ -194,7 +251,7 @@ jobs:
   # which would block required checks — hence no paths filter on pull_request.
   ci-ok:
     if: always()
-    needs: [changes, dashboard-i18n, ui, test, race, security]
+    needs: [changes, dashboard-i18n, ui, test, race, security, packaging]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs passed or were skipped

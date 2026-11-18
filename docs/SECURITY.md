@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.1.0 · 2026-11-17
+Version 2.2.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -28,6 +28,10 @@ credentials or usage data.
 | DNS lookups of policy domains, through the system resolver and the tunnels' DNS servers (UDP/TCP 53) | When domain rules are resolved to routes | Turn `*.example.com` rules into IP routes. | `internal/monitor/policyresolver.go` |
 | DNS lookup of VPN server hostnames | When the per-profile kill switch is applied | Allow-list the VPN server so the tunnel can come up behind the block. | `internal/app/killswitch_service.go` |
 | TCP to the tunnel's DNS server on port 53 | Health checks when the VPN server itself cannot be probed | Measure a round trip inside the tunnel. | `cmd/kongtrol/daemon_runtime.go` |
+
+No update check: Kongtrol never asks a server whether a new version exists. Updates come from the
+channel you installed with (winget, Scoop, Homebrew, AUR, apt/dnf, npm, the Windows installer or
+`install.sh`); see [ADR-0025](adr/0025-desktop-release-channels-first-run.md).
 
 Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
 plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its
@@ -120,6 +124,40 @@ What to do about it:
   purchased `.pfx` via `KONGTROL_SIGN_PFX`/`KONGTROL_SIGN_PFX_PASSWORD` is the only change needed
   at that point — release automation still would not use it automatically, that'd be a deliberate
   addition to `release.yml`.
+
+- **Free signing for open source** ([ADR-0025](adr/0025-desktop-release-channels-first-run.md)):
+  `release.yml` already submits `kongtrol.exe`, `kongtrol-tray.exe` and the Windows installer to
+  [SignPath Foundation](https://signpath.org) (free Authenticode certificate for OSI-licensed
+  projects). The steps are skipped until the project is approved and the `SIGNPATH_API_TOKEN`
+  secret exists. macOS has no free path: Developer ID signing and notarization need the paid Apple
+  Developer Program (the fee waiver excludes individuals), so the app is ad-hoc signed and the
+  install script, Homebrew formula and npm package are used because they do not set the
+  quarantine flag.
+
+<!-- feature:distribution -->
+## Verifying releases
+
+Every release (`.github/workflows/release.yml`) publishes, for every file:
+
+- `checksums.txt` — SHA-256 of every asset, including the macOS app and the Windows installer.
+- `checksums.txt.sigstore.json` — keyless [Sigstore](https://www.sigstore.dev) signature of
+  `checksums.txt`, made with the workflow's GitHub OIDC identity (no key to leak):
+
+  ```bash
+  cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
+    --certificate-identity-regexp '^https://github.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+  sha256sum --ignore-missing -c checksums.txt
+  ```
+
+- GitHub [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations)
+  (SLSA provenance) for every archive, package, installer and binary:
+  `gh attestation verify <file> --repo DerotLuna/vpn-kongtrol`.
+- An SBOM (SPDX JSON, `*.sbom.json`) for every archive.
+- npm packages are published with `--provenance`, shown on npmjs.com.
+
+Package managers (winget, Scoop, Homebrew, AUR, apt/dnf) check the SHA-256 written in their
+manifest. None of these steps sends anything from the user's machine.
 
 ## Enforcement per OS
 

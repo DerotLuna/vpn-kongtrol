@@ -153,6 +153,10 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	// Split-tunnel kill switch state and policy notices for every client.
 	srv.SetKillSwitchStatus(killSwitchSvc.Status)
 	srv.SetEventLog(daemonEvents)
+	// First run without kongtrol.yaml, and the restart that applies new or
+	// edited profiles (the adapters map is only built at boot).
+	srv.SetSetupMode(setupMode)
+	srv.SetRestarter(restartDaemon)
 	return srv
 }
 

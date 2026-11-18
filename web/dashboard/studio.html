@@ -98,7 +98,21 @@
         </div>
 
         <div class="tab-panel" data-tab-panel="profiles">
-          <p class="muted" data-i18n="profileStudio.restartNote">Changes here update the config file and OS keychain only — restart the daemon to connect through a new or edited profile.</p>
+          <!-- First run (daemon in setup mode) and "restart to apply" (see studio.js setup/restart). -->
+          <div id="setup-banner" class="helper-banner" hidden>
+            <div class="helper-banner-text">
+              <strong data-i18n="setup.title">Welcome to Kongtrol · create your first VPN</strong>
+              <span data-i18n="setup.body">Pick the type, fill in the details and press Create. Kongtrol restarts on its own to turn it on.</span>
+            </div>
+          </div>
+          <div id="restart-banner" class="helper-banner" hidden>
+            <div class="helper-banner-text">
+              <strong data-i18n="restart.pending">Restart Kongtrol to use the new or edited profiles</strong>
+              <span data-i18n="restart.pendingHint">Connected VPNs disconnect and reconnect on their own.</span>
+            </div>
+            <button id="restart-btn" class="action" onclick="restartKongtrol()" data-i18n="restart.button">Restart now</button>
+          </div>
+          <p class="muted" data-i18n="profileStudio.restartNote">Changes here update the config file and OS keychain. To connect through a new or edited profile, restart Kongtrol with the button that appears here.</p>
           <div class="policy-grid" style="margin-top:16px;">
             <div class="card">
               <h2 data-i18n="editor.title">Editor</h2>

@@ -1,0 +1,15 @@
+[Desktop Entry]
+# Kongtrol menu entry (freedesktop Desktop Entry spec) — version 1.0.0 · 2026-11-18.
+# Installed by the .deb/.rpm to /usr/share/applications and, as the autostart
+# entry, to /etc/xdg/autostart (XDG Autostart spec). See docs/adr/0025.
+Type=Application
+Name=Kongtrol
+GenericName=VPN manager
+GenericName[es]=Gestor de VPN
+Comment=Connect and control your VPNs from the system tray
+Comment[es]=Conecta y controla tus VPN desde la bandeja del sistema
+Exec=kongtrol-tray
+Icon=kongtrol
+Terminal=false
+Categories=Network;
+Keywords=VPN;WireGuard;OpenVPN;

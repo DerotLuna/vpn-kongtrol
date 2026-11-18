@@ -131,6 +131,22 @@ policies: []
 	}
 }
 
+// TestNewEmpty_DefaultsButInvalid: the first-run config has the defaults the
+// daemon needs (dashboard address) but no profile, so Validate refuses to
+// let it be written until the first profile is added.
+func TestNewEmpty_DefaultsButInvalid(t *testing.T) {
+	cfg := NewEmpty()
+	if cfg.Monitor.Dashboard.Port != 9741 || cfg.Monitor.Dashboard.Bind != "127.0.0.1" {
+		t.Fatalf("dashboard = %s:%d, want 127.0.0.1:9741", cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
+	}
+	if cfg.VPNs == nil || len(cfg.VPNs) != 0 {
+		t.Fatalf("VPNs = %v, want empty non-nil map", cfg.VPNs)
+	}
+	if err := Validate(cfg); err == nil {
+		t.Fatal("Validate(NewEmpty()) = nil, want an error (no profiles)")
+	}
+}
+
 func TestLoad_InvalidVPNType_Fails(t *testing.T) {
 	path := writeConfig(t, `
 vpns:

@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.2 · 2026-11-17
+Versión 2.3 · 2026-11-18
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -460,6 +460,20 @@ kongtrol reload [opciones]
 kongtrol reload
 kongtrol reload --policy
 kongtrol reload --tunnel oficina
+```
+
+### `kongtrol restart`
+
+Detiene Kongtrol y lo vuelve a iniciar con kongtrol.yaml releído; reconecta las VPN que estaban conectadas. Es lo mismo que el botón Reiniciar del panel. Después: kongtrol status.
+
+```text
+kongtrol restart [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol restart
 ```
 
 ### `kongtrol export`

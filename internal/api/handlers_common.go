@@ -59,7 +59,13 @@ func (s *Server) loadRuntimeConfig() (*config.Config, string, error) {
 		}
 	}
 	if cfgPath == "" {
-		return nil, "", fmt.Errorf("config path not found")
+		return nil, "", errSetupNoConfig
+	}
+	// Setup mode (first run): until the first profile is saved there is no
+	// file; edits start from the empty config and are written to cfgPath
+	// once they validate.
+	if s.setupMode.Load() && !s.configFileExists() {
+		return config.NewEmpty(), cfgPath, nil
 	}
 	cfg, err := config.Load(cfgPath)
 	if err != nil {

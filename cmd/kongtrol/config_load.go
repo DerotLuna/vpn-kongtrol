@@ -17,17 +17,29 @@ import (
 
 func loadConfig() error {
 	var err error
+	setupMode = false
 	activeCfgPath, err = resolveConfigPath(cfgPath)
-	if err != nil {
+	switch {
+	case err != nil && allowSetupMode && cfgPath == "":
+		// First run of the daemon (spawned by the tray before any
+		// kongtrol.yaml exists): serve the dashboard with no profiles so
+		// the user can create the first one there. The file is written to
+		// the first default path once that profile is valid.
+		setupMode = true
+		activeCfgPath = config.DefaultPaths()[0]
+		cfg = config.NewEmpty()
+		config.ApplyDashboardPreferences(cfg)
+	case err != nil:
 		return err
-	}
-	cfg, err = config.Load(activeCfgPath)
-	if err != nil {
-		return localizeConfigErr(err)
-	}
-	config.ApplyDashboardPreferences(cfg)
-	if err := config.Validate(cfg); err != nil {
-		return localizeConfigErr(err)
+	default:
+		cfg, err = config.Load(activeCfgPath)
+		if err != nil {
+			return localizeConfigErr(err)
+		}
+		config.ApplyDashboardPreferences(cfg)
+		if err := config.Validate(cfg); err != nil {
+			return localizeConfigErr(err)
+		}
 	}
 	apiToken, err = config.LoadOrCreateAPIToken()
 	if err != nil {

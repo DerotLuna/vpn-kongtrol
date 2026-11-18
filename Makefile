@@ -97,17 +97,19 @@ build-all-cli: ui-if-available
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64  go build $(LDFLAGS) -o $(DIST)/kongtrol-windows-amd64.exe ./cmd/kongtrol
 	@echo "Cross-compiled CLI for all platforms → $(DIST)/"
 
-# Tray app requires CGO and must be built natively on each target OS.
-# Use the goreleaser workflow in CI for tray cross-compilation.
+# Tray app: only macOS needs CGO (Cocoa) and a native build. On Windows and
+# Linux fyne.io/systray is pure Go (Win32 / D-Bus), so release builds cross-
+# compile it (.goreleaser.yaml); the macOS .app comes from
+# packaging/macos/build-app.sh (docs/adr/0025).
 .PHONY: build-tray-native
 build-tray-native:
 	@mkdir -p $(DIST)
 ifeq ($(OS),Windows_NT)
 	@echo "Embedding exe icon (assets/logo.ico)..."
-	go run github.com/akavel/rsrc@latest -arch $$(go env GOARCH) -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows.syso
+	go run github.com/akavel/rsrc@v0.10.2 -arch $$(go env GOARCH) -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows_$$(go env GOARCH).syso
 endif
-	CGO_ENABLED=1 go build $(TRAY_LDFLAGS) -o $(DIST)/kongtrol-tray$(EXT) ./cmd/kongtrol-tray
-	@echo "Built tray (native only): $(DIST)/kongtrol-tray$(EXT)"
+	go build $(TRAY_LDFLAGS) -o $(DIST)/kongtrol-tray$(EXT) ./cmd/kongtrol-tray
+	@echo "Built tray: $(DIST)/kongtrol-tray$(EXT)"
 
 # Signs every .exe in $(DIST) with a local Authenticode cert (Windows only).
 # Generate one first: pwsh scripts/gen-devcert.ps1

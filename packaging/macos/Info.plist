@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Kongtrol.app Info.plist template — version 1.0.0 · 2026-11-18. __VERSION__ is
+     replaced by packaging/macos/build-app.sh. LSUIElement: menu bar app, no Dock
+     icon (fyne.io/systray README; Apple Information Property List docs). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es</string>
+	<key>CFBundleDisplayName</key>
+	<string>Kongtrol</string>
+	<key>CFBundleExecutable</key>
+	<string>kongtrol-tray</string>
+	<key>CFBundleIconFile</key>
+	<string>Kongtrol</string>
+	<key>CFBundleIdentifier</key>
+	<string>app.kongtrol.tray</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Kongtrol</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__VERSION__</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+</dict>
+</plist>

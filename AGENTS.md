@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.4 · 2026-11-17
+Version 1.5 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -36,7 +36,7 @@ golangci-lint run ./...
 go mod tidy
 ```
 
-The tray binary (`cmd/kongtrol-tray`) requires `CGO_ENABLED=1` and can only be built natively per OS. The CLI binary (`cmd/kongtrol`) is pure Go and cross-compiles freely.
+The tray binary (`cmd/kongtrol-tray`) needs `CGO_ENABLED=1` and a native build only on macOS (Cocoa); on Windows and Linux `fyne.io/systray` is pure Go (Win32 / D-Bus StatusNotifierItem) and cross-compiles like the CLI (`cmd/kongtrol`). Packaging lives in `packaging/` (Inno Setup, macOS `.app`, `.desktop`, Homebrew formula, npm).
 
 ## Architecture
 
@@ -83,6 +83,27 @@ When adding a new adapter:
 - There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
   (127.0.0.1, token in `~/.kongtrol/api-token`). This local API is IPC on the same machine —
   nothing leaves the host.
+
+<!-- feature:first_run -->
+**First run and restart (ADR-0025).**
+- With no `kongtrol.yaml`, only `kongtrol daemon` may start, in **setup mode**
+  (`config.NewEmpty()`, `GET /api/v1/setup`): the tray starts it and opens the dashboard's
+  Studio, whose profile editor writes the first profile to `config.DefaultPaths()[0]`. Every
+  other command still points to `kongtrol init`, which stays the terminal path.
+- Restart = new daemon process: the dashboard's `POST /api/v1/restart` makes the daemon spawn
+  `daemon --restart <connected profiles>` from its own executable and then stop like `down`;
+  `kongtrol restart` stops it and spawns the replacement from the CLI's own executable (after a
+  package-manager upgrade the binary path may change). The replacement waits for the old API to
+  go away (holding the spawn lock) and drops profiles that no longer exist.
+
+<!-- feature:distribution -->
+**Distribution (ADR-0025).** Tags `v*` run `release.yml`: macOS app (native, cgo), Windows Inno
+Setup per-user installer (native), GoReleaser OSS for the rest (CLI, Linux/Windows tray,
+archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, Homebrew
+**formula** (never a cask: casks get the quarantine flag) and npm (esbuild-style
+`optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
+Upgrades in place keep `~/.kongtrol`, keychain entries and the helper; uninstall never deletes
+user config. No in-app update check (it would be an outbound call).
 
 **Standards first, then improve.** Before designing a mechanism, research how others already
 solve it — official docs, RFCs and standards, mature open-source projects, vendor docs,
@@ -249,7 +270,8 @@ VPN profiles, groups, scheduler rules, settings): `s.loadRuntimeConfig()` → mu
 VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
 adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,
 unsynchronized, with the collector/watchdog goroutines), so responses include a
-`restart_required` flag.
+`restart_required` flag; the dashboard then offers "Reiniciar ahora" (`POST /api/v1/restart`,
+CLI `kongtrol restart`), which reconnects the tunnels that were up.
 
 Settings that are genuinely local to one machine — not the shared `kongtrol.yaml` — live in
 `~/.kongtrol/preferences.json` instead (`cmd/kongtrol/preferences.go`): CLI display language,

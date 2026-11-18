@@ -1199,3 +1199,12 @@ setInterval(refreshMetricsHistory, 30_000);
 setInterval(refreshGroupsQuicklaunch, 30_000);
 refreshHelperStatus();
 setInterval(refreshHelperStatus, 30_000);
+
+// First run (daemon started with no kongtrol.yaml, see studio.js): send the
+// user straight to the profile editor, where the setup guide is.
+fetch('/api/v1/setup')
+  .then((res) => (res.ok ? res.json() : null))
+  .then((st) => {
+    if (st && st.needs_setup) window.location.replace('/studio.html');
+  })
+  .catch(() => {});

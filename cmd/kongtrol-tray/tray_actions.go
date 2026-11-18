@@ -31,20 +31,19 @@ func configExists() bool {
 // initClient loads the config (for the API address and the menu's
 // profiles/groups) with the machine-local dashboard bind/port preference
 // applied, the local API token, and locates the kongtrol CLI the tray
-// spawns the daemon with. With no config at all it returns errNoConfig.
+// spawns the daemon with. With no config at all it still sets up the
+// client (default address + preferences), so the first-run menu can start
+// the daemon in setup mode and open the dashboard, and returns errNoConfig.
 func initClient() error {
 	var err error
-	// The CLI is looked up first so a first-run tray can still offer to
-	// open a terminal running `kongtrol init`.
 	kongtrolExe, err = daemonctl.FindKongtrol(trayLang)
-	if !configExists() {
-		return errNoConfig
-	}
 	if err != nil {
 		return err
 	}
-	cfg, err = config.Load("")
-	if err != nil {
+	firstRun := !configExists()
+	if firstRun {
+		cfg = config.NewEmpty()
+	} else if cfg, err = config.Load(""); err != nil {
 		return err
 	}
 	config.ApplyDashboardPreferences(cfg)
@@ -53,6 +52,9 @@ func initClient() error {
 		return err
 	}
 	client = daemonctl.New(daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port), token)
+	if firstRun {
+		return errNoConfig
+	}
 	return nil
 }
 
@@ -166,14 +168,26 @@ func disconnectProfile(name string) {
 }
 
 // openDashboard starts the daemon if needed and opens its page.
-func openDashboard() {
+func openDashboard() { openDashboardPage("/") }
+
+// setupPagePath is the dashboard page a first run opens: the Studio, which
+// switches to its VPN profile tab and shows the "create your first VPN"
+// guide while the daemon runs in setup mode (no kongtrol.yaml yet). No URL
+// fragment: Windows' url.dll handler is not documented to keep one.
+const setupPagePath = "/studio.html"
+
+// openDashboardPage starts the daemon if needed and opens path on it. It
+// returns false when either step failed (the user was already notified).
+func openDashboardPage(path string) bool {
 	if err := ensureDaemon(); err != nil {
 		notifyError(trayT("tray.err_start"), err)
-		return
+		return false
 	}
-	if err := openBrowser(client.Base); err != nil {
-		notifyError(trayF("tray.err_browser", client.Base), err)
+	if err := openBrowser(client.Base + path); err != nil {
+		notifyError(trayF("tray.err_browser", client.Base+path), err)
+		return false
 	}
+	return true
 }
 
 // stopKongtrol is the tray's "quit and disconnect everything": it asks the

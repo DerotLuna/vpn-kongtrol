@@ -61,6 +61,10 @@ var (
 	apiToken            string
 	sessionGreetingLine string
 	sessionLastUseLine  string
+	// allowSetupMode lets loadConfig start with no config file (daemon
+	// only); setupMode is true while the daemon runs that way.
+	allowSetupMode bool
+	setupMode      bool
 )
 
 var rootCmd = &cobra.Command{
@@ -85,6 +89,10 @@ var rootCmd = &cobra.Command{
 		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" || prefsOnlyCommand(cmd) {
 			return nil
 		}
+		// Only the daemon may start with no kongtrol.yaml (first-run setup
+		// from the dashboard); every other command still asks for
+		// `kongtrol init`.
+		allowSetupMode = cmd.Name() == "daemon" && cmd.Parent() != nil && !cmd.Parent().HasParent()
 		return loadConfig()
 	},
 }
