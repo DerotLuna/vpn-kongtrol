@@ -53,6 +53,7 @@ GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, do
 
 # VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
 GET/POST  /api/v1/vpns
+GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing)
 PUT/DELETE /api/v1/vpns/{name}
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 

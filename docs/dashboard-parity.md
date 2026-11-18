@@ -186,70 +186,70 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### Shared
 
-- [ ] Tabs Profiles / Policies / Groups, last tab remembered (localStorage `kongtrol-dashboard-tab-studio`) — legacy studio.html:20-25, shell.js:327-346 — API — — target `/profiles`, `/profiles/groups`, `/rules` (routes replace tabs) — status: missing
+- [x] Tabs Profiles / Policies / Groups, last tab remembered (localStorage `kongtrol-dashboard-tab-studio`) — legacy studio.html:20-25, shell.js:327-346 — API — — target `/profiles`, `/profiles/groups`, `/rules` (routes replace tabs) — status: done (web/ui/src/components/profiles/Bits.tsx `ProfilesHeader`: routes + TabLinks replace tabs, so the URL remembers the sub-page)
 - [x] Active config file path line (read-only, `--config`) — legacy studio.html:27, studio.js:448-451 — API GET /api/v1/policies/meta (handlers_policy.go:113) `config_path` — target `/settings` (also shown on `/profiles`) **IA: revisar** — status: done (pages/SettingsPage.tsx, components/settings/SystemSection.tsx: from GET /api/v1/setup `config_path`)
-- [ ] Error toast text: localized `error`+`hint` when `error_key` set, else page text + raw detail — legacy studio.js:341-345 — API `writeLocalizedError` body `error, hint, error_key` (errors_i18n.go) — target `/profiles`, `/rules` — status: partial (components/ui/ErrorNotice.tsx)
+- [x] Error toast text: localized `error`+`hint` when `error_key` set, else page text + raw detail — legacy studio.js:341-345 — API `writeLocalizedError` body `error, hint, error_key` (errors_i18n.go) — target `/profiles`, `/rules` — status: done (web/ui/src/components/profiles/errors.ts: known plain-English profile/group errors rewritten as message + what to do; translated `error_key` bodies shown as sent, web/ui/src/api/errors.ts)
 - [ ] Requests send `X-Kongtrol-Lang` — legacy studio.js:483, 504, 551, 742, 772, 967, 989 — API — — target shell (api/client.ts) — status: new UI has it (api/client.ts `setApiLang`)
 
 #### Tab: VPN Profiles → `/profiles`
 
 Screens / sections
 
-- [ ] Setup banner (`setup.title`, `setup.body`) when `needs_setup`; forces Profiles tab — legacy studio.html:102-107, studio.js:818-830 — API GET /api/v1/setup (handlers_setup.go:39) `setup_mode, needs_setup, restart_pending, config_path` — target `/profiles` **IA: revisar** (spec lists setup under `/settings`) — status: missing
-- [ ] Restart banner (`restart.pending`, `restart.pendingHint`, Restart now) after any profile change or `restart_pending` — legacy studio.html:108-114, studio.js:833-839 — API `restart_required` from vpn CRUD — target `/profiles` (action in `/settings`) — status: missing
-- [ ] Note "changes update config + keychain; restart to use" — legacy studio.html:115 — API — — target `/profiles` — status: missing
-- [ ] Editor card + Existing profiles card — legacy studio.html:117, studio.html:215 — API — — target `/profiles` — status: missing
+- [x] Setup banner (`setup.title`, `setup.body`) when `needs_setup`; forces Profiles tab — legacy studio.html:102-107, studio.js:818-830 — API GET /api/v1/setup (handlers_setup.go:39) `setup_mode, needs_setup, restart_pending, config_path` — target `/profiles` **IA: revisar** (spec lists setup under `/settings`) — status: done (web/ui/src/components/profiles/FirstRun.tsx: setup mode = first-run guide on /profiles with installed VPN apps from GET /api/v1/vpns/detect)
+- [x] Restart banner (`restart.pending`, `restart.pendingHint`, Restart now) after any profile change or `restart_pending` — legacy studio.html:108-114, studio.js:833-839 — API `restart_required` from vpn CRUD — target `/profiles` (action in `/settings`) — status: done (web/ui/src/components/profiles/Restart.tsx, shown on /profiles and /profiles/groups after any change or `restart_pending`)
+- [x] Note "changes update config + keychain; restart to use" — legacy studio.html:115 — API — — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx footnote, with the config path)
+- [x] Editor card + Existing profiles card — legacy studio.html:117, studio.html:215 — API — — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileEditor.tsx sheet + web/ui/src/components/profiles/ProfileList.tsx)
 
 Fields (client side → server side)
 
-- [ ] Name (text, trimmed) — legacy studio.html:120-122, studio.js:614 — API required (handlers_vpn.go:191-193), duplicate 409 (handlers_vpn.go:200-202) — target `/profiles` — status: missing
-- [ ] Type select (10 types; default openvpn) drives visible fields — legacy studio.html:123-136, studio.js:603-609 — API `oneof` (internal/config/schema.go:30) via `config.Validate` (handlers_vpn.go:277) — target `/profiles` — status: missing
-- [ ] Priority (number, default 10, `parseInt || 0`) + hint (tie-break only) — legacy studio.html:137-140, studio.js:616 — API `priority` — target `/profiles` — status: missing
-- [ ] Backup profiles / failover (comma-separated) + hint — legacy studio.html:141-144, studio.js:617 — API `failover` validated by `config.Validate` (exist, not self, no cycles) — target `/profiles` — status: missing; **fix**: comma list while every other list is one-per-line, hint does not say so
-- [ ] Host (forticlient, ciscoanyconnect, globalprotect, tailscale) — legacy studio.html:145-147 — API `host` — target `/profiles` — status: missing
-- [ ] Config file path (openvpn, wireguard) + openvpn routes hint — legacy studio.html:148-151 — API `config` — target `/profiles` — status: missing
-- [ ] Exact server (protonvpn, nordvpn) — legacy studio.html:152-154 — API `server`; cleared for forticlient/surfshark (studio.js:590, 623) — target `/profiles` — status: missing
-- [ ] Protocol (protonvpn; placeholder `wireguard`) — legacy studio.html:155-157 — API `protocol` — target `/profiles` — status: missing
-- [ ] Connect automatically yes/no + hint (forticlient, protonvpn, nordvpn; hidden = true) — legacy studio.html:158-164, studio.js:626 — API `auto_connect` — target `/profiles` — status: missing
-- [ ] Country, City (protonvpn, nordvpn) + hint — legacy studio.html:165-171 — API `country`, `city`; `validateProvider` rejects on surfshark/forticlient (internal/config/semantics.go) — target `/profiles` — status: missing
-- [ ] Server group (nordvpn) — legacy studio.html:172-174 — API `group` — target `/profiles` — status: missing
-- [ ] Network connection name / interface (providers) + hint — legacy studio.html:175-178 — API `interface` — target `/profiles` — status: missing
-- [ ] Wait time (providers; e.g. 10m) + hint — legacy studio.html:179-182 — API `wait_timeout` (duration, `config.Validate`) — target `/profiles` — status: missing
-- [ ] App path (providers) — legacy studio.html:183-185 — API `app_path` — target `/profiles` — status: missing
-- [ ] Auth method select (certificate / credentials / certificate+credentials; hidden for protonvpn, nordvpn, surfshark) — legacy studio.html:186-192 — API `auth_method` — target `/profiles` — status: missing; **fix**: option labels are raw values, not i18n
-- [ ] Certificate path, Key path — legacy studio.html:193-198 — API `cert`, `key` — target `/profiles` — status: missing
-- [ ] Username (`autocomplete=off`) — legacy studio.html:199-201 — API `username` → OS keychain (handlers_vpn.go:285) — target `/profiles` — status: missing
-- [ ] Password (`type=password`, `autocomplete=new-password`, blank = keep, never prefilled) — legacy studio.html:202-204, studio.js:652 — API `password` → keychain; env references rejected (handlers_vpn.go:255) — target `/profiles` — status: missing
-- [ ] Provider-only fields cleared when hidden; other hidden fields not sent — legacy studio.js:578-588, studio.js:619-624 — API absent = kept server-side (handlers_vpn.go:140) — target `/profiles` — status: missing
-- [ ] Create sends only non-empty fields; Update sends the full draft (empty = clear) — legacy studio.js:634-636, 743, 773 — API POST /api/v1/vpns, PUT /api/v1/vpns/{name} — target `/profiles` — status: missing
+- [x] Name (text, trimmed) — legacy studio.html:120-122, studio.js:614 — API required (handlers_vpn.go:191-193), duplicate 409 (handlers_vpn.go:200-202) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx; required + duplicate checked inline, web/ui/src/components/profiles/draft.ts)
+- [x] Type select (10 types; default openvpn) drives visible fields — legacy studio.html:123-136, studio.js:603-609 — API `oneof` (internal/config/schema.go:30) via `config.Validate` (handlers_vpn.go:277) — target `/profiles` — status: done (web/ui/src/components/profiles/TypePicker.tsx step 1 + type select in ProfileForm.tsx; fields per type from web/ui/src/components/profiles/catalog.ts)
+- [x] Priority (number, default 10, `parseInt || 0`) + hint (tie-break only) — legacy studio.html:137-140, studio.js:616 — API `priority` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx "Más opciones", hint says tie-break only)
+- [x] Backup profiles / failover (comma-separated) + hint — legacy studio.html:141-144, studio.js:617 — API `failover` validated by `config.Validate` (exist, not self, no cycles) — target `/profiles` — status: done (web/ui/src/components/profiles/FailoverEditor.tsx: ordered pick of existing profiles; self/duplicate/unknown/cycle checked before saving, draft.ts) — **fix** applied
+- [x] Host (forticlient, ciscoanyconnect, globalprotect, tailscale) — legacy studio.html:145-147 — API `host` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx; required for forticlient/ciscoanyconnect/globalprotect, optional exit node for tailscale)
+- [x] Config file path (openvpn, wireguard) + openvpn routes hint — legacy studio.html:148-151 — API `config` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx; path field, required; file upload needs a new endpoint, see report)
+- [x] Exact server (protonvpn, nordvpn) — legacy studio.html:152-154 — API `server`; cleared for forticlient/surfshark (studio.js:590, 623) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx; cleared for types without location, draft.ts `toRequest`)
+- [x] Protocol (protonvpn; placeholder `wireguard`) — legacy studio.html:155-157 — API `protocol` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx)
+- [x] Connect automatically yes/no + hint (forticlient, protonvpn, nordvpn; hidden = true) — legacy studio.html:158-164, studio.js:626 — API `auto_connect` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx: Switch; FortiClient wording explains the fallback)
+- [x] Country, City (protonvpn, nordvpn) + hint — legacy studio.html:165-171 — API `country`, `city`; `validateProvider` rejects on surfshark/forticlient (internal/config/semantics.go) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx; only nordvpn/protonvpn, as validateProvider)
+- [x] Server group (nordvpn) — legacy studio.html:172-174 — API `group` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx)
+- [x] Network connection name / interface (providers) + hint — legacy studio.html:175-178 — API `interface` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx "Más opciones")
+- [x] Wait time (providers; e.g. 10m) + hint — legacy studio.html:179-182 — API `wait_timeout` (duration, `config.Validate`) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx "Más opciones"; Go duration ≥ 10s checked inline, draft.ts)
+- [x] App path (providers) — legacy studio.html:183-185 — API `app_path` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx "Más opciones")
+- [x] Auth method select (certificate / credentials / certificate+credentials; hidden for protonvpn, nordvpn, surfshark) — legacy studio.html:186-192 — API `auth_method` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx: translated labels; under "Más opciones" for wireguard/tailscale/cloudflarewarp) — **fix** applied
+- [x] Certificate path, Key path — legacy studio.html:193-198 — API `cert`, `key` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx; shown when the method uses a certificate)
+- [x] Username (`autocomplete=off`) — legacy studio.html:199-201 — API `username` → OS keychain (handlers_vpn.go:285) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx)
+- [x] Password (`type=password`, `autocomplete=new-password`, blank = keep, never prefilled) — legacy studio.html:202-204, studio.js:652 — API `password` → keychain; env references rejected (handlers_vpn.go:255) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx: never prefilled, "one is stored" note, blank = keep; $VAR rejected inline)
+- [x] Provider-only fields cleared when hidden; other hidden fields not sent — legacy studio.js:578-588, studio.js:619-624 — API absent = kept server-side (handlers_vpn.go:140) — target `/profiles` — status: done (web/ui/src/components/profiles/draft.ts `toRequest`, tested in draft.test.ts)
+- [x] Create sends only non-empty fields; Update sends the full draft (empty = clear) — legacy studio.js:634-636, 743, 773 — API POST /api/v1/vpns, PUT /api/v1/vpns/{name} — target `/profiles` — status: done (web/ui/src/components/profiles/draft.ts `toRequest`, tested in draft.test.ts)
 
 Actions
 
-- [ ] Create — legacy studio.html:206, studio.js:738-761 — API POST /api/v1/vpns (handlers_vpn.go:184; 201 `restart_required`) — target `/profiles` — status: missing
-- [ ] Create during first run: toast `setup.saved`, restart, go to `/` — legacy studio.js:753-756 — API POST /api/v1/restart (handlers_setup.go:54) — target `/profiles` — status: missing
-- [ ] Update (key = selected or name; rename supported) — legacy studio.html:207, studio.js:763-784 — API PUT /api/v1/vpns/{name} (handlers_vpn.go:214; 404, localized 400) — target `/profiles` — status: missing
-- [ ] Delete (selected or typed name) with confirm — legacy studio.html:208, studio.js:786-807 — API DELETE /api/v1/vpns/{name} (handlers_vpn.go:349; 409 last profile :362, referenced by policy :367, by group :374) — target `/profiles` — status: missing
-- [ ] Clear form (defaults: openvpn, priority 10, certificate, auto_connect yes) — legacy studio.html:209, studio.js:666-679 — API — — target `/profiles` — status: missing
-- [ ] Row Edit (fills form) / row Delete — legacy studio.js:714-718, 724-728, 897-901 — API — — target `/profiles` — status: missing
-- [ ] Filter by name, type, host, server (live) — legacy studio.html:217, studio.js:695-700 — API — — target `/profiles` — status: missing
+- [x] Create — legacy studio.html:206, studio.js:738-761 — API POST /api/v1/vpns (handlers_vpn.go:184; 201 `restart_required`) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileEditor.tsx + web/ui/src/data/profiles.ts `useSaveProfile`)
+- [x] Create during first run: toast `setup.saved`, restart, go to `/` — legacy studio.js:753-756 — API POST /api/v1/restart (handlers_setup.go:54) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileEditor.tsx + useRestartAction.ts: progress toast, restart, then Inicio)
+- [x] Update (key = selected or name; rename supported) — legacy studio.html:207, studio.js:763-784 — API PUT /api/v1/vpns/{name} (handlers_vpn.go:214; 404, localized 400) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileEditor.tsx). Rename: the name is read-only with a hint, because PUT /api/v1/vpns/{name} ignores the body name (handlers_vpn.go:214-237 saves under the path name), so legacy "rename" never renamed
+- [x] Delete (selected or typed name) with confirm — legacy studio.html:208, studio.js:786-807 — API DELETE /api/v1/vpns/{name} (handlers_vpn.go:349; 409 last profile :362, referenced by policy :367, by group :374) — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx + ConfirmDelete.tsx; optimistic, rolled back on 409 with the reason translated; last profile, group membership and other profiles' backups are checked first)
+- [x] Clear form (defaults: openvpn, priority 10, certificate, auto_connect yes) — legacy studio.html:209, studio.js:666-679 — API — — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx: each "Nueva VPN" opens a fresh form with the same defaults; Cancel discards)
+- [x] Row Edit (fills form) / row Delete — legacy studio.js:714-718, 724-728, 897-901 — API — — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileList.tsx icon buttons with the profile name in the label)
+- [x] Filter by name, type, host, server (live) — legacy studio.html:217, studio.js:695-700 — API — — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx; shown from 4 profiles, also matches the brand name)
 - [x] Restart now: disable button, wait old daemon gone (≤240×500 ms) and new one back (≤120×500 ms), then reload lists — legacy studio.js:846-895 — API POST /api/v1/restart (handlers_setup.go:54; 501 unsupported), GET /api/v1/setup as liveness — target `/settings` (button also in `/profiles` banner) — status: done (components/settings/SystemSection.tsx + data/settings.ts useRestart, confirm dialog; the `/profiles` banner button belongs to that page)
 
 Table fields
 
-- [ ] Name, Type, Host/Server, Credentials (`username + password` / `username only` / `password only` / —) — legacy studio.html:218-232, studio.js:681-686, 707-721 — API GET /api/v1/vpns (handlers_vpn.go:18) `name, type, host, server, has_username_credential, has_password_credential` — target `/profiles` — status: missing
-- [ ] Kill-switch override shown read-only + link to `/security` — legacy none (decision §2) — API `kill_switch_override` — target `/profiles` — status: missing
+- [x] Name, Type, Host/Server, Credentials (`username + password` / `username only` / `password only` / —) — legacy studio.html:218-232, studio.js:681-686, 707-721 — API GET /api/v1/vpns (handlers_vpn.go:18) `name, type, host, server, has_username_credential, has_password_credential` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileList.tsx: VPN cell has type + host/server/file and this OS's support; providers show "en la app")
+- [x] Kill-switch override shown read-only + link to `/security` — legacy none (decision §2) — API `kill_switch_override` — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileList.tsx + ProfileForm.tsx, link to /security#profile-overrides)
 
 States / notices
 
-- [ ] Skeleton rows; empty `empty.noProfiles` (also when filter matches nothing) — legacy studio.html:229-230, studio.js:690-705 — target `/profiles` — status: missing; **fix**: empty-filter state reuses "no profiles configured"
-- [ ] Toasts `toast.profileCreated|Updated` (7 s), `toast.profileDeleted`, `alerts.profileCreateFailed|UpdateFailed|DeleteFailed`, `alerts.profileSelectFirst|SelectDelete` — legacy studio.js:747-803 — target `/profiles` — status: missing
-- [ ] Confirm `confirm.deleteProfile` — legacy studio.js:796 — target `/profiles` — status: missing; **fix**: native `confirm()` (untranslated buttons) → app dialog
+- [x] Skeleton rows; empty `empty.noProfiles` (also when filter matches nothing) — legacy studio.html:229-230, studio.js:690-705 — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx: Skeleton; first-run guide when empty; own "no match" state with "Borrar búsqueda") — **fix** applied
+- [x] Toasts `toast.profileCreated|Updated` (7 s), `toast.profileDeleted`, `alerts.profileCreateFailed|UpdateFailed|DeleteFailed`, `alerts.profileSelectFirst|SelectDelete` — legacy studio.js:747-803 — target `/profiles` — status: done (web/ui/src/i18n/pages/profiles.ts `profiles.toast.*`, failures via the optimistic toast or inline in the form; "select first" alerts not applicable: actions are per row)
+- [x] Confirm `confirm.deleteProfile` — legacy studio.js:796 — target `/profiles` — status: done (web/ui/src/components/profiles/ConfirmDelete.tsx, app dialog) — **fix** applied
 - [x] Restart toasts `restart.running` (10 s), `restart.done`, `restart.failed` (apiErrorText), `restart.timeout` (15 s) — legacy studio.js:864-884 — target `/settings` — status: done (components/settings/SystemSection.tsx: running and timeout banners with what to do, done toast, failure via ErrorNotice)
-- [ ] Hints `pEditor.tip`, field hints (priority, failover, autoConnect, country, interface, waitTimeout, ovpnRoutes) — legacy studio.html:139, 143, 151, 163, 167, 177, 181, 212 — target `/profiles` — status: missing
+- [x] Hints `pEditor.tip`, field hints (priority, failover, autoConnect, country, interface, waitTimeout, ovpnRoutes) — legacy studio.html:139, 143, 151, 163, 167, 177, 181, 212 — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileForm.tsx, web/ui/src/i18n/pages/profiles.ts `profiles.hint.*`)
 
 Cadence
 
-- [ ] Load once on page load (profiles, setup state); no polling — legacy studio.js:1078-1086 — target `/profiles` — status: missing
+- [x] Load once on page load (profiles, setup state); no polling — legacy studio.js:1078-1086 — target `/profiles` — status: done (web/ui/src/data/profiles.ts: no refetchInterval; tunnel state from the shared live feed)
 
 #### Tab: Policies → `/rules`
 
@@ -284,16 +284,16 @@ Table / states / notices
 
 #### Tab: Groups → `/profiles/groups`
 
-- [ ] Name (text) — legacy studio.html:242-244, studio.js:910 — API required (handlers_groups.go:46-48), duplicate 409 (handlers_groups.go:55-57) — target `/profiles/groups` — status: missing
-- [ ] Profiles (one per line) — legacy studio.html:245-247, studio.js:911 — API unknown profile / at least one (handlers_groups.go:103-117) — target `/profiles/groups` — status: missing; **fix**: free text → multi-select of existing profiles
-- [ ] Create / Update / Delete (confirm `confirm.deleteGroup`) / Clear — legacy studio.html:248-253, studio.js:963-1022 — API POST /api/v1/groups (handlers_groups.go:39), PUT /api/v1/groups/{name} (:71), DELETE (:126) — target `/profiles/groups` — status: missing
-- [ ] Row actions: Connect, Disconnect, Reload, Edit, Delete — legacy studio.js:938-944 — API POST /api/v1/groups/{name}/connect (:148), /disconnect (:199), /reload (:249) — target `/profiles/groups` — status: missing
-- [ ] Connect toast `toast.groupConnecting` — legacy studio.js:1030-1039 — API group connect — target `/profiles/groups` — status: missing; **fix**: ignores `res.ok`
-- [ ] Disconnect toast `toast.groupDisconnecting` / error — legacy studio.js:1041-1051 — target `/profiles/groups` — status: missing
-- [ ] Reload: 409 `toast.groupRestartRequired` with `missing_profiles`, else `toast.groupReloading`, error `alerts.groupReloadFailed` — legacy studio.js:1060-1076 — API POST /api/v1/groups/{name}/reload (handlers_groups.go:249; 409 :264) — target `/profiles/groups` — status: missing
-- [ ] Reload explanation text `studio.reloadGroupTip` — legacy studio.html:260 — target `/profiles/groups` — status: missing
-- [ ] Table Name, Profiles, Actions; sorted; empty `empty.noGroups`; skeleton — legacy studio.html:261-273, studio.js:927-947 — API GET /api/v1/groups (handlers_groups.go:17) `name, profiles` — target `/profiles/groups` — status: missing
-- [ ] Toasts `toast.groupCreated|Updated|Deleted`, `alerts.groupCreateFailed|UpdateFailed|DeleteFailed|SelectFirst|SelectDelete` — legacy studio.js:972-1019 — target `/profiles/groups` — status: missing
+- [x] Name (text) — legacy studio.html:242-244, studio.js:910 — API required (handlers_groups.go:46-48), duplicate 409 (handlers_groups.go:55-57) — target `/profiles/groups` — status: done (web/ui/src/components/profiles/GroupEditor.tsx; required + duplicate inline, localized 409)
+- [x] Profiles (one per line) — legacy studio.html:245-247, studio.js:911 — API unknown profile / at least one (handlers_groups.go:103-117) — target `/profiles/groups` — status: done (web/ui/src/components/profiles/GroupEditor.tsx: checkboxes of existing profiles) — **fix** applied
+- [x] Create / Update / Delete (confirm `confirm.deleteGroup`) / Clear — legacy studio.html:248-253, studio.js:963-1022 — API POST /api/v1/groups (handlers_groups.go:39), PUT /api/v1/groups/{name} (:71), DELETE (:126) — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx + GroupEditor.tsx + ConfirmDelete.tsx; optimistic with rollback; "Clear" not needed: each editor opens fresh)
+- [x] Row actions: Connect, Disconnect, Reload, Edit, Delete — legacy studio.js:938-944 — API POST /api/v1/groups/{name}/connect (:148), /disconnect (:199), /reload (:249) — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx)
+- [x] Connect toast `toast.groupConnecting` — legacy studio.js:1030-1039 — API group connect — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx: reads `started` / `already_connected`, names profiles that did not start and offers "Reiniciar ahora") — **fix** applied
+- [x] Disconnect toast `toast.groupDisconnecting` / error — legacy studio.js:1041-1051 — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx; errors with what to do)
+- [x] Reload: 409 `toast.groupRestartRequired` with `missing_profiles`, else `toast.groupReloading`, error `alerts.groupReloadFailed` — legacy studio.js:1060-1076 — API POST /api/v1/groups/{name}/reload (handlers_groups.go:249; 409 :264) — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx + web/ui/src/data/profiles.ts `reloadGroup`: 409 restart_required read as an answer, "nothing to reload" when none was connected)
+- [x] Reload explanation text `studio.reloadGroupTip` — legacy studio.html:260 — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx "¿Qué hace «Recargar»?")
+- [x] Table Name, Profiles, Actions; sorted; empty `empty.noGroups`; skeleton — legacy studio.html:261-273, studio.js:927-947 — API GET /api/v1/groups (handlers_groups.go:17) `name, profiles` — target `/profiles/groups` — status: done (web/ui/src/pages/GroupsPage.tsx: DataList, sorted by the daemon, live "n de m conectadas", Skeleton, empty states incl. "crea una VPN primero")
+- [x] Toasts `toast.groupCreated|Updated|Deleted`, `alerts.groupCreateFailed|UpdateFailed|DeleteFailed|SelectFirst|SelectDelete` — legacy studio.js:972-1019 — target `/profiles/groups` — status: done (web/ui/src/i18n/pages/profiles.ts `groups.toast.*`; "select first" alerts not applicable)
 
 ### 3.3 `security.html` + `security.js` → `/security`
 
@@ -467,10 +467,11 @@ Other clients (CLI `cmd/kongtrol`, tray, `internal/daemonctl`) listed when a das
 | POST /api/v1/security/dnsguard | handlers_security.go:253 | security.js:192 | — | `/security` |
 | POST /api/v1/security/publicip | handlers_security.go:47 | publicip.js:97 | client.ts:96 | `/security`, `/` |
 | POST /api/v1/security/publicip/check | handlers_security.go:77 | publicip.js:72 | client.ts:98 | `/`, `/security` |
-| GET /api/v1/vpns | handlers_vpn.go:18 | studio.js:731, security.js:227 | — | `/profiles`, `/security` |
-| POST /api/v1/vpns | handlers_vpn.go:184 | studio.js:740 | — | `/profiles` |
-| PUT /api/v1/vpns/{name} | handlers_vpn.go:214 | studio.js:770 | — | `/profiles` |
-| DELETE /api/v1/vpns/{name} | handlers_vpn.go:349 | studio.js:797 | — | `/profiles` |
+| GET /api/v1/vpns | handlers_vpn.go:18 | studio.js:731, security.js:227 | data/profiles.ts | `/profiles`, `/security` |
+| GET /api/v1/vpns/detect | handlers_detect.go:26 | **none** (new, read-only; wizard probes) | data/profiles.ts | `/profiles` (first run) |
+| POST /api/v1/vpns | handlers_vpn.go:184 | studio.js:740 | data/profiles.ts | `/profiles` |
+| PUT /api/v1/vpns/{name} | handlers_vpn.go:214 | studio.js:770 | data/profiles.ts | `/profiles` |
+| DELETE /api/v1/vpns/{name} | handlers_vpn.go:349 | studio.js:797 | data/profiles.ts | `/profiles` |
 | PUT /api/v1/vpns/{name}/killswitch | handlers_settings.go:95 | security.js:236 | — | `/security` |
 | GET /api/v1/scheduler/rules | handlers_schedule.go:12 | settings.js:288 | — | `/rules/schedule` |
 | POST /api/v1/scheduler/rules | handlers_schedule.go:32 | settings.js:296 | — | `/rules/schedule` |
@@ -481,13 +482,13 @@ Other clients (CLI `cmd/kongtrol`, tray, `internal/daemonctl`) listed when a das
 | PUT /api/v1/settings | handlers_settings.go:49 | settings.js:213 | — | same |
 | GET /api/v1/preferences | handlers_security.go:188 | shell.js:196 | client.ts:90 | shell, `/settings` |
 | PUT /api/v1/preferences | handlers_security.go:199 | shell.js:181 | client.ts:92 | shell, `/settings` |
-| GET /api/v1/groups | handlers_groups.go:17 | app.js:1134, studio.js:956 | — | `/`, `/profiles/groups` |
-| POST /api/v1/groups | handlers_groups.go:39 | studio.js:965 | — | `/profiles/groups` |
-| PUT /api/v1/groups/{name} | handlers_groups.go:71 | studio.js:987 | — | `/profiles/groups` |
-| DELETE /api/v1/groups/{name} | handlers_groups.go:126 | studio.js:1013 | — | `/profiles/groups` |
-| POST /api/v1/groups/{name}/connect | handlers_groups.go:148 | app.js:1158, studio.js:1034 | — | `/`, `/profiles/groups` |
-| POST /api/v1/groups/{name}/disconnect | handlers_groups.go:199 | app.js:1168, studio.js:1044 | — | `/`, `/profiles/groups` |
-| POST /api/v1/groups/{name}/reload | handlers_groups.go:249 | studio.js:1063 | — | `/profiles/groups` |
+| GET /api/v1/groups | handlers_groups.go:17 | app.js:1134, studio.js:956 | client.ts, data/profiles.ts | `/`, `/profiles/groups` |
+| POST /api/v1/groups | handlers_groups.go:39 | studio.js:965 | data/profiles.ts | `/profiles/groups` |
+| PUT /api/v1/groups/{name} | handlers_groups.go:71 | studio.js:987 | data/profiles.ts | `/profiles/groups` |
+| DELETE /api/v1/groups/{name} | handlers_groups.go:126 | studio.js:1013 | data/profiles.ts | `/profiles/groups` |
+| POST /api/v1/groups/{name}/connect | handlers_groups.go:148 | app.js:1158, studio.js:1034 | data/profiles.ts | `/`, `/profiles/groups` |
+| POST /api/v1/groups/{name}/disconnect | handlers_groups.go:199 | app.js:1168, studio.js:1044 | data/profiles.ts | `/`, `/profiles/groups` |
+| POST /api/v1/groups/{name}/reload | handlers_groups.go:249 | studio.js:1063 | data/profiles.ts | `/profiles/groups` |
 | GET /api/v1/policies | handlers_policy.go:53 | app.js:909, studio.js:456 | — | `/rules`, `/traffic` |
 | GET /api/v1/policies/meta | handlers_policy.go:113 | studio.js:440 | — | `/rules`, `/settings` |
 | POST /api/v1/policies/reload | handlers_policy.go:138 | studio.js:469 | — | `/rules` |
@@ -499,8 +500,8 @@ Other clients (CLI `cmd/kongtrol`, tray, `internal/daemonctl`) listed when a das
 | GET /api/v1/resolve | handlers_policy.go:309 | app.js:1007 | — | `/traffic`, `/rules` |
 | GET /api/v1/dns/resolve | handlers_policy.go:404 | **none** (no client found in cmd/, internal/daemonctl, tray) | — | `/traffic` (web/ui/src/data/traffic.ts `useDnsResolveQuery`: "see which IPs it points to through <VPN>" after a domain lookup) |
 | POST /api/v1/shutdown | handlers_tunnels.go:21 | **none** (tray via internal/daemonctl) | — | `/settings` (GUI parity gap) |
-| POST /api/v1/restart | handlers_setup.go:54 | studio.js:861 | — | `/settings`, `/profiles` |
-| GET /api/v1/setup | handlers_setup.go:39 | app.js:1242, studio.js:820, studio.js:848 | — | `/`, `/profiles`, `/settings` |
+| POST /api/v1/restart | handlers_setup.go:54 | studio.js:861 | data/profiles.ts | `/settings`, `/profiles` |
+| GET /api/v1/setup | handlers_setup.go:39 | app.js:1242, studio.js:820, studio.js:848 | data/profiles.ts | `/`, `/profiles`, `/settings` |
 | GET /api/v1/helper/status | handlers_helper.go:67 | app.js:349 | client.ts:87 | `/`, `/settings` |
 | POST /api/v1/helper/install | handlers_helper.go:74 | app.js:397 | client.ts:89 | `/`, `/settings` |
 | GET /api/v1/doctor | handlers_doctor.go:21 | **none** (link to `/app/`, settings.html:46) | client.ts:106 | `/settings` |

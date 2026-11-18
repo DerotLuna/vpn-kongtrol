@@ -33,6 +33,8 @@ export class ApiError extends Error {
   /** Already translated by the daemon when it sent one. */
   readonly hint: string
   readonly key: string
+  /** The whole JSON body, for answers with extra fields (e.g. 409 restart_required). */
+  readonly body: ApiErrorBody & { [key: string]: unknown }
 
   constructor(kind: ApiErrorKind, status: number, body: ApiErrorBody = {}) {
     super(body.error ?? `HTTP ${status}`)
@@ -41,6 +43,7 @@ export class ApiError extends Error {
     this.status = status
     this.hint = body.hint ?? ''
     this.key = body.error_key ?? body.code ?? ''
+    this.body = { ...body }
   }
 }
 

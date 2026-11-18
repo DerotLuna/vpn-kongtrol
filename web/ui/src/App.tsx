@@ -14,8 +14,10 @@ import { BASENAME, PLACEHOLDERS } from './app/placeholders'
 import { PreferencesProvider } from './app/PreferencesProvider'
 import { AppShell } from './components/layout/AppShell'
 import { ActivityPage } from './pages/ActivityPage'
+import { GroupsPage } from './pages/GroupsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { ProfilesPage } from './pages/ProfilesPage'
 import { RulesPage } from './pages/RulesPage'
 import { SchedulePage } from './pages/SchedulePage'
 import { SecurityPage } from './pages/SecurityPage'
@@ -33,6 +35,8 @@ function AppRoutes() {
       <Route path="tray" element={<TrayPage />} />
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
+        <Route path="profiles" element={<ProfilesPage />} />
+        <Route path="profiles/groups" element={<GroupsPage />} />
         <Route path="traffic" element={<TrafficPage />} />
         <Route path="activity" element={<ActivityPage />} />
         <Route path="settings" element={<SettingsPage />} />
