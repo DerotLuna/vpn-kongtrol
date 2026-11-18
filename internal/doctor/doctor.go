@@ -80,6 +80,7 @@ func Run(opt Options) Report {
 
 	d.beginSection("cli.doctor.section.configuration")
 	cfg := d.checkConfig()
+	d.checkPathCopies()
 	d.rt = newProbes(cfg)
 
 	d.beginSection("cli.doctor.section.binaries")

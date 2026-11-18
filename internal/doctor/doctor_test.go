@@ -43,6 +43,9 @@ func stubOS(t *testing.T, helperOK bool) {
 		helperQueryStatus, helperPing, isElevated, dnsGuardActive, newRouteLister, getCredential = prevQ, prevP, prevE, prevD, prevR, prevC
 	})
 	isElevated = func() bool { return false }
+	prevPath := pathEnv
+	t.Cleanup(func() { pathEnv = prevPath })
+	pathEnv = func() string { return "" }
 	dnsGuardActive = func() bool { return false }
 	newRouteLister = func() routeLister { return fakeRoutes{} }
 	getCredential = func(string, string) (string, error) { return "", errors.New("missing") }
