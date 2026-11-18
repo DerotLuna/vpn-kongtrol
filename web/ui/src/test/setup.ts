@@ -5,8 +5,8 @@ import { authState } from '../api/auth'
 import { connection, liveState } from '../data/connection'
 import { toasts } from '../data/toast'
 
-// Start every test on Inicio. Vitest's BASE_URL is "/" (the build's is
-// "/app/"); the router's basename follows it either way.
+// Start every test on Inicio. BASE_URL is "/" in tests and builds alike;
+// the router's basename follows it.
 beforeEach(() => {
   window.history.replaceState(null, '', import.meta.env.BASE_URL)
 })

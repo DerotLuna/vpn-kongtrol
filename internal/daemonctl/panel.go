@@ -9,8 +9,8 @@ import (
 	"time"
 )
 
-// PanelURL returns the address that opens path ("/", "/studio.html",
-// "/app/", "/app/tray", …) on the daemon's dashboard already signed in:
+// PanelURL returns the address that opens path ("/", "/profiles",
+// "/tray", …) on the daemon's dashboard already signed in:
 // it asks the daemon for a one-time nonce (valid 60 s, POST
 // /api/v1/session/nonce with the control token) and appends it as
 // "#k=<nonce>". The page trades the nonce for an HttpOnly session cookie

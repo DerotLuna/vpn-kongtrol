@@ -1,6 +1,6 @@
 // localStorage that never throws (private windows, blocked site data).
-// Keys are shared with the legacy dashboard (same origin), so a choice made
-// in either UI applies to both.
+// Keys predate this UI (the classic dashboard used the same ones), so a
+// choice saved before the switch still applies.
 
 export function readStored(key: string): string {
   try {

@@ -2,7 +2,7 @@
   "name": "kongtrol-ui",
   "private": true,
   "version": "0.1.0",
-  "description": "Kongtrol dashboard UI (Vite + React + TypeScript), embedded in the Go binary under /app/.",
+  "description": "Kongtrol dashboard UI (Vite + React + TypeScript), embedded in the Go binary and served at /.",
   "packageManager": "pnpm@10.33.2",
   "type": "module",
   "scripts": {

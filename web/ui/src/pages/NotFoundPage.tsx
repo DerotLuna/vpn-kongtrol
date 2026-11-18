@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { usePreferences } from '../app/preferences-context'
 import { PageHeader } from '../components/layout/PageHeader'
 
-/** Unknown /app/... path (old bookmark, typo): say so and offer the way home. */
+/** Unknown page path (old bookmark, typo): say so and offer the way home. */
 export function NotFoundPage() {
   const { t } = usePreferences()
   return (

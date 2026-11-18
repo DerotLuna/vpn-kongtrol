@@ -4,14 +4,14 @@ import { authReady, authState, startAuth, takeBootstrapNonce } from './auth'
 
 describe('auth', () => {
   it('takes #k= out of the URL (and keeps other fragment params)', () => {
-    window.history.replaceState(null, '', '/app/rules?x=1#k=abc123&tab=2')
+    window.history.replaceState(null, '', '/rules?x=1#k=abc123&tab=2')
     expect(takeBootstrapNonce()).toBe('abc123')
-    expect(location.pathname + location.search + location.hash).toBe('/app/rules?x=1#tab=2')
+    expect(location.pathname + location.search + location.hash).toBe('/rules?x=1#tab=2')
     expect(takeBootstrapNonce()).toBe('')
   })
 
   it('trades the nonce for a session before any API request', async () => {
-    window.history.replaceState(null, '', '/app/#k=n1')
+    window.history.replaceState(null, '', '/#k=n1')
     const order: string[] = []
     const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
       order.push(String(input))

@@ -1,12 +1,12 @@
-// Kongtrol UI — providers + routes · v0.4.0 · 2026-11-18
+// Kongtrol UI — providers + routes · v0.5.0 · 2026-11-18
 //
-// React Router in data mode (createBrowserRouter) under /app (ADR-0038,
-// ADR-0041): the same routes as before, plus what only the data router
+// React Router in data mode (createBrowserRouter) at / (ADR-0038, ADR-0041,
+// ADR-0043): the same routes as before, plus what only the data router
 // offers — useBlocker for "Tienes cambios sin guardar" (UnsavedChangesGuard)
 // and route-level code splitting (`lazy`): each page loads with its first
 // visit and the old page stays on screen until it is ready, so there is no
-// loading flash. The daemon serves index.html for any /app/... path
-// (internal/api/ui_assets.go), so deep links and reloads work. /app/tray is
+// loading flash. The daemon serves index.html for any page path
+// (internal/api/ui_assets.go), so deep links and reloads work. /tray is
 // the tray flyout (ADR-0036): its own compact page, outside the panel
 // shell, sharing the same data layer.
 import { useState } from 'react'
@@ -17,8 +17,8 @@ import { PreferencesProvider } from './app/PreferencesProvider'
 import { AppShell } from './components/layout/AppShell'
 import { HomePage } from './pages/HomePage'
 
-/** Router basename: Vite's base without the trailing slash ("/app" in builds). */
-const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '')
+/** Router basename: Vite's base without the trailing slash, "/" at the site root. */
+const BASENAME = import.meta.env.BASE_URL.replace(/\/$/, '') || '/'
 
 const routes = createRoutesFromElements(
   <>

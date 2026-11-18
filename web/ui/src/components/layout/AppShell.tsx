@@ -1,8 +1,8 @@
-// Kongtrol UI — app shell · v0.3.0 · 2026-11-18
+// Kongtrol UI — app shell · v0.4.0 · 2026-11-18
 //
 // Layout route for every page (ADR-0038):
 // - Header: logo top-left, aggregate VPN status, help (same place on every
-//   page, WCAG 3.2.6), classic dashboard, language, theme, version.
+//   page, WCAG 3.2.6), language, theme, version.
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent
 //   NavigationView): sidebar with labels ≥ 840px, rail 600–839px, bottom
 //   bar under 600px with four sections + "Más" (a sheet with the rest).
@@ -18,10 +18,10 @@ import { usePreferences } from '../../app/preferences-context'
 import { SECTIONS } from '../../app/sections'
 import { useNoticeToasts } from '../../data/home'
 import { useHelperReadyToast } from '../../data/resources'
-import { GUIDE_URL, LEGACY } from '../../links'
+import { GUIDE_URL } from '../../links'
 import { IconButton } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
-import { BookIcon, GridIcon, MoonIcon, MoreIcon, SunIcon } from '../ui/icons'
+import { BookIcon, MoonIcon, MoreIcon, SunIcon } from '../ui/icons'
 import { Logo } from '../ui/Logo'
 import { Toaster } from '../ui/Toaster'
 import { AggregateStatus, VersionTag } from './AggregateStatus'
@@ -95,12 +95,6 @@ function BottomBar() {
               </NavLink>
             </li>
           ))}
-          <li>
-            <a className="k-more-item" href={LEGACY.home}>
-              <GridIcon />
-              {t('header.legacy')}
-            </a>
-          </li>
         </ul>
         <VersionTag />
       </Dialog>
@@ -114,7 +108,7 @@ export function AppShell() {
   const first = useRef(true)
   useHelperReadyToast()
   // Daemon notices (policy, watchdog, update) toast on every page, like the
-  // classic notices.js; one poll for the whole app, shared with Inicio's list.
+  // tray; one poll for the whole app, shared with Inicio's list.
   useNoticeToasts()
 
   // Move focus to the new page's heading after a navigation (not on load).
@@ -145,10 +139,6 @@ export function AppShell() {
             <BookIcon />
             <span className="k-topbar__label">{t('help.guide')}</span>
             <span className="visually-hidden"> {t('help.newTab')}</span>
-          </a>
-          <a className="k-topbar__link k-topbar__legacy" href={LEGACY.home}>
-            <GridIcon />
-            <span className="k-topbar__label">{t('header.legacy')}</span>
           </a>
           <button
             type="button"

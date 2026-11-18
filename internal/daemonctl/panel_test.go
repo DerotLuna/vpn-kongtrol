@@ -16,11 +16,11 @@ func TestPanelURL_AppendsNonceFragment(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	got, err := New(srv.URL, "tok").PanelURL("/app/tray")
+	got, err := New(srv.URL, "tok").PanelURL("/tray")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := srv.URL + "/app/tray#k=abc_-123"; got != want {
+	if want := srv.URL + "/tray#k=abc_-123"; got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
@@ -28,11 +28,11 @@ func TestPanelURL_AppendsNonceFragment(t *testing.T) {
 func TestPanelURL_FallsBackToPlainURL(t *testing.T) {
 	srv := httptest.NewServer(http.NotFoundHandler()) // older daemon
 	defer srv.Close()
-	got, err := New(srv.URL, "tok").PanelURL("studio.html")
+	got, err := New(srv.URL, "tok").PanelURL("profiles")
 	if err == nil {
 		t.Fatal("want error")
 	}
-	if got != srv.URL+"/studio.html" {
+	if got != srv.URL+"/profiles" {
 		t.Fatalf("got %q", got)
 	}
 }

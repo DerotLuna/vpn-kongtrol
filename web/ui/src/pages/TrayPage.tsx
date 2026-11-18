@@ -1,4 +1,4 @@
-// Kongtrol UI — tray flyout page (/app/tray) · v1.1.0 · 2026-11-18 (ADR-0036, ADR-0038)
+// Kongtrol UI — tray flyout page (/tray) · v1.1.0 · 2026-11-18 (ADR-0036, ADR-0038)
 //
 // The compact window that opens next to the tray icon on a left click
 // (cmd/kongtrol-tray/flyout_windows.go). Same data as the dashboard, from the
@@ -16,7 +16,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePreferences } from '../app/preferences-context'
 import { keys } from '../data/keys'
 import { useAppVersion, useGroupsQuery, useSecurityQuery } from '../data/resources'
-import { LEGACY } from '../links'
 import { SHOWN_EVENT, trayHost } from '../tray/bridge'
 import {
   aggregate,
@@ -312,7 +311,7 @@ export function TrayPage() {
                 {t('tray.open')}
               </button>
             ) : (
-              <a className="tray-btn primary" href={LEGACY.home}>
+              <a className="tray-btn primary" href="/">
                 {t('tray.open')}
               </a>
             )}

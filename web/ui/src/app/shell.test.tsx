@@ -27,6 +27,17 @@ describe('shell and routes', () => {
     expect(within(nav).getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('serves every section at the site root, with no link to the removed classic dashboard', async () => {
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    render(<App />)
+    const nav = (await screen.findAllByRole('navigation', { name: 'Sections' }))[0]!
+    const hrefs = within(nav)
+      .getAllByRole('link')
+      .map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual(['/', '/profiles', '/rules', '/traffic', '/security', '/activity', '/settings'])
+    expect(screen.queryByRole('link', { name: /classic/i })).not.toBeInTheDocument()
+  })
+
   it('the status link keeps its visible words in its name while the live feed reconnects', async () => {
     stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
     render(<App />)

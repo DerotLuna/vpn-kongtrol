@@ -98,7 +98,7 @@
 .k-sidenav { display: none; }
 /* Hidden visually only: the links keep their names for screen readers. */
 .k-topbar__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.k-topbar__legacy, .k-topbar__version { display: none; }
+.k-topbar__version { display: none; }
 /* The toast sits above the bottom bar on phones. */
 .k-toaster { bottom: calc(var(--bottombar-h) + 12px + env(safe-area-inset-bottom)); }
 
@@ -123,7 +123,6 @@
   .k-sidenav .k-nav-item { flex-direction: column; justify-content: center; gap: 4px; min-height: 60px; padding: 6px 2px; font-size: 12px; text-align: center; }
   .k-main { padding: 28px 24px 48px; }
   .k-toaster { bottom: 20px; }
-  .k-topbar__legacy { display: inline-flex; }
 }
 
 /* ── Sidebar with labels (≥ 840px, M3 "expanded") ───────────────────────────────────── */

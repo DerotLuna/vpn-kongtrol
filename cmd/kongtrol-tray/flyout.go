@@ -6,7 +6,7 @@ package main
 // left click (like the Windows 11 network flyout, Tailscale or Docker
 // Desktop); the native menu stays on the right click and is the left-click
 // fallback wherever the flyout cannot run. It shows one page of the UI the
-// daemon already serves (web/ui, route /app/tray), so it is a client of the
+// daemon already serves (web/ui, route /tray), so it is a client of the
 // local API like the dashboard: same HttpOnly cookie, no token in the URL.
 //
 // This file holds the OS-independent rules (which URL may load, where the
@@ -29,7 +29,7 @@ import (
 
 const (
 	// flyoutPath is the only page the flyout window may show.
-	flyoutPath = "/app/tray"
+	flyoutPath = "/tray"
 	// Size in device-independent pixels (scaled by the monitor's DPI).
 	flyoutWidth  = 360
 	flyoutHeight = 520
@@ -63,7 +63,7 @@ func flyoutURL(base string) (string, error) {
 // address the window navigates to, called before every navigation. It asks
 // the daemon for a one-time sign-in nonce (daemonctl.Client.PanelURL,
 // authenticated with the file token, which never enters a URL; ADR-0039)
-// and returns pageURL + "#k=<nonce>". A fragment keeps the path /app/tray,
+// and returns pageURL + "#k=<nonce>". A fragment keeps the path /tray,
 // so the request filter and flyoutInitScript stay unchanged, and the
 // fragment is never sent over HTTP nor logged. Without a nonce (older
 // daemon, daemon not answering) the page loads plain and shows how to

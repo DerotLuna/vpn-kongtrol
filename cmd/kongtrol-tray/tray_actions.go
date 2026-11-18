@@ -179,14 +179,14 @@ func disconnectProfile(name string) {
 // openDashboard starts the daemon if needed and opens its page.
 func openDashboard() { openDashboardPage("/") }
 
-// setupPagePath is the dashboard page a first run opens: the Studio, which
-// switches to its VPN profile tab and shows the "create your first VPN"
-// guide while the daemon runs in setup mode (no kongtrol.yaml yet). No page
+// setupPagePath is the dashboard page a first run opens: Perfiles, which
+// shows the "create your first VPN" guide while the daemon runs in setup
+// mode (no kongtrol.yaml yet). No page
 // fragment of its own; the only fragment is PanelURL's one-time "#k="
 // sign-in nonce (ADR-0039). If a Windows URL handler drops it, the page
 // shows how to open it from Kongtrol instead (no verificado on every
 // Windows version).
-const setupPagePath = "/studio.html"
+const setupPagePath = "/profiles"
 
 // openDashboardPage starts the daemon if needed and opens path on it. It
 // returns false when either step failed (the user was already notified).

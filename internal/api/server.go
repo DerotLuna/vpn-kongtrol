@@ -6,7 +6,6 @@ import (
 	"crypto/subtle"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,7 +16,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	brand "github.com/vpn-kongtrol/kongtrol/assets"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
@@ -223,27 +221,11 @@ func (s *Server) Start() error {
 	// WebSocket live metrics feed.
 	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)
 
-	// Embedded dashboard — served at / with no-cache to pick up new versions.
-	dashFS, err := fs.Sub(assets.FS, "dashboard")
-	if err != nil {
-		return fmt.Errorf("api: embed dashboard: %w", err)
-	}
-	fileServer := http.FileServer(http.FS(dashFS))
-	// Pages never carry credentials: a browser gets its session cookie
-	// only from POST /api/v1/session with a one-time nonce (session.go).
-	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		fileServer.ServeHTTP(w, r)
-	}))
-
-	// Brand files (logo marks, fonts) from assets/brand, linked by the
-	// dashboard as /brand/... so web/dashboard keeps no copies of its own.
-	mux.Handle(brandPrefix, newBrandHandler(brand.Brand()))
-
-	// New UI (web/ui) under /app/, coexisting with the dashboard above
-	// while pages migrate; same session cookie, same secureHandler checks.
+	// The dashboard (web/ui) at "/": every path no route above claimed
+	// (ADR-0043). Pages never carry credentials: a browser gets its session
+	// cookie only from POST /api/v1/session with a one-time nonce.
 	uiFS, uiBuilt := assets.UI()
-	mux.Handle(uiPrefix, newUIHandler(uiFS, uiBuilt))
+	mux.Handle("/", newUIHandler(uiFS, uiBuilt))
 
 	addr := net.JoinHostPort(listenHost(s.bind), fmt.Sprintf("%d", s.port))
 	s.srv = &http.Server{
@@ -269,7 +251,7 @@ func (s *Server) Start() error {
 
 func (s *Server) secureHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")

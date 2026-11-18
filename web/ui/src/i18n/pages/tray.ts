@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Tray flyout (/app/tray, ADR-0036) · v1.0.0 · 2026-11-18
+// Kongtrol UI strings — Tray flyout (/tray, ADR-0036) · v1.0.0 · 2026-11-18
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
