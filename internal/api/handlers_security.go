@@ -109,18 +109,9 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 		KillSwitchStatus *security.KillSwitchStatus `json:"kill_switch_status,omitempty"`
 	}
 
-	killActive := s.ks != nil && s.ks.IsEnabled()
-	killEnabled := s.killSwitchOn.Load()
-	var ksStatus *security.KillSwitchStatus
-	if s.ksStatus != nil {
-		st := s.ksStatus()
-		ksStatus = &st
-		// active = blocking a dropped tunnel's destinations now.
-		killActive = st.State == security.KillSwitchActive
-		killEnabled = killEnabled || st.State != security.KillSwitchOff
-	}
-	dnsActive := s.dnsMgr != nil && s.dnsMgr.IsActive()
-	dnsEnabled := s.dnsGuardOn.Load()
+	sec := s.securityState()
+	killActive, killEnabled, ksStatus := sec.killActive, sec.killEnabled, sec.ksStatus
+	dnsActive, dnsEnabled := sec.dnsActive, sec.dnsEnabled
 	status := secStatus{
 		KillSwitch:           killActive,
 		KillSwitchEnabled:    killEnabled,
@@ -151,6 +142,31 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	status.LeakCheck = leakCheckDTO(s.leakTest.LastResult())
 
 	writeJSON(w, http.StatusOK, status)
+}
+
+// securityRuntime is the daemon's live kill switch / DNS guard state, shared
+// by GET /api/v1/security/status and GET /api/v1/doctor.
+type securityRuntime struct {
+	killActive, killEnabled bool
+	ksStatus                *security.KillSwitchStatus
+	dnsActive, dnsEnabled   bool
+}
+
+func (s *Server) securityState() securityRuntime {
+	out := securityRuntime{
+		killActive:  s.ks != nil && s.ks.IsEnabled(),
+		killEnabled: s.killSwitchOn.Load(),
+		dnsActive:   s.dnsMgr != nil && s.dnsMgr.IsActive(),
+		dnsEnabled:  s.dnsGuardOn.Load(),
+	}
+	if s.ksStatus != nil {
+		st := s.ksStatus()
+		out.ksStatus = &st
+		// active = blocking a dropped tunnel's destinations now.
+		out.killActive = st.State == security.KillSwitchActive
+		out.killEnabled = out.killEnabled || st.State != security.KillSwitchOff
+	}
+	return out
 }
 
 func configuredRuntimeState(configured, active bool, activeState string) string {
