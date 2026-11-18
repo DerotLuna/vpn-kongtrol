@@ -1,15 +1,15 @@
 import { useState } from 'react'
+import { Lang } from '../../i18n'
 
 interface Props {
-  lang?: string
+  ui: Lang // page language for the button text: same in the prerender and the client
+  lang?: string // code language label
   children: string
 }
 
-export default function CodeBlock({ lang = 'bash', children }: Props) {
+export default function CodeBlock({ ui, lang = 'bash', children }: Props) {
   const [copied, setCopied] = useState(false)
-  const isES = typeof document !== 'undefined'
-    ? document.documentElement.lang.toLowerCase().startsWith('es')
-    : false
+  const isES = ui === 'es'
 
   const copy = () => {
     // Strip prompt symbols before copying

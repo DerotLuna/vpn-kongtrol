@@ -149,7 +149,7 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
           <div className="source-label">{copy.terminalTitle}</div>
           <div>
             <p className="source-desc" style={{ marginTop: 8, marginBottom: 12 }}>{copy.terminalText}</p>
-            <CodeBlock lang="bash">{copy.terminalScript}</CodeBlock>
+            <CodeBlock ui={lang} lang="bash">{copy.terminalScript}</CodeBlock>
           </div>
         </div>
 
@@ -157,13 +157,13 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
           <div className="source-label">{copy.verifyTitle}</div>
           <div>
             <p className="source-desc" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>
-            <CodeBlock lang="bash">{copy.verifyScript}</CodeBlock>
+            <CodeBlock ui={lang} lang="bash">{copy.verifyScript}</CodeBlock>
           </div>
         </div>
 
         <div className="source-install reveal">
           <div className="source-label">{copy.source}</div>
-          <CodeBlock lang="bash">{copy.sourceScript}</CodeBlock>
+          <CodeBlock ui={lang} lang="bash">{copy.sourceScript}</CodeBlock>
         </div>
       </div>
     </section>

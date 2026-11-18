@@ -237,7 +237,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 .nav-logo:hover img { transform: rotate(-8deg) scale(1.06); }
 /* logo is black line art → invert to bone on dark bg */
-.nav-logo img.logo-dark-invert { filter: invert(1); }
+:root[data-theme='dark'] .nav-logo img { filter: invert(1); }
 .nav-logo-name {
   display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--font-display); font-weight: 600;
@@ -335,10 +335,10 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   position: absolute; inset: 0; width: 15px; height: 15px;
   transition: opacity 0.7s var(--expo-out), transform 0.7s var(--expo-out);
 }
-.theme-icon-stack.light .theme-icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
-.theme-icon-stack.light .theme-icon-moon { opacity: 0; transform: rotate(-90deg) scale(.5); }
-.theme-icon-stack.dark  .theme-icon-sun  { opacity: 0; transform: rotate(90deg) scale(.5); }
-.theme-icon-stack.dark  .theme-icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+.theme-icon-stack .theme-icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
+.theme-icon-stack .theme-icon-moon { opacity: 0; transform: rotate(-90deg) scale(.5); }
+:root[data-theme='dark'] .theme-icon-stack .theme-icon-sun  { opacity: 0; transform: rotate(90deg) scale(.5); }
+:root[data-theme='dark'] .theme-icon-stack .theme-icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
 
 .lang-icon { display: inline-flex; opacity: 1; transform: scale(1); transition: opacity .18s, transform .18s; }
 .lang-icon.hide { opacity: 0; transform: scale(.75); }
@@ -1169,12 +1169,12 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 /* ── Boot timeline ─────────────────────────────────────────────────────────────
    Every line is in the markup from the start (prerender included), so the
    terminal keeps its final size: nothing shifts. Lines fade in on a timeline
-   (--at, from Hero.tsx); --boot-offset resumes it after React swaps the
-   prerendered nodes. Opacity + transform only. Without motion: final frame. */
+   (--at, from Hero.tsx); hydration keeps the prerendered nodes, so it never
+   restarts. Opacity + transform only. Without motion: final frame. */
 @media (prefers-reduced-motion: no-preference) {
   .th-body .boot-step {
     animation: bootStep 0.42s var(--quart-out) both;
-    animation-delay: calc(var(--at, 0ms) - var(--boot-offset, 0ms));
+    animation-delay: calc(var(--at, 0ms));
   }
   .th-body .th-banner.boot-step { animation-name: bootBanner; animation-duration: 0.9s; }
   /* the command types itself: a step clip reveals one monospace cell per
@@ -1182,7 +1182,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .th-typed .t-cmd {
     display: inline-block;
     animation: thType calc(var(--n) * 36ms) steps(var(--n), end) both;
-    animation-delay: calc(var(--at) + 120ms - var(--boot-offset, 0ms));
+    animation-delay: calc(var(--at) + 120ms);
   }
   .th-typed-cursor {
     opacity: 1;
@@ -1190,8 +1190,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
       thCaret calc(var(--n) * 36ms) steps(var(--n), end) both,
       thCaretOff 0.01ms linear both;
     animation-delay:
-      calc(var(--at) + 120ms - var(--boot-offset, 0ms)),
-      calc(var(--at) + 120ms + var(--n) * 36ms + 260ms - var(--boot-offset, 0ms));
+      calc(var(--at) + 120ms),
+      calc(var(--at) + 120ms + var(--n) * 36ms + 260ms);
   }
 }
 .th-typed { position: relative; display: inline-block; white-space: pre; vertical-align: top; }

@@ -1,4 +1,4 @@
-// Static prerender for the built HTML — version 2.1.0 · 2026-11-17.
+// Static prerender for the built HTML — version 3.0.0 · 2026-11-18.
 //
 // Why this exists: the landing is a client-rendered React app, so the HTML Vite
 // emits ships an empty <div id="root"></div>. Anything that does not execute
@@ -8,11 +8,13 @@
 // This renders each entry to HTML with react-dom/server and injects the markup
 // into the built page, so the shipped HTML contains the real content.
 //
-// The client is deliberately unchanged: each entry still calls createRoot(),
-// which replaces the injected markup on load. Nothing hydrates, so no hydration
-// mismatch can be produced by client-only state (OS detection, stored language
-// and theme). Because the server renders the same *default* state the client
-// starts from, the swap is invisible for a default visitor.
+// The client hydrates this markup: each entry calls hydrateRoot(), which keeps
+// the prerendered DOM and attaches React to it (ADR-0025). Its first render must
+// match this one exactly, so browser-only state (theme, OS, stored language,
+// clock) is read with useSyncExternalStore + a server snapshot or in an effect,
+// never during render. scripts/check-hydration.mjs (pnpm check:hydration) hydrates
+// every built page × language, for a default and a non-default visitor, and
+// fails on any hydration error or warning.
 
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'

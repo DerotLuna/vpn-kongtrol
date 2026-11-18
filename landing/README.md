@@ -1,6 +1,6 @@
 # VPN Kongtrol Landing (`landing/`)
 
-Version 2.4.0 · 2026-11-17
+Version 2.5.0 · 2026-11-18
 
 Public marketing/docs site for **VPN Kongtrol** (short name: *Kongtrol*, CLI binary `kongtrol`),
 separate from the embedded dashboard (`web/dashboard`).
@@ -53,8 +53,11 @@ The prerender step matters for search visibility. The app is client-rendered, so
 emits an empty `<div id="root"></div>`; anything that does not execute JavaScript —
 Bing, DuckDuckGo, social preview crawlers, LLM crawlers — would otherwise index a
 blank page. `scripts/prerender.mjs` server-renders each entry with `react-dom/server`
-and injects the markup into the built HTML. The client is unchanged and still boots
-with `createRoot()`, which replaces the injected markup on load.
+and injects the markup into the built HTML. The client hydrates it with
+`hydrateRoot()` (ADR-0025), so its first render must match the prerender exactly: never
+read `window`, `document`, `navigator`, storage, `matchMedia` or the clock during render or
+in a `useState` initializer — use an effect or `useSyncExternalStore` with a server snapshot
+(see `useTheme`, `useOS`).
 
 Do not remove the prerender step from `build`; the site would silently go back to
 shipping empty pages.
@@ -64,6 +67,7 @@ shipping empty pages.
 ```bash
 cd landing
 pnpm run check
+pnpm run check:hydration   # after a build: hydrates every page × language in jsdom, fails on any mismatch
 ```
 
 ## Project structure

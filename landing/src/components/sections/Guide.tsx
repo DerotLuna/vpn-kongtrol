@@ -83,7 +83,7 @@ export default function Guide({ os, setOS, lang }: Props) {
                   <div>
                     {t.quickstart3}
                     <p>{t.quickstart4}</p>
-                    <CodeBlock lang="bash">{`$ kongtrol init`}</CodeBlock>
+                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol init`}</CodeBlock>
                   </div>
                 </li>
                 <li>
@@ -91,7 +91,7 @@ export default function Guide({ os, setOS, lang }: Props) {
                   <div>
                     {t.quickstart5}
                     <p>{t.quickstart6}</p>
-                    <CodeBlock lang="bash">{`$ kongtrol doctor`}</CodeBlock>
+                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol doctor`}</CodeBlock>
                   </div>
                 </li>
                 <li>
@@ -99,7 +99,7 @@ export default function Guide({ os, setOS, lang }: Props) {
                   <div>
                     {t.quickstart7}
                     <p>{t.quickstart8}</p>
-                    <CodeBlock lang="bash">{`$ kongtrol up --group work
+                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol up --group work
 $ kongtrol status --watch
 $ kongtrol dashboard`}</CodeBlock>
                   </div>
@@ -187,23 +187,23 @@ $ kongtrol dashboard`}</CodeBlock>
                 <div className="os-panel active">
                   <p>{t.install2}</p>
                   <p>{t.install3}</p>
-                  <CodeBlock lang="powershell">{t.install4}</CodeBlock>
+                  <CodeBlock ui={lang} lang="powershell">{t.install4}</CodeBlock>
                   <p>{t.install5}</p>
-                  <CodeBlock lang="powershell">{t.install6}</CodeBlock>
+                  <CodeBlock ui={lang} lang="powershell">{t.install6}</CodeBlock>
                   <p>{t.install7}</p>
-                  <CodeBlock lang="powershell">{`kongtrol --help`}</CodeBlock>
+                  <CodeBlock ui={lang} lang="powershell">{`kongtrol --help`}</CodeBlock>
                   <div className="callout">{t.install8}</div>
                 </div>
               )}
               {os === 'macos' && (
                 <div className="os-panel active">
-                  <CodeBlock lang="bash">{t.install9}</CodeBlock>
+                  <CodeBlock ui={lang} lang="bash">{t.install9}</CodeBlock>
                   <div className="callout">{t.install10}</div>
                 </div>
               )}
               {os === 'linux' && (
                 <div className="os-panel active">
-                  <CodeBlock lang="bash">{t.install11}</CodeBlock>
+                  <CodeBlock ui={lang} lang="bash">{t.install11}</CodeBlock>
                 </div>
               )}
               <p>{t.install12}</p>
@@ -251,20 +251,20 @@ $ kongtrol dashboard`}</CodeBlock>
               </div>
               <div className="callout">{t.wizard18}</div>
               <h3 style={{ marginBottom: 8, marginTop: 28 }}>{t.wizard19}</h3>
-              <CodeBlock lang="bash">{`$ kongtrol init`}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{`$ kongtrol init`}</CodeBlock>
               <p>{t.wizard20}</p>
-              <CodeBlock lang="text">{t.wizard21}</CodeBlock>
+              <CodeBlock ui={lang} lang="text">{t.wizard21}</CodeBlock>
               <p>{t.wizard22}</p>
-              <CodeBlock lang="text">{t.wizard23}</CodeBlock>
+              <CodeBlock ui={lang} lang="text">{t.wizard23}</CodeBlock>
               <p>{t.wizard24}</p>
               <details className="guide-more">
                 <summary>{t.wizard25}</summary>
-                <CodeBlock lang="text">{t.wizard26}</CodeBlock>
+                <CodeBlock ui={lang} lang="text">{t.wizard26}</CodeBlock>
               </details>
               <p style={{ marginTop: 20 }}>{t.wizard27}</p>
               <details className="guide-more">
                 <summary>{t.wizard28}</summary>
-                <CodeBlock lang="text">{t.wizard29}</CodeBlock>
+                <CodeBlock ui={lang} lang="text">{t.wizard29}</CodeBlock>
               </details>
               <h3 style={{ marginBottom: 8, marginTop: 24 }}>{t.wizard30}</h3>
               <p>{t.wizard31}</p>
@@ -272,7 +272,7 @@ $ kongtrol dashboard`}</CodeBlock>
                 <li>{t.wizard32}</li>
                 <li>{t.wizard33}</li>
               </ul>
-              <CodeBlock lang="yaml">{`vpns:
+              <CodeBlock ui={lang} lang="yaml">{`vpns:
   us-content:
     type: wireguard
     config: ~/.kongtrol/configs/proton-us.conf
@@ -284,7 +284,7 @@ $ kongtrol dashboard`}</CodeBlock>
               <p>{t.wizard37}</p>
               <details className="guide-more">
                 <summary>{t.wizard38}</summary>
-                <CodeBlock lang="text">{t.wizard39}</CodeBlock>
+                <CodeBlock ui={lang} lang="text">{t.wizard39}</CodeBlock>
               </details>
               <div className="callout">{t.wizard40}</div>
               <div className="callout" style={{ marginTop: 12 }}>{t.wizard41}</div>
@@ -294,7 +294,7 @@ $ kongtrol dashboard`}</CodeBlock>
               <div className="guide-section-num">4</div>
               <h2 className="guide-section-title">{t.groups1}</h2>
               <p>{t.groups2}</p>
-              <CodeBlock lang="yaml">{`groups:
+              <CodeBlock ui={lang} lang="yaml">{`groups:
   work:
     profiles: [office, dev-server, aws]
 
@@ -303,7 +303,7 @@ $ kongtrol dashboard`}</CodeBlock>
 
   full:
     profiles: [office, dev-server, aws, us-content]`}</CodeBlock>
-              <CodeBlock lang="bash">{t.groups3}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.groups3}</CodeBlock>
               <div className="callout">{t.groups4}</div>
               <p>{t.groups5}</p>
             </div>
@@ -312,7 +312,7 @@ $ kongtrol dashboard`}</CodeBlock>
               <div className="guide-section-num">5</div>
               <h2 className="guide-section-title">{t.policies1}</h2>
               <p>{t.policies2}</p>
-              <CodeBlock lang="text">{t.policies3}</CodeBlock>
+              <CodeBlock ui={lang} lang="text">{t.policies3}</CodeBlock>
               <p>{t.policies4}</p>
               <ul style={{ marginBottom: 16, paddingLeft: 20 }}>
                 <li>{t.policies5}</li>
@@ -321,11 +321,11 @@ $ kongtrol dashboard`}</CodeBlock>
                 <li>{t.policies8}</li>
               </ul>
               <p>{t.policies9}</p>
-              <CodeBlock lang="yaml">{t.policies10}</CodeBlock>
+              <CodeBlock ui={lang} lang="yaml">{t.policies10}</CodeBlock>
               <div className="callout">{t.policies11}</div>
               <div className="callout" style={{ marginTop: 12 }}>{t.policies12}</div>
               <div className="callout" style={{ marginTop: 12 }}>{t.policies13}</div>
-              <CodeBlock lang="bash">{t.policies14}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.policies14}</CodeBlock>
               <div className="callout">{t.policies15}</div>
             </div>
             {/* 06 — Doctor */}
@@ -333,8 +333,8 @@ $ kongtrol dashboard`}</CodeBlock>
               <div className="guide-section-num">6</div>
               <h2 className="guide-section-title">{t.doctor1}</h2>
               <p>{t.doctor2}</p>
-              <CodeBlock lang="bash">{`$ kongtrol doctor`}</CodeBlock>
-              <CodeBlock lang="text">{t.doctor3}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{`$ kongtrol doctor`}</CodeBlock>
+              <CodeBlock ui={lang} lang="text">{t.doctor3}</CodeBlock>
               <p>{t.doctor4}</p>
             </div>
             {/* 07 — Primera conexión */}
@@ -342,23 +342,23 @@ $ kongtrol dashboard`}</CodeBlock>
               <div className="guide-section-num">7</div>
               <h2 className="guide-section-title">{t.connect1}</h2>
               <p>{t.connect2}</p>
-              <CodeBlock lang="bash">{t.connect3}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.connect3}</CodeBlock>
               <p>{t.connect4}</p>
-              <CodeBlock lang="bash">{`$ kongtrol up office dev-server aws`}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{`$ kongtrol up office dev-server aws`}</CodeBlock>
               <p>{t.connect5}</p>
               <p>{t.connect6}</p>
-              <CodeBlock lang="bash">{`$ kongtrol up office
+              <CodeBlock ui={lang} lang="bash">{`$ kongtrol up office
 $ kongtrol up us-content`}</CodeBlock>
               <p>{t.connect7}</p>
-              <CodeBlock lang="bash">{t.connect8}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.connect8}</CodeBlock>
               <p>{t.connect9}</p>
-              <CodeBlock lang="bash">{t.connect10}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.connect10}</CodeBlock>
             </div>
             {/* 08 — Dashboard */}
             <div id="dashboard" className="guide-section">
               <div className="guide-section-num">8</div>
               <h2 className="guide-section-title">{t.dashboard1}</h2>
-              <CodeBlock lang="bash">{`$ kongtrol dashboard
+              <CodeBlock ui={lang} lang="bash">{`$ kongtrol dashboard
 # Dashboard running at http://127.0.0.1:9741`}</CodeBlock>
               <p>{t.dashboard2}</p>
               <div className="table-scroll">
@@ -393,7 +393,7 @@ $ kongtrol up us-content`}</CodeBlock>
                   </tbody>
                 </table>
               </div>
-              <CodeBlock lang="bash">{t.dashboard10}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.dashboard10}</CodeBlock>
               <div className="callout">{t.dashboard11}</div>
             </div>
             {/* 09 — Uso diario */}
@@ -457,7 +457,7 @@ $ kongtrol up us-content`}</CodeBlock>
                 </table>
               </div>
               <p style={{ marginTop: 20 }}>{t.daily14}</p>
-              <CodeBlock lang="yaml">{`monitor:
+              <CodeBlock ui={lang} lang="yaml">{`monitor:
   scheduler:
     enabled: true
     interval: "1m"
@@ -468,13 +468,13 @@ $ kongtrol up us-content`}</CodeBlock>
         start: "09:00"
         end: "18:00"`}</CodeBlock>
               <p style={{ marginTop: 16 }}>{t.daily15}</p>
-              <CodeBlock lang="yaml">{`vpns:
+              <CodeBlock ui={lang} lang="yaml">{`vpns:
   office:
     kill_switch: true
   us-content:
     kill_switch: false`}</CodeBlock>
               <p style={{ marginTop: 24 }}>{t.daily16}</p>
-              <CodeBlock lang="bash">{t.daily17}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.daily17}</CodeBlock>
               <h3 style={{ marginTop: 32 }}>{t.cmdref1}</h3>
               <p>{t.cmdref2}</p>
               {cmdrefGroups(lang).map((g) => (
@@ -505,36 +505,36 @@ $ kongtrol up us-content`}</CodeBlock>
               <p>{t.trouble2}</p>
               <OsTabs os={os} setOS={setOS} lang={lang} />
               {os === 'windows' && (
-                <CodeBlock lang="bash">{`$ netsh interface ip set dns "Ethernet" dhcp`}</CodeBlock>
+                <CodeBlock ui={lang} lang="bash">{`$ netsh interface ip set dns "Ethernet" dhcp`}</CodeBlock>
               )}
               {os === 'macos' && (
-                <CodeBlock lang="bash">{`$ networksetup -setdnsservers Wi-Fi empty`}</CodeBlock>
+                <CodeBlock ui={lang} lang="bash">{`$ networksetup -setdnsservers Wi-Fi empty`}</CodeBlock>
               )}
               {os === 'linux' && (
-                <CodeBlock lang="bash">{`$ sudo cp /etc/resolv.conf.kongtrol.bak /etc/resolv.conf`}</CodeBlock>
+                <CodeBlock ui={lang} lang="bash">{`$ sudo cp /etc/resolv.conf.kongtrol.bak /etc/resolv.conf`}</CodeBlock>
               )}
               <p style={{ marginTop: 32 }}>{t.trouble3}</p>
-              <CodeBlock lang="bash">{t.trouble4}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.trouble4}</CodeBlock>
               <p>{t.trouble5}</p>
               <OsTabs os={os} setOS={setOS} lang={lang} />
               {os === 'windows' && (
-                <CodeBlock lang="bash">{t.trouble6}</CodeBlock>
+                <CodeBlock ui={lang} lang="bash">{t.trouble6}</CodeBlock>
               )}
               {os === 'macos' && (
-                <CodeBlock lang="bash">{`$ sudo pfctl -d`}</CodeBlock>
+                <CodeBlock ui={lang} lang="bash">{`$ sudo pfctl -d`}</CodeBlock>
               )}
               {os === 'linux' && (
-                <CodeBlock lang="bash">{`$ sudo iptables -F OUTPUT`}</CodeBlock>
+                <CodeBlock ui={lang} lang="bash">{`$ sudo iptables -F OUTPUT`}</CodeBlock>
               )}
               <p style={{ marginTop: 32 }}>{t.trouble7}</p>
-              <CodeBlock lang="bash">{t.trouble8}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.trouble8}</CodeBlock>
               <p style={{ marginTop: 32 }}><strong>Cloudflare WARP — "not registered":</strong></p>
-              <CodeBlock lang="bash">{`$ warp-cli register`}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{`$ warp-cli register`}</CodeBlock>
               <p style={{ marginTop: 32 }}>{t.trouble9}</p>
-              <CodeBlock lang="bash">{t.trouble10}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{t.trouble10}</CodeBlock>
               <div className="callout" style={{ marginTop: 12 }}>{t.trouble11}</div>
               <p style={{ marginTop: 32 }}>{t.trouble12}</p>
-              <CodeBlock lang="text">{t.trouble13}</CodeBlock>
+              <CodeBlock ui={lang} lang="text">{t.trouble13}</CodeBlock>
             </div>
           </div>
         </div>

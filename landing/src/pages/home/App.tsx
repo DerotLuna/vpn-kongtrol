@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { detectOS, OS } from '../../hooks/useOS'
+import { useOS } from '../../hooks/useOS'
 import { useLangRouting, useTheme } from '../../hooks/usePreferences'
 import { Lang } from '../../i18n'
 import LangSuggest from '../../components/ui/LangSuggest'
@@ -43,7 +42,7 @@ const HOME_WINDOWS_EN: TmuxWindow[] = [
 ]
 
 export default function App({ lang }: { lang: Lang }) {
-  const [os, setOS] = useState<OS>(detectOS)
+  const [os, setOS] = useOS()
   const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting('home', lang)
   useKonami()

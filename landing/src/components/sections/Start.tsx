@@ -86,7 +86,7 @@ $ kongtrol status --watch # live status`,
           <div className="path path-devs">
             <h3>{t.devsTitle}</h3>
             <p className="path-lead">{t.devsLead}</p>
-            <CodeBlock lang="bash">{t.devsCode}</CodeBlock>
+            <CodeBlock ui={lang} lang="bash">{t.devsCode}</CodeBlock>
             <div className="path-actions">
               <a href={pathFor('guia', lang)} className="btn-ghost">{t.devsCta}</a>
             </div>

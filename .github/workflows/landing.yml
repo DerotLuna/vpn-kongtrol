@@ -52,7 +52,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # jsdom (hydration check) needs Node >= 22.22; Node 20 is EOL
           cache: "pnpm"
           cache-dependency-path: landing/pnpm-lock.yaml
 
@@ -61,6 +61,11 @@ jobs:
 
       - name: Build
         run: pnpm run build
+
+      # Every page × language hydrates its prerendered HTML without a mismatch
+      # (scripts/check-hydration.mjs, ADR-0025). Fails the job on any mismatch.
+      - name: Hydration check
+        run: pnpm run check:hydration
 
   redirect:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

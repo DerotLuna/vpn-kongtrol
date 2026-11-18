@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "check": "pnpm run lint && pnpm run build",
     "brand": "node scripts/copy-brand.mjs",
-    "check:i18n": "node scripts/check-i18n.mjs"
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "check:hydration": "node scripts/check-hydration.mjs"
   },
   "dependencies": {
     "react": "18.3.1",
@@ -23,6 +24,7 @@
     "@types/react": "18.3.31",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",
+    "jsdom": "30.1.3",
     "typescript": "5.5.3",
     "vite": "6.4.5"
   }

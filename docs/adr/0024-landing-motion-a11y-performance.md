@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-18
 
-Status: Accepted · Date: 2026-11-18 · Decision-makers: project maintainer
+Status: Accepted; boot-timeline resume (option 3) superseded by [ADR-0025](0025-landing-hydrate-prerendered-html.md) · Date: 2026-11-18 · Decision-makers: project maintainer
 
 ## Context and Problem Statement
 

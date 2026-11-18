@@ -51,14 +51,8 @@ export default function Hero({ os, lang }: Props) {
   // The boot sequence is a CSS timeline (index.css, .boot-step): every line is
   // in the markup from the first byte — prerendered HTML included — so the
   // terminal never grows (no layout shift) and crawlers read the whole hero.
-  // createRoot() replaces the prerendered nodes, which restarts their CSS
-  // animations; reading how far the prerendered timeline already ran lets the
-  // new nodes resume at the same frame instead of replaying from zero.
-  const [bootOffset] = useState(() => {
-    if (typeof document === 'undefined') return 0
-    const t = document.querySelector('.th-body .boot-step')?.getAnimations?.()[0]?.currentTime
-    return typeof t === 'number' ? Math.round(t) : 0
-  })
+  // hydrateRoot() keeps the prerendered nodes, so their CSS animations run on
+  // from first paint without restarting.
   const [elapsed, setElapsed] = useState(0)
   const [shell, setShell] = useState<ShellEntry[]>([])
   const [input, setInput] = useState('')
@@ -232,7 +226,6 @@ export default function Hero({ os, lang }: Props) {
             className="terminal-body th-body"
             ref={bodyRef}
             onClick={focusInput}
-            style={{ '--boot-offset': `${bootOffset}ms` } as CSSProperties}
           >
             <div className="boot-line boot-step t-dim" style={at(BOOT.login)}>{copy.lastLogin}</div>
 

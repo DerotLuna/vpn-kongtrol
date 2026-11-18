@@ -109,7 +109,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     <nav ref={navRef} className={`nav${scrolled ? ' is-sticky' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
       <div className="nav-inner">
         <a href={page === 'home' ? '#motd' : pathFor('home', lang)} className="nav-logo">
-          <img src={logoSrc} alt="Kongtrol" className={theme === 'dark' ? 'logo-dark-invert' : ''} />
+          <img src={logoSrc} alt="Kongtrol" />
           <span className="nav-logo-name">
             <strong aria-hidden="true">K O N G T R O L</strong>
             <small className="beta">BETA</small>
@@ -142,7 +142,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
                 aria-label={`${labels.toggleTheme}: ${theme === 'dark' ? labels.dark : labels.light}`}
                 title={`${labels.themeTitle}: ${theme === 'dark' ? labels.dark : labels.light}`}
               >
-                <span className={`theme-icon-stack ${theme === 'dark' ? 'dark' : 'light'}`}>
+                <span className="theme-icon-stack">
                   <svg className="theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
                     <path fill="currentColor" d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0-16a1 1 0 0 1 1 1v2h-2V3a1 1 0 0 1 1-1Zm0 17a1 1 0 0 1 1 1v2h-2v-2a1 1 0 0 1 1-1Zm10-8v2h-2v-2h2ZM4 11v2H2v-2h2Zm14.95-6.54 1.41 1.41-1.42 1.42-1.41-1.42 1.42-1.41ZM6.47 16.95l1.41 1.41-1.41 1.42-1.42-1.42 1.42-1.41Zm12.48 2.83-1.41-1.42 1.41-1.41 1.42 1.41-1.42 1.42ZM6.47 7.05 5.05 5.63l1.42-1.41 1.41 1.41-1.41 1.42Z"/>
                   </svg>
