@@ -99,6 +99,13 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 	if ld := mappingKey(secNode, "leak_detection"); !enablePublicIP && ld != nil && ld.Kind == yaml.MappingNode {
 		setMapping(ld, "enabled", boolNode(false))
 	}
+	// Update notice: opt-in, asked once (default No). Written only when on,
+	// or when the file already has the key.
+	if up := mappingKey(doc, "updates"); up != nil && up.Kind == yaml.MappingNode {
+		setMapping(up, "check_enabled", boolNode(enableUpdateCheck))
+	} else if enableUpdateCheck {
+		setMapping(doc, "updates", mapNode([][2]string{{"check_enabled", "true"}}))
+	}
 
 	return securitySummary{
 		killSwitch: enableKS, dnsGuard: enableDNS, auditLog: enableAudit, monitor: enableMonitor,
