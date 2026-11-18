@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.0.0 · 2026-11-18
+Version 1.1.0 · 2026-11-18
 
 ## 1. Purpose and how to use
 
@@ -67,11 +67,11 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 - [ ] Tunnels card (title, table) — legacy index.html:19 — API GET /api/v1/tunnels (handlers_tunnels.go:40) + WS — target `/` — status: partial (components/welcome/TunnelsCard.tsx: list only)
 - [ ] Groups quick-launch card — legacy index.html:49, app.js:1140 — API GET /api/v1/groups (handlers_groups.go:17) — target `/` — status: missing
-- [ ] Traffic over time card — legacy index.html:59, app.js:609 — API GET /api/v1/metrics/history (handlers_tunnels.go:31) + WS — target `/traffic` — status: missing
-- [ ] Traffic map & policy resolver card — legacy index.html:68 — API GET /api/v1/policies (handlers_policy.go:53), GET /api/v1/resolve (handlers_policy.go:309) — target `/traffic` — status: missing
+- [x] Traffic over time card — legacy index.html:59, app.js:609 — API GET /api/v1/metrics/history (handlers_tunnels.go:31) + WS — target `/traffic` — status: done (web/ui/src/components/traffic/TunnelTrafficCard.tsx, web/ui/src/data/traffic.ts)
+- [x] Traffic map & policy resolver card — legacy index.html:68 — API GET /api/v1/policies (handlers_policy.go:53), GET /api/v1/resolve (handlers_policy.go:309) — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx)
 - [ ] Base network egress card — legacy index.html:97, app.js:852 — API GET /api/v1/network/overview (handlers_routes.go:94) — target `/` (same data reused by `/traffic` network overview) — status: missing
 - [ ] Security controls summary card + "Manage →" link — legacy index.html:112-116 — API GET /api/v1/security/status (handlers_security.go:91) — target `/` (link to `/security`) — status: partial (components/welcome/PublicIPCard.tsx: public IP only)
-- [ ] Active routes (live) card — legacy index.html:142, app.js:803 — API GET /api/v1/routes (handlers_routes.go:13) — target `/traffic` — status: missing
+- [x] Active routes (live) card — legacy index.html:142, app.js:803 — API GET /api/v1/routes (handlers_routes.go:13) — target `/traffic` — status: done (web/ui/src/components/traffic/SystemRoutes.tsx; collapsed by default, read only while open)
 - [ ] Helper install banner (prepended to `main`, `role=status`) — legacy app.js:357-386 — API GET /api/v1/helper/status (handlers_helper.go:67) — target `/` (+ `/settings` helper section) — status: new UI has it (components/welcome/HelperCard.tsx)
 - [ ] Aggregate status headline (N of M connected) — legacy none (new) — API GET /api/v1/tunnels — target `/` — status: new UI has it (components/welcome/TunnelsCard.tsx)
 
@@ -109,34 +109,34 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### Traffic over time (per connected tunnel)
 
-- [ ] Sent/received throughput line chart (per-tick deltas, clamped ≥0, 120 samples) — legacy app.js:470-508, app.js:619-649, charts.js:44 — API WS `BytesSent/BytesReceived` — target `/traffic` — status: missing
-- [ ] Legend (Sent = `--steel`, Received = `--signal`, with text) — legacy app.js:631-634 — API — — target `/traffic` — status: missing
-- [ ] Stat tiles: reconnects, jitter ms, total time connected — legacy app.js:621-627 — API GET /api/v1/metrics/history (handlers_tunnels.go:31) `reconnects`, `jitter_ms`, `uptime_seconds` — target `/traffic` — status: missing
-- [ ] Latency samples recorded only when the value changes — legacy app.js:488-501 — API WS `LatencyMS` — target `/traffic` + `/` sparkline — status: missing
+- [x] Sent/received throughput line chart (per-tick deltas, clamped ≥0, 120 samples) — legacy app.js:470-508, app.js:619-649, charts.js:44 — API WS `BytesSent/BytesReceived` — target `/traffic` — status: done (web/ui/src/data/traffic.ts `createTrafficHistory`: bytes/s per tick, clamped ≥0, 120 samples, late frames ignored; web/ui/src/components/traffic/MiniChart.tsx)
+- [x] Legend (Sent = `--steel`, Received = `--signal`, with text) — legacy app.js:631-634 — API — — target `/traffic` — status: done with fix (web/ui/src/components/traffic/TunnelTrafficCard.tsx: small multiples, one series per chart named by its title, so no color legend; amber stays brand-only and steel vs. muted fails the dataviz normal-vision floor)
+- [x] Stat tiles: reconnects, jitter ms, total time connected — legacy app.js:621-627 — API GET /api/v1/metrics/history (handlers_tunnels.go:31) `reconnects`, `jitter_ms`, `uptime_seconds` — target `/traffic` — status: done (web/ui/src/components/traffic/TunnelTrafficCard.tsx `tr-stats`)
+- [x] Latency samples recorded only when the value changes — legacy app.js:488-501 — API WS `LatencyMS` — target `/traffic` + `/` sparkline — status: done for `/traffic` (web/ui/src/data/traffic.ts `createTrafficHistory` latency; Home sparkline pending)
 
 #### Traffic map & policy resolver
 
-- [ ] Resolve input (IP/domain, URL, policy/profile, `app:process`) + Check + Clear — legacy index.html:73-77, app.js:918, app.js:991 — API GET /api/v1/resolve?target=|app= (handlers_policy.go:309) `target, app, via, rule, matched` — target `/traffic` — status: missing
-- [ ] `app:` prefix switches the query to `app=` — legacy app.js:1003-1006 — API GET /api/v1/resolve?app= — target `/traffic` — status: missing
-- [ ] Matched result `{lhs} → {via} ({rule})` (matched style) — legacy app.js:937-939 — API `matched, via, rule` — target `/traffic` — status: missing
-- [ ] Unmatched result `→ default route (no matching policy) (public IP x)` — legacy app.js:940-948, app.js:709 — API `matched=false` + public IP when lookup on — target `/traffic` — status: missing
-- [ ] Policies table filtered by the resolve query (name, via, domains, ip_ranges, apps) + note "Showing x of y" — legacy app.js:892-903, app.js:955-989 — API GET /api/v1/policies `name, via, domains, ip_ranges, apps, resolved_cidrs` — target `/traffic` — status: missing
-- [ ] Policy row: match tags (domain / ip), via profile, resolved IP count (`{n} IPs` or —) — legacy app.js:974-987 — API `resolved_cidrs` — target `/traffic` — status: missing
-- [ ] Refresh policies button — legacy index.html:71 — API GET /api/v1/policies — target `/traffic` — status: missing
+- [x] Resolve input (IP/domain, URL, policy/profile, `app:process`) + Check + Clear — legacy index.html:73-77, app.js:918, app.js:991 — API GET /api/v1/resolve?target=|app= (handlers_policy.go:309) `target, app, via, rule, matched` — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx)
+- [x] `app:` prefix switches the query to `app=` — legacy app.js:1003-1006 — API GET /api/v1/resolve?app= — target `/traffic` — status: done (web/ui/src/data/traffic.ts `parseLookup`)
+- [x] Matched result `{lhs} → {via} ({rule})` (matched style) — legacy app.js:937-939 — API `matched, via, rule` — target `/traffic` — status: done with fix (web/ui/src/components/traffic/LookupCard.tsx + web/ui/src/data/traffic.ts `explainLookup`: says what happens now — VPN off → normal connection, `on_tunnel_down: block` → blocked; domains can show their IPs via GET /api/v1/dns/resolve)
+- [x] Unmatched result `→ default route (no matching policy) (public IP x)` — legacy app.js:940-948, app.js:709 — API `matched=false` + public IP when lookup on — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx: rest_via interface, VPN that took all traffic, last known public IP)
+- [x] Policies table filtered by the resolve query (name, via, domains, ip_ranges, apps) + note "Showing x of y" — legacy app.js:892-903, app.js:955-989 — API GET /api/v1/policies `name, via, domains, ip_ranges, apps, resolved_cidrs` — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx `RulesList`, web/ui/src/data/traffic.ts `filterPolicies`)
+- [x] Policy row: match tags (domain / ip), via profile, resolved IP count (`{n} IPs` or —) — legacy app.js:974-987 — API `resolved_cidrs` — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx; per-rule IPs with expiry from the new `resolved` field, fallback `resolved_cidrs`)
+- [x] Refresh policies button — legacy index.html:71 — API GET /api/v1/policies — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx)
 
 #### Active routes (live)
 
-- [ ] Route list: destination, tag (default / origin / policy), `→ profile · iface` — legacy app.js:826-840 — API GET /api/v1/routes (handlers_routes.go:13) `destination, gateway, interface, metric, policy_name, policy_via, is_default` — target `/traffic` — status: missing
-- [ ] Origin index joins routes with per-tunnel routes (iface|dest) — legacy app.js:755-765 — API GET /api/v1/tunnels/routes — target `/traffic` — status: missing
-- [ ] Filter select: all, default, profile:x, origin:server|policy|vpn, policy:x (keeps selection if still present) — legacy index.html:147-153, app.js:872-890, app.js:811-819 — API — — target `/traffic` — status: missing
-- [ ] Refresh routes button — legacy index.html:145 — API GET /api/v1/routes + /tunnels/routes — target `/traffic` — status: missing
+- [x] Route list: destination, tag (default / origin / policy), `→ profile · iface` — legacy app.js:826-840 — API GET /api/v1/routes (handlers_routes.go:13) `destination, gateway, interface, metric, policy_name, policy_via, is_default` — target `/traffic` — status: done (web/ui/src/components/traffic/SystemRoutes.tsx, + gateway and metric columns)
+- [x] Origin index joins routes with per-tunnel routes (iface|dest) — legacy app.js:755-765 — API GET /api/v1/tunnels/routes — target `/traffic` — status: done (web/ui/src/data/traffic.ts `routeOriginIndex`)
+- [x] Filter select: all, default, profile:x, origin:server|policy|vpn, policy:x (keeps selection if still present) — legacy index.html:147-153, app.js:872-890, app.js:811-819 — API — — target `/traffic` — status: done (web/ui/src/components/traffic/SystemRoutes.tsx, web/ui/src/data/traffic.ts `routeFilterOptions`/`effectiveFilter`)
+- [x] Refresh routes button — legacy index.html:145 — API GET /api/v1/routes + /tunnels/routes — target `/traffic` — status: done (web/ui/src/components/traffic/SystemRoutes.tsx)
 
 #### Per-tunnel routes drawer
 
-- [ ] Title + interface, "all your traffic", "nothing yet" — legacy app.js:786-788 — API GET /api/v1/tunnels/routes (handlers_tunnel_routes.go:76) `name, connected, interface, all_traffic, total, counts, routes[]` — target `/traffic` — status: missing
-- [ ] Groups by origin (server / policy {name} / vpn) with counts, chips, server explanation line — legacy app.js:780-798 — API `routes[].origin, policy, destination` — target `/traffic` — status: missing
-- [ ] "Everything else →" line (`rest_via_tunnel` / `rest_via` / unknown) — legacy app.js:773-777, app.js:799 — API `rest_via, rest_via_tunnel` — target `/traffic` — status: missing
-- [ ] Open drawers survive re-renders — legacy app.js:303, app.js:747-751 — API — — target `/traffic` — status: missing
+- [x] Title + interface, "all your traffic", "nothing yet" — legacy app.js:786-788 — API GET /api/v1/tunnels/routes (handlers_tunnel_routes.go:76) `name, connected, interface, all_traffic, total, counts, routes[]` — target `/traffic` — status: done (web/ui/src/components/traffic/TunnelRoutesPanel.tsx)
+- [x] Groups by origin (server / policy {name} / vpn) with counts, chips, server explanation line — legacy app.js:780-798 — API `routes[].origin, policy, destination` — target `/traffic` — status: done (web/ui/src/components/traffic/TunnelRoutesPanel.tsx, web/ui/src/data/traffic.ts `groupTunnelRoutes`)
+- [x] "Everything else →" line (`rest_via_tunnel` / `rest_via` / unknown) — legacy app.js:773-777, app.js:799 — API `rest_via, rest_via_tunnel` — target `/traffic` — status: done (web/ui/src/components/traffic/TunnelRoutesPanel.tsx)
+- [x] Open drawers survive re-renders — legacy app.js:303, app.js:747-751 — API — — target `/traffic` — status: done (web/ui/src/pages/TrafficPage.tsx: open state per tunnel in the page, open by default)
 
 #### Base network egress
 
@@ -158,8 +158,8 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### States
 
-- [ ] Loading skeleton rows (tunnels, policies, routes, base network, groups) — legacy index.html:43-44, 55, 90-91, 103-107, 155-156 — API — — target `/`, `/traffic` — status: partial (components/welcome/TunnelsCard.tsx: text loading, `aria-busy`)
-- [ ] Empty: no tunnels / no policies / no policies for filter / no routes for filter / no groups / chart no data — legacy app.js:517, 959, 970, 822, 1143, 615 — API — — target `/`, `/traffic` — status: partial (components/welcome/TunnelsCard.tsx: no tunnels only)
+- [ ] Loading skeleton rows (tunnels, policies, routes, base network, groups) — legacy index.html:43-44, 55, 90-91, 103-107, 155-156 — API — — target `/`, `/traffic` — status: partial (components/welcome/TunnelsCard.tsx: text loading, `aria-busy`; `/traffic` done: skeletons for tunnels, rules, routes, base network in components/traffic/)
+- [ ] Empty: no tunnels / no policies / no policies for filter / no routes for filter / no groups / chart no data — legacy app.js:517, 959, 970, 822, 1143, 615 — API — — target `/`, `/traffic` — status: partial (components/welcome/TunnelsCard.tsx: no tunnels only; `/traffic` done: no VPN connected / no VPNs, no rules, no rules for query, no routes for filter, chart collecting data)
 - [ ] Fetch errors: legacy silently ignores (`catch (_) {}`) — legacy app.js:459-468, 652-659, 718-726 … — API all — target shell (every page) — status: new UI has it (components/ui/ErrorNotice.tsx); **fix**: every card shows an error + "what to do"
 - [ ] Button state per tunnel status (connect / cancel / disconnect+reload) — legacy app.js:568-574 — API `Status` — target `/` — status: missing
 - [ ] First-run redirect: `needs_setup` → profile editor — legacy app.js:1242-1247 — API GET /api/v1/setup (handlers_setup.go:39) `needs_setup` — target `/` → `/profiles` — status: missing
@@ -173,13 +173,13 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### Keyboard / focus
 
-- [ ] Enter in resolve input runs Check — legacy app.js:1012-1014 — API GET /api/v1/resolve — target `/traffic` — status: missing
-- [ ] Route-drawer toggle is a button with `aria-expanded` — legacy app.js:554 — API — — target `/traffic` / `/` — status: missing
+- [x] Enter in resolve input runs Check — legacy app.js:1012-1014 — API GET /api/v1/resolve — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx: a real form, Enter submits)
+- [ ] Route-drawer toggle is a button with `aria-expanded` — legacy app.js:554 — API — — target `/traffic` / `/` — status: partial (web/ui/src/components/traffic/TunnelTrafficCard.tsx: `/traffic` done; Home toggle pending, deep link `/traffic#<tunnelAnchor(name)>`)
 
 #### Endpoints / cadence
 
 - [ ] WS `/api/v1/ws/metrics` (ws.go:17; push on change + every 5 s), reconnect after 3 s — legacy app.js:419-440 — target `/` — status: new UI has it (api/client.ts `subscribeTunnels`, api/hooks.ts `useTunnels` + 5 s poll fallback)
-- [ ] Poll 30 s: security status, routes (+tunnel routes), policies, network overview, metrics history, groups, helper status — legacy app.js:1231-1238 — target `/`, `/traffic` — status: partial (api/hooks.ts: helper + public IP poll 5 s)
+- [ ] Poll 30 s: security status, routes (+tunnel routes), policies, network overview, metrics history, groups, helper status — legacy app.js:1231-1238 — target `/`, `/traffic` — status: partial (api/hooks.ts: helper + public IP poll 5 s; `/traffic` done in web/ui/src/data/traffic.ts: routes, tunnel routes, policies, network overview, metrics history every 30 s, plus a refresh 600 ms after any tunnel goes up/down)
 - [ ] Re-render cached data on language change (policies, routes, charts, helper banner) — legacy app.js:317-322 — API — — target shell (every page) — status: new UI has it (React re-render via app/PreferencesProvider.tsx)
 
 ### 3.2 `studio.html` + `studio.js` (Studio)
@@ -427,9 +427,9 @@ Table / states / notices
 
 #### `charts.js`
 
-- [ ] HiDPI canvas prep — legacy charts.js:4-14 — target `/traffic` — status: missing
+- [x] HiDPI canvas prep — legacy charts.js:4-14 — target `/traffic` — status: done (web/ui/src/components/traffic/MiniChart.tsx: SVG, resolution-independent, no canvas)
 - [ ] Sparkline (min-max scaled) — legacy charts.js:17-40 — target `/` — status: missing
-- [ ] Time series with 4-line grid, shared max — legacy charts.js:44-80 — target `/traffic` — status: missing; **fix**: no axes/units/text summary
+- [x] Time series with 4-line grid, shared max — legacy charts.js:44-80 — target `/traffic` — status: done with fix (web/ui/src/components/traffic/MiniChart.tsx: y labels with units, x labels, figcaption summary, keyboard crosshair (slider), data table)
 
 #### `select.js`
 
@@ -496,7 +496,7 @@ Other clients (CLI `cmd/kongtrol`, tray, `internal/daemonctl`) listed when a das
 | DELETE /api/v1/policies/{name} | handlers_policy.go:234 | studio.js:527 | — | `/rules` |
 | POST /api/v1/policies/test | handlers_policy.go:263 | studio.js:549 | — | `/rules` |
 | GET /api/v1/resolve | handlers_policy.go:309 | app.js:1007 | — | `/traffic`, `/rules` |
-| GET /api/v1/dns/resolve | handlers_policy.go:404 | **none** (no client found in cmd/, internal/daemonctl, tray) | — | **unused** — decide: expose in `/traffic` resolver or remove (AGENTS.md "Nothing stale stays") |
+| GET /api/v1/dns/resolve | handlers_policy.go:404 | **none** (no client found in cmd/, internal/daemonctl, tray) | — | `/traffic` (web/ui/src/data/traffic.ts `useDnsResolveQuery`: "see which IPs it points to through <VPN>" after a domain lookup) |
 | POST /api/v1/shutdown | handlers_tunnels.go:21 | **none** (tray via internal/daemonctl) | — | `/settings` (GUI parity gap) |
 | POST /api/v1/restart | handlers_setup.go:54 | studio.js:861 | — | `/settings`, `/profiles` |
 | GET /api/v1/setup | handlers_setup.go:39 | app.js:1242, studio.js:820, studio.js:848 | — | `/`, `/profiles`, `/settings` |
@@ -540,7 +540,7 @@ Used by no dashboard client: `GET /api/v1/dns/resolve` (no client at all), `GET 
 
 ### 5.3 API / architecture notes
 
-19. `GET /api/v1/dns/resolve` has no client anywhere: remove it or expose it, per "Nothing stale stays".
+19. ~~`GET /api/v1/dns/resolve` has no client anywhere~~ — now used by `/traffic` (lookup detail).
 20. `POST /api/v1/shutdown` has no GUI caller outside the tray; the browser dashboard has no "quit and disconnect all". This is a parity gap under "Product model".
 21. Settings DTO structs are declared in the wrong files: `settingsDTO` in handlers_groups.go:341, `groupDTO` in handlers_security.go:329. Code hygiene only.
 22. Deleting a VPN profile checks policy and group references (handlers_vpn.go:362-376), but not other profiles' `failover` lists or scheduler rules. The delete path does not call `config.Validate`. `no verificado`.

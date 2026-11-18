@@ -1,0 +1,182 @@
+/* Kongtrol UI — Tráfico (/traffic) · v1.0.0 · 2026-11-18
+   Operate mode (DESIGN.md): flat cards, one accent (amber only on the
+   primary "Revisar"), charts in steel (a series, not a state), green only
+   for "goes through a connected VPN", 11px floor, 44px targets, tabular
+   numbers so live values never shift the layout. */
+
+.tr-page { display: flex; flex-direction: column; gap: 32px; }
+.tr-section-title { font: 600 20px/1.25 var(--font-display); letter-spacing: -0.01em; margin-bottom: 12px; }
+.tr-subtitle { font: 600 16px/1.3 var(--font-display); }
+.tr-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tr-note { color: var(--text-muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* ── Lookup ─────────────────────────────────────────────────────────── */
+.tr-lookup { gap: 16px; }
+.tr-lookup__form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.tr-lookup__form .k-field { min-width: 0; }
+.tr-lookup__actions { display: flex; gap: 8px; padding-top: 26px; }
+@media (max-width: 599px) {
+  .tr-lookup__form { grid-template-columns: 1fr; }
+  .tr-lookup__actions { padding-top: 0; }
+  .tr-lookup__actions .k-btn--filled { flex: 1; }
+}
+.tr-lookup__live:empty { display: none; }
+
+.tr-result {
+  display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start;
+  padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border-2); background: var(--surface-2);
+}
+.tr-result__icon { display: inline-flex; width: 22px; height: 22px; margin-top: 1px; color: var(--text-muted); }
+.tr-result__icon svg { width: 22px; height: 22px; }
+.tr-result--ok { border-color: color-mix(in srgb, var(--live) 45%, var(--border)); background: var(--live-soft); }
+.tr-result--ok .tr-result__icon { color: var(--live); }
+.tr-result--caution { border-color: color-mix(in srgb, var(--caution) 45%, var(--border)); background: var(--caution-soft); }
+.tr-result--caution .tr-result__icon { color: var(--caution); }
+.tr-result--bad { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: var(--danger-soft); }
+.tr-result--bad .tr-result__icon { color: var(--danger); }
+.tr-result__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.tr-result__text strong { font-weight: 600; }
+.tr-result__text p { color: var(--text-muted); }
+.tr-result__action { align-self: flex-start; margin-top: 6px; }
+.tr-dns { margin-top: 6px; }
+.tr-dns__body { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+
+/* ── Disclosures (button + aria-expanded) ───────────────────────────── */
+.tr-disclosure {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 10px 0 6px; margin-left: -6px;
+  border: 0; border-radius: var(--radius); background: none; color: var(--text);
+  font: 500 14px/1.3 var(--font-body); text-align: left; cursor: pointer;
+}
+.tr-disclosure:hover { background: var(--state-hover); }
+.tr-disclosure:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+.tr-disclosure__chev {
+  width: 8px; height: 8px; flex: none; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg); transition: transform var(--dur-fast) var(--ease-standard);
+}
+.tr-disclosure[aria-expanded='true'] .tr-disclosure__chev { transform: rotate(45deg); }
+.tr-disclosure--inline { min-height: 44px; font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.tr-disclosure--btn { border: 1px solid var(--border-2); margin-left: 0; padding: 0 14px 0 12px; }
+
+/* ── Tags and chips ─────────────────────────────────────────────────── */
+.tr-tags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.tr-tag {
+  display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+  font: 500 12px/1.4 var(--font-mono); background: var(--surface-3); color: var(--text-muted); white-space: nowrap;
+}
+.tr-tag--server { background: var(--steel-soft); color: var(--steel); }
+.tr-tag--block { background: var(--danger-soft); color: var(--danger); }
+.tr-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.tr-chips li {
+  padding: 3px 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border);
+  font: 400 13px/1.4 var(--font-mono); overflow-wrap: anywhere;
+}
+.tr-chips--match li { font-family: var(--font-body); }
+.tr-chips__kind { font: 500 11px/1 var(--font-mono); color: var(--text-muted); letter-spacing: 0.02em; }
+
+/* ── Rules ──────────────────────────────────────────────────────────── */
+.tr-rules { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--border); }
+.tr-rule-name { display: inline-flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.tr-ips__list { list-style: none; display: flex; flex-direction: column; gap: 4px; padding: 4px 0 6px; font-size: 13px; }
+.tr-ips__exp { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+@media (max-width: 639px) {
+  .tr-rules .k-datalist td { flex-wrap: wrap; }
+  .tr-ips { text-align: left; }
+}
+
+/* ── Tunnel cards ───────────────────────────────────────────────────── */
+.tr-tunnels__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+.tr-tunnel {
+  display: flex; flex-direction: column; gap: 14px; padding: 20px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  scroll-margin-top: calc(var(--topbar-h, 64px) + 16px);
+}
+.tr-tunnel__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tr-tunnel__name { font: 600 17px/1.3 var(--font-mono); overflow-wrap: anywhere; }
+.tr-tunnel__iface { font: 400 12px/1.3 var(--font-mono); color: var(--text-muted); }
+.tr-tunnel__totals { font-size: 14px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.tr-tunnel__collecting { color: var(--text-muted); font-size: 14px; padding: 12px 0; min-height: 132px; display: flex; align-items: center; }
+.tr-tunnel__routes { border-top: 1px solid var(--border); padding-top: 6px; }
+
+.tr-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tr-stats div { display: flex; flex-direction: column; gap: 2px; }
+.tr-stats dt { font: 500 12px/1.3 var(--font-mono); color: var(--text-muted); letter-spacing: 0.02em; }
+.tr-stats dd { font: 500 15px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Charts (small multiples) ───────────────────────────────────────── */
+.tr-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 719px) { .tr-charts { grid-template-columns: 1fr; } }
+.tr-tunnels__grid .tr-charts { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.tr-chart { display: flex; flex-direction: column; gap: 4px; margin: 0; min-width: 0; }
+.tr-chart__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tr-chart__title { font: 500 12px/1.3 var(--font-mono); color: var(--text-muted); letter-spacing: 0.02em; }
+.tr-chart__now { font: 600 15px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-chart__plot {
+  position: relative; height: 72px; border-radius: 4px; cursor: crosshair; touch-action: pan-y;
+}
+.tr-chart__plot:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.tr-chart__plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.tr-chart__grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 2 4; }
+.tr-chart__base { stroke: var(--border-2); stroke-width: 1; }
+.tr-chart__area { fill: var(--steel-soft); }
+.tr-chart__line { fill: none; stroke: var(--steel); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.tr-chart__y {
+  position: absolute; left: 0; font: 400 11px/1 var(--font-mono); color: var(--text-dim);
+  font-variant-numeric: tabular-nums; pointer-events: none; background: color-mix(in srgb, var(--surface) 80%, transparent);
+  padding: 1px 3px 1px 0;
+}
+.tr-chart__y--max { top: 0; transform: translateY(-2px); }
+.tr-chart__y--zero { bottom: 2px; }
+.tr-chart__x { display: flex; justify-content: space-between; font: 400 11px/1.3 var(--font-mono); color: var(--text-dim); }
+.tr-chart__summary { font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.tr-chart__cross { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--text-muted); pointer-events: none; }
+.tr-chart__dot {
+  position: absolute; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%;
+  background: var(--steel); box-shadow: 0 0 0 2px var(--surface); pointer-events: none;
+}
+.tr-chart__tip {
+  position: absolute; top: 2px; transform: translateX(8px); z-index: 2; pointer-events: none;
+  display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 4px; white-space: nowrap;
+  background: var(--surface-3); border: 1px solid var(--border-2); font: 400 12px/1.3 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tr-chart__tip strong { font-weight: 600; color: var(--text); }
+.tr-chart__tip span { color: var(--text-muted); }
+.tr-chart__tip--left { transform: translateX(calc(-100% - 8px)); }
+.tr-chart--empty { min-height: 132px; }
+.tr-chart--empty .tr-chart__head { display: contents; }
+
+.tr-table summary {
+  display: inline-flex; align-items: center; min-height: 44px; cursor: pointer; font-size: 14px; color: var(--text-muted);
+}
+.tr-table summary:hover { color: var(--text); }
+.tr-table summary:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 4px; }
+.tr-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tr-table th, .tr-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.tr-table thead th { font: 500 12px/1.2 var(--font-mono); color: var(--text-muted); }
+.tr-table tbody th { font-weight: 400; }
+.tr-table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ── Routes of one tunnel ───────────────────────────────────────────── */
+.tr-routes { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 2px; }
+.tr-routes__all { font-weight: 600; }
+.tr-routes__group { display: flex; flex-direction: column; gap: 6px; }
+.tr-routes__title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.tr-routes__explain { font-size: 13px; color: var(--text-muted); }
+.tr-routes__rest { font-size: 14px; color: var(--text-muted); }
+
+/* ── System routes ──────────────────────────────────────────────────── */
+.tr-system__lead { margin-top: 4px; max-width: 60ch; }
+.tr-system__body { display: flex; flex-direction: column; gap: 20px; }
+.tr-net { display: flex; flex-direction: column; gap: 10px; }
+.tr-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 20px; }
+.tr-kv div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tr-kv dt { font: 500 12px/1.3 var(--font-mono); color: var(--text-muted); }
+.tr-kv dd { font-size: 14px; overflow-wrap: anywhere; }
+.tr-sysroutes { display: flex; flex-direction: column; gap: 10px; }
+.tr-sysroutes__bar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.tr-sysroutes__bar .k-field { min-width: min(100%, 280px); }
+.tr-sysroutes .k-datalist td, .tr-sysroutes .k-datalist th { overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tr-disclosure__chev { transition: none; }
+}
