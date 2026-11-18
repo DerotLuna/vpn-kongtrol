@@ -40,6 +40,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0025](0025-desktop-release-channels-first-run.md) | Desktop release, package managers, signing, safe upgrades and first run without a terminal | Accepted | 2026-11-18 |
 | [0026](0026-landing-hydrate-prerendered-html.md) | Landing hydrates its prerendered HTML (hydrateRoot) with a hydration check in CI | Accepted | 2026-11-18 |
 | [0027](0027-landing-download-ctas.md) | Landing download buttons: one primary per view, recommended OS, phones send the page to a computer | Accepted | 2026-11-18 |
+| [0028](0028-landing-hig-material3-review.md) | Landing review with Apple HIG and Material 3: 11px text floor, 44px targets, state layers, readable guide on phones | Accepted | 2026-11-18 |
 
 ## Statuses
 
