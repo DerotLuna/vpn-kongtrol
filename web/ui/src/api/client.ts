@@ -1,4 +1,4 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.6.0 · 2026-11-18
+// Kongtrol UI — typed client for the daemon's local API · v0.7.0 · 2026-11-18
 //
 // Same-origin only; requests carry no token in JS. Authentication (cookie,
 // session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
@@ -113,6 +113,11 @@ function withJSON(method: string, payload: unknown): RequestInit {
  */
 export const http = {
   get: <T>(path: string) => request<T>(path),
+  /** GET that also returns the response headers (e.g. X-Kongtrol-Audit-More paging). */
+  getWithHeaders: async <T>(path: string): Promise<{ data: T; headers: Headers }> => {
+    const res = await send(path, {}, 'application/json')
+    return { data: await parse<T>(res), headers: res.headers }
+  },
   post: <T>(path: string, payload?: unknown) => request<T>(path, withJSON('POST', payload)),
   put: <T>(path: string, payload: unknown) => request<T>(path, withJSON('PUT', payload)),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),

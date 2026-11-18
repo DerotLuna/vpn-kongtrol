@@ -1,4 +1,4 @@
-// Kongtrol UI — "Nueva VPN" / "Editar" sheet · v1.0.0 · 2026-11-18
+// Kongtrol UI — "Nueva VPN" / "Editar" sheet · v1.1.0 · 2026-11-18
 //
 // A sheet (bottom on phones, centered on wide screens) because creating a
 // VPN is a short focused task with its own steps: 1) which VPN, 2) its
@@ -35,9 +35,11 @@ interface Props {
   detected: readonly DetectedClient[]
   /** First run: after the first profile, restart on our own and go to Inicio. */
   firstRun: boolean
+  /** The edited profile's tunnel is up or connecting (renaming is refused then). */
+  busy?: boolean
 }
 
-export function ProfileEditor({ open, onClose, editing, initialType, profiles, detected, firstRun }: Props) {
+export function ProfileEditor({ open, onClose, editing, initialType, profiles, detected, firstRun, busy = false }: Props) {
   const { t } = usePreferences()
   const save = useSaveProfile()
   const { restart } = useRestartAction()
@@ -90,10 +92,19 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
     save.mutate(
       { original: editing?.name, body: toRequest(draft, editing ? 'update' : 'create') },
       {
-        onSuccess: () => {
+        onSuccess: (res) => {
           onClose()
           if (firstRun && !editing) {
             void restart({ thenHome: true, progress: t('profiles.setup.saved') })
+            return
+          }
+          if (res?.status === 'renamed') {
+            toasts.show({
+              tone: 'ok',
+              message: t('profiles.toast.renamed', { from: res.previous ?? editing?.name ?? '', to: res.profile }),
+              detail: t('profiles.toast.renamed.detail'),
+              duration: 9_000,
+            })
             return
           }
           toasts.show({
@@ -157,6 +168,7 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
               serverErrors={serverErrors}
               profiles={profiles}
               editing={editing}
+              busy={busy}
               onPickAnother={
                 editing
                   ? undefined

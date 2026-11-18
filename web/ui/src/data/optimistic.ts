@@ -1,4 +1,4 @@
-// Kongtrol UI — optimistic mutations with rollback · v0.1.0 · 2026-11-18
+// Kongtrol UI — optimistic mutations with rollback · v0.2.0 · 2026-11-18
 //
 // The pattern from TanStack Query's "Optimistic Updates" guide: cancel
 // in-flight reads of the resource, snapshot it, apply the expected result at
@@ -17,6 +17,11 @@ export interface OptimisticOptions<TVars, TData, TCache> {
   apply: (current: TCache, vars: TVars) => TCache
   /** Toast after success (info), or undefined when the change is visible in place. */
   successMessage?: (vars: TVars, data: TData) => string | undefined
+  /**
+   * A refusal the page shows in place (e.g. a dialog listing what blocks a
+   * delete). Return true when handled: the cache still rolls back, but no toast.
+   */
+  onRefused?: (err: unknown, vars: TVars) => boolean
 }
 
 interface Snapshot<TCache> {
@@ -38,6 +43,7 @@ export function useOptimisticMutation<TVars, TData, TCache>(opts: OptimisticOpti
     },
     onError: (err, vars, snapshot) => {
       if (snapshot?.previous !== undefined) client.setQueryData<TCache>(queryKey, snapshot.previous)
+      if (opts.onRefused?.(err, vars)) return
       const { message, fix } = describeError(err, t)
       toasts.show({
         tone: 'bad',

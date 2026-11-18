@@ -239,6 +239,7 @@ features:
       - internal/api/handlers_vpn_import.go
       - cmd/kongtrol/cmd_profile.go
       - web/ui/src/components/profiles/ImportFile.tsx
+      - web/ui/src/components/profiles/importModel.ts
     surfaces:
       - AGENTS.md#profile_import
       - docs/SETUP.md#profile_import

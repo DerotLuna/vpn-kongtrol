@@ -1,4 +1,4 @@
-// Kongtrol UI — the guided profile form · v1.0.0 · 2026-11-18
+// Kongtrol UI — the guided profile form · v1.1.0 · 2026-11-18
 //
 // Only the fields the chosen VPN type uses, in four short sections:
 // what it is, how it connects, how it signs in, what happens if it drops.
@@ -19,6 +19,7 @@ import { Monogram, SupportChip } from './Bits'
 import { AUTH_METHODS, CATALOG, specOf, type AuthMethod } from './catalog'
 import type { Draft, DraftField, Problems } from './draft'
 import { FailoverEditor } from './FailoverEditor'
+import { ImportFile } from './ImportFile'
 import { ArrowLeftIcon } from './icons'
 
 interface Props {
@@ -29,8 +30,10 @@ interface Props {
   /** A daemon validation error placed on its field. */
   serverErrors: Partial<Record<DraftField, FieldError>>
   profiles: readonly VPNProfile[]
-  /** The stored profile when editing (name locked, credentials state shown). */
+  /** The stored profile when editing (credentials state shown; renaming allowed). */
   editing?: VPNProfile | undefined
+  /** Its tunnel is up or connecting: a rename would be refused (api.err.vpn_rename_busy). */
+  busy?: boolean
   /** Back to the VPN tiles (create only). */
   onPickAnother?: (() => void) | undefined
 }
@@ -61,7 +64,7 @@ function Tech({ yaml }: { yaml: string }) {
   return <span className="kp-yaml mono"> · {yaml}</span>
 }
 
-export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErrors, profiles, editing, onPickAnother }: Props) {
+export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErrors, profiles, editing, busy = false, onPickAnother }: Props) {
   const { t } = usePreferences()
   const spec = specOf(draft.type)
   const err = (f: DraftField): FieldError | null => {
@@ -166,8 +169,13 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
           autoComplete="off"
           spellCheck={false}
           placeholder={t('profiles.placeholder.name')}
-          hint={editing ? t('profiles.hint.nameLocked') : t('profiles.hint.name')}
-          readOnly={!!editing}
+          hint={
+            !editing
+              ? t('profiles.hint.name')
+              : busy && draft.name.trim() !== editing.name
+                ? <strong>{t('profiles.hint.nameBusy', { name: editing.name })}</strong>
+                : t('profiles.hint.nameEdit')
+          }
           {...text('name')}
         />
       </Section>
@@ -194,6 +202,9 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
               }
               {...text('config')}
             />
+          )}
+          {spec.config && (draft.type === 'wireguard' || draft.type === 'openvpn') && (
+            <ImportFile type={draft.type} profileName={draft.name} onImported={(path) => onChange({ config: path })} />
           )}
           {spec.host && (
             <TextField

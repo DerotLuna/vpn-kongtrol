@@ -154,7 +154,7 @@ describe('ProfilesPage', () => {
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Edit work' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit work' })
-    expect(within(dialog).getByLabelText(/^Name/)).toHaveAttribute('readonly')
+    expect(within(dialog).getByLabelText(/^Name/)).not.toHaveAttribute('readonly')
     // Pass the local check (daemon has the final say): no backup added, just save.
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
     expect(await within(dialog).findByText('The backups form a loop: work → home → work.')).toBeInTheDocument()
@@ -212,14 +212,14 @@ describe('ProfilesPage', () => {
     expect(await screen.findByText('Kongtrol did not answer again')).toBeInTheDocument()
   })
 
-  it('deletes optimistically and puts the row back with the reason when the daemon refuses', async () => {
+  it('deletes optimistically; a refusal puts the row back and lists every place that uses it', async () => {
     stubFetch(
       base({
         'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
         'DELETE /api/v1/vpns/home': () =>
           json(
             {
-              error: 'profile "home" is in use · policies: intranet · groups: — · failover backup of: — · schedules: —',
+              error: 'profile "home" is in use · policies: intranet, git · groups: — · failover backup of: — · schedules: office',
               hint: 'Remove it from those places (or switch them to another profile) and delete it again.',
               error_key: 'api.err.vpn_in_use',
             },
@@ -231,9 +231,119 @@ describe('ProfilesPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Delete home' }))
     const confirm = await screen.findByRole('alertdialog', { name: 'Delete the VPN “home”?' })
     await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }))
-    expect(await screen.findByText(/policies: intranet/)).toBeInTheDocument()
-    expect(screen.getByText(/Remove it from those places/)).toBeInTheDocument()
+    const refused = await screen.findByRole('alertdialog', { name: 'Delete the VPN “home”?' })
+    expect(await within(refused).findByText('profile "home" is in use')).toBeInTheDocument()
+    const where = within(refused).getByLabelText('Where it is used')
+    expect(within(where).getByText('policies')).toBeInTheDocument()
+    expect(within(where).getByText('intranet')).toBeInTheDocument()
+    expect(within(where).getByText('git')).toBeInTheDocument()
+    expect(within(where).getByText('office')).toBeInTheDocument()
+    // Empty lists ("—") are left out.
+    expect(within(where).queryByText('groups')).not.toBeInTheDocument()
+    expect(within(refused).getByText(/Remove it from those places/)).toBeInTheDocument()
+    expect(within(refused).queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
+    await userEvent.click(within(refused).getByRole('button', { name: 'Got it' }))
     expect(await screen.findByRole('button', { name: 'Delete home' })).toBeInTheDocument()
+  })
+
+  it('renames a profile, says what followed it and offers the restart', async () => {
+    const fetchMock = stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
+        'PUT /api/v1/vpns/home': () => json({ status: 'renamed', profile: 'casa', previous: 'home', restart_required: true }),
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit home' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit home' })
+    const name = within(dialog).getByLabelText(/^Name/)
+    await userEvent.clear(name)
+    await userEvent.type(name, 'casa')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    expect(await screen.findByText('VPN “home” is now called “casa”.')).toBeInTheDocument()
+    expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/home')).toMatchObject({ name: 'casa' })
+    expect(await screen.findByRole('button', { name: 'Restart now' })).toBeInTheDocument()
+  })
+
+  it('rename: a connected VPN says to disconnect it first, and the daemon refusal lands on the name', async () => {
+    stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
+        'PUT /api/v1/vpns/work': () =>
+          json(
+            {
+              error: '"work" is connected or connecting: it cannot be renamed now',
+              hint: 'Disconnect it and save the new name again.',
+              error_key: 'api.err.vpn_rename_busy',
+            },
+            409,
+          ),
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit work' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit work' })
+    const name = within(dialog).getByLabelText(/^Name/)
+    await userEvent.type(name, '2')
+    expect(within(dialog).getByText('“work” is connected: disconnect it to rename it.')).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    expect(await within(dialog).findByText('Disconnect it and save the new name again.')).toBeInTheDocument()
+    await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'))
+  })
+
+  it('imports a .conf: fills the path; a taken name offers Replace; a refused file says why and what to do', async () => {
+    let calls = 0
+    const fetchMock = stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work')]),
+        'POST /api/v1/vpns/import': (init) => {
+          calls++
+          const body = JSON.parse(String(init?.body)) as { name: string; overwrite?: boolean; content_base64: string }
+          if (atob(body.content_base64).includes('PostUp')) {
+            return json(
+              {
+                error: 'the file runs commands (PostUp, line 3): Kongtrol does not allow that, for safety',
+                hint: 'Delete that line from the file (Kongtrol already handles routes and DNS) and import it again.',
+                error_key: 'api.err.import_hook',
+              },
+              400,
+            )
+          }
+          if (calls === 1 && !body.overwrite) {
+            return json({ error: 'a file "casa.conf" already exists', hint: 'Pick another name or confirm.', error_key: 'api.err.import_exists' }, 409)
+          }
+          return json({ status: 'imported', path: '/home/ana/.kongtrol/configs/casa.conf', type: 'wireguard', overwritten: !!body.overwrite }, 201)
+        },
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: /New VPN/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /WireGuard/ }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), 'casa')
+    const input = dialog.querySelector<HTMLInputElement>('input[type="file"]')!
+    expect(input).toHaveAttribute('accept', '.conf')
+
+    // Wrong extension: refused here, nothing sent.
+    await userEvent.upload(input, new File(['x'], 'notes.txt', { type: 'text/plain' }), { applyAccept: false })
+    expect(await within(dialog).findByText('“notes.txt” is not a .conf file.')).toBeInTheDocument()
+    expect(calls).toBe(0)
+
+    const good = new File(['[Interface]\nPrivateKey = a\n'], 'office.conf')
+    await userEvent.upload(input, good)
+    expect(await within(dialog).findByText('a file "casa.conf" already exists')).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Replace' }))
+    expect(await within(dialog).findByText(/Replaced: the path is in the field/)).toBeInTheDocument()
+    expect(within(dialog).getByLabelText(/\.conf file/)).toHaveValue('/home/ana/.kongtrol/configs/casa.conf')
+    const sent = fetchMock.mock.calls.filter(([u]) => String(u) === '/api/v1/vpns/import').map(([, i]) => JSON.parse(String(i?.body)))
+    expect(sent.map((b) => [b.name, b.type, b.overwrite])).toEqual([
+      ['casa', 'wireguard', false],
+      ['casa', 'wireguard', true],
+    ])
+
+    await userEvent.upload(input, new File(['[Interface]\nPrivateKey = a\nPostUp = x\n'], 'bad.conf'))
+    expect(await within(dialog).findByText(/runs commands \(PostUp, line 3\)/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Delete that line from the file/)).toBeInTheDocument()
   })
 
   it('does not offer delete while a group or another profile still needs the profile', async () => {

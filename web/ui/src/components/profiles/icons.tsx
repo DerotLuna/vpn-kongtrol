@@ -19,6 +19,12 @@ function Icon({ children }: { children: ReactNode }) {
   )
 }
 
+export const UploadIcon = () => (
+  <Icon>
+    <path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" />
+  </Icon>
+)
+
 export const EditIcon = () => (
   <Icon>
     <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4zM13.5 6.5l4 4" />

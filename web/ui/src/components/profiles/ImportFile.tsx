@@ -1,0 +1,157 @@
+// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.0.0 · 2026-11-18
+//
+// feature:profile_import
+// The non-technical path to a .conf / .ovpn: pick (or drop) the file the
+// provider gave you; the daemon checks it with the privileged helper's own
+// rules and stores it in ~/.kongtrol/configs/ (POST /api/v1/vpns/import,
+// ADR-0042); the form's path field is filled with where it landed. Typing
+// a path by hand stays available for advanced users (the field above).
+//
+// Checked here first, with the same limits, so nothing large travels: the
+// extension (.conf for WireGuard, .ovpn for OpenVPN) and the size (the
+// helper's 512 KiB). A name already taken (409 api.err.import_exists) is
+// answered inline with "Reemplazar" / "Conservar el que hay" — a confirm
+// in place, never a dialog over the profile sheet. Every refusal reads as
+// what happened + what to do (the daemon translates api.err.import_*).
+// Drag and drop is an extra: the button is the accessible path.
+import { useId, useRef, useState, type DragEvent } from 'react'
+import { ApiError } from '../../api/client'
+import { describeError, type ErrorText } from '../../api/errors'
+import { usePreferences } from '../../app/preferences-context'
+import { useImportProfileFile, type ImportResult } from '../../data/profiles'
+import { Button } from '../ui/Button'
+import { Banner } from '../ui/States'
+import { UploadIcon } from './icons'
+import { IMPORT_EXT as EXT, MAX_IMPORT_BYTES, importName, toBase64 } from './importModel'
+
+interface Props {
+  type: 'wireguard' | 'openvpn'
+  /** The profile name typed so far; the stored file is named after it. */
+  profileName: string
+  onImported: (path: string) => void
+}
+
+type Phase =
+  | { kind: 'idle' }
+  | { kind: 'done'; result: ImportResult }
+  | { kind: 'exists'; file: File; error: ErrorText }
+  | { kind: 'error'; error: ErrorText }
+
+export function ImportFile({ type, profileName, onImported }: Props) {
+  const { t } = usePreferences()
+  const save = useImportProfileFile()
+  const input = useRef<HTMLInputElement>(null)
+  const id = useId()
+  const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
+  const [drag, setDrag] = useState(false)
+  const ext = EXT[type]
+
+  const send = async (file: File, overwrite: boolean) => {
+    if (!file.name.toLowerCase().endsWith(ext)) {
+      const vars = { file: file.name, ext }
+      setPhase({ kind: 'error', error: { message: t('profiles.import.wrongExt', vars), fix: t('profiles.import.wrongExt.fix', vars) } })
+      return
+    }
+    if (file.size > MAX_IMPORT_BYTES) {
+      const vars = { file: file.name, ext, size: Math.ceil(file.size / 1024), max: MAX_IMPORT_BYTES / 1024 }
+      setPhase({ kind: 'error', error: { message: t('profiles.import.tooBig', vars), fix: t('profiles.import.tooBig.fix', vars) } })
+      return
+    }
+    let content: string
+    try {
+      content = toBase64(new Uint8Array(await file.arrayBuffer()))
+    } catch {
+      const vars = { file: file.name }
+      setPhase({ kind: 'error', error: { message: t('profiles.import.readFail', vars), fix: t('profiles.import.readFail.fix', vars) } })
+      return
+    }
+    save.mutate(
+      { name: importName(profileName, file.name), type, content_base64: content, overwrite },
+      {
+        onSuccess: (result) => {
+          setPhase({ kind: 'done', result })
+          onImported(result.path)
+        },
+        onError: (err) => {
+          const error = describeError(err, t)
+          const taken = err instanceof ApiError && err.key === 'api.err.import_exists'
+          setPhase(taken ? { kind: 'exists', file, error } : { kind: 'error', error })
+        },
+      },
+    )
+  }
+
+  const pick = (files: FileList | null) => {
+    const file = files?.[0]
+    if (file) void send(file, false)
+    if (input.current) input.current.value = ''
+  }
+
+  const onDrop = (e: DragEvent) => {
+    e.preventDefault()
+    setDrag(false)
+    pick(e.dataTransfer.files)
+  }
+
+  return (
+    <div
+      className="kp-import"
+      data-drag={drag || undefined}
+      onDragOver={(e) => {
+        e.preventDefault()
+        setDrag(true)
+      }}
+      onDragLeave={() => setDrag(false)}
+      onDrop={onDrop}
+    >
+      <div className="kp-import__row">
+        <input
+          ref={input}
+          id={id}
+          type="file"
+          accept={ext}
+          className="kp-import__file"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => pick(e.target.files)}
+        />
+        <Button variant="outlined" icon={<UploadIcon />} loading={save.isPending} onClick={() => input.current?.click()}>
+          {save.isPending ? t('profiles.import.busy') : t('profiles.import.button')}
+        </Button>
+        <p className="kp-import__what">{drag ? t('profiles.import.drop') : t('profiles.import.what', { ext })}</p>
+      </div>
+
+      <div aria-live="polite">
+        {phase.kind === 'done' && (
+          <p className="kp-import__ok">
+            {t(phase.result.overwritten ? 'profiles.import.replaced' : 'profiles.import.done')}{' '}
+            <code className="mono">{phase.result.path}</code>
+          </p>
+        )}
+      </div>
+      {phase.kind === 'exists' && (
+        <Banner
+          tone="caution"
+          title={phase.error.message}
+          actions={
+            <>
+              <Button variant="outlined" size="sm" onClick={() => setPhase({ kind: 'idle' })}>
+                {t('profiles.import.keep')}
+              </Button>
+              <Button variant="danger" size="sm" loading={save.isPending} onClick={() => void send(phase.file, true)}>
+                {t('profiles.import.replace')}
+              </Button>
+            </>
+          }
+        >
+          <span>{t('profiles.import.replaceWhat', { file: importName(profileName, phase.file.name) + ext })}</span>
+        </Banner>
+      )}
+      {phase.kind === 'error' && (
+        <Banner tone="bad" title={phase.error.message} urgent>
+          <span>{phase.error.fix}</span>
+        </Banner>
+      )}
+    </div>
+  )
+}

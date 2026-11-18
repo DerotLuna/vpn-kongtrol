@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Kongtrol UI — Perfiles + Grupos · v1.0.0 · 2026-11-18
+   Kongtrol UI — Perfiles + Grupos · v1.1.0 · 2026-11-18
    Page-local styles on top of the kit (tokens.css, kit.css). Provider
    groups follow DESIGN.md: "con la app que ya usas" = amber, "conecta
    directo" = steel; green stays for connected only. Monograms are our own
@@ -207,7 +207,35 @@
 
 .kp-confirm { display: flex; gap: 12px; align-items: flex-start; }
 
+/* ── "Dónde se usa": a refused delete, one row per kind of reference ───── */
+.kp-refs { display: grid; gap: 8px; margin: 4px 0 12px; }
+.kp-refs__row {
+  display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: 4px 12px; align-items: baseline;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2);
+}
+.kp-refs dt { font-size: 13px; color: var(--text-muted); }
+.kp-refs dd { margin: 0; }
+.kp-refs__names { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.kp-refs__names li {
+  font-size: 13px; padding: 2px 8px; border-radius: 999px; overflow-wrap: anywhere;
+  background: var(--surface-3); border: 1px solid var(--border-2);
+}
+@media (max-width: 480px) { .kp-refs__row { grid-template-columns: 1fr; } }
+
+/* ── Importar archivo (.conf / .ovpn) ──────────────────────────────────── */
+.kp-import {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  border: 1px dashed var(--border-2); border-radius: var(--radius);
+  transition: border-color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard);
+}
+.kp-import[data-drag='true'] { border-color: var(--signal-line); background: var(--signal-soft); }
+.kp-import__row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.kp-import__what { margin: 0; font-size: 13px; color: var(--text-muted); max-width: 65ch; }
+.kp-import__file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.kp-import__ok { margin: 0; font-size: 13px; color: var(--text); }
+.kp-import__ok code { overflow-wrap: anywhere; }
+
 @media (prefers-reduced-motion: reduce) {
-  .kp-tile, .kp-more > summary::before { transition: none; }
+  .kp-tile, .kp-more > summary::before, .kp-import { transition: none; }
   .kp-tile:active { transform: none; }
 }

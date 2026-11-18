@@ -1,4 +1,4 @@
-// Kongtrol UI — profile form model: draft ⇄ API body, and checks before saving · v1.0.0 · 2026-11-18
+// Kongtrol UI — profile form model: draft ⇄ API body, and checks before saving · v1.1.0 · 2026-11-18
 //
 // Pure functions (tested in draft.test.ts). The daemon stays the authority
 // (config.Validate answers with a translated error + hint); these checks
@@ -227,7 +227,7 @@ export function checkDraft(d: Draft, { profiles, editing }: CheckContext): Probl
   const out: Problems = {}
   const name = d.name.trim()
   if (!name) out.name = { key: 'profiles.check.nameRequired' }
-  else if (!editing && profiles.some((p) => p.name === name)) out.name = { key: 'profiles.check.nameTaken', vars: { name } }
+  else if (name !== editing && profiles.some((p) => p.name === name)) out.name = { key: 'profiles.check.nameTaken', vars: { name } }
 
   if (spec.config && !d.config.trim()) out.config = { key: spec.config === 'ovpn' ? 'profiles.check.ovpnRequired' : 'profiles.check.confRequired' }
   if (spec.host === 'required' && !d.host.trim()) out.host = { key: 'profiles.check.hostRequired' }
@@ -274,6 +274,10 @@ export function fieldForErrorKey(key: string): DraftField | undefined {
     case 'config.err.no_location':
     case 'config.err.server_combo':
       return 'server'
+    // Rename refusals (PUT with another name, ADR-0042).
+    case 'api.err.vpn_exists':
+    case 'api.err.vpn_rename_busy':
+      return 'name'
     default:
       return undefined
   }

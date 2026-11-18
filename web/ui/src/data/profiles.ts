@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.0.1 · 2026-11-18
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.1.0 · 2026-11-18
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -84,11 +84,29 @@ export type ProfileRequest = Partial<{
   app_path: string
 }>
 
-/** Create / update / delete answer. */
+/** Create / update / rename / delete answer (handlers_vpn.go). */
 export interface ProfileChangeResult {
-  status: 'created' | 'updated' | 'deleted'
+  status: 'created' | 'updated' | 'renamed' | 'deleted'
   profile: string
+  /** The old name, when status is "renamed". */
+  previous?: string
   restart_required?: boolean
+}
+
+/** POST /api/v1/vpns/import body (handlers_vpn_import.go importReq). */
+export interface ImportRequest {
+  name: string
+  type: 'wireguard' | 'openvpn'
+  content_base64: string
+  overwrite?: boolean
+}
+
+/** POST /api/v1/vpns/import answer (201). */
+export interface ImportResult {
+  status: 'imported'
+  path: string
+  type: 'wireguard' | 'openvpn'
+  overwritten: boolean
 }
 
 /** internal/api/handlers_setup.go `SetupStatus`. */
@@ -133,6 +151,8 @@ export const profilesApi = {
   update: (name: string, body: ProfileRequest) =>
     http.put<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`, body),
   remove: (name: string) => http.delete<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`),
+  /** Validated like the privileged helper does; 409 api.err.import_exists unless overwrite. */
+  importFile: (body: ImportRequest) => http.post<ImportResult>('/api/v1/vpns/import', body),
   setup: () => http.get<SetupStatus>('/api/v1/setup'),
   /** Older daemons have no detect endpoint: a 404 means "nothing to suggest". */
   detect: () =>
@@ -226,6 +246,9 @@ export function useSaveProfile() {
       original ? profilesApi.update(original, body) : profilesApi.create(body),
     onSuccess: (res) => {
       if (res?.restart_required !== false) markRestartPending()
+      // A rename also rewrote policies, groups, schedules, expected IPs and
+      // favorites (ADR-0042): every page re-reads its resource.
+      if (res?.status === 'renamed') void client.invalidateQueries()
     },
     onSettled: () => {
       void client.invalidateQueries({ queryKey: profileKeys.vpns })
@@ -246,7 +269,11 @@ async function localized<T>(run: () => Promise<T>, localize: Localize): Promise<
   }
 }
 
-export function useDeleteProfile(successMessage: (name: string) => string, localize: Localize) {
+export function useDeleteProfile(
+  successMessage: (name: string) => string,
+  localize: Localize,
+  onRefused?: (err: unknown, name: string) => boolean,
+) {
   return useOptimisticMutation<string, ProfileChangeResult, VPNProfile[]>({
     queryKey: profileKeys.vpns,
     mutationFn: (name) =>
@@ -257,7 +284,13 @@ export function useDeleteProfile(successMessage: (name: string) => string, local
       }, localize),
     apply: (list, name) => list.filter((p) => p.name !== name),
     successMessage: (name) => successMessage(name),
+    ...(onRefused ? { onRefused } : {}),
   })
+}
+
+/** "Importar archivo": stores the file; the form then fills its path. Not cached. */
+export function useImportProfileFile() {
+  return useMutation<ImportResult, unknown, ImportRequest>({ mutationFn: profilesApi.importFile })
 }
 
 // ── Restart ───────────────────────────────────────────────────────────────

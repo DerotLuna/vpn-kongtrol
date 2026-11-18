@@ -1,4 +1,4 @@
-// Perfiles (/profiles) — the VPN profiles Kongtrol manages · v1.0.0 · 2026-11-18
+// Perfiles (/profiles) — the VPN profiles Kongtrol manages · v1.1.0 · 2026-11-18
 //
 // Parity contract: docs/dashboard-parity.md §3.2 "Tab: VPN Profiles". Reads
 // profiles, setup state and installed VPN apps once per visit (no polling,
@@ -12,7 +12,7 @@ import { Monogram, ProfilesHeader } from '../components/profiles/Bits'
 import { specOf } from '../components/profiles/catalog'
 import { ConfirmDelete } from '../components/profiles/ConfirmDelete'
 import { backupOf, matchesFilter } from '../components/profiles/draft'
-import { localizeError } from '../components/profiles/errors'
+import { deleteRefusal, localizeError, type DeleteRefusal } from '../components/profiles/errors'
 import { FirstRun } from '../components/profiles/FirstRun'
 import { SearchIcon } from '../components/profiles/icons'
 import { ProfileEditor } from '../components/profiles/ProfileEditor'
@@ -66,9 +66,19 @@ export function ProfilesPage() {
   const [toDelete, setToDelete] = useState<VPNProfile | null>(null)
   const seq = useRef(0)
 
+  // The daemon's own refusal (every reference at once, or the last profile)
+  // reopens the dialog with the list instead of a toast.
+  const [refused, setRefused] = useState<{ profile: VPNProfile; refusal: DeleteRefusal } | null>(null)
   const remove = useDeleteProfile(
     (name) => t('profiles.toast.deleted', { name }),
     (err) => localizeError(err, t),
+    (err, name) => {
+      const refusal = deleteRefusal(err)
+      const profile = list.find((p) => p.name === name)
+      if (!refusal || !profile) return false
+      setRefused({ profile, refusal })
+      return true
+    },
   )
 
   const rows = useMemo(() => {
@@ -84,6 +94,7 @@ export function ProfilesPage() {
 
   // What still depends on the profile: checked here so the dialog can say what to change first.
   const blocked = useMemo(() => {
+    if (refused) return refused.refusal
     if (!toDelete) return null
     if (list.length <= 1) return { message: t('profiles.err.last'), fix: t('profiles.err.last.fix') }
     const inGroups = (groups.data ?? []).filter((g) => g.profiles.includes(toDelete.name)).map((g) => g.name)
@@ -101,7 +112,12 @@ export function ProfilesPage() {
       }
     }
     return null
-  }, [toDelete, list, groups.data, t])
+  }, [refused, toDelete, list, groups.data, t])
+  const deleting = refused?.profile ?? toDelete
+  const busyNames = useMemo(
+    () => new Set((tunnels.data ?? []).filter((tn) => tn.Status === 'connected' || tn.Status === 'connecting').map((tn) => tn.Name)),
+    [tunnels.data],
+  )
 
   const firstRun = !!setup.data?.needs_setup || empty
 
@@ -195,22 +211,26 @@ export function ProfilesPage() {
           profiles={list}
           detected={detected.data ?? []}
           firstRun={firstRun && editor.mode === 'create'}
+          busy={editor.mode === 'edit' && busyNames.has(editor.profile.name)}
         />
       )}
 
       <ConfirmDelete
-        open={!!toDelete}
-        title={toDelete ? t('profiles.confirm.title', { name: toDelete.name }) : ''}
+        open={!!deleting}
+        title={deleting ? t('profiles.confirm.title', { name: deleting.name }) : ''}
         body={
-          toDelete && (
+          deleting && (
             <span className="kp-confirm">
-              <Monogram spec={specOf(toDelete.type)} />
+              <Monogram spec={specOf(deleting.type)} />
               <span>{t('profiles.confirm.body')}</span>
             </span>
           )
         }
         blocked={blocked}
-        onCancel={() => setToDelete(null)}
+        onCancel={() => {
+          setToDelete(null)
+          setRefused(null)
+        }}
         onConfirm={() => {
           if (toDelete) remove.mutate(toDelete.name)
           setToDelete(null)

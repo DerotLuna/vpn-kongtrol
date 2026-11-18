@@ -83,6 +83,8 @@ describe('checkDraft', () => {
     expect(checkDraft(taken, { profiles: others }).name?.key).toBe('profiles.check.nameTaken')
     // Editing keeps its own name.
     expect(checkDraft(taken, { profiles: others, editing: 'a' }).name).toBeUndefined()
+    // Renaming onto another profile's name is caught before the daemon's 409.
+    expect(checkDraft(taken, { profiles: others, editing: 'b' }).name?.key).toBe('profiles.check.nameTaken')
     expect(checkDraft({ ...emptyDraft('forticlient'), name: 'f' }, { profiles: others }).host?.key).toBe('profiles.check.hostRequired')
   })
 
@@ -131,6 +133,8 @@ describe('helpers', () => {
     expect(fieldForErrorKey('config.err.failover_cycle')).toBe('failover')
     expect(fieldForErrorKey('config.err.wait_timeout')).toBe('waitTimeout')
     expect(fieldForErrorKey('config.err.server_combo')).toBe('server')
+    expect(fieldForErrorKey('api.err.vpn_rename_busy')).toBe('name')
+    expect(fieldForErrorKey('api.err.vpn_exists')).toBe('name')
     expect(fieldForErrorKey('config.err.other')).toBeUndefined()
     expect(backupOf('b', [profile('a', { failover: ['b'] }), profile('b')])).toEqual(['a'])
   })
