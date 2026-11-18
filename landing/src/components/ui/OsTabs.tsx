@@ -14,6 +14,10 @@ export default function OsTabs({ os, setOS, lang, style }: { os: OS; setOS: (o: 
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const label = lang === 'es' ? 'Sistema operativo' : 'Operating system'
 
+  // the first pick turns on the panel fade-in (index.css, :root[data-os-picked]);
+  // set by hand, so the prerender and the hydration pass never animate
+  const pick = (o: OS) => { document.documentElement.dataset.osPicked = ''; setOS(o) }
+
   const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
     const last = ORDER.length - 1
     const next =
@@ -24,7 +28,7 @@ export default function OsTabs({ os, setOS, lang, style }: { os: OS; setOS: (o: 
       : null
     if (next == null) return
     e.preventDefault()
-    setOS(ORDER[next])
+    pick(ORDER[next])
     refs.current[next]?.focus()
   }
 
@@ -39,7 +43,7 @@ export default function OsTabs({ os, setOS, lang, style }: { os: OS; setOS: (o: 
           aria-checked={os === o}
           tabIndex={os === o ? 0 : -1}
           className={`os-tab${os === o ? ' active' : ''}`}
-          onClick={() => setOS(o)}
+          onClick={() => pick(o)}
           onKeyDown={e => onKeyDown(e, i)}
         >
           {OS_LABELS[o]}

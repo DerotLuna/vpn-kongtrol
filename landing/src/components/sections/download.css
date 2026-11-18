@@ -79,15 +79,10 @@
   transition: background-color var(--dur-short) var(--ease-standard);
 }
 .dl-more > summary::-webkit-details-marker { display: none; }
-.dl-more > summary::before {
-  content: "+"; flex: none; width: 14px; text-align: center;
-  font-weight: 700; color: var(--signal);
-}
-.dl-more[open] > summary::before { content: "\2212"; }
 .dl-more[open] > summary { border-bottom: 1px solid var(--border); }
 .dl-more > summary:hover { background: var(--surface-2); }
 .dl-more > summary:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
-.dl-more-body { padding: 14px 16px 16px 42px; }
+.dl-more-body { padding: 14px 16px 16px 40px; }
 .dl-steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; color: var(--text-muted); font-size: 0.92rem; line-height: 1.55; }
 .dl-steps strong, .dl-admin strong { color: var(--text); font-weight: 600; }
 .dl-note { margin: 10px 0 0; font-size: 0.88rem; line-height: 1.55; color: var(--text-muted); text-wrap: pretty; }

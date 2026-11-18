@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.6.0 · 2026-11-18
+   v2.7.0 · 2026-11-18
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
@@ -15,6 +15,8 @@
    screen and only transform/opacity (ADR-0031).
    v2.6: "Sesión en la Torre" palette (DESIGN.md) — green (--live) only for
    "connected / up", new --caution, deeper light amber/steel/green.
+   v2.7: disclosures open/close with a height transition (::details-content),
+   drawn +/− marker, tab panels and copy feedback fade in.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* self-hosted fonts (single source: assets/brand, alias @brand) — bundled with
@@ -655,9 +657,44 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 .guide-more > summary:hover { background: color-mix(in srgb, var(--signal) var(--state-hover), transparent); }
 .guide-more > summary::-webkit-details-marker { display: none; }
-.guide-more > summary::before { content: '+'; font-weight: 700; font-size: 0.9rem; width: 12px; text-align: center; }
-.guide-more[open] > summary::before { content: '−'; }
 .guide-more[open] > summary { border-bottom: 1px solid var(--border); }
+
+/* ── Disclosures (every <details>: .guide-more, .dl-more) ──
+   The +/− marker is drawn (.disclosure-mark in the <summary>): two bars; the
+   vertical one turns flat and fades out on open, leaving "−".
+   Opening/closing animates the height with ::details-content (Baseline 2025)
+   + interpolate-size (Chromium only; elsewhere it opens at once, same as with
+   reduced motion). Closed by default, so nothing moves on load.
+   https://developer.mozilla.org/en-US/docs/Web/CSS/::details-content
+   https://developer.mozilla.org/en-US/docs/Web/CSS/interpolate-size */
+.disclosure-mark { position: relative; flex: none; width: 12px; height: 12px; color: var(--signal); }
+.disclosure-mark::before, .disclosure-mark::after {
+  content: ''; position: absolute; left: 1px; top: 5px; width: 10px; height: 2px;
+  border-radius: 1px; background: currentColor;
+}
+.disclosure-mark::after { rotate: 90deg; }
+details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  :root { interpolate-size: allow-keywords; }
+  .disclosure-mark::after {
+    transition: rotate var(--dur-medium) var(--ease-standard), opacity var(--dur-medium) var(--ease-standard);
+  }
+  details::details-content {
+    block-size: 0; overflow: clip;
+    transition: block-size var(--dur-medium) var(--ease-standard),
+                content-visibility var(--dur-medium) allow-discrete;
+  }
+  details[open]::details-content { block-size: auto; }
+
+  /* tab panels fade in when the visitor switches (never on load: the
+     attribute is set by the first pick, OsTabs.tsx; DevInstall re-keys) */
+  :root[data-os-picked] .os-panel.active,
+  :root[data-os-picked] .os-tabs + .code-block,
+  .code-block pre.is-swapped { animation: panelIn var(--dur-medium) var(--ease-standard); }
+  /* copy feedback ("copiado ✓") fades in, only after a click */
+  .copy-label.is-fb { animation: panelIn var(--dur-short) var(--ease-standard); }
+}
+@keyframes panelIn { from { opacity: 0; } }
 .guide-more .code-block { margin: 0; border: 0; border-radius: 0; }
 
 /* OS tabs */

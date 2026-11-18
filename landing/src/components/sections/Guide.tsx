@@ -285,12 +285,12 @@ $ kongtrol dashboard`}</CodeBlock>
               <CodeBlock ui={lang} lang="text">{t.wizard23}</CodeBlock>
               <p>{t.wizard24}</p>
               <details className="guide-more">
-                <summary>{t.wizard25}</summary>
+                <summary><span className="disclosure-mark" aria-hidden="true" />{t.wizard25}</summary>
                 <CodeBlock ui={lang} lang="text">{t.wizard26}</CodeBlock>
               </details>
               <p style={{ marginTop: 20 }}>{t.wizard27}</p>
               <details className="guide-more">
-                <summary>{t.wizard28}</summary>
+                <summary><span className="disclosure-mark" aria-hidden="true" />{t.wizard28}</summary>
                 <CodeBlock ui={lang} lang="text">{t.wizard29}</CodeBlock>
               </details>
               <h3 style={{ marginBottom: 8, marginTop: 24 }}>{t.wizard30}</h3>
@@ -310,7 +310,7 @@ $ kongtrol dashboard`}</CodeBlock>
               <div className="callout" style={{ marginTop: 12 }}>{t.wizard36}</div>
               <p>{t.wizard37}</p>
               <details className="guide-more">
-                <summary>{t.wizard38}</summary>
+                <summary><span className="disclosure-mark" aria-hidden="true" />{t.wizard38}</summary>
                 <CodeBlock ui={lang} lang="text">{t.wizard39}</CodeBlock>
               </details>
               <div className="callout">{t.wizard40}</div>

@@ -17,6 +17,8 @@ export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, chi
   // idle → copied | failed → idle. A refused clipboard (no permission, plain
   // http, old browser) says so instead of failing silently (Apple HIG Feedback).
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
+  // after the first click every label change fades in (index.css .copy-label.is-fb)
+  const [used, setUsed] = useState(false)
   const isES = ui === 'es'
 
   const copy = () => {
@@ -24,6 +26,7 @@ export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, chi
     // ($ shell, > PowerShell: the same two prompts highlighted below)
     const clean = children.replace(/^[$>] /gm, '')
     const done = (s: 'copied' | 'failed') => {
+      setUsed(true)
       setState(s)
       setTimeout(() => setState('idle'), s === 'copied' ? 1800 : 3200)
     }
@@ -58,7 +61,7 @@ export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, chi
       <div className="code-block-header">
         {head ?? <span className="code-block-lang">{lang}</span>}
         <button type="button" className={`copy-btn${state === 'idle' ? '' : ` ${state}`}`} onClick={copy} aria-live="polite">
-          {label}
+          <span key={state} className={`copy-label${used ? ' is-fb' : ''}`}>{label}</span>
         </button>
       </div>
       <pre key={swapKey} {...panel} className={swapKey ? 'is-swapped' : undefined}>{highlighted}</pre>

@@ -257,14 +257,14 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
           <h3 className="dl-others-title">{copy.afterTitle}</h3>
           <div className="dl-help">
             <details className="dl-more">
-              <summary>{copy.winTitle}</summary>
+              <summary><span className="disclosure-mark" aria-hidden="true" />{copy.winTitle}</summary>
               <div className="dl-more-body">
                 <ol className="dl-steps">{copy.winSteps.map((s, i) => <li key={i}>{s}</li>)}</ol>
                 <p className="dl-note">{copy.winWhy}</p>
               </div>
             </details>
             <details className="dl-more">
-              <summary>{copy.macTitle}</summary>
+              <summary><span className="disclosure-mark" aria-hidden="true" />{copy.macTitle}</summary>
               <div className="dl-more-body">
                 <ol className="dl-steps">{copy.macSteps.map((s, i) => <li key={i}>{s}</li>)}</ol>
                 <p className="dl-note">{copy.macCurl}</p>

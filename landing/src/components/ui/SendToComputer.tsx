@@ -83,7 +83,7 @@ export default function SendToComputer({ lang, variant = 'full', children, class
         </button>
         {children}
       </div>
-      <p className={`stc-status${status === 'failed' ? ' failed' : ''}`} role="status">{message}</p>
+      <p className={`stc-status${status === 'failed' ? ' failed' : ''}`} role="status"><span key={status} className="copy-label is-fb">{message}</span></p>
     </div>
   )
 }
