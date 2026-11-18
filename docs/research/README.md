@@ -39,7 +39,7 @@ reasoned but unverified.
 | [2026-11-18-landing-hig-material3-review](2026-11-18-landing-hig-material3-review.md) | Apple HIG (buttons, typography, accessibility, feedback, motion, layout) and M3 tokens applied to the landing; Lighthouse before/after | ADR-0028 |
 | [2026-11-18-cli-command-structure](2026-11-18-cli-command-structure.md) | clig.dev interactivity/deprecation/naming, cobra deprecation text, gh/tailscale/systemctl naming | ADR-0033 |
 | [2026-11-18-install-script-delivery](2026-11-18-install-script-delivery.md) | GitHub latest-download alias, GoReleaser release/checksum extra_files, Cloudflare Workers `_redirects` | ADR-0035 |
-| [2026-11-18-dashboard-ui-patterns](2026-11-18-dashboard-ui-patterns.md) | Apple HIG, Material 3, Fluent 2, WCAG 2.2 AA, Nielsen, live-data patterns (SWR, optimistic, backoff+jitter), router / data library choice for `web/ui` | ADR-0037 |
+| [2026-11-18-dashboard-ui-patterns](2026-11-18-dashboard-ui-patterns.md) | Apple HIG, Material 3, Fluent 2, WCAG 2.2 AA, Nielsen, live-data patterns (SWR, optimistic, backoff+jitter), router / data library choice for `web/ui` | ADR-0038 |
 
 ## Template
 

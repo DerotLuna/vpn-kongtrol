@@ -1,6 +1,6 @@
 // Kongtrol UI — server-state cache · v0.1.0 · 2026-11-18
 //
-// TanStack Query (ADR-0037) gives the cache keyed by resource,
+// TanStack Query (ADR-0038) gives the cache keyed by resource,
 // stale-while-revalidate, request de-duplication, retries and optimistic
 // mutations with rollback, instead of hand-rolled hooks per page.
 //

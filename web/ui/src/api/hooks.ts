@@ -1,6 +1,6 @@
 // Kongtrol UI — page-facing data hooks · v0.4.0 · 2026-11-18
 //
-// Resource reads go through the shared cache (src/data, ADR-0037): these
+// Resource reads go through the shared cache (src/data, ADR-0038): these
 // hooks only shape it for the existing cards. On-demand actions (doctor,
 // export) keep local state: they are not resources and never run by
 // themselves.

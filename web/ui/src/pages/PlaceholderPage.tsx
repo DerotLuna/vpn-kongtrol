@@ -1,6 +1,6 @@
 // Kongtrol UI — sections not migrated yet · v0.1.0 · 2026-11-18
 //
-// Phase 1 routes every target section (ADR-0037) so navigation, deep links
+// Phase 1 routes every target section (ADR-0038) so navigation, deep links
 // and the shell are final; each page lists what will live here (the parity
 // rows in docs/dashboard-parity.md) and opens the classic page that has it
 // today. Phase 2 replaces one placeholder per page.

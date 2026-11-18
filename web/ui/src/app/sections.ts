@@ -1,7 +1,7 @@
 // Kongtrol UI — information architecture · v0.1.0 · 2026-11-18
 //
 // The sections of the panel, in navigation order (docs/dashboard-parity.md
-// maps every legacy feature to one of them; ADR-0037). `mobile` marks the
+// maps every legacy feature to one of them; ADR-0038). `mobile` marks the
 // four destinations in the phone bottom bar; the rest live under "Más".
 import type { ComponentType } from 'react'
 import {

@@ -1,6 +1,6 @@
 // Kongtrol UI — app shell · v0.2.0 · 2026-11-18
 //
-// Layout route for every page (ADR-0037):
+// Layout route for every page (ADR-0038):
 // - Header: logo top-left, aggregate VPN status, help (same place on every
 //   page, WCAG 3.2.6), classic dashboard, language, theme, version.
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent

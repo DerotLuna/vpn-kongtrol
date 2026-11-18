@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0037: Panel nuevo: arquitectura y patrones (router, datos en vivo, kit, navegación)
+# ADR-0038: Panel nuevo: arquitectura y patrones (router, datos en vivo, kit, navegación)
 
 Version 1.0.0 · 2026-11-18
 
