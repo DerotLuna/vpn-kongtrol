@@ -54,7 +54,9 @@ Chosen: **option 3** (sources and trade-offs in the
 
 - URL: only `http://<loopback>:<port>/app/tray` built from the API base (`flyoutURL`; a LAN
   bind is refused). Auth is the existing HttpOnly `SameSite=Strict` cookie; no token in URLs
-  or logs.
+  or logs. Every navigation takes its address from `flyoutLoadURL`, the single place where
+  the planned one-time bootstrap nonce (`/app/tray#k=<nonce>`, exchanged by the page for a
+  session cookie) will be added; the fragment keeps the pinned path.
 - Every web request outside the daemon's origin gets 403 (`WebResourceRequested`, filter
   `*`; only scheme + host are logged).
 - A script injected before any page script pins the page: on any other origin or path it
