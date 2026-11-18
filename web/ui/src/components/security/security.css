@@ -1,0 +1,99 @@
+/* Kongtrol UI — Seguridad (/security) · v1.0.0 · 2026-11-18
+   Kit tokens only (theme/tokens.css); flat cards, hairlines, 11px floor,
+   44px targets, motion only from the kit (off with reduced motion). */
+
+.sec-head-actions { display: flex; justify-content: flex-start; }
+
+.sec-grid {
+  display: grid; gap: 16px; align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 960px) {
+  .sec-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sec-card--wide { grid-column: 1 / -1; }
+}
+
+.sec-card { gap: 16px; min-width: 0; position: relative; }
+.sec-anchor { position: absolute; top: 0; left: 0; scroll-margin-top: calc(var(--topbar-h) + 16px); }
+.sec-lead { color: var(--text-muted); font-size: 14px; max-width: 70ch; }
+
+/* State: pill + sentence. The pill keeps its width so text never jumps. */
+.sec-state {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.sec-state .pill { flex: none; margin-top: 1px; }
+.sec-state__text { display: flex; flex-direction: column; gap: 4px; font-size: 14px; min-width: 0; }
+.sec-fix { color: var(--text-muted); }
+
+.sec-sub { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.sec-meta { font-size: 13px; color: var(--text-muted); max-width: 70ch; }
+.sec-notice { font-size: 14px; color: var(--text); }
+.sec-alert {
+  font-size: 14px; padding: 10px 12px; border-radius: var(--radius);
+  background: var(--danger-soft); border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.sec-alert strong { color: var(--danger); font-weight: 600; }
+
+/* Tunnels covered */
+.sec-cover { display: flex; flex-direction: column; gap: 10px; }
+.sec-names { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.sec-names__label { font-size: 13px; color: var(--text-muted); }
+.sec-chips { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0; }
+.sec-chip {
+  font-size: 13px; padding: 3px 10px; border-radius: 999px;
+  background: var(--surface-3); border: 1px solid var(--border-2); color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* Text settings */
+.sec-form { display: flex; flex-direction: column; gap: 8px; }
+.sec-form__actions { display: flex; align-items: center; gap: 12px; }
+.sec-form__done { font-size: 13px; color: var(--text-muted); }
+
+/* Public IP */
+.sec-ip { display: flex; flex-direction: column; gap: 12px; }
+.sec-ip__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 0; }
+.sec-ip__grid dt { font: 500 12px/1.4 var(--font-mono); letter-spacing: 0.04em; color: var(--text-muted); }
+.sec-ip__grid dd { margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.sec-ip__value { font-size: 18px; overflow-wrap: anywhere; }
+
+/* Override select inside the table */
+.sec-select { min-height: var(--tap); width: 100%; max-width: 260px; font-size: 14px; }
+@media (max-width: 639px) { .sec-select { max-width: none; width: auto; flex: 1 1 auto; min-width: 0; } }
+
+/* Technical detail on demand */
+.sec-tech { border-top: 1px solid var(--border); padding-top: 4px; }
+.sec-tech > summary {
+  display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); cursor: pointer;
+  font: 500 13px/1 var(--font-mono); letter-spacing: 0.04em; color: var(--text-muted);
+  border-radius: var(--radius); padding-inline: 4px; list-style: none;
+}
+.sec-tech > summary::-webkit-details-marker { display: none; }
+.sec-tech > summary::before {
+  content: ''; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg); transition: transform var(--dur-fast) var(--ease-standard);
+}
+.sec-tech[open] > summary::before { transform: rotate(45deg); }
+.sec-tech > summary:hover { color: var(--text); }
+.sec-tech > summary:focus-visible { box-shadow: var(--focus); outline: none; }
+.sec-tech__body { display: flex; flex-direction: column; gap: 10px; padding: 4px 4px 8px; }
+.sec-dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 13px; }
+.sec-dl dt { color: var(--text-muted); }
+.sec-dl dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 519px) {
+  .sec-dl { grid-template-columns: minmax(0, 1fr); }
+  .sec-dl dd { margin-bottom: 6px; }
+}
+
+/* Policy-watch warnings */
+.sec-watch { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+.sec-watch h3 { font: 600 15px/1.3 var(--font-display); }
+.sec-watch__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.sec-watch__list li { display: flex; gap: 12px; align-items: baseline; }
+.sec-watch__list time { flex: none; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.sec-watch__list li[data-warn] span { color: var(--caution); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sec-tech > summary::before { transition: none; }
+}

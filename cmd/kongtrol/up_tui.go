@@ -296,7 +296,7 @@ func (m upModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "o":
 			if m.focus != focusLogs && m.dashURL != "" {
-				if err := openBrowser(m.dashURL); err != nil {
+				if err := openBrowser(daemonPanelURLFn(m.dashURL, "/")); err != nil {
 					m.notice = cf("cli.dashboard.open_failed", err)
 				} else {
 					m.notice = ct("cli.up.tui.opened_dashboard")

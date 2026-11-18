@@ -5,19 +5,16 @@
 // export) keep local state: they are not resources and never run by
 // themselves.
 import { useCallback, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useDaemonState, useLiveState } from '../data/connection'
-import { keys } from '../data/keys'
 import {
   useHelperInstall,
   useHelperInstalling,
   useHelperStatus,
-  useSecurityQuery,
   useTunnelsQuery,
 } from '../data/resources'
 import { ApiError, api } from './client'
 import { toApiError } from './errors'
-import type { DoctorReport, HelperStatus, PublicIPStatus, TunnelMetrics } from './types'
+import type { DoctorReport, HelperStatus, TunnelMetrics } from './types'
 
 function errorOf(err: unknown): ApiError | null {
   return err ? toApiError(err) : null
@@ -67,46 +64,6 @@ export function useHelper(): HelperState {
     installed: mutation.isSuccess,
     install: useCallback(() => mutate(), [mutate]),
     reload: useCallback(() => void refetch(), [refetch]),
-  }
-}
-
-export interface PublicIPState {
-  status: PublicIPStatus | null
-  error: ApiError | null
-  busy: boolean
-  actionError: ApiError | null
-  /** Set after the user turned the lookup on: shows which service sees the IP. */
-  justEnabled: boolean
-  setEnabled: (on: boolean) => void
-  check: () => void
-  reload: () => void
-}
-
-/**
- * Opt-in public IP lookup. Reading the state never contacts an external
- * service; only check() (the user's "Revisar") asks the daemon for a lookup.
- */
-export function usePublicIP(): PublicIPState {
-  const client = useQueryClient()
-  const query = useSecurityQuery()
-  const [justEnabled, setJustEnabled] = useState(false)
-  const settle = () => client.invalidateQueries({ queryKey: keys.security })
-  const toggle = useMutation({
-    mutationFn: (on: boolean) => api.setPublicIP(on),
-    onSuccess: (_d, on) => setJustEnabled(on),
-    onSettled: settle,
-  })
-  const lookup = useMutation({ mutationFn: api.checkPublicIP, onSettled: settle })
-  const { refetch } = query
-  return {
-    status: query.data ?? null,
-    error: errorOf(query.error),
-    busy: toggle.isPending || lookup.isPending,
-    actionError: errorOf(toggle.error ?? lookup.error),
-    justEnabled,
-    setEnabled: toggle.mutate,
-    check: () => lookup.mutate(),
-    reload: () => void refetch(),
   }
 }
 

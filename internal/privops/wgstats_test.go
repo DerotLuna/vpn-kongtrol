@@ -119,8 +119,9 @@ func TestLocalWGStats_Validation(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(l.wgDir(), "rluna.conf")); !os.IsNotExist(err) {
 		t.Errorf("WGStats adopted the tunnel: %v", err)
 	}
-	if len(*calls) != 1 {
-		t.Errorf("dump calls = %v, want only the authorized one", *calls)
+	// Two reads of the authorized tunnel only: the key check, then the stats.
+	if len(*calls) != 2 || (*calls)[0] != "rluna" || (*calls)[1] != "rluna" {
+		t.Errorf("dump calls = %v, want the key check + read of rluna only", *calls)
 	}
 }
 

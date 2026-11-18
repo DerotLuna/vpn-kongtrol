@@ -505,8 +505,8 @@ Kill switch: ARMED (protecting 3 tunnel(s))
 $ kongtrol status --watch`,
     // feature:dashboard
     dashboard1: <>Web dashboard</>,
-    dashboard2: <>Open <a href="http://localhost:9741" target="_blank" rel="noreferrer">http://localhost:9741</a> in
-                your browser. It's a full management console, with sidebar navigation:</>,
+    dashboard2: <>Open it from the tray icon ("Open dashboard") or with <IC c="kongtrol dashboard" />: it opens in
+                your browser already authorized. Typing the address by hand is not enough, for security. It's a full management console, with sidebar navigation:</>,
     dashboard3: <>Page</>,
     dashboard4: <>What it does</>,
     dashboard5: <>Live tunnels, per-tunnel traffic charts, active routes, policy resolver, group quick-launch, connect/disconnect all</>,

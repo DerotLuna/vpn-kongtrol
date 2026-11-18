@@ -8,13 +8,24 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
+
+// systemDirectory is %SystemRoot%\System32, where uninstall's helper
+// programs are taken from by full path.
+func systemDirectory() string {
+	sys, err := windows.GetSystemDirectory()
+	if err != nil || sys == "" {
+		return `C:\Windows\System32`
+	}
+	return sys
+}
 
 // stopTray closes a running tray app (it would otherwise restart the
 // daemon or keep its files locked).
 func stopTray() {
-	_ = exec.Command("taskkill", "/f", "/im", "kongtrol-tray.exe").Run()
+	_ = exec.Command(filepath.Join(systemDirectory(), "taskkill.exe"), "/f", "/im", "kongtrol-tray.exe").Run()
 }
 
 // startDetached starts the Windows installer's uninstaller and returns at
@@ -28,9 +39,27 @@ func startDetached(path string) error {
 // deleteAfterExit removes the running kongtrol.exe a few seconds after this
 // process exits (Windows locks a running executable).
 func deleteAfterExit(path string) error {
-	cmd := exec.Command("cmd.exe", "/c", "ping -n 4 127.0.0.1 >nul & del /f /q \""+path+"\"")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x00000008}
-	return cmd.Start()
+	return deleteAfterExitCmd(path).Start()
+}
+
+// deleteAfterExitCmd builds the delayed delete. cmd.exe looks up a bare
+// "ping" in the current directory first, so both programs are given by
+// full path under System32 and the working directory is System32 too.
+func deleteAfterExitCmd(path string) *exec.Cmd {
+	sys := systemDirectory()
+	shell := filepath.Join(sys, "cmd.exe")
+	ping := filepath.Join(sys, "PING.EXE")
+	cmd := exec.Command(shell)
+	cmd.Dir = sys
+	// Raw command line: Go's argument escaping (\") is not cmd.exe's. /d
+	// skips AutoRun; the outer quotes keep cmd's /c quote stripping from
+	// eating the inner ones.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: 0x00000008, // DETACHED_PROCESS
+		CmdLine:       `"` + shell + `" /d /c ""` + ping + `" -n 4 127.0.0.1 >nul & del /f /q "` + path + `""`,
+	}
+	return cmd
 }
 
 // removeUserPathEntry removes dir from HKCU\Environment\Path (the entry

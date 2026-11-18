@@ -70,6 +70,11 @@ func ValidateWGName(name string) error {
 	if len(name) > maxWGNameLen {
 		return invalid("WireGuard tunnel name %q longer than %d", name, maxWGNameLen)
 	}
+	// `wg show all` / `wg show interfaces` are wg(8) keywords, not tunnels:
+	// a tunnel with that name would make the helper read every tunnel.
+	if strings.EqualFold(name, "all") || strings.EqualFold(name, "interfaces") {
+		return invalid("WireGuard tunnel name %q is reserved by wg", name)
+	}
 	return nil
 }
 

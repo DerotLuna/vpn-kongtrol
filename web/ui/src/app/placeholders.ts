@@ -55,24 +55,6 @@ export const PLACEHOLDERS: Record<string, PlaceholderSpec> = {
     items: ['page.traffic.item1', 'page.traffic.item2', 'page.traffic.item3'],
     legacy: LEGACY.home,
   },
-  '/security': {
-    title: 'nav.security',
-    lead: 'page.security.lead',
-    items: ['page.security.item1', 'page.security.item2', 'page.security.item3', 'page.security.item4'],
-    legacy: LEGACY.security,
-  },
-  '/activity': {
-    title: 'nav.activity',
-    lead: 'page.activity.lead',
-    items: ['page.activity.item1', 'page.activity.item2', 'page.activity.item3'],
-    legacy: LEGACY.audit,
-  },
-  '/settings': {
-    title: 'nav.settings',
-    lead: 'page.settings.lead',
-    items: ['page.settings.item1', 'page.settings.item2', 'page.settings.item3'],
-    legacy: LEGACY.settings,
-  },
 }
 
 /** Router basename: Vite's base without the trailing slash ("/app" in builds). */

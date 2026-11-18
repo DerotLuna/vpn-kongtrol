@@ -1,0 +1,68 @@
+/* Kongtrol UI — Actividad: notices timeline + audit log · v1.0.0 · 2026-11-18
+   Operate mode: flat surface, hairlines, mono for machine data (times,
+   actions, profiles), states as word + icon + color (Four States Rule). */
+
+.k-act-stack { display: flex; flex-direction: column; gap: 16px; }
+.k-act {
+  display: flex; flex-direction: column; gap: 16px; padding: 20px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.k-act__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.k-act__title { font: 600 17px/1.3 var(--font-display); }
+.k-act__what { color: var(--text-muted); font-size: 14px; margin-top: 4px; max-width: 65ch; }
+.k-act__tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.k-act__note { font-size: 13px; color: var(--text-dim); }
+.k-act__count { font: 500 12px/1.4 var(--font-mono); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.k-act__more { display: flex; justify-content: center; }
+
+/* "En vivo": a quiet steel ring + word; it updates, it is not a state. */
+.k-live { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1.2 var(--font-mono); color: var(--text-muted); }
+.k-live__dot { width: 7px; height: 7px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--steel); }
+
+/* ── Notices timeline ─────────────────────────────────────────────────── */
+.k-ev-groups { display: flex; flex-direction: column; gap: 20px; }
+.k-ev-day { font: 500 12px/1.4 var(--font-mono); letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 8px; }
+.k-ev-list { list-style: none; display: flex; flex-direction: column; }
+.k-ev {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; align-items: start; gap: 4px 12px;
+  padding: 12px 0; border-top: 1px solid var(--border);
+}
+.k-ev:first-child { border-top: 0; padding-top: 4px; }
+.k-ev__icon { padding-top: 2px; color: var(--text-dim); }
+.k-ev__icon svg { width: 18px; height: 18px; }
+.k-ev[data-level='warn'] .k-ev__icon { color: var(--caution); }
+.k-ev__msg { font-size: 15px; line-height: 1.5; max-width: 72ch; }
+.k-ev__meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 6px; font-size: 13px; color: var(--text-muted); }
+.k-ev__meta time { font-variant-numeric: tabular-nums; }
+.k-ev__profile { color: var(--text); }
+.k-ev > .k-btn { align-self: center; }
+@media (max-width: 599px) {
+  .k-ev { grid-template-columns: 20px minmax(0, 1fr); }
+  .k-ev > .k-btn { grid-column: 2; justify-self: start; }
+}
+
+/* ── Audit log ────────────────────────────────────────────────────────── */
+.k-audit__filters {
+  display: grid; gap: 16px; align-items: start;
+  padding: 16px 0; border-block: 1px solid var(--border);
+}
+@media (min-width: 720px) { .k-audit__filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1080px) { .k-audit__filters { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); } }
+.k-audit__live { align-self: center; }
+@media (min-width: 720px) and (max-width: 1079px) { .k-audit__live { grid-column: 1 / -1; } }
+
+.k-audit__time { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px; }
+.k-audit__msg { display: block; max-width: 56ch; overflow-wrap: anywhere; }
+.k-act .k-datalist { overflow-x: auto; }
+@media (max-width: 639px) {
+  .k-act .k-datalist { overflow-x: visible; }
+  .k-audit__msg { text-align: left; }
+}
+
+/* Signature: icon + word; "sin comprobar" is neutral, never green. */
+.k-sig { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1.3 var(--font-mono); color: var(--text-muted); white-space: nowrap; }
+.k-sig svg { width: 14px; height: 14px; flex: none; }
+.k-sig[data-state='ok'] { color: var(--live); }
+.k-sig[data-state='bad'] { color: var(--danger); }
+.k-sig[data-state='signed'] { color: var(--text); }
+.k-sig[data-state='none'] { color: var(--text-dim); }

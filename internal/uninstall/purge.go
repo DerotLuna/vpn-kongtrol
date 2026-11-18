@@ -132,7 +132,8 @@ func DeleteFromKeychain(c Credential) error {
 type PurgeOptions struct {
 	DataDir string // ~/.kongtrol
 	// ExtraFiles are files outside DataDir to delete too (a --config file,
-	// a custom audit log path); YAML ones are read for profile names.
+	// the daily files of a custom audit log path); YAML ones are read for
+	// profile names. Only regular files are removed (never RemoveAll).
 	ExtraFiles []string
 	// KeepRuntime keeps the files a running daemon needs (api-token, run/,
 	// logs) and the install manifest: the dashboard's "Borrar todos mis
@@ -141,7 +142,7 @@ type PurgeOptions struct {
 	// KeepManifest keeps only install.manifest: `--data-only` (the app
 	// stays installed; the daemon is already stopped).
 	KeepManifest bool
-	DryRun      bool
+	DryRun       bool
 	// Delete removes one keychain entry; nil = DeleteFromKeychain.
 	Delete func(Credential) error
 }
@@ -181,10 +182,7 @@ func Purge(opts PurgeOptions) PurgeReport {
 		if p == "" || isWithin(opts.DataDir, p) {
 			continue
 		}
-		if _, err := os.Stat(p); err != nil {
-			continue
-		}
-		rep.remove(p, opts.DryRun)
+		rep.removeFile(p, opts.DryRun)
 	}
 	entries, err := os.ReadDir(opts.DataDir)
 	if err != nil {
@@ -209,6 +207,24 @@ func Purge(opts PurgeOptions) PurgeReport {
 func (r *PurgeReport) remove(path string, dry bool) {
 	if !dry {
 		if err := os.RemoveAll(path); err != nil {
+			r.Failed = append(r.Failed, Failure{Item: path, Err: err})
+			return
+		}
+	}
+	r.Paths = append(r.Paths, path)
+}
+
+// removeFile deletes one extra file outside the data directory. These
+// paths come from settings (a --config file, security.audit_log.path), so
+// only a regular file is removed — never a directory, symlink or device,
+// and never recursively.
+func (r *PurgeReport) removeFile(path string, dry bool) {
+	fi, err := os.Lstat(path)
+	if err != nil || !fi.Mode().IsRegular() {
+		return
+	}
+	if !dry {
+		if err := os.Remove(path); err != nil {
 			r.Failed = append(r.Failed, Failure{Item: path, Err: err})
 			return
 		}

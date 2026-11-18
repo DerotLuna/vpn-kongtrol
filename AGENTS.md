@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.12 · 2026-11-18
+Version 1.13 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -84,7 +84,8 @@ When adding a new adapter:
   item (`ensureDaemon`), and it recovers by itself when any client starts the daemon again
   (it keeps polling; refused connection = stopped, timeout = "no responde"). ADR-0037.
 - There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
-  (127.0.0.1, token in `~/.kongtrol/api-token`). This local API is IPC on the same machine —
+  (127.0.0.1, token in `~/.kongtrol/api-token` for CLI/tray; browsers get a session cookie from a
+  one-time nonce, never the token: `daemonctl.(*Client).PanelURL`, ADR-0039). This local API is IPC on the same machine —
   nothing leaves the host.
 
 <!-- feature:first_run -->
