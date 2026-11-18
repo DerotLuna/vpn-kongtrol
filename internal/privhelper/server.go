@@ -91,12 +91,14 @@ func (s *Server) HandleConn(ctx context.Context, conn net.Conn) {
 		_ = privops.WriteFrame(conn, privops.Response{V: privops.ProtocolVersion, Code: privops.ErrorCode(privops.ErrInvalidRequest), Error: "malformed request"})
 		return
 	}
-	opCtx, cancel := context.WithTimeout(privops.WithCaller(ctx, caller), privops.OpTimeout(req.Op))
+	markCtx, mark := privops.WithAuditMark(privops.WithCaller(ctx, caller))
+	opCtx, cancel := context.WithTimeout(markCtx, privops.OpTimeout(req.Op))
 	resp := privops.Dispatch(opCtx, s.Ops, req)
 	cancel()
 
-	// Read-only ops are polled every few seconds: audit only failures.
-	if !resp.OK || !privops.ReadOnlyOp(req.Op) {
+	// Read-only ops are polled every few seconds: audit only failures,
+	// unless the op asked for its success to be audited (mark).
+	if !resp.OK || !privops.ReadOnlyOp(req.Op) || mark.Set() {
 		s.Audit.Record(AuditEntry{
 			Time: start, Caller: caller.Name, CallerID: caller.ID, Op: req.Op, Args: req.Args,
 			OK: resp.OK, Code: resp.Code, Error: resp.Error, Millis: time.Since(start).Milliseconds(),

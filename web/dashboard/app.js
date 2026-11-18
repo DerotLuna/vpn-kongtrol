@@ -521,6 +521,24 @@ function recordTunnelSamples(tunnels) {
   });
 }
 
+const TUNNEL_ACTIONS = {
+  connect: (name) => connectVPN(name),
+  disconnect: (name) => disconnectVPN(name),
+  reload: (name) => reloadVPN(name),
+  cancel: (name) => cancelConnectVPN(name),
+  routes: (name) => toggleTunnelRoutes(name),
+};
+
+// tunnelActionClick handles every button of the tunnel table; the profile
+// name comes from data-name (decoded by the browser, never run as code).
+function tunnelActionClick(event) {
+  const btn = event.target.closest('button[data-action][data-name]');
+  if (!btn) return;
+  const run = TUNNEL_ACTIONS[btn.dataset.action];
+  if (run) run(btn.dataset.name);
+}
+document.getElementById('tunnels-body')?.addEventListener('click', tunnelActionClick);
+
 function renderTunnels(tunnels, opts = {}) {
   const tbody = document.getElementById('tunnels-body');
   lastTunnels = tunnels || {};
@@ -537,11 +555,11 @@ function renderTunnels(tunnels, opts = {}) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([name, m]) => {
       const status = (m.Status || 'disconnected').toLowerCase();
-      const statusLabel = t(`status.${status}`);
+      const statusLabel = esc(t(`status.${status}`));
       const isConnected = status === 'connected';
       const isConnecting = status === 'connecting';
 
-      const dot = `<span class="status-dot ${status}"></span>`;
+      const dot = `<span class="status-dot ${esc(status.replace(/[^a-z_]/g, ''))}"></span>`;
       // Why the last accepted (async) connect failed; the daemon clears it
       // when a new connect starts or the tunnel comes up. A known
       // last_error_key wins with its translated "what to do" line; the raw
@@ -572,30 +590,33 @@ function renderTunnels(tunnels, opts = {}) {
         : '';
       const tr = isConnected ? tunnelRoutesFor(name) : null;
       const routesToggle = tr
-        ? `<div><button class="link-btn tunnel-routes-toggle" aria-expanded="${openRouteDrawers.has(name)}" onclick="toggleTunnelRoutes('${esc(name)}')">${esc(tr.all_traffic ? t('tunnelRoutes.toggleAll') : t('tunnelRoutes.toggle', { n: tr.total }))}</button></div>`
+        ? `<div><button class="link-btn tunnel-routes-toggle" aria-expanded="${openRouteDrawers.has(name)}" data-action="routes" data-name="${esc(name)}">${esc(tr.all_traffic ? t('tunnelRoutes.toggleAll') : t('tunnelRoutes.toggle', { n: tr.total }))}</button></div>`
         : '';
       const drawer = tr && openRouteDrawers.has(name)
         ? `<tr class="tunnel-routes-row"><td colspan="9">${renderTunnelRoutesDrawer(tr)}</td></tr>`
         : '';
-      const ip = m.AssignedIP || '<span class="muted">—</span>';
+      const ip = m.AssignedIP ? esc(m.AssignedIP) : '<span class="muted">—</span>';
       const up = isConnected && m.UptimeSeconds > 0 ? formatDuration(m.UptimeSeconds) : '<span class="muted">—</span>';
       const sent = m.BytesSent > 0 ? formatBytes(m.BytesSent) : '<span class="muted">—</span>';
       const recv = m.BytesReceived > 0 ? formatBytes(m.BytesReceived) : '<span class="muted">—</span>';
-      const lat = m.LatencyMS > 0 ? `${m.LatencyMS}ms` : '<span class="muted">—</span>';
+      const lat = m.LatencyMS > 0 ? `${esc(m.LatencyMS)}ms` : '<span class="muted">—</span>';
       const trend = isConnected
         ? `<canvas class="latency-spark" data-profile="${esc(name)}" width="64" height="20"></canvas>`
         : '<span class="muted">—</span>';
 
-      let btn = `<button class="action" onclick="connectVPN('${name}')">${t('actions.connect')}</button>`;
+      // Names reach handlers through data-* + one delegated listener
+      // (tunnelActionClick), never through inline onclick strings.
+      const n = esc(name);
+      let btn = `<button class="action" data-action="connect" data-name="${n}">${esc(t('actions.connect'))}</button>`;
       if (isConnected) {
-        btn = `<button class="action disconnect" onclick="disconnectVPN('${name}')">${t('actions.disconnect')}</button>
-          <button class="action" onclick="reloadVPN('${name}')">${t('actions.reload')}</button>`;
+        btn = `<button class="action disconnect" data-action="disconnect" data-name="${n}">${esc(t('actions.disconnect'))}</button>
+          <button class="action" data-action="reload" data-name="${n}">${esc(t('actions.reload'))}</button>`;
       } else if (isConnecting) {
-        btn = `<button class="action disconnect" onclick="cancelConnectVPN('${name}')">${t('actions.cancel')}</button>`;
+        btn = `<button class="action disconnect" data-action="cancel" data-name="${n}">${esc(t('actions.cancel'))}</button>`;
       }
 
       return `<tr>
-        <td>${name}</td>
+        <td>${n}</td>
         <td>${dot}${statusLabel}${unverifiedTag}${attachLine}${healthLine}${lastErr}${routesToggle}</td>
         <td>${ip}</td>
         <td>${up}</td>
@@ -1229,7 +1250,8 @@ function formatDuration(seconds) {
 setLang(lang);
 initLangToggle();
 enhanceAllSelects();
-connectWS();
+// Wait for the sign-in (auth.js) so the first socket already has a session.
+Promise.resolve(window.kongtrolSessionReady).then(connectWS);
 refreshRoutes();
 refreshPolicies();
 refreshNetworkOverview();

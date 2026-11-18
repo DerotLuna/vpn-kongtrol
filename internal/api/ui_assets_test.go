@@ -83,23 +83,18 @@ func TestUIHandler_NotBuiltIsTranslated(t *testing.T) {
 	}
 }
 
-// /app/ pages get the same HttpOnly control cookie as the legacy dashboard,
-// and the UI path stays outside the API auth gate (like "/").
-func TestServer_UIRouteSetsControlCookie(t *testing.T) {
+// /app/ pages stay outside the API auth gate (like "/") but never hand
+// out a credential: the session comes only from POST /api/v1/session.
+func TestServer_UIRouteSetsNoCredentials(t *testing.T) {
 	s := &Server{apiToken: "tok", port: 9741, bind: "127.0.0.1"}
 	rec := httptest.NewRecorder()
-	h := s.secureHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.setControlCookie(w)
-		newUIHandler(uiTestFS(), true).ServeHTTP(w, r)
-	}))
+	h := s.secureHandler(newUIHandler(uiTestFS(), true))
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "http://127.0.0.1:9741/app/", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
-	cookie := rec.Result().Cookies()
-	if len(cookie) != 1 || cookie[0].Name != "kongtrol_control" || !cookie[0].HttpOnly ||
-		cookie[0].SameSite != http.SameSiteStrictMode {
-		t.Fatalf("cookies = %+v", cookie)
+	if cookies := rec.Result().Cookies(); len(cookies) != 0 {
+		t.Fatalf("cookies = %+v, want none", cookies)
 	}
 	if rec.Header().Get("Content-Security-Policy") == "" {
 		t.Error("secureHandler headers missing on /app/")

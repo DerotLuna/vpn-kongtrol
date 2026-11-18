@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.4.1 · 2026-11-18
+Version 2.5.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -24,12 +24,20 @@ credentials or usage data.
 
 | Connection | When | Why | Code |
 |---|---|---|---|
-| HTTPS `GET` to the public IP service — `https://api.ipify.org` by default, or the `security.public_ip_check.endpoints` you set (https only) | **Off by default (opt-in).** Only when `security.public_ip_check.enabled: true` (or the legacy `leak_detection.enabled: true`): once after a tunnel connects or disconnects (at most one lookup per 30 s, coalesced) and when you ask (`kongtrol ip`, "Revisar" in the dashboard, the tray's public IP line). Never periodic. The kill switch and DNS guard do not use it. | Show your public IP and compare it with `integrity_check.expected_ips` (leak check). That service sees your public IP, as with any website. 5 s timeout; the answer must be a bare IP of at most 64 bytes. | `internal/security/leaktest.go`, `cmd/kongtrol/publicip.go` |
-| HTTPS `GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest` with only `User-Agent: kongtrol/<version>` and `Accept: application/vnd.github+json` (no token, cookie or user data) | **Off by default (opt-in).** Only when `updates.check_enabled: true` (`kongtrol config update-check on`, the dashboard's Ajustes, or "Sí" in `kongtrol init`): at most once every 24 h (the last attempt is remembered in `~/.kongtrol/update-check.json`, failures included), plus once right after you turn it on if 24 h have passed. | Tell you a newer stable version exists (pre-releases ignored), once per version, with how to update. It never downloads or installs anything. GitHub sees your public IP, the time and that User-Agent. 5 s timeout; at most 1 MiB of the answer is read. [ADR-0034](adr/0034-uninstall-and-update-notice.md) | `internal/update/update.go`, `cmd/kongtrol/daemon_update.go` |
+| HTTPS `GET` to the public IP service — `https://api.ipify.org` by default, or the `security.public_ip_check.endpoints` you set (https only) | **Off by default (opt-in).** Only when `security.public_ip_check.enabled: true` (or the legacy `leak_detection.enabled: true`): once after a tunnel connects or disconnects (at most one lookup per 30 s, coalesced) and when you ask (`kongtrol ip`, "Revisar" in the dashboard, the tray's public IP line). Never periodic. The kill switch and DNS guard do not use it. | Show your public IP and compare it with `integrity_check.expected_ips` (leak check). That service sees your public IP, as with any website. 5 s timeout; the answer must be a bare IP of at most 64 bytes; https only, no userinfo (config validation and again at request time); redirects only over https to the same host (max 3). | `internal/security/leaktest.go`, `cmd/kongtrol/publicip.go` |
+| HTTPS `GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest` with only `User-Agent: kongtrol/<version>` and `Accept: application/vnd.github+json` (no token, cookie or user data) | **Off by default (opt-in).** Only when `updates.check_enabled: true` (`kongtrol config update-check on`, the dashboard's Ajustes, or "Sí" in `kongtrol init`): at most once every 24 h (the last attempt is remembered in `~/.kongtrol/update-check.json`, failures included), plus once right after you turn it on if 24 h have passed. | Tell you a newer stable version exists (pre-releases ignored), once per version, with how to update. It never downloads or installs anything. GitHub sees your public IP, the time and that User-Agent. 5 s timeout; at most 1 MiB of the answer is read; TLS 1.2+ with default verification; redirects only over https to `api.github.com` (max 3). Only `tag_name` is used and it must be a strict `vX.Y.Z`; the release link is built as `https://github.com/DerotLuna/vpn-kongtrol/releases/tag/<tag>`, never taken from the answer (`html_url` is ignored), and a remembered link is re-validated on load. [ADR-0034](adr/0034-uninstall-and-update-notice.md) | `internal/update/update.go`, `cmd/kongtrol/daemon_update.go` |
 | TCP connect to the profile's `host:port` (default 443), closed immediately | Before each connect (preflight) and on tunnel health checks | Warn early when the VPN server is unreachable; measure latency. | `internal/app/profile_service.go`, `cmd/kongtrol/daemon_runtime.go` |
-| DNS lookups of policy domains, through the system resolver and the tunnels' DNS servers (UDP/TCP 53) | When domain rules are resolved to routes | Turn `*.example.com` rules into IP routes. | `internal/monitor/policyresolver.go` |
+| DNS lookups of policy domains, through the system resolver and the tunnels' DNS servers (UDP/TCP 53) | When domain rules are resolved to routes | Turn `*.example.com` rules into IP routes. For a wildcard, the base name and `www.`, `api.`, `cdn.`, `app.`, `docs.`, `console.` under it are looked up. | `internal/monitor/policyresolver.go`, `internal/app/profile_service.go` |
 | DNS lookup of VPN server hostnames | When the per-profile kill switch is applied | Allow-list the VPN server so the tunnel can come up behind the block. | `internal/app/killswitch_service.go` |
 | TCP to the tunnel's DNS server on port 53 | Health checks when the VPN server itself cannot be probed | Measure a round trip inside the tunnel. | `cmd/kongtrol/daemon_runtime.go` |
+| DNS query for `connectivitycheck.gstatic.com` sent only to the tunnel's own DNS servers (UDP 53) | Tunnel health checks of a connected profile that pushed DNS servers | Check that DNS works inside the tunnel. Only the VPN's DNS server sees the query; nothing is sent to Google. | `cmd/kongtrol/daemon_runtime.go` |
+
+Nothing else leaves the machine. Local-only traffic: the daemon API on `127.0.0.1` (CLI, tray and
+the browser panel, see "Local panel sign-in"), the OpenVPN management port on loopback, and the
+privileged helper's unix socket / named pipe. Opening the panel launches the default browser on
+a `http://127.0.0.1:<port>/…` address only. Inventory checked on 2026-11-18 by searching the code
+for HTTP clients, dialers, resolvers and external tools (`curl`, `wget`, `Invoke-WebRequest`):
+none other found.
 
 <!-- feature:update_check -->
 Updates come from the channel you installed with (winget, Scoop, Homebrew, AUR, apt/dnf, npm, the
@@ -42,7 +50,11 @@ Uninstalling keeps your data unless you ask: `kongtrol uninstall --purge`, "Borr
 in the dashboard, or "Sí" in the Windows uninstaller delete `~/.kongtrol` and exactly Kongtrol's
 keychain entries (`vpn-kongtrol` / `<profile>.username`, `<profile>.password` for every profile
 named in `kongtrol.yaml` and its backups, and `_system.audit_hmac_key`). Files owned by a package
-manager are never deleted. See [ADR-0034](adr/0034-uninstall-and-update-notice.md).
+manager are never deleted. Outside `~/.kongtrol` only single regular files are removed (a
+`--config` file and the daily `audit-YYYY-MM-DD.log` files of a custom `security.audit_log.path`),
+never a folder, link or anything recursively; `audit_log.path` must name a file, not a folder
+(config validation). See [ADR-0034](adr/0034-uninstall-and-update-notice.md) and
+[ADR-0040](adr/0040-local-hardening-review-2026-11.md).
 
 Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
 plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its
@@ -54,6 +66,32 @@ Loopback only: the OpenVPN management interface (`internal/vpn/openvpn/managemen
 privileged helper's socket or named pipe (below). Your VPN clients (NordVPN, FortiClient, OpenVPN,
 WireGuard) make their own connections; those depend on each provider. The dashboard serves its
 fonts and logos from the binary (`/brand/`), so opening it contacts no third party.
+
+## Local panel sign-in
+
+The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refused and
+`localhost` is pinned to `127.0.0.1`) has two kinds of callers
+([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)):
+
+- **Native clients** (CLI, tray) send the control token from `~/.kongtrol/api-token` (created
+  `0600` in a `0700` directory) in `X-Kongtrol-Token`. It is compared in constant time and is
+  never accepted from a cookie or sent to a browser.
+- **Browsers** get a session cookie, never the token. Kongtrol (tray "Abrir panel", the tray
+  flyout, `kongtrol dashboard`) asks the daemon for a one-time nonce (`POST
+  /api/v1/session/nonce`, token required; 256 bits, single use, valid 60 s) and opens
+  `http://127.0.0.1:9741/#k=<nonce>`. The page removes the nonce from the address bar and trades
+  it (`POST /api/v1/session`: loopback Host, the daemon's own `Origin`, JSON only, failures
+  rate-limited to 10 per minute) for `kongtrol_session`, a separate random 256-bit id in an
+  `HttpOnly; SameSite=Strict; Path=/` cookie. Sessions live only in the daemon's memory (a
+  restart ends them), expire after 12 h without use and after 7 days in any case, and only their
+  SHA-256 digests are stored. `DELETE /api/v1/session` signs out.
+
+Pages (`/`, `/app/`) never set credentials. Every route, pages included, checks that the Host
+header is a loopback name with the daemon's port (DNS rebinding); API requests with an `Origin`
+must come from the daemon's own origin, and mutations must be `application/json` (so a
+cross-site form or `text/plain` request cannot reach them). A page opened another way (a
+bookmark after the session ended, another program) gets 401 and shows: "Abre el panel desde
+Kongtrol: el ícono de la bandeja o `kongtrol dashboard`."
 
 ## Privileged helper
 
@@ -75,7 +113,18 @@ arbitrary command.
 - **Audit.** Every request — caller, operation, arguments, result, duration — is written to the
   helper's JSON-lines audit log (`internal/privhelper/audit.go`, rotated at 5 MB). The one
   exception is a *successful* read-only request (`wg.stats`, polled every 10 s per WireGuard
-  tunnel); its failures are audited.
+  tunnel) of a tunnel the helper started; its failures are audited, and a success authorized by
+  the caller's profile config (a tunnel Kongtrol did not start) is audited once per tunnel per hour.
+- **Tunnels Kongtrol did not start are bound by key.** `wg.stats`, `wg.remove` and
+  `wg.allowed_ips` accept such a tunnel only when the caller owns a profile `.conf` with the same
+  name **and** the public key derived from its `[Interface] PrivateKey` (Curve25519,
+  `golang.org/x/crypto/curve25519`) equals the running interface's public key (`wg show <if>
+  dump`). A same-named tunnel of someone else (IT-managed, another app) is denied
+  (`wg_not_managed`). The names `all` and `interfaces` (wg(8) keywords) are refused.
+- **Trusted WireGuard tools.** Windows: the helper runs `wg.exe` / `wireguard.exe` only from
+  `%ProgramFiles%\WireGuard` when the file and its folder are owned by SYSTEM, Administrators or
+  TrustedInstaller and no one else has write rights (`adminOnlyWritable`); Unix: root-owned, not
+  group/world-writable, in a trusted directory (`trustedBinary`).
 - **Read-only WireGuard counters.** `wg.stats` runs `wg show <iface> dump` only for a tunnel the
   helper manages (or the caller's own profile tunnel, checked like `wg.remove`, nothing adopted)
   and returns only peer public keys, latest handshake, rx/tx bytes and keepalive. The interface
@@ -248,3 +297,23 @@ The watchdog polls every 5 seconds per profile. On an unexpected disconnect it w
 ## Graceful daemon shutdown
 
 `kongtrol down` asks a running `kongtrol up` daemon to shut down through its own API (`POST /api/v1/shutdown`) rather than killing the process directly. This runs the daemon's normal cleanup — DNS restore, kill switch teardown, history flush — before it exits, on every OS (a plain process kill has no cross-platform graceful-termination equivalent, particularly on Windows). A hard kill is only used as a fallback if the daemon doesn't respond.
+
+## OWASP mapping
+
+What the design covers and what is still open, mapped to
+[OWASP Top 10 2021](https://owasp.org/Top10/), [ASVS 4.0.3](https://github.com/OWASP/ASVS/tree/v4.0.3)
+and the [Desktop App Security Top 10](https://owasp.org/www-project-desktop-app-security-top-10/).
+This is a self-assessment, not an audit or certification.
+
+| Area | Covered | Known gaps |
+|---|---|---|
+| Access control — A01, DA5, ASVS V4 | Local API needs the file token (native) or a browser session; pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md), [ADR-0040](adr/0040-local-hardening-review-2026-11.md)). | Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
+| Session management — DA2, ASVS V3 | 256-bit random session ids distinct from the token, HttpOnly + SameSite=Strict, server-side idle (12 h) and absolute (7 d) timeouts, logout, single-use 60 s nonce, in-memory store. | No `Secure` flag (loopback HTTP by design); no per-session binding to the browser beyond the cookie. |
+| CSRF — A01, ASVS V4.2/V13 | SameSite=Strict, `Origin` must be the daemon's own when present (required for the nonce exchange), mutations only as `application/json`. | — |
+| Injection / XSS — A03, DA1 | Names restricted to a safe charset; the legacy dashboard escapes quotes and passes data via `data-*`; the new UI is React (escaped by default); the panel's CSP allows scripts only from the daemon. | The legacy dashboard CSP still has `'unsafe-inline'` scripts (inline handlers remain for static buttons); removed when the legacy dashboard is retired. |
+| Security misconfiguration — A05, DA6 | Loopback-only bind (non-loopback refused); security headers on every response; update and public IP checks off by default; restrictive file modes for state. | — |
+| Sensitive data / crypto — A02, DA3, DA4 | Credentials only in the OS keychain; HMAC-signed audit log; TLS 1.2+ with default verification for the two opt-in outbound calls. | — |
+| Insecure communication — DA7 | Only the opt-in outbound calls listed above, https only, constrained redirects; everything else is loopback or local IPC. | — |
+| Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts do not yet verify the cosign signature of `checksums.txt` ([#38](https://github.com/DerotLuna/vpn-kongtrol/issues/38)); Windows binaries are unsigned until SignPath is configured. |
+| Logging — A09, DA10 | The helper audits every privileged request (read-only successes of managed tunnels excepted); HMAC-signed audit log in the daemon. | Browser session creation is not audited. |
+| Privileged helper / installer — Desktop Top 10 | Closed operation list, caller identified by the OS, lease-based fail-open cleanup, trusted-binary checks (Unix root-owned; Windows admin-owned and admin-writable only); uninstall deletes only Kongtrol's own files and refuses sudo. | Inno Setup uninstaller working directory not verified ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)). |

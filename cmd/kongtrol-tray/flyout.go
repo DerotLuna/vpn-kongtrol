@@ -23,6 +23,8 @@ import (
 	"strings"
 
 	"fyne.io/systray"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 )
 
 const (
@@ -58,15 +60,33 @@ func flyoutURL(base string) (string, error) {
 }
 
 // flyoutLoadURL is the ONE place that turns the flyout page URL into the
-// address the window navigates to, called before every navigation. Today it
-// is the page itself (the daemon sets its HttpOnly cookie on /app/*). The
-// planned one-time bootstrap nonce goes here: ask the daemon for a nonce
-// (authenticated with the file token, which never enters a URL) and return
-// pageURL + "#k=<nonce>". A fragment keeps the path /app/tray, so the
-// request filter and flyoutInitScript stay unchanged, and the fragment is
-// never sent over HTTP nor logged.
+// address the window navigates to, called before every navigation. It asks
+// the daemon for a one-time sign-in nonce (daemonctl.Client.PanelURL,
+// authenticated with the file token, which never enters a URL; ADR-0039)
+// and returns pageURL + "#k=<nonce>". A fragment keeps the path /app/tray,
+// so the request filter and flyoutInitScript stay unchanged, and the
+// fragment is never sent over HTTP nor logged. Without a nonce (older
+// daemon, daemon not answering) the page loads plain and shows how to
+// reopen it.
 func flyoutLoadURL(pageURL string) (string, error) {
-	return pageURL, nil
+	u, err := url.Parse(pageURL)
+	if err != nil || u.Path != flyoutPath {
+		return "", errFlyoutURL
+	}
+	got, _ := flyoutPanelURL("http://"+u.Host, flyoutPath)
+	if !flyoutRequestAllowed(pageURL, got) {
+		return pageURL, nil
+	}
+	return got, nil
+}
+
+// flyoutPanelURL is daemonctl's PanelURL for base (a test seam).
+var flyoutPanelURL = func(base, path string) (string, error) {
+	tok := ""
+	if client != nil {
+		tok = client.Token
+	}
+	return daemonctl.New(base, tok).PanelURL(path)
 }
 
 func isLoopbackHost(host string) bool {

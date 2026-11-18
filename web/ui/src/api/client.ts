@@ -111,6 +111,15 @@ function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Pr
   })
 }
 
+/**
+ * Low-level JSON calls for page data modules (src/data/<page>.ts) that keep
+ * their endpoints next to their hooks, so parallel pages never edit `api`.
+ */
+export const http = {
+  get: <T>(path: string) => request<T>(path),
+  send: <T>(method: 'PUT' | 'POST', path: string, payload: unknown) => sendJSON<T>(method, path, payload),
+}
+
 const enc = encodeURIComponent
 
 /** One order everywhere (REST and WebSocket), so unchanged rows keep their identity. */

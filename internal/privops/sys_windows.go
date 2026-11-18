@@ -34,7 +34,7 @@ const (
 	// for SYSTEM and Administrators only, inherited by children.
 	privateDirSDDL = "O:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)"
 	// trustedInstallerSID owns most of %SystemRoot% and Program Files.
-	trustedInstallerSID = "S-1-5-80-956008885-3418522649-1831038044-1850883334-2271476464"
+	trustedInstallerSID = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464"
 )
 
 // ProgramDataDir returns %ProgramData%\Kongtrol.
@@ -367,12 +367,61 @@ func sysKillSwitchDisable(ctx context.Context) error {
 
 // ── WireGuard (wireguard.exe tunnel services) ───────────────────────────
 
+// wgExe returns the WireGuard tool the helper runs as SYSTEM. Like
+// trustedBinary on Unix, it must be owned by SYSTEM / Administrators /
+// TrustedInstaller and writable by nobody else — the file and its folder
+// (a writable folder would let a user plant a DLL or swap the file).
 func wgExe(name string) (string, error) {
-	p := filepath.Join(programFiles(), "WireGuard", name)
-	if fi, err := os.Stat(p); err != nil || !fi.Mode().IsRegular() {
+	dir := filepath.Join(programFiles(), "WireGuard")
+	p := filepath.Join(dir, name)
+	if fi, err := os.Lstat(p); err != nil || !fi.Mode().IsRegular() {
 		return "", fmt.Errorf("%w: %s not installed", ErrNotFound, p)
 	}
+	for _, path := range []string{dir, p} {
+		if err := adminOnlyWritable(path); err != nil {
+			return "", err
+		}
+	}
 	return p, nil
+}
+
+// dirWriteMask adds the folder rights that let someone add or remove files.
+const dirWriteMask = writeMask | fileDeleteChild
+
+// fileDeleteChild is FILE_DELETE_CHILD (winnt.h 0x40), missing from x/sys/windows.
+const fileDeleteChild = 0x40
+
+// adminOnlyWritable requires path to be owned by SYSTEM, Administrators or
+// TrustedInstaller and no allow ACE to give write rights to anyone else
+// (inherit-only ACEs such as CREATOR OWNER do not apply to path itself).
+func adminOnlyWritable(path string) error {
+	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT,
+		windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
+	if err != nil {
+		return fmt.Errorf("%w: read security of %s: %v", ErrFailed, path, err)
+	}
+	owner, _, err := sd.Owner()
+	if err != nil || !isAdminOrSystem(owner) {
+		return denied(DenyFileOwner, "%s must be owned by an administrator; reinstall WireGuard", path)
+	}
+	dacl, _, err := sd.DACL()
+	if err != nil || dacl == nil {
+		return denied(DenyFileWritable, "%s has no access list; reinstall WireGuard", path)
+	}
+	for i := uint32(0); i < uint32(dacl.AceCount); i++ {
+		var ace *windows.ACCESS_ALLOWED_ACE
+		if err := windows.GetAce(dacl, i, &ace); err != nil {
+			return fmt.Errorf("%w: %v", ErrFailed, err)
+		}
+		if ace.Header.AceType != windows.ACCESS_ALLOWED_ACE_TYPE || ace.Header.AceFlags&windows.INHERIT_ONLY_ACE != 0 {
+			continue
+		}
+		sid := (*windows.SID)(unsafe.Pointer(&ace.SidStart))
+		if ace.Mask&dirWriteMask != 0 && !isAdminOrSystem(sid) {
+			return denied(DenyFileWritable, "%s can be modified by non-administrators (%s); reinstall WireGuard", path, sid.String())
+		}
+	}
+	return nil
 }
 
 func wgServiceName(name string) string { return "WireGuardTunnel$" + name }

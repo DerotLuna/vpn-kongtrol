@@ -49,12 +49,6 @@ export const PLACEHOLDERS: Record<string, PlaceholderSpec> = {
     legacy: LEGACY.settings,
     tabs: rulesTabs,
   },
-  '/security': {
-    title: 'nav.security',
-    lead: 'page.security.lead',
-    items: ['page.security.item1', 'page.security.item2', 'page.security.item3', 'page.security.item4'],
-    legacy: LEGACY.security,
-  },
   '/activity': {
     title: 'nav.activity',
     lead: 'page.activity.lead',

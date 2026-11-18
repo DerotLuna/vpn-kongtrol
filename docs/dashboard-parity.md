@@ -299,29 +299,29 @@ Table / states / notices
 
 #### Controls
 
-- [ ] Kill switch row: title, description, runtime badge (with detail text), switch — legacy security.html:25-37, security.js:118-124 — API GET /api/v1/security/status (handlers_security.go:91) — target `/security` — status: missing
-- [ ] Toggle kill switch; confirm only when turning off (`confirm.disableKillSwitch`); revert on error — legacy security.js:169-186 — API POST /api/v1/security/killswitch (handlers_security.go:227; body `enabled`; resp `kill_switch_enabled`) — target `/security` — status: missing
-- [ ] DNS guard row + toggle (no confirm) — legacy security.html:39-51, security.js:188-201 — API POST /api/v1/security/dnsguard (handlers_security.go:253) — target `/security` — status: missing
-- [ ] Public IP lookup row: switch + description with host — legacy security.html:52-63, security.js:130-133 — API POST /api/v1/security/publicip (handlers_security.go:47; resp `public_ip_check_host`) — target `/security` — status: partial (components/welcome/PublicIPCard.tsx: on Home)
-- [ ] Switch not overwritten while focused during refresh — legacy security.js:119, 121, 131 — target `/security` — status: missing
-- [ ] Switch disabled while request runs — legacy security.js:175, 190 — target `/security` — status: partial (components/welcome/PublicIPCard.tsx `busy`)
-- [ ] Refresh button — legacy security.html:22 — target `/security` — status: missing
+- [x] Kill switch row: title, description, runtime badge (with detail text), switch — legacy security.html:25-37, security.js:118-124 — API GET /api/v1/security/status (handlers_security.go:91) — target `/security` — status: done (web/ui/src/components/security/KillSwitchCard.tsx, model.ts)
+- [x] Toggle kill switch; confirm only when turning off (`confirm.disableKillSwitch`); revert on error — legacy security.js:169-186 — API POST /api/v1/security/killswitch (handlers_security.go:227; body `enabled`; resp `kill_switch_enabled`) — target `/security` — status: done (web/ui/src/components/security/KillSwitchCard.tsx: native dialog, optimistic + rollback, data/security.ts)
+- [x] DNS guard row + toggle (no confirm) — legacy security.html:39-51, security.js:188-201 — API POST /api/v1/security/dnsguard (handlers_security.go:253) — target `/security` — status: done (web/ui/src/components/security/DNSCard.tsx; decision: turning it off now asks first, it lowers privacy)
+- [x] Public IP lookup row: switch + description with host — legacy security.html:52-63, security.js:130-133 — API POST /api/v1/security/publicip (handlers_security.go:47; resp `public_ip_check_host`) — target `/security` — status: done (web/ui/src/components/security/PublicIPCheckCard.tsx)
+- [x] Switch not overwritten while focused during refresh — legacy security.js:119, 121, 131 — target `/security` — status: done (switches render the cache; a pending mutation cancels polls: data/optimistic.ts)
+- [x] Switch disabled while request runs — legacy security.js:175, 190 — target `/security` — status: done (Switch pending/disabled in web/ui/src/components/security/*Card.tsx)
+- [x] Refresh button — legacy security.html:22 — target `/security` — status: done (web/ui/src/pages/SecurityPage.tsx)
 
 #### Per-profile kill switch override (decision §2)
 
-- [ ] Table Profile + Override select (Inherit (global) / Force on / Force off), sorted — legacy security.html:66-84, security.js:205-233 — API GET /api/v1/vpns (handlers_vpn.go:18) `kill_switch_override` — target `/security` — status: missing
-- [ ] Change override → toast `toast.overrideSaved` / `toast.overrideFailed` + reload table — legacy security.js:235-248 — API PUT /api/v1/vpns/{name}/killswitch (handlers_settings.go:95; `override` must be inherit|on|off :113-125; 404 :111) — target `/security` — status: missing
-- [ ] Note `security.perProfileNote`; empty `empty.noProfiles`; refresh button — legacy security.html:69-71, security.js:207-209 — target `/security` — status: missing
+- [x] Table Profile + Override select (Inherit (global) / Force on / Force off), sorted — legacy security.html:66-84, security.js:205-233 — API GET /api/v1/vpns (handlers_vpn.go:18) `kill_switch_override` — target `/security` — status: done (web/ui/src/components/security/OverridesCard.tsx: native select, Result column)
+- [x] Change override → toast `toast.overrideSaved` / `toast.overrideFailed` + reload table — legacy security.js:235-248 — API PUT /api/v1/vpns/{name}/killswitch (handlers_settings.go:95; `override` must be inherit|on|off :113-125; 404 :111) — target `/security` — status: done (web/ui/src/components/security/OverridesCard.tsx, optimistic + rollback)
+- [x] Note `security.perProfileNote`; empty `empty.noProfiles`; refresh button — legacy security.html:69-71, security.js:207-209 — target `/security` — status: done (web/ui/src/components/security/OverridesCard.tsx; refresh = page button)
 
 #### Leak detection
 
-- [ ] Leak check badge, public IP + Check, last checked — legacy security.html:86-105, security.js:126, 134-151 — API GET /api/v1/security/status `leak_check{state,has_leak,public_ip,reason,checked_at}` — target `/security` — status: partial (components/welcome/PublicIPCard.tsx: IP + Check only)
+- [x] Leak check badge, public IP + Check, last checked — legacy security.html:86-105, security.js:126, 134-151 — API GET /api/v1/security/status `leak_check{state,has_leak,public_ip,reason,checked_at}` — target `/security` — status: done (web/ui/src/components/security/PublicIPCheckCard.tsx)
 
 #### Notices / cadence
 
-- [ ] Toasts `toast.killSwitchOn|Off`, `toast.dnsGuardOn|Off`, `toast.toggleFailed` via `showApiError` — legacy security.js:178-196 — target `/security` — status: missing
-- [ ] Poll security status every 15 s — legacy security.js:255 — target `/security` — status: missing
-- [ ] Badge states identical to `kongtrol status` (shellSecurityBadges) — legacy shell.js:299-321 — target `/security`, `/` — status: missing
+- [x] Toasts `toast.killSwitchOn|Off`, `toast.dnsGuardOn|Off`, `toast.toggleFailed` via `showApiError` — legacy security.js:178-196 — target `/security` — status: done (data/security.ts successMessage; refusal toast from data/optimistic.ts)
+- [x] Poll security status every 15 s — legacy security.js:255 — target `/security` — status: done (5 s shared query, data/security.ts)
+- [x] Badge states identical to `kongtrol status` (shellSecurityBadges) — legacy shell.js:299-321 — target `/security`, `/` — status: done on /security (web/ui/src/components/security/model.ts cli line in "Detalle técnico"); / pending
 
 ### 3.4 `settings.html` + `settings.js`
 
@@ -331,18 +331,18 @@ Table / states / notices
 - [ ] Diagnostics link "Open Diagnostics" (to `/app/`) — legacy settings.html:46 — API GET /api/v1/doctor (handlers_doctor.go:21) — target `/settings` — status: new UI has it (components/welcome/DiagnosticsCard.tsx)
 - [ ] Export configuration (download `kongtrol-export.yaml`, no secrets) — legacy settings.html:47 — API GET /api/v1/config/export (handlers_doctor.go:52; 404 `export.err.no_config`) — target `/settings` — status: new UI has it (components/welcome/DiagnosticsCard.tsx)
 - [ ] Health check interval (text, e.g. 30s) + timeout (e.g. 10s) — legacy settings.html:52-64, settings.js:167-168, 188-189 — API PUT /api/v1/settings (handlers_settings.go:49) `health_check_interval, health_check_timeout`; `time.ParseDuration` (:57-64), `config.Validate` (:74-77) — target `/settings` — status: missing
-- [ ] Split DNS enabled + interval (e.g. 60s) — legacy settings.html:66-79, settings.js:171-172, 192-193 — API `split_dns_enabled, split_dns_interval` (duration check :57-64) — target `/security` — status: missing
+- [x] Split DNS enabled + interval (e.g. 60s) — legacy settings.html:66-79, settings.js:171-172, 192-193 — API `split_dns_enabled, split_dns_interval` (duration check :57-64) — target `/security` — status: done (web/ui/src/components/security/DNSCard.tsx; says on/off applies on restart, verified cmd/kongtrol/daemon_cmd.go:173)
 
 #### Section: Security tuning
 
-- [ ] Kill switch mode strict/loose (legacy; `allow_lan` preferred) — legacy settings.html:90-95, settings.js:173, 194 — API `kill_switch_mode` (`oneof=strict loose`, internal/config/schema.go:177) — target `/security` — status: missing; **fix**: raw option labels
-- [ ] Allow LAN traffic switch — legacy settings.html:96-99 — API `kill_switch_allow_lan` — target `/security` — status: missing
-- [ ] Note "enable/disable kill switch on Security page" — legacy settings.html:101 — target `/security` (obsolete once co-located) — status: missing
-- [ ] DNS guard fallback DNS (text, e.g. 1.1.1.1) — legacy settings.html:109-111 — API `dns_guard_fallback_dns` (`config.Validate`) — target `/security` — status: missing
-- [ ] Public IP lookup enabled (duplicate of the Security switch) — legacy settings.html:120-123, settings.js:176, 197 — API `leak_detection_enabled` (legacy alias, handlers_settings.go:188-190) — target `/security` (single switch) — status: missing; **fix**: merge with the opt-in switch; must show the "uses external service" notice
-- [ ] Public IP services (one https:// URL per line; default collapsed to empty) — legacy settings.html:124-126, settings.js:177, 198 — API `public_ip_endpoints` (handlers_settings.go:194-205; `config.ValidatePublicIPEndpoint` via `config.Validate`) — target `/security` — status: missing
-- [ ] Public IP note `settings.publicIpNote` — legacy settings.html:127 — target `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx `publicip.notice`)
-- [ ] Leak action notify / killswitch_and_notify — legacy settings.html:128-133 — API `leak_detection_action` (`oneof`, internal/config/schema.go:208) — target `/security` — status: missing; **fix**: raw labels; effect with on-demand lookup `no verificado`
+- [x] Kill switch mode strict/loose (legacy; `allow_lan` preferred) — legacy settings.html:90-95, settings.js:173, 194 — API `kill_switch_mode` (`oneof=strict loose`, internal/config/schema.go:177) — target `/security` — status: done (web/ui/src/components/security/KillSwitchCard.tsx: merged into "Permitir la red local"; turning it off from loose saves strict) — **fix** applied
+- [x] Allow LAN traffic switch — legacy settings.html:96-99 — API `kill_switch_allow_lan` — target `/security` — status: done (web/ui/src/components/security/KillSwitchCard.tsx)
+- [x] Note "enable/disable kill switch on Security page" — legacy settings.html:101 — target `/security` (obsolete once co-located) — status: done (obsolete: co-located)
+- [x] DNS guard fallback DNS (text, e.g. 1.1.1.1) — legacy settings.html:109-111 — API `dns_guard_fallback_dns` (`config.Validate`) — target `/security` — status: done (web/ui/src/components/security/DNSCard.tsx, inline error)
+- [x] Public IP lookup enabled (duplicate of the Security switch) — legacy settings.html:120-123, settings.js:176, 197 — API `leak_detection_enabled` (legacy alias, handlers_settings.go:188-190) — target `/security` (single switch) — status: done (single switch with consent dialog, web/ui/src/components/security/PublicIPCheckCard.tsx) — **fix** applied
+- [x] Public IP services (one https:// URL per line; default collapsed to empty) — legacy settings.html:124-126, settings.js:177, 198 — API `public_ip_endpoints` (handlers_settings.go:194-205; `config.ValidatePublicIPEndpoint` via `config.Validate`) — target `/security` — status: done (web/ui/src/components/security/PublicIPCheckCard.tsx, https-only check before save)
+- [x] Public IP note `settings.publicIpNote` — legacy settings.html:127 — target `/security` — status: done (web/ui/src/components/security/PublicIPCheckCard.tsx)
+- [ ] Leak action notify / killswitch_and_notify — legacy settings.html:128-133 — API `leak_detection_action` (`oneof`, internal/config/schema.go:208) — target `/security` — status: not exposed — verified: `security.leak_detection.action` is only read by handlers_settings.go (no runtime effect); dropping it needs an ADR (pending, owner decision)
 - [ ] Audit log path, max size MB (number), HMAC sign switch — legacy settings.html:137-153, settings.js:179-181, 200-202 — API `audit_log_path, audit_log_max_size_mb, audit_log_sign` — target `/activity` **IA: revisar** (config of the log shown there; could stay in `/settings`) — status: missing; **fix**: empty max size sends 0 (settings.js:201)
 
 #### Section: Scheduler → `/rules/schedule`
@@ -423,7 +423,7 @@ Table / states / notices
 
 - [ ] Render IP or — + hint `publicip.hint` while off; Check buttons only while on — legacy publicip.js:41-63 — target `/`, `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx)
 - [ ] Check now: busy `publicip.checking`, error `publicip.failed` + `failedHint` or daemon error/hint, leak_check error state — legacy publicip.js:66-89 — API POST /api/v1/security/publicip/check (handlers_security.go:77; 409 `publicip.err.disabled`) — target `/`, `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx)
-- [ ] Toggle: `publicip.on` + notice with host / `publicip.off` / `publicip.toggleFailed`; revert switch on error — legacy publicip.js:93-116 — API POST /api/v1/security/publicip (handlers_security.go:47) — target `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx)
+- [x] Toggle: `publicip.on` + notice with host / `publicip.off` / `publicip.toggleFailed`; revert switch on error — legacy publicip.js:93-116 — API POST /api/v1/security/publicip (handlers_security.go:47) — target `/security` — status: done (web/ui/src/components/security/PublicIPCheckCard.tsx: notice + consent BEFORE enabling)
 
 #### `charts.js`
 
@@ -562,7 +562,7 @@ Rows = checkbox rows in §3, counted on the first target route named in the row 
 | `/rules` | 20 | 0 | 0 |
 | `/rules/schedule` | 10 | 0 | 0 |
 | `/traffic` | 26 | 0 | 0 |
-| `/security` | 24 | 2 | 3 |
+| `/security` | 24 | 23 (phase 2) | 0 |
 | `/activity` | 10 | 0 | 0 |
 | `/settings` | 16 | 6 | 0 |
 | Shell / cross-cutting | 34 | 9 | 4 |
