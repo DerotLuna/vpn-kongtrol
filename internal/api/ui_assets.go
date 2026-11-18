@@ -1,12 +1,16 @@
 package api
 
 import (
+	"bytes"
+	"compress/gzip"
 	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
@@ -45,6 +49,7 @@ var uiContentTypes = map[string]string{
 // under assets/ have content hashes in their names, so they are immutable;
 // index.html must always be revalidated so a new binary's UI loads at once.
 func newUIHandler(fsys fs.FS, built bool) http.Handler {
+	gz := &gzipCache{}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
@@ -59,7 +64,7 @@ func newUIHandler(fsys fs.FS, built bool) http.Handler {
 		if name == "" {
 			name = "index.html"
 		}
-		if serveUIFile(w, r, fsys, name) {
+		if serveUIFile(w, r, fsys, gz, name) {
 			return
 		}
 		// A missing hashed asset is a real 404: answering with HTML would
@@ -69,7 +74,7 @@ func newUIHandler(fsys fs.FS, built bool) http.Handler {
 			return
 		}
 		// Client-side route (e.g. /app/settings): hand it to the SPA.
-		if !serveUIFile(w, r, fsys, "index.html") {
+		if !serveUIFile(w, r, fsys, gz, "index.html") {
 			http.NotFound(w, r)
 		}
 	})
@@ -77,7 +82,7 @@ func newUIHandler(fsys fs.FS, built bool) http.Handler {
 
 // serveUIFile serves one regular file and reports whether it existed.
 // Directories are never listed.
-func serveUIFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string) bool {
+func serveUIFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, gz *gzipCache, name string) bool {
 	f, err := fsys.Open(name)
 	if err != nil {
 		return false
@@ -99,8 +104,94 @@ func serveUIFile(w http.ResponseWriter, r *http.Request, fsys fs.FS, name string
 	} else {
 		w.Header().Set("Cache-Control", "no-cache")
 	}
+	if uiCompressible[strings.ToLower(path.Ext(name))] {
+		// The answer depends on Accept-Encoding, also for caches.
+		w.Header().Add("Vary", "Accept-Encoding")
+		if acceptsGzip(r.Header.Get("Accept-Encoding")) {
+			if body, ok := gz.get(name, rs); ok {
+				w.Header().Set("Content-Encoding", "gzip")
+				// Ranges would apply to the gzip bytes; send it whole.
+				r.Header.Del("Range")
+				http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(body))
+				return true
+			}
+			if _, err := rs.Seek(0, io.SeekStart); err != nil {
+				return false
+			}
+		}
+	}
 	http.ServeContent(w, r, name, time.Time{}, rs)
 	return true
+}
+
+// uiCompressible are the text types worth gzip; images, fonts (woff2 is
+// already Brotli-compressed) and other binary formats are sent as they are.
+var uiCompressible = map[string]bool{
+	".html": true, ".js": true, ".mjs": true, ".css": true, ".json": true, ".svg": true, ".txt": true,
+}
+
+// gzipMinSize: smaller files gain nothing from compression (one packet).
+const gzipMinSize = 1024
+
+// gzipCache keeps each embedded file's gzip form, made once on first
+// request: the files are embedded in the binary and never change, so the
+// cost is paid once per file per daemon run (no brotli: no vetted Brotli
+// library is in go.mod; gzip is supported by every browser).
+type gzipCache struct {
+	mu    sync.Mutex
+	files map[string][]byte // nil value = not worth compressing
+}
+
+func (c *gzipCache) get(name string, rs io.ReadSeeker) ([]byte, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if b, ok := c.files[name]; ok {
+		return b, b != nil
+	}
+	if c.files == nil {
+		c.files = map[string][]byte{}
+	}
+	raw, err := io.ReadAll(rs)
+	if err != nil {
+		return nil, false // not cached: try again next time
+	}
+	var out []byte
+	if len(raw) >= gzipMinSize {
+		var buf bytes.Buffer
+		zw, _ := gzip.NewWriterLevel(&buf, gzip.BestCompression)
+		_, werr := zw.Write(raw)
+		if cerr := zw.Close(); werr == nil && cerr == nil && buf.Len() < len(raw) {
+			out = buf.Bytes()
+		}
+	}
+	c.files[name] = out
+	return out, out != nil
+}
+
+// acceptsGzip parses Accept-Encoding (RFC 9110 §12.5.3): gzip (or *) with
+// a q-value above 0.
+func acceptsGzip(header string) bool {
+	star := false
+	for _, part := range strings.Split(header, ",") {
+		coding, params, _ := strings.Cut(strings.TrimSpace(part), ";")
+		coding = strings.ToLower(strings.TrimSpace(coding))
+		q := 1.0
+		for _, p := range strings.Split(params, ";") {
+			k, v, ok := strings.Cut(strings.TrimSpace(p), "=")
+			if ok && strings.EqualFold(strings.TrimSpace(k), "q") {
+				if f, err := strconv.ParseFloat(strings.TrimSpace(v), 64); err == nil {
+					q = f
+				}
+			}
+		}
+		switch coding {
+		case "gzip", "x-gzip":
+			return q > 0
+		case "*":
+			star = q > 0
+		}
+	}
+	return star
 }
 
 var uiNotBuiltPage = template.Must(template.New("ui").Parse(`<!doctype html>
