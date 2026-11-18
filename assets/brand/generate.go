@@ -110,6 +110,97 @@ func main() {
 		}
 		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", out, px, px, buf.Len())
 	}
+	if err := renderCandidates(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// candidateSizes: Windows small-icon sizes at 100, 125, 150, 200, 250 and
+// 300 % scaling (16, 20, 24, 32, 40, 48), which also cover the macOS menu
+// bar (16 pt @1x/@2x) and Linux panels.
+var candidateSizes = []int{16, 20, 24, 32, 40, 48}
+
+// renderCandidates rasterizes every simplified tray glyph in
+// tray-candidates/*.svg (24-unit grid, placed by its viewBox, not cropped)
+// to <name>-<px>.png, black + alpha on transparent.
+func renderCandidates() error {
+	svgs, err := filepath.Glob(filepath.Join(dir, "tray-candidates", "*.svg"))
+	if err != nil {
+		return err
+	}
+	for _, src := range svgs {
+		paths, err := loadSVGPaths(src)
+		if err != nil {
+			return err
+		}
+		vb, err := svgViewBox(src)
+		if err != nil {
+			return err
+		}
+		base := strings.TrimSuffix(src, ".svg")
+		for _, px := range candidateSizes {
+			img := hint(rasterBox(paths, px, vb), px)
+			var buf bytes.Buffer
+			if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, img); err != nil {
+				return err
+			}
+			out := fmt.Sprintf("%s-%d.png", base, px)
+			if err := os.WriteFile(out, buf.Bytes(), 0o644); err != nil {
+				return err
+			}
+			fmt.Printf("%-34s %4dx%-4d %7d bytes\n", filepath.Base(out), px, px, buf.Len())
+		}
+	}
+	return nil
+}
+
+var svgViewBoxRe = regexp.MustCompile(`viewBox="([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)"`)
+
+// svgViewBox returns minX, minY, width, height of the root viewBox.
+func svgViewBox(path string) ([4]float64, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return [4]float64{}, err
+	}
+	m := svgViewBoxRe.FindStringSubmatch(string(b))
+	if m == nil {
+		return [4]float64{}, fmt.Errorf("%s: no viewBox", path)
+	}
+	return [4]float64{atof(m[1]), atof(m[2]), atof(m[3]), atof(m[4])}, nil
+}
+
+// rasterBox fills the outlines at px×px mapping the viewBox onto the
+// square (the glyph's own margins and optical balance are kept).
+func rasterBox(paths []seg, px int, vb [4]float64) *image.NRGBA {
+	k := float64(px) / math.Max(vb[2], vb[3])
+	return fill(paths, px, func(p pt) (float32, float32) {
+		return float32((p.x - vb[0]) * k), float32((p.y - vb[1]) * k)
+	})
+}
+
+// hint sharpens anti-aliased edges at small sizes (a contrast curve on the
+// coverage around 50 %), the raster equivalent of hinting a glyph to the
+// pixel grid: half-covered edge pixels become clearly on or off, so bold
+// shapes stay crisp at 16–24 px instead of turning grey. Not true
+// grid-fitting (no outline moves); larger sizes are left untouched.
+func hint(img *image.NRGBA, px int) *image.NRGBA {
+	gain := 1.0
+	switch {
+	case px <= 20:
+		gain = 1.8
+	case px <= 24:
+		gain = 1.5
+	case px <= 32:
+		gain = 1.2
+	}
+	if gain == 1 {
+		return img
+	}
+	for i := 3; i < len(img.Pix); i += 4 {
+		a := (float64(img.Pix[i])/255-0.5)*gain + 0.5
+		img.Pix[i] = uint8(math.Round(math.Max(0, math.Min(1, a)) * 255))
+	}
+	return img
 }
 
 // ── SVG master → tray masks ─────────────────────────────────────────────────
@@ -223,8 +314,11 @@ func rasterMask(paths []seg, px int) *image.NRGBA {
 	k := inner / side
 	ox := 1 + (inner-(maxX-minX)*k)/2 - minX*k
 	oy := 1 + (inner-(maxY-minY)*k)/2 - minY*k
-	f := func(p pt) (float32, float32) { return float32(ox + p.x*k), float32(oy + p.y*k) }
+	return fill(paths, px, func(p pt) (float32, float32) { return float32(ox + p.x*k), float32(oy + p.y*k) })
+}
 
+// fill rasterizes the outlines mapped by f into a px×px black + alpha image.
+func fill(paths []seg, px int, f func(pt) (float32, float32)) *image.NRGBA {
 	r := vector.NewRasterizer(px, px)
 	for _, s := range paths {
 		switch s.op {

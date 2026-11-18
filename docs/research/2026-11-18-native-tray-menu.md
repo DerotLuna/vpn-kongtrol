@@ -2,7 +2,7 @@
 
 # Research: what a native tray menu can show with fyne.io/systray
 
-Version 1.0.0 · 2026-11-18
+Version 1.1.0 · 2026-11-18 (1.1.0: simplified tray glyph)
 
 ## Question
 
@@ -74,6 +74,31 @@ the rasterizer's accumulation keeps them open. Rendering each tray size from the
 downscaling a 512 px raster) and keeping the background transparent avoids the filled-disc look.
 At 16 px the concentric rings of the mark blur into grey; a simplified small-size master would
 be a design task (not done here).
+
+### A simplified tray glyph (1.1.0)
+
+User feedback on Windows 11 (dark taskbar): the line-art mark turns into a grey blob at 16 px
+next to Windows' solid glyphs. Platform guidance (all **no verificado** in this session — cited
+from prior reading, to re-open before the final ADR):
+
+- Microsoft, app icon construction
+  (https://learn.microsoft.com/en-us/windows/apps/design/style/iconography/app-icon-construction):
+  provide each target size (16, 20, 24, 32, 40, 48 … for 100–300 % scaling), simplify detail at
+  small sizes, keep shapes on the pixel grid ("pixel snapping") instead of scaling one raster.
+- Microsoft, notification area
+  (https://learn.microsoft.com/en-us/windows/win32/shell/notification-area): tray icons are
+  drawn at the small-icon size (`SM_CXSMICON`, 16 px at 100 %); Windows 11's own tray glyphs are
+  monochrome and follow the taskbar theme.
+- Apple HIG, menu bar extras
+  (https://developer.apple.com/design/human-interface-guidelines/the-menu-bar): use a template
+  image (black + alpha) so the system tints it; keep it simple, about 16 pt tall.
+
+Three candidates in `assets/brand/tray-candidates/` (24-unit grid SVG, nonzero winding, single
+source; `generate.go` renders 16/20/24/32/40/48 px with an edge-contrast "hint" at ≤32 px —
+an approximation, not true grid-fitting): **A · silueta** (solid head and ears, face cut out),
+**B · anillo** (one bold ring + solid face, echoes the contour rings), **C · cara** (the face
+plate alone). Previews on dark/light taskbar strips at 16 and 24 px were made for the choice;
+the full line-art logo stays for large sizes (installer, about, dashboard).
 
 ### Another copy of the CLI earlier in PATH
 
