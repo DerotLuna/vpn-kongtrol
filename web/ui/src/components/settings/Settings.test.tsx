@@ -1,0 +1,83 @@
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { App } from '../../App'
+import type { UpdateStatus } from '../../api/types'
+
+function json(body: unknown, status = 200) {
+  return Promise.resolve(new Response(JSON.stringify(body), { status }))
+}
+
+class SilentSocket {
+  onopen: (() => void) | null = null
+  onmessage: ((e: MessageEvent) => void) | null = null
+  onclose: (() => void) | null = null
+  close() {}
+}
+
+function stubApi(routes: Record<string, (init?: RequestInit) => Promise<Response>>) {
+  const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const route = routes[`${init?.method ?? 'GET'} ${String(input)}`]
+    return route ? route(init) : json({ error: 'not found' }, 404)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  vi.stubGlobal('WebSocket', SilentSocket)
+  return fetchMock
+}
+
+const base = {
+  'GET /api/v1/preferences': () => json({ language: '', theme: '' }),
+  'GET /api/v1/tunnels': () => json([]),
+}
+
+const off: UpdateStatus = { check_enabled: false, host: 'api.github.com', current: 'v1.0.0', newer: false }
+
+describe('Settings', () => {
+  beforeEach(() => {
+    Object.defineProperty(navigator, 'languages', { value: ['es-AR'], configurable: true })
+  })
+
+  it('update notice is off by default, explains GitHub, and turns on', async () => {
+    const fetchMock = stubApi({
+      ...base,
+      'GET /api/v1/updates': () => json(off),
+      'POST /api/v1/updates': () =>
+        json({ ...off, check_enabled: true, latest: 'v1.1.0', newer: true, checked_at: '2026-11-18T10:00:00Z', url: 'https://github.com/DerotLuna/vpn-kongtrol/releases/tag/v1.1.0' }),
+    })
+    render(<App />)
+
+    const card = (await screen.findByRole('heading', { name: 'Aviso de versión nueva' })).closest('section')!
+    expect(await within(card).findByText('Apagado')).toBeInTheDocument()
+    expect(within(card).getByText(/api\.github\.com una vez al día/)).toBeInTheDocument()
+
+    await userEvent.click(within(card).getByRole('button', { name: 'Activar aviso' }))
+    expect(await within(card).findByText(/Hay una versión nueva: v1\.1\.0 \(tienes v1\.0\.0\)/)).toBeInTheDocument()
+    const post = fetchMock.mock.calls.find(([url, init]) => String(url) === '/api/v1/updates' && init?.method === 'POST')
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ enabled: true })
+  })
+
+  it('purge asks first, lists what is deleted, and cancel sends nothing', async () => {
+    const fetchMock = stubApi({
+      ...base,
+      'GET /api/v1/updates': () => json(off),
+      'POST /api/v1/data/purge': () => json({ status: 'purged', restarting: true }),
+    })
+    render(<App />)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Borrar todos mis datos' }))
+    const dialog = screen.getByRole('alertdialog', { name: '¿Borrar todos tus datos?' })
+    expect(within(dialog).getByText(/contraseñas guardadas en el llavero/)).toBeInTheDocument()
+    expect(within(dialog).getByText(/Kongtrol sigue instalado/)).toBeInTheDocument()
+    expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/v1/data/purge')).toBe(false)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Borrar todos mis datos' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Sí, borrar todo' }))
+    expect(await screen.findByText(/tus datos se borraron/)).toBeInTheDocument()
+    const post = fetchMock.mock.calls.find(([url]) => String(url) === '/api/v1/data/purge')
+    expect(JSON.parse(String(post?.[1]?.body))).toEqual({ confirm: true })
+  })
+})

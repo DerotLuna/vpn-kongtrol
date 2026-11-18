@@ -4,7 +4,15 @@
 // `kongtrol_control` cookie, so requests carry no token in JS. The daemon
 // translates errors when told the language (X-Kongtrol-Lang).
 import type { Lang } from '../i18n/messages'
-import type { ApiErrorBody, HelperStatus, Preferences, PublicIPStatus, TunnelMetrics } from './types'
+import type {
+  ApiErrorBody,
+  HelperStatus,
+  Preferences,
+  PublicIPStatus,
+  PurgeResult,
+  TunnelMetrics,
+  UpdateStatus,
+} from './types'
 
 export type ApiErrorKind = 'offline' | 'unauthorized' | 'server'
 
@@ -80,6 +88,12 @@ export const api = {
   setPublicIP: (enabled: boolean) => sendJSON<PublicIPStatus>('POST', '/api/v1/security/publicip', { enabled }),
   /** One lookup now (the user's "Revisar"). */
   checkPublicIP: () => request<PublicIPStatus>('/api/v1/security/publicip/check', { method: 'POST' }),
+  /** Remembered state only; reading never contacts GitHub. */
+  updates: () => request<UpdateStatus>('/api/v1/updates'),
+  /** Opt in/out of the update notice (updates.check_enabled). */
+  setUpdates: (enabled: boolean) => sendJSON<UpdateStatus>('POST', '/api/v1/updates', { enabled }),
+  /** "Borrar todos mis datos": the daemon then restarts into first-run setup. */
+  purgeData: () => sendJSON<PurgeResult>('POST', '/api/v1/data/purge', { confirm: true }),
 }
 
 /**

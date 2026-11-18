@@ -159,6 +159,11 @@ main { flex: 1; padding: 40px 0 64px; }
 .btn:hover:not(:disabled) { background: var(--signal-hi); border-color: var(--signal-hi); }
 .btn:disabled { opacity: 0.6; cursor: progress; }
 .btn.ghost { background: none; color: var(--text); border-color: var(--border-2); }
+/* destructive action ("Borrar todos mis datos"): outlined red, never the default look */
+.btn.danger { background: none; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
+.btn.danger:hover:not(:disabled) { background: var(--danger-soft); border-color: var(--danger); }
+.danger-zone ul { margin: 4px 0 4px 20px; }
+.settings { margin-top: 32px; display: flex; flex-direction: column; gap: 16px; }
 .notice {
   display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; border-radius: var(--radius);
   border: 1px solid var(--border-2); background: var(--surface-2); font-size: 14px;

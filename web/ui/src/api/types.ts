@@ -93,3 +93,20 @@ export interface PublicIPStatus {
   public_ip_check_host: string
   leak_check?: LeakCheck | null
 }
+
+/** internal/api/handlers_lifecycle.go `UpdateStatus` (opt-in notice, ADR-0032). */
+export interface UpdateStatus {
+  check_enabled: boolean
+  host: string
+  current: string
+  latest?: string
+  url?: string
+  newer: boolean
+  checked_at?: string
+}
+
+/** Answer of POST /api/v1/data/purge (ADR-0033). */
+export interface PurgeResult {
+  status: 'purged'
+  restarting: boolean
+}
