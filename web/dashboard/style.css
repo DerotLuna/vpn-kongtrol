@@ -12,9 +12,10 @@
   --steel-soft: rgba(127, 180, 212, 0.16);
   --text: #eef1f5;
   --text-muted: #99a3b3;
-  --text-dim: #8a94a4;
+  --text-dim: #8e98a8;
   --danger: #ff5a52;
-  /* palette "Sesión en la Torre" (DESIGN.md): green only for "connected";
+  /* palette "Sesión en la Torre" (DESIGN.md): green only for connected /
+     healthy / check passed;
      caution = needs attention, not broken (server not answering) */
   --live: #3ecf72;
   --live-glow: rgba(62, 207, 114, 0.5);
@@ -33,19 +34,19 @@
   --surface-2: #eef1f5;
   --border: #e1e5eb;
   --border-2: #d3d9e1;
-  --signal: #9c5700;
-  --signal-hi: #834900;
-  --signal-soft: rgba(156, 87, 0, 0.1);
-  --signal-line: rgba(156, 87, 0, 0.28);
+  --signal: #904f00;
+  --signal-hi: #7a4300;
+  --signal-soft: rgba(144, 79, 0, 0.1);
+  --signal-line: rgba(144, 79, 0, 0.28);
   --steel: #2f6a8f;
   --steel-soft: rgba(47, 106, 143, 0.12);
   --text: #14181f;
   --text-muted: #4d5665;
   --text-dim: #635c4b;
   --danger: #d43a32;
-  --live: #157a3f;
-  --live-glow: rgba(21, 122, 63, 0.35);
-  --caution: #b54708;
+  --live: #126f39;
+  --live-glow: rgba(18, 111, 57, 0.35);
+  --caution: #a54006;
 }
 
 @media (prefers-color-scheme: light) {
@@ -55,19 +56,19 @@
     --surface-2: #eef1f5;
     --border: #e1e5eb;
     --border-2: #d3d9e1;
-    --signal: #9c5700;
-    --signal-hi: #834900;
-    --signal-soft: rgba(156, 87, 0, 0.1);
-    --signal-line: rgba(156, 87, 0, 0.28);
+    --signal: #904f00;
+    --signal-hi: #7a4300;
+    --signal-soft: rgba(144, 79, 0, 0.1);
+    --signal-line: rgba(144, 79, 0, 0.28);
     --steel: #2f6a8f;
     --steel-soft: rgba(47, 106, 143, 0.12);
     --text: #14181f;
     --text-muted: #4d5665;
     --text-dim: #635c4b;
     --danger: #d43a32;
-    --live: #157a3f;
-    --live-glow: rgba(21, 122, 63, 0.35);
-    --caution: #b54708;
+    --live: #126f39;
+    --live-glow: rgba(18, 111, 57, 0.35);
+    --caution: #a54006;
   }
 }
 

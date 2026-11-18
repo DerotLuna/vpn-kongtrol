@@ -44,11 +44,11 @@
 
   --text:        #eef1f5;
   --text-muted:  #99a3b3;
-  --text-dim:    #8a94a4;   /* ≥4.5:1 on every surface incl. --surface-3 and --signal-soft */
+  --text-dim:    #8e98a8;   /* ≥4.5:1 on every surface incl. --surface-3 and --signal-soft */
   --danger:      #ff5a52;
-  /* live = ONLY "connected / up": a tunnel that is up, the ✔ of a terminal
-     line, the attach demo. Never a group tint, a mode or a confirmation
-     (DESIGN.md "Sesión en la Torre"). */
+  /* live = connected / healthy / check passed (a tunnel that is up, the ✔ of
+     a terminal line, the attach demo). Never a group, category, support
+     level or decoration (DESIGN.md "Sesión en la Torre"). */
   --live:        #3ecf72;
   --live-soft:   rgba(62,207,114,0.16);
   --ok:          var(--live);
@@ -113,11 +113,11 @@
 
   /* deep amber so small amber text clears 4.5:1 on bone paper;
      solid amber fills switch to light text via --on-signal */
-  --signal:      #9c5700;
-  --signal-hi:   #834900;
-  --signal-soft: rgba(156,87,0,0.10);
-  --signal-glow: rgba(156,87,0,0.20);
-  --signal-line: rgba(156,87,0,0.28);
+  --signal:      #904f00;
+  --signal-hi:   #7a4300;
+  --signal-soft: rgba(144,79,0,0.10);
+  --signal-glow: rgba(144,79,0,0.20);
+  --signal-line: rgba(144,79,0,0.28);
 
   --steel:       #2f6a8f;
   --steel-soft:  rgba(47,106,143,0.12);
@@ -126,10 +126,10 @@
   --text-muted:  #4c4638;
   --text-dim:    #635c4b;   /* ≥4.5:1 on every surface incl. --signal-soft (4.84) */
   --danger:      #b3261e;
-  --live:        #157a3f;
-  --live-soft:   rgba(21,122,63,0.14);
-  --caution:      #b54708;
-  --caution-soft: rgba(181,71,8,0.12);
+  --live:        #126f39;
+  --live-soft:   rgba(18,111,57,0.14);
+  --caution:      #a54006;
+  --caution-soft: rgba(165,64,6,0.12);
   --on-signal:   #fbf9f4;
 
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),

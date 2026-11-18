@@ -28,10 +28,11 @@
 
   --text:        #eef1f5;
   --text-muted:  #99a3b3;
-  --text-dim:    #8a94a4;
+  --text-dim:    #8e98a8;
   --danger:      #ff5a52;
   --danger-soft: rgba(255,90,82,0.12);
-  /* live = ONLY "connected / up" (DESIGN.md "Sesión en la Torre") */
+  /* live = connected / healthy / check passed; never a group, category,
+     support level or decoration (DESIGN.md "Sesión en la Torre") */
   --live:        #3ecf72;
   --live-soft:   rgba(62,207,114,0.16);
   /* caution = needs attention, not broken (server not answering) */
@@ -64,11 +65,11 @@
   --border:      #ddd5c4;
   --border-2:    #c9bfa8;
 
-  --signal:      #9c5700;
-  --signal-hi:   #834900;
-  --signal-soft: rgba(156,87,0,0.10);
-  --signal-glow: rgba(156,87,0,0.20);
-  --signal-line: rgba(156,87,0,0.28);
+  --signal:      #904f00;
+  --signal-hi:   #7a4300;
+  --signal-soft: rgba(144,79,0,0.10);
+  --signal-glow: rgba(144,79,0,0.20);
+  --signal-line: rgba(144,79,0,0.28);
 
   --steel:       #2f6a8f;
   --steel-soft:  rgba(47,106,143,0.12);
@@ -78,10 +79,10 @@
   --text-dim:    #635c4b;
   --danger:      #b3261e;
   --danger-soft: rgba(179,38,30,0.10);
-  --live:        #157a3f;
-  --live-soft:   rgba(21,122,63,0.14);
-  --caution:      #b54708;
-  --caution-soft: rgba(181,71,8,0.12);
+  --live:        #126f39;
+  --live-soft:   rgba(18,111,57,0.14);
+  --caution:      #a54006;
+  --caution-soft: rgba(165,64,6,0.12);
   --on-signal:   #fbf9f4;
   --logo-filter: none;
 
