@@ -111,7 +111,7 @@ const es = {
   'settings.err.durationFix': 'Usa un número seguido de s, m o h, de 1 segundo o más: 30s, 1m, 1h30m.',
   'settings.err.sizeEmpty': 'Escribe un tamaño.',
   'settings.err.size': 'Ese tamaño no vale.',
-  'settings.err.sizeFix': 'Usa un número entero de 1 a 10000, sin decimales.',
+  'settings.err.sizeFix': 'Usa un número entero de 1 a 1024, sin decimales.',
 
   'settings.privacy.title': 'Privacidad',
   'settings.privacy.what': 'Kongtrol no envía nada fuera de este equipo salvo lo que actives aquí.',
@@ -234,7 +234,7 @@ const en: Strings<typeof es> = {
   'settings.err.durationFix': 'Use a number followed by s, m or h, 1 second or more: 30s, 1m, 1h30m.',
   'settings.err.sizeEmpty': 'Type a size.',
   'settings.err.size': 'That size is not valid.',
-  'settings.err.sizeFix': 'Use a whole number from 1 to 10000, no decimals.',
+  'settings.err.sizeFix': 'Use a whole number from 1 to 1024, no decimals.',
 
   'settings.privacy.title': 'Privacy',
   'settings.privacy.what': 'Kongtrol sends nothing off this computer except what you turn on here.',

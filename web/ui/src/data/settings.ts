@@ -28,6 +28,8 @@ export interface Settings {
   health_check_timeout: string
   audit_log_path: string
   audit_log_max_size_mb: number
+  /** Days kept, today included (0 = today and yesterday). */
+  audit_log_retention_days?: number
   audit_log_sign: boolean
 }
 
@@ -104,9 +106,9 @@ export function validateDuration(value: string, minMs = 1_000): Invalid | null {
   return null
 }
 
-export const MAX_SIZE_MB = { min: 1, max: 10_000 } as const
+export const MAX_SIZE_MB = { min: 1, max: 1024 } as const
 
-/** Whole MB between 1 and 10000. Empty is an error, never 0. */
+/** Whole MB between 1 and 1024 (the daemon limit). Empty is an error, never 0. */
 export function validateMaxSize(value: string): Invalid | null {
   const v = value.trim()
   if (!v) return { message: 'settings.err.sizeEmpty', fix: 'settings.err.sizeFix' }

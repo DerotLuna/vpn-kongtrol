@@ -53,6 +53,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0038](0038-new-dashboard-architecture-and-patterns.md) | New dashboard: react-router + TanStack Query fed by the WebSocket, isolated auth, shared helper state, IA of 7 sections, component kit, vector theme-adaptive brand | Accepted | 2026-11-18 |
 | [0039](0039-browser-sessions-one-time-nonce.md) | Browser sessions: one-time nonce (`#k=`, 60 s) minted by native clients, traded for an in-memory HttpOnly session cookie; pages never hand out credentials; Host checked on every route | Accepted | 2026-11-18 |
 | [0040](0040-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted | 2026-11-18 |
+| [0042](0042-dashboard-api-completeness.md) | Dashboard API completeness: audit verified/rotated by size/retention/date query, leak action removed (leak only notifies, connected profiles only), profile rename + delete with references + file import, localized group/scheduler errors, scheduler hot reload + rule `enabled`, stable policy order, manual-reconnect notice, gzip for `/app/` | Accepted | 2026-11-18 |
 
 ## Statuses
 

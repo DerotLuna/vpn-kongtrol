@@ -232,7 +232,7 @@ func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.vpn_not_found", Args: []any{name}})
 		return
 	}
-	// A different "name" in the body renames the profile (ADR-0041).
+	// A different "name" in the body renames the profile (ADR-0042).
 	if newName := strVal(req.Name); newName != "" && newName != name {
 		if status, err := s.renameVPNProfile(cfg, cfgPath, name, newName, req); err != nil {
 			writeLocalizedError(w, r, status, err)
@@ -372,7 +372,7 @@ func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Every reference is listed at once: policies, groups, other profiles'
-	// failover, scheduler rules (ADR-0041).
+	// failover, scheduler rules (ADR-0042).
 	if refs := findProfileRefs(cfg, name); !refs.empty() {
 		writeLocalizedError(w, r, http.StatusConflict, inUseError(name, refs))
 		return

@@ -200,7 +200,7 @@ type IntegrityCheckConfig struct {
 // integrity_check.expected_ips, so it needs the public IP lookup:
 // enabled: true here still counts as opting in to that lookup
 // (Config.PublicIPCheckEnabled). A detected leak notifies (alert, audit
-// entry, dashboards); it never drives the kill switch (ADR-0041). The old
+// entry, dashboards); it never drives the kill switch (ADR-0042). The old
 // interval and action keys are gone: a config that still has them loads
 // and they are dropped on the next save.
 type LeakDetectionConfig struct {

@@ -53,7 +53,7 @@ func New(cfg *config.Config) (*Engine, error) {
 	// profiles with the same explicit priority would otherwise come out in
 	// an arbitrary order, and an overlapping domain could resolve to a
 	// different tunnel from one run to the next. The position in
-	// cfg.Policies is the deterministic last key (ADR-0041).
+	// cfg.Policies is the deterministic last key (ADR-0042).
 	sort.SliceStable(e.rules, func(i, j int) bool {
 		if e.rules[i].Priority != e.rules[j].Priority {
 			return e.rules[i].Priority > e.rules[j].Priority

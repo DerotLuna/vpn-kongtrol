@@ -43,6 +43,7 @@ reasoned but unverified.
 | [2026-11-18-local-web-ui-auth](2026-11-18-local-web-ui-auth.md) | OWASP session/CSRF guidance, ASVS V3, Jupyter tokens, Syncthing Host check; token-on-page-load root cause | ADR-0039 |
 | [2026-11-18-security-hardening-review](2026-11-18-security-hardening-review.md) | wg dump + X25519 key binding, TrustedInstaller SID, Program Files ACL, cmd.exe quoting, GitHub Actions hardening, Renovate digest pinning, OWASP Top 10 / Desktop Top 10 | ADR-0040 |
 | [2026-11-18-dashboard-ui-patterns](2026-11-18-dashboard-ui-patterns.md) | Apple HIG, Material 3, Fluent 2, WCAG 2.2 AA, Nielsen, live-data patterns (SWR, optimistic, backoff+jitter), router / data library choice for `web/ui` | ADR-0038 |
+| [2026-11-18-dashboard-api-gaps](2026-11-18-dashboard-api-gaps.md) | Size-based log rotation (logrotate, lumberjack), OpenVPN/WireGuard directives that run code, HTTP content coding (RFC 9110), stable sort | ADR-0042 |
 
 ## Template
 

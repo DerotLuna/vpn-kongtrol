@@ -144,11 +144,11 @@ describe('settings validation', () => {
     expect(validateDuration(' 10s ')).toBeNull()
   })
 
-  it('max size is a whole number 1–10000, never empty or 0', () => {
+  it('max size is a whole number 1–1024, never empty or 0', () => {
     expect(validateMaxSize('')?.message).toBe('settings.err.sizeEmpty')
     expect(validateMaxSize('0')?.message).toBe('settings.err.size')
     expect(validateMaxSize('1.5')?.message).toBe('settings.err.size')
-    expect(validateMaxSize('10001')?.message).toBe('settings.err.size')
+    expect(validateMaxSize('1025')?.message).toBe('settings.err.size')
     expect(validateMaxSize('100')).toBeNull()
   })
 })

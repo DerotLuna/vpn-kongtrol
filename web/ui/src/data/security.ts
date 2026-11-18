@@ -35,6 +35,12 @@ export interface SecurityState extends SecurityStatus {
   leak_detection_configured?: boolean
   leak_check_available?: boolean
   kill_switch_status?: KillSwitchDetail
+  /** Last kill switch apply failure, translated by the daemon (X-Kongtrol-Lang). */
+  kill_switch_error?: { message: string; hint?: string; error_key: string; detail?: string }
+  /** DNS servers the guard applies now (empty when idle) and their tunnel. */
+  dns_guard_servers?: string[]
+  dns_guard_interface?: string
+  dns_guard_profiles?: Record<string, string[]>
 }
 
 /** internal/api/handlers_groups.go `settingsDTO`: the fields this page edits. */
@@ -46,6 +52,8 @@ export interface SecuritySettings {
   dns_guard_fallback_dns: string
   public_ip_check_enabled: boolean
   public_ip_endpoints: string[] | null
+  /** profile → public IP expected while it is connected (leak check). */
+  expected_ips?: Record<string, string>
 }
 
 /** PUT /api/v1/settings takes any subset (handlers_settings.go settingsPatch). */

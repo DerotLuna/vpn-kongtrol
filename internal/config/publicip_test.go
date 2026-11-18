@@ -37,7 +37,7 @@ func TestPublicIPCheckDefaults(t *testing.T) {
 	}
 }
 
-// ADR-0041: leak_detection.interval/action were removed; an existing
+// ADR-0042: leak_detection.interval/action were removed; an existing
 // config that still has them must keep loading (enabled still opts in).
 func TestLoad_LegacyLeakDetectionKeysStillLoad(t *testing.T) {
 	path := writeConfig(t, `

@@ -237,7 +237,7 @@ security:
 
   # Legacy: leak_detection.enabled: true still opts in to the lookup above;
   # its old interval and action keys are ignored and dropped on save: a
-  # leak only notifies, it never drives the kill switch (ADR-0041).
+  # leak only notifies, it never drives the kill switch (ADR-0042).
 
   audit_log:
     path: ~/.kongtrol/audit.log

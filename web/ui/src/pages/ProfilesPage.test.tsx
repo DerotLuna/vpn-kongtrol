@@ -216,15 +216,23 @@ describe('ProfilesPage', () => {
     stubFetch(
       base({
         'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
-        'DELETE /api/v1/vpns/home': () => json({ error: 'profile "home" is referenced by policy "intranet"', code: 'conflict' }, 409),
+        'DELETE /api/v1/vpns/home': () =>
+          json(
+            {
+              error: 'profile "home" is in use · policies: intranet · groups: — · failover backup of: — · schedules: —',
+              hint: 'Remove it from those places (or switch them to another profile) and delete it again.',
+              error_key: 'api.err.vpn_in_use',
+            },
+            409,
+          ),
       }),
     )
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Delete home' }))
     const confirm = await screen.findByRole('alertdialog', { name: 'Delete the VPN “home”?' })
     await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }))
-    expect(await screen.findByText('“home” is used by the rule “intranet”.')).toBeInTheDocument()
-    expect(screen.getByText('Change or delete that rule in Rules and try again.')).toBeInTheDocument()
+    expect(await screen.findByText(/policies: intranet/)).toBeInTheDocument()
+    expect(screen.getByText(/Remove it from those places/)).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Delete home' })).toBeInTheDocument()
   })
 

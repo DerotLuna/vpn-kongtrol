@@ -408,6 +408,8 @@ export interface ScheduleRule {
   weekdays?: string[] | null
   start?: string
   end?: string
+  /** false while the rule is paused (daemon default true). */
+  enabled?: boolean
 }
 
 export interface ScheduleDraft {

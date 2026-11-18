@@ -105,14 +105,15 @@ describe('GroupsPage', () => {
     stubFetch(
       base({
         'GET /api/v1/groups': () => json([{ name: 'office', profiles: ['a'] }]),
-        'DELETE /api/v1/groups/office': () => json({ error: 'group not found', code: 'not_found' }, 404),
+        'DELETE /api/v1/groups/office': () =>
+          json({ error: 'group "office" does not exist', hint: 'Reload the page: it may have been deleted.', error_key: 'api.err.group_not_found' }, 404),
       }),
     )
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Delete office' }))
     const confirm = await screen.findByRole('alertdialog', { name: 'Delete the group “office”?' })
     await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }))
-    expect(await screen.findByText('That group no longer exists.')).toBeInTheDocument()
+    expect(await screen.findByText('group "office" does not exist')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Delete office' })).toBeInTheDocument())
   })
 
