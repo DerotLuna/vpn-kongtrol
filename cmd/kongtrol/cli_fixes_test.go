@@ -27,13 +27,18 @@ func TestDashboard_UsesSharedDaemon(t *testing.T) {
 	t.Cleanup(func() { openBrowserFn = oldOpen })
 	var opened string
 	openBrowserFn = func(u string) error { opened = u; return nil }
+	oldPanel := daemonPanelURLFn
+	t.Cleanup(func() { daemonPanelURLFn = oldPanel })
+	daemonPanelURLFn = func(base, path string) string { return base + path + "#k=nonce" }
 
 	out, err := captureStdout(t, func() error { return dashboardCmd.RunE(dashboardCmd, nil) })
 	if err != nil {
 		t.Fatal(err)
 	}
-	if opened != daemonAPIBase() {
-		t.Fatalf("opened %q, want the daemon's %q", opened, daemonAPIBase())
+	// Opens the daemon's page with a one-time sign-in nonce, never the
+	// plain address (the page no longer hands out credentials).
+	if want := daemonAPIBase() + "/#k=nonce"; opened != want {
+		t.Fatalf("opened %q, want %q", opened, want)
 	}
 	if !strings.Contains(out, ct("cli.dashboard.keeps_running")) {
 		t.Errorf("output lacks the keeps-running line:\n%s", out)

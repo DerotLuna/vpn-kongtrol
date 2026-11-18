@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.2 · 2026-11-18
+Versión 1.3 · 2026-11-18
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -675,7 +675,10 @@ kongtrol dashboard
 # Dashboard running at http://127.0.0.1:9741
 ```
 
-Abre `http://localhost:9741` en tu navegador. Es una consola de gestión completa, no solo
+`kongtrol dashboard` (o "Abrir panel" en el ícono de la bandeja) abre el panel en tu navegador
+ya autorizado, con un código de un solo uso. Escribir `http://127.0.0.1:9741` a mano no basta:
+la página te pedirá abrirla desde Kongtrol ([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md)).
+Es una consola de gestión completa, no solo
 monitoreo, con estas páginas:
 
 - **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo

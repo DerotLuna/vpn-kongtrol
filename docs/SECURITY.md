@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.4.1 · 2026-11-18
+Version 2.5.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -54,6 +54,32 @@ Loopback only: the OpenVPN management interface (`internal/vpn/openvpn/managemen
 privileged helper's socket or named pipe (below). Your VPN clients (NordVPN, FortiClient, OpenVPN,
 WireGuard) make their own connections; those depend on each provider. The dashboard serves its
 fonts and logos from the binary (`/brand/`), so opening it contacts no third party.
+
+## Local panel sign-in
+
+The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refused and
+`localhost` is pinned to `127.0.0.1`) has two kinds of callers
+([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md)):
+
+- **Native clients** (CLI, tray) send the control token from `~/.kongtrol/api-token` (created
+  `0600` in a `0700` directory) in `X-Kongtrol-Token`. It is compared in constant time and is
+  never accepted from a cookie or sent to a browser.
+- **Browsers** get a session cookie, never the token. Kongtrol (tray "Abrir panel", the tray
+  flyout, `kongtrol dashboard`) asks the daemon for a one-time nonce (`POST
+  /api/v1/session/nonce`, token required; 256 bits, single use, valid 60 s) and opens
+  `http://127.0.0.1:9741/#k=<nonce>`. The page removes the nonce from the address bar and trades
+  it (`POST /api/v1/session`: loopback Host, the daemon's own `Origin`, JSON only, failures
+  rate-limited to 10 per minute) for `kongtrol_session`, a separate random 256-bit id in an
+  `HttpOnly; SameSite=Strict; Path=/` cookie. Sessions live only in the daemon's memory (a
+  restart ends them), expire after 12 h without use and after 7 days in any case, and only their
+  SHA-256 digests are stored. `DELETE /api/v1/session` signs out.
+
+Pages (`/`, `/app/`) never set credentials. Every route, pages included, checks that the Host
+header is a loopback name with the daemon's port (DNS rebinding); API requests with an `Origin`
+must come from the daemon's own origin, and mutations must be `application/json` (so a
+cross-site form or `text/plain` request cannot reach them). A page opened another way (a
+bookmark after the session ended, another program) gets 401 and shows: "Abre el panel desde
+Kongtrol: el ícono de la bandeja o `kongtrol dashboard`."
 
 ## Privileged helper
 

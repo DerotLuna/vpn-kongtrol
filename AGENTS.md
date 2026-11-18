@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.10 · 2026-11-18
+Version 1.11 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -81,7 +81,8 @@ When adding a new adapter:
   stops the daemon or its tunnels. Only `kongtrol down` (or the tray's
   "Salir y desconectar todo") stops them. No terminal has to stay open.
 - There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
-  (127.0.0.1, token in `~/.kongtrol/api-token`). This local API is IPC on the same machine —
+  (127.0.0.1, token in `~/.kongtrol/api-token` for CLI/tray; browsers get a session cookie from a
+  one-time nonce, never the token: `daemonctl.(*Client).PanelURL`, ADR-0036). This local API is IPC on the same machine —
   nothing leaves the host.
 
 <!-- feature:first_run -->

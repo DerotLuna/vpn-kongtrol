@@ -1208,7 +1208,8 @@ function formatDuration(seconds) {
 setLang(lang);
 initLangToggle();
 enhanceAllSelects();
-connectWS();
+// Wait for the sign-in (auth.js) so the first socket already has a session.
+Promise.resolve(window.kongtrolSessionReady).then(connectWS);
 refreshRoutes();
 refreshPolicies();
 refreshNetworkOverview();

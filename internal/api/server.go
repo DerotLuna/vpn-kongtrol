@@ -56,6 +56,7 @@ type Server struct {
 	connectProfile    func(context.Context, string) error
 	disconnectProfile func(context.Context, string) error
 	apiToken          string
+	sessions          sessionAuth // browser sessions + one-time nonces (session.go)
 	upgrader          websocket.Upgrader
 	srv               *http.Server
 	onShutdown        func()
@@ -142,6 +143,11 @@ func (s *Server) Start() error {
 
 	mux := http.NewServeMux()
 
+	// Browser session bootstrap (session.go, ADR-0036).
+	mux.HandleFunc("POST "+sessionNoncePath, s.handleSessionNonce)
+	mux.HandleFunc("POST "+sessionPath, s.handleSessionCreate)
+	mux.HandleFunc("DELETE "+sessionPath, s.handleSessionDelete)
+
 	// REST API endpoints.
 	mux.HandleFunc("GET /api/v1/tunnels", s.handleListTunnels)
 	mux.HandleFunc("GET /api/v1/metrics/history", s.handleMetricsHistory)
@@ -209,8 +215,9 @@ func (s *Server) Start() error {
 		return fmt.Errorf("api: embed dashboard: %w", err)
 	}
 	fileServer := http.FileServer(http.FS(dashFS))
+	// Pages never carry credentials: a browser gets its session cookie
+	// only from POST /api/v1/session with a one-time nonce (session.go).
 	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.setControlCookie(w)
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		fileServer.ServeHTTP(w, r)
 	}))
@@ -220,16 +227,12 @@ func (s *Server) Start() error {
 	mux.Handle(brandPrefix, newBrandHandler(brand.Brand()))
 
 	// New UI (web/ui) under /app/, coexisting with the dashboard above
-	// while pages migrate; same cookie, same secureHandler checks.
+	// while pages migrate; same session cookie, same secureHandler checks.
 	uiFS, uiBuilt := assets.UI()
-	uiHandler := newUIHandler(uiFS, uiBuilt)
-	mux.Handle(uiPrefix, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		s.setControlCookie(w)
-		uiHandler.ServeHTTP(w, r)
-	}))
+	mux.Handle(uiPrefix, newUIHandler(uiFS, uiBuilt))
 
-	addr := net.JoinHostPort(s.bind, fmt.Sprintf("%d", s.port))
-	s.srv = &http.Server{
+	addr := net.JoinHostPort(listenHost(s.bind), fmt.Sprintf("%d", s.port))
+	s.srv =&http.Server{
 		Addr:         addr,
 		Handler:      s.secureHandler(mux),
 		ReadTimeout:  30 * time.Second,
@@ -257,11 +260,38 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 
+		// Pages check Host too, so a DNS-rebinding page on another name
+		// cannot read them either.
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			if !s.validHost(r.Host) {
+				http.Error(w, "forbidden host", http.StatusForbidden)
+				return
+			}
 			next.ServeHTTP(w, r)
 			return
 		}
-		if !s.validHost(r.Host) || !s.authenticated(r) {
+		if !s.validHost(r.Host) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		switch {
+		case r.URL.Path == sessionPath && r.Method == http.MethodPost:
+			// The nonce exchange: the one-time nonce is the credential.
+			// Only browsers call it, and a browser always sends Origin on
+			// a POST; a missing Origin is not proof of same origin (OWASP
+			// CSRF cheat sheet), so it is required here.
+			if !s.validBrowserOrigin(r) {
+				http.Error(w, "forbidden origin", http.StatusForbidden)
+				return
+			}
+		case r.URL.Path == sessionNoncePath:
+			// Only native clients holding the file token mint nonces; a
+			// browser session cannot.
+			if !s.tokenAuthenticated(r) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		case !s.authenticated(r):
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -285,17 +315,30 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 	})
 }
 
+// authenticated accepts the file token in a header (CLI, tray) or a live
+// browser session cookie (dashboard pages). The file token is never
+// accepted from a cookie.
 func (s *Server) authenticated(r *http.Request) bool {
+	if s.tokenAuthenticated(r) {
+		return true
+	}
+	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+		return s.sessions.valid(cookie.Value)
+	}
+	return false
+}
+
+// tokenAuthenticated checks the file token in X-Kongtrol-Token or
+// Authorization: Bearer, in constant time.
+func (s *Server) tokenAuthenticated(r *http.Request) bool {
 	token := strings.TrimSpace(r.Header.Get("X-Kongtrol-Token"))
 	if token == "" {
 		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 			token = strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
 		}
 	}
-	if token == "" {
-		if cookie, err := r.Cookie("kongtrol_control"); err == nil {
-			token = cookie.Value
-		}
+	if token == "" || s.apiToken == "" {
+		return false
 	}
 	return len(token) == len(s.apiToken) &&
 		subtle.ConstantTimeCompare([]byte(token), []byte(s.apiToken)) == 1
@@ -321,6 +364,16 @@ func (s *Server) validHost(hostport string) bool {
 	return isLoopbackHost(host)
 }
 
+// listenHost is the address actually bound. "localhost" is pinned to
+// 127.0.0.1: resolving the name could follow an edited hosts file to a
+// non-loopback address (ValidateDashboardBind only allows loopback).
+func listenHost(bind string) string {
+	if strings.EqualFold(strings.TrimSuffix(strings.TrimSpace(bind), "."), "localhost") {
+		return "127.0.0.1"
+	}
+	return bind
+}
+
 func isLoopbackHost(host string) bool {
 	if strings.EqualFold(strings.TrimSuffix(host, "."), "localhost") {
 		return true
@@ -338,6 +391,7 @@ func isConfigMutation(path string) bool {
 	// The helper install waits minutes on an OS prompt; it must not hold
 	// the config lock.
 	if strings.HasPrefix(path, "/api/v1/tunnels/") || strings.HasPrefix(path, "/api/v1/helper/") ||
+		path == sessionPath || path == sessionNoncePath ||
 		path == "/api/v1/shutdown" {
 		return false
 	}

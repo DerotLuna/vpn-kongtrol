@@ -1,7 +1,8 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.3.0 · 2026-11-18
+// Kongtrol UI — typed client for the daemon's local API · v0.3.1 · 2026-11-18
 //
-// Same-origin only: the daemon serves this UI and sets the HttpOnly
-// `kongtrol_control` cookie, so requests carry no token in JS. The daemon
+// Same-origin only: requests carry the HttpOnly `kongtrol_session` cookie
+// set by POST /api/v1/session (see ./session.ts, ADR-0036), never a token
+// in JS. A 401 becomes ApiError kind 'unauthorized'. The daemon
 // translates errors when told the language (X-Kongtrol-Lang).
 import type { Lang } from '../i18n/messages'
 import type {

@@ -1,4 +1,4 @@
-// Kongtrol UI entry · v0.1.0 · 2026-11-17
+// Kongtrol UI entry · v0.1.1 · 2026-11-18
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import faviconUrl from '@brand/logo-kong-32.png'
@@ -6,6 +6,7 @@ import faviconUrl from '@brand/logo-kong-32.png'
 // landing): nothing is fetched from Google.
 import '@brand/fonts/fonts.css'
 import { App } from './App'
+import { startSession } from './api/session'
 import { applyTheme, initialTheme } from './theme/theme'
 import './theme/global.css'
 
@@ -20,8 +21,11 @@ document.head.append(icon)
 
 const root = document.getElementById('root')
 if (!root) throw new Error('missing #root')
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// Sign in with the #k= nonce (if any) before the first API call.
+void startSession().then(() => {
+  createRoot(root).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+})

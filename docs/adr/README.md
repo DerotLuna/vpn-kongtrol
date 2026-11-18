@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.7.0 · 2026-11-18
+Version 1.8.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -48,6 +48,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0033](0033-cli-command-restructure.md) | Reestructura de comandos del CLI: nombres unificados (policy list/show, ip, routes --system, config default-group, reload [perfil]), alias viejos ocultos con aviso traducido, preguntas solo en terminal (--yes), init/up ofrecen el ayudante, config killswitch/dns-guard | Accepted | 2026-11-18 |
 | [0034](0034-uninstall-and-update-notice.md) | Uninstall keeps data unless asked (purge with exact keychain entries, never package-manager files); opt-in update notice from GitHub Releases, ≤1/24 h, never auto-update | Accepted | 2026-11-18 |
 | [0035](0035-install-scripts-pinned-and-release-assets.md) | One-line install scripts: pinned to the published tag from `landing/src/links.ts` now; from v0.6.0 release assets (+ checksums) behind `kongtrol.app/install.sh` (302 to `releases/latest/download`) | Accepted | 2026-11-18 |
+| [0036](0036-browser-sessions-one-time-nonce.md) | Browser sessions: one-time nonce (`#k=`, 60 s) minted by native clients, traded for an in-memory HttpOnly session cookie; pages never hand out credentials; Host checked on every route | Accepted | 2026-11-18 |
 
 ## Statuses
 
