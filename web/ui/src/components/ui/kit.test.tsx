@@ -6,6 +6,7 @@ import { PreferencesProvider } from '../../app/PreferencesProvider'
 import { toasts } from '../../data/toast'
 import { json, stubFetch } from '../../test/fakes'
 import { Button, IconButton } from './Button'
+import { DataList } from './DataList'
 import { Dialog } from './Dialog'
 import { TextField } from './Field'
 import { CloseIcon } from './icons'
@@ -163,5 +164,16 @@ describe('Banner', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Helper missing')
     rerender(<Banner tone="bad" title="Kongtrol stopped" urgent />)
     expect(screen.getByRole('alert')).toHaveTextContent('Kongtrol stopped')
+  })
+})
+
+describe('DataList', () => {
+  const columns = [{ id: 'name', header: 'Name', cell: (r: { id: string }) => r.id }]
+  it('marks only rows added after the first render as new (enter animation)', () => {
+    const { rerender, container } = render(<DataList caption="x" columns={columns} rows={[{ id: 'a' }]} rowKey={(r) => r.id} />)
+    expect(container.querySelector('tr[data-new]')).toBeNull()
+    rerender(<DataList caption="x" columns={columns} rows={[{ id: 'a' }, { id: 'b' }]} rowKey={(r) => r.id} />)
+    const marked = Array.from(container.querySelectorAll('tbody tr[data-new]')).map((tr) => tr.getAttribute('data-key'))
+    expect(marked).toEqual(['b'])
   })
 })

@@ -1,10 +1,12 @@
-/* KONGTROL UI — component kit (src/components/ui) · v0.1.0 · 2026-11-18
+/* KONGTROL UI — component kit (src/components/ui) · v0.2.0 · 2026-11-18
    Operate mode (DESIGN.md "Sesión en la Torre"): precise and quiet. Amber
    is the one accent (primary action, selection, focus); states use the
    Four States colors with a word. Flat by default: no shadows except the
    dialog (it floats over the page) and the toast. Targets 44px (36px for
    dense "sm" buttons, above the 24px floor). Text ≥ 11px. Motion: state
-   feedback only, transform/opacity, off with reduced motion. */
+   feedback only, transform/opacity, off with reduced motion. Arrivals use
+   --ease-enter over --dur-med from --rise below; exits --ease-exit over the
+   shorter --dur-exit (tokens.css). */
 
 /* ── Button ───────────────────────────────────────────────────────────── */
 .k-btn {
@@ -96,6 +98,10 @@
 .k-switch[aria-checked='true'] .k-switch__thumb { transform: translateX(18px); background: var(--on-signal); }
 .k-switch__state { font: 500 13px/1 var(--font-mono); color: var(--text-muted); min-width: 9ch; text-align: left; }
 .k-switch[data-pending] .k-switch__thumb { opacity: 0.7; }
+/* Press feedback: the thumb grows a little under the finger (M3 switch). */
+.k-switch:active:not(:disabled) .k-switch__thumb { transform: scale(1.12); }
+.k-switch[aria-checked='true']:active:not(:disabled) .k-switch__thumb { transform: translateX(18px) scale(1.12); }
+.k-switch__state { transition: color var(--dur-fast) var(--ease-standard); }
 .k-switch:disabled { cursor: not-allowed; opacity: 0.55; }
 
 /* ── Card ─────────────────────────────────────────────────────────────── */
@@ -112,6 +118,9 @@
 .k-datalist th, .k-datalist td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .k-datalist thead th { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.04em; color: var(--text-muted); }
 .k-datalist tbody th { font-weight: 600; }
+/* A row that was just added rises in once (DataList data-new). */
+.k-datalist tr[data-new] { animation: k-row-in var(--dur-med) var(--ease-enter); }
+@keyframes k-row-in { from { opacity: 0; transform: translateY(calc(var(--rise) * -1)); } }
 .k-datalist .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .k-datalist tbody tr:hover { background: var(--state-hover); }
 @media (max-width: 639px) {
@@ -129,9 +138,22 @@
   background: var(--surface); color: var(--text); width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
 }
-.k-dialog::backdrop { background: color-mix(in srgb, #000 55%, transparent); }
-.k-dialog[open] { animation: k-dialog-in var(--dur-med) var(--ease-standard); }
-@keyframes k-dialog-in { from { opacity: 0; transform: translateY(8px) scale(0.98); } }
+/* Open and close both animate: @starting-style gives the entry state and
+   allow-discrete keeps the dialog in the top layer while it fades out.
+   Browsers without them just show and hide it. */
+.k-dialog {
+  opacity: 0; transform: translateY(var(--rise)) scale(0.98);
+  transition: opacity var(--dur-exit) var(--ease-exit), transform var(--dur-exit) var(--ease-exit),
+              overlay var(--dur-exit) allow-discrete, display var(--dur-exit) allow-discrete;
+}
+.k-dialog[open] { opacity: 1; transform: none; transition-duration: var(--dur-med); transition-timing-function: var(--ease-enter); }
+@starting-style { .k-dialog[open] { opacity: 0; transform: translateY(var(--rise)) scale(0.98); } }
+.k-dialog::backdrop {
+  background: color-mix(in srgb, #000 55%, transparent); opacity: 0;
+  transition: opacity var(--dur-exit) var(--ease-exit), overlay var(--dur-exit) allow-discrete, display var(--dur-exit) allow-discrete;
+}
+.k-dialog[open]::backdrop { opacity: 1; transition-duration: var(--dur-med); }
+@starting-style { .k-dialog[open]::backdrop { opacity: 0; } }
 .k-dialog__body { display: flex; flex-direction: column; gap: 14px; padding: 20px 20px 22px; }
 .k-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px -8px 0 0; }
 .k-dialog__head h2 { font: 600 19px/1.3 var(--font-display); }
@@ -144,8 +166,9 @@
     margin: auto 0 0; width: 100vw; max-width: 100vw; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     border-bottom: 0; padding-bottom: env(safe-area-inset-bottom);
   }
-  .k-dialog--sheet[open] { animation-name: k-sheet-in; }
-  @keyframes k-sheet-in { from { transform: translateY(24px); opacity: 0; } }
+  /* The sheet slides up from the bottom edge and back down. */
+  .k-dialog--sheet { transform: translateY(32px); }
+  @starting-style { .k-dialog--sheet[open] { transform: translateY(32px); opacity: 0; } }
   .k-dialog__actions { flex-direction: column-reverse; }
   .k-dialog__actions .k-btn { width: 100%; }
 }
@@ -161,9 +184,11 @@
   padding: 10px 6px 10px 14px; border-radius: var(--radius);
   background: var(--text); color: var(--bg);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  animation: k-toast-in var(--dur-med) var(--ease-standard);
+  animation: k-toast-in var(--dur-med) var(--ease-enter);
 }
-@keyframes k-toast-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes k-toast-in { from { opacity: 0; transform: translateY(var(--rise)); } }
+.k-toast[data-leaving] { animation: k-toast-out var(--dur-exit) var(--ease-exit) forwards; pointer-events: none; }
+@keyframes k-toast-out { to { opacity: 0; transform: translateY(var(--rise)); } }
 .k-toast__icon svg { width: 20px; height: 20px; }
 .k-toast--ok .k-toast__icon { color: var(--live); }
 .k-toast--bad .k-toast__icon { color: var(--danger); }

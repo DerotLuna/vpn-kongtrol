@@ -70,8 +70,10 @@
 .k-main:focus { outline: none; }
 .k-main > * { max-width: var(--max-w); margin-inline: auto; }
 .k-notices { margin-bottom: 20px; }
-.k-page { animation: k-page-in var(--dur-fast) var(--ease-standard); }
-@keyframes k-page-in { from { opacity: 0; transform: translateY(4px); } }
+/* Page change: the new page fades up into place (no exit: the old page is
+   gone the moment the route commits, so nothing waits on choreography). */
+.k-page { animation: k-page-in var(--dur-med) var(--ease-enter); }
+@keyframes k-page-in { from { opacity: 0; transform: translateY(var(--rise)); } }
 .k-page-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
 .k-page-head h1 { font: 600 28px/1.15 var(--font-display); letter-spacing: -0.01em; }
 .k-page-head h1:focus { outline: none; }
