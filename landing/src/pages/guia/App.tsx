@@ -1,3 +1,4 @@
+import { Suspense, useMemo } from 'react'
 import { useOS } from '../../hooks/useOS'
 import { useLangRouting, useTheme } from '../../hooks/usePreferences'
 import { Lang } from '../../i18n'
@@ -44,6 +45,9 @@ export default function GuideApp({ lang }: { lang: Lang }) {
   const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting('guia', lang)
   useKonami()
+  // footer hydrates in its own later task; memoized so a re-render before
+  // that keeps its server HTML (ADR-0031, same as home)
+  const footer = useMemo(() => <Suspense><Footer lang={lang} page="guia" /></Suspense>, [lang])
 
   const head = lang === 'es'
     ? { label: '$ man kongtrol', title: 'Guía de configuración', sub: 'De cero a operar: instalación, wizard, políticas, doctor y primera conexión. 15–20 minutos, paso a paso por sistema operativo.' }
@@ -68,7 +72,7 @@ export default function GuideApp({ lang }: { lang: Lang }) {
         </header>
         <Guide os={os} setOS={setOS} lang={lang} />
       </main>
-      <Footer lang={lang} page="guia" />
+      {footer}
       <TmuxBar lang={lang} session="kongtrol:guia" windows={lang === 'es' ? GUIDE_WINDOWS_ES : GUIDE_WINDOWS_EN} showStatus={false} />
       <LangSuggest page="guia" suggest={suggest} onDismiss={dismiss} />
     </>

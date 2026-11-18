@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { Suspense, useMemo, useRef } from 'react'
 import { OS } from '../../hooks/useOS'
 import { Lang } from '../../i18n'
 import { useActiveSection } from '../../hooks/useActiveSection'
@@ -19,6 +19,35 @@ export default function Guide({ os, setOS, lang }: Props) {
   const GUIDE_SECTIONS = lang === 'es' ? GUIDE_SECTIONS_ES : GUIDE_SECTIONS_EN
   const [activeSection, setActiveSection] = useActiveSection(GUIDE_SECTIONS.map(s => s.id), '-20% 0px -70% 0px', 'prereqs')
   const contentRef = useRef<HTMLDivElement>(null)
+  // The command reference (the largest block, independent of the OS) is its
+  // own Suspense boundary, hydrated in a later, shorter task. Memoized so the
+  // OS detected after hydration does not re-render it first (ADR-0031).
+  const cmdCol = t.daily3 // same text for every OS; a new JSX element each render, so not a memo dep
+  const cmdref = useMemo(() => (
+    <Suspense>
+      {cmdrefGroups(lang).map((g) => (
+        <div key={g.title} className="table-scroll" style={{ marginTop: 12 }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>{g.title}</th>
+                <th>{cmdCol}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {g.rows.map((r) => (
+                <tr key={r.cmd}>
+                  <td>{r.cmd}</td>
+                  <td>{r.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </Suspense>
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [lang])
 
   return (
     <section id="guia" style={{ borderTop: '1px solid var(--border)' }}>
@@ -477,26 +506,7 @@ $ kongtrol up us-content`}</CodeBlock>
               <CodeBlock ui={lang} lang="bash">{t.daily17}</CodeBlock>
               <h3 style={{ marginTop: 32 }}>{t.cmdref1}</h3>
               <p>{t.cmdref2}</p>
-              {cmdrefGroups(lang).map((g) => (
-                <div key={g.title} className="table-scroll" style={{ marginTop: 12 }}>
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>{g.title}</th>
-                        <th>{t.daily3}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {g.rows.map((r) => (
-                        <tr key={r.cmd}>
-                          <td>{r.cmd}</td>
-                          <td>{r.desc}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ))}
+              {cmdref}
             </div>
             {/* 10 — Troubleshooting */}
             <div id="trouble" className="guide-section">
