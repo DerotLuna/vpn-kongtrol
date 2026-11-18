@@ -135,7 +135,7 @@ components:
 
 # Design System: VPN Kongtrol
 
-Versión 1.0.2 · 2026-11-18
+Versión 1.0.3 · 2026-11-18
 
 ## Overview
 
@@ -256,7 +256,7 @@ macOS-style title bar with three dots and a centered mono title (`ssh guest@kong
 - **Do** keep amber as the only accent and use it for the one primary action per section.
 - **Do** use green only for "connected" or a passed check, caution orange for "no response", red for errors, steel for "connecting", always with a word or icon.
 - **Do** write anything machine-like in IBM Plex Mono and anything for people in Inter.
-- **Do** keep motion for demos that explain (routing, attach, boot) and animate only transform/opacity, on screen, respecting reduced motion.
+- **Do** keep motion for demos that explain (routing, attach, boot) and animate only transform/opacity, on screen, respecting reduced motion. The only UI motion is state feedback the visitor triggers: disclosures open/close by height (`::details-content`), tab panels and copy confirmations fade in, never on load.
 - **Do** keep the terminal frame (window chrome, ASCII banner, CLI-flag nav, tmux bar) when adding sections.
 
 ### Don't:

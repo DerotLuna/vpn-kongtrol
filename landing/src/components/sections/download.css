@@ -2,6 +2,10 @@
    the page's only filled button there, every other system below as smaller
    cards with outlined buttons. */
 
+/* the page's last section: the footer's own top padding and border already
+   separate it, so a full --section-y below would leave a gap before it */
+.dl-section { padding-bottom: clamp(32px, 2vw + 24px, 56px); }
+
 .dl-featured {
   margin-top: 40px; padding: clamp(24px, 4vw, 40px);
   background: var(--surface-2); border: 1px solid var(--signal-line);

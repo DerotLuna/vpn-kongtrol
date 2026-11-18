@@ -60,7 +60,7 @@ export default function Download({ lang }: Props) {
     ? {
       section: '$ make install',
       title: 'Descárgalo gratis.',
-      sub: 'Windows, macOS y Linux. Código abierto, sin cuenta.',
+      sub: 'Windows, macOS y Linux. Local, gratis y de código abierto. Sin cuenta.',
       download: 'Descargar',
       downloadFor: { windows: 'Descargar para Windows', macos: 'Descargar para Mac', linux: 'Descargar para Linux' } as Record<OS, string>,
       recommended: 'Recomendado para tu equipo',
@@ -125,7 +125,7 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
     : {
       section: '$ make install',
       title: 'Download it free.',
-      sub: 'Windows, macOS and Linux. Open source, no account.',
+      sub: 'Windows, macOS and Linux. Local, free and open source. No account.',
       download: 'Download',
       downloadFor: { windows: 'Download for Windows', macos: 'Download for Mac', linux: 'Download for Linux' } as Record<OS, string>,
       recommended: 'Recommended for your computer',
@@ -189,7 +189,7 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
     }
 
   return (
-    <section id={DOWNLOAD_SECTION_ID} className="section">
+    <section id={DOWNLOAD_SECTION_ID} className="section dl-section">
       <div className="container">
         <div className="section-label cmd-label">{copy.section}</div>
         <h2 className="section-title">{copy.title}</h2>
