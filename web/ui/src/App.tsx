@@ -1,12 +1,15 @@
 import { PreferencesProvider } from './app/PreferencesProvider'
+import { TrayPage } from './pages/TrayPage'
 import { WelcomePage } from './pages/WelcomePage'
+import { isTrayRoute } from './tray/bridge'
 
-// Phase 1 has one page. Phase 2 adds a router (pages under /app/...) as more
-// legacy pages migrate.
+// Two pages so far, picked by path: /app/tray is the tray flyout
+// (ADR-0036), everything else the welcome page. Phase 2 adds a router
+// (pages under /app/...) as more legacy pages migrate.
 export function App() {
   return (
     <PreferencesProvider>
-      <WelcomePage />
+      {isTrayRoute(window.location.pathname) ? <TrayPage /> : <WelcomePage />}
     </PreferencesProvider>
   )
 }

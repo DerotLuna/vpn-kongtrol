@@ -94,6 +94,30 @@ export interface PublicIPStatus {
   leak_check?: LeakCheck | null
 }
 
+/** internal/api/handlers_security.go `groupDTO` (GET /api/v1/groups). */
+export interface Group {
+  name: string
+  profiles: string[]
+}
+
+/**
+ * GET /api/v1/security/status, the fields the tray flyout shows. States come
+ * from configuredRuntimeState: disabled (off in the config), idle (on,
+ * nothing to do now), armed / active (kill switch), active (DNS guard).
+ */
+export interface SecurityStatus extends PublicIPStatus {
+  kill_switch_enabled: boolean
+  kill_switch_state: 'disabled' | 'idle' | 'armed' | 'active'
+  dns_guard_enabled: boolean
+  dns_guard_state: 'disabled' | 'idle' | 'active'
+}
+
+/** Answers of POST /api/v1/tunnels/{name}/connect|disconnect. */
+export interface TunnelActionResult {
+  status: 'connecting' | 'already_connected' | 'disconnected' | 'waiting_user'
+  tunnel: string
+}
+
 /** internal/api/handlers_lifecycle.go `UpdateStatus` (opt-in notice, ADR-0034). */
 export interface UpdateStatus {
   check_enabled: boolean
