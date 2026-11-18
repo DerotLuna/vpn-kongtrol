@@ -72,14 +72,6 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return parse<T>(res)
 }
 
-/**
- * GET one JSON resource with the same auth, language and reachability
- * handling as `api`. For src/data/<page>.ts modules that own their reads.
- */
-export function getJSON<T>(path: string): Promise<T> {
-  return request<T>(path)
-}
-
 async function parse<T>(res: Response): Promise<T> {
   const text = await res.text()
   let body: unknown = null
