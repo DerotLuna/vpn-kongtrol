@@ -1078,16 +1078,27 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   text-shadow: 0 0 18px var(--signal-glow);
 }
 
-/* the one plain-language sentence in the hero: body face, full contrast,
-   readable size — it is what a non-technical visitor reads first */
-.th-meta { margin-top: 12px; }
+/* the page h1, inside the terminal: the first thing a visitor reads. Display
+   face, full contrast, not animated (it is the LCP element). */
+.th-title {
+  margin: 14px 0 0; max-width: 22ch;
+  font-family: var(--font-display); font-size: var(--step-3); font-weight: 600;
+  line-height: 1.08; letter-spacing: -0.02em; color: var(--text); text-wrap: balance;
+}
+/* the one plain-language sentence under it: body face, readable size */
 .th-sub {
-  color: var(--text); max-width: 58ch; margin: 14px 0 0;
+  color: var(--text-muted); max-width: 58ch; margin: 12px 0 0;
   font-family: var(--font-body); font-size: var(--step-1); line-height: 1.5;
   letter-spacing: -0.005em; text-wrap: pretty;
 }
 
-.th-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 24px; }
+.th-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 14px; }
+/* "Ver descargas" + a small "para Windows" line; every hint is shorter than
+   the label, so the button keeps its size when the OS becomes known */
+.th-btn-stack { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
+.th-btn-os { font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.02em; }
+/* facts under the buttons (10 VPN · OS · panel + CLI) */
+.th-meta { margin: 0 0 18px; }
 .th-btn {
   font-size: 0.8rem; padding: 10px 18px;
   border: 1px solid var(--signal-line); color: var(--signal); background: transparent;
@@ -1097,6 +1108,17 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .th-btn.primary:hover { background: var(--signal-hi); border-color: var(--signal-hi); box-shadow: 0 10px 28px -6px var(--signal-glow); }
 
 .th-cmd { margin-top: 4px; }
+
+/* the boot log (Last login, typed command, keychain, tunnel rows, kill
+   switch, watchdog, binary) is decoration: aria-hidden in Hero.tsx, smaller
+   and dimmed here so it never competes with the h1, sentence and buttons */
+.th-log { padding-top: 14px; border-top: 1px dashed var(--border); font-size: 0.72rem; opacity: 0.72; }
+.th-log-line { color: var(--text-dim); font-size: 0.72rem; opacity: 0.72; }
+/* phones can't run the binary: point to "send to my computer" instead
+   (chosen by <html data-device>, set before first paint — ADR-0029) */
+.th-bin-mobile { display: none; }
+:root[data-device='mobile'] .th-bin-desktop { display: none; }
+:root[data-device='mobile'] .th-bin-mobile { display: inline; }
 
 /* ── Boot timeline ─────────────────────────────────────────────────────────────
    Every line is in the markup from the start (prerender included), so the
@@ -1192,6 +1214,8 @@ body:has(.tmux-bar) { padding-bottom: 34px; }
   .th-body { padding: 18px 14px 22px; max-height: none; overflow-y: visible; }
   .th-ctas { gap: 10px; }
   .th-ctas .th-btn { flex: 1 1 100%; }
+  /* the "Last login" line wraps to two lines here and pushes the h1 down */
+  .th-log-line { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1210,18 +1234,8 @@ body:has(.tmux-bar) { padding-bottom: 34px; }
 .th-input:focus-visible { outline: none; }
 a { text-underline-offset: 3px; }
 
-/* ── Promise + paths ── */
-.promise-section { padding-top: 88px; }
-.promise-head { max-width: 760px; }
-.promise-title {
-  font-size: clamp(2.3rem, 5.2vw, 3.9rem); font-weight: 700; letter-spacing: -0.025em;
-  line-height: 1.02; color: var(--text); text-wrap: balance;
-}
-.promise-sub {
-  margin-top: 14px; font-family: var(--font-display); font-weight: 500;
-  font-size: clamp(1.2rem, 2.3vw, 1.55rem); line-height: 1.3; color: var(--signal); text-wrap: balance;
-}
-.promise-lead { margin-top: 20px; color: var(--text-muted); font-size: 1.04rem; max-width: 62ch; text-wrap: pretty; }
+/* ── Start: the attach demo opens the section, then the two paths ── */
+.promise-section .attach { margin-top: 0; }
 
 .paths {
   margin-top: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px;
@@ -1279,7 +1293,6 @@ a { text-underline-offset: 3px; }
   /* 8 tmux windows + status don't fit between 721–960px; keep the clock only */
   .tmux-right > :not(:last-child) { display: none; }
   .paths { grid-template-columns: 1fr; }
-  .promise-section { padding-top: 64px; }
 }
 @media (max-width: 720px) {
   .hood-row { grid-template-columns: 1fr; gap: 6px; padding: 16px 0; }
@@ -1289,18 +1302,36 @@ a { text-underline-offset: 3px; }
   .path { padding: 24px 18px; }
 }
 
-/* ── language suggestion bar (client-only, dismissible) ── */
+/* ── language suggestion (client-only, dismissible) ──
+   Fixed, so appearing never moves the page (CLS 0); docked out of the reading
+   column: a compact chip in the bottom-right corner above the tmux bar on
+   desktop, a slim strip on the bottom edge on phones (see ≤720px below). */
 .lang-suggest {
-  position: fixed; left: 50%; bottom: 52px; transform: translateX(-50%); z-index: 60;
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center;
-  max-width: calc(100% - 32px); padding: 10px 12px 10px 16px;
-  background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.25); font-size: 0.86rem;
+  position: fixed; right: 16px; bottom: 44px; z-index: 60;
+  display: flex; align-items: center; gap: 10px;
+  max-width: min(420px, calc(100% - 32px)); padding: 4px 4px 4px 14px;
+  background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 8px 24px -8px rgba(0,0,0,0.35); font-size: 0.8rem;
 }
-.lang-suggest a { font-weight: 600; }
+.lang-suggest a {
+  display: inline-flex; align-items: center; min-height: var(--tap);
+  font-weight: 600; white-space: nowrap;
+}
 .lang-suggest button {
-  background: none; border: 0; color: var(--text-dim, inherit); font-size: 1.2rem; line-height: 1;
-  cursor: pointer; padding: 4px 6px; border-radius: 6px; min-width: 32px; min-height: 32px;
+  flex: none; background: none; border: 0; color: var(--text-dim, inherit); font-size: 1.2rem; line-height: 1;
+  cursor: pointer; padding: 0; border-radius: 6px; min-width: var(--tap); min-height: var(--tap);
+}
+@media (max-width: 720px) {
+  .lang-suggest {
+    left: 0; right: 0; bottom: 0; max-width: none; justify-content: space-between;
+    padding: 0 4px calc(env(safe-area-inset-bottom, 0px)) 16px;
+    border-width: 1px 0 0; border-radius: 0; box-shadow: 0 -6px 18px -10px rgba(0,0,0,0.4);
+  }
+  /* the link says it all on a phone; the sentence stays as the region label */
+  .lang-suggest-text { display: none; }
+  /* room to scroll the last lines out from under the strip (bottom of the
+     page only, so nothing above moves) */
+  body:has(.lang-suggest) { padding-bottom: calc(var(--tap) + 8px); }
 }
 .lang-suggest button:hover, .lang-suggest button:focus-visible { background: var(--surface-2, rgba(127,127,127,0.15)); }
 

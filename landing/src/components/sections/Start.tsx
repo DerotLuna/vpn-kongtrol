@@ -10,17 +10,16 @@ interface Props {
   lang: Lang
 }
 
-// The plain-language promise right under the terminal hero, plus the two
-// ways in: the app (everyone) and the CLI (devs). Same product, same engine.
+// Right under the hero (which carries the h1 and the promise): the attach
+// demo first — the clearest explanation for non-technical visitors — then the
+// two ways in: the app (everyone) and the CLI (devs). Same product, same engine.
 export default function Start({ lang }: Props) {
   const detectedOS = useDetectedOS()
   const mobile = useIsMobile()
   const es = lang === 'es'
   const t = es
     ? {
-      title: 'Todas tus VPN en un solo lugar.',
-      sub: 'Conéctate como siempre; Kongtrol se encarga del resto.',
-      lead: 'Conectas en tu app de VPN de siempre. Kongtrol detecta el túnel y se hace cargo: lo vigila, lo reconecta si cae, protege tu DNS y aplica tus reglas. Donde el proveedor lo permite, también abre la app y conecta por ti.',
+      title: 'Cómo empezar',
       everyoneTitle: 'Para todos',
       everyoneLead: 'Un comando para empezar; después, todo desde el panel.',
       everyone: [
@@ -37,9 +36,7 @@ $ kongtrol status --watch # estado en vivo`,
       devsCta: 'man kongtrol — guía completa',
     }
     : {
-      title: 'All your VPNs in one place.',
-      sub: 'Connect the way you always do; Kongtrol handles the rest.',
-      lead: 'You connect in the VPN app you already use. Kongtrol detects the tunnel and takes over: it watches it, reconnects it if it drops, protects your DNS and applies your rules. Where the provider allows it, it can also open the app and connect for you.',
+      title: 'Getting started',
       everyoneTitle: 'For everyone',
       everyoneLead: 'One command to set up; then everything from the panel.',
       everyone: [
@@ -59,11 +56,8 @@ $ kongtrol status --watch # live status`,
   return (
     <section id="start" className="section promise-section">
       <div className="container">
-        <div className="promise-head">
-          <h2 className="promise-title">{t.title}</h2>
-          <p className="promise-sub">{t.sub}</p>
-          <p className="promise-lead">{t.lead}</p>
-        </div>
+        {/* outline only: the demo below is the visible lead-in */}
+        <h2 className="sr-only">{t.title}</h2>
 
         <AttachDemo lang={lang} />
 

@@ -4,7 +4,7 @@ import { useDetectedOS } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
 import { GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey } from '../../links'
 import { pathFor, SITE_UPDATED, SITE_VERSION } from '../../site'
-import { CTA_COPY, downloadHref, downloadLabel, DownloadIcon, GitHubIcon } from '../ui/downloadCta'
+import { CTA_COPY, downloadHref, GitHubIcon } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
 
 interface Props {
@@ -34,9 +34,10 @@ const BIN: Record<OS, ReleaseAssetKey> = {
   linux: 'linux-amd64',
 }
 
-// Boot timeline (ms after first paint). The meaningful content (banner, the
-// plain-language line, the two buttons) is in place within ~0.6s; the typed
-// command and the tunnel rows are the show that follows.
+// Boot timeline (ms after first paint). The meaningful content (the h1, the
+// plain-language line, the two buttons) is in place within ~0.6s — the h1
+// itself never animates; the typed command and the tunnel rows are the
+// decorative show that follows.
 const BOOT = {
   login: 0, banner: 80, tag1: 240, tag2: 300, sub: 360, ctas: 460,
   cmd: 760, resolving: 1840, rows: 2100, rowGap: 260,
@@ -75,6 +76,15 @@ function BootRows() {
   )
 }
 
+// "see downloads" scrolls down to #install: an arrow, not a download tray
+function ArrowDownIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 2.5v11M3.5 9 8 13.5 12.5 9" />
+    </svg>
+  )
+}
+
 export default function Hero({ os, lang }: Props) {
   // The boot sequence is a CSS timeline (index.css, .boot-step): every line is
   // in the markup from the first byte — prerendered HTML included — so the
@@ -93,9 +103,13 @@ export default function Hero({ os, lang }: Props) {
     if (el && shell.length > 0) el.scrollTop = el.scrollHeight
   }, [shell])
 
-  // download CTA: label follows the detected OS after hydration ("Descargar
-  // gratis" in the prerender); phones/tablets get "send to my computer",
-  // chosen by CSS from <html data-device> (see the markup below)
+  // Until a release ships the installer (v0.6.0, ADR-0027) the primary
+  // button scrolls to #install, so it says "see downloads", not "download".
+  // The label is fixed; a small second line names the visitor's system once
+  // it is known after hydration ("para tu equipo" in the prerender). Every
+  // hint is shorter than the label, so the button never changes size (no
+  // layout shift). Phones/tablets get "send to my computer", chosen by CSS
+  // from <html data-device> (markup below).
   const detectedOS = useDetectedOS()
   const cta = CTA_COPY[lang]
 
@@ -105,25 +119,33 @@ export default function Hero({ os, lang }: Props) {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
       tag1: '# torre de kongtrol multi-VPN · 10 VPN · Win / macOS / Linux (según la VPN)',
       tag2: '# panel web + CLI completa',
+      title: 'Todas tus VPN en un solo lugar.',
       sub: 'Conecta tus VPN como siempre. Kongtrol las detecta, las vigila, las reconecta si caen y manda cada sitio por la VPN correcta.',
       resolving: '→ resolviendo credenciales desde el keychain… ok',
       security: ['⛨ kill switch', 'ARMADO', '· DNS guard', 'ACTIVO'],
       watchdog: '♺ watchdog: sondeo cada 5s · backoff 2s → 5m',
       binHint: `→ binario para tu sistema: ${RELEASE_ASSETS[BIN[os]]}`,
+      binHintMobile: '→ Kongtrol se instala en tu computador: envíate el enlace ↑',
       hint: 'escribe "help" y presiona Enter ↵',
-      srTitle: 'VPN Kongtrol — todas tus VPN en un solo lugar',
+      seeDownloads: 'Ver descargas',
+      osHint: { windows: 'para Windows', macos: 'para Mac', linux: 'para Linux' } as Record<OS, string>,
+      osHintGeneric: 'para tu equipo',
     }
     : {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
       tag1: '# multi-VPN kongtrol tower · 10 VPNs · Win / macOS / Linux (varies by VPN)',
       tag2: '# web panel + full CLI',
+      title: 'All your VPNs in one place.',
       sub: 'Connect your VPNs the way you always do. Kongtrol detects them, watches them, reconnects them if they drop, and sends each site through the right VPN.',
       resolving: '→ resolving credentials from the keychain… ok',
       security: ['⛨ kill switch', 'ARMED', '· DNS guard', 'ACTIVE'],
       watchdog: '♺ watchdog: poll every 5s · backoff 2s → 5m',
       binHint: `→ binary for your system: ${RELEASE_ASSETS[BIN[os]]}`,
+      binHintMobile: '→ Kongtrol installs on your computer: send yourself the link ↑',
       hint: 'type "help" and press Enter ↵',
-      srTitle: 'VPN Kongtrol — all your VPNs in one place',
+      seeDownloads: 'See downloads',
+      osHint: { windows: 'for Windows', macos: 'for Mac', linux: 'for Linux' } as Record<OS, string>,
+      osHintGeneric: 'for your OS',
     }
 
   const runCommand = (raw: string): ShellEntry[] => {
@@ -227,7 +249,6 @@ export default function Hero({ os, lang }: Props) {
 
   return (
     <section id="motd" className="section th-section" style={{ borderTop: 'none' }}>
-      <h1 className="sr-only">{copy.srTitle}</h1>
       <div className="container">
         <div className="hero-contour th-contour" aria-hidden="true" />
         <div className="terminal crt th-terminal">
@@ -244,15 +265,16 @@ export default function Hero({ os, lang }: Props) {
             ref={bodyRef}
             onClick={focusInput}
           >
-            <div className="boot-line boot-step t-dim" style={at(BOOT.login)}>{copy.lastLogin}</div>
+            {/* Reading order: banner (brand frame) → h1 → the plain sentence →
+                buttons → facts. The rest of this window is decorative shell
+                output: dimmed and hidden from screen readers. */}
+            <div className="boot-line boot-step th-log-line" style={at(BOOT.login)} aria-hidden="true">{copy.lastLogin}</div>
 
             <pre className="th-banner boot-step" style={at(BOOT.banner)} aria-hidden="true">{BANNER}</pre>
 
-            <div className="th-meta">
-              <div className="boot-line boot-step t-dim" style={at(BOOT.tag1)}>{copy.tag1}</div>
-              <div className="boot-line boot-step t-dim" style={at(BOOT.tag2)}>{copy.tag2}</div>
-              <p className="th-sub boot-step" style={at(BOOT.sub)}>{copy.sub}</p>
-            </div>
+            {/* the page's only h1: visible, never animated (it is the LCP) */}
+            <h1 className="th-title">{copy.title}</h1>
+            <p className="th-sub boot-step" style={at(BOOT.sub)}>{copy.sub}</p>
 
             {/* Both variants are always in the markup; CSS shows one from the
                 first paint by <html data-device> (set by the boot script in
@@ -263,7 +285,11 @@ export default function Hero({ os, lang }: Props) {
             <div id="hero-cta" className="th-ctas boot-step" style={at(BOOT.ctas)}>
               <div className="th-ctas-desktop">
                 <a href={downloadHref('home', lang)} className="th-btn primary">
-                  <DownloadIcon />{downloadLabel(lang, detectedOS)}
+                  <ArrowDownIcon />
+                  <span className="th-btn-stack">
+                    <span>{copy.seeDownloads}</span>
+                    <small className="th-btn-os">{detectedOS ? copy.osHint[detectedOS] : copy.osHintGeneric}</small>
+                  </span>
                 </a>
                 <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
                   <GitHubIcon />{cta.github}
@@ -276,6 +302,12 @@ export default function Hero({ os, lang }: Props) {
               </SendToComputer>
             </div>
 
+            <div className="th-meta">
+              <div className="boot-line boot-step t-dim" style={at(BOOT.tag1)}>{copy.tag1}</div>
+              <div className="boot-line boot-step t-dim" style={at(BOOT.tag2)}>{copy.tag2}</div>
+            </div>
+
+            <div className="th-log" aria-hidden="true">
             <div className="hero-cmd-line th-cmd boot-step" style={at(BOOT.cmd)}>
               <span className="t-prompt">$ </span>
               <span className="th-typed" style={at(BOOT.cmd, { '--n': CMD.length })}>
@@ -292,7 +324,12 @@ export default function Hero({ os, lang }: Props) {
               {copy.security[0]} <strong>{copy.security[1]}</strong> {copy.security[2]} <strong>{copy.security[3]}</strong>
             </div>
             <div className="boot-line boot-step t-muted" style={at(BOOT.watchdog)}>{copy.watchdog}</div>
-            <div className="boot-line boot-step t-dim" style={at(BOOT.bin)}>{copy.binHint}</div>
+            {/* desktop: the file for this OS; phones can't run it (data-device, CSS) */}
+            <div className="boot-line boot-step t-dim" style={at(BOOT.bin)}>
+              <span className="th-bin-desktop">{copy.binHint}</span>
+              <span className="th-bin-mobile">{copy.binHintMobile}</span>
+            </div>
+            </div>
 
             {/* visitor shell history — announced to screen readers as it arrives */}
             <div aria-live="polite">
