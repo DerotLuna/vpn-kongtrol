@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.11 · 2026-11-18
+Version 1.12 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -282,8 +282,22 @@ Vite + React + TS (pnpm, oxlint, Vitest), migrating the legacy dashboard page by
 `web/ui/dist`, embedded by `web/ui_embed.go`, served at `/app/` by `internal/api/ui_assets.go`;
 legacy `web/dashboard` keeps `/` until migrated. Only `dist/.gitkeep` is tracked, so `go build`
 works without Node (shows a "not built" page); release builds always build the UI. `make ui-dev`
-proxies `/api` to the daemon. Strings in `src/i18n/messages.ts` (ES+EN parity tested); external
-URLs only in `src/links.ts`.
+proxies `/api` to the daemon. External URLs only in `src/links.ts`.
+
+Architecture (ADR-0038); the migration contract is `docs/dashboard-parity.md` (every legacy
+behaviour, tick each row with the new file; nothing dropped without an ADR):
+- Routes: `react-router` (declarative mode, `basename` `/app`) in `src/App.tsx`; sections in
+  `src/app/sections.ts`; unmigrated pages are entries in `src/app/placeholders.ts` (delete the
+  entry when the real page lands). `/app/tray` is the tray flyout (ADR-0036), outside the shell.
+- Data only via `src/data` (TanStack Query, cache keyed by resource in `keys.ts` or a
+  per-domain `src/data/<domain>.ts`); the one WebSocket (`live.ts`) writes into the same cache.
+  Pages never fetch on their own; changes use `useOptimisticMutation` (rollback + toast with the
+  "what to do" line); errors render through `describeError`.
+- Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
+- UI kit in `src/components/ui` (review at `/app/_kit`, dev builds only); shell in
+  `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.
+- Strings: `src/i18n/common.ts` (shared) + `src/i18n/pages/<page>.ts`, composed in
+  `src/i18n/messages.ts`; ES+EN parity and no duplicate key across modules are tested.
 
 ### Config validation
 
