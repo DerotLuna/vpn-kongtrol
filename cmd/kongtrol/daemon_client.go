@@ -144,3 +144,15 @@ var (
 	daemonTunnelStatesFn   = daemonTunnelStates
 	daemonActiveProfilesFn = daemonActiveProfiles
 )
+
+// daemonPanelURL returns base+path with a one-time sign-in nonce
+// (daemonctl.Client.PanelURL). Every place the CLI opens the dashboard in
+// a browser goes through it; on failure it is the plain URL and the page
+// explains how to open it from Kongtrol.
+func daemonPanelURL(base, path string) string {
+	u, _ := daemonClient(base).PanelURL(path)
+	return u
+}
+
+// daemonPanelURLFn is a test seam over daemonPanelURL.
+var daemonPanelURLFn = daemonPanelURL

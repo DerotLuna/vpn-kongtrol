@@ -39,7 +39,21 @@ func stubWG(t *testing.T, isTunnel func(string) (bool, error)) *wgStubs {
 		return nil
 	}
 	wgSetFn = func(_ context.Context, r WGAllowedIPsRequest) error { s.sets = append(s.sets, r.Interface); return nil }
+	// The running tunnel uses adoptConf's key pair (wgKeyMatches).
+	oldDump := wgDumpFn
+	t.Cleanup(func() { wgDumpFn = oldDump })
+	wgDumpFn = func(context.Context, string) (string, error) { return adoptDump(t), nil }
 	return s
+}
+
+// adoptDump is a `wg show dump` whose interface uses adoptConf's key.
+func adoptDump(t *testing.T) string {
+	t.Helper()
+	pub, ok := wgConfigPublicKey([]byte(adoptConf))
+	if !ok {
+		t.Fatal("adoptConf has no usable PrivateKey")
+	}
+	return "(hidden)\t" + pub + "\t51820\toff\n"
 }
 
 func profileConf(t *testing.T, name string) string {

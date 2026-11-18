@@ -1,12 +1,11 @@
-// Kongtrol UI — the only module that deals with authentication · v0.1.0 · 2026-11-18
+// Kongtrol UI — the only module that deals with authentication · v0.2.0 · 2026-11-18
 //
-// Today the daemon sets the HttpOnly `kongtrol_control` cookie when it
-// serves the page, so requests carry no token in JS. The planned hardening
-// (separate change) replaces that with a one-time bootstrap: the tray / CLI
-// open `/app/#k=<one-time nonce>`, this module trades the nonce for an
-// HttpOnly SameSite=Strict session cookie (POST /api/v1/session) and the
-// page never sees the file token. Until that endpoint exists, a 404 there
-// just means "older daemon: the cookie path still applies".
+// One-time bootstrap (ADR-0039): the tray / CLI open
+// `/app/#k=<one-time nonce>` (daemonctl.Client.PanelURL), this module trades
+// the nonce for the HttpOnly SameSite=Strict `kongtrol_session` cookie
+// (POST /api/v1/session) and the page never sees the file token. The daemon
+// no longer sets any cookie when it serves a page. A 404 on the exchange
+// means an older daemon.
 //
 // Rules: nothing else reads the URL fragment, stores credentials or sets
 // auth headers; a 401 from any request flips `authState` to

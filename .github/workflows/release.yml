@@ -31,7 +31,7 @@ jobs:
         working-directory: web/ui
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
           version: 10
       - uses: actions/setup-node@v4
@@ -74,14 +74,19 @@ jobs:
   windows:
     needs: ui
     runs-on: windows-latest
-    env:
-      # Code signing through SignPath Foundation (free for OSS). Skipped until
-      # the secret and the repository variables exist (see docs/RELEASING.md).
-      SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
     defaults:
       run:
         shell: bash
     steps:
+      # Code signing through SignPath Foundation (free for OSS). Skipped until
+      # the secret and the repository variables exist (see docs/RELEASING.md).
+      # Secrets live only in the steps that use them; `if:` reads this
+      # non-secret output instead of a job-wide secret env.
+      - name: Is signing configured?
+        id: signing
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: echo "enabled=$([ -n "$SIGNPATH_API_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
@@ -99,15 +104,15 @@ jobs:
           ./build/win/kongtrol.exe version --plain
       - name: Upload binaries for signing
         id: unsigned-bin
-        if: env.SIGNPATH_API_TOKEN != ''
+        if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: windows-unsigned-binaries
           path: build/win/*.exe
           retention-days: 1
       - name: Sign binaries (SignPath)
-        if: env.SIGNPATH_API_TOKEN != ''
-        uses: signpath/github-action-submit-signing-request@v3
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@4a84eb4ad763290f059275786f2deed97c2c672b # v3.1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -134,15 +139,15 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload installer for signing
         id: unsigned-setup
-        if: env.SIGNPATH_API_TOKEN != ''
+        if: steps.signing.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: windows-unsigned-installer
           path: dist-extra/Kongtrol-Setup-windows-amd64.exe
           retention-days: 1
       - name: Sign installer (SignPath)
-        if: env.SIGNPATH_API_TOKEN != ''
-        uses: signpath/github-action-submit-signing-request@v3
+        if: steps.signing.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@4a84eb4ad763290f059275786f2deed97c2c672b # v3.1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
@@ -164,13 +169,15 @@ jobs:
       contents: write # GitHub release
       id-token: write # cosign keyless, attestations, npm provenance
       attestations: write
-    env:
-      SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
-      WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
-      AUR_KEY: ${{ secrets.AUR_KEY }}
-      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    # No job-wide secrets: each token is set only on the step that uses it
+    # (GoReleaser, Homebrew, npm), so tests and third-party actions in this
+    # job never see them.
     steps:
+      - name: Is npm publishing configured?
+        id: npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: echo "enabled=$([ -n "$NPM_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -194,17 +201,20 @@ jobs:
       - name: Test release sources
         run: go test -race ./cmd/kongtrol ./internal/...
 
-      - uses: anchore/sbom-action/download-syft@v0
-      - uses: sigstore/cosign-installer@v4.1.3
+      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
           version: "~> v2"
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SCOOP_BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          WINGET_GITHUB_TOKEN: ${{ secrets.WINGET_GITHUB_TOKEN }}
+          AUR_KEY: ${{ secrets.AUR_KEY }}
 
       - name: Build provenance attestations
         uses: actions/attest-build-provenance@v4
@@ -229,14 +239,15 @@ jobs:
           bash packaging/homebrew/publish.sh "${GITHUB_REF_NAME#v}" brew-assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - uses: actions/setup-node@v4
-        if: env.NPM_TOKEN != ''
+        if: steps.npm.outputs.enabled == 'true'
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
       - name: npm packages
-        if: env.NPM_TOKEN != ''
+        if: steps.npm.outputs.enabled == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |

@@ -70,9 +70,20 @@ func TestFlyoutRequestAllowed(t *testing.T) {
 // with the filter and the injected script; no token in path or query.
 func TestFlyoutLoadURL(t *testing.T) {
 	page := "http://127.0.0.1:9741/app/tray"
+	old := flyoutPanelURL
+	t.Cleanup(func() { flyoutPanelURL = old })
+	flyoutPanelURL = func(base, path string) (string, error) { return base + path + "#k=n0nce", nil }
 	got, err := flyoutLoadURL(page)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got != page+"#k=n0nce" {
+		t.Errorf("flyoutLoadURL = %q, want the page with the sign-in nonce", got)
+	}
+	// A PanelURL answer that leaves the daemon's page is never loaded.
+	flyoutPanelURL = func(string, string) (string, error) { return "http://evil.example/app/tray#k=x", nil }
+	if got, _ := flyoutLoadURL(page); got != page {
+		t.Errorf("foreign URL used: %q", got)
 	}
 	u, err := url.Parse(got)
 	if err != nil || u.Path != flyoutPath || u.RawQuery != "" || !flyoutRequestAllowed(page, got) {

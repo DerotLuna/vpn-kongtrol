@@ -181,8 +181,11 @@ func openDashboard() { openDashboardPage("/") }
 
 // setupPagePath is the dashboard page a first run opens: the Studio, which
 // switches to its VPN profile tab and shows the "create your first VPN"
-// guide while the daemon runs in setup mode (no kongtrol.yaml yet). No URL
-// fragment: Windows' url.dll handler is not documented to keep one.
+// guide while the daemon runs in setup mode (no kongtrol.yaml yet). No page
+// fragment of its own; the only fragment is PanelURL's one-time "#k="
+// sign-in nonce (ADR-0039). If a Windows URL handler drops it, the page
+// shows how to open it from Kongtrol instead (no verificado on every
+// Windows version).
 const setupPagePath = "/studio.html"
 
 // openDashboardPage starts the daemon if needed and opens path on it. It
@@ -192,7 +195,10 @@ func openDashboardPage(path string) bool {
 		notifyError(trayT("tray.err_start"), err)
 		return false
 	}
-	if err := openBrowser(client.Base + path); err != nil {
+	// PanelURL adds a one-time sign-in nonce; on failure it is the plain
+	// URL and the page explains how to open it from Kongtrol.
+	panel, _ := client.PanelURL(path)
+	if err := openBrowser(panel); err != nil {
 		notifyError(trayF("tray.err_browser", client.Base+path), err)
 		return false
 	}
