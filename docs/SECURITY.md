@@ -54,7 +54,7 @@ manager are never deleted. Outside `~/.kongtrol` only single regular files are r
 `--config` file and the daily `audit-YYYY-MM-DD.log` files of a custom `security.audit_log.path`),
 never a folder, link or anything recursively; `audit_log.path` must name a file, not a folder
 (config validation). See [ADR-0034](adr/0034-uninstall-and-update-notice.md) and
-[ADR-0037](adr/0037-local-hardening-review-2026-11.md).
+[ADR-0040](adr/0040-local-hardening-review-2026-11.md).
 
 Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
 plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its
@@ -71,7 +71,7 @@ fonts and logos from the binary (`/brand/`), so opening it contacts no third par
 
 The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refused and
 `localhost` is pinned to `127.0.0.1`) has two kinds of callers
-([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md)):
+([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)):
 
 - **Native clients** (CLI, tray) send the control token from `~/.kongtrol/api-token` (created
   `0600` in a `0700` directory) in `X-Kongtrol-Token`. It is compared in constant time and is
@@ -307,7 +307,7 @@ This is a self-assessment, not an audit or certification.
 
 | Area | Covered | Known gaps |
 |---|---|---|
-| Access control — A01, DA5, ASVS V4 | Local API needs the file token (native) or a browser session; pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md), [ADR-0037](adr/0037-local-hardening-review-2026-11.md)). | Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
+| Access control — A01, DA5, ASVS V4 | Local API needs the file token (native) or a browser session; pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md), [ADR-0040](adr/0040-local-hardening-review-2026-11.md)). | Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
 | Session management — DA2, ASVS V3 | 256-bit random session ids distinct from the token, HttpOnly + SameSite=Strict, server-side idle (12 h) and absolute (7 d) timeouts, logout, single-use 60 s nonce, in-memory store. | No `Secure` flag (loopback HTTP by design); no per-session binding to the browser beyond the cookie. |
 | CSRF — A01, ASVS V4.2/V13 | SameSite=Strict, `Origin` must be the daemon's own when present (required for the nonce exchange), mutations only as `application/json`. | — |
 | Injection / XSS — A03, DA1 | Names restricted to a safe charset; the legacy dashboard escapes quotes and passes data via `data-*`; the new UI is React (escaped by default); the panel's CSP allows scripts only from the daemon. | The legacy dashboard CSP still has `'unsafe-inline'` scripts (inline handlers remain for static buttons); removed when the legacy dashboard is retired. |

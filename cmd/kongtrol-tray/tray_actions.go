@@ -177,7 +177,7 @@ func openDashboard() { openDashboardPage("/") }
 // switches to its VPN profile tab and shows the "create your first VPN"
 // guide while the daemon runs in setup mode (no kongtrol.yaml yet). No page
 // fragment of its own; the only fragment is PanelURL's one-time "#k="
-// sign-in nonce (ADR-0036). If a Windows URL handler drops it, the page
+// sign-in nonce (ADR-0039). If a Windows URL handler drops it, the page
 // shows how to open it from Kongtrol instead (no verificado on every
 // Windows version).
 const setupPagePath = "/studio.html"

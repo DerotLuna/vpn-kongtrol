@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Browser sessions (ADR-0036). The control token in ~/.kongtrol/api-token
+// Browser sessions (ADR-0039). The control token in ~/.kongtrol/api-token
 // is for native clients (CLI, tray) only and never reaches a browser. A
 // native client asks for a one-time nonce (POST /api/v1/session/nonce,
 // token header), opens the page with it in the URL fragment (#k=…), and

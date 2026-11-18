@@ -1,4 +1,4 @@
-// Browser sign-in for the dashboard (ADR-0036). Loaded first on every page.
+// Browser sign-in for the dashboard (ADR-0039). Loaded first on every page.
 //
 // Kongtrol (tray "Abrir panel", `kongtrol dashboard`) opens the page with a
 // one-time nonce in the fragment: /#k=<nonce>. This script removes it from

@@ -82,7 +82,7 @@ When adding a new adapter:
   "Salir y desconectar todo") stops them. No terminal has to stay open.
 - There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
   (127.0.0.1, token in `~/.kongtrol/api-token` for CLI/tray; browsers get a session cookie from a
-  one-time nonce, never the token: `daemonctl.(*Client).PanelURL`, ADR-0036). This local API is IPC on the same machine —
+  one-time nonce, never the token: `daemonctl.(*Client).PanelURL`, ADR-0039). This local API is IPC on the same machine —
   nothing leaves the host.
 
 <!-- feature:first_run -->

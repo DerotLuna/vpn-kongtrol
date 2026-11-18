@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0036: Browser sessions from a one-time nonce; pages never hand out credentials
+# ADR-0039: Browser sessions from a one-time nonce; pages never hand out credentials
 
 Version 1.0.0 · 2026-11-18
 

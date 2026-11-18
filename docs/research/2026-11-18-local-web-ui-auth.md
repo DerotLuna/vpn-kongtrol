@@ -78,4 +78,4 @@ Kongtrol (no silent failure).
 
 ## Used by
 
-- ADR-0036
+- ADR-0039

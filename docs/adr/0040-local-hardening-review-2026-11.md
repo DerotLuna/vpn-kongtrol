@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0037: Local hardening after the 2026-11 source review
+# ADR-0040: Local hardening after the 2026-11 source review
 
 Version 1.0.0 · 2026-11-18
 
@@ -9,7 +9,7 @@ Status: Accepted · Date: 2026-11-18 · Decision-makers: project maintainer
 ## Context and Problem Statement
 
 A source review (2026-11-18) found, besides the browser token disclosure fixed by
-[ADR-0036](0036-browser-sessions-one-time-nonce.md), several ways a local process, a crafted
+[ADR-0039](0039-browser-sessions-one-time-nonce.md), several ways a local process, a crafted
 setting or a compromised dependency could harm the user: recursive deletes outside
 `~/.kongtrol`, a manifest that could name `/`, a helper that bound foreign WireGuard tunnels by
 name only, an update link taken from the network, stored XSS in the legacy dashboard through

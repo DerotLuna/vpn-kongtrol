@@ -1,7 +1,7 @@
 // Kongtrol UI — browser sign-in · v0.1.0 · 2026-11-18
 //
 // Kongtrol (tray, `kongtrol dashboard`, tray flyout) opens this UI with a
-// one-time nonce in the fragment: /app/#k=<nonce> (ADR-0036). startSession
+// one-time nonce in the fragment: /app/#k=<nonce> (ADR-0039). startSession
 // removes it from the address bar and trades it for an HttpOnly session
 // cookie (POST /api/v1/session). Without a nonce it does nothing: an
 // existing session cookie may still be valid; if not, API calls answer 401

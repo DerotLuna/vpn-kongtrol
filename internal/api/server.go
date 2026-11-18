@@ -143,7 +143,7 @@ func (s *Server) Start() error {
 
 	mux := http.NewServeMux()
 
-	// Browser session bootstrap (session.go, ADR-0036).
+	// Browser session bootstrap (session.go, ADR-0039).
 	mux.HandleFunc("POST "+sessionNoncePath, s.handleSessionNonce)
 	mux.HandleFunc("POST "+sessionPath, s.handleSessionCreate)
 	mux.HandleFunc("DELETE "+sessionPath, s.handleSessionDelete)

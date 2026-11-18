@@ -677,7 +677,7 @@ kongtrol dashboard
 
 `kongtrol dashboard` (o "Abrir panel" en el ícono de la bandeja) abre el panel en tu navegador
 ya autorizado, con un código de un solo uso. Escribir `http://127.0.0.1:9741` a mano no basta:
-la página te pedirá abrirla desde Kongtrol ([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md)).
+la página te pedirá abrirla desde Kongtrol ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)).
 Es una consola de gestión completa, no solo
 monitoreo, con estas páginas:
 

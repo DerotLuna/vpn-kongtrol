@@ -15,7 +15,7 @@ curl -H "X-Kongtrol-Token: $(cat ~/.kongtrol/api-token)" \
   http://127.0.0.1:9741/api/v1/tunnels
 ```
 
-Browsers never get that token ([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md)):
+Browsers never get that token ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)):
 
 ```bash
 POST   /api/v1/session/nonce   # token header only → {"nonce","expires_in":60}; single use

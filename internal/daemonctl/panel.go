@@ -15,7 +15,7 @@ import (
 // /api/v1/session/nonce with the control token) and appends it as
 // "#k=<nonce>". The page trades the nonce for an HttpOnly session cookie
 // (POST /api/v1/session) and removes it from the address bar. The control
-// token itself never reaches the browser (ADR-0036).
+// token itself never reaches the browser (ADR-0039).
 //
 // Every client that opens the dashboard (CLI `kongtrol dashboard`, the
 // live view's "o", tray "Abrir panel", the tray flyout) must build its URL

@@ -63,4 +63,4 @@ instead of guessing; Inno Setup `[UninstallRun]` working directory (issue).
 
 ## Used by
 
-- ADR-0037
+- ADR-0040
