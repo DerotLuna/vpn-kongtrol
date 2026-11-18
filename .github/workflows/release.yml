@@ -195,7 +195,7 @@ jobs:
         run: go test -race ./cmd/kongtrol ./internal/...
 
       - uses: anchore/sbom-action/download-syft@v0
-      - uses: sigstore/cosign-installer@v4
+      - uses: sigstore/cosign-installer@v4.1.3
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
