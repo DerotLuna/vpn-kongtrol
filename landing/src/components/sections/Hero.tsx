@@ -87,8 +87,8 @@ export default function Hero({ os, lang }: Props) {
   const copy = es
     ? {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
-      tag1: '# torre de kongtrol multi-VPN · 10 VPN · Win / macOS / Linux',
-      tag2: '# ícono en la bandeja + panel web + CLI completa',
+      tag1: '# torre de kongtrol multi-VPN · 10 VPN · Win / macOS / Linux (según la VPN)',
+      tag2: '# panel web + CLI completa',
       sub: 'Conecta tus VPN como siempre. Kongtrol las detecta, las vigila, las reconecta si caen y manda cada sitio por la VPN correcta.',
       ctaDownload: '[ ⇩ Descargar en GitHub ]',
       ctaGuide: '[ man kongtrol — guía completa ]',
@@ -101,8 +101,8 @@ export default function Hero({ os, lang }: Props) {
     }
     : {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
-      tag1: '# multi-VPN kongtrol tower · 10 VPNs · Win / macOS / Linux',
-      tag2: '# tray icon + web panel + full CLI',
+      tag1: '# multi-VPN kongtrol tower · 10 VPNs · Win / macOS / Linux (varies by VPN)',
+      tag2: '# web panel + full CLI',
       sub: 'Connect your VPNs the way you always do. Kongtrol detects them, watches them, reconnects them if they drop, and sends each site through the right VPN.',
       ctaDownload: '[ ⇩ Download on GitHub ]',
       ctaGuide: '[ man kongtrol — full guide ]',
@@ -172,7 +172,7 @@ export default function Hero({ os, lang }: Props) {
       return out([
         { cls: 't-ok-line', text: es ? '✔ binarios VPN encontrados (4/4)' : '✔ VPN binaries found (4/4)' },
         { cls: 't-ok-line', text: es ? '✔ credenciales en keychain (3 perfiles)' : '✔ keychain credentials (3 profiles)' },
-        { cls: 't-ok-line', text: es ? '✔ permisos de administrador' : '✔ administrator permissions' },
+        { cls: 't-ok-line', text: es ? '✔ ayudante: instalado y respondiendo' : '✔ helper: installed and answering' },
         { cls: 't-muted', text: es ? 'todo listo · exit 0' : 'all good · exit 0' },
       ])
     }

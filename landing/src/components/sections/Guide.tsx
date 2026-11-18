@@ -204,9 +204,9 @@ $ kongtrol dashboard`}</CodeBlock>
               {os === 'linux' && (
                 <div className="os-panel active">
                   <CodeBlock lang="bash">{t.install11}</CodeBlock>
-                  <p>{t.install12}</p>
                 </div>
               )}
+              <p>{t.install12}</p>
             </div>
             {/* 03 — Wizard */}
             <div id="wizard" className="guide-section">

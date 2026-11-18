@@ -42,20 +42,21 @@ export default function guideES(os: OS) {
     prereqs6: <>{os === 'windows'
                         ? <>CLI o GUI según instalador. Community: <IC c="openvpn --version" /> en terminal (agrega al PATH). OpenVPN Connect: solo GUI — Kongtrol lo detecta automáticamente.</>
                         : <IC c="openvpn --version" />}</>,
-    prereqs7: os === 'windows' ? 'ProtonVPN app (GUI) + WireGuard' : 'protonvpn-cli o WireGuard',
-    prereqs8: <>{os === 'windows'
-                        ? <>GUI manual: abrir ProtonVPN y comprobar conexión. Automático: WireGuard + <IC c="wg --version" />.</>
-                        : <><IC c="protonvpn-cli --version" /> o <IC c="wg --version" /> si usarás perfil WireGuard.</>}</>,
+    prereqs7: 'App oficial de ProtonVPN (o WireGuard con su .conf)',
+    prereqs8: <>{os === 'linux'
+                        ? <>Inicia sesión en la app. En Linux Kongtrol puede conectar por ti; si no, conectas tú y lo detecta.</>
+                        : <>Inicia sesión en la app. Conectas tú y Kongtrol detecta el túnel solo.</>}
+                      {' '}Sin app: perfil <IC c="wireguard" /> con el <IC c=".conf" /> de Proton.</>,
     prereqs9: <><strong>Nota:</strong> si el wizard muestra ✓ para un cliente, está detectado y listo — no necesitas verificar manualmente en terminal.</>,
-    prereqs10: <><strong>Antes de conectar:</strong> cierra las GUIs de los clientes VPN.
-                Kongtrol llama directamente al CLI de cada uno — dos instancias kongtrolando
-                el mismo túnel entran en conflicto.</>,
+    prereqs10: <><strong>No cierres la app de tu VPN:</strong> Kongtrol trabaja con ella.
+                Si el túnel ya está arriba, se engancha a él. Si no, abre la app y conecta por ti
+                donde se puede; si no puede, te dice qué hacer y espera a que conectes.</>,
     prereqs11: <>Comando</>,
     prereqs12: <>Estado requerido de los clientes</>,
     prereqs13: <>Cualquiera — solo lee archivos y keychain</>,
     prereqs14: <>Cualquiera — solo valida, no conecta</>,
     prereqs15: <>kongtrol up &lt;perfil&gt;</>,
-    prereqs16: <>GUI del cliente <strong>cerrada</strong></>,
+    prereqs16: <>App instalada; abierta o cerrada da igual (Kongtrol la abre si hace falta)</>,
     // feature:helper
     install1: <>Instalación</>,
     install2: <>1. Descarga <IC c="kongtrol_windows_amd64.zip" /> desde{' '}
@@ -66,13 +67,13 @@ export default function guideES(os: OS) {
     install4: `# Crea la carpeta (si no existe) y mueve el binario
 New-Item -ItemType Directory -Force "C:\\tools"
 Move-Item kongtrol.exe C:\\tools\\kongtrol.exe`,
-    install5: <>3. Agrega <IC c="C:\tools" /> al PATH para poder correr{' '}
-                    <IC c="kongtrol" /> desde cualquier terminal:</>,
-    install6: `# Ejecuta esto en PowerShell como Administrador, una sola vez:
+    install5: <>3. Agrega <IC c="C:\tools" /> a tu PATH de usuario (no hace falta ser administrador) para
+                    correr <IC c="kongtrol" /> desde cualquier terminal:</>,
+    install6: `# En PowerShell normal, una sola vez:
 [Environment]::SetEnvironmentVariable(
   "Path",
-  $env:Path + ";C:\\tools",
-  "Machine"
+  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\\tools",
+  "User"
 )`,
     install7: <>4. Abre una terminal <strong>nueva</strong> y verifica:</>,
     install8: <><strong>¿Por qué una terminal nueva?</strong> Los cambios al PATH solo
@@ -95,8 +96,9 @@ $ sudo mv kongtrol /usr/local/bin/
 
 # Verificar
 $ kongtrol --help`,
-    install12: <>Kongtrol necesita permisos de red en Linux. Algunos comandos (kill switch,
-                    modificar rutas) requieren <IC c="sudo" /> o capabilities.</>,
+    install12: <><strong>Un solo paso con administrador:</strong> corre <IC c="kongtrol service install" /> una vez
+                    y acepta el permiso. Instala un ayudante que hace los cambios de red (rutas, DNS, kill switch).
+                    Después ningún comando necesita una terminal de administrador ni <IC c="sudo" />.</>,
     // feature:wizard
     wizard1: <>Registrar tus VPNs: kongtrol init</>,
     wizard2: <><IC c="kongtrol init" /> <strong>no configura tus VPNs</strong> — eso ya lo
@@ -397,9 +399,9 @@ kongtrol down --group work`,
     policies11: <><strong>¿Cómo funciona el matching?</strong><br />
                 Dominios: glob exacto o con prefijo <IC c="*." /> — <IC c="*.empresa.com" /> cubre todos los subdominios pero no <IC c="empresa.com" /> solo (agrega ambos si los necesitas).<br />
                 IPs: longest-prefix match — gana la regla más específica. <IC c="10.10.1.0/24" /> tiene prioridad sobre <IC c="10.0.0.0/8" />.</>,
-    policies12: <><strong>Flow-aware policy:</strong> puedes combinar app + dominio/IP en la misma regla.
-                Si una regla define <IC c="apps" /> y también <IC c="domains" /> / <IC c="ip_ranges" />,
-                ambas condiciones deben coincidir para enrutar por ese perfil.</>,
+    policies12: <><strong>Reglas por app (experimental):</strong> puedes escribir <IC c="apps" /> en una regla,
+                pero hoy no cambia el ruteo: solo cuentan <IC c="domains" /> e <IC c="ip_ranges" />.
+                Por ahora <IC c="apps" /> solo se ve en <IC c="kongtrol map app:<exe>" />.</>,
     policies13: <><strong>Split-DNS transparente:</strong> con <IC c="monitor.split_dns.enabled: true" />,
                 Kongtrol inyecta dominios de policy en resolución del sistema (hosts) para que apps
                 normales resuelvan por el túnel correcto sin llamar la API.</>,
@@ -490,7 +492,7 @@ dev-server   connected     185.x.x.x    1h 23m
 aws          connected     172.31.4.7   1h 23m
 us-content   disconnected  —            —
 
-Kill Switch: ON
+Kill switch: ARMADO (protegiendo 3 túnel(es))
 
 # Vista en tiempo real (refresca cada 2s):
 $ kongtrol status --watch`,
@@ -550,9 +552,18 @@ GET  /api/v1/audit                 # ?profile=&level=&limit=`,
     trouble2: <><strong>DNS no restaurado después de un crash:</strong></>,
     trouble3: <><strong>Kill switch activo sin internet después de desconectar:</strong></>,
     trouble4: `$ kongtrol down --all    # desactiva kill switch automáticamente`,
-    trouble5: <>Si Kongtrol se cerró abruptamente:</>,
-    trouble6: `# Como Administrador:
-$ netsh advfirewall reset`,
+    trouble5: <>Si Kongtrol se cerró de golpe: con el ayudante instalado, sus bloqueos se quitan solos en unos
+                20 segundos (la red queda abierta, nunca cortada). Si siguen ahí, quita <strong>solo</strong> las reglas de Kongtrol.
+                No uses <IC c="netsh advfirewall reset" />: borra todas tus reglas de firewall.</>,
+    trouble6: os === 'windows'
+? `# PowerShell como Administrador:
+> netsh advfirewall firewall delete rule name=KongtrolBlock
+> netsh advfirewall firewall delete rule name=KongtrolKillSwitchBlock`
+: os === 'macos'
+? `$ sudo pfctl -a com.kongtrol -F all`
+: `$ sudo iptables -F KONGTROL_BLOCK
+$ sudo ip6tables -F KONGTROL_BLOCK
+$ sudo iptables -F KONGTROL`,
     trouble7: <><strong>El cliente VPN no aparece en la detección automática:</strong></>,
     trouble8: os === 'windows'
 ? `# El wizard pregunta la ruta al binario si no lo detecta:
@@ -563,7 +574,7 @@ $ netsh advfirewall reset`,
 # O agrégalo manualmente en %USERPROFILE%\\.kongtrol\\kongtrol.yaml:
 # office:
 #   type: forticlient
-#   binary_path: "C:\\\\ruta\\\\personalizada\\\\FortiClient.exe"`
+#   app_path: "C:\\\\ruta\\\\personalizada\\\\FortiClient.exe"`
 : `# El wizard pregunta la ruta al binario si no lo detecta:
 $ kongtrol init
 #   !  Este cliente VPN no fue detectado automáticamente.
@@ -572,7 +583,7 @@ $ kongtrol init
 # O agrégalo manualmente en ~/.kongtrol/kongtrol.yaml:
 # office:
 #   type: forticlient
-#   binary_path: "/ruta/personalizada/FortiClient"`,
+#   app_path: "/ruta/personalizada/FortiClient"`,
     trouble9: <><strong>Contraseña incorrecta / expirada:</strong></>,
     trouble10: `$ kongtrol init
 # Selecciona el perfil → "Refresh credentials" → ingresa la nueva`,
