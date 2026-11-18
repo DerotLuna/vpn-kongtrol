@@ -2,7 +2,7 @@
 
 # Deploying the landing to Cloudflare (Workers static assets)
 
-Version 2.1.0 · 2026-11-18
+Version 2.2.0 · 2026-11-18
 
 How `landing/` is published at **https://kongtrol.app**, plus the free security settings for the
 zone. Everything here is on the Cloudflare Free plan. Decision: ADR-0022 (Workers static assets;
@@ -37,6 +37,9 @@ Docs: https://developers.cloudflare.com/workers/ci-cd/builds/
   unknown paths → `dist/404.html` with status 404
   (https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/).
 - `dist/_headers` (from `landing/public/_headers`) is applied natively, see section 4.
+- `dist/_redirects` (from `landing/public/_redirects`) sends `/install.sh` and `/install.ps1` with a
+  302 to `releases/latest/download/…` on GitHub (ADR-0035;
+  https://developers.cloudflare.com/workers/static-assets/redirects/).
 
 ## 2. Custom domain `kongtrol.app`
 

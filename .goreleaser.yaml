@@ -180,9 +180,13 @@ sboms:
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
-  # macOS app zip and Windows installer, built natively in release.yml.
+  # macOS app zip and Windows installer, built natively in release.yml; the
+  # install scripts too, so their release copies are verifiable (ADR-0035).
+  # release.extra_files are not added to checksums.txt on their own.
   extra_files:
     - glob: ./dist-extra/*
+    - glob: ./install.sh
+    - glob: ./install.ps1
 
 # Keyless Sigstore signature of checksums.txt (GitHub OIDC identity; no key
 # to keep). Verify: see docs/SECURITY.md.
@@ -199,6 +203,11 @@ release:
   prerelease: auto
   extra_files:
     - glob: ./dist-extra/*
+    # This tag's install scripts (ADR-0035): releases/latest/download/install.sh
+    # always matches the latest release's asset names; kongtrol.app/install.sh
+    # redirects there (landing/public/_redirects).
+    - glob: ./install.sh
+    - glob: ./install.ps1
 
 changelog:
   sort: asc

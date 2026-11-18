@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.5.0 · 2026-11-18
+Version 1.6.0 · 2026-11-18
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -37,6 +37,7 @@ reasoned but unverified.
 | [2026-11-18-landing-download-ctas](2026-11-18-landing-download-ctas.md) | HIG/Material 3 button hierarchy, phone/tablet detection, Web Share + clipboard, Apple Silicon vs Intel check | ADR-0027 |
 | [2026-11-18-landing-hig-material3-review](2026-11-18-landing-hig-material3-review.md) | Apple HIG (buttons, typography, accessibility, feedback, motion, layout) and M3 tokens applied to the landing; Lighthouse before/after | ADR-0028 |
 | [2026-11-18-cli-command-structure](2026-11-18-cli-command-structure.md) | clig.dev interactivity/deprecation/naming, cobra deprecation text, gh/tailscale/systemctl naming | ADR-0033 |
+| [2026-11-18-install-script-delivery](2026-11-18-install-script-delivery.md) | GitHub latest-download alias, GoReleaser release/checksum extra_files, Cloudflare Workers `_redirects` | ADR-0035 |
 
 ## Template
 

@@ -218,6 +218,8 @@ jobs:
             dist/kongtrol-cli_*/kongtrol*
             dist/kongtrol-tray_*/kongtrol-tray*
             dist-extra/*
+            install.sh
+            install.ps1
 
       - name: Homebrew formula (tap)
         if: ${{ !contains(github.ref_name, '-') }}

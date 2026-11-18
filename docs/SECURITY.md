@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.4.0 · 2026-11-18
+Version 2.4.1 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -157,7 +157,8 @@ What to do about it:
 
 Every release (`.github/workflows/release.yml`) publishes, for every file:
 
-- `checksums.txt` — SHA-256 of every asset, including the macOS app and the Windows installer.
+- `checksums.txt` — SHA-256 of every asset, including the macOS app, the Windows installer and
+  the `install.sh` / `install.ps1` scripts attached to the release (ADR-0035).
 - `checksums.txt.sigstore.json` — keyless [Sigstore](https://www.sigstore.dev) signature of
   `checksums.txt`, made with the workflow's GitHub OIDC identity (no key to leak):
 

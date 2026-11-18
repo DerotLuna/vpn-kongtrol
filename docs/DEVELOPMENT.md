@@ -40,6 +40,20 @@ release, Scoop, winget, AUR), build provenance attestations, the Homebrew formul
 packages. Tags with a `-` (`v1.2.0-rc.1`) are prereleases: no package manager is updated and npm
 gets the `next` tag. `make release-snapshot` builds everything locally without publishing.
 
+Every release also attaches `install.sh` and `install.ps1` (listed in `checksums.txt`), so
+`releases/latest/download/install.sh` always matches the latest assets; `https://kongtrol.app/install.sh`
+and `/install.ps1` redirect there (`landing/public/_redirects`,
+[ADR-0035](adr/0035-install-scripts-pinned-and-release-assets.md)).
+
+Release checklist:
+
+- [ ] Tag pushed, workflow green, assets and `checksums.txt` on the release page.
+- [ ] **TODO after v0.6.0 final:** switch `INSTALL_SCRIPT_BASE` and `UNINSTALL_SCRIPT_BASE` in
+  `landing/src/links.ts` to `https://kongtrol.app/` (redirect to latest), check
+  `curl -sI https://kongtrol.app/install.sh` answers 302 → the release asset, and replace the
+  `raw.githubusercontent.com/…/main/install.sh` commands in `README.md` and `docs/SETUP.md` with it.
+  Until then the landing stays pinned to the v0.5.0 tag (the scripts on `main` need v0.6.0 assets).
+
 Every channel is optional: its step skips itself while its secret is missing. To turn them on
 (all free; create once):
 

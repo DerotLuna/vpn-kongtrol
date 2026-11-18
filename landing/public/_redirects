@@ -1,0 +1,11 @@
+# Cloudflare static-assets redirects (Workers) — version 1.0.0 · 2026-11-18
+# Format: https://developers.cloudflare.com/workers/static-assets/redirects/
+# (one rule per line: source destination [code]; absolute destinations allowed).
+#
+# One-line install scripts (ADR-0035): kongtrol.app/install.sh always serves the
+# script attached to the latest GitHub release, so its asset names match.
+# 302 on purpose: the target moves with every release, nothing may cache it for good.
+# Releases from v0.6.0 on carry these assets; until then the landing keeps
+# INSTALL_SCRIPT_BASE (src/links.ts) pinned to the v0.5.0 tag.
+/install.sh   https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/install.sh   302
+/install.ps1  https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/install.ps1  302

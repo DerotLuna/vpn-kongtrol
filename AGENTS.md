@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.9 · 2026-11-18
+Version 1.10 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -117,7 +117,8 @@ Setup per-user installer (native), GoReleaser OSS for the rest (CLI, Linux/Windo
 archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, Homebrew
 **formula** (never a cask: casks get the quarantine flag) and npm (esbuild-style
 `optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
-Upgrades in place keep `~/.kongtrol`, keychain entries and the helper.
+Upgrades in place keep `~/.kongtrol`, keychain entries and the helper. `install.sh`/`install.ps1` are
+release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035).
 
 <!-- feature:uninstall -->
 **Uninstall keeps data unless asked (ADR-0034).** `internal/uninstall`: `Detect` picks the channel
