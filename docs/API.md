@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.2 · 2026-11-18
+Version 1.3 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -66,6 +66,12 @@ PUT/DELETE /api/v1/scheduler/rules/{name}
 GET  /api/v1/audit?profile=...&level=...&limit=...
 
 POST /api/v1/shutdown                        # ask a running daemon to shut down gracefully
+
+# Diagnostics, helper and export
+GET  /api/v1/doctor                          # same checks as `kongtrol doctor`, in the daemon, translated (X-Kongtrol-Lang): {"checks":[{section,label,status ok|warn|fail,detail,hint,fix}],"failures","warnings"}; fix is only "helper_install"
+GET  /api/v1/helper/status                   # {"installed","running","available","elevated","needs_install",…}
+POST /api/v1/helper/install                  # installs the privileged helper (one OS permission prompt)
+GET  /api/v1/config/export                   # kongtrol.yaml as a download (application/yaml, kongtrol-export.yaml; no passwords: they stay in the keychain); 404 export.err.no_config before the first profile
 
 # First run and restart (ADR-0025)
 GET  /api/v1/setup                           # {"setup_mode","needs_setup","restart_pending","config_path"}: daemon started with no kongtrol.yaml

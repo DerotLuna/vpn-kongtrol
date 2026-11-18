@@ -469,7 +469,7 @@ Todos los checks pasaron. Listo para usar.`
   ✓  DNS guard           implementación de plataforma disponible
 
 Todos los checks pasaron. Listo para usar.`,
-    doctor4: <>Si hay ✗ en alguna línea, el mensaje dice exactamente qué falta.</>,
+    doctor4: <>Si hay ✗ o ! en alguna línea, debajo aparece qué hacer. Sin terminal: en el panel, la tarjeta <strong>Diagnóstico</strong> muestra lo mismo, ofrece <strong>Reparar</strong> si falta el ayudante y <strong>Exportar configuración</strong> (sin contraseñas).</>,
     // feature:daemon_lifecycle
     connect1: <>Primera conexión</>,
     connect2: <><strong>Un grupo completo:</strong></>,

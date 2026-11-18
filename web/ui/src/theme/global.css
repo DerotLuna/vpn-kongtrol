@@ -1,4 +1,4 @@
-/* KONGTROL UI — base + component styles · v0.1.0 · 2026-11-17 */
+/* KONGTROL UI — base + component styles · v0.2.0 · 2026-11-18 */
 @import './tokens.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -148,6 +148,32 @@ main { flex: 1; padding: 40px 0 64px; }
 .tunnel-name { font: 500 14px/1.3 var(--font-mono); overflow-wrap: anywhere; }
 .tunnel-note { display: block; margin-top: 4px; color: var(--text-muted); }
 .summary { font: 600 28px/1.1 var(--font-display); }
+
+/* ── Diagnostics ───────────────────────────────────────────────────────── */
+.diag { margin-bottom: 40px; }
+.check-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.check {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2);
+  border-left: 3px solid var(--border-2);
+}
+.check.warn { border-left-color: var(--caution); }
+.check.fail { border-left-color: var(--danger); }
+.check.ok { border-left-color: var(--live); }
+.check-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.check-label { font: 500 14px/1.3 var(--font-mono); overflow-wrap: anywhere; }
+.check-section { margin-left: auto; font: 400 12px/1.2 var(--font-mono); color: var(--text-dim); }
+.check-detail { font-size: 14px; color: var(--text-muted); overflow-wrap: anywhere; }
+.check-hint { font-size: 14px; }
+.check .btn { margin-top: 4px; }
+.check-list.compact .check { padding: 8px 12px; }
+.check-ok summary { cursor: pointer; min-height: 32px; font-size: 14px; color: var(--text-muted); }
+.check-ok summary:hover { color: var(--text); }
+.check-ok .check-list { margin-top: 8px; }
+.diag-export {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 16px; border-top: 1px solid var(--border);
+}
 
 /* ── Buttons / notices ─────────────────────────────────────────────────── */
 .btn {

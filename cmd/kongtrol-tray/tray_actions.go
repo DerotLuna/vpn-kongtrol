@@ -5,13 +5,16 @@ import (
 	"errors"
 	"log"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"fyne.io/systray"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -212,9 +215,9 @@ var (
 	helperInstalling atomic.Bool
 )
 
-// refreshHelperItem shows the install item only while the daemon says the
-// privileged helper is missing. An older daemon without the endpoint
-// hides it.
+// refreshHelperItem shows the install item only while the privileged helper
+// is missing (helperNeedsInstall), on every OS and also in the first-run
+// menu, and tells the user about it once (tray.helper_first_run).
 func refreshHelperItem() {
 	item := helperItem.Load()
 	if item == nil {
@@ -226,8 +229,7 @@ func refreshHelperItem() {
 		item.Show()
 		return
 	}
-	st, err := client.HelperStatus()
-	if err != nil || !st.NeedsInstall {
+	if !helperNeedsInstall() {
 		item.Hide()
 		return
 	}
@@ -235,6 +237,68 @@ func refreshHelperItem() {
 	item.SetTooltip(trayT("tray.helper_install_tip"))
 	item.Enable()
 	item.Show()
+	if claimOnce(helperNoticeMarker()) {
+		msg := trayT("tray.helper_first_run")
+		notifyError(msg, nil)
+		desktopNotify("VPN Kongtrol", msg)
+	}
+}
+
+// Probes behind helperNeedsInstall; tests replace them.
+var (
+	daemonHelperStatus = func() (daemonctl.HelperStatus, error) { return client.HelperStatus() }
+	helperIsElevated   = privops.IsElevated
+	pingHelper         = func(ctx context.Context) (privops.PingResult, error) {
+		return privops.NewClient().Ping(ctx)
+	}
+)
+
+// helperNeedsInstall asks the daemon first. When no daemon answers (fresh
+// install, first-run menu, daemon stopped) it asks the helper itself, with
+// the daemon's rule: not elevated and no helper answering with our
+// protocol. Before, a fresh macOS/Linux install never showed the item: the
+// daemon did not answer yet and the first-run menu had no item at all.
+func helperNeedsInstall() bool {
+	if st, err := daemonHelperStatus(); err == nil {
+		return st.NeedsInstall
+	}
+	if helperIsElevated() {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	res, err := pingHelper(ctx)
+	return err != nil || res.Protocol != privops.ProtocolVersion
+}
+
+// helperNoticeMarker records that the "helper missing" notice was shown,
+// so it appears once, not at every login (the menu item stays).
+func helperNoticeMarker() string {
+	return filepath.Join(daemonctl.StateDir(), "run", "helper-notice-shown")
+}
+
+// claimOnce creates path and reports whether this call created it. Without
+// a writable state dir it reports false (nothing shown on its own).
+func claimOnce(path string) bool {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return false
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return false
+	}
+	_ = f.Close()
+	return true
+}
+
+// addHelperMenuItem adds the hidden "Install helper (once)" item; shown by
+// refreshHelperItem.
+func addHelperMenuItem() *systray.MenuItem {
+	mHelper := systray.AddMenuItem(trayT("tray.helper_install"), trayT("tray.helper_install_tip"))
+	mHelper.Hide()
+	helperItem.Store(mHelper)
+	onClick(mHelper, installHelper)
+	return mHelper
 }
 
 // installHelper asks the daemon to install the privileged helper: the OS

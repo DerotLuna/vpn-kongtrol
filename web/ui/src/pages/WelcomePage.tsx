@@ -1,10 +1,12 @@
 // "Bienvenida / Primeros pasos" — first page migrated to the new UI (phase 1).
-// Read-only except the helper install button (existing POST /api/v1/helper/install).
-import { useHelper, usePublicIP, useTunnels } from '../api/hooks'
+// Read-only except the helper install button (existing POST /api/v1/helper/install),
+// the public IP opt-in and the diagnostics card (doctor + export, GUI parity).
+import { useConfigExport, useDoctor, useHelper, usePublicIP, useTunnels } from '../api/hooks'
 import { usePreferences } from '../app/preferences-context'
 import { AppShell } from '../components/layout/AppShell'
 import { ExternalLink } from '../components/ui/ExternalLink'
 import { ActionTiles } from '../components/welcome/ActionTiles'
+import { DiagnosticsCard } from '../components/welcome/DiagnosticsCard'
 import { HelperCard } from '../components/welcome/HelperCard'
 import { PublicIPCard } from '../components/welcome/PublicIPCard'
 import { TunnelsCard } from '../components/welcome/TunnelsCard'
@@ -15,6 +17,8 @@ export function WelcomePage() {
   const helper = useHelper()
   const tunnels = useTunnels()
   const publicIP = usePublicIP()
+  const doctor = useDoctor()
+  const exporter = useConfigExport()
   const noVPNs = tunnels.tunnels !== null && tunnels.tunnels.length === 0
 
   return (
@@ -31,6 +35,8 @@ export function WelcomePage() {
         <TunnelsCard state={tunnels} />
         <PublicIPCard state={publicIP} />
       </div>
+
+      <DiagnosticsCard doctor={doctor} helper={helper} exporter={exporter} />
 
       <ActionTiles emphasizeAdd={noVPNs} />
     </AppShell>

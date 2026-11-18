@@ -1,7 +1,7 @@
-// Kongtrol UI — data hooks · v0.2.0 · 2026-11-17
+// Kongtrol UI — data hooks · v0.3.0 · 2026-11-18
 import { useCallback, useEffect, useState } from 'react'
 import { ApiError, api, subscribeTunnels } from './client'
-import type { HelperStatus, PublicIPStatus, TunnelMetrics } from './types'
+import type { DoctorReport, HelperStatus, PublicIPStatus, TunnelMetrics } from './types'
 
 function toApiError(err: unknown): ApiError {
   return err instanceof ApiError ? err : new ApiError('server', 0, { error: String(err) })
@@ -171,3 +171,74 @@ export function usePublicIP(): PublicIPState {
 
   return { status, error, busy, actionError, justEnabled, setEnabled, check, reload }
 }
+
+export interface DoctorState {
+  report: DoctorReport | null
+  error: ApiError | null
+  running: boolean
+  run: () => void
+}
+
+/**
+ * Diagnostics on demand: the daemon runs the same checks as
+ * `kongtrol doctor` (a few seconds, starts VPN clients' --version), so it
+ * never runs on its own or on a timer.
+ */
+export function useDoctor(): DoctorState {
+  const [report, setReport] = useState<DoctorReport | null>(null)
+  const [error, setError] = useState<ApiError | null>(null)
+  const [running, setRunning] = useState(false)
+
+  const run = useCallback(() => {
+    setRunning(true)
+    setError(null)
+    api
+      .doctor()
+      .then(setReport, (err: unknown) => setError(toApiError(err)))
+      .finally(() => setRunning(false))
+  }, [])
+
+  return { report, error, running, run }
+}
+
+export interface ExportState {
+  busy: boolean
+  error: ApiError | null
+  done: boolean
+  download: () => void
+}
+
+/** Downloads kongtrol.yaml as kongtrol-export.yaml (no passwords inside). */
+export function useConfigExport(): ExportState {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<ApiError | null>(null)
+  const [done, setDone] = useState(false)
+
+  const download = useCallback(() => {
+    setBusy(true)
+    setError(null)
+    setDone(false)
+    api
+      .exportConfig()
+      .then(
+        (blob) => {
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = EXPORT_FILENAME
+          document.body.append(a)
+          a.click()
+          a.remove()
+          URL.revokeObjectURL(url)
+          setDone(true)
+        },
+        (err: unknown) => setError(toApiError(err)),
+      )
+      .finally(() => setBusy(false))
+  }, [])
+
+  return { busy, error, done, download }
+}
+
+/** internal/configexport.Filename */
+export const EXPORT_FILENAME = 'kongtrol-export.yaml'

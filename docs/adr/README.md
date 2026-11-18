@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.5.0 · 2026-11-18
+Version 1.6.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -44,6 +44,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0029](0029-landing-device-class-before-first-paint.md) | Landing marks phones before first paint (boot script `data-device`) so the hero never shifts | Accepted | 2026-11-18 |
 | [0030](0030-wireguard-liveness-by-handshake.md) | WireGuard liveness by latest handshake (read-only helper op `wg.stats`); a silent server is a drop, unreadable counters say "unknown" | Accepted | 2026-11-18 |
 | [0031](0031-landing-load-performance.md) | Landing load performance: inline CSS, hashed fonts, immutable caching, composited and on-screen-only demo loops, Suspense-split hydration | Accepted | 2026-11-18 |
+| [0032](0032-shared-diagnostics-and-export.md) | Shared diagnostics (`internal/doctor`, hint + only `helper_install` fix) and round-trip config export (`internal/configexport`) for CLI, API and dashboard; tray offers the helper without a daemon | Accepted | 2026-11-18 |
 | [0033](0033-cli-command-restructure.md) | Reestructura de comandos del CLI: nombres unificados (policy list/show, ip, routes --system, config default-group, reload [perfil]), alias viejos ocultos con aviso traducido, preguntas solo en terminal (--yes), init/up ofrecen el ayudante, config killswitch/dns-guard | Accepted | 2026-11-18 |
 
 ## Statuses

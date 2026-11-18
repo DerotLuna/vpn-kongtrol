@@ -59,12 +59,8 @@ func setupMenu() {
 	mDashboard := systray.AddMenuItem(trayT("tray.open_dashboard"), trayT("tray.open_dashboard_tip"))
 	labels := trayMenuLabels{dashboard: mDashboard}
 	onClick(mDashboard, openDashboard)
-	// Shown only while the daemon reports the privileged helper missing
-	// (see refreshHelperItem).
-	mHelper := systray.AddMenuItem(trayT("tray.helper_install"), trayT("tray.helper_install_tip"))
-	mHelper.Hide()
-	helperItem.Store(mHelper)
-	onClick(mHelper, installHelper)
+	// Shown only while the privileged helper is missing (refreshHelperItem).
+	addHelperMenuItem()
 	systray.AddSeparator()
 
 	// Groups submenu — one entry per named group in kongtrol.yaml. Clicking
@@ -159,18 +155,7 @@ func firstRunMarker() string {
 
 // claimFirstRunOpen reports whether this is the first automatic opening
 // and records it. Without a writable state dir it opens nothing on its own.
-func claimFirstRunOpen() bool {
-	path := firstRunMarker()
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return false
-	}
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return false
-	}
-	_ = f.Close()
-	return true
-}
+func claimFirstRunOpen() bool { return claimOnce(firstRunMarker()) }
 
 func showFirstRun() {
 	msg := trayT("tray.first_run")
@@ -193,6 +178,10 @@ func showFirstRun() {
 	if claimFirstRunOpen() {
 		go openSetup()
 	}
+	// A fresh install also needs the helper (macOS/Linux have no installer
+	// step for it): offer it here too, not only in the full menu.
+	addHelperMenuItem()
+	go refreshHelperItem()
 	mQuit := systray.AddMenuItem(trayT("tray.exit"), trayT("tray.exit"))
 	done := make(chan struct{})
 	go func() {
@@ -211,6 +200,7 @@ func showFirstRun() {
 			case <-done:
 				return
 			case <-ticker.C:
+				refreshHelperItem()
 				if configExists() {
 					systray.ResetMenu()
 					setupMenu()
@@ -262,6 +252,8 @@ func updateTrayStatus(
 		for name, item := range profileItems {
 			item.SetTitle(name)
 		}
+		// No daemon: refreshHelperItem asks the helper directly.
+		refreshHelperItem()
 		return
 	}
 	systray.SetTooltip(trayT("tray.tooltip"))

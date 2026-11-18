@@ -112,7 +112,7 @@ features:
       - internal/vpn/*.go
       - cmd/kongtrol/wizard_adapters.go
       - cmd/kongtrol/wizard_profiles.go
-      - cmd/kongtrol/doctor_forti.go
+      - internal/doctor/forti.go
       - cmd/kongtrol-tray/tray_attach.go
       - configs/example.yaml
     surfaces:
@@ -230,6 +230,7 @@ features:
       - cmd/kongtrol/config_load.go
       - cmd/kongtrol/preferences.go
       - cmd/kongtrol/cmd_export.go
+      - internal/configexport/**
     surfaces:
       - configs/example.yaml
       - docs/CONFIGURATION.md
@@ -239,7 +240,7 @@ features:
     code:
       - cmd/kongtrol/wizard*.go
       - cmd/kongtrol/doctor*.go
-      - cmd/kongtrol/detect_*.go
+      - internal/doctor/**
     surfaces:
       - docs/SETUP.md#wizard
       - landing/src/content/guide.es.tsx#wizard
