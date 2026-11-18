@@ -15,8 +15,8 @@ export interface OptimisticOptions<TVars, TData, TCache> {
   mutationFn: (vars: TVars) => Promise<TData>
   /** The cache as it should look if the daemon accepts. */
   apply: (current: TCache, vars: TVars) => TCache
-  /** Confirmation toast text; omit when the change is visible in place. */
-  successMessage?: (vars: TVars, data: TData) => string
+  /** Toast after success (info), or undefined when the change is visible in place. */
+  successMessage?: (vars: TVars, data: TData) => string | undefined
 }
 
 interface Snapshot<TCache> {
@@ -47,7 +47,8 @@ export function useOptimisticMutation<TVars, TData, TCache>(opts: OptimisticOpti
       })
     },
     onSuccess: (data, vars) => {
-      if (successMessage) toasts.show({ tone: 'ok', message: successMessage(vars, data) })
+      const message = successMessage?.(vars, data)
+      if (message) toasts.show({ tone: 'info', message })
     },
     onSettled: () => client.invalidateQueries({ queryKey }),
   })

@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react'
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import { describeError } from '../api/errors'
-import type { HelperStatus, SecurityStatus, TunnelMetrics } from '../api/types'
+import type { HelperStatus, SecurityStatus, TunnelActionResult, TunnelMetrics } from '../api/types'
 import { usePreferences } from '../app/preferences-context'
 import { useLiveState } from './connection'
 import { keys, mutationKeys } from './keys'
@@ -70,15 +70,18 @@ type TunnelAction = 'connect' | 'disconnect'
 /** Connect / disconnect with the expected state shown at once and rolled back on refusal. */
 export function useTunnelAction() {
   const { t } = usePreferences()
-  return useOptimisticMutation<{ name: string; action: TunnelAction }, unknown, TunnelMetrics[]>({
+  return useOptimisticMutation<{ name: string; action: TunnelAction }, TunnelActionResult, TunnelMetrics[]>({
     queryKey: keys.tunnels,
     mutationFn: ({ name, action }) => (action === 'connect' ? api.connect(name) : api.disconnect(name)),
     apply: (list, { name, action }) =>
       list.map((tn) =>
         tn.Name === name ? { ...tn, Status: action === 'connect' ? 'connecting' : 'disconnected' } : tn,
       ),
-    successMessage: ({ name, action }) =>
-      t(action === 'connect' ? 'tunnels.toast.connected' : 'tunnels.toast.disconnected', { name }),
+    // The daemon accepts at once (202) and the live feed shows the result in
+    // place, so success needs no toast — except when the user must act: a
+    // provider app with no CLI has to be disconnected by hand.
+    successMessage: ({ name }, result) =>
+      result?.status === 'waiting_user' ? t('tunnels.toast.manualDisconnect', { name }) : undefined,
   })
 }
 

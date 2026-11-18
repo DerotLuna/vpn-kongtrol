@@ -1,9 +1,11 @@
-// Kongtrol UI — providers + routes · v0.2.0 · 2026-11-18
+// Kongtrol UI — providers + routes · v0.3.0 · 2026-11-18
 //
 // React Router (declarative mode) under /app (ADR-0037); the daemon serves
 // index.html for any /app/... path (internal/api/ui_assets.go), so deep
 // links and reloads work. Every section has its route now; phase 2 replaces
-// the placeholders page by page (src/app/placeholders.ts).
+// the placeholders page by page (src/app/placeholders.ts). /app/tray is the
+// tray flyout (ADR-0036): its own compact page, outside the panel shell,
+// sharing the same data layer.
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router'
 import type { QueryClient } from '@tanstack/react-query'
@@ -13,6 +15,7 @@ import { PreferencesProvider } from './app/PreferencesProvider'
 import { AppShell } from './components/layout/AppShell'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { TrayPage } from './pages/TrayPage'
 import { WelcomePage } from './pages/WelcomePage'
 
 // Component review page: development builds only, never shipped.
@@ -21,6 +24,7 @@ const KitPage = import.meta.env.DEV ? lazy(() => import('./pages/KitPage')) : nu
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="tray" element={<TrayPage />} />
       <Route element={<AppShell />}>
         <Route index element={<WelcomePage />} />
         {Object.entries(PLACEHOLDERS).map(([path, spec]) => (

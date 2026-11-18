@@ -106,6 +106,9 @@ func setupMenu() {
 	labels.quit = mQuit
 	// Quitting closes only the tray; the daemon keeps its tunnels up.
 	onClick(mQuit, systray.Quit)
+	// Left click: branded flyout where supported (flyout*.go, ADR-0036);
+	// the menu above stays on the right click and as the fallback.
+	setupFlyout()
 
 	// ── Background: daemon start + status refresh ─────────────────────────
 

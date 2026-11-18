@@ -200,10 +200,10 @@ describe('optimistic mutations', () => {
     const status: SecurityStatus = {
       kill_switch: false,
       kill_switch_enabled: false,
-      kill_switch_state: 'off',
+      kill_switch_state: 'disabled',
       dns_guard: false,
       dns_guard_enabled: false,
-      dns_guard_state: 'off',
+      dns_guard_state: 'disabled',
       public_ip_check_enabled: false,
       public_ip_check_host: '',
     }

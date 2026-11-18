@@ -13,11 +13,13 @@ import type { Lang } from '../i18n/messages'
 import type {
   ApiErrorBody,
   DoctorReport,
+  Group,
   HelperStatus,
   Preferences,
   PublicIPStatus,
   PurgeResult,
   SecurityStatus,
+  TunnelActionResult,
   TunnelMetrics,
   UpdateStatus,
   VersionInfo,
@@ -110,8 +112,11 @@ export function sortTunnels(list: TunnelMetrics[]): TunnelMetrics[] {
 
 export const api = {
   tunnels: () => request<TunnelMetrics[] | null>('/api/v1/tunnels').then((l) => sortTunnels(l ?? [])),
-  connect: (name: string) => request<unknown>(`/api/v1/tunnels/${enc(name)}/connect`, { method: 'POST' }),
-  disconnect: (name: string) => request<unknown>(`/api/v1/tunnels/${enc(name)}/disconnect`, { method: 'POST' }),
+  /** Accepted (202) at once; the tunnel feed reports when it is up. */
+  connect: (name: string) => request<TunnelActionResult>(`/api/v1/tunnels/${enc(name)}/connect`, { method: 'POST' }),
+  /** 202 waiting_user: the provider app must be disconnected by hand. */
+  disconnect: (name: string) =>
+    request<TunnelActionResult>(`/api/v1/tunnels/${enc(name)}/disconnect`, { method: 'POST' }),
   cancelConnect: (name: string) =>
     request<unknown>(`/api/v1/tunnels/${enc(name)}/cancel_connect`, { method: 'POST' }),
   helperStatus: () => request<HelperStatus>('/api/v1/helper/status'),
@@ -138,6 +143,9 @@ export const api = {
   setUpdates: (enabled: boolean) => sendJSON<UpdateStatus>('POST', '/api/v1/updates', { enabled }),
   /** "Borrar todos mis datos": the daemon then restarts into first-run setup. */
   purgeData: () => sendJSON<PurgeResult>('POST', '/api/v1/data/purge', { confirm: true }),
+  groups: () => request<Group[]>('/api/v1/groups'),
+  connectGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}/connect`, { method: 'POST' }),
+  disconnectGroup: (name: string) => request<unknown>(`/api/v1/groups/${enc(name)}/disconnect`, { method: 'POST' }),
   /** Same checks as `kongtrol doctor`, run by the daemon; takes a few seconds. */
   doctor: () => request<DoctorReport>('/api/v1/doctor'),
   /** kongtrol.yaml as a file (no passwords); errors arrive translated. */
