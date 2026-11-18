@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.0.0 · 2026-11-18
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.1.0 · 2026-11-18
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md. Installs for the current
@@ -67,6 +67,8 @@ es.RunHelper=Instalando el ayudante de red · acepta el aviso de Windows…
 en.RunHelper=Installing the network helper · accept the Windows prompt…
 es.LaunchTray=Abrir Kongtrol y crear mi primera VPN
 en.LaunchTray=Open Kongtrol and create my first VPN
+es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nSi piensas reinstalar, elige No.
+en.PurgeAsk=Also delete your settings and saved passwords?%n%nIf you plan to reinstall, choose No.
 
 [Tasks]
 Name: "autostart"; Description: "{cm:TaskAutostart}"
@@ -146,10 +148,33 @@ begin
   Result := Pos(';' + Uppercase(Dir) + ';', ';' + Uppercase(OrigPath) + ';') = 0;
 end;
 
+// Uninstall keeps the user's data by default (docs/adr/0033-…). An
+// interactive uninstall asks once, defaulting to No (MsgBox with
+// MB_DEFBUTTON2); a silent one (UninstallSilent) never deletes data.
+// https://jrsoftware.org/ishelp/topic_isxfunc_msgbox.htm
+// https://jrsoftware.org/ishelp/topic_isxfunc_uninstallsilent.htm
+var
+  PurgeData: Boolean;
+
+function InitializeUninstall: Boolean;
+begin
+  Result := True;
+  PurgeData := False;
+  if not UninstallSilent then
+    PurgeData := MsgBox(CustomMessage('PurgeAsk'), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Path: string;
+  Code: Integer;
 begin
+  // Before any file is deleted: `uninstall --data-only` stops the tray and
+  // the daemon itself (tunnels down, DNS restored, kill switch lifted), so
+  // it does not depend on the [UninstallRun] order, then deletes
+  // ~/.kongtrol and Kongtrol's keychain entries.
+  if (CurUninstallStep = usUninstall) and PurgeData then
+    Exec(ExpandConstant('{app}\kongtrol.exe'), 'uninstall --data-only --yes --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if CurUninstallStep <> usPostUninstall then
     exit;
   if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Path) then
