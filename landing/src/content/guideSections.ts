@@ -16,6 +16,8 @@ export const GUIDE_SECTIONS_ES: GuideSection[] = [
   { id: 'dashboard', num: '8', label: 'Dashboard web' },
   { id: 'daily', num: '9', label: 'Uso diario' },
   { id: 'trouble', num: '10', label: 'Solución de problemas' },
+  { id: 'update', num: '11', label: 'Actualizar' },
+  { id: 'uninstall', num: '12', label: 'Desinstalar' },
 ]
 
 export const GUIDE_SECTIONS_EN: GuideSection[] = [
@@ -30,4 +32,6 @@ export const GUIDE_SECTIONS_EN: GuideSection[] = [
   { id: 'dashboard', num: '8', label: 'Web dashboard' },
   { id: 'daily', num: '9', label: 'Daily usage' },
   { id: 'trouble', num: '10', label: 'Troubleshooting' },
+  { id: 'update', num: '11', label: 'Updating' },
+  { id: 'uninstall', num: '12', label: 'Uninstalling' },
 ]

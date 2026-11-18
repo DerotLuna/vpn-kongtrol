@@ -1,4 +1,6 @@
-// Privacy policy — version 1.2.1 · 2026-11-18.
+// Privacy policy — version 1.3.0 · 2026-11-18.
+// 1.3.0: opt-in new version notice (GitHub releases API, off by default; ADR-0034); uninstall and
+//   "delete all my data" keep/erase local data; fixed a repeated sentence in the ES summary.
 // 1.2.1: the on-demand public IP lookup command is now `kongtrol ip` (`kongtrol check` still works).
 // 1.2.0: the public IP check is off by default (opt-in), runs only on tunnel connect/disconnect and
 //   on demand, and is no longer turned on by the kill switch or DNS guard.
@@ -11,7 +13,9 @@
 //   (connect/disconnect) and on demand (cmd_check.go, POST /api/v1/security/publicip/check).
 // - pre-connect reachability check: internal/app/profile_service.go (net.Dialer to host:port).
 // - DNS lookups of policy domains: internal/app/profile_service.go, internal/monitor/policyresolver.go.
-// - no telemetry / analytics / crash reporting / update check: repo-wide search, no such code.
+// - new version notice: opt-in `updates.check_enabled` (default false), GET api.github.com/repos/DerotLuna/
+//   vpn-kongtrol/releases/latest at most every 24h, headers User-Agent "kongtrol/<version>" + Accept only (ADR-0034).
+// - no telemetry / analytics / crash reporting: repo-wide search, no such code.
 // - dashboard fonts/logos self-hosted: web/dashboard/*.html -> /brand/ (internal/api/brand_assets.go); dashboard localStorage: web/dashboard/*.js.
 // Re-check these when the code changes (CLAUDE.md "Docs stay in sync").
 import type { Lang } from '../../i18n'
@@ -20,7 +24,7 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.2.1'
+const VERSION = '1.3.0'
 const UPDATED = '2026-11-18'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
@@ -36,8 +40,8 @@ const es: LegalDocContent = {
   summary: <>Kongtrol es una herramienta gratuita y de código abierto, hecha por una persona (no hay empresa detrás),
     que funciona en tu equipo. El autor no recibe ni procesa ningún dato tuyo: cada usuario controla los suyos. No hay
     cuentas, servidores propios, telemetría ni analíticas. Tu configuración y tus contraseñas se quedan en tu equipo. Las únicas conexiones que hace por su cuenta son: comprobar que tu servidor VPN responde antes de conectar
-    y resolver los dominios de tus reglas; consultar tu IP pública es opcional y viene apagado. Además: comprobar que tu servidor VPN responde antes de conectar, y resolver los dominios de tus
-    reglas. Este sitio no usa cookies ni analíticas.</>,
+    y resolver los dominios de tus reglas. Consultar tu IP pública y el aviso de versión nueva son opcionales y
+    vienen apagados. Este sitio no usa cookies ni analíticas.</>,
   toc: 'Contenido',
   goto: 'Ir a',
   versionLabel: 'Versión',
@@ -56,8 +60,10 @@ const es: LegalDocContent = {
         <>Contraseñas y la clave de firma del registro: en el almacén de credenciales del sistema (Windows Credential
           Manager, Llavero de macOS, Secret Service/GNOME Keyring en Linux).</>,
       ],
-      after: [<>Para borrar todo: elimina la carpeta <IC c="~/.kongtrol" /> y las entradas de Kongtrol del almacén
-        de credenciales.</>],
+      after: [<>Al desinstalar, estos datos se quedan, salvo que pidas borrarlos. Para borrar todo: en el panel,
+        Ajustes › «Borrar todos mis datos», o <IC c="kongtrol uninstall --data-only" />. Para desinstalar y
+        borrarlos a la vez: <IC c="kongtrol uninstall --purge" />. Ver la{' '}
+        <a href={`${pathFor('guia', 'es')}#uninstall`}>guía</a>.</>],
     },
     {
       id: 'conexiones', num: '2', label: 'Conexiones propias', tmux: 'conexiones', title: 'Conexiones que Kongtrol hace por su cuenta',
@@ -73,9 +79,17 @@ const es: LegalDocContent = {
           perfil VPN, para avisarte si no responde. Solo va al servidor que tú configuraste.</>,
         <><strong>Resolución DNS de tus reglas</strong> — Kongtrol resuelve los dominios de tus políticas con el DNS
           del sistema o el del túnel, para saber por qué túnel enviarlos.</>,
+        <><strong>Aviso de versión nueva (opcional, apagado por defecto)</strong> — solo si lo activas, como mucho
+          una vez cada 24 horas, una petición HTTPS a GitHub:{' '}
+          <IC c="GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest" />. Solo lleva las
+          cabeceras <IC c="User-Agent: kongtrol/<versión>" /> y <IC c="Accept" />. No envía cuenta, token, cookies,
+          perfiles, las IP de tus VPN ni otros datos. GitHub ve tu IP pública, la hora y ese User-Agent (aplica la{' '}
+          {ext('https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement', 'declaración de privacidad de GitHub')}).
+          Espera como mucho 5 segundos e ignora las versiones de prueba. Si hay versión nueva, te avisa una vez;
+          nunca descarga ni instala nada. Apagado, no hace ninguna petición.</>,
       ],
-      after: [<>Kongtrol <strong>no</strong> envía telemetría, analíticas, informes de errores ni comprobaciones de
-        actualizaciones (revisado en el código fuente el {UPDATED}). Tus clientes VPN (NordVPN, FortiClient, etc.)
+      after: [<>Kongtrol <strong>no</strong> envía telemetría, analíticas ni informes de errores (revisado en el
+        código fuente el {UPDATED}). Tus clientes VPN (NordVPN, FortiClient, etc.)
         pueden hacer sus propias conexiones; eso depende de cada proveedor y de su política.</>],
     },
     {
@@ -104,6 +118,9 @@ const es: LegalDocContent = {
         <>La comprobación de IP pública viene apagada. Actívala o apágala en el panel (Seguridad), en el asistente
           o con <IC c="kongtrol config public-ip on|off" /> (<IC c="security.public_ip_check.enabled" />). Elige
           otro servicio con <IC c="security.public_ip_check.endpoints" /> (solo https).</>,
+        <>El aviso de versión nueva viene apagado. Actívalo o apágalo en el panel (Ajustes › «Aviso de versión
+          nueva»), en <IC c="kongtrol init" /> o con <IC c="kongtrol config update-check on|off" />{' '}
+          (<IC c="updates.check_enabled" />).</>,
         <>La comprobación previa al conectar solo se hace en perfiles que tienen un host configurado.</>,
       ],
     },
@@ -127,7 +144,7 @@ const en: LegalDocContent = {
     your machine. The author receives and processes none of your data: each user controls their own. There are no
     accounts, no servers of its own, no telemetry and no analytics. Your configuration and passwords stay on your machine. The only connections it
     makes on its own are checking that your VPN server answers before connecting and resolving the domains in your
-    rules. Looking up your public IP is optional and off by default. This website uses no cookies and no analytics.</>,
+    rules. Looking up your public IP and the new version notice are optional and off by default. This website uses no cookies and no analytics.</>,
   toc: 'Contents',
   goto: 'Jump to',
   versionLabel: 'Version',
@@ -146,8 +163,10 @@ const en: LegalDocContent = {
         <>Passwords and the log signing key: in the operating system's credential store (Windows Credential Manager,
           macOS Keychain, Secret Service/GNOME Keyring on Linux).</>,
       ],
-      after: [<>To erase everything: delete the <IC c="~/.kongtrol" /> folder and Kongtrol's entries in the
-        credential store.</>],
+      after: [<>When you uninstall, this data stays unless you ask to delete it. To erase everything: in the
+        dashboard, Settings › "Delete all my data", or <IC c="kongtrol uninstall --data-only" />. To uninstall and
+        delete it at once: <IC c="kongtrol uninstall --purge" />. See the{' '}
+        <a href={`${pathFor('guia', 'en')}#uninstall`}>guide</a>.</>],
     },
     {
       id: 'conexiones', num: '2', label: 'Its own connections', tmux: 'connections', title: 'Connections Kongtrol makes on its own',
@@ -163,9 +182,17 @@ const en: LegalDocContent = {
           you if it doesn't answer. It only goes to the server you configured.</>,
         <><strong>DNS resolution for your rules</strong> — Kongtrol resolves your policy domains with the system's
           or the tunnel's DNS, to know which tunnel to send them through.</>,
+        <><strong>New version notice (optional, off by default)</strong> — only if you turn it on, at most once every
+          24 hours, one HTTPS request to GitHub:{' '}
+          <IC c="GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest" />. It only carries the
+          headers <IC c="User-Agent: kongtrol/<version>" /> and <IC c="Accept" />. No account, token, cookies,
+          profiles, the IPs of your VPNs or any other data. GitHub sees your public IP, the time and that User-Agent
+          (the {ext('https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement', 'GitHub General Privacy Statement')} applies).
+          It waits at most 5 seconds and ignores pre-releases. If there is a new version, it tells you once; it never
+          downloads or installs anything. When off, it makes no request at all.</>,
       ],
-      after: [<>Kongtrol does <strong>not</strong> send telemetry, analytics, crash reports or update checks
-        (checked in the source code on {UPDATED}). Your VPN clients (NordVPN, FortiClient, etc.) may make their own
+      after: [<>Kongtrol does <strong>not</strong> send telemetry, analytics or crash reports (checked in the
+        source code on {UPDATED}). Your VPN clients (NordVPN, FortiClient, etc.) may make their own
         connections; that depends on each provider and its policy.</>],
     },
     {
@@ -194,6 +221,9 @@ const en: LegalDocContent = {
         <>The public IP check is off by default. Turn it on or off in the dashboard (Security), in the setup wizard or
           with <IC c="kongtrol config public-ip on|off" /> (<IC c="security.public_ip_check.enabled" />). Pick another
           service with <IC c="security.public_ip_check.endpoints" /> (https only).</>,
+        <>The new version notice is off by default. Turn it on or off in the dashboard (Settings › "New version
+          notice"), in <IC c="kongtrol init" /> or with <IC c="kongtrol config update-check on|off" />{' '}
+          (<IC c="updates.check_enabled" />).</>,
         <>The pre-connect check only runs for profiles that have a host set.</>,
       ],
     },

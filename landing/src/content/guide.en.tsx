@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 2.4.0 · 2026-11-17.
+// Version 2.5.0 · 2026-11-18.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -7,6 +7,7 @@
 // same content.
 import type { OS } from '../hooks/useOS'
 import IC from '../components/ui/InlineCode'
+import { pathFor } from '../site'
 import type { GuideContent } from './guide.es'
 
 export default function guideEN(os: OS): GuideContent {
@@ -609,5 +610,60 @@ Passwords stored in:
   Windows → Windows Credential Manager
   macOS   → Keychain
   Linux   → libsecret / GNOME Keyring`,
+    // feature:update_check
+    update1: <>Updating</>,
+    update2: <>Update the same way you installed. Your settings and passwords stay.</>,
+    update3: <><strong>Windows installer:</strong> download the new one from{' '}
+                <a href="/en/#install">the downloads section</a> and open it.</>,
+    update4: `# Script (Linux / macOS): run it again
+$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+
+# Script (Windows, PowerShell): run it again
+> iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
+
+# Homebrew
+$ brew upgrade kongtrol
+
+# npm
+$ npm update -g kongtrol`,
+    update5: <><strong>New version notice (optional, off by default):</strong> if you turn it on, Kongtrol checks
+                at most once a day for a new version. It tells you once per version: in the tray, the dashboard,
+                {' '}<IC c="kongtrol up" />, <IC c="kongtrol version" /> and <IC c="kongtrol status" />.
+                It never downloads or installs anything.</>,
+    update6: `$ kongtrol config update-check on      # turn on
+$ kongtrol config update-check off     # turn off (no request at all)
+$ kongtrol config update-check status  # see how it's set`,
+    update7: <>Also in the dashboard: Settings › "New version notice". <IC c="kongtrol init" /> asks you once
+                (default No). What is sent and to whom: see the{' '}
+                <a href={`${pathFor('privacidad', 'en')}#conexiones`}>privacy policy</a>.</>,
+    // feature:uninstall
+    uninstall1: <>Uninstalling</>,
+    uninstall2: <>When you uninstall, <strong>your data stays</strong>: your settings (<IC c="~/.kongtrol" />)
+                and the passwords saved in your system. If you reinstall, everything is still there. It's only
+                deleted if you ask.</>,
+    uninstall3: <><strong>Windows installer:</strong> Settings › Apps › Kongtrol › Uninstall. It asks once whether
+                to also delete your settings and passwords (default No). It always disconnects your VPNs, closes
+                Kongtrol and removes the network helper.</>,
+    uninstall4: <><strong>From the terminal:</strong> it disconnects your VPNs, closes Kongtrol and removes the
+                network helper, autostart and the PATH entry. If you installed with Homebrew, npm or the Windows
+                installer, it tells you how to finish.</>,
+    uninstall5: `$ kongtrol uninstall                    # removes the app; your data stays
+$ kongtrol uninstall --purge            # also deletes data and passwords (asks [y/N])
+$ kongtrol uninstall --data-only        # deletes only your data; the app stays
+$ kongtrol uninstall --purge --dry-run  # shows what it would do, changes nothing`,
+    uninstall6: <><strong>With the install script:</strong></>,
+    uninstall7: `# Linux / macOS (add --purge to also delete your data)
+$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh -s -- --uninstall
+
+# Windows, PowerShell (add -Purge to also delete your data)
+> & ([scriptblock]::Create((iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb))) -Uninstall`,
+    uninstall8: <><strong>Homebrew or npm:</strong> they don't delete your data. To delete it, first run{' '}
+                <IC c="kongtrol uninstall --purge" />, then uninstall:</>,
+    uninstall9: `$ kongtrol uninstall --purge
+$ brew uninstall kongtrol     # or: npm uninstall -g kongtrol`,
+    uninstall10: <><strong>Only delete your data, keep the app:</strong> in the dashboard, Settings › "Delete all my
+                data". It shows what gets deleted and asks you to confirm. The app stays and goes back to first-time setup.</>,
+    uninstall11: <>The tray has no uninstall item, on purpose: use your system's uninstaller
+                or <IC c="kongtrol uninstall" />.</>,
   }
 }

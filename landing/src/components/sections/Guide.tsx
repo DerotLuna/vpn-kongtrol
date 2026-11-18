@@ -544,6 +544,32 @@ $ kongtrol up us-content`}</CodeBlock>
               <p style={{ marginTop: 32 }}>{t.trouble12}</p>
               <CodeBlock ui={lang} lang="text">{t.trouble13}</CodeBlock>
             </div>
+            {/* 11 — Updating */}
+            <div id="update" className="guide-section">
+              <div className="guide-section-num">11</div>
+              <h2 className="guide-section-title">{t.update1}</h2>
+              <p>{t.update2}</p>
+              <p>{t.update3}</p>
+              <CodeBlock ui={lang} lang="bash">{t.update4}</CodeBlock>
+              <p style={{ marginTop: 32 }}>{t.update5}</p>
+              <CodeBlock ui={lang} lang="bash">{t.update6}</CodeBlock>
+              <p>{t.update7}</p>
+            </div>
+            {/* 12 — Uninstalling */}
+            <div id="uninstall" className="guide-section">
+              <div className="guide-section-num">12</div>
+              <h2 className="guide-section-title">{t.uninstall1}</h2>
+              <div className="callout">{t.uninstall2}</div>
+              <p style={{ marginTop: 24 }}>{t.uninstall3}</p>
+              <p style={{ marginTop: 24 }}>{t.uninstall4}</p>
+              <CodeBlock ui={lang} lang="bash">{t.uninstall5}</CodeBlock>
+              <p style={{ marginTop: 24 }}>{t.uninstall6}</p>
+              <CodeBlock ui={lang} lang="bash">{t.uninstall7}</CodeBlock>
+              <p style={{ marginTop: 24 }}>{t.uninstall8}</p>
+              <CodeBlock ui={lang} lang="bash">{t.uninstall9}</CodeBlock>
+              <p style={{ marginTop: 24 }}>{t.uninstall10}</p>
+              <p>{t.uninstall11}</p>
+            </div>
           </div>
         </div>
       </div>

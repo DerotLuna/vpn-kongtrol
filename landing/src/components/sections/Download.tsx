@@ -5,6 +5,7 @@ import { GITHUB_RELEASES, GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey, releaseA
 import CodeBlock from '../ui/CodeBlock'
 import { DOWNLOAD_SECTION_ID, DownloadIcon } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
+import { pathFor } from '../../site'
 import './download.css'
 
 const ORDER: OS[] = ['windows', 'macos', 'linux']
@@ -67,6 +68,9 @@ export default function Download({ lang }: Props) {
       choose: 'Elige tu sistema',
       macWhich: '¿Apple Silicon o Intel? Tu navegador no puede saberlo. En tu Mac abre el menú Apple → Acerca de este Mac: si dice «Chip», es Apple Silicon; si dice «Procesador» Intel, es Intel.',
       allReleases: 'Ver todos los releases en GitHub',
+      keepNote: <>Si desinstalas, tus datos se quedan (salvo que pidas borrarlos). El aviso de versión nueva es
+        opcional y viene apagado. Ver cómo <a href={`${pathFor('guia', 'es')}#update`}>actualizar</a> y{' '}
+        <a href={`${pathFor('guia', 'es')}#uninstall`}>desinstalar</a>.</>,
       terminalTitle: 'INSTALAR POR TERMINAL',
       terminalText: 'También puedes instalar kongtrol directo desde la terminal: el script detecta tu sistema operativo y arquitectura, descarga el binario correcto de la última release, verifica su checksum SHA256, y lo deja listo en el PATH.',
       terminalScript: `# Linux / macOS
@@ -129,6 +133,9 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       choose: 'Choose your system',
       macWhich: "Apple Silicon or Intel? Your browser can't tell. On your Mac open the Apple menu → About This Mac: if it says \"Chip\", it's Apple Silicon; if it says \"Processor\" with Intel, it's Intel.",
       allReleases: 'View all releases on GitHub',
+      keepNote: <>If you uninstall, your data stays (unless you ask to delete it). The new version notice is
+        optional and off by default. See how to <a href={`${pathFor('guia', 'en')}#update`}>update</a> and{' '}
+        <a href={`${pathFor('guia', 'en')}#uninstall`}>uninstall</a>.</>,
       terminalTitle: 'INSTALL FROM TERMINAL',
       terminalText: 'You can also install kongtrol straight from the terminal: the script detects your OS and architecture, downloads the correct binary from the latest release, verifies its SHA256 checksum, and drops it on your PATH.',
       terminalScript: `# Linux / macOS
@@ -243,6 +250,8 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
         <p className="dl-all">
           <a href={GITHUB_RELEASES} target="_blank" rel="noreferrer">{copy.allReleases}</a>
         </p>
+        {/* feature:uninstall feature:update_check */}
+        <p className="dl-note">{copy.keepNote}</p>
 
         <div className="dl-after">
           <h3 className="dl-others-title">{copy.afterTitle}</h3>
