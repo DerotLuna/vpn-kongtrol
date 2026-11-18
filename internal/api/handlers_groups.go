@@ -366,7 +366,10 @@ type settingsDTO struct {
 	PublicIPCheckEnabled bool     `json:"public_ip_check_enabled"`
 	PublicIPEndpoints    []string `json:"public_ip_endpoints"`
 
-	AuditLogPath      string `json:"audit_log_path"`
-	AuditLogMaxSizeMB int    `json:"audit_log_max_size_mb"`
-	AuditLogSign      bool   `json:"audit_log_sign"`
+	// Audit log, applied live: path, size of one file before the day goes
+	// on in .1, .2… (0 = no limit), days kept (0 = today and yesterday).
+	AuditLogPath          string `json:"audit_log_path"`
+	AuditLogMaxSizeMB     int    `json:"audit_log_max_size_mb"`
+	AuditLogRetentionDays int    `json:"audit_log_retention_days"`
+	AuditLogSign          bool   `json:"audit_log_sign"`
 }

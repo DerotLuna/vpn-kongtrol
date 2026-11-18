@@ -242,7 +242,8 @@ security:
 
   audit_log:
     path: ~/.kongtrol/audit.log
-    max_size_mb: 100
+    max_size_mb: 10      # one file per day up to 10 MB, then audit-YYYY-MM-DD.1.log, .2… (0 = no limit)
+    retention_days: 30   # days kept, today included (0 = today and yesterday, max 365)
     sign: true       # HMAC-SHA256 per entry (key stored in OS keychain)
 
 

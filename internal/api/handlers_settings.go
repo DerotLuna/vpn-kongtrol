@@ -40,6 +40,7 @@ func settingsToDTO(cfg *config.Config) settingsDTO {
 		LeakDetectionAction:   cfg.Security.LeakDetection.Action,
 		AuditLogPath:          cfg.Security.AuditLog.Path,
 		AuditLogMaxSizeMB:     cfg.Security.AuditLog.MaxSizeMB,
+		AuditLogRetentionDays: cfg.Security.AuditLog.RetentionDays,
 		AuditLogSign:          cfg.Security.AuditLog.Sign,
 	}
 }
@@ -164,6 +165,7 @@ type settingsPatch struct {
 	PublicIPEndpoints     *[]string `json:"public_ip_endpoints"`
 	AuditLogPath          *string   `json:"audit_log_path"`
 	AuditLogMaxSizeMB     *int      `json:"audit_log_max_size_mb"`
+	AuditLogRetentionDays *int      `json:"audit_log_retention_days"`
 	AuditLogSign          *bool     `json:"audit_log_sign"`
 }
 
@@ -208,6 +210,9 @@ func (p settingsPatch) applyTo(cfg *config.Config) {
 	setTrimmed(&cfg.Security.AuditLog.Path, p.AuditLogPath)
 	if p.AuditLogMaxSizeMB != nil {
 		cfg.Security.AuditLog.MaxSizeMB = *p.AuditLogMaxSizeMB
+	}
+	if p.AuditLogRetentionDays != nil {
+		cfg.Security.AuditLog.RetentionDays = *p.AuditLogRetentionDays
 	}
 	setBool(&cfg.Security.AuditLog.Sign, p.AuditLogSign)
 }

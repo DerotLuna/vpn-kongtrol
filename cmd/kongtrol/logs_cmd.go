@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,6 +21,8 @@ var (
 	logsTail    int
 	logsProfile string
 	logsLevel   string
+	logsSince   string
+	logsUntil   string
 )
 
 var logsCmd = &cobra.Command{
@@ -28,21 +31,31 @@ var logsCmd = &cobra.Command{
 		if cfg == nil || cfg.Security.AuditLog.Path == "" {
 			return fmt.Errorf("%s", ct("cli.logs.audit_not_configured"))
 		}
-		events, err := readAuditEventsForRetention(cfg.Security.AuditLog.Path)
+		q, err := logsQuery()
 		if err != nil {
 			return err
 		}
-		filtered := filterAuditEvents(events)
-		if logsTail > 0 && len(filtered) > logsTail {
-			filtered = filtered[len(filtered)-logsTail:]
+		// Newest first from the reader; print oldest first like a log.
+		events, _, err := security.QueryAuditEvents(cfg.Security.AuditLog.Path, q)
+		if err != nil {
+			return err
+		}
+		slices.Reverse(events)
+		verify := auditVerifier()
+		entries := make([]auditEntry, 0, len(events))
+		for _, ev := range events {
+			entries = append(entries, auditEntry{AuditEvent: ev, Signed: ev.HMAC != "", Verified: verify(ev)})
 		}
 		if outputJSON {
-			if err := emitJSON(filtered); err != nil {
+			if err := emitJSON(entries); err != nil {
 				return err
 			}
 		} else {
-			for _, ev := range filtered {
-				printAuditEvent(ev)
+			for _, e := range entries {
+				printAuditEvent(e.AuditEvent)
+				if e.Signed && !e.Verified {
+					fmt.Println("    " + tuiWarn(ct("cli.logs.bad_signature")))
+				}
 			}
 		}
 		if !logsFollow {
@@ -61,29 +74,59 @@ func init() {
 	logsCmd.Flags().IntVar(&logsTail, "tail", 100, ct("cli.logs.flag.tail"))
 	logsCmd.Flags().StringVar(&logsProfile, "profile", "", ct("cli.logs.flag.profile"))
 	logsCmd.Flags().StringVar(&logsLevel, "level", "", ct("cli.logs.flag.level"))
+	logsCmd.Flags().StringVar(&logsSince, "since", "", ct("cli.logs.flag.since"))
+	logsCmd.Flags().StringVar(&logsUntil, "until", "", ct("cli.logs.flag.until"))
 	rootCmd.AddCommand(logsCmd)
 }
 
-// dailyLogPaths returns the daily-rotated audit log paths that are
-// candidates for "current" activity: yesterday's (in case midnight just
-// rolled over and a writer still has it open) and today's.
-func dailyLogPaths(basePath string) []string {
-	return []string{
-		security.DailyAuditLogPath(basePath, time.Now().AddDate(0, 0, -1)),
-		security.DailyAuditLogPath(basePath, time.Now()),
-	}
+// auditEntry is one `logs --json` entry, the same shape as GET /api/v1/audit:
+// the event plus whether it is signed and its signature checks out.
+type auditEntry struct {
+	security.AuditEvent
+	Signed   bool `json:"signed"`
+	Verified bool `json:"verified"`
 }
 
-func readAuditEventsForRetention(basePath string) ([]security.AuditEvent, error) {
-	out := make([]security.AuditEvent, 0, 256)
-	for _, path := range dailyLogPaths(basePath) {
-		evs, err := security.ReadAuditEvents(path)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, evs...)
+// logsQuery builds the reader query from the flags: --tail newest events
+// (0 = as many as one page allows), --since/--until as local days
+// (YYYY-MM-DD, --until inclusive).
+func logsQuery() (security.AuditQuery, error) {
+	q := security.AuditQuery{Profile: logsProfile, Level: logsLevel, Limit: logsTail}
+	if q.Limit <= 0 || q.Limit > security.MaxAuditQueryLimit {
+		q.Limit = security.MaxAuditQueryLimit
 	}
-	return out, nil
+	for _, f := range []struct {
+		raw string
+		dst *time.Time
+		end bool
+	}{{logsSince, &q.From, false}, {logsUntil, &q.To, true}} {
+		if f.raw == "" {
+			continue
+		}
+		d, err := time.ParseInLocation("2006-01-02", f.raw, time.Local)
+		if err != nil {
+			return q, fmt.Errorf("%s", cf("cli.logs.bad_date", f.raw))
+		}
+		if f.end {
+			d = d.AddDate(0, 0, 1).Add(-time.Nanosecond)
+		}
+		*f.dst = d
+	}
+	return q, nil
+}
+
+// dailyLogPaths returns the audit files that are candidates for "current"
+// activity: yesterday's (in case midnight just rolled over and a writer
+// still has it open) and today's, every size segment included, plus
+// today's day file even before it exists.
+func dailyLogPaths(basePath string) []string {
+	now := time.Now()
+	paths := security.AuditDayFiles(basePath, now.AddDate(0, 0, -1))
+	paths = append(paths, security.AuditDayFiles(basePath, now)...)
+	if today := security.DailyAuditLogPath(basePath, now); !slices.Contains(paths, today) {
+		paths = append(paths, today)
+	}
+	return paths
 }
 
 func filterAuditEvents(in []security.AuditEvent) []security.AuditEvent {

@@ -222,9 +222,14 @@ type PublicIPCheckConfig struct {
 
 // AuditLogConfig configures the tamper-evident audit log.
 type AuditLogConfig struct {
-	Path      string `yaml:"path,omitempty"`
-	MaxSizeMB int    `yaml:"max_size_mb,omitempty"`
-	Sign      bool   `yaml:"sign,omitempty"` // HMAC-SHA256 per entry
+	Path string `yaml:"path,omitempty"`
+	// MaxSizeMB is the largest size of one audit file (MB): past it the
+	// same day continues in "<base>-YYYY-MM-DD.1<ext>", ".2"… 0 = no limit.
+	MaxSizeMB int `yaml:"max_size_mb,omitempty"`
+	// RetentionDays keeps the files of the last N days, today included
+	// (0 = 2: today and yesterday; at most 365). Older days are deleted.
+	RetentionDays int  `yaml:"retention_days,omitempty"`
+	Sign          bool `yaml:"sign,omitempty"` // HMAC-SHA256 per entry
 }
 
 // MonitorConfig holds monitoring and dashboard settings.

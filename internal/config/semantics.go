@@ -59,6 +59,12 @@ func validateSemantics(cfg *Config) error {
 	if err := ValidateAuditLogPath(cfg.Security.AuditLog.Path); err != nil {
 		return err
 	}
+	if n := cfg.Security.AuditLog.MaxSizeMB; n < 0 || n > 1024 {
+		return newValidationError("config.err.audit_max_size", n)
+	}
+	if n := cfg.Security.AuditLog.RetentionDays; n < 0 || n > 365 {
+		return newValidationError("config.err.audit_retention", n)
+	}
 	for _, ep := range cfg.Security.PublicIPCheck.Endpoints {
 		if err := ValidatePublicIPEndpoint(ep); err != nil {
 			return err

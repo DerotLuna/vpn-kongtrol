@@ -14,7 +14,10 @@ Kongtrol sends no telemetry, analytics or crash reports, and no update check unl
 optional new version notice on (off by default, see below). Credentials go straight
 from your prompt into the OS credential store (`internal/config`) and are never written to disk in
 plaintext or logged. The audit log (`internal/security`) is local, HMAC-signed for
-tamper-evidence, and never leaves the machine.
+tamper-evidence, and never leaves the machine. Signatures are checked when you read it (`kongtrol logs`,
+the dashboard: `verified` per entry) with the key in the OS keychain; the key is never sent to any
+client. It keeps `retention_days` days (default today and yesterday), one file per day split at
+`max_size_mb`.
 
 ## Network connections Kongtrol makes
 

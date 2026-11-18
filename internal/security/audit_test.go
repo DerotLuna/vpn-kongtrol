@@ -13,7 +13,7 @@ func tempAuditLog(t *testing.T, sign bool, key []byte) (*AuditLogger, string) {
 	t.Helper()
 	dir := t.TempDir()
 	basePath := filepath.Join(dir, "audit.log")
-	l, err := NewAuditLogger(basePath, sign, key)
+	l, err := NewAuditLogger(basePath, AuditLoggerOptions{Sign: sign, Key: key})
 	if err != nil {
 		t.Fatalf("NewAuditLogger: %v", err)
 	}

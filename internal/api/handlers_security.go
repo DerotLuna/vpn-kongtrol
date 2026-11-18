@@ -3,9 +3,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
@@ -273,57 +270,6 @@ func (s *Server) handleToggleDNSGuard(w http.ResponseWriter, r *http.Request) {
 		s.onSecurityToggle(cfg)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "dns_guard_enabled": req.Enabled})
-}
-
-// GET /api/v1/vpns — list VPN profiles. Credentials are never returned, only
-// whether a username/password is stored in the OS keychain for the profile.
-
-// GET /api/v1/audit?limit=200&profile=&level= — recent audit log events,
-// newest first. Reuses the same reader the CLI `logs` command uses
-// (internal/security.ReadRecentAuditEvents) so both stay in sync.
-func (s *Server) handleAuditLog(w http.ResponseWriter, r *http.Request) {
-	cfg, _, err := s.loadRuntimeConfig()
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	if cfg.Security.AuditLog.Path == "" {
-		writeJSON(w, http.StatusOK, []security.AuditEvent{})
-		return
-	}
-
-	events, err := security.ReadRecentAuditEvents(cfg.Security.AuditLog.Path, 2)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	profile := strings.TrimSpace(r.URL.Query().Get("profile"))
-	level := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("level")))
-	filtered := make([]security.AuditEvent, 0, len(events))
-	for _, ev := range events {
-		if profile != "" && !strings.EqualFold(ev.Profile, profile) {
-			continue
-		}
-		if level != "" && strings.ToUpper(ev.Level) != level {
-			continue
-		}
-		filtered = append(filtered, ev)
-	}
-
-	sort.Slice(filtered, func(i, j int) bool { return filtered[i].Timestamp.After(filtered[j].Timestamp) })
-
-	limit := 200
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = n
-		}
-	}
-	if len(filtered) > limit {
-		filtered = filtered[:limit]
-	}
-
-	writeJSON(w, http.StatusOK, filtered)
 }
 
 type groupDTO struct {

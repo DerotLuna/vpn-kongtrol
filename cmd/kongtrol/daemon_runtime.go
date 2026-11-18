@@ -46,10 +46,9 @@ func emitAlert(level, profile, message string) {
 }
 
 func logAudit(level, action, profile, message string) {
-	if audit == nil {
-		return
+	if a := currentAudit(); a != nil {
+		_ = a.Log(level, action, profile, message)
 	}
-	_ = audit.Log(level, action, profile, message)
 }
 
 func buildProfileService() *app.ProfileService {
@@ -134,6 +133,9 @@ func buildAPIServer(onShutdown func()) *api.Server {
 			}
 			profileSvc.Store(buildProfileService())
 			applyPublicIPConfig(cfg)
+			// Settings edits apply now: audit log (path, signing, size,
+			// retention).
+			applyAuditConfig(cfg)
 			go func() { _ = applyKillSwitchState() }()
 		},
 		func(newCfg *config.Config) {
@@ -153,6 +155,8 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	// Split-tunnel kill switch state and policy notices for every client.
 	srv.SetKillSwitchStatus(killSwitchSvc.Status)
 	srv.SetEventLog(daemonEvents)
+	// Audit entries are checked against the signing key, which stays here.
+	srv.SetAuditVerifier(auditVerifier())
 	// First run without kongtrol.yaml, and the restart that applies new or
 	// edited profiles (the adapters map is only built at boot).
 	srv.SetSetupMode(setupMode)

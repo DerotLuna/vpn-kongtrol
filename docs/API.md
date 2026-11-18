@@ -76,8 +76,13 @@ GET/PUT   /api/v1/settings                   # health check, scheduler, split DN
 GET/POST  /api/v1/scheduler/rules
 PUT/DELETE /api/v1/scheduler/rules/{name}
 
-# Audit log
-GET  /api/v1/audit?profile=...&level=...&limit=...
+# Audit log (every retained day; same reader as `kongtrol logs`)
+GET  /api/v1/audit?profile=&level=&limit=&from=&to=&before=
+#   newest first; limit 1–1000 (default 200); from/to = local day YYYY-MM-DD (to inclusive) or RFC 3339;
+#   before = RFC 3339 cursor (exclusive): pass the last entry's timestamp for the next page.
+#   Body: [{id,timestamp,level,action,profile,message,hmac,"signed":bool,"verified":bool}];
+#   verified = signed and its HMAC matches the key in the OS keychain (the key never leaves the daemon).
+#   Header X-Kongtrol-Audit-More: true|false. Bad limit/date → 400 api.err.audit_limit|audit_date|audit_range.
 
 POST /api/v1/shutdown                        # ask a running daemon to shut down gracefully
 

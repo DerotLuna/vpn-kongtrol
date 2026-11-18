@@ -93,10 +93,7 @@ func purgeDataFromDaemon() error {
 		dnsMgr.ForceRestore()
 	}
 	extra := purgeExtraFiles(cfg)
-	if audit != nil {
-		_ = audit.Close()
-		audit = nil
-	}
+	closeAudit()
 	rep := uninstall.Purge(uninstall.PurgeOptions{
 		DataDir:     kongtrolDataDir(),
 		ExtraFiles:  extra,

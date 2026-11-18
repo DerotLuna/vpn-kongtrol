@@ -47,7 +47,6 @@ var (
 	killSwitchSvc       *app.KillSwitchService
 	profileSvc          atomic.Pointer[app.ProfileService]
 	leak                *security.LeakTester
-	audit               *security.AuditLogger
 	col                 *monitor.Collector
 	watchdog            *monitor.Watchdog
 	scheduler           *monitor.Scheduler

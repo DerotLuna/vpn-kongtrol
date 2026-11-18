@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/app"
@@ -144,22 +143,7 @@ func loadConfig() error {
 	)
 	profileSvc.Store(buildProfileService())
 
-	if audit != nil {
-		_ = audit.Close()
-		audit = nil
-	}
-	if cfg.Security.AuditLog.Path != "" {
-		var hmacKey []byte
-		if cfg.Security.AuditLog.Sign {
-			hmacKey = loadOrCreateAuditHMACKey()
-		}
-		a, err := security.NewAuditLogger(cfg.Security.AuditLog.Path, cfg.Security.AuditLog.Sign, hmacKey)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, tuiWarn(cf("cli.audit.init_warn", err)))
-		} else {
-			audit = a
-		}
-	}
+	applyAuditConfig(cfg)
 
 	return nil
 }

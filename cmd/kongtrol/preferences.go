@@ -22,10 +22,8 @@ const (
 // first use. Without a real key, security.NewAuditLogger silently produces
 // unsigned entries even when security.audit_log.sign is true.
 func loadOrCreateAuditHMACKey() []byte {
-	if existing, err := config.GetCredential(auditHMACKeychainProfile, auditHMACKeychainKey); err == nil && existing != "" {
-		if decoded, err := base64.StdEncoding.DecodeString(existing); err == nil && len(decoded) > 0 {
-			return decoded
-		}
+	if existing := readAuditHMACKey(); len(existing) > 0 {
+		return existing
 	}
 
 	raw := make([]byte, 32)

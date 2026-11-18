@@ -69,6 +69,9 @@ type Server struct {
 	// policy notices; see SetKillSwitchStatus / SetEventLog.
 	ksStatus func() security.KillSwitchStatus
 	events   *monitor.EventLog
+	// auditVerify checks an audit entry's HMAC (SetAuditVerifier); the
+	// key never reaches the API.
+	auditVerify func(security.AuditEvent) bool
 	// setupMode / restart back /api/v1/setup and /api/v1/restart; see
 	// SetSetupMode and SetRestarter.
 	setupMode atomic.Bool
