@@ -187,6 +187,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("PUT /api/v1/policies/{name}", s.handleUpdatePolicy)
 	mux.HandleFunc("DELETE /api/v1/policies/{name}", s.handleDeletePolicy)
 	mux.HandleFunc("POST /api/v1/policies/test", s.handleTestPolicy)
+	mux.HandleFunc("GET /api/v1/policies/explain", s.handleExplainPolicy)
 	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)
 	mux.HandleFunc("GET /api/v1/dns/resolve", s.handleDNSResolve)
 	mux.HandleFunc("POST /api/v1/shutdown", s.handleShutdown)

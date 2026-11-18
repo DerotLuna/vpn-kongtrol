@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.5 · 2026-11-18
+Version 1.6 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -37,6 +37,7 @@ GET/POST  /api/v1/policies
 PUT/DELETE /api/v1/policies/{name}
 POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
+GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
 
 # VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
 GET/POST  /api/v1/vpns

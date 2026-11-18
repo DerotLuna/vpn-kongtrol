@@ -379,6 +379,28 @@ func (s *Server) handleResolve(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, result)
 }
 
+// GET /api/v1/policies/explain?target=<ip|domain|url|app:exe> — which policy
+// and VPN a destination uses and why: the same answer and JSON shape as
+// `kongtrol policy show <target> --json` (policy.ExplainResult; the reason
+// also comes as ReasonCode + ReasonArgs so clients translate it). Read-only.
+func (s *Server) handleExplainPolicy(w http.ResponseWriter, r *http.Request) {
+	raw := strings.TrimSpace(r.URL.Query().Get("target"))
+	if raw == "" {
+		writeError(w, http.StatusBadRequest, "missing query parameter: target")
+		return
+	}
+	target := raw
+	if !strings.HasPrefix(strings.ToLower(raw), "app:") {
+		target = normalizeResolveTarget(raw)
+	}
+	pe := s.policyEngine.Load()
+	if pe == nil {
+		writeError(w, http.StatusServiceUnavailable, "policy engine not loaded")
+		return
+	}
+	writeJSON(w, http.StatusOK, pe.ExplainTarget(target))
+}
+
 func normalizeResolveTarget(raw string) string {
 	s := strings.TrimSpace(raw)
 	if s == "" {
