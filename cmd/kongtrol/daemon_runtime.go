@@ -157,6 +157,7 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	// edited profiles (the adapters map is only built at boot).
 	srv.SetSetupMode(setupMode)
 	srv.SetRestarter(restartDaemon)
+	wireLifecycleAPI(srv)
 	return srv
 }
 

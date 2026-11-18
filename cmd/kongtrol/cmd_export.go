@@ -123,5 +123,9 @@ var versionCmd = &cobra.Command{
 			return
 		}
 		PrintHeader(version)
+		// Opt-in update notice: last remembered check, no request here.
+		if line := updateLine(); line != "" {
+			fmt.Println(tuiInfo(line))
+		}
 	},
 }

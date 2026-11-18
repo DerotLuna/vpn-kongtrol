@@ -442,6 +442,9 @@ func printStatus() {
 	if hint := nothingConnectedHint(rows); hint != "" {
 		fmt.Println(hint)
 	}
+	if line := updateLine(); line != "" {
+		fmt.Println(tuiInfo(paint(cDim, line)))
+	}
 }
 
 // renderAttachLines lists, under the status table, each tunnel's health

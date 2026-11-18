@@ -284,8 +284,10 @@ func Newer(current, latest string) bool {
 }
 
 // Run checks once at start and then every hour (the 24h limit decides
-// whether a request goes out), calling notify once per newer version.
-func (c *Checker) Run(ctx context.Context, notify func(Result)) {
+// whether a request goes out), calling notify once per newer version. A
+// value on kick (the user just turned the notice on) checks right away,
+// still within the 24h limit.
+func (c *Checker) Run(ctx context.Context, notify func(Result), kick <-chan struct{}) {
 	tick := func() {
 		r, err := c.Check(ctx)
 		if err != nil && !errors.Is(err, ErrDisabled) {
@@ -303,6 +305,8 @@ func (c *Checker) Run(ctx context.Context, notify func(Result)) {
 		case <-ctx.Done():
 			return
 		case <-t.C:
+			tick()
+		case <-kick:
 			tick()
 		}
 	}

@@ -171,6 +171,8 @@ func startDaemonServices(ctx context.Context) func() {
 		stops = append(stops, splitDNSMgr.Stop)
 	}
 	startHistoryPersistence(ctx)
+	// Opt-in update notice: no request unless updates.check_enabled.
+	startUpdateNotice(ctx)
 
 	// Leak alerts from the on-demand public IP lookup (it never polls: it
 	// runs on tunnel connect/disconnect and when the user asks).

@@ -19,6 +19,7 @@ const NOTICE_I18N = {
     'watchdog.event.reconnected': '{0} se reconectó',
     'watchdog.event.no_response': '{0} dejó de responder: su servidor no contesta · Kongtrol la reconecta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
     'watchdog.event.responding': '{0} vuelve a responder',
+    'update.event.available': 'Hay una versión nueva de Kongtrol: {0} (tienes {1}) · actualiza con tu instalador o tu gestor de paquetes, o descárgala desde kongtrol.app · novedades: {2}',
   },
   en: {
     'policy.event.allow': '{0} is going over the normal internet · {1} is off',
@@ -33,6 +34,7 @@ const NOTICE_I18N = {
     'watchdog.event.reconnected': '{0} reconnected',
     'watchdog.event.no_response': '{0} stopped responding: its server does not answer · Kongtrol reconnects it on its own; if it persists, check your internet or tell whoever runs that VPN',
     'watchdog.event.responding': '{0} responds again',
+    'update.event.available': "A new Kongtrol version is out: {0} (you have {1}) · update with your installer or package manager, or download it from kongtrol.app · what's new: {2}",
   },
 };
 
@@ -117,7 +119,7 @@ async function pollNotices() {
     const body = await res.json();
     if (typeof body.seq === 'number') setNoticeSeq(body.seq);
     (body.events || []).forEach((e) => {
-      if (e.kind !== 'policy_tunnel_down' && e.kind !== 'tunnel_watchdog') return;
+      if (e.kind !== 'policy_tunnel_down' && e.kind !== 'tunnel_watchdog' && e.kind !== 'update_available') return;
       const msg = noticeText(e.key, e.args);
       const variant = e.level === 'WARN' ? 'error' : 'info';
       if (e.can_connect && e.profile) {

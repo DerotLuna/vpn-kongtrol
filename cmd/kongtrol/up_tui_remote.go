@@ -90,7 +90,7 @@ func pollRemoteSecurity(ctx context.Context, p *tea.Program, base string, done <
 		if evs, seq, err := fetchDaemonEvents(client, base, eventSeq); err == nil && !isClosed(done) {
 			eventSeq = seq
 			for i := len(evs) - 1; i >= 0; i-- {
-				if k := evs[i].Kind; k == monitor.EventPolicyTunnelDown || k == monitor.EventTunnelWatchdog {
+				if k := evs[i].Kind; k == monitor.EventPolicyTunnelDown || k == monitor.EventTunnelWatchdog || k == monitor.EventUpdateAvailable {
 					e := evs[i]
 					p.Send(upRemoteStateMsg{connected: true, apiBase: base, notice: &e})
 					break

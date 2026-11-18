@@ -79,7 +79,6 @@ var lifecycleMessages = map[Lang]map[string]string{
 		"update.event.available":                    "Hay una versión nueva de Kongtrol: %s (tienes %s) · actualiza con tu instalador o tu gestor de paquetes, o descárgala desde kongtrol.app · novedades: %s",
 		"update.wizard.title":                       "¿Avisarte cuando haya una versión nueva?",
 		"update.wizard.desc":                        "Consulta api.github.com una vez al día; GitHub ve tu IP. Nunca descarga nada. Cámbialo cuando quieras: kongtrol config update-check on|off",
-		"tray.update_available":                     "Versión nueva: %s · cómo actualizar",
 	},
 	EN: {
 		"help.kongtrol.uninstall.short":   "Uninstall Kongtrol from this computer (your data stays)",
@@ -144,6 +143,5 @@ var lifecycleMessages = map[Lang]map[string]string{
 		"update.event.available":                    "A new Kongtrol version is out: %s (you have %s) · update with your installer or package manager, or download it from kongtrol.app · what's new: %s",
 		"update.wizard.title":                       "Tell you when a new version is out?",
 		"update.wizard.desc":                        "Asks api.github.com once a day; GitHub sees your IP. It never downloads anything. Change it any time: kongtrol config update-check on|off",
-		"tray.update_available":                     "New version: %s · how to update",
 	},
 }
