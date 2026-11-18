@@ -12,13 +12,6 @@ const profilesTabs: PlaceholderSpec['tabs'] = {
     { to: '/profiles/groups', label: 'page.profiles.tab.groups' },
   ],
 }
-const rulesTabs: PlaceholderSpec['tabs'] = {
-  label: 'nav.rules',
-  items: [
-    { to: '/rules', label: 'page.rules.tab.policies' },
-    { to: '/rules/schedule', label: 'page.rules.tab.schedule' },
-  ],
-}
 
 export const PLACEHOLDERS: Record<string, PlaceholderSpec> = {
   '/profiles': {
@@ -34,20 +27,6 @@ export const PLACEHOLDERS: Record<string, PlaceholderSpec> = {
     items: ['page.groups.item1', 'page.groups.item2'],
     legacy: LEGACY.studio,
     tabs: profilesTabs,
-  },
-  '/rules': {
-    title: 'nav.rules',
-    lead: 'page.rules.lead',
-    items: ['page.rules.item1', 'page.rules.item2', 'page.rules.item3'],
-    legacy: LEGACY.studio,
-    tabs: rulesTabs,
-  },
-  '/rules/schedule': {
-    title: 'nav.rules',
-    lead: 'page.rules.lead',
-    items: ['page.schedule.item1', 'page.schedule.item2'],
-    legacy: LEGACY.settings,
-    tabs: rulesTabs,
   },
   '/traffic': {
     title: 'nav.traffic',

@@ -15,6 +15,8 @@ import { PreferencesProvider } from './app/PreferencesProvider'
 import { AppShell } from './components/layout/AppShell'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
+import { RulesPage } from './pages/RulesPage'
+import { SchedulePage } from './pages/SchedulePage'
 import { TrayPage } from './pages/TrayPage'
 import { WelcomePage } from './pages/WelcomePage'
 
@@ -27,6 +29,8 @@ function AppRoutes() {
       <Route path="tray" element={<TrayPage />} />
       <Route element={<AppShell />}>
         <Route index element={<WelcomePage />} />
+        <Route path="rules" element={<RulesPage />} />
+        <Route path="rules/schedule" element={<SchedulePage />} />
         {Object.entries(PLACEHOLDERS).map(([path, spec]) => (
           <Route key={path} path={path} element={<PlaceholderPage spec={spec} />} />
         ))}

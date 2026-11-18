@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.0.0 · 2026-11-18
+Version 1.1.0 · 2026-11-18
 
 ## 1. Purpose and how to use
 
@@ -255,32 +255,32 @@ Cadence
 
 Fields
 
-- [ ] Name (text) — legacy studio.html:34-36, studio.js:358 — API required (handlers_policy.go:476), duplicate 409 (handlers_policy.go:169, :216) — target `/rules` — status: missing
-- [ ] Via VPN profile (select from meta profiles) — legacy studio.html:37-39, studio.js:439-446 — API GET /api/v1/policies/meta (handlers_policy.go:113) `profiles`; via required + must exist (handlers_policy.go:479-484) — target `/rules` — status: missing
-- [ ] If the tunnel is off: allow (default) / block / connect + live hint `editor.onDownHint.*` — legacy studio.html:40-47, studio.js:365, 371-381 — API `on_tunnel_down`, `config.ValidateOnTunnelDown` (handlers_policy.go:488) — target `/rules` — status: missing
-- [ ] Domains (one per line) — legacy studio.html:48-50, studio.js:361 — API `match.domains`; at least one match (handlers_policy.go:485); `policy.ParseRule` (handlers_policy.go:491) — target `/rules` — status: missing
-- [ ] IP ranges (one per line) — legacy studio.html:51-53, studio.js:362 — API `match.ip_ranges` (CIDR parse, handlers_policy.go:491) — target `/rules` — status: missing
-- [ ] Apps (one per line) — legacy studio.html:54-56, studio.js:363 — API `match.apps` — target `/rules` — status: missing
-- [ ] Tip + template text (`editor.tip`, `editor.template` with `<code>`) — legacy studio.html:64-65 — target `/rules` — status: missing
+- [x] Name (text) — legacy studio.html:34-36, studio.js:358 — API required (handlers_policy.go:476), duplicate 409 (handlers_policy.go:169, :216) — target `/rules` — status: done (web/ui/src/pages/RulesPage.tsx, components/rules/PolicyEditor.tsx: required + duplicate checked inline before sending; a 409 shows on the field)
+- [x] Via VPN profile (select from meta profiles) — legacy studio.html:37-39, studio.js:439-446 — API GET /api/v1/policies/meta (handlers_policy.go:113) `profiles`; via required + must exist (handlers_policy.go:479-484) — target `/rules` — status: done (components/rules/PolicyEditor.tsx; no profiles → "Crea una en Perfiles" link)
+- [x] If the tunnel is off: allow (default) / block / connect + live hint `editor.onDownHint.*` — legacy studio.html:40-47, studio.js:365, 371-381 — API `on_tunnel_down`, `config.ValidateOnTunnelDown` (handlers_policy.go:488) — target `/rules` — status: done (components/rules/PolicyEditor.tsx: radio group with each hint; block with apps only is caught inline)
+- [x] Domains (one per line) — legacy studio.html:48-50, studio.js:361 — API `match.domains`; at least one match (handlers_policy.go:485); `policy.ParseRule` (handlers_policy.go:491) — target `/rules` — status: done (components/rules/PolicyEditor.tsx: one per line or comma, pasted URLs cleaned to the host, glob form checked like matchGlob)
+- [x] IP ranges (one per line) — legacy studio.html:51-53, studio.js:362 — API `match.ip_ranges` (CIDR parse, handlers_policy.go:491) — target `/rules` — status: done (components/rules/PolicyEditor.tsx: IP or CIDR checked like net.ParseCIDR, IPv6 included)
+- [x] Apps (one per line) — legacy studio.html:54-56, studio.js:363 — API `match.apps` — target `/rules` — status: done (components/rules/PolicyEditor.tsx: under "Apps (experimental)", which says apps only test/diagnose today — PolicyResolver does not route by app)
+- [x] Tip + template text (`editor.tip`, `editor.template` with `<code>`) — legacy studio.html:64-65 — target `/rules` — status: done (components/rules/PolicyEditor.tsx: field hints with examples + three starting points "Las webs de mi empresa", "Una red del trabajo", "Un sitio por otra VPN")
 
 Actions
 
-- [ ] Create — legacy studio.html:58, studio.js:479-493 — API POST /api/v1/policies (handlers_policy.go:151; 201; localized 400 :164) — target `/rules` — status: missing; **fix**: no success toast
-- [ ] Update (selected or name; rename) — legacy studio.html:59, studio.js:495-514 — API PUT /api/v1/policies/{name} (handlers_policy.go:182; 404 :206) — target `/rules` — status: missing; **fix**: no success toast
-- [ ] Delete with confirm `confirm.delete` — legacy studio.html:60, studio.js:516-535 — API DELETE /api/v1/policies/{name} (handlers_policy.go:234) — target `/rules` — status: missing
-- [ ] Clear (also clears test inputs/result) — legacy studio.html:61, studio.js:394-404 — target `/rules` — status: missing
-- [ ] Row Edit / Delete — legacy studio.js:425-426, 433-437, 537-541 — target `/rules` — status: missing
-- [ ] Test before saving: target (domain/IP/URL) or app → matched / no match (reason) / error — legacy studio.html:69-75, studio.js:543-571 — API POST /api/v1/policies/test (handlers_policy.go:263; body `rule, target, app`; resp `matched, via, rule, reason`; 400 "target or app is required" :305) — target `/rules` — status: missing
-- [ ] Reload from disk + tip — legacy studio.html:79-81, studio.js:468-477 — API POST /api/v1/policies/reload (handlers_policy.go:138; `policies` count) — target `/rules` — status: missing
-- [ ] Resolve shortcut (same resolver as `/traffic`) — legacy none on Studio — API GET /api/v1/resolve — target `/rules` **IA: revisar** (spec lists "resolve" under `/rules`; legacy resolver is on Overview) — status: missing
+- [x] Create — legacy studio.html:58, studio.js:479-493 — API POST /api/v1/policies (handlers_policy.go:151; 201; localized 400 :164) — target `/rules` — status: done (web/ui/src/pages/RulesPage.tsx, data/rules.ts useSavePolicy: optimistic, toast `rules.toast.created`; refusal inline + toast)
+- [x] Update (selected or name; rename) — legacy studio.html:59, studio.js:495-514 — API PUT /api/v1/policies/{name} (handlers_policy.go:182; 404 :206) — target `/rules` — status: done (web/ui/src/pages/RulesPage.tsx: row Edit opens the editor; rename supported; toast `rules.toast.updated`)
+- [x] Delete with confirm `confirm.delete` — legacy studio.html:60, studio.js:516-535 — API DELETE /api/v1/policies/{name} (handlers_policy.go:234) — target `/rules` — status: done (web/ui/src/pages/RulesPage.tsx: app dialog components/rules/shared.tsx ConfirmDelete; optimistic removal)
+- [x] Clear (also clears test inputs/result) — legacy studio.html:61, studio.js:394-404 — target `/rules` — status: done (components/rules/PolicyEditor.tsx: Cancelar closes the editor and drops the draft and its test; the next editor starts empty)
+- [x] Row Edit / Delete — legacy studio.js:425-426, 433-437, 537-541 — target `/rules` — status: done (components/rules/PolicyList.tsx: icon buttons named "Editar «x»" / "Borrar «x»")
+- [x] Test before saving: target (domain/IP/URL) or app → matched / no match (reason) / error — legacy studio.html:69-75, studio.js:543-571 — API POST /api/v1/policies/test (handlers_policy.go:263; body `rule, target, app`; resp `matched, via, rule, reason`; 400 "target or app is required" :305) — target `/rules` — status: done (components/rules/PolicyEditor.tsx DraftTest: POST /api/v1/policies/test; draft errors and empty input explained inline)
+- [x] Reload from disk + tip — legacy studio.html:79-81, studio.js:468-477 — API POST /api/v1/policies/reload (handlers_policy.go:138; `policies` count) — target `/rules` — status: done (web/ui/src/pages/RulesPage.tsx: "Volver a leer el archivo" with the config path from /policies/meta; toast with the count)
+- [x] Resolve shortcut (same resolver as `/traffic`) — legacy none on Studio — API GET /api/v1/resolve — target `/rules` **IA: revisar** (spec lists "resolve" under `/rules`; legacy resolver is on Overview) — status: done (components/rules/TestDestination.tsx "Probar un destino": new GET /api/v1/policies/explain = `kongtrol policy show`, plus the VPN state and on_tunnel_down outcome)
 
 Table / states / notices
 
-- [ ] Existing policies: Name, Match (domains, ranges, `app:x`), Via, actions; sorted by name — legacy studio.html:82-95, studio.js:406-431, 459 — API GET /api/v1/policies — target `/rules` — status: missing
-- [ ] Empty `empty.noPolicies`; skeleton rows — legacy studio.js:409, studio.html:92-93 — target `/rules` — status: missing
-- [ ] Toasts `alerts.createFailed|updateFailed|deleteFailed|selectFirst|selectDelete|policyReloadFailed`, `toast.policiesReloaded` — legacy studio.js:472-530 — target `/rules` — status: missing
-- [ ] Test result texts `result.matched`, `result.noMatch`, `result.noMatchReason`, `alerts.testFailed` — legacy studio.js:555-570 — target `/rules` — status: missing
-- [ ] `on_tunnel_down` shown per row (legacy table omits it) — legacy studio.js:419-429 — API `on_tunnel_down` — target `/rules` — status: missing; **fix**: show it
+- [x] Existing policies: Name, Match (domains, ranges, `app:x`), Via, actions; sorted by name — legacy studio.html:82-95, studio.js:406-431, 459 — API GET /api/v1/policies — target `/rules` — status: done (components/rules/PolicyList.tsx; **changed**: shown in evaluation order, not by name, because the order decides overlaps; VPN live state per row)
+- [x] Empty `empty.noPolicies`; skeleton rows — legacy studio.js:409, studio.html:92-93 — target `/rules` — status: done (web/ui/src/pages/RulesPage.tsx: skeleton on first load; empty state teaches + "Crear la primera regla")
+- [x] Toasts `alerts.createFailed|updateFailed|deleteFailed|selectFirst|selectDelete|policyReloadFailed`, `toast.policiesReloaded` — legacy studio.js:472-530 — target `/rules` — status: done (data/rules.ts + data/optimistic.ts: failures = translated error + what to do + Retry; select-first toasts are impossible with row actions)
+- [x] Test result texts `result.matched`, `result.noMatch`, `result.noMatchReason`, `alerts.testFailed` — legacy studio.js:555-570 — target `/rules` — status: done (components/rules/PolicyEditor.tsx, components/rules/TestDestination.tsx: `rules.test.draft.*`, `rules.outcome.*`, `rules.reason.*`)
+- [x] `on_tunnel_down` shown per row (legacy table omits it) — legacy studio.js:419-429 — API `on_tunnel_down` — target `/rules` — status: done (components/rules/PolicyList.tsx column "Si está apagada")
 
 #### Tab: Groups → `/profiles/groups`
 
@@ -347,16 +347,16 @@ Table / states / notices
 
 #### Section: Scheduler → `/rules/schedule`
 
-- [ ] Scheduler enabled switch (saves immediately) — legacy settings.html:163-166 — API PUT /api/v1/settings `scheduler_enabled` — target `/rules/schedule` — status: missing; **fix**: legacy `onchange=saveSettings()` also saves every other unsaved field on the page
-- [ ] Scheduler interval (e.g. 1m) — legacy settings.html:167-169, settings.js:170, 191 — API `scheduler_interval` (duration check handlers_settings.go:57-64) — target `/rules/schedule` — status: missing
-- [ ] Rule name — legacy settings.html:175-177, settings.js:234 — API required (handlers_schedule.go:39-41), duplicate 409 (:49-51) — target `/rules/schedule` — status: missing
-- [ ] Rule profiles (one per line) — legacy settings.html:178-180, settings.js:235 — API `profiles`, `config.Validate` (handlers_schedule.go:96-110) — target `/rules/schedule` — status: missing
-- [ ] Weekdays (comma-separated, optional, e.g. mon,tue) — legacy settings.html:181-183, settings.js:236 — API `weekdays` (`config.Validate`) — target `/rules/schedule` — status: missing; **fix**: free text → day checkboxes
-- [ ] Start / End HH:MM (optional) — legacy settings.html:184-189, settings.js:237-238 — API `start`, `end` (`config.Validate`) — target `/rules/schedule` — status: missing
-- [ ] Create / Update / Delete (confirm `confirm.deleteRule`) / Clear — legacy settings.html:190-195, settings.js:294-359 — API POST /api/v1/scheduler/rules (handlers_schedule.go:32), PUT …/{name} (:62), DELETE …/{name} (:116) — target `/rules/schedule` — status: missing
-- [ ] Rules table: Name, Profiles, Window (`days · start-end` or —), Edit/Delete — legacy settings.html:199-215, settings.js:258-279 — API GET /api/v1/scheduler/rules (handlers_schedule.go:12) — target `/rules/schedule` — status: missing
-- [ ] Refresh rules button — legacy settings.html:161 — target `/rules/schedule` — status: missing
-- [ ] Toasts `toast.ruleCreated|Updated|Deleted`, `alerts.ruleCreateFailed|UpdateFailed|DeleteFailed|SelectFirst|SelectDelete`; empty `empty.noRules` — legacy settings.js:261, 303-350 — target `/rules/schedule` — status: missing
+- [x] Scheduler enabled switch (saves immediately) — legacy settings.html:163-166 — API PUT /api/v1/settings `scheduler_enabled` — target `/rules/schedule` — status: done (web/ui/src/pages/SchedulePage.tsx: Switch, optimistic, sends only `scheduler_enabled`)
+- [x] Scheduler interval (e.g. 1m) — legacy settings.html:167-169, settings.js:170, 191 — API `scheduler_interval` (duration check handlers_settings.go:57-64) — target `/rules/schedule` — status: done (web/ui/src/pages/SchedulePage.tsx IntervalForm: own Save, Go duration checked inline, sends only `scheduler_interval`)
+- [x] Rule name — legacy settings.html:175-177, settings.js:234 — API required (handlers_schedule.go:39-41), duplicate 409 (:49-51) — target `/rules/schedule` — status: done (components/rules/ScheduleEditor.tsx: required + duplicate inline)
+- [x] Rule profiles (one per line) — legacy settings.html:178-180, settings.js:235 — API `profiles`, `config.Validate` (handlers_schedule.go:96-110) — target `/rules/schedule` — status: done (components/rules/ScheduleEditor.tsx: checkboxes of existing profiles; a deleted profile still listed so it can be unticked)
+- [x] Weekdays (comma-separated, optional, e.g. mon,tue) — legacy settings.html:181-183, settings.js:236 — API `weekdays` (`config.Validate`) — target `/rules/schedule` — status: done (components/rules/ScheduleEditor.tsx: seven day toggles + presets; none = every day)
+- [x] Start / End HH:MM (optional) — legacy settings.html:184-189, settings.js:237-238 — API `start`, `end` (`config.Validate`) — target `/rules/schedule` — status: done (components/rules/ScheduleEditor.tsx: "Todo el día" or two time inputs; one missing / equal times / overnight explained inline)
+- [x] Create / Update / Delete (confirm `confirm.deleteRule`) / Clear — legacy settings.html:190-195, settings.js:294-359 — API POST /api/v1/scheduler/rules (handlers_schedule.go:32), PUT …/{name} (:62), DELETE …/{name} (:116) — target `/rules/schedule` — status: done (web/ui/src/pages/SchedulePage.tsx, components/rules/ScheduleEditor.tsx: optimistic save/delete, app confirm dialog, Cancelar = clear)
+- [x] Rules table: Name, Profiles, Window (`days · start-end` or —), Edit/Delete — legacy settings.html:199-215, settings.js:258-279 — API GET /api/v1/scheduler/rules (handlers_schedule.go:12) — target `/rules/schedule` — status: done (web/ui/src/pages/SchedulePage.tsx: Nombre, Cuándo (plain sentence with the VPNs), Ahora (in/out of schedule), actions)
+- [x] Refresh rules button — legacy settings.html:161 — target `/rules/schedule` — status: done (web/ui/src/pages/SchedulePage.tsx: refresh icon button, reloads rules and settings)
+- [x] Toasts `toast.ruleCreated|Updated|Deleted`, `alerts.ruleCreateFailed|UpdateFailed|DeleteFailed|SelectFirst|SelectDelete`; empty `empty.noRules` — legacy settings.js:261, 303-350 — target `/rules/schedule` — status: done (data/rules.ts: `schedule.toast.*`; failures via data/optimistic.ts; empty state with "Crear horario de oficina")
 
 #### Page actions / states
 
@@ -495,6 +495,7 @@ Other clients (CLI `cmd/kongtrol`, tray, `internal/daemonctl`) listed when a das
 | PUT /api/v1/policies/{name} | handlers_policy.go:182 | studio.js:502 | — | `/rules` |
 | DELETE /api/v1/policies/{name} | handlers_policy.go:234 | studio.js:527 | — | `/rules` |
 | POST /api/v1/policies/test | handlers_policy.go:263 | studio.js:549 | — | `/rules` |
+| GET /api/v1/policies/explain | handlers_policy.go (handleExplainPolicy) | — (new; = `kongtrol policy show`) | data/rules.ts | `/rules` |
 | GET /api/v1/resolve | handlers_policy.go:309 | app.js:1007 | — | `/traffic`, `/rules` |
 | GET /api/v1/dns/resolve | handlers_policy.go:404 | **none** (no client found in cmd/, internal/daemonctl, tray) | — | **unused** — decide: expose in `/traffic` resolver or remove (AGENTS.md "Nothing stale stays") |
 | POST /api/v1/shutdown | handlers_tunnels.go:21 | **none** (tray via internal/daemonctl) | — | `/settings` (GUI parity gap) |
@@ -559,11 +560,11 @@ Rows = checkbox rows in §3, counted on the first target route named in the row 
 | `/` Home | 54 | 10 | 7 |
 | `/profiles` | 40 | 0 | 1 |
 | `/profiles/groups` | 10 | 0 | 0 |
-| `/rules` | 20 | 0 | 0 |
-| `/rules/schedule` | 10 | 0 | 0 |
+| `/rules` | 20 | 20 | 0 |
+| `/rules/schedule` | 10 | 10 | 0 |
 | `/traffic` | 26 | 0 | 0 |
 | `/security` | 24 | 2 | 3 |
 | `/activity` | 10 | 0 | 0 |
 | `/settings` | 16 | 6 | 0 |
 | Shell / cross-cutting | 34 | 9 | 4 |
-| **Total** | **244** | **27** | **15** |
+| **Total** | **244** | **57** | **15** |

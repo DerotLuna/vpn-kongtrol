@@ -67,7 +67,8 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   return res
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** For resource modules in src/data (one per page) that add their own endpoints. */
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await send(path, init, 'application/json')
   return parse<T>(res)
 }
@@ -95,7 +96,7 @@ async function parse<T>(res: Response): Promise<T> {
   return body as T
 }
 
-function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Promise<T> {
+export function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Promise<T> {
   return request<T>(path, {
     method,
     headers: { 'Content-Type': 'application/json' },
