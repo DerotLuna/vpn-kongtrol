@@ -27,8 +27,8 @@ const HOME_WINDOWS_ES: TmuxWindow[] = [
   { n: 2, name: 'pasos', id: 'steps' },
   { n: 3, name: 'vpns', id: 'vpns' },
   { n: 4, name: 'mapa', id: 'map' },
-  { n: 5, name: 'check', id: 'check' },
-  { n: 6, name: 'capó', id: 'hood' },
+  { n: 5, name: 'seguridad', id: 'check' },
+  { n: 6, name: 'detalles', id: 'hood' },
   { n: 7, name: 'instalar', id: 'install' },
 ]
 const HOME_WINDOWS_EN: TmuxWindow[] = [
@@ -37,8 +37,8 @@ const HOME_WINDOWS_EN: TmuxWindow[] = [
   { n: 2, name: 'steps', id: 'steps' },
   { n: 3, name: 'vpns', id: 'vpns' },
   { n: 4, name: 'map', id: 'map' },
-  { n: 5, name: 'check', id: 'check' },
-  { n: 6, name: 'hood', id: 'hood' },
+  { n: 5, name: 'security', id: 'check' },
+  { n: 6, name: 'details', id: 'hood' },
   { n: 7, name: 'install', id: 'install' },
 ]
 

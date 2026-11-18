@@ -221,7 +221,10 @@ h1, h2, h3, h4 {
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.08;
+  text-wrap: balance;
 }
+/* no lone last word under a paragraph (progressive: ignored where unsupported) */
+p, li, dd { text-wrap: pretty; }
 code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* section eyebrow ring glyph — a tiny contour mark before every label */
@@ -233,7 +236,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   vertical-align: -1px;
   border-radius: 50%;
   border: 1.5px solid var(--signal);
-  box-shadow: 0 0 0 3px var(--signal-soft), inset 0 0 0 2.5px var(--bg);
+  /* second contour line, drawn as a hairline ring, not a glow */
+  outline: 1px solid var(--signal-line); outline-offset: 2px;
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────────────── */
@@ -285,7 +289,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.6rem; letter-spacing: 0.24em;
+  font-size: var(--text-min); letter-spacing: 0.16em;
   color: var(--signal);
   border: 1px solid var(--signal-line);
   border-radius: 3px;
@@ -360,7 +364,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .lang-icon svg { width: 13px; height: 13px; }
 .lang-flash {
   position: absolute; inset: 0; display: grid; place-items: center;
-  font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.06em;
   opacity: 0; transform: scale(.82); pointer-events: none; color: var(--signal);
 }
 .lang-flash.show { animation: langPulse 0.7s ease; }
@@ -393,15 +397,14 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .hero-contour::after {
   content: ''; position: absolute; left: 50%; top: 50%;
   width: 9px; height: 9px; translate: -50% -50%; border-radius: 50%;
-  background: var(--signal); box-shadow: 0 0 0 5px var(--signal-soft), 0 0 24px var(--signal-glow);
+  background: var(--signal);
+  /* a hairline ring around the core, no glow (DESIGN.md: glow only on primary button hover) */
+  outline: 1px solid var(--signal-line); outline-offset: 4px;
   animation: corePulse 3.4s ease-in-out infinite;
 }
 /* light theme: dark ink on cream paper reads faint by default — push the sweep and core harder */
 :root[data-theme='light'] .hero-contour::before {
   background: conic-gradient(from 0deg, transparent 0 78%, color-mix(in srgb, var(--signal) 55%, transparent) 92%, transparent 100%);
-}
-:root[data-theme='light'] .hero-contour::after {
-  box-shadow: 0 0 0 5px var(--signal-soft), 0 0 26px color-mix(in srgb, var(--signal) 45%, transparent);
 }
 @keyframes radarSweep { to { transform: rotate(360deg); } }
 /* transform-only pulse (compositor), the glow itself stays static */
@@ -613,11 +616,12 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .guide-section .code-block { margin: 20px 0; }
 .guide-section h3 { font-family: var(--font-display); color: var(--text); font-size: 1.15rem; }
 
-/* quickstart card — the 90% path, front-loaded */
+/* quickstart — the 90% path, front-loaded. Flat band between two amber
+   hairlines (not a card), so its code blocks are not cards inside a card */
 .guide-quickstart {
   position: relative; overflow: hidden;
-  border: 1px solid var(--signal-line); border-radius: var(--radius-lg);
-  background: var(--signal-soft); padding: 28px 30px;
+  border-block: 1px solid var(--signal-line);
+  padding: 28px 0;
 }
 .guide-quickstart::before {
   content: ''; position: absolute; top: -80px; right: -80px; width: 220px; height: 220px;
@@ -635,7 +639,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .qs-n {
   display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
   font-family: var(--font-mono); font-size: 0.82rem; font-weight: 600; color: var(--signal);
-  border: 1.5px solid var(--signal); box-shadow: 0 0 0 4px var(--signal-soft);
+  border: 1.5px solid var(--signal);
 }
 .qs-steps li > div strong { font-family: var(--font-display); font-size: 1rem; color: var(--text); }
 .qs-steps li > div > p { color: var(--text-muted); font-size: 0.88rem; margin: 2px 0 0; max-width: none; }
@@ -716,12 +720,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   font-size: clamp(4rem, 16vw, 300px);
   line-height: 0.76; letter-spacing: -0.03em;
   text-align: center; white-space: nowrap;
-  color: transparent;
-  background: linear-gradient(to bottom,
-    color-mix(in srgb, var(--text) 10%, transparent),
-    color-mix(in srgb, var(--text) 3%, transparent));
-  -webkit-background-clip: text;
-          background-clip: text;
+  /* solid faint amber, no gradient text (One Accent Rule) */
+  color: color-mix(in srgb, var(--signal) 7%, transparent);
 }
 .footer-grid {
   display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
@@ -1075,7 +1075,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   margin: 18px 0 6px; overflow: hidden;
   font-family: var(--font-mono); font-size: clamp(5.5px, 1.35vw, 12.5px);
   line-height: 1.18; color: var(--signal);
-  text-shadow: 0 0 18px var(--signal-glow);
 }
 
 /* the one plain-language sentence in the hero: body face, full contrast,
@@ -1157,7 +1156,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   background: color-mix(in srgb, var(--surface-2) 92%, transparent);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
-  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.03em;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.02em;
 }
 .tmux-session { color: var(--signal); font-weight: 600; }
 .tmux-windows { display: flex; gap: 4px; list-style: none; flex: 1; overflow: hidden; }
@@ -1268,7 +1267,7 @@ a { text-underline-offset: 3px; }
   gap: 24px; align-items: baseline; padding: 18px 4px; border-bottom: 1px solid var(--border);
 }
 .hood-row dt { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; color: var(--text); }
-.hood-desc { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; max-width: 70ch; }
+.hood-desc { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; max-width: var(--measure); }
 .hood-metric {
   justify-self: end; font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.05em;
   color: var(--signal); border: 1px solid var(--signal-line); border-radius: 999px; padding: 4px 10px; white-space: nowrap;
