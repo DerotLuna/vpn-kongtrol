@@ -104,7 +104,7 @@ const I18N = {
     'status.error': 'error',
     'tunnel.lastError': 'Último error ({time})',
     'lastErrorKey.notInstalled': 'Instala el ayudante una vez: pulsa Instalar ayudante arriba.',
-    'lastErrorKey.outdated': 'El ayudante está desactualizado. Actualízalo: pulsa Instalar ayudante arriba.',
+    'lastErrorKey.outdated': 'El ayudante está desactualizado. Actualízalo: pulsa Actualizar ayudante en el aviso de arriba.',
     'lastErrorKey.denied': 'El ayudante no acepta a tu usuario. Reinstálalo desde tu cuenta: kongtrol service install',
     'lastErrorKey.wgNotManaged': 'Este túnel WireGuard no coincide con ningún perfil tuyo (el archivo .conf debe llamarse igual que el túnel). Desconéctalo en la app de WireGuard, o corrige el perfil y reintenta.',
     'lastErrorKey.notWireGuard': 'Ese nombre pertenece a algo que no es un túnel WireGuard, así que Kongtrol no lo toca. Revisa el nombre del túnel en el perfil.',
@@ -114,9 +114,12 @@ const I18N = {
     'helper.banner': 'Instala el ayudante una vez: kongtrol service install',
     'helper.install': 'Instalar ayudante',
     'helper.installing': 'Acepta el permiso de administrador en la ventana que aparece…',
-    'helper.installed': 'Ayudante instalado · ya puedes conectar',
+    'helper.installed': 'Ayudante listo · ya no hace falta volver a instalarlo',
     'helper.failed': 'No se pudo instalar el ayudante.',
     'helper.failedHint': 'Qué hacer: pulsa Instalar ayudante otra vez y acepta el permiso.',
+    'helper.bannerOutdated': 'El ayudante está desactualizado: Kongtrol no puede comprobar si los servidores de tus VPN responden. Actualízalo una vez (un permiso de administrador).',
+    'helper.update': 'Actualizar ayudante',
+    'health.unverified': 'sin verificar',
     'attach.attached': '{app} ya conectado · kongtrol lo toma',
     'attach.auto': 'Conectado con {app}',
     'attach.auto_location': 'Conectado con {app} ({location})',
@@ -250,7 +253,7 @@ const I18N = {
     'status.error': 'error',
     'tunnel.lastError': 'Last error ({time})',
     'lastErrorKey.notInstalled': 'Install the helper once: click Install helper above.',
-    'lastErrorKey.outdated': 'The helper is out of date. Update it: click Install helper above.',
+    'lastErrorKey.outdated': 'The helper is out of date. Update it: click Update helper in the notice above.',
     'lastErrorKey.denied': 'The helper does not accept your user. Reinstall it from your account: kongtrol service install',
     'lastErrorKey.wgNotManaged': 'This WireGuard tunnel does not match any of your profiles (the .conf file name must equal the tunnel name). Disconnect it in the WireGuard app, or fix the profile and retry.',
     'lastErrorKey.notWireGuard': 'That name belongs to something that is not a WireGuard tunnel, so Kongtrol will not touch it. Check the profile tunnel name.',
@@ -260,9 +263,12 @@ const I18N = {
     'helper.banner': 'Install the helper once: kongtrol service install',
     'helper.install': 'Install helper',
     'helper.installing': 'Accept the admin permission in the window that appears…',
-    'helper.installed': 'Helper installed · you can connect now',
+    'helper.installed': 'Helper ready · no need to install it again',
     'helper.failed': 'Could not install the helper.',
     'helper.failedHint': 'What to do: click Install helper again and accept the permission.',
+    'helper.bannerOutdated': "The helper is out of date: Kongtrol can't check whether your VPN servers answer. Update it once (one admin prompt).",
+    'helper.update': 'Update helper',
+    'health.unverified': 'not verified',
     'attach.attached': '{app} already connected · kongtrol takes over',
     'attach.auto': 'Connected with {app}',
     'attach.auto_location': 'Connected with {app} ({location})',
@@ -342,6 +348,10 @@ function lastErrorText(m) {
 
 let helperInstalling = false;
 let lastHelperNeedsInstall = false;
+// lastHelperOutdated: the helper answers with an older protocol. The banner
+// then says "update" once for the whole page, and tunnel rows only add a
+// short "sin verificar" (unverifiedTag) instead of the long sentence.
+let lastHelperOutdated = false;
 
 async function refreshHelperStatus() {
   if (helperInstalling) return;
@@ -350,6 +360,7 @@ async function refreshHelperStatus() {
     if (!res.ok) return;
     const st = await res.json();
     lastHelperNeedsInstall = !!st.needs_install;
+    lastHelperOutdated = !!st.outdated;
     renderHelperBanner(lastHelperNeedsInstall);
   } catch (_) {}
 }
@@ -376,12 +387,13 @@ function renderHelperBanner(show, state = {}) {
   const busy = !!state.busy;
   el.classList.toggle('busy', busy);
   el.classList.toggle('failed', !!state.hint);
+  const outdated = lastHelperOutdated;
   el.innerHTML = `
     <div class="helper-banner-text">
-      <strong>${esc(state.message || t('helper.banner'))}</strong>
+      <strong>${esc(state.message || t(outdated ? 'helper.bannerOutdated' : 'helper.banner'))}</strong>
       ${state.hint ? `<span>${esc(state.hint)}</span>` : ''}
     </div>
-    <button type="button" class="action helper-install-btn"${busy ? ' disabled' : ''}>${esc(t('helper.install'))}</button>`;
+    <button type="button" class="action helper-install-btn"${busy ? ' disabled' : ''}>${esc(t(outdated ? 'helper.update' : 'helper.install'))}</button>`;
   el.querySelector('button').addEventListener('click', installHelper);
 }
 
@@ -403,9 +415,11 @@ async function installHelper() {
   helperInstalling = false;
   if (res && res.ok && !body.needs_install) {
     lastHelperNeedsInstall = false;
+    lastHelperOutdated = false;
     renderHelperBanner(false);
     showToast(t('helper.installed'), 'success');
     refreshTunnels();
+    refreshHelperStatus(); // confirm at once, not on the next poll
     return;
   }
   const message = body.error || t('helper.failed');
@@ -562,10 +576,17 @@ function renderTunnels(tunnels, opts = {}) {
       // Does the server answer (WireGuard handshake, ADR-0030)? See
       // healthMessage; "no answer" uses the caution colour, other problems
       // are highlighted like a waiting attach.
+      // "unknown" (can't verify, e.g. outdated helper) stays short on the
+      // row — "conectado · sin verificar", the reason in the tooltip — and
+      // the page-level helper banner explains the fix once.
       const healthMsg = healthMessage(m.health);
+      const unverified = m.health?.state === 'unknown';
       const healthCls = m.health?.state === 'no_response' ? ' caution' : healthProblem(m.health) ? ' waiting' : '';
-      const healthLine = healthMsg
+      const healthLine = healthMsg && !unverified
         ? `<div class="tunnel-attach${healthCls}">${esc(healthMsg)}</div>`
+        : '';
+      const unverifiedTag = unverified
+        ? ` <span class="tunnel-unverified" title="${esc(healthMsg).replace(/"/g, '&quot;')}">· ${esc(t('health.unverified'))}</span>`
         : '';
       const tr = isConnected ? tunnelRoutesFor(name) : null;
       const routesToggle = tr
@@ -596,7 +617,7 @@ function renderTunnels(tunnels, opts = {}) {
 
       return `<tr>
         <td>${n}</td>
-        <td>${dot}${statusLabel}${attachLine}${healthLine}${lastErr}${routesToggle}</td>
+        <td>${dot}${statusLabel}${unverifiedTag}${attachLine}${healthLine}${lastErr}${routesToggle}</td>
         <td>${ip}</td>
         <td>${up}</td>
         <td>${sent}</td>

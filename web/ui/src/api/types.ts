@@ -1,4 +1,4 @@
-// Kongtrol UI — API types · v0.3.0 · 2026-11-18
+// Kongtrol UI — API types · v0.4.0 · 2026-11-18
 //
 // Hand-written mirrors of the Go structs this UI reads. Keep field names
 // identical to the JSON the daemon sends (source in the comment above each).
@@ -57,6 +57,13 @@ export interface HelperStatus {
   helper_version: string
   cli_version: string
   needs_install: boolean
+  /** Answers with an older protocol: "update", not "install" (absent on older daemons). */
+  outdated?: boolean
+}
+
+/** GET /api/v1/version — internal/api `VersionInfo` (same as `kongtrol version`). */
+export interface VersionInfo {
+  version: string
 }
 
 /** internal/api/handlers_security.go `preferenceDTO`. Empty = no explicit choice. */
@@ -92,6 +99,33 @@ export interface PublicIPStatus {
   public_ip_check_enabled: boolean
   public_ip_check_host: string
   leak_check?: LeakCheck | null
+}
+
+/** internal/api/handlers_security.go `groupDTO` (GET /api/v1/groups). */
+export interface Group {
+  name: string
+  profiles: string[]
+}
+
+/**
+ * GET /api/v1/security/status, the fields the tray flyout shows. States come
+ * from configuredRuntimeState: disabled (off in the config), idle (on,
+ * nothing to do now), armed / active (kill switch), active (DNS guard).
+ */
+export interface SecurityStatus extends PublicIPStatus {
+  /** Runtime: blocking right now (kill switch) / applied (DNS guard). */
+  kill_switch?: boolean
+  kill_switch_enabled: boolean
+  kill_switch_state: 'disabled' | 'idle' | 'armed' | 'active'
+  dns_guard?: boolean
+  dns_guard_enabled: boolean
+  dns_guard_state: 'disabled' | 'idle' | 'active'
+}
+
+/** Answers of POST /api/v1/tunnels/{name}/connect|disconnect. */
+export interface TunnelActionResult {
+  status: 'connecting' | 'already_connected' | 'disconnected' | 'waiting_user'
+  tunnel: string
 }
 
 /** internal/api/handlers_lifecycle.go `UpdateStatus` (opt-in notice, ADR-0034). */

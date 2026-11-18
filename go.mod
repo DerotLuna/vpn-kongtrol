@@ -5,7 +5,7 @@ go 1.27.0
 toolchain go1.27.4
 
 require (
-	fyne.io/systray v1.11.0
+	fyne.io/systray v1.12.2
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/charmbracelet/bubbles v1.0.0
 	github.com/charmbracelet/bubbletea v1.3.10
@@ -15,13 +15,13 @@ require (
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
+	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
 	github.com/vishvananda/netlink v1.1.0
 	github.com/zalando/go-keyring v0.2.8
 	go.uber.org/zap v1.27.0
 	golang.org/x/crypto v0.59.0
-	golang.org/x/image v0.48.0
 	golang.org/x/mod v0.43.0
 	golang.org/x/sys v0.50.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -47,6 +47,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

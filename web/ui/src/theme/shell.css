@@ -1,0 +1,130 @@
+/* KONGTROL UI — app shell (header, navigation, page frame) · v0.1.0 · 2026-11-18
+   Navigation by width (ADR-0038): bottom bar < 600px · rail 600–839px ·
+   sidebar with labels ≥ 840px. The header and nav are tonal (surface),
+   flat, with 1px hairlines; the active section is the amber selection. */
+
+.k-app {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-areas: 'top' 'main';
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+.k-topbar {
+  grid-area: top; position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.k-brand {
+  display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); padding-right: 4px;
+  color: var(--text); text-decoration: none; font: 700 17px/1 var(--font-display); letter-spacing: -0.01em;
+}
+.k-brand:hover { color: var(--text); }
+.k-aggregate { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); text-decoration: none; border-radius: 999px; min-width: 0; }
+.k-aggregate .pill { font-size: 12px; padding: 5px 11px; }
+.k-aggregate__live { font: 400 12px/1.2 var(--font-mono); color: var(--text-muted); white-space: nowrap; }
+.k-topbar__actions { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.k-topbar__link {
+  display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 10px; border-radius: var(--radius);
+  color: var(--text-muted); text-decoration: none; font-size: 14px; font-weight: 500;
+}
+.k-topbar__link:hover { color: var(--text); background: var(--state-hover); }
+.k-topbar__link svg { width: 18px; height: 18px; }
+.k-lang { font: 600 13px/1 var(--font-mono); }
+.k-version { font: 400 12px/1.2 var(--font-mono); color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.k-topbar__version { padding: 0 6px 0 10px; }
+
+/* ── Navigation items (shared by sidebar, rail and bottom bar) ────────── */
+.k-sidenav, .k-bottombar { background: var(--surface); }
+.k-sidenav ul, .k-bottombar ul { list-style: none; }
+.k-nav-item {
+  position: relative; display: flex; align-items: center; gap: 12px;
+  min-height: var(--tap); padding: 0 14px; border-radius: var(--radius);
+  color: var(--text-muted); text-decoration: none; font: 500 14px/1.2 var(--font-body);
+  border: 0; background: none; cursor: pointer; width: 100%;
+  transition: background-color var(--dur-fast) var(--ease-standard), color var(--dur-fast) var(--ease-standard);
+}
+.k-nav-item:hover { color: var(--text); background: var(--state-hover); }
+.k-nav-item.active, .k-nav-item[aria-current='page'] { color: var(--text); background: var(--state-select); font-weight: 600; }
+.k-nav-item.active .k-nav-item__icon, .k-nav-item[aria-current='page'] .k-nav-item__icon { color: var(--signal); }
+.k-nav-item__icon { display: inline-grid; place-items: center; flex: none; }
+.k-nav-item__icon svg { width: 22px; height: 22px; }
+
+/* ── Main ─────────────────────────────────────────────────────────────── */
+.k-main { grid-area: main; min-width: 0; padding: 24px 16px calc(var(--bottombar-h) + 32px); }
+.k-main:focus { outline: none; }
+.k-main > * { max-width: var(--max-w); margin-inline: auto; }
+.k-notices { margin-bottom: 20px; }
+.k-page { animation: k-page-in var(--dur-fast) var(--ease-standard); }
+@keyframes k-page-in { from { opacity: 0; transform: translateY(4px); } }
+.k-page-head { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+.k-page-head h1 { font: 600 28px/1.15 var(--font-display); letter-spacing: -0.01em; }
+.k-page-head h1:focus { outline: none; }
+.k-page-head h1:focus-visible { box-shadow: var(--focus); }
+.k-page-head__lead { color: var(--text-muted); max-width: 65ch; }
+.k-page-head .k-tabs__list { margin-top: 12px; }
+.k-soon { max-width: 720px; }
+.k-soon__list { margin: 4px 0 8px 20px; display: flex; flex-direction: column; gap: 4px; }
+.k-soon .k-btn { align-self: flex-start; }
+
+/* ── Bottom bar (phones) ──────────────────────────────────────────────── */
+.k-bottombar {
+  position: fixed; z-index: 20; left: 0; right: 0; bottom: 0;
+  border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
+}
+.k-bottombar ul { display: grid; grid-template-columns: repeat(5, 1fr); height: var(--bottombar-h); }
+.k-bottombar .k-nav-item {
+  flex-direction: column; justify-content: center; gap: 4px; height: 100%; padding: 6px 2px;
+  border-radius: 0; font-size: 11px; text-align: center;
+}
+.k-bottombar .k-nav-item.active, .k-bottombar .k-nav-item[aria-current='page'] { background: none; }
+.k-bottombar .k-nav-item .k-nav-item__icon { width: 56px; height: 30px; border-radius: 999px; transition: background-color var(--dur-fast) var(--ease-standard); }
+.k-bottombar .k-nav-item.active .k-nav-item__icon,
+.k-bottombar .k-nav-item[aria-current='page'] .k-nav-item__icon { background: var(--state-select); }
+.k-sidenav { display: none; }
+/* Hidden visually only: the links keep their names for screen readers. */
+.k-topbar__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.k-topbar__legacy, .k-topbar__version { display: none; }
+/* The toast sits above the bottom bar on phones. */
+.k-toaster { bottom: calc(var(--bottombar-h) + 12px + env(safe-area-inset-bottom)); }
+
+.k-more-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.k-more-item {
+  display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 12px; border-radius: var(--radius);
+  color: var(--text); text-decoration: none; font-weight: 500;
+}
+.k-more-item:hover { background: var(--state-hover); color: var(--text); }
+.k-more-item[aria-current='page'] { background: var(--state-select); }
+.k-more-item svg { width: 22px; height: 22px; color: var(--text-muted); }
+
+/* ── Rail (600–839px, M3 "medium") ────────────────────────────────────────────────── */
+@media (min-width: 600px) {
+  .k-app { grid-template-columns: var(--rail-w) 1fr; grid-template-areas: 'top top' 'nav main'; }
+  .k-bottombar { display: none; }
+  .k-sidenav {
+    display: block; grid-area: nav; position: sticky; top: var(--topbar-h);
+    height: calc(100dvh - var(--topbar-h)); overflow-y: auto; border-right: 1px solid var(--border); padding: 12px 8px;
+  }
+  .k-sidenav ul { display: flex; flex-direction: column; gap: 4px; }
+  .k-sidenav .k-nav-item { flex-direction: column; justify-content: center; gap: 4px; min-height: 60px; padding: 6px 2px; font-size: 12px; text-align: center; }
+  .k-main { padding: 28px 24px 48px; }
+  .k-toaster { bottom: 20px; }
+  .k-topbar__legacy { display: inline-flex; }
+}
+
+/* ── Sidebar with labels (≥ 840px, M3 "expanded") ───────────────────────────────────── */
+@media (min-width: 840px) {
+  .k-app { grid-template-columns: var(--sidebar-w) 1fr; }
+  .k-sidenav { padding: 16px 12px; }
+  .k-sidenav .k-nav-item { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: var(--tap); padding: 0 14px; font-size: 14px; text-align: left; }
+  .k-topbar__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  .k-topbar__version { display: inline; }
+  .k-main { padding: 32px 40px 56px; }
+}
+
+@media (max-width: 420px) {
+  /* Logo stays top-left; only the name hides on the narrowest phones. */
+  .k-brand > span:not(.k-logo) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}

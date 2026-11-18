@@ -1,29 +1,25 @@
 import type { HelperState } from '../../api/hooks'
 import { usePreferences } from '../../app/preferences-context'
+import { helperUiState } from '../../data/resources'
 import { guideLink } from '../../links'
 import { ErrorNotice } from '../ui/ErrorNotice'
 import { ExternalLink } from '../ui/ExternalLink'
 import { StatusPill } from '../ui/StatusPill'
+import { HelperInstallButton, HelperInstallProgress } from '../ui/HelperInstall'
 
-/** Step 1: is the privileged helper ready? Offers the one-click install. */
+/** Step 1: is the privileged helper ready? Offers the one-click install (or update). */
 export function HelperCard({ helper }: { helper: HelperState }) {
   const { t } = usePreferences()
-  const { status, error, installing, installError, installed, install, reload } = helper
+  const { status, error, reload } = helper
+  const state = helperUiState(status ?? undefined)
 
-  let pill = <StatusPill tone="idle">{t('helper.loading')}</StatusPill>
-  let line = t('helper.loading')
-  if (status) {
-    if (status.elevated) {
-      pill = <StatusPill tone="ok">{t('helper.pill.notNeeded')}</StatusPill>
-      line = t('helper.elevated')
-    } else if (status.needs_install) {
-      pill = <StatusPill tone="warn">{t('helper.pill.missing')}</StatusPill>
-      line = t('helper.needsInstall')
-    } else {
-      pill = <StatusPill tone="ok">{t('helper.pill.ready')}</StatusPill>
-      line = t('helper.ready')
-    }
-  }
+  const view = {
+    unknown: { pill: null, line: t('helper.loading') },
+    not_needed: { pill: <StatusPill tone="ok">{t('helper.pill.notNeeded')}</StatusPill>, line: t('helper.elevated') },
+    ready: { pill: <StatusPill tone="ok">{t('helper.pill.ready')}</StatusPill>, line: t('helper.ready') },
+    missing: { pill: <StatusPill tone="caution">{t('helper.pill.missing')}</StatusPill>, line: t('helper.needsInstall') },
+    outdated: { pill: <StatusPill tone="caution">{t('helper.pill.outdated')}</StatusPill>, line: t('helper.needsUpdate') },
+  }[state]
 
   return (
     <section className="card" aria-labelledby="helper-title" aria-busy={!status && !error}>
@@ -34,30 +30,18 @@ export function HelperCard({ helper }: { helper: HelperState }) {
           </span>
           {t('helper.title')}
         </h2>
-        {status && pill}
+        {view.pill}
       </div>
       <p className="muted small">{t('helper.what')}</p>
 
-      {error ? (
-        <ErrorNotice error={error} onRetry={reload} />
-      ) : (
-        <p role="status">{line}</p>
-      )}
+      {error ? <ErrorNotice error={error} onRetry={reload} /> : <p role="status">{view.line}</p>}
 
-      {status?.helper_version && !status.needs_install && (
+      {status?.helper_version && state === 'ready' && (
         <p className="muted small">{t('helper.version', { version: status.helper_version })}</p>
       )}
 
-      {status?.needs_install && (
-        <button type="button" className="btn" onClick={install} disabled={installing}>
-          {t('helper.install')}
-        </button>
-      )}
-      <div aria-live="polite">
-        {installing && <p className="notice">{t('helper.installing')}</p>}
-        {installed && !installing && <p className="notice ok">{t('helper.installed')}</p>}
-      </div>
-      {installError && <ErrorNotice error={installError} />}
+      {(state === 'missing' || state === 'outdated') && <HelperInstallButton helper={helper} outdated={state === 'outdated'} />}
+      <HelperInstallProgress helper={helper} />
 
       <p className="help">
         <ExternalLink href={guideLink('install')}>{t('help.helper')}</ExternalLink>

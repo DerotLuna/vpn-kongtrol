@@ -1,4 +1,4 @@
-// Kongtrol UI external and legacy links · v0.1.0 · 2026-11-17
+// Kongtrol UI external and legacy links · v0.2.0 · 2026-11-18
 //
 // The public site is https://kongtrol.app (kongtrol.dev only redirects, never
 // link to it). Change the site or guide location here, nowhere else.
@@ -17,4 +17,7 @@ export function guideLink(section?: GuideSection): string {
 export const LEGACY = {
   home: '/',
   studio: '/studio.html',
+  security: '/security.html',
+  settings: '/settings.html',
+  audit: '/audit.html',
 } as const

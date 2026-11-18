@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.11 · 2026-11-18
+Version 1.13 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -80,6 +80,9 @@ When adding a new adapter:
   opens a live view. Quitting any view (q / Ctrl+C, `status --watch`, tray, dashboard) **never**
   stops the daemon or its tunnels. Only `kongtrol down` (or the tray's
   "Salir y desconectar todo") stops them. No terminal has to stay open.
+- After `kongtrol down` the tray stays open: header "Kongtrol detenido", an "Iniciar Kongtrol"
+  item (`ensureDaemon`), and it recovers by itself when any client starts the daemon again
+  (it keeps polling; refused connection = stopped, timeout = "no responde"). ADR-0037.
 - There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
   (127.0.0.1, token in `~/.kongtrol/api-token` for CLI/tray; browsers get a session cookie from a
   one-time nonce, never the token: `daemonctl.(*Client).PanelURL`, ADR-0039). This local API is IPC on the same machine —
@@ -252,10 +255,10 @@ ProfileService.Disconnect(name)
 | `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
 | `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
 | `web/` | legacy dashboard `web/dashboard/` (vanilla JS, embedded by `web/assets.go`, served at `/`) and the new UI `web/ui/` (see below) |
-| `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run assets/brand/generate.go`); `assets/embed.go`, `TrayIcon(size)` in `assets/icon.go` |
+| `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run assets/brand/generate.go`); `assets/embed.go`; tray / menu bar icons come from `brand/tray-<px>.png` (transparent masks that `generate.go` rasterizes from `source/logo-kong.svg`), tinted and badged at run time by `TrayMark`/`TrayICO`/`TrayPNG` in `assets/icon.go` and `assets/state_icons.go` |
 | `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed by Cloudflare Workers Builds as static assets (`landing/wrangler.jsonc`, ADR-0022) |
 | `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
-| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only) |
+| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only). Left click on Windows opens the flyout (`flyout*.go`, `web/ui` `/app/tray`, ADR-0036); right click and other OSes keep the native menu. Native menu (ADR-0037): header → actions → version → exits; VPN lines are always "name · <state word>" (`tray_state.go`, never a raw status), connected ones checked and first, a DESIGN.md state dot per line; icon badge = aggregate state; per-OS icon code in `trayicon_<os>.go` |
 
 ### OS-specific files
 
@@ -280,8 +283,22 @@ Vite + React + TS (pnpm, oxlint, Vitest), migrating the legacy dashboard page by
 `web/ui/dist`, embedded by `web/ui_embed.go`, served at `/app/` by `internal/api/ui_assets.go`;
 legacy `web/dashboard` keeps `/` until migrated. Only `dist/.gitkeep` is tracked, so `go build`
 works without Node (shows a "not built" page); release builds always build the UI. `make ui-dev`
-proxies `/api` to the daemon. Strings in `src/i18n/messages.ts` (ES+EN parity tested); external
-URLs only in `src/links.ts`.
+proxies `/api` to the daemon. External URLs only in `src/links.ts`.
+
+Architecture (ADR-0038); the migration contract is `docs/dashboard-parity.md` (every legacy
+behaviour, tick each row with the new file; nothing dropped without an ADR):
+- Routes: `react-router` (declarative mode, `basename` `/app`) in `src/App.tsx`; sections in
+  `src/app/sections.ts`; unmigrated pages are entries in `src/app/placeholders.ts` (delete the
+  entry when the real page lands). `/app/tray` is the tray flyout (ADR-0036), outside the shell.
+- Data only via `src/data` (TanStack Query, cache keyed by resource in `keys.ts` or a
+  per-domain `src/data/<domain>.ts`); the one WebSocket (`live.ts`) writes into the same cache.
+  Pages never fetch on their own; changes use `useOptimisticMutation` (rollback + toast with the
+  "what to do" line); errors render through `describeError`.
+- Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
+- UI kit in `src/components/ui` (review at `/app/_kit`, dev builds only); shell in
+  `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.
+- Strings: `src/i18n/common.ts` (shared) + `src/i18n/pages/<page>.ts`, composed in
+  `src/i18n/messages.ts`; ES+EN parity and no duplicate key across modules are tested.
 
 ### Config validation
 
@@ -354,8 +371,8 @@ changing the port from the page serving that request would cut the connection mi
 ### Privileged helper internals
 
 - All privileged ops go through `privops.Default()` (`Local` when elevated, `Client` to the helper otherwise; `ErrHelperNotInstalled` → `GuidanceKey`). Installed once with `kongtrol service install`.
-- GUI install (always one OS permission prompt, never silent elevation): tray item "Instalar ayudante (una vez)" on every OS, also in the first-run menu; with no daemon answering the tray pings the helper itself, and tells the user once (`tray.helper_first_run`). The dashboard's Diagnóstico card offers "Reparar" for checks with `fix: helper_install`; both use `POST /api/v1/helper/install`.
-- The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change — an older installed helper is reported as outdated and the user re-runs `kongtrol service install`) and carries a per-process lease (renew 5s, expire 20s); expiry undoes OpenVPN, DNS, hosts, blocked destinations, kill switch (fail-open, so a crashed daemon never leaves the user offline). WireGuard and routes aren't leased.
+- GUI install (always one OS permission prompt, never silent elevation): tray item "Instalar ayudante (una vez)" ("Actualizar ayudante (una vez)" when `helper/status` says `outdated`) on every OS, also in the first-run menu; after success the tray notifies "Ayudante listo" and hides the item at once; with no daemon answering the tray pings the helper itself, and tells the user once (`tray.helper_first_run`). The dashboard's Diagnóstico card offers "Reparar" for checks with `fix: helper_install`; both use `POST /api/v1/helper/install`.
+- The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change — an older installed helper is reported as outdated and the user re-runs `kongtrol service install`; the Windows installer runs `service install --if-outdated` on every upgrade, ADR-0036) and carries a per-process lease (renew 5s, expire 20s); expiry undoes OpenVPN, DNS, hosts, blocked destinations, kill switch (fail-open, so a crashed daemon never leaves the user offline). WireGuard and routes aren't leased.
 - `block.set` (`SetBlockedDestinations`) replaces the whole set of blocked outbound prefixes: Windows Firewall BLOCK rules `KongtrolBlock`, Linux `KONGTROL_BLOCK` iptables/ip6tables chains (REJECT), macOS pf anchor `com.kongtrol` table. Only block rules: in Windows Defender Firewall a block rule always beats an allow rule, so "block all + allow exceptions" cannot work — a full-tunnel block is sent as the complement of its exceptions. An older helper answers "unknown operation" → `ErrHelperOutdated`.
 - `wg.stats` (`WGStats`, protocol 4) is read-only: `wg show <iface> dump` for a tunnel the helper manages, or the caller's own profile tunnel (same checks as `wg.remove`, nothing adopted). Only peer public key, latest handshake, rx/tx and keepalive leave the helper (`ParseWGDump` drops private/preshared keys; a failure never echoes the output). Successful read-only ops are not audited (polled every 10s); failures are.
 - The helper only runs root/admin-owned binaries; Homebrew binaries are refused (user-swappable dylibs), so macOS OpenVPN via the helper needs a bundled signed openvpn (pending).
@@ -387,6 +404,21 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 - Interface names: FortiClient, NordVPN (NordLynx, TAP-NordVPN) and Proton (TAP-ProtonVPN, Linux proton0/pvpn*) are documented or known; Surfshark ("Surfshark DCO adapter" per its docs, Linux `surfshark*`) and the macOS Network Extension services are best effort, so `interface:` overrides them.
 
 <!-- feature:i18n -->
+<!-- feature:tray_flyout -->
+### Tray flyout (ADR-0036)
+
+- Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
+  window next to the icon showing `web/ui` `/app/tray`; right click, macOS, Linux and a missing
+  runtime keep the native menu. Portable rules in `cmd/kongtrol-tray/flyout.go` (tested), the
+  window in `flyout_windows.go` (`github.com/jchv/go-webview2/pkg/edge`, pure Go: the tray
+  still builds with `CGO_ENABLED=0`).
+- Only `http://<loopback>:<port>/app/tray` loads (`flyoutURL`); requests outside the daemon's
+  origin get 403; an injected script pins the page and exposes `window.kongtrolTray.post` with
+  a per-launch nonce. Page → tray messages are the closed list in `flyoutMessages`
+  (`web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
+- The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
+  Escape) appear only when the bridge exists, so `/app/tray` also works in a browser tab.
+
 ## Internationalization (i18n)
 
 All user-visible strings — prompts, error messages, status output, banners — must be internationalized using `internal/i18n`. **Never hardcode strings directly in user-facing code.**

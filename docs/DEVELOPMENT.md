@@ -51,7 +51,10 @@ Release checklist:
 - [ ] **TODO after v0.6.0 final:** switch `INSTALL_SCRIPT_BASE` and `UNINSTALL_SCRIPT_BASE` in
   `landing/src/links.ts` to `https://kongtrol.app/` (redirect to latest), check
   `curl -sI https://kongtrol.app/install.sh` answers 302 → the release asset, and replace the
-  `raw.githubusercontent.com/…/main/install.sh` commands in `README.md` and `docs/SETUP.md` with it.
+  `raw.githubusercontent.com/…/install.sh` commands in `README.md` (pinned to `v0.5.0`) and
+  `docs/SETUP.md` (`main`) with it. In `README.md` also drop the "since v0.6.0 (pre-release)"
+  marks, the v0.5.0 column of the commands table and the rc.3 links, and list the package managers
+  once they are published.
   Until then the landing stays pinned to the v0.5.0 tag (the scripts on `main` need v0.6.0 assets).
   Also remove the "desde v0.6.0" note (`sinceV060` in `landing/src/content/guide.*.tsx`, its two
   uses in `Guide.tsx` and the `.guide-since` rule in `landing/src/index.css`).
@@ -83,6 +86,25 @@ make build-all-cli          # produce CLI binaries in build/dist/
 make landing-sync-binaries  # copy + refresh checksums in landing/_binaries/
 cd landing && pnpm install && pnpm run dev
 ```
+
+### Regenerate README media
+
+The GIFs in `README.md` (`assets/readme/hero.gif`, `routing.gif`, `attach.gif`) are recorded from
+the English landing page in dark theme, so they follow its design. After a visual change to the
+hero terminal, the routing diagram or the attach demo, run from the repo root:
+
+```bash
+node scripts/readme-media.mjs              # builds landing/, records, converts
+node scripts/readme-media.mjs --no-build   # reuse landing/dist
+node scripts/readme-media.mjs --only=hero  # hero | routing | attach (comma list)
+```
+
+Needs Node 20+, pnpm and ffmpeg on `PATH`. Playwright is **not** a project dependency: the script
+installs `playwright@1.65.1` (override with `PLAYWRIGHT_VERSION`) and Chromium once into
+`<os tmp>/kongtrol-readme-media`, outside the repo. It serves `landing/dist` on `127.0.0.1` only
+while recording and stops it before exiting. Each GIF is one animation cycle (loops cleanly),
+15 fps, at most 720 px wide, and must stay under ~2 MB (the script warns); check one frame before
+committing, e.g. `ffmpeg -ss 4 -i assets/readme/hero.gif -frames:v 1 frame.png`.
 
 ## Docker
 

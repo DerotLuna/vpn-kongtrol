@@ -1,31 +1,26 @@
-// Kongtrol UI entry · v0.1.1 · 2026-11-18
+// Kongtrol UI entry · v0.2.0 · 2026-11-18
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import faviconUrl from '@brand/logo-kong-32.png'
 // Self-hosted fonts (assets/brand/fonts, shared with the dashboard and the
 // landing): nothing is fetched from Google.
 import '@brand/fonts/fonts.css'
 import { App } from './App'
-import { startSession } from './api/session'
+import { startAuth } from './api/auth'
 import { applyTheme, initialTheme } from './theme/theme'
 import './theme/global.css'
+import './theme/kit.css'
+import './theme/shell.css'
 
 // Set the theme before the first render to avoid a flash.
 applyTheme(initialTheme())
-
-const icon = document.createElement('link')
-icon.rel = 'icon'
-icon.type = 'image/png'
-icon.href = faviconUrl
-document.head.append(icon)
+// Take a one-time `#k=` bootstrap code out of the URL before anything else
+// runs (api/auth.ts); requests wait for the session exchange.
+void startAuth()
 
 const root = document.getElementById('root')
 if (!root) throw new Error('missing #root')
-// Sign in with the #k= nonce (if any) before the first API call.
-void startSession().then(() => {
-  createRoot(root).render(
-    <StrictMode>
-      <App />
-    </StrictMode>,
-  )
-})
+createRoot(root).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)

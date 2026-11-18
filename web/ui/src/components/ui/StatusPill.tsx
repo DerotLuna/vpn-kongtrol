@@ -1,8 +1,14 @@
+// Kongtrol UI kit — StatusPill · v0.2.0 · 2026-11-18
+//
+// DESIGN.md Four States Rule: ok (connected / check passed) = green,
+// connecting = steel, caution (up but not answering, degraded) = orange,
+// bad (error) = red. Plus idle (off, neutral), unknown (dashed, not loaded
+// or not verifiable) and on (a setting that is switched on: neutral, never
+// green or amber — amber is the brand, not a state). Every pill carries its
+// word; the dot shape differs per state too, so color is never the only cue.
 import type { ReactNode } from 'react'
 
-// ok: up / ready (green, only for that). on: a setting that is switched on.
-// warn: in progress. caution: needs attention, not broken. bad: error.
-export type PillTone = 'ok' | 'on' | 'warn' | 'caution' | 'bad' | 'idle'
+export type PillTone = 'ok' | 'connecting' | 'caution' | 'bad' | 'idle' | 'unknown' | 'on'
 
 export function StatusPill({ tone, children }: { tone: PillTone; children: ReactNode }) {
   return <span className={tone === 'idle' ? 'pill' : `pill ${tone}`}>{children}</span>

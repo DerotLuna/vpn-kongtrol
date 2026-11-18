@@ -1,65 +1,170 @@
-import type { ReactNode } from 'react'
-import logoUrl from '@brand/logo-kong-64.png'
+// Kongtrol UI — app shell · v0.2.0 · 2026-11-18
+//
+// Layout route for every page (ADR-0038):
+// - Header: logo top-left, aggregate VPN status, help (same place on every
+//   page, WCAG 3.2.6), classic dashboard, language, theme, version.
+// - Navigation by width (Material 3 window classes, Apple HIG, Fluent
+//   NavigationView): sidebar with labels ≥ 840px, rail 600–839px, bottom
+//   bar under 600px with four sections + "Más" (a sheet with the rest).
+// - App-wide notices (daemon stopped, helper missing/outdated) above the page.
+// - After navigation, focus moves to the new page's h1 so screen readers
+//   announce it; the page fades in (opacity/transform, 150ms, none with
+//   reduced motion).
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
+import { SECTIONS } from '../../app/sections'
+import { useHelperReadyToast } from '../../data/resources'
 import { GUIDE_URL, LEGACY } from '../../links'
-import { ExternalLink } from '../ui/ExternalLink'
-import { BookIcon, GridIcon, MoonIcon, SunIcon } from '../ui/icons'
+import { IconButton } from '../ui/Button'
+import { Dialog } from '../ui/Dialog'
+import { BookIcon, GridIcon, MoonIcon, MoreIcon, SunIcon } from '../ui/icons'
+import { Logo } from '../ui/Logo'
+import { Toaster } from '../ui/Toaster'
+import { AggregateStatus, VersionTag } from './AggregateStatus'
+import { AppNotices } from './AppNotices'
 
-/** Header (logo top-left, help, classic dashboard, language, theme) + footer. */
-export function AppShell({ children, version }: { children: ReactNode; version?: string }) {
+function SideNav() {
+  const { t } = usePreferences()
+  return (
+    <nav className="k-sidenav" aria-label={t('nav.label')}>
+      <ul>
+        {SECTIONS.map((s) => (
+          <li key={s.id}>
+            <NavLink to={s.path} end={s.path === '/'} className="k-nav-item">
+              <span className="k-nav-item__icon">
+                <s.icon />
+              </span>
+              <span className="k-nav-item__label">{t(s.label)}</span>
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
+function BottomBar() {
+  const { t } = usePreferences()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const { pathname } = useLocation()
+  const secondary = SECTIONS.filter((s) => !s.mobile)
+  const inMore = secondary.some((s) => pathname.startsWith(s.path))
+  const close = () => setMoreOpen(false)
+  return (
+    <>
+      <nav className="k-bottombar" aria-label={t('nav.label')}>
+        <ul>
+          {SECTIONS.filter((s) => s.mobile).map((s) => (
+            <li key={s.id}>
+              <NavLink to={s.path} end={s.path === '/'} className="k-nav-item">
+                <span className="k-nav-item__icon">
+                  <s.icon />
+                </span>
+                <span className="k-nav-item__label">{t(s.label)}</span>
+              </NavLink>
+            </li>
+          ))}
+          <li>
+            <button
+              type="button"
+              className={`k-nav-item ${inMore ? 'active' : ''}`.trim()}
+              aria-haspopup="dialog"
+              aria-expanded={moreOpen}
+              onClick={() => setMoreOpen(true)}
+            >
+              <span className="k-nav-item__icon">
+                <MoreIcon />
+              </span>
+              <span className="k-nav-item__label">{t('nav.more')}</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <Dialog open={moreOpen} onClose={close} title={t('nav.moreTitle')} variant="sheet">
+        <ul className="k-more-list">
+          {secondary.map((s) => (
+            <li key={s.id}>
+              <NavLink to={s.path} className="k-more-item" onClick={close}>
+                <s.icon />
+                {t(s.label)}
+              </NavLink>
+            </li>
+          ))}
+          <li>
+            <a className="k-more-item" href={LEGACY.home}>
+              <GridIcon />
+              {t('header.legacy')}
+            </a>
+          </li>
+        </ul>
+        <VersionTag />
+      </Dialog>
+    </>
+  )
+}
+
+export function AppShell() {
   const { lang, setLang, t, theme, toggleTheme } = usePreferences()
+  const { pathname } = useLocation()
+  const first = useRef(true)
+  useHelperReadyToast()
+
+  // Move focus to the new page's heading after a navigation (not on load).
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    const heading = document.querySelector<HTMLElement>('#main h1')
+    heading?.focus({ preventScroll: true })
+    window.scrollTo({ top: 0 })
+  }, [pathname])
+
   const themeLabel = theme === 'dark' ? t('header.theme.toLight') : t('header.theme.toDark')
   return (
-    <div className="shell">
+    <div className="k-app">
       <a className="skip-link" href="#main">
         {t('app.skip')}
       </a>
-      <header className="app-header">
-        <div className="container">
-          <a className="brand" href="/app/">
-            <img src={logoUrl} alt="" width="32" height="32" />
-            {t('app.name')}
+      <header className="k-topbar">
+        <Link className="k-brand" to="/">
+          <Logo size={32} />
+          <span>{t('app.name')}</span>
+        </Link>
+        <AggregateStatus />
+        <div className="k-topbar__actions" role="group" aria-label={t('header.toolbar')}>
+          <a className="k-topbar__link" href={GUIDE_URL} target="_blank" rel="noopener noreferrer">
+            <BookIcon />
+            <span className="k-topbar__label">{t('help.guide')}</span>
+            <span className="visually-hidden"> {t('help.newTab')}</span>
           </a>
-          <nav className="header-actions" aria-label={t('app.name')}>
-            <a className="header-link" href={GUIDE_URL} target="_blank" rel="noopener noreferrer">
-              <BookIcon />
-              <span className="label">{t('help.guide')}</span>
-              <span className="visually-hidden"> {t('help.newTab')}</span>
-            </a>
-            <a className="header-link" href={LEGACY.home}>
-              <GridIcon />
-              <span className="label">{t('header.legacy')}</span>
-            </a>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={t('header.lang.switchLabel')}
-              title={t('header.lang.switch')}
-              onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
-            >
-              {lang === 'es' ? 'EN' : 'ES'}
-            </button>
-            <button
-              type="button"
-              className="icon-btn"
-              aria-label={themeLabel}
-              title={themeLabel}
-              onClick={toggleTheme}
-            >
-              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-            </button>
-          </nav>
+          <a className="k-topbar__link k-topbar__legacy" href={LEGACY.home}>
+            <GridIcon />
+            <span className="k-topbar__label">{t('header.legacy')}</span>
+          </a>
+          <button
+            type="button"
+            className="k-icon-btn k-icon-btn--standard k-lang"
+            onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
+          >
+            {/* Visible "EN"/"ES" stays in the accessible name (WCAG 2.5.3). */}
+            {lang === 'es' ? 'EN' : 'ES'}
+            <span className="visually-hidden"> · {t('header.lang.switchLabel')}</span>
+          </button>
+          <IconButton label={themeLabel} icon={theme === 'dark' ? <SunIcon /> : <MoonIcon />} onClick={toggleTheme} />
+          <VersionTag className="k-topbar__version" />
         </div>
       </header>
-      <main id="main" tabIndex={-1}>
-        <div className="container">{children}</div>
-      </main>
-      <footer className="app-footer">
-        <div className="container">
-          <span>{version ? t('app.footer.version', { version }) : t('app.name')}</span>
-          <ExternalLink href={GUIDE_URL}>{t('help.guide')}</ExternalLink>
+      <SideNav />
+      <main id="main" tabIndex={-1} className="k-main">
+        <AppNotices />
+        <div key={pathname} className="k-page">
+          <Outlet />
         </div>
-      </footer>
+      </main>
+      <BottomBar />
+      <Toaster />
     </div>
   )
 }

@@ -1,13 +1,29 @@
-// Kongtrol UI — data hooks · v0.3.0 · 2026-11-18
-import { useCallback, useEffect, useState } from 'react'
-import { ApiError, api, subscribeTunnels } from './client'
+// Kongtrol UI — page-facing data hooks · v0.4.0 · 2026-11-18
+//
+// Resource reads go through the shared cache (src/data, ADR-0038): these
+// hooks only shape it for the existing cards. On-demand actions (doctor,
+// export) keep local state: they are not resources and never run by
+// themselves.
+import { useCallback, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useDaemonState, useLiveState } from '../data/connection'
+import { keys } from '../data/keys'
+import {
+  useHelperInstall,
+  useHelperInstalling,
+  useHelperStatus,
+  useSecurityQuery,
+  useTunnelsQuery,
+} from '../data/resources'
+import { ApiError, api } from './client'
+import { toApiError } from './errors'
 import type { DoctorReport, HelperStatus, PublicIPStatus, TunnelMetrics } from './types'
 
-function toApiError(err: unknown): ApiError {
-  return err instanceof ApiError ? err : new ApiError('server', 0, { error: String(err) })
+function errorOf(err: unknown): ApiError | null {
+  return err ? toApiError(err) : null
 }
 
-const POLL_MS = 5_000
+const OFFLINE = new ApiError('offline', 0)
 
 export interface TunnelsState {
   tunnels: TunnelMetrics[] | null
@@ -16,95 +32,42 @@ export interface TunnelsState {
   reload: () => void
 }
 
-/** REST snapshot first, then the WebSocket feed; polls while the feed is down. */
+/** REST snapshot, then the WebSocket feed; polls while the feed is down. */
 export function useTunnels(): TunnelsState {
-  const [tunnels, setTunnels] = useState<TunnelMetrics[] | null>(null)
-  const [error, setError] = useState<ApiError | null>(null)
-  const [live, setLive] = useState(false)
-
-  const reload = useCallback(() => {
-    api.tunnels().then(
-      (list) => {
-        setTunnels(list)
-        setError(null)
-      },
-      (err: unknown) => setError(toApiError(err)),
-    )
-  }, [])
-
-  useEffect(() => {
-    reload()
-    let poll: ReturnType<typeof setInterval> | undefined
-    const stopPolling = () => {
-      clearInterval(poll)
-      poll = undefined
-    }
-    const close = subscribeTunnels(
-      (list) => {
-        stopPolling()
-        setLive(true)
-        setTunnels(list)
-        setError(null)
-      },
-      () => {
-        setLive(false)
-        poll ??= setInterval(reload, POLL_MS)
-      },
-    )
-    return () => {
-      stopPolling()
-      close()
-    }
-  }, [reload])
-
-  return { tunnels, error, live, reload }
+  const query = useTunnelsQuery()
+  const live = useLiveState() === 'live'
+  const daemon = useDaemonState()
+  const { refetch } = query
+  const reload = useCallback(() => void refetch(), [refetch])
+  // Say "Kongtrol is not answering" at the first failed request, not after
+  // the retries: with nothing cached there is nothing better to show.
+  const error = errorOf(query.error) ?? (daemon === 'offline' && !query.data ? OFFLINE : null)
+  return { tunnels: query.data ?? null, error, live, reload }
 }
 
 export interface HelperState {
   status: HelperStatus | null
   error: ApiError | null
   installing: boolean
-  installError: ApiError | null
   installed: boolean
   install: () => void
   reload: () => void
 }
 
 export function useHelper(): HelperState {
-  const [status, setStatus] = useState<HelperStatus | null>(null)
-  const [error, setError] = useState<ApiError | null>(null)
-  const [installing, setInstalling] = useState(false)
-  const [installError, setInstallError] = useState<ApiError | null>(null)
-  const [installed, setInstalled] = useState(false)
-
-  const reload = useCallback(() => {
-    api.helperStatus().then(
-      (st) => {
-        setStatus(st)
-        setError(null)
-      },
-      (err: unknown) => setError(toApiError(err)),
-    )
-  }, [])
-
-  const install = useCallback(() => {
-    setInstalling(true)
-    setInstallError(null)
-    api
-      .installHelper()
-      .then(
-        (st) => {
-          setStatus(st)
-          setInstalled(true)
-        },
-        (err: unknown) => setInstallError(toApiError(err)),
-      )
-      .finally(() => setInstalling(false))
-  }, [])
-
-  useEffect(reload, [reload])
-
-  return { status, error, installing, installError, installed, install, reload }
+  const query = useHelperStatus()
+  const mutation = useHelperInstall()
+  const installing = useHelperInstalling()
+  const { refetch } = query
+  const { mutate } = mutation
+  return {
+    status: query.data ?? null,
+    error: errorOf(query.error),
+    installing,
+    installed: mutation.isSuccess,
+    install: useCallback(() => mutate(), [mutate]),
+    reload: useCallback(() => void refetch(), [refetch]),
+  }
 }
 
 export interface PublicIPState {
@@ -124,52 +87,27 @@ export interface PublicIPState {
  * service; only check() (the user's "Revisar") asks the daemon for a lookup.
  */
 export function usePublicIP(): PublicIPState {
-  const [status, setStatus] = useState<PublicIPStatus | null>(null)
-  const [error, setError] = useState<ApiError | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [actionError, setActionError] = useState<ApiError | null>(null)
+  const client = useQueryClient()
+  const query = useSecurityQuery()
   const [justEnabled, setJustEnabled] = useState(false)
-
-  const reload = useCallback(() => {
-    api.publicIP().then(
-      (st) => {
-        setStatus(st)
-        setError(null)
-      },
-      (err: unknown) => setError(toApiError(err)),
-    )
-  }, [])
-
-  const run = useCallback(
-    (action: () => Promise<unknown>, after?: () => void) => {
-      setBusy(true)
-      setActionError(null)
-      action()
-        .then(
-          () => after?.(),
-          (err: unknown) => setActionError(toApiError(err)),
-        )
-        .finally(() => {
-          setBusy(false)
-          reload()
-        })
-    },
-    [reload],
-  )
-
-  const setEnabled = useCallback(
-    (on: boolean) => run(() => api.setPublicIP(on), () => setJustEnabled(on)),
-    [run],
-  )
-  const check = useCallback(() => run(() => api.checkPublicIP()), [run])
-
-  useEffect(() => {
-    reload()
-    const poll = setInterval(reload, POLL_MS) // local state only
-    return () => clearInterval(poll)
-  }, [reload])
-
-  return { status, error, busy, actionError, justEnabled, setEnabled, check, reload }
+  const settle = () => client.invalidateQueries({ queryKey: keys.security })
+  const toggle = useMutation({
+    mutationFn: (on: boolean) => api.setPublicIP(on),
+    onSuccess: (_d, on) => setJustEnabled(on),
+    onSettled: settle,
+  })
+  const lookup = useMutation({ mutationFn: api.checkPublicIP, onSettled: settle })
+  const { refetch } = query
+  return {
+    status: query.data ?? null,
+    error: errorOf(query.error),
+    busy: toggle.isPending || lookup.isPending,
+    actionError: errorOf(toggle.error ?? lookup.error),
+    justEnabled,
+    setEnabled: toggle.mutate,
+    check: () => lookup.mutate(),
+    reload: () => void refetch(),
+  }
 }
 
 export interface DoctorState {

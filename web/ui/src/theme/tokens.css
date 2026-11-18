@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   KONGTROL UI — design tokens · v0.2.0 · 2026-11-18
+   KONGTROL UI — design tokens · v0.3.0 · 2026-11-18
    Copied from the landing's "Signal Contour" system (landing/src/index.css,
    v2.6.0 · 2026-11-18, palette "Sesión en la Torre" in DESIGN.md) so both
    read as one brand. Keep values in sync until
@@ -53,6 +53,24 @@
 
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
     transparent 0 15px, rgba(255,176,32,0.05) 15px 16px);
+
+  /* Motion (ADR-0038): Material 3 standard easing and short durations —
+     state feedback only, transform/opacity, off with reduced motion. */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 150ms;
+  --dur-med:  250ms;
+
+  /* State layers (Material 3): text-colored veil over the surface. */
+  --state-hover:  color-mix(in srgb, var(--text) 8%, transparent);
+  --state-press:  color-mix(in srgb, var(--text) 10%, transparent);
+  --state-select: color-mix(in srgb, var(--signal) 14%, transparent);
+
+  /* Shell metrics */
+  --topbar-h: 60px;
+  --rail-w: 88px;
+  --sidebar-w: 232px;
+  --bottombar-h: 64px;
+  --tap: 44px;
 
   color-scheme: dark;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { browserLang } from './lang'
-import { format, messages } from './messages'
+import { format, messages, MODULES } from './messages'
 
 describe('messages', () => {
   it('ES and EN have exactly the same keys', () => {
@@ -15,6 +15,18 @@ describe('messages', () => {
       expect(en.trim(), key).not.toBe('')
       expect(placeholders(en), key).toEqual(placeholders(es))
     }
+  })
+
+  it('no key is defined in two page modules (a later spread would hide it)', () => {
+    const seen = new Map<string, string>()
+    for (const [name, mod] of Object.entries(MODULES)) {
+      for (const key of Object.keys(mod.es)) {
+        expect(seen.get(key), `${key} in ${name}`).toBeUndefined()
+        seen.set(key, name)
+      }
+      expect(Object.keys(mod.en).sort(), name).toEqual(Object.keys(mod.es).sort())
+    }
+    expect(seen.size).toBe(Object.keys(messages.es).length)
   })
 
   it('format fills known placeholders and keeps unknown ones', () => {

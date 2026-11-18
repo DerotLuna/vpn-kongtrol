@@ -20,6 +20,8 @@ type HelperStatus struct {
 	HelperVersion string `json:"helper_version"`
 	CLIVersion    string `json:"cli_version"`
 	NeedsInstall  bool   `json:"needs_install"`
+	// Outdated: the helper answers with an older protocol ("update" it).
+	Outdated bool `json:"outdated"`
 }
 
 // HelperInstallError is a failed POST /api/v1/helper/install: Message and

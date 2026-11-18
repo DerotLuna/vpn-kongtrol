@@ -1,10 +1,10 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.1.0 · 2026-11-18
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.2.0 · 2026-11-18
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md. Installs for the current
 ; user only (no admin): kongtrol.exe (CLI + daemon) and kongtrol-tray.exe side by
 ; side in %LOCALAPPDATA%\Programs\Kongtrol, a Start menu entry, optional
-; autostart at sign-in, optional user PATH entry, and optionally the network
+; autostart at sign-in, the user PATH entry (on by default), and optionally the network
 ; helper (`kongtrol service install`, which shows one UAC prompt itself).
 ;
 ; Local build (Windows, Inno Setup 6 installed):
@@ -59,12 +59,14 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 [CustomMessages]
 es.TaskAutostart=Abrir Kongtrol al iniciar sesión (recomendado)
 en.TaskAutostart=Open Kongtrol when you sign in (recommended)
-es.TaskPath=Agregar el comando kongtrol a la terminal (opcional)
-en.TaskPath=Add the kongtrol command to the terminal (optional)
+es.TaskPath=Agregar el comando kongtrol a la terminal (recomendado)
+en.TaskPath=Add the kongtrol command to the terminal (recommended)
 es.TaskHelper=Instalar el ayudante de red: Windows pedirá permiso una sola vez (recomendado)
 en.TaskHelper=Install the network helper: Windows asks for permission once (recommended)
 es.RunHelper=Instalando el ayudante de red · acepta el aviso de Windows…
 en.RunHelper=Installing the network helper · accept the Windows prompt…
+es.RunHelperUpdate=Revisando el ayudante de red · si está desactualizado, acepta el aviso de Windows…
+en.RunHelperUpdate=Checking the network helper · if it is out of date, accept the Windows prompt…
 es.LaunchTray=Abrir Kongtrol y crear mi primera VPN
 en.LaunchTray=Open Kongtrol and create my first VPN
 es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nSi piensas reinstalar, elige No.
@@ -73,7 +75,7 @@ en.PurgeAsk=Also delete your settings and saved passwords?%n%nIf you plan to rei
 [Tasks]
 Name: "autostart"; Description: "{cm:TaskAutostart}"
 Name: "helper"; Description: "{cm:TaskHelper}"
-Name: "path"; Description: "{cm:TaskPath}"; Flags: unchecked
+Name: "path"; Description: "{cm:TaskPath}"
 
 [Files]
 Source: "{#SourceDir}\kongtrol.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -86,11 +88,18 @@ Name: "{autoprograms}\Kongtrol"; Filename: "{app}\kongtrol-tray.exe"
 ; Autostart for this user (HKCU Run key).
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Kongtrol"; ValueData: """{app}\kongtrol-tray.exe"""; Tasks: autostart; Flags: uninsdeletevalue
 ; User PATH (HKCU\Environment); removed again by CurUninstallStepChanged.
-Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{olddata};{app}"; Tasks: path; Check: NeedsAddPath(ExpandConstant('{app}'))
+; Prepended, so `kongtrol` in a new terminal is this copy rather than an
+; older one earlier in the user PATH (the system PATH still comes first;
+; `kongtrol doctor` warns about any other copy).
+Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; ValueData: "{app};{olddata}"; Tasks: path; Check: NeedsAddPath(ExpandConstant('{app}'))
 
 [Run]
 ; `service install` asks for elevation itself (one UAC prompt).
 Filename: "{app}\kongtrol.exe"; Parameters: "service install --quiet"; StatusMsg: "{cm:RunHelper}"; Tasks: helper; Check: IsFirstInstall; Flags: runhidden waituntilterminated
+; Upgrade (also silent): update a helper that speaks an older protocol, so
+; it never stays outdated. A missing or current helper is left alone and
+; no UAC prompt appears (`--if-outdated`, cmd/kongtrol/cmd_service.go).
+Filename: "{app}\kongtrol.exe"; Parameters: "service install --if-outdated --quiet"; StatusMsg: "{cm:RunHelperUpdate}"; Check: IsUpgrade; Flags: runhidden waituntilterminated
 Filename: "{app}\kongtrol-tray.exe"; Description: "{cm:LaunchTray}"; Flags: postinstall nowait skipifsilent
 ; Silent upgrade: bring the tray back (it was closed above).
 Filename: "{app}\kongtrol-tray.exe"; Check: SilentUpgrade; Flags: nowait
@@ -123,12 +132,18 @@ begin
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im kongtrol-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
-// The helper is installed on the first install only: on upgrades the tray
-// and the dashboard offer to reinstall it when its protocol version changed
-// (privops.ProtocolVersion), so an upgrade never asks for UAC needlessly.
+// The helper task runs on the first install only. An upgrade runs
+// `service install --if-outdated` instead: it asks for UAC only when the
+// installed helper speaks an older protocol (privops.ProtocolVersion), so
+// an upgrade never asks needlessly and never leaves the helper outdated.
 function IsFirstInstall: Boolean;
 begin
   Result := not WasInstalled;
+end;
+
+function IsUpgrade: Boolean;
+begin
+  Result := WasInstalled;
 end;
 
 function SilentUpgrade: Boolean;
