@@ -1,4 +1,4 @@
-/* Reglas + Horarios (/rules, /rules/schedule) · v1.0.0 · 2026-11-18
+/* Reglas + Horarios (/rules, /rules/schedule) · v1.1.0 · 2026-11-18
    Operate mode (DESIGN.md): flat surfaces, hairlines, amber only for the
    primary action and focus, state colors only for states (the route's exit
    step, pills). Machine values (domains, CIDRs, apps, profile names) in mono.
@@ -17,6 +17,10 @@
 .r-down { font-size: 14px; color: var(--text-muted); }
 .r-row-actions { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
 .k-empty .r-row-actions { flex-wrap: wrap; justify-content: flex-start; }
+/* Per-rule pause switch in the schedule table: the column header names it. */
+.r-rule-switch { display: inline-flex; }
+.r-rule-switch .k-switch-row { gap: 0; }
+.r-rule-switch .k-switch-text { display: contents; }
 .r-list .k-datalist td:last-child { text-align: right; width: 1%; white-space: nowrap; }
 .r-sentence { display: block; max-width: 60ch; font-size: 14px; line-height: 1.5; }
 

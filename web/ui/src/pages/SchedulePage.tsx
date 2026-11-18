@@ -1,12 +1,12 @@
-// Horarios (/rules/schedule) — VPNs that connect and disconnect by themselves · v1.0.1 · 2026-11-18
+// Horarios (/rules/schedule) — VPNs that connect and disconnect by themselves · v1.1.0 · 2026-11-18
 //
 // Parity with the classic Settings "Scheduler" tab: on/off (saves at once,
 // and only that field), check interval (its own save), rule CRUD, refresh.
-// Each rule reads as a sentence and says whether it is in effect right now.
-// The daemon builds its scheduler at start-up, so the page says plainly
-// that changes apply after a restart (cmd/kongtrol/config_load.go).
+// Each rule reads as a sentence and says whether it is in effect right now;
+// each can be paused without deleting it (per-rule `enabled`). The daemon
+// reloads the scheduler on every save (ADR-0042), so changes apply at once:
+// no restart note.
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
 import { usePreferences } from '../app/preferences-context'
 import { useUnsavedChanges } from '../app/unsaved'
 import { ClockIcon, EditIcon, TrashIcon } from '../components/rules/icons'
@@ -25,7 +25,7 @@ import { Button, IconButton } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { DataList, type Column } from '../components/ui/DataList'
 import { TextField } from '../components/ui/Field'
-import { Banner, EmptyState, ErrorState, Skeleton } from '../components/ui/States'
+import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { StatusPill } from '../components/ui/StatusPill'
 import { Switch } from '../components/ui/Switch'
 import { PlusIcon, RefreshIcon } from '../components/ui/icons'
@@ -35,6 +35,7 @@ import {
   useSaveSchedulerSettings,
   useScheduleRulesQuery,
   useSettingsQuery,
+  useToggleSchedule,
 } from '../data/rules'
 import '../components/rules/rules.css'
 
@@ -61,6 +62,7 @@ export function SchedulePage() {
   const settings = useSettingsQuery()
   const saveSettings = useSaveSchedulerSettings()
   const remove = useDeleteSchedule()
+  const toggle = useToggleSchedule()
   const [editor, setEditor] = useState<EditorState | null>(null)
   const [toDelete, setToDelete] = useState<ScheduleRule | null>(null)
   const now = useMinute()
@@ -105,11 +107,28 @@ export function SchedulePage() {
         cell: (r) =>
           !enabled ? (
             <StatusPill tone="idle">{t('schedule.now.paused')}</StatusPill>
+          ) : r.enabled === false ? (
+            <StatusPill tone="idle">{t('schedule.now.ruleOff')}</StatusPill>
           ) : isActiveAt(r, now) ? (
             <StatusPill tone="on">{t('schedule.now.in')}</StatusPill>
           ) : (
             <StatusPill tone="idle">{t('schedule.now.out')}</StatusPill>
           ),
+      },
+      {
+        id: 'on',
+        header: t('schedule.list.on'),
+        cell: (r) => (
+          <span className="r-rule-switch">
+            <Switch
+              checked={r.enabled !== false}
+              onChange={(on) => toggle.mutate({ name: r.name, enabled: on })}
+              label={<span className="visually-hidden">{t('schedule.rule.toggle', { name: r.name })}</span>}
+              onText={t('schedule.rule.on')}
+              offText={t('schedule.rule.off')}
+            />
+          </span>
+        ),
       },
       {
         id: 'actions',
@@ -124,7 +143,7 @@ export function SchedulePage() {
       },
     ],
     // `now` ticks every 30 s, so "in effect now" stays true.
-    [t, lang, enabled, now, openEdit],
+    [t, lang, enabled, now, openEdit, toggle],
   )
 
   return (
@@ -151,12 +170,6 @@ export function SchedulePage() {
           </>
         )}
       </Card>
-      {/* Outside the card: a note about the page, never a card in a card. */}
-      <Banner tone="info" title={t('schedule.restart.title')}>
-        <p>
-          {t('schedule.restart.body')} <Link to="/settings">{t('schedule.restart.link')}</Link>
-        </p>
-      </Banner>
 
       {editor && (
         <ScheduleEditor

@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Reglas (/rules) and Horarios (/rules/schedule) · v1.1.0 · 2026-11-18
+// Kongtrol UI strings — Reglas (/rules) and Horarios (/rules/schedule) · v1.2.0 · 2026-11-18
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -219,9 +219,6 @@ const es = {
   'schedule.interval.err': '«{value}» no es un intervalo válido.',
   'schedule.interval.err.fix': 'Escribe un número y una unidad: 30s, 1m, 5m o 1h.',
   'schedule.interval.save': 'Guardar',
-  'schedule.restart.title': 'Se aplica al reiniciar Kongtrol',
-  'schedule.restart.body': 'Kongtrol prepara los horarios al iniciarse: lo que cambies aquí empieza a contar después de reiniciarlo.',
-  'schedule.restart.link': 'Reiniciar en Ajustes',
   'schedule.loading': 'Cargando horarios…',
 
   'schedule.list.title': 'Tus horarios',
@@ -232,6 +229,11 @@ const es = {
   'schedule.now.paused': 'En pausa',
   'schedule.now.in': 'Dentro del horario',
   'schedule.now.out': 'Fuera del horario',
+  'schedule.now.ruleOff': 'Pausado',
+  'schedule.list.on': 'Activo',
+  'schedule.rule.toggle': 'Aplicar el horario «{name}»',
+  'schedule.rule.on': 'Sí',
+  'schedule.rule.off': 'Pausado',
 
   'schedule.empty.title': 'Aún no tienes horarios',
   'schedule.empty.body':
@@ -500,9 +502,6 @@ const en: Strings<typeof es> = {
   'schedule.interval.err': '“{value}” is not a valid interval.',
   'schedule.interval.err.fix': 'Type a number and a unit: 30s, 1m, 5m or 1h.',
   'schedule.interval.save': 'Save',
-  'schedule.restart.title': 'Applies after restarting Kongtrol',
-  'schedule.restart.body': 'Kongtrol sets up schedules when it starts: what you change here counts after a restart.',
-  'schedule.restart.link': 'Restart in Settings',
   'schedule.loading': 'Loading schedules…',
 
   'schedule.list.title': 'Your schedules',
@@ -513,6 +512,11 @@ const en: Strings<typeof es> = {
   'schedule.now.paused': 'Paused',
   'schedule.now.in': 'In schedule',
   'schedule.now.out': 'Outside schedule',
+  'schedule.now.ruleOff': 'Paused',
+  'schedule.list.on': 'Active',
+  'schedule.rule.toggle': 'Apply the schedule “{name}”',
+  'schedule.rule.on': 'Yes',
+  'schedule.rule.off': 'Paused',
 
   'schedule.empty.title': 'No schedules yet',
   'schedule.empty.body':

@@ -1,4 +1,4 @@
-// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.0.1 · 2026-11-18
+// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.1.0 · 2026-11-18
 //
 // Policies, policy meta, the scheduler rules and the scheduler's two
 // settings, read and changed only through these hooks (ADR-0038). Keys
@@ -189,7 +189,8 @@ export function useSaveSchedule() {
       original ? rulesApi.updateSchedule(original, payload) : rulesApi.createSchedule(payload),
     apply: (list, { original, payload }) => {
       if (!original) return [...list, payload]
-      return list.map((r) => (r.name.toLowerCase() === original.toLowerCase() ? payload : r))
+      // The editor does not touch `enabled`: a paused rule stays paused.
+      return list.map((r) => (r.name.toLowerCase() === original.toLowerCase() ? { ...r, ...payload } : r))
     },
     successMessage: ({ original, payload }) =>
       t(original ? 'schedule.toast.updated' : 'schedule.toast.created', { name: payload.name }),
@@ -206,7 +207,20 @@ export function useDeleteSchedule() {
   })
 }
 
-type SchedulerPatch = Partial<Pick<SchedulerSettings, 'scheduler_enabled' | 'scheduler_interval'>>
+/**
+ * Pause / resume one rule (PUT with only `enabled`). The daemon reloads
+ * the scheduler on save (ADR-0042), so it applies at once: the switch moves
+ * now and rolls back with a "what to do" toast if refused.
+ */
+export function useToggleSchedule() {
+  return useOptimisticMutation<{ name: string; enabled: boolean }, unknown, ScheduleRule[]>({
+    queryKey: rulesKeys.schedule,
+    mutationFn: ({ name, enabled }) => http.put<unknown>(`/api/v1/scheduler/rules/${enc(name)}`, { enabled }),
+    apply: (list, { name, enabled }) => list.map((r) => (r.name === name ? { ...r, enabled } : r)),
+  })
+}
+
+type SchedulerPatch =Partial<Pick<SchedulerSettings, 'scheduler_enabled' | 'scheduler_interval'>>
 
 /** Scheduler on/off (saves at once) and interval: only these fields are sent. */
 export function useSaveSchedulerSettings() {

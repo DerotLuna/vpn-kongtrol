@@ -27,15 +27,43 @@ function routes(extra: Routes = {}, rules: unknown[] = [office]): Routes {
 }
 
 describe('Schedule page', () => {
-  it('reads each schedule as a sentence and says it applies after a restart', async () => {
+  it('reads each schedule as a sentence, with no restart note (the daemon reloads it)', async () => {
     stubFetch(routes())
     render(<App />)
     const table = await screen.findByRole('table', { name: 'Connection schedules' })
     expect(
       within(table).getByText('Monday to Friday, from 9:00 to 18:00: connects “work”. Outside that time, Kongtrol disconnects it.'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Applies after restarting Kongtrol')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Restart in Settings' })).toHaveAttribute('href', '/settings')
+    expect(screen.queryByText(/restart/i)).not.toBeInTheDocument()
+  })
+
+  it('pauses one rule at once (optimistic) and rolls it back if the daemon refuses', async () => {
+    let body: unknown = null
+    let refuse = false
+    let stored = true
+    stubFetch(
+      routes({
+        'GET /api/v1/scheduler/rules': () => json([{ ...office, enabled: stored }]),
+        'PUT /api/v1/scheduler/rules/Office': (init) => {
+          body = JSON.parse(String(init?.body))
+          if (refuse) return json({ error: 'could not save', hint: 'Check that kongtrol.yaml can be written.' }, 500)
+          stored = (body as { enabled: boolean }).enabled
+          return json({ status: 'updated', rule: 'Office' })
+        },
+      }),
+    )
+    render(<App />)
+    const sw = await screen.findByRole('switch', { name: 'Apply the schedule “Office”' })
+    expect(sw).toHaveAttribute('aria-checked', 'true')
+    await userEvent.click(sw)
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    expect(await screen.findAllByText('Paused')).not.toHaveLength(0)
+    await waitFor(() => expect(body).toEqual({ enabled: false }))
+
+    refuse = true
+    await userEvent.click(sw)
+    expect(await screen.findByText('Check that kongtrol.yaml can be written.')).toBeInTheDocument()
+    await waitFor(() => expect(sw).toHaveAttribute('aria-checked', 'false'))
   })
 
   it('the switch saves only scheduler_enabled, at once', async () => {
