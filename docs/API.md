@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.6 · 2026-11-18
+Version 1.7 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and

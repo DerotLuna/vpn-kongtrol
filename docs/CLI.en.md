@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.4 · 2026-11-18
+Version 1.5 · 2026-11-18
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -564,7 +564,9 @@ kongtrol logs [flags]
 | `-f, --follow` | follow events live |
 | `--level level` | filter by level (INFO\|WARN\|ERROR\|SECURITY) |
 | `--profile profile` | filter by profile |
+| `--since day` | from this day (YYYY-MM-DD) |
 | `--tail N` | show the last N events (default `100`) |
+| `--until day` | up to this day, included (YYYY-MM-DD) |
 
 **Examples**
 

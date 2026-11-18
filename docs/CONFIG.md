@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.3 · 2026-11-18
+Versión 1.4 · 2026-11-18
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -77,12 +77,11 @@ Protecciones: kill switch, DNS guard, chequeos y registro de auditoría.
 | `security.integrity_check.interval` | texto | `120s` | Cada cuánto (duración Go). |
 | `security.integrity_check.expected_ips` | mapa de texto a texto | — | IP pública esperada por perfil (`perfil: ip`), para detectar fugas. |
 | `security.leak_detection.enabled` | booleano | — | Bloque antiguo: `true` cuenta como aceptar la consulta de IP pública. |
-| `security.leak_detection.interval` | texto | — | Obsoleto, se ignora. |
-| `security.leak_detection.action` | texto | — | Qué hacer ante una fuga. Valores: `notify`, `killswitch_and_notify`. |
 | `security.public_ip_check.enabled` | booleano | — | Consulta opcional de tu IP pública a un servicio externo (ese servicio ve tu IP). Apagada si falta. |
 | `security.public_ip_check.endpoints` | lista de texto | — | URLs `https://` a probar en orden; vacío = la de por defecto. |
 | `security.audit_log.path` | texto | — | Archivo del registro de auditoría. |
-| `security.audit_log.max_size_mb` | entero | `100` | Tamaño máximo antes de rotar (MB). |
+| `security.audit_log.max_size_mb` | entero | `100` | Tamaño máximo de un archivo (MB); al pasarlo el mismo día sigue en audit-AAAA-MM-DD.1.log, .2… (por defecto 100). |
+| `security.audit_log.retention_days` | entero | — | Días que se guardan, hoy incluido (0 = hoy y ayer; máximo 365). Los más viejos se borran. |
 | `security.audit_log.sign` | booleano | — | Firma cada entrada con HMAC-SHA256 (detecta manipulación). |
 
 ## `monitor`
@@ -105,6 +104,7 @@ Monitoreo, dashboard, programador y alertas.
 | `monitor.scheduler.rules[].weekdays` | lista de texto | — | Días (`mon` … `sun`), opcional. |
 | `monitor.scheduler.rules[].start` | texto | — | Hora de inicio `HH:MM` (24 h), opcional. |
 | `monitor.scheduler.rules[].end` | texto | — | Hora de fin `HH:MM` (24 h), opcional. |
+| `monitor.scheduler.rules[].enabled` | booleano | — | `false` pausa la regla sin borrarla (por defecto encendida). Los cambios de reglas, intervalo y encendido se aplican sin reiniciar. |
 | `monitor.split_dns.enabled` | booleano | — | Resuelve cada dominio con el DNS de su túnel (split DNS). |
 | `monitor.split_dns.interval` | texto | `60s` | Cada cuánto se refresca el split DNS. |
 | `monitor.alerts.on_vpn_drop.actions` | lista de texto | — | Acciones al caerse una VPN: `notify`, `log`, `kill_switch`. |

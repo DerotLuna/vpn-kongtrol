@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.5.0 · 2026-11-18
+Version 2.6.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and

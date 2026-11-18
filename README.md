@@ -79,9 +79,11 @@ Kongtrol keeps running in the background after you close the window.
   route per process yet.
 - **Auto-reconnect.** The watchdog retries only the tunnel that dropped, with growing waits, and
   tells you when it can't. It fails over only to backups you declared (`failover:`); it never
-  brings up an unrelated VPN.
-- **Kill switch and DNS guard** at the system firewall and network level, with a signed local audit
-  log. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`
+  brings up an unrelated VPN. A provider app it cannot reconnect on its own gets a notice to
+  reconnect it there.
+- **Kill switch and DNS guard** at the system firewall and network level (`status` shows what is
+  blocked and the DNS servers in use), with a signed local audit
+  log whose signatures are checked when you read it. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`
   <sub>(command since v0.6.0, pre-release)</sub>.
 - **Browser panel and tray icon.** Profiles, groups, rules, security switches, settings, audit log
   and traffic charts; compiled into the program, no external server. Tray icon

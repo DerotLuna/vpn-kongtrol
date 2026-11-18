@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.14 · 2026-11-18
+Version 1.15 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -329,6 +329,12 @@ VPN profiles, groups, scheduler rules, settings): `s.loadRuntimeConfig()` → mu
 `onPolicyUpdate`). Security toggles (`POST /api/v1/security/killswitch|dnsguard`) additionally call
 `s.onSecurityToggle`, which re-runs `applyKillSwitchState()`/`applyDNSGuardState()` in
 `cmd/kongtrol/daemon_runtime.go` so the change takes effect immediately, not just on the next connect.
+
+Profile rename (PUT with another `name`) moves every reference + keychain entries and is refused
+while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`); `POST
+/api/v1/vpns/import` stores a `.conf`/`.ovpn` validated by the helper's own `privops` validators
+(ADR-0042). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
+the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
 
 VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
 adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,

@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.2.0 · 2026-11-18
+Version 1.3.0 · 2026-11-18
 
 ## 1. Purpose and how to use
 

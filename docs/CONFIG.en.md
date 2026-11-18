@@ -4,7 +4,7 @@
 
 # Configuration reference (kongtrol.yaml)
 
-Version 1.3 · 2026-11-18
+Version 1.4 · 2026-11-18
 
 Every key of `~/.kongtrol/kongtrol.yaml`, read from the schema (`internal/config/schema.go`). Defaults are the ones the code applies. Guide with examples: [CONFIGURATION.md](CONFIGURATION.md) · full example: [configs/example.yaml](../configs/example.yaml) · Español: [CONFIG.md](CONFIG.md).
 
@@ -77,12 +77,11 @@ Protections: kill switch, DNS guard, checks and audit log.
 | `security.integrity_check.interval` | string | `120s` | How often (Go duration). |
 | `security.integrity_check.expected_ips` | map of string to string | — | Expected public IP per profile (`profile: ip`), to detect leaks. |
 | `security.leak_detection.enabled` | bool | — | Legacy block: `true` counts as opting in to the public IP lookup. |
-| `security.leak_detection.interval` | string | — | Deprecated, ignored. |
-| `security.leak_detection.action` | string | — | What to do on a leak. Values: `notify`, `killswitch_and_notify`. |
 | `security.public_ip_check.enabled` | bool | — | Opt-in lookup of your public IP at an external service (that service sees your IP). Off when missing. |
 | `security.public_ip_check.endpoints` | list of string | — | `https://` URLs tried in order; empty = the default one. |
 | `security.audit_log.path` | string | — | Audit log file. |
-| `security.audit_log.max_size_mb` | int | `100` | Maximum size before rotating (MB). |
+| `security.audit_log.max_size_mb` | int | `100` | Largest size of one file (MB); past it the same day continues in audit-YYYY-MM-DD.1.log, .2… (default 100). |
+| `security.audit_log.retention_days` | int | — | Days kept, today included (0 = today and yesterday; at most 365). Older days are deleted. |
 | `security.audit_log.sign` | bool | — | Signs every entry with HMAC-SHA256 (detects tampering). |
 
 ## `monitor`
@@ -105,6 +104,7 @@ Monitoring, dashboard, scheduler and alerts.
 | `monitor.scheduler.rules[].weekdays` | list of string | — | Days (`mon` … `sun`), optional. |
 | `monitor.scheduler.rules[].start` | string | — | Start time `HH:MM` (24h), optional. |
 | `monitor.scheduler.rules[].end` | string | — | End time `HH:MM` (24h), optional. |
+| `monitor.scheduler.rules[].enabled` | bool | — | `false` pauses the rule without deleting it (default on). Rule, interval and on/off changes apply without a restart. |
 | `monitor.split_dns.enabled` | bool | — | Resolves each domain with its tunnel's DNS (split DNS). |
 | `monitor.split_dns.interval` | string | `60s` | How often split DNS is refreshed. |
 | `monitor.alerts.on_vpn_drop.actions` | list of string | — | Actions when a VPN drops: `notify`, `log`, `kill_switch`. |
