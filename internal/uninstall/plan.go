@@ -107,7 +107,9 @@ func (e Env) exists(p string) bool {
 func Detect(env Env, purge, dataOnly bool) Plan {
 	p := Plan{Exe: env.Exe, DataDir: env.DataDir, Purge: purge || dataOnly, DataOnly: dataOnly}
 	exe := filepath.Clean(env.Exe)
-	norm := strings.ToLower(filepath.ToSlash(exe))
+	// ReplaceAll, not filepath.ToSlash: ToSlash leaves `\` alone off Windows,
+	// and plans for Windows paths are also built (and tested) on Unix.
+	norm := strings.ToLower(strings.ReplaceAll(exe, `\`, "/"))
 	dir := filepath.Dir(exe)
 
 	if m, ok := ReadManifest(env.DataDir); ok && manifestOwns(m, exe) {
