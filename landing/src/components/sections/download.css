@@ -63,7 +63,55 @@
 
 .dl-mobile { margin-top: 32px; }
 
+/* after download: what the OS may show (unsigned binaries) and the one
+   admin prompt, in plain words. Collapsed by default so the cards stay first. */
+.dl-after { margin-top: 48px; }
+.dl-after .dl-others-title { margin-top: 0; }
+.dl-help { display: grid; gap: 12px; max-width: calc(var(--measure) + 120px); }
+.dl-more {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.dl-more > summary {
+  display: flex; align-items: center; gap: 12px; min-height: var(--tap);
+  padding: 12px 16px; cursor: pointer; list-style: none; user-select: none;
+  font-size: 0.95rem; line-height: 1.4; color: var(--text);
+  transition: background-color var(--dur-short) var(--ease-standard);
+}
+.dl-more > summary::-webkit-details-marker { display: none; }
+.dl-more > summary::before {
+  content: "+"; flex: none; width: 14px; text-align: center;
+  font-weight: 700; color: var(--signal);
+}
+.dl-more[open] > summary::before { content: "\2212"; }
+.dl-more[open] > summary { border-bottom: 1px solid var(--border); }
+.dl-more > summary:hover { background: var(--surface-2); }
+.dl-more > summary:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+.dl-more-body { padding: 14px 16px 16px 42px; }
+.dl-steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; color: var(--text-muted); font-size: 0.92rem; line-height: 1.55; }
+.dl-steps strong, .dl-admin strong { color: var(--text); font-weight: 600; }
+.dl-note { margin: 10px 0 0; font-size: 0.88rem; line-height: 1.55; color: var(--text-muted); text-wrap: pretty; }
+
+.dl-admin {
+  margin-top: 20px; padding: 18px 20px; max-width: calc(var(--measure) + 120px);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+}
+.dl-admin-title { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; color: var(--text); }
+.dl-admin-what { margin: 8px 0 0; font-size: 0.92rem; line-height: 1.55; color: var(--text-muted); text-wrap: pretty; }
+.dl-admin-see { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 4px; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted); }
+.dl-admin-tech { margin: 12px 0 0; font-size: 0.8rem; color: var(--text-dim); }
+.dl-admin-tech code { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); overflow-wrap: anywhere; }
+
+/* beta: a state worth knowing, not an error (Four States Rule: caution) */
+.callout.dl-beta {
+  margin-top: 32px;
+  border-color: color-mix(in srgb, var(--caution) 45%, transparent);
+  background: var(--caution-soft);
+}
+.callout.dl-beta strong { color: var(--caution); }
+
 @media (max-width: 480px) {
+  .dl-more-body { padding-left: 16px; }
   .dl-featured-item, .dl-featured-item > a { width: 100%; }
   .dl-row { flex-direction: column; align-items: stretch; }
   .dl-btn-sm { justify-content: center; }

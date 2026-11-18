@@ -59,7 +59,7 @@ export default function Download({ lang }: Props) {
     ? {
       section: '$ make install',
       title: 'Descárgalo gratis.',
-      sub: 'Windows, macOS y Linux. Código abierto. Un solo paso con permiso de administrador: kongtrol service install.',
+      sub: 'Windows, macOS y Linux. Código abierto, sin cuenta.',
       download: 'Descargar',
       downloadFor: { windows: 'Descargar para Windows', macos: 'Descargar para Mac', linux: 'Descargar para Linux' } as Record<OS, string>,
       recommended: 'Recomendado para tu equipo',
@@ -74,8 +74,32 @@ $ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/insta
 
 # Windows (PowerShell)
 $ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex`,
-      beta: 'Beta:',
-      betaText: 'Kongtrol está en pruebas activas — no todos los adaptadores ni escenarios están validados. Si algo falla, abre un issue en GitHub.',
+      beta: 'Beta pública.',
+      betaText: 'Todavía no está probado con cada VPN en cada sistema. Si algo no va bien,',
+      betaLink: 'cuéntanoslo en GitHub',
+      afterTitle: 'Después de descargar',
+      winTitle: 'Si Windows lo frena con un aviso azul (SmartScreen)',
+      winSteps: [
+        <>Pulsa <strong>Más información</strong>.</>,
+        <>Pulsa <strong>Ejecutar de todos modos</strong>.</>,
+      ],
+      winWhy: 'Sale porque el archivo es nuevo y no está firmado con un certificado de pago, no porque tenga un virus.',
+      macTitle: 'Si tu Mac dice que no puede abrir kongtrol',
+      macSteps: [
+        <>Cierra el aviso. No lo muevas a la papelera.</>,
+        <>Abre el menú Apple → <strong>Ajustes del Sistema</strong> → <strong>Privacidad y seguridad</strong>.</>,
+        <>Baja hasta <strong>Seguridad</strong> y pulsa <strong>Abrir igualmente</strong>. El botón aparece durante una hora después de intentar abrirlo.</>,
+        <>Escribe la contraseña de tu Mac.</>,
+      ],
+      macCurl: 'Si instalas con el comando de terminal de más abajo (curl), este aviso no sale.',
+      adminTitle: 'Un permiso de administrador, una sola vez',
+      adminWhat: 'Al configurar Kongtrol se instala un ayudante para que pueda cambiar rutas y DNS. Nada sale de tu equipo. Después no vuelve a pedir permiso.',
+      adminSee: [
+        <><strong>Windows:</strong> una ventana de Control de cuentas de usuario te pregunta si permites los cambios. Pulsa <strong>Sí</strong>.</>,
+        <><strong>Mac:</strong> te pide la contraseña de tu Mac.</>,
+        <><strong>Linux:</strong> te pide tu contraseña (sudo).</>,
+      ],
+      adminTech: 'Detalle técnico:',
       source: 'FUENTE',
       sourceScript: `# Requiere Go 1.27+ — desde Git Bash en Windows
 $ git clone ${GITHUB_REPO}
@@ -97,7 +121,7 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
     : {
       section: '$ make install',
       title: 'Download it free.',
-      sub: 'Windows, macOS and Linux. Open source. One step with administrator permission: kongtrol service install.',
+      sub: 'Windows, macOS and Linux. Open source, no account.',
       download: 'Download',
       downloadFor: { windows: 'Download for Windows', macos: 'Download for Mac', linux: 'Download for Linux' } as Record<OS, string>,
       recommended: 'Recommended for your computer',
@@ -112,8 +136,32 @@ $ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/insta
 
 # Windows (PowerShell)
 $ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex`,
-      beta: 'Beta:',
-      betaText: 'Kongtrol is under active testing — not every adapter and scenario is validated yet. If something breaks, open an issue on GitHub.',
+      beta: 'Public beta.',
+      betaText: "It isn't tested yet with every VPN on every system. If something doesn't work,",
+      betaLink: 'tell us on GitHub',
+      afterTitle: 'After you download',
+      winTitle: 'If Windows stops it with a blue warning (SmartScreen)',
+      winSteps: [
+        <>Click <strong>More info</strong>.</>,
+        <>Click <strong>Run anyway</strong>.</>,
+      ],
+      winWhy: "It shows up because the file is new and isn't signed with a paid certificate, not because it has a virus.",
+      macTitle: "If your Mac says it can't open kongtrol",
+      macSteps: [
+        <>Close the warning. Don't move it to the Trash.</>,
+        <>Open the Apple menu → <strong>System Settings</strong> → <strong>Privacy &amp; Security</strong>.</>,
+        <>Scroll to <strong>Security</strong> and click <strong>Open Anyway</strong>. The button shows for about an hour after you tried to open it.</>,
+        <>Enter your Mac's password.</>,
+      ],
+      macCurl: "If you install with the terminal command below (curl), this warning doesn't appear.",
+      adminTitle: 'One administrator permission, only once',
+      adminWhat: "Setting up Kongtrol installs a helper so it can change routes and DNS. Nothing leaves your computer. It won't ask again.",
+      adminSee: [
+        <><strong>Windows:</strong> a User Account Control window asks whether to allow the changes. Click <strong>Yes</strong>.</>,
+        <><strong>Mac:</strong> it asks for your Mac's password.</>,
+        <><strong>Linux:</strong> it asks for your password (sudo).</>,
+      ],
+      adminTech: 'Technical detail:',
       source: 'SOURCE',
       sourceScript: `# Requires Go 1.27+ — run from Git Bash on Windows
 $ git clone ${GITHUB_REPO}
@@ -196,8 +244,36 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
           <a href={GITHUB_RELEASES} target="_blank" rel="noreferrer">{copy.allReleases}</a>
         </p>
 
-        <div className="callout warn" style={{ marginTop: 32 }}>
-          <strong>{copy.beta}</strong> {copy.betaText}
+        <div className="dl-after">
+          <h3 className="dl-others-title">{copy.afterTitle}</h3>
+          <div className="dl-help">
+            <details className="dl-more">
+              <summary>{copy.winTitle}</summary>
+              <div className="dl-more-body">
+                <ol className="dl-steps">{copy.winSteps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+                <p className="dl-note">{copy.winWhy}</p>
+              </div>
+            </details>
+            <details className="dl-more">
+              <summary>{copy.macTitle}</summary>
+              <div className="dl-more-body">
+                <ol className="dl-steps">{copy.macSteps.map((s, i) => <li key={i}>{s}</li>)}</ol>
+                <p className="dl-note">{copy.macCurl}</p>
+              </div>
+            </details>
+          </div>
+
+          <div className="dl-admin">
+            <h4 className="dl-admin-title">{copy.adminTitle}</h4>
+            <p className="dl-admin-what">{copy.adminWhat}</p>
+            <ul className="dl-admin-see">{copy.adminSee.map((s, i) => <li key={i}>{s}</li>)}</ul>
+            <p className="dl-admin-tech">{copy.adminTech} <code>kongtrol service install</code></p>
+          </div>
+        </div>
+
+        <div className="callout dl-beta">
+          <strong>{copy.beta}</strong> {copy.betaText}{' '}
+          <a href={`${GITHUB_REPO}/issues`} target="_blank" rel="noreferrer">{copy.betaLink}</a>.
         </div>
 
         <div className="source-install reveal" style={{ marginTop: 20 }}>
