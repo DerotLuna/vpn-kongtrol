@@ -124,7 +124,7 @@ security:
   # Public IP lookup — OFF by default (opt-in). When on, Kongtrol asks an
   # external service for your public IP (that service sees it), only when a
   # tunnel connects or disconnects (at most once per 30 s) and when you ask
-  # (kongtrol check, "Revisar" in the dashboard, the tray). The kill switch
+  # (kongtrol ip, "Revisar" in the dashboard, the tray). The kill switch
   # and DNS guard do not need it. Also enables the leak check against
   # integrity_check.expected_ips. Toggle: kongtrol config public-ip on|off.
   public_ip_check:

@@ -204,7 +204,7 @@ type LeakDetectionConfig struct {
 // to an external service that answers with the caller's public IP in plain
 // text. Off by default (Local only rule): that service sees the user's
 // public IP. It runs only on tunnel connect/disconnect (rate-limited) and
-// when the user asks (`kongtrol check`, dashboard "Revisar", tray).
+// when the user asks (`kongtrol ip`, dashboard "Revisar", tray).
 type PublicIPCheckConfig struct {
 	Enabled bool `yaml:"enabled,omitempty"`
 	// Endpoints are tried in order until one answers with a valid IP.

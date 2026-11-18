@@ -308,7 +308,14 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 
 [✓] Configuración escrita en ~/.kongtrol/kongtrol.yaml
 [✓] Configuración válida.
+
+!  Falta el ayudante de Kongtrol.
+>  ¿Instalarlo ahora? (el sistema te pide permiso una vez) [S/n]:      ← Enter = sí
+✓  Ayudante instalado y en marcha.
+>  ¿Conectar ahora office, us-content? [S/n]:
 ```
+
+Al terminar, `init` revisa el **ayudante** (el servicio que hace los cambios de red, así nunca necesitas una terminal de administrador) y te ofrece instalarlo; luego conecta lo que acabas de crear, igual que `kongtrol up`. En scripts: `kongtrol init --yes`. Kill switch y DNS guard se cambian después con `kongtrol config killswitch on|off|status` y `kongtrol config dns-guard on|off|status`, o en el panel → Seguridad.
 
 > **¿Quieres agregar otro perfil o política después?** Vuelve a ejecutar `kongtrol init`. El wizard detecta el config existente, muestra los perfiles y políticas actuales, y no sobreescribe nada sin confirmación. Para más detalle sobre políticas ve a la [sección 5b](#5b-políticas-de-routing).
 
@@ -337,7 +344,7 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si ya tienes un daemon corriendo (`kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel puntual, `kongtrol reload --tunnel <perfil>`; para políticas, `kongtrol reload --policy`. Ver [CLI.md → reload](CLI.md#kongtrol-reload).
+Si Kongtrol ya está funcionando en segundo plano (el daemon que arranca `kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel, `kongtrol reload <perfil>`; para políticas, `kongtrol reload --policy`; sin argumentos, `kongtrol reload` aplica todo y, si agregaste perfiles, ofrece reiniciar Kongtrol (`--yes` en scripts). Ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
@@ -682,10 +689,12 @@ kongtrol down --all               # apagar todo
 
 kongtrol status                   # ver qué está conectado
 kongtrol status --watch           # monitoreo en vivo
-kongtrol check                    # consulta tu IP pública y prueba fugas (requiere kongtrol config public-ip on)
+kongtrol ip                       # consulta tu IP pública y prueba fugas (requiere kongtrol config public-ip on)
 kongtrol up --group work --dry-run # simulación completa sin tocar rutas/DNS/firewall
-kongtrol policy explain github.com # explica qué regla de policy aplica y por qué
-kongtrol policy explain github.com --json # salida estructurada
+kongtrol policy list              # todas las políticas y su VPN
+kongtrol policy show github.com   # qué regla aplica a un destino y por qué (--json: salida estructurada)
+kongtrol config killswitch on     # kill switch (también: off, status)
+kongtrol config dns-guard on      # DNS guard (también: off, status)
 kongtrol dashboard                # abrir UI web
 ```
 

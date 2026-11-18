@@ -112,7 +112,6 @@ export default function Guide({ os, setOS, lang }: Props) {
                   <div>
                     {t.quickstart3}
                     <p>{t.quickstart4}</p>
-                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol init`}</CodeBlock>
                   </div>
                 </li>
                 <li>
@@ -120,7 +119,6 @@ export default function Guide({ os, setOS, lang }: Props) {
                   <div>
                     {t.quickstart5}
                     <p>{t.quickstart6}</p>
-                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol doctor`}</CodeBlock>
                   </div>
                 </li>
                 <li>
@@ -128,7 +126,7 @@ export default function Guide({ os, setOS, lang }: Props) {
                   <div>
                     {t.quickstart7}
                     <p>{t.quickstart8}</p>
-                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol up --group work
+                    <CodeBlock ui={lang} lang="bash">{`$ kongtrol init
 $ kongtrol status --watch
 $ kongtrol dashboard`}</CodeBlock>
                   </div>
@@ -463,11 +461,11 @@ $ kongtrol up us-content`}</CodeBlock>
                       <td>{t.daily8}</td>
                     </tr>
                     <tr>
-                      <td>kongtrol status --watch --dashboard</td>
+                      <td>kongtrol policy show github.com</td>
                       <td>{t.daily9}</td>
                     </tr>
                     <tr>
-                      <td>kongtrol check</td>
+                      <td>kongtrol ip</td>
                       <td>{t.daily10}</td>
                     </tr>
                     <tr>

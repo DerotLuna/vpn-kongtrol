@@ -26,13 +26,14 @@ export default function guideEN(os: OS): GuideContent {
     intro8: <>Contents</>,
     intro9: "Jump to",
     quickstart1: <><span className="guide-quickstart-badge">Quickstart</span></>,
-    quickstart2: <>Your VPNs are already installed and working. Kongtrol just orchestrates them: three commands and you're operating. The 10 sections below are reference; come back to them only if something doesn't fit.</>,
-    quickstart3: <><strong>Register your profiles</strong></>,
-    quickstart4: <>Detects clients, stores credentials in the keychain, builds policies.</>,
-    quickstart5: <><strong>Validate the stack</strong></>,
-    quickstart6: <>Binaries, certificates, keychain and permissions, before connecting.</>,
-    quickstart7: <><strong>Connect and operate</strong></>,
-    quickstart8: <>Bring up a group, watch live status, open the dashboard.</>,
+    // feature:first_run
+    quickstart2: <>Kongtrol works with the VPNs you already have. Everything is done from the app (tray and dashboard); the terminal is optional and does the same. The sections below are reference: come back to them only if something doesn't fit.</>,
+    quickstart3: <><strong>Install the app and open the dashboard</strong></>,
+    quickstart4: <>Use the installer from <a href="/en/#install">downloads</a>. When it opens, the Kongtrol icon shows up in the tray and the dashboard opens in your browser to create your first VPN. The first time, your system asks for permission once to install the helper (a service that changes routes and DNS for you).</>,
+    quickstart5: <><strong>Connect from the tray or the dashboard</strong></>,
+    quickstart6: <>The "daemon" you'll see in the terminal is the Kongtrol process that keeps working in the background: you can close the dashboard or the terminal and your VPNs stay connected. Only "Quit and disconnect all" in the tray, or <IC c="kongtrol down" />, disconnects them.</>,
+    quickstart7: <><strong>From the terminal (optional)</strong></>,
+    quickstart8: <><IC c="kongtrol init" /> guides you, checks the helper (offers to install it) and at the end asks whether to connect now. Then: live status and the dashboard.</>,
     // feature:providers
     prereqs1: <>Prerequisites</>,
     prereqs2: <>Kongtrol <strong>orchestrates</strong> the VPN clients you already have; it doesn't
@@ -97,9 +98,9 @@ $ sudo mv kongtrol /usr/local/bin/
 
 # Verify
 $ kongtrol --help`,
-    install12: <><strong>One step as administrator:</strong> run <IC c="kongtrol service install" /> once
-                    and accept the prompt. It installs a helper that makes the network changes (routes, DNS, kill switch).
-                    After that no command needs an administrator terminal or <IC c="sudo" />.</>,
+    install12: <><strong>One permission, once:</strong> the installer (or <IC c="kongtrol init" />, or{' '}
+                    <IC c="kongtrol service install" />) installs a helper that makes the network changes (routes, DNS, kill switch)
+                    and your system asks for permission once. After that no command needs an administrator terminal or <IC c="sudo" />.</>,
     // feature:wizard
     wizard1: <>Registering your VPNs: kongtrol init</>,
     wizard2: <><IC c="kongtrol init" /> <strong>doesn't configure your VPNs</strong>: that's
@@ -311,8 +312,9 @@ Write configuration to ~/.kongtrol/kongtrol.yaml? [Y/n]: y
 [✓] Configuration is valid.`,
     wizard40: <><strong>You can type several domains separated by commas</strong> in a single prompt:
                 the wizard splits them automatically. <IC c="claude.ai, *.anthropic.com" /> → two entries.</>,
-    wizard41: <>To add another profile or policy later: run <IC c="kongtrol init" /> again.
-                The wizard detects the existing config and won't overwrite anything without confirmation.</>,
+    wizard41: <>At the end, the wizard checks the helper (if it's missing, it offers to install it) and asks{' '}
+                "Connect now?": Enter connects what you just created. To add another profile or policy later:
+                run <IC c="kongtrol init" /> again. The wizard detects the existing config and won't overwrite anything without confirmation.</>,
     groups1: <>Groups</>,
     groups2: <>Groups bundle profiles so you can bring them up together with a single command.
                 Edit <IC c={os === 'windows' ? 'C:\\Users\\YOU\\.kongtrol\\kongtrol.yaml' : '~/.kongtrol/kongtrol.yaml'} /> and append:</>,
@@ -320,11 +322,10 @@ Write configuration to ~/.kongtrol/kongtrol.yaml? [Y/n]: y
 kongtrol down --group work`,
     groups4: <>A profile can belong to several groups at once: <IC c="office" /> can be
                 in <IC c="work" /> and also in <IC c="full" /> without any conflict.</>,
-    groups5: <>If a daemon is already running (<IC c="kongtrol up" /> in the background, or via the
-                dashboard) and you hand-edit the group, you don't need to restart it:{' '}
-                <IC c="kongtrol reload --group work" /> re-reads <IC c="kongtrol.yaml" /> from disk and
-                reconnects only that group's active tunnels. For a single tunnel,{' '}
-                <IC c="kongtrol reload --tunnel office" />.</>,
+    groups5: <>If Kongtrol is already working in the background and you hand-edit the group, you don't need
+                to restart it: <IC c="kongtrol reload --group work" /> re-reads <IC c="kongtrol.yaml" /> from disk and
+                reconnects only that group's active tunnels. For a single tunnel, <IC c="kongtrol reload office" />;
+                with no arguments, <IC c="kongtrol reload" /> applies everything and, if you added profiles, offers to restart Kongtrol.</>,
     // feature:policies feature:routes
     policies1: <>Routing policies</>,
     policies2: <>When you have several tunnels active at once, how does your machine know
@@ -403,17 +404,18 @@ kongtrol down --group work`,
                 IPs: longest-prefix match: the most specific rule wins. <IC c="10.10.1.0/24" /> takes priority over <IC c="10.0.0.0/8" />.</>,
     policies12: <><strong>App rules (experimental):</strong> you can write <IC c="apps" /> in a rule,
                 but today it does not change routing: only <IC c="domains" /> and <IC c="ip_ranges" /> count.
-                For now <IC c="apps" /> only shows up in <IC c="kongtrol map app:<exe>" />.</>,
+                For now <IC c="apps" /> only shows up in <IC c="kongtrol policy show app:<exe>" />.</>,
     policies13: <><strong>Transparent split-DNS:</strong> with <IC c="monitor.split_dns.enabled: true" />,
                 Kongtrol injects policy domains into system resolution (hosts) so regular apps
                 resolve through the right tunnel without calling the API.</>,
     policies14: `# Validate after editing
 $ kongtrol config validate
 # [OK] Config is valid.`,
-    policies15: <>If no daemon is running yet, policies are read when you run <IC c="kongtrol up" />.
-                If one is already active, apply the change without restarting it via{' '}
+    policies15: <>If Kongtrol isn't working yet, policies are read when you run <IC c="kongtrol up" />.
+                If it's already active, apply the change without restarting it via{' '}
                 <IC c="kongtrol reload --policy" />: it reloads the policy engine from the edited{' '}
-                <IC c="kongtrol.yaml" />, without touching any tunnels.</>,
+                <IC c="kongtrol.yaml" />, without touching any tunnels. To see which VPN a destination uses:{' '}
+                <IC c="kongtrol policy show github.com" />.</>,
     doctor1: <>Verify with doctor</>,
     doctor2: <>Before connecting for the first time, let Kongtrol validate everything's in order:</>,
     doctor3: os === 'windows'
@@ -536,7 +538,7 @@ GET  /api/v1/audit                 # ?profile=&level=&limit=`,
     daily6: <>Shut everything down</>,
     daily7: <>See what's connected</>,
     daily8: <>Live monitoring (2s)</>,
-    daily9: <>Live monitoring + starts the embedded dashboard at the same time</>,
+    daily9: <>See which VPN a destination uses and why</>,
     daily10: <>Look up your public IP and test for leaks now (if you turned the lookup on)</>,
     daily11: <>Open the web UI</>,
     daily12: <>Full diagnostics</>,

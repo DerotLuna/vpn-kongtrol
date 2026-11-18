@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.6 · 2026-11-18
+Version 1.7 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -95,6 +95,18 @@ When adding a new adapter:
   `kongtrol restart` stops it and spawns the replacement from the CLI's own executable (after a
   package-manager upgrade the binary path may change). The replacement waits for the old API to
   go away (holding the spawn lock) and drops profiles that no longer exist.
+- First run in one command: `kongtrol init` ends by checking the helper (`offerHelperInstall`,
+  default yes) and asking "¿Conectar ahora?" (`finishInit`: restarts a running daemon, then the
+  `up` path). `up` on a TTY offers the helper when a connect fails with
+  `service.error.not_installed|outdated`. `reload` with profiles the daemon does not know offers
+  the restart path (`restartRunningDaemon`, shared with `kongtrol restart`).
+
+<!-- feature:cli_names -->
+**CLI names and questions (ADR-0033).** Old command/flag names stay as hidden deprecated aliases
+(`cmd/kongtrol/deprecated.go`: `deprecatedCommand` / `warnDeprecated` print `cli.deprecated` on
+stderr; cobra/pflag deprecation texts are English-only, so they are not used). Yes/no questions
+only through `cmd/kongtrol/prompt.go` (`confirmAction`): asked only on an interactive terminal,
+never with `--json`/`-q`, `--yes` answers for scripts, otherwise print the "what to do" line.
 
 <!-- feature:distribution -->
 **Distribution (ADR-0025).** Tags `v*` run `release.yml`: macOS app (native, cgo), Windows Inno
@@ -329,7 +341,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 ### Public IP lookup (opt-in)
 
 - `security.LeakTester` (`internal/security/leaktest.go`) is the only code that asks an external service for the public IP. Off by default: `Config.PublicIPCheckEnabled()` = `security.public_ip_check.enabled` or the legacy `security.leak_detection.enabled` (its `interval` is ignored). The kill switch and DNS guard never enable or need it.
-- Never periodic: `Trigger()` after a successful connect/disconnect (`cmd/kongtrol/daemon_runtime.go`; ≥30s apart, coalesced, 3s settle) and `CheckNow()` on demand (`kongtrol check`, `POST /api/v1/security/publicip/check`, dashboard "Revisar", tray line). Disabled → no request, `LastResult()` nil, clients show "—" + `cli.public_ip.enable_hint`.
+- Never periodic: `Trigger()` after a successful connect/disconnect (`cmd/kongtrol/daemon_runtime.go`; ≥30s apart, coalesced, 3s settle) and `CheckNow()` on demand (`kongtrol ip`, `POST /api/v1/security/publicip/check`, dashboard "Revisar", tray line). Disabled → no request, `LastResult()` nil, clients show "—" + `cli.public_ip.enable_hint`.
 - Endpoints: `security.public_ip_check.endpoints` (https only, `config.ValidatePublicIPEndpoint`), default `https://api.ipify.org`; 5s timeout, body ≤64 bytes, must parse as an IP. Toggle: `POST /api/v1/security/publicip`, `kongtrol config public-ip on|off`, wizard, dashboard Security page. Enabling shows `cli.public_ip.notice` ("Usa un servicio externo (<host>) que ve tu IP pública").
 
 ### Provider attach mode internals

@@ -1,4 +1,4 @@
-# Change-impact map — version 1.3 · 2026-11-18
+# Change-impact map — version 1.4 · 2026-11-18
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -28,6 +28,8 @@ features:
       - internal/security/block_priv.go
       - internal/app/killswitch_service.go
       - internal/api/handlers_security.go
+      - internal/daemonctl/security.go
+      - cmd/kongtrol/cmd_config_security.go
       - web/dashboard/security.js
       - web/dashboard/shell.js
     surfaces:
@@ -43,6 +45,7 @@ features:
       - internal/security/dnsguard*.go
       - internal/monitor/dnsmanager.go
       - internal/monitor/splitdns.go
+      - cmd/kongtrol/cmd_config_security.go
     surfaces:
       - README.md#dns_guard
       - docs/SETUP.md#dns_guard
@@ -248,13 +251,28 @@ features:
       - internal/api/handlers_setup.go
       - cmd/kongtrol/daemon_restart.go
       - cmd/kongtrol/config_load.go
+      - cmd/kongtrol/helper_check.go
+      - cmd/kongtrol/prompt.go
       - cmd/kongtrol-tray/tray_actions.go
       - cmd/kongtrol-tray/tray_menu.go
       - web/dashboard/studio.js
     surfaces:
       - AGENTS.md#first_run
+      - README.md#first_run
       - docs/API.md#first_run
       - docs/SETUP.md#first_run
+      - landing/src/content/guide.es.tsx#first_run
+      - landing/src/content/guide.en.tsx#first_run
+
+  cli_names:
+    code:
+      - cmd/kongtrol/deprecated.go
+      - cmd/kongtrol/help.go
+      - cmd/kongtrol/cmd_reload.go
+    surfaces:
+      - AGENTS.md#cli_names
+      - README.md#first_run
+      - docs/SETUP.md
 
   distribution:
     code:

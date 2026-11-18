@@ -43,7 +43,7 @@ export default function Features({ lang }: Props) {
 
   const copy = lang === 'es'
     ? {
-      label: '$ kongtrol map claude.ai',
+      label: '$ kongtrol policy show claude.ai',
       title: 'Cada sitio, por la VPN correcta.',
       sub: 'Tú eliges qué sitios y redes van por cada VPN: el sistema de tu empresa por la VPN del trabajo, otro sitio por tu VPN personal. Lo demás sale directo, sin VPN. Varias VPN a la vez, sin pelearse.',
       boardIn: 'Destino',
@@ -62,7 +62,7 @@ export default function Features({ lang }: Props) {
       ] as Route[],
     }
     : {
-      label: '$ kongtrol map claude.ai',
+      label: '$ kongtrol policy show claude.ai',
       title: 'Every site, through the right VPN.',
       sub: 'You choose which sites and networks go through each VPN: your company system through the work VPN, another site through your personal VPN. Everything else goes out directly, no VPN. Several VPNs at once, no fighting.',
       boardIn: 'Destination',

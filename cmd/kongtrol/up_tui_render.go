@@ -186,7 +186,7 @@ const upLogsHeaderHeight = 3 // blank separator + title line + rule
 // so it isn't mistaken for the baseline.
 //
 // The view never looks the IP up itself: it shows the last opt-in lookup
-// (made on tunnel connect/disconnect or `kongtrol check`), or a hint to
+// (made on tunnel connect/disconnect or `kongtrol ip`), or a hint to
 // turn the lookup on.
 func (m *upModel) renderPublicIPLine(rowsData []tunnelRow) string {
 	enabled, ip := m.publicIPState()
