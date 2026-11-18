@@ -96,6 +96,22 @@ func applyDoctorFixes() (int, error) {
 			}
 		}
 	}
+	// The helper does the network changes that need admin rights; --fix
+	// installs or updates it like `kongtrol service install` (one OS
+	// permission prompt). A refused or failed install is reported and the
+	// checks below still run.
+	if need := helperStateFn(); need != helperReady {
+		if !outputJSON {
+			fmt.Println(tuiInfo(ct("cli.doctor.fix.helper")))
+		}
+		if err := installHelperFn(); err != nil {
+			if !outputJSON {
+				fmt.Println(tuiWarn(err.Error()))
+			}
+		} else {
+			applied++
+		}
+	}
 	return applied, nil
 }
 

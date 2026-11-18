@@ -27,8 +27,55 @@ var initCmd = &cobra.Command{
 	RunE: runWizard,
 }
 
+// initYes answers yes to the questions after the wizard (install the
+// helper, connect now).
+var initYes bool
+
 func init() {
+	initCmd.Flags().BoolVarP(&initYes, "yes", "y", false, ct("cli.init.flag.yes"))
 	rootCmd.AddCommand(initCmd)
+}
+
+// Test seams for finishInit.
+var (
+	loadConfigFn = loadConfig
+	runUpFn      = runUp
+)
+
+// finishInit ends a wizard run that wrote a valid kongtrol.yaml, so the
+// first run is one command: it checks the helper (offering to install it)
+// and asks whether to connect the profiles just added, then runs the same
+// path as `kongtrol up`. A daemon that is already running was started with
+// the old file, so it is restarted first to learn the new profiles.
+func finishInit(outPath string, profiles []profileSummary, written *config.Config) error {
+	if written == nil {
+		return nil
+	}
+	offerHelperInstall(helperStateFn(), initYes)
+	var targets []string
+	for _, p := range profiles {
+		if _, ok := written.VPNs[p.name]; ok {
+			targets = append(targets, p.name)
+		}
+	}
+	if len(targets) == 0 {
+		return nil
+	}
+	if !confirmAction(cf("cli.init.connect_now", strings.Join(targets, ", ")), initYes, true) {
+		return nil
+	}
+	if cfgPath == "" {
+		cfgPath = outPath
+	}
+	if err := loadConfigFn(); err != nil {
+		return err
+	}
+	if base := daemonAPIBase(); daemonProbeFn(base) {
+		if err := restartDaemonFn(base); err != nil {
+			return err
+		}
+	}
+	return runUpFn(contextWithSignal(), targets)
 }
 
 // ── Kong huh theme ────────────────────────────────────────────────────────────
@@ -459,7 +506,10 @@ func reviewAndWrite(lang i18n.Lang, outPath string, doc *yaml.Node, profiles []p
 		t("nextsteps.dashboard"),
 	}))
 	fmt.Println()
-	return nil
+	if err != nil {
+		return nil
+	}
+	return finishInit(outPath, profiles, written)
 }
 
 // ── Review panel ──────────────────────────────────────────────────────────────

@@ -85,6 +85,11 @@ func savePreferences(path string, prefs *Preferences) error {
 		return fmt.Errorf("encode preferences: %w", err)
 	}
 	data = append(data, '\n')
+	// A machine-local preference (language, default group) may be the
+	// first thing saved, before kongtrol init created ~/.kongtrol.
+	if err := os.MkdirAll(filepath.Dir(resolved), 0o700); err != nil {
+		return fmt.Errorf("create preferences dir: %w", err)
+	}
 	return WriteFileAtomic(resolved, data, 0o600)
 }
 

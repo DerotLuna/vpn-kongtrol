@@ -73,6 +73,11 @@ var rootCmd = &cobra.Command{
 		if outputPlain {
 			_ = os.Setenv("NO_COLOR", "1")
 		}
+		// The global --alert-bell is a deprecated alias: up and status own
+		// a local --alert-bell that shadows it (daemon gets a hidden one).
+		if cmd.Root().PersistentFlags().Changed("alert-bell") {
+			warnDeprecated("--alert-bell", "kongtrol up --alert-bell")
+		}
 		if cmd.Name() != "init" {
 			sessionGreetingLine, sessionLastUseLine = prepareSessionBanner(time.Now(), cmd)
 		}
@@ -109,12 +114,23 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, ct("cli.flag.json"))
 	rootCmd.PersistentFlags().BoolVarP(&outputQuiet, "quiet", "q", false, ct("cli.flag.quiet"))
 	rootCmd.PersistentFlags().BoolVar(&outputPlain, "plain", false, ct("cli.flag.plain"))
-	rootCmd.PersistentFlags().BoolVar(&alertBell, "alert-bell", false, ct("cli.flag.alert_bell"))
+	rootCmd.PersistentFlags().BoolVar(&alertBell, "alert-bell", false, "")
+	_ = rootCmd.PersistentFlags().MarkHidden("alert-bell")
+
+	// --version prints what `kongtrol version` prints. The flag is declared
+	// here so its usage text is an i18n string (cobra only adds its own
+	// English one when the flag is missing); cobra handles it before
+	// PersistentPreRunE, so the template renders the whole output.
+	rootCmd.Version = version
+	rootCmd.Flags().BoolP("version", "v", false, ct("cli.flag.version"))
+	cobra.AddTemplateFunc("kongtrolVersion", versionText)
+	rootCmd.SetVersionTemplate("{{kongtrolVersion}}")
 
 	rootCmd.AddCommand(upCmd)
 	rootCmd.AddCommand(downCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(routesCmd)
+	rootCmd.AddCommand(ipCmd)
 	rootCmd.AddCommand(checkCmd)
 	rootCmd.AddCommand(mapCmd)
 	rootCmd.AddCommand(dashboardCmd)

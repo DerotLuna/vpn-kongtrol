@@ -24,13 +24,14 @@ export default function guideES(os: OS) {
     intro8: <>Contenido</>,
     intro9: "Ir a",
     quickstart1: <><span className="guide-quickstart-badge">Inicio rápido</span></>,
-    quickstart2: <>Ya tienes tus VPNs instaladas y funcionando. Kongtrol solo las orquesta: tres comandos y estás operando. Las 10 secciones de abajo son referencia; vuelve a ellas solo si algo no calza.</>,
-    quickstart3: <><strong>Registra tus perfiles</strong></>,
-    quickstart4: <>Detecta clientes, guarda credenciales en el keychain, arma políticas.</>,
-    quickstart5: <><strong>Valida el stack</strong></>,
-    quickstart6: <>Binarios, certificados, keychain y permisos, antes de conectar.</>,
-    quickstart7: <><strong>Conecta y opera</strong></>,
-    quickstart8: <>Levanta un grupo, mira el estado en vivo, abre el panel.</>,
+    // feature:first_run
+    quickstart2: <>Kongtrol trabaja con las VPN que ya tienes. Todo se hace desde la app (bandeja y panel); la terminal es opcional y hace lo mismo. Las secciones de abajo son referencia: vuelve a ellas solo si algo no calza.</>,
+    quickstart3: <><strong>Instala la app y abre el panel</strong></>,
+    quickstart4: <>Usa el instalador de <a href="/#install">descargas</a>. Al abrirla aparece el ícono de Kongtrol en la bandeja y el panel se abre en tu navegador para crear tu primera VPN. La primera vez el sistema te pide permiso una sola vez para instalar el ayudante (un servicio que cambia rutas y DNS por ti).</>,
+    quickstart5: <><strong>Conecta desde la bandeja o el panel</strong></>,
+    quickstart6: <>El «daemon» que verás en la terminal es el proceso de Kongtrol que sigue funcionando en segundo plano: puedes cerrar el panel o la terminal y tus VPN siguen conectadas. Solo «Salir y desconectar todo» en la bandeja, o <IC c="kongtrol down" />, las desconecta.</>,
+    quickstart7: <><strong>Desde la terminal (opcional)</strong></>,
+    quickstart8: <><IC c="kongtrol init" /> te guía, revisa el ayudante (te ofrece instalarlo) y al final te pregunta si conectas ya. Después: estado en vivo y el panel.</>,
     // feature:providers
     prereqs1: <>Prerequisitos</>,
     prereqs2: <>Kongtrol <strong>orquesta</strong> los clientes VPN existentes, no los reemplaza.
@@ -96,9 +97,9 @@ $ sudo mv kongtrol /usr/local/bin/
 
 # Verificar
 $ kongtrol --help`,
-    install12: <><strong>Un solo paso con administrador:</strong> corre <IC c="kongtrol service install" /> una vez
-                    y acepta el permiso. Instala un ayudante que hace los cambios de red (rutas, DNS, kill switch).
-                    Después ningún comando necesita una terminal de administrador ni <IC c="sudo" />.</>,
+    install12: <><strong>Un solo permiso, una sola vez:</strong> el instalador (o <IC c="kongtrol init" />, o{' '}
+                    <IC c="kongtrol service install" />) instala un ayudante que hace los cambios de red (rutas, DNS, kill switch)
+                    y el sistema te pide permiso una vez. Después ningún comando necesita una terminal de administrador ni <IC c="sudo" />.</>,
     // feature:wizard
     wizard1: <>Registrar tus VPNs: kongtrol init</>,
     wizard2: <><IC c="kongtrol init" /> <strong>no configura tus VPNs</strong>: eso ya lo
@@ -310,8 +311,9 @@ $ kongtrol --help`,
 [✓] Configuración válida.`,
     wizard40: <><strong>Puedes escribir varios dominios separados por coma</strong> en un solo prompt:
                 el wizard los divide automáticamente. <IC c="claude.ai, *.anthropic.com" /> → dos entradas.</>,
-    wizard41: <>Para agregar otro perfil o política después: vuelve a correr <IC c="kongtrol init" />.
-                El wizard detecta el config existente y no sobreescribe nada sin confirmación.</>,
+    wizard41: <>Al terminar, el wizard revisa el ayudante (si falta, te ofrece instalarlo) y te pregunta{' '}
+                «¿Conectar ahora?»: con Enter conecta lo que acabas de crear. Para agregar otro perfil o política después:
+                vuelve a correr <IC c="kongtrol init" />. El wizard detecta el config existente y no sobreescribe nada sin confirmación.</>,
     groups1: <>Grupos</>,
     groups2: <>Agrupan perfiles para levantarlos juntos con un solo comando.
                 Edita <IC c={os === 'windows' ? 'C:\\Users\\TU\\.kongtrol\\kongtrol.yaml' : '~/.kongtrol/kongtrol.yaml'} /> y añade al final:</>,
@@ -319,10 +321,10 @@ $ kongtrol --help`,
 kongtrol down --group work`,
     groups4: <>Un perfil puede pertenecer a varios grupos a la vez: <IC c="office" /> puede
                 estar en <IC c="work" /> y también en <IC c="full" /> sin conflicto.</>,
-    groups5: <>Si ya tienes un daemon corriendo (<IC c="kongtrol up" /> en background, o vía dashboard) y
-                editas el grupo a mano, no hace falta reiniciarlo: <IC c="kongtrol reload --group work" />{' '}
-                recarga el <IC c="kongtrol.yaml" /> desde disco y reconecta solo los túneles activos de ese
-                grupo. Para un solo túnel puntual, <IC c="kongtrol reload --tunnel office" />.</>,
+    groups5: <>Si Kongtrol ya está funcionando en segundo plano y editas el grupo a mano, no hace falta
+                reiniciarlo: <IC c="kongtrol reload --group work" /> recarga el <IC c="kongtrol.yaml" /> desde disco y
+                reconecta solo los túneles activos de ese grupo. Para un solo túnel, <IC c="kongtrol reload office" />;
+                sin argumentos, <IC c="kongtrol reload" /> aplica todo y, si agregaste perfiles, te ofrece reiniciar Kongtrol.</>,
     // feature:policies feature:routes
     policies1: <>Políticas de routing</>,
     policies2: <>Cuando tienes varios túneles activos al mismo tiempo, ¿cómo sabe tu computadora
@@ -401,16 +403,17 @@ kongtrol down --group work`,
                 IPs: longest-prefix match: gana la regla más específica. <IC c="10.10.1.0/24" /> tiene prioridad sobre <IC c="10.0.0.0/8" />.</>,
     policies12: <><strong>Reglas por app (experimental):</strong> puedes escribir <IC c="apps" /> en una regla,
                 pero hoy no cambia el ruteo: solo cuentan <IC c="domains" /> e <IC c="ip_ranges" />.
-                Por ahora <IC c="apps" /> solo se ve en <IC c="kongtrol map app:<exe>" />.</>,
+                Por ahora <IC c="apps" /> solo se ve en <IC c="kongtrol policy show app:<exe>" />.</>,
     policies13: <><strong>Split-DNS transparente:</strong> con <IC c="monitor.split_dns.enabled: true" />,
                 Kongtrol inyecta dominios de policy en resolución del sistema (hosts) para que apps
                 normales resuelvan por el túnel correcto sin llamar la API.</>,
     policies14: `# Validar después de editar
 $ kongtrol config validate
 # [OK] Config is valid.`,
-    policies15: <>Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar <IC c="kongtrol up" />.
-                Si ya tienes uno activo, aplica el cambio sin reiniciarlo con <IC c="kongtrol reload --policy" />:
-                recarga el motor de políticas desde el <IC c="kongtrol.yaml" /> editado, sin tocar túneles.</>,
+    policies15: <>Si Kongtrol todavía no está funcionando, las políticas se leen al ejecutar <IC c="kongtrol up" />.
+                Si ya está activo, aplica el cambio sin reiniciarlo con <IC c="kongtrol reload --policy" />:
+                recarga el motor de políticas desde el <IC c="kongtrol.yaml" /> editado, sin tocar túneles.
+                Para ver qué VPN usa un destino: <IC c="kongtrol policy show github.com" />.</>,
     doctor1: <>Verificar con doctor</>,
     doctor2: <>Antes de conectar por primera vez, deja que Kongtrol valide que todo esté en orden:</>,
     doctor3: os === 'windows'
@@ -533,7 +536,7 @@ GET  /api/v1/audit                 # ?profile=&level=&limit=`,
     daily6: <>Apagar todo</>,
     daily7: <>Ver qué está conectado</>,
     daily8: <>Monitoreo en vivo (2s)</>,
-    daily9: <>Monitoreo en vivo + levanta el dashboard embebido a la vez</>,
+    daily9: <>Ver qué VPN usa un destino y por qué</>,
     daily10: <>Consultar tu IP pública y probar fugas ahora (si activaste la consulta)</>,
     daily11: <>Abrir UI web</>,
     daily12: <>Diagnóstico completo</>,

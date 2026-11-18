@@ -49,7 +49,7 @@ Working with multiple VPNs simultaneously is painful: each client overrides your
 - **Policy-based routing** by IP range and domain for WireGuard, with priority-based conflict resolution; app rules currently provide flow resolution and diagnostics, not OS-level per-process enforcement
 - **8 built-in adapters** — FortiClient, OpenVPN, ProtonVPN, Cisco AnyConnect, WireGuard, GlobalProtect, Tailscale, Cloudflare WARP
 - **Auto-reconnect watchdog** with exponential backoff; it only retries the tunnel that dropped and tells you if it can't, and fails over only to backup profiles you declare (`failover:`) — it never brings up an unrelated VPN
-- **Kill switch + DNS guard** enforced at the OS firewall/network layer, with a signed audit log
+- **Kill switch + DNS guard** enforced at the OS firewall/network layer, with a signed audit log; toggle them in the dashboard or with `kongtrol config killswitch|dns-guard on|off|status`
 - **Embedded web dashboard** — full management UI (profiles, groups, policies, live security toggles, settings, audit log, traffic charts), plus a system tray app; no external server, no Node.js, compiled into the binary
 - **Setup wizard** (`kongtrol init`) that auto-detects installed VPN clients and stores credentials in the OS keychain
 - **Diagnostics** (`kongtrol doctor`) that validate your whole stack before you connect
@@ -110,7 +110,9 @@ cd vpn-kongtrol
 make build   # → build/dist/kongtrol
 ```
 
-> **Windows:** run your shell as **Administrator** for `kongtrol init`, `up`, `down`, and `doctor` — they need elevated permissions for routing, DNS, and firewall.
+> **No administrator terminal.** Routing, DNS and firewall changes go through a small network helper
+> (a system service) installed once: the installer does it, and `kongtrol init` or `kongtrol up` offer
+> it if it is missing (or run `kongtrol service install`). Your system asks for permission that one time.
 
 > **Antivirus/SmartScreen warning?** Windows binaries are unsigned until the project's
 > application to SignPath Foundation (free code signing for open source) is approved, and
@@ -118,12 +120,19 @@ make build   # → build/dist/kongtrol
 > positive, not malware. Verify the download (see above), or build from source and judge the code
 > yourself. See [docs/SECURITY.md](docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives).
 
+<!-- feature:first_run -->
+From the terminal (optional — same features as the app):
+
 ```bash
-kongtrol init           # interactive wizard: detects clients, stores credentials in OS keychain
+kongtrol init           # wizard: detects clients, keychain credentials, offers the helper, then "Connect now?"
 kongtrol up office aws  # connect one or more profiles
 kongtrol status         # check tunnel states
 kongtrol dashboard      # open the web UI at localhost:9741
 ```
+
+Kongtrol keeps working in the background (the "daemon": the Kongtrol process that keeps running after
+you close the terminal, the tray or the dashboard). Only `kongtrol down` or the tray's "Quit and
+disconnect all" disconnects your VPNs.
 
 `kongtrol --help` lists every command by group (Connection, Setup, Diagnostics, System), in Spanish
 or English, and `kongtrol <command> --help` shows what it does, the next step and examples. Full list

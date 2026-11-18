@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -185,23 +183,18 @@ func printUninstallPlan(p uninstall.Plan, profiles int) {
 	}
 }
 
-// confirmUninstall asks y/N (default No). With no terminal to ask on, the
-// caller must pass --yes.
+// confirmUninstall asks y/N (default No) through the shared prompt
+// (prompt.go). With no terminal to ask on (or --json/-q), the caller must
+// pass --yes.
 func confirmUninstall(purge bool) (bool, error) {
-	if fi, err := os.Stdin.Stat(); err != nil || fi.Mode()&os.ModeCharDevice == 0 {
+	if !canPrompt() {
 		return false, errors.New(ct("cli.uninstall.needs_yes"))
 	}
 	key := "cli.uninstall.confirm"
 	if purge {
 		key = "cli.uninstall.confirm_purge"
 	}
-	fmt.Print(ct(key))
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "s", "si", "sí", "y", "yes":
-		return true, nil
-	}
-	return false, nil
+	return askYesNo(ct(key), false), nil
 }
 
 // removeScriptInstall deletes what install.sh / install.ps1 listed, then

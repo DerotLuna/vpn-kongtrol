@@ -22,8 +22,8 @@ var statusDashboard bool
 var statusCmd = &cobra.Command{
 	Use: "status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if statusDashboard && !statusWatch {
-			return fmt.Errorf("%s", ct("cli.status.error.dashboard_requires_watch"))
+		if statusDashboard {
+			warnDeprecated("--dashboard", "kongtrol dashboard")
 		}
 		if outputJSON {
 			report, err := collectStatusReport()
@@ -42,7 +42,10 @@ var statusCmd = &cobra.Command{
 
 func init() {
 	statusCmd.Flags().BoolVarP(&statusWatch, "watch", "w", false, ct("cli.status.flag.watch"))
-	statusCmd.Flags().BoolVar(&statusDashboard, "dashboard", false, ct("cli.status.flag.dashboard"))
+	// Deprecated: kongtrol dashboard opens the shared daemon's dashboard.
+	statusCmd.Flags().BoolVar(&statusDashboard, "dashboard", false, "")
+	_ = statusCmd.Flags().MarkHidden("dashboard")
+	statusCmd.Flags().BoolVar(&alertBell, "alert-bell", false, ct("cli.flag.alert_bell"))
 }
 
 type apiSecurityStatus struct {
@@ -487,25 +490,11 @@ func runStatusWatch() error {
 	ctx, cancel := context.WithCancel(signalCtx)
 	defer cancel()
 
+	// Deprecated --dashboard: only the shared daemon serves the dashboard
+	// (kongtrol dashboard starts it); show its address when it answers.
 	var dashURL string
-	if statusDashboard {
-		base := daemonAPIBase()
-		if probeDaemonAPI(base) {
-			// A daemon's dashboard is already serving on this address —
-			// reuse it instead of trying (and failing) to bind the same port.
-			dashURL = base
-		} else {
-			srv := buildAPIServer(cancel)
-			if err := srv.Start(); err != nil {
-				return err
-			}
-			dashURL = srv.Addr()
-			defer func() {
-				shutCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
-				defer c()
-				_ = srv.Shutdown(shutCtx)
-			}()
-		}
+	if base := daemonAPIBase(); statusDashboard && probeDaemonAPI(base) {
+		dashURL = base
 	}
 
 	runUpTUI(ctx, cancel, adapters, ks, dnsMgr, dashURL, false)

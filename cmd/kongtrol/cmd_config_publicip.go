@@ -54,6 +54,30 @@ var configPublicIPCmd = &cobra.Command{
 // setPublicIPInFile edits security.public_ip_check.enabled in the YAML
 // file (and clears the legacy leak_detection.enabled when turning off).
 func setPublicIPInFile(path string, enabled bool) error {
+	return editConfigYAML(path, func(root *yaml.Node) {
+		sec := childMapping(root, "security")
+		setMapping(childMapping(sec, "public_ip_check"), "enabled", boolNode(enabled))
+		if ld := mappingKey(sec, "leak_detection"); !enabled && ld != nil && ld.Kind == yaml.MappingNode {
+			setMapping(ld, "enabled", boolNode(false))
+		}
+	})
+}
+
+// childMapping returns parent's mapping under key, creating it (or
+// replacing a non-mapping value) when needed.
+func childMapping(parent *yaml.Node, key string) *yaml.Node {
+	n := mappingKey(parent, key)
+	if n == nil || n.Kind != yaml.MappingNode {
+		n = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		setMapping(parent, key, n)
+	}
+	return n
+}
+
+// editConfigYAML applies edit to kongtrol.yaml's root mapping and writes it
+// back atomically, keeping comments and key order (yaml.v3 node tree). Used
+// by the config toggles when no daemon is running.
+func editConfigYAML(path string, edit func(root *yaml.Node)) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -65,21 +89,7 @@ func setPublicIPInFile(path string, enabled bool) error {
 	if doc.Kind != yaml.DocumentNode || len(doc.Content) == 0 || doc.Content[0].Kind != yaml.MappingNode {
 		return fmt.Errorf("%s: not a YAML mapping", path)
 	}
-	root := doc.Content[0]
-	sec := mappingKey(root, "security")
-	if sec == nil || sec.Kind != yaml.MappingNode {
-		sec = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		setMapping(root, "security", sec)
-	}
-	pic := mappingKey(sec, "public_ip_check")
-	if pic == nil || pic.Kind != yaml.MappingNode {
-		pic = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-		setMapping(sec, "public_ip_check", pic)
-	}
-	setMapping(pic, "enabled", boolNode(enabled))
-	if ld := mappingKey(sec, "leak_detection"); !enabled && ld != nil && ld.Kind == yaml.MappingNode {
-		setMapping(ld, "enabled", boolNode(false))
-	}
+	edit(doc.Content[0])
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)

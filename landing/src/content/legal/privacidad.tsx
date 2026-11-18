@@ -1,4 +1,5 @@
-// Privacy policy — version 1.2.0 · 2026-11-17.
+// Privacy policy — version 1.2.1 · 2026-11-18.
+// 1.2.1: the on-demand public IP lookup command is now `kongtrol ip` (`kongtrol check` still works).
 // 1.2.0: the public IP check is off by default (opt-in), runs only on tunnel connect/disconnect and
 //   on demand, and is no longer turned on by the kill switch or DNS guard.
 // 1.1.0: one-person project, author receives no user data; dashboard control cookie disclosed;
@@ -19,8 +20,8 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.2.0'
-const UPDATED = '2026-11-17'
+const VERSION = '1.2.1'
+const UPDATED = '2026-11-18'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
 
@@ -66,7 +67,7 @@ const es: LegalDocContent = {
           HTTPS a <IC c="api.ipify.org" /> (servicio de terceros) u otro servicio que tú elijas, para mostrar tu IP
           pública y detectar fugas. Cuando la activas, tu IP es visible para ese servicio, como en cualquier sitio que
           visitas. Solo se hace al conectar o desconectar un túnel (como mucho una vez cada 30 segundos) y cuando lo
-          pides (<IC c="kongtrol check" />, «Revisar» en el panel o en la bandeja); nunca de forma periódica. El kill
+          pides (<IC c="kongtrol ip" />, «Revisar» en el panel o en la bandeja); nunca de forma periódica. El kill
           switch y el DNS guard no la necesitan. La petición sale por la ruta activa (tu VPN, si la hay).</>,
         <><strong>Comprobación previa al conectar</strong> — una conexión TCP breve al servidor y puerto de tu
           perfil VPN, para avisarte si no responde. Solo va al servidor que tú configuraste.</>,
@@ -156,7 +157,7 @@ const en: LegalDocContent = {
           <IC c="api.ipify.org" /> (a third-party service) or another service you choose, to show your public IP and
           detect leaks. When you enable it, your IP is visible to that service, like any site you visit. It runs only
           when a tunnel connects or disconnects (at most once every 30 seconds) and when you ask
-          (<IC c="kongtrol check" />, "Check" in the dashboard or the tray); never periodically. The kill switch and
+          (<IC c="kongtrol ip" />, "Check" in the dashboard or the tray); never periodically. The kill switch and
           DNS guard do not need it. The request leaves through the active route (your VPN, if there is one).</>,
         <><strong>Pre-connect check</strong> — a short TCP connection to your VPN profile's server and port, to warn
           you if it doesn't answer. It only goes to the server you configured.</>,

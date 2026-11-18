@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.2 · 2026-11-18
+Version 1.3 · 2026-11-18
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -22,6 +22,7 @@ kongtrol up [profile...] [flags]
 
 | Flags | Description |
 |---|---|
+| `--alert-bell` | ring bell on critical alerts |
 | `--all` | connect all configured profiles |
 | `--dry-run` | simulate connection flow and checks without changing system state |
 | `--fav` | connect saved favorite profiles |
@@ -70,7 +71,7 @@ kongtrol status [flags]
 
 | Flags | Description |
 |---|---|
-| `--dashboard` | start embedded dashboard while --watch is running |
+| `--alert-bell` | ring bell on critical alerts |
 | `-w, --watch` | auto-refresh every 2 seconds |
 
 **Examples**
@@ -83,54 +84,29 @@ kongtrol status --json
 
 ### `kongtrol routes`
 
-Shows which destinations go through each tunnel, or through one if you name the profile. System routes: kongtrol routes list.
+Shows which destinations go through each tunnel, or through one if you name the profile. With --system: the system routes Kongtrol added.
 
 ```text
 kongtrol routes [profile] [flags]
 ```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--system` | show the system routes Kongtrol added (if one is missing: kongtrol reload) |
 
 **Examples**
 
 ```bash
 kongtrol routes
 kongtrol routes office
-kongtrol routes list
-```
-
-### `kongtrol routes list`
-
-Lists the system routes Kongtrol added for your tunnels. If one is missing: kongtrol reload.
-
-```text
-kongtrol routes list [flags]
-```
-
-**Examples**
-
-```bash
-kongtrol routes list
-kongtrol routes list --json
-```
-
-### `kongtrol map`
-
-Shows your policies with their resolved IPs, or only the destination or app you name. To understand one: kongtrol policy explain.
-
-```text
-kongtrol map [target|app:<exe>] [flags]
-```
-
-**Examples**
-
-```bash
-kongtrol map
-kongtrol map github.com
-kongtrol map app:chrome.exe
+kongtrol routes --system
 ```
 
 ### `kongtrol dashboard`
 
-Opens the dashboard to set up and connect your VPNs from the browser. If it doesn't open, copy the address shown.
+Opens the dashboard to set up and connect your VPNs from the browser; starts Kongtrol in the background if needed. If it doesn't open, copy the address shown.
 
 ```text
 kongtrol dashboard [flags]
@@ -146,22 +122,29 @@ kongtrol dashboard
 
 ### `kongtrol init`
 
-Guides you step by step to add your VPNs, policies and security to kongtrol.yaml. Next: kongtrol up.
+Guides you step by step to add your VPNs, policies and security to kongtrol.yaml. At the end it checks the helper (offers to install it) and asks whether to connect now.
 
 ```text
 kongtrol init [flags]
 ```
 
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `-y, --yes` | at the end, install the helper and connect without asking |
+
 **Examples**
 
 ```bash
 kongtrol init
+kongtrol init --yes
 KONGTROL_LANG=es kongtrol init
 ```
 
 ### `kongtrol config`
 
-Groups the commands to validate kongtrol.yaml and set language, favorites and dashboard on this computer. Start with: kongtrol config validate.
+Groups the commands to validate kongtrol.yaml, turn protection on or off (kill switch, DNS guard, public IP lookup) and set language, favorites, default group and dashboard on this computer. Start with: kongtrol config validate.
 
 ```text
 kongtrol config [command]
@@ -171,6 +154,7 @@ kongtrol config [command]
 
 ```bash
 kongtrol config validate
+kongtrol config killswitch on
 kongtrol config lang en
 ```
 
@@ -248,47 +232,19 @@ kongtrol config favorites remove <profile> [flags]
 kongtrol config favorites remove office
 ```
 
-### `kongtrol config defaults`
+### `kongtrol config default-group`
 
-Saves on this computer what kongtrol up connects when you name no profiles. To see it: kongtrol config defaults show.
+With no argument it shows the group kongtrol up connects on this computer when you name no profiles; with a group, it saves it. Next: kongtrol up.
 
 ```text
-kongtrol config defaults [command]
+kongtrol config default-group [group] [flags]
 ```
 
 **Examples**
 
 ```bash
-kongtrol config defaults show
-kongtrol config defaults set-group work
-```
-
-### `kongtrol config defaults show`
-
-Shows the group kongtrol up connects on this computer. To change it: kongtrol config defaults set-group.
-
-```text
-kongtrol config defaults show [flags]
-```
-
-**Examples**
-
-```bash
-kongtrol config defaults show
-```
-
-### `kongtrol config defaults set-group`
-
-Saves the group kongtrol up connects when you name no profiles. Next: kongtrol up.
-
-```text
-kongtrol config defaults set-group <group> [flags]
-```
-
-**Examples**
-
-```bash
-kongtrol config defaults set-group work
+kongtrol config default-group
+kongtrol config default-group work
 ```
 
 ### `kongtrol config lang`
@@ -379,7 +335,7 @@ kongtrol config dashboard reset
 
 ### `kongtrol config public-ip`
 
-Off by default. When on, Kongtrol asks an external service (api.ipify.org by default) for your public IP, and that service sees it; only when a tunnel connects or disconnects and when you ask (kongtrol check). The kill switch and DNS guard do not need it.
+Off by default. When on, Kongtrol asks an external service (api.ipify.org by default) for your public IP, and that service sees it; only when a tunnel connects or disconnects and when you ask (kongtrol ip). The kill switch and DNS guard do not need it.
 
 ```text
 kongtrol config public-ip <on|off> [flags]
@@ -392,9 +348,39 @@ kongtrol config public-ip on
 kongtrol config public-ip off
 ```
 
+### `kongtrol config killswitch`
+
+The kill switch prevents leaks: if a protected VPN drops without you disconnecting it, Kongtrol blocks what went through it until it is back. With Kongtrol running it applies at once; otherwise it is saved in kongtrol.yaml.
+
+```text
+kongtrol config killswitch <on|off|status> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol config killswitch on
+kongtrol config killswitch status
+```
+
+### `kongtrol config dns-guard`
+
+The DNS guard keeps your DNS lookups from leaking outside the VPN: while VPNs are connected, Kongtrol uses only their DNS. With Kongtrol running it applies at once; otherwise it is saved in kongtrol.yaml.
+
+```text
+kongtrol config dns-guard <on|off|status> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol config dns-guard on
+kongtrol config dns-guard status
+```
+
 ### `kongtrol policy`
 
-Explains which policy applies to a destination and tests lists of destinations. Start with: kongtrol policy explain <target>.
+Shows your policies, which VPN each destination uses and why, and tests lists of destinations. Start with: kongtrol policy list.
 
 ```text
 kongtrol policy [command]
@@ -403,29 +389,45 @@ kongtrol policy [command]
 **Examples**
 
 ```bash
-kongtrol policy explain github.com
+kongtrol policy list
+kongtrol policy show github.com
 kongtrol policy test targets.txt
 ```
 
-### `kongtrol policy explain`
+### `kongtrol policy list`
 
-Shows which policy and which VPN a destination or app uses, and why. To see them all: kongtrol map.
+Shows your policies with their VPN and resolved IPs. For one destination: kongtrol policy show <target>.
 
 ```text
-kongtrol policy explain <target|app:<exe>> [flags]
+kongtrol policy list [flags]
 ```
 
 **Examples**
 
 ```bash
-kongtrol policy explain github.com
-kongtrol policy explain 10.20.30.40
-kongtrol policy explain app:chrome.exe
+kongtrol policy list
+kongtrol policy list --json
+```
+
+### `kongtrol policy show`
+
+Shows which policy and which VPN a destination (domain or IP) or an app uses, and why. To see them all: kongtrol policy list.
+
+```text
+kongtrol policy show <target|app:<exe>> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol policy show github.com
+kongtrol policy show 10.20.30.40
+kongtrol policy show app:chrome.exe
 ```
 
 ### `kongtrol policy test`
 
-Reads a file with one destination (IP or domain) per line and shows which VPN each would use. If something looks wrong: kongtrol policy explain.
+Reads a file with one destination (IP or domain) per line and shows which VPN each would use. If something looks wrong: kongtrol policy show <target>.
 
 ```text
 kongtrol policy test <file> [flags]
@@ -440,10 +442,10 @@ kongtrol policy test targets.txt --json
 
 ### `kongtrol reload`
 
-Loads kongtrol.yaml into the running Kongtrol: policies, groups or a single tunnel. Next: kongtrol status.
+Loads kongtrol.yaml into the running Kongtrol: policies and connected tunnels, or only one profile or group. If you added profiles, it offers to restart Kongtrol. Next: kongtrol status.
 
 ```text
-kongtrol reload [flags]
+kongtrol reload [profile] [flags]
 ```
 
 **Flags**
@@ -452,14 +454,14 @@ kongtrol reload [flags]
 |---|---|
 | `--group group` | reload only the active tunnels of this group |
 | `--policy` | reload only the policy engine (skip groups) |
-| `--tunnel profile` | reload only this profile's tunnel (skip groups and other tunnels) |
+| `-y, --yes` | if Kongtrol needs a restart, restart without asking |
 
 **Examples**
 
 ```bash
 kongtrol reload
-kongtrol reload --policy
-kongtrol reload --tunnel office
+kongtrol reload office
+kongtrol reload --yes
 ```
 
 ### `kongtrol restart`
@@ -495,7 +497,7 @@ kongtrol export > team.yaml
 
 ### `kongtrol doctor`
 
-Checks everything Kongtrol needs without connecting any VPN and says how to fix each problem. To apply safe fixes: kongtrol doctor --fix.
+Checks everything Kongtrol needs without connecting any VPN and says how to fix each problem. To apply safe fixes and install the helper if missing: kongtrol doctor --fix.
 
 ```text
 kongtrol doctor [flags]
@@ -505,7 +507,7 @@ kongtrol doctor [flags]
 
 | Flags | Description |
 |---|---|
-| `--fix` | attempt safe auto-fixes |
+| `--fix` | apply safe fixes and install or update the helper if needed |
 
 **Examples**
 
@@ -515,19 +517,19 @@ kongtrol doctor --fix
 kongtrol doctor --json
 ```
 
-### `kongtrol check`
+### `kongtrol ip`
 
 Looks up your public IP once with an external service (api.ipify.org by default) and compares it with the expected IPs. Works only if you turned it on: kongtrol config public-ip on. If it finds a leak: kongtrol doctor.
 
 ```text
-kongtrol check [flags]
+kongtrol ip [flags]
 ```
 
 **Examples**
 
 ```bash
-kongtrol check
-kongtrol check --json
+kongtrol ip
+kongtrol ip --json
 ```
 
 ### `kongtrol logs`
@@ -628,6 +630,7 @@ kongtrol version [flags]
 
 ```bash
 kongtrol version
+kongtrol --version
 kongtrol version --plain
 ```
 
@@ -650,12 +653,12 @@ kongtrol help up
 
 | Flags | Description |
 |---|---|
-| `--alert-bell` | ring bell on critical alerts |
 | `-c, --config path` | config file path (default: ~/.kongtrol/kongtrol.yaml) |
 | `-h, --help` | help for kongtrol |
 | `--json` | emit JSON output for automation |
 | `--plain` | plain ASCII output (no color and no Unicode symbols) |
 | `-q, --quiet` | reduce non-essential output (no banner/spinner) |
+| `-v, --version` | show the installed version and exit |
 
 ## Output language
 

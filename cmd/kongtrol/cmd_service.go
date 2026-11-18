@@ -122,34 +122,9 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 		return privhelper.Install(opts)
 	}
 
-	say(tuiInfo(ct("service.install.start")))
-	if privops.IsElevated() {
-		exe, err := currentExecutable()
-		if err != nil {
-			return guidedError("service.install.failed", err, "service.install.failed_hint")
-		}
-		opts, err := elevatedInstallOptions()
-		if err != nil {
-			return guidedError("service.install.failed", err, "service.install.failed_hint")
-		}
-		opts.SourceExe, opts.Version = exe, version
-		if err := privhelper.Install(opts); err != nil {
-			return guidedError("service.install.failed", err, "service.install.failed_hint")
-		}
-	} else {
-		say(tuiInfo(ct(elevationPromptKey())))
-		if err := runElevatedStep("install", identityArgs()); err != nil {
-			if errors.Is(err, privhelper.ErrElevationCancelled) {
-				return guidedError("service.elevation.cancelled", nil, "service.elevation.cancelled_hint")
-			}
-			return guidedError("service.install.failed", err, "service.install.failed_hint")
-		}
-	}
-
-	say(tuiInfo(ct("service.install.verifying")))
-	res, err := waitForHelper(15 * time.Second)
+	res, err := installHelper()
 	if err != nil {
-		return guidedError("service.install.no_response", nil, "service.install.no_response_hint")
+		return err
 	}
 	if outputJSON {
 		return emitJSON(map[string]any{"installed": true, "running": true, "helper_version": res.Version})
@@ -157,6 +132,43 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 	say(tuiOK(ct("service.install.ok")))
 	say(tuiInfo(ct("service.install.next")))
 	return nil
+}
+
+// installHelper installs (or updates) the helper from this executable,
+// asking for permission with the OS prompt when not elevated (UAC, sudo),
+// and waits until it answers. Shared by service install, doctor --fix,
+// init and up. Errors are translated, with a "what to do" line.
+func installHelper() (privops.PingResult, error) {
+	say(tuiInfo(ct("service.install.start")))
+	if privops.IsElevated() {
+		exe, err := currentExecutable()
+		if err != nil {
+			return privops.PingResult{}, guidedError("service.install.failed", err, "service.install.failed_hint")
+		}
+		opts, err := elevatedInstallOptions()
+		if err != nil {
+			return privops.PingResult{}, guidedError("service.install.failed", err, "service.install.failed_hint")
+		}
+		opts.SourceExe, opts.Version = exe, version
+		if err := privhelper.Install(opts); err != nil {
+			return privops.PingResult{}, guidedError("service.install.failed", err, "service.install.failed_hint")
+		}
+	} else {
+		say(tuiInfo(ct(elevationPromptKey())))
+		if err := runElevatedStep("install", identityArgs()); err != nil {
+			if errors.Is(err, privhelper.ErrElevationCancelled) {
+				return privops.PingResult{}, guidedError("service.elevation.cancelled", nil, "service.elevation.cancelled_hint")
+			}
+			return privops.PingResult{}, guidedError("service.install.failed", err, "service.install.failed_hint")
+		}
+	}
+
+	say(tuiInfo(ct("service.install.verifying")))
+	res, err := waitForHelper(15 * time.Second)
+	if err != nil {
+		return privops.PingResult{}, guidedError("service.install.no_response", nil, "service.install.no_response_hint")
+	}
+	return res, nil
 }
 
 func waitForHelper(d time.Duration) (privops.PingResult, error) {

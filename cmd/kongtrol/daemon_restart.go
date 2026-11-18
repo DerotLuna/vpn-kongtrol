@@ -134,46 +134,56 @@ var restartCmd = &cobra.Command{
 		if !probeDaemonAPI(base) {
 			return fmt.Errorf("%s", ct("cli.reload.error.no_daemon"))
 		}
-		c := daemonClient(base)
-		statuses, err := c.Statuses()
-		if err != nil {
-			return err
-		}
-		var targets []string
-		for name, st := range statuses {
-			if st == vpn.StatusConnected {
-				targets = append(targets, name)
-			}
-		}
-		sort.Strings(targets)
-		fmt.Println(tuiInfo(ct("cli.restart.requested")))
-		if err := c.Shutdown(); err != nil {
-			return err
-		}
-		if !waitDaemonGone(base, restartOldGoneTimeout) {
-			return fmt.Errorf("%s", ct("cli.restart.timeout"))
-		}
-		spawn := func(logPath string) (<-chan error, error) {
-			exe, err := currentExecutable()
-			if err != nil {
-				return nil, err
-			}
-			return spawnReplacementFn(exe, replacementArgs(targets), logPath, cliLang())
-		}
-		sp := daemonctl.Spawner{
-			Probe:    func() bool { return daemonProbeFn(base) },
-			Spawn:    spawn,
-			LogPath:  daemonLogPath(),
-			LockPath: spawnLockPath(),
-			Lang:     cliLang(),
-		}
-		if _, err := sp.Ensure(context.Background()); err != nil {
-			printDaemonStartFailure(err)
-			return fmt.Errorf("%s", ct("cli.restart.timeout"))
-		}
-		fmt.Println(tuiOK(ct("cli.restart.done")))
-		return nil
+		return restartDaemonFn(base)
 	},
+}
+
+// restartDaemonFn is the restart path (test seam): `kongtrol restart`,
+// `reload` when a new profile needs it and `init` → "connect now".
+var restartDaemonFn = restartRunningDaemon
+
+// restartRunningDaemon stops the daemon answering at base and starts a new
+// one from this executable that reconnects the tunnels that were up.
+func restartRunningDaemon(base string) error {
+	c := daemonClient(base)
+	statuses, err := c.Statuses()
+	if err != nil {
+		return err
+	}
+	var targets []string
+	for name, st := range statuses {
+		if st == vpn.StatusConnected {
+			targets = append(targets, name)
+		}
+	}
+	sort.Strings(targets)
+	fmt.Println(tuiInfo(ct("cli.restart.requested")))
+	if err := c.Shutdown(); err != nil {
+		return err
+	}
+	if !waitDaemonGone(base, restartOldGoneTimeout) {
+		return fmt.Errorf("%s", ct("cli.restart.timeout"))
+	}
+	spawn := func(logPath string) (<-chan error, error) {
+		exe, err := currentExecutable()
+		if err != nil {
+			return nil, err
+		}
+		return spawnReplacementFn(exe, replacementArgs(targets), logPath, cliLang())
+	}
+	sp := daemonctl.Spawner{
+		Probe:    func() bool { return daemonProbeFn(base) },
+		Spawn:    spawn,
+		LogPath:  daemonLogPath(),
+		LockPath: spawnLockPath(),
+		Lang:     cliLang(),
+	}
+	if _, err := sp.Ensure(context.Background()); err != nil {
+		printDaemonStartFailure(err)
+		return fmt.Errorf("%s", ct("cli.restart.timeout"))
+	}
+	fmt.Println(tuiOK(ct("cli.restart.done")))
+	return nil
 }
 
 func init() {

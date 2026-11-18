@@ -37,15 +37,20 @@ var exportCmd = &cobra.Command{
 var versionCmd = &cobra.Command{
 	Use: "version",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Piped / quiet output stays a bare, parseable version string.
-		if outputQuiet || outputPlain || !isTerminal() {
-			fmt.Println(version)
-			return
-		}
-		PrintHeader(version)
-		// Opt-in update notice: last remembered check, no request here.
-		if line := updateLine(); line != "" {
-			fmt.Println(tuiInfo(line))
-		}
+		fmt.Print(versionText())
 	},
+}
+
+// versionText is the output of `kongtrol version` and `kongtrol --version`.
+// Piped / quiet output stays a bare, parseable version string.
+func versionText() string {
+	if outputQuiet || outputPlain || !isTerminal() {
+		return version + "\n"
+	}
+	out := headerText(version)
+	// Opt-in update notice: last remembered check, no request here.
+	if line := updateLine(); line != "" {
+		out += tuiInfo(line) + "\n"
+	}
+	return out
 }
