@@ -9,7 +9,7 @@ import { StatusPill, type PillTone } from '../ui/StatusPill'
 
 const STATUS: Record<TunnelStatus, { key: MessageKey; tone: PillTone }> = {
   connected: { key: 'tunnels.status.connected', tone: 'ok' },
-  connecting: { key: 'tunnels.status.connecting', tone: 'warn' },
+  connecting: { key: 'tunnels.status.connecting', tone: 'connecting' },
   disconnected: { key: 'tunnels.status.disconnected', tone: 'idle' },
   error: { key: 'tunnels.status.error', tone: 'bad' },
 }

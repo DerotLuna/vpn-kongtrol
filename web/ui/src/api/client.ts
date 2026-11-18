@@ -1,8 +1,14 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.3.0 · 2026-11-18
+// Kongtrol UI — typed client for the daemon's local API · v0.4.0 · 2026-11-18
 //
-// Same-origin only: the daemon serves this UI and sets the HttpOnly
-// `kongtrol_control` cookie, so requests carry no token in JS. The daemon
+// Same-origin only; requests carry no token in JS. Authentication (cookie,
+// session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
 // translates errors when told the language (X-Kongtrol-Lang).
+//
+// Every request also reports reachability to data/connection.ts: a network
+// failure means the daemon that serves this page stopped answering.
+// Caching, de-dup, retries and the live feed live in src/data/ (ADR-0036).
+import { connection } from '../data/connection'
+import { authReady, noteAuthStatus } from './auth'
 import type { Lang } from '../i18n/messages'
 import type {
   ApiErrorBody,
@@ -11,8 +17,10 @@ import type {
   Preferences,
   PublicIPStatus,
   PurgeResult,
+  SecurityStatus,
   TunnelMetrics,
   UpdateStatus,
+  VersionInfo,
 } from './types'
 
 export type ApiErrorKind = 'offline' | 'unauthorized' | 'server'
@@ -45,11 +53,16 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   const headers = new Headers(init.headers)
   headers.set('X-Kongtrol-Lang', currentLang)
   headers.set('Accept', accept)
+  await authReady()
+  let res: Response
   try {
-    return await fetch(path, { ...init, headers, credentials: 'same-origin' })
+    res = await fetch(path, { ...init, headers, credentials: 'same-origin' })
   } catch {
+    connection.set('offline')
     throw new ApiError('offline', 0)
   }
+  connection.set('online')
+  return res
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -68,9 +81,15 @@ async function parse<T>(res: Response): Promise<T> {
     }
   }
   if (!res.ok) {
-    const kind: ApiErrorKind = res.status === 401 || res.status === 403 ? 'unauthorized' : 'server'
-    throw new ApiError(kind, res.status, (body ?? {}) as ApiErrorBody)
+    const err = (body ?? {}) as ApiErrorBody
+    // 401, or 403 without a translated key, comes from the auth middleware
+    // (cookie or Origin). A translated 403 is an ordinary failure, e.g. the
+    // user declined the OS permission prompt while installing the helper.
+    const auth = res.status === 401 || (res.status === 403 && !err.error_key)
+    noteAuthStatus(res.status, auth)
+    throw new ApiError(auth ? 'unauthorized' : 'server', res.status, err)
   }
+  noteAuthStatus(res.status, false)
   return body as T
 }
 
@@ -82,14 +101,31 @@ function sendJSON<T>(method: 'PUT' | 'POST', path: string, payload: unknown): Pr
   })
 }
 
+const enc = encodeURIComponent
+
+/** One order everywhere (REST and WebSocket), so unchanged rows keep their identity. */
+export function sortTunnels(list: TunnelMetrics[]): TunnelMetrics[] {
+  return [...list].sort((a, b) => a.Name.localeCompare(b.Name))
+}
+
 export const api = {
-  tunnels: () => request<TunnelMetrics[]>('/api/v1/tunnels'),
+  tunnels: () => request<TunnelMetrics[] | null>('/api/v1/tunnels').then((l) => sortTunnels(l ?? [])),
+  connect: (name: string) => request<unknown>(`/api/v1/tunnels/${enc(name)}/connect`, { method: 'POST' }),
+  disconnect: (name: string) => request<unknown>(`/api/v1/tunnels/${enc(name)}/disconnect`, { method: 'POST' }),
+  cancelConnect: (name: string) =>
+    request<unknown>(`/api/v1/tunnels/${enc(name)}/cancel_connect`, { method: 'POST' }),
   helperStatus: () => request<HelperStatus>('/api/v1/helper/status'),
   /** Shows one OS permission prompt; may take minutes. Empty body by design. */
   installHelper: () => request<HelperStatus>('/api/v1/helper/install', { method: 'POST' }),
+  /** Daemon build (version, commit, date); same as `kongtrol version`. */
+  version: () => request<VersionInfo>('/api/v1/version'),
   preferences: () => request<Preferences>('/api/v1/preferences'),
   savePreferences: (update: Partial<Preferences>) =>
     sendJSON<Preferences>('PUT', '/api/v1/preferences', update),
+  /** Kill switch, DNS guard and public IP state. Reads state only; no external lookup. */
+  security: () => request<SecurityStatus>('/api/v1/security/status'),
+  setKillSwitch: (enabled: boolean) => sendJSON<unknown>('POST', '/api/v1/security/killswitch', { enabled }),
+  setDNSGuard: (enabled: boolean) => sendJSON<unknown>('POST', '/api/v1/security/dnsguard', { enabled }),
   /** Reads state only; no external lookup. */
   publicIP: () => request<PublicIPStatus>('/api/v1/security/status'),
   /** Opt in/out of the external public IP lookup. */
@@ -110,48 +146,4 @@ export const api = {
     if (!res.ok) return parse<Blob>(res)
     return res.blob()
   },
-}
-
-/**
- * Subscribes to the live tunnel feed (/api/v1/ws/metrics). Reconnects with
- * backoff; calls onDown while disconnected so callers can fall back to
- * polling. Returns a function that closes the feed.
- */
-export function subscribeTunnels(
-  onSnapshot: (tunnels: TunnelMetrics[]) => void,
-  onDown: () => void,
-): () => void {
-  let socket: WebSocket | null = null
-  let closed = false
-  let attempt = 0
-  let timer: ReturnType<typeof setTimeout> | undefined
-
-  const connect = () => {
-    const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
-    socket = new WebSocket(`${scheme}://${location.host}/api/v1/ws/metrics`)
-    socket.onopen = () => {
-      attempt = 0
-    }
-    socket.onmessage = (event: MessageEvent<string>) => {
-      try {
-        const map = JSON.parse(event.data) as Record<string, TunnelMetrics> | null
-        onSnapshot(Object.values(map ?? {}))
-      } catch {
-        // Ignore a malformed frame; the next snapshot replaces it.
-      }
-    }
-    socket.onclose = () => {
-      if (closed) return
-      onDown()
-      const delay = Math.min(30_000, 1_000 * 2 ** attempt++)
-      timer = setTimeout(connect, delay)
-    }
-  }
-  connect()
-
-  return () => {
-    closed = true
-    clearTimeout(timer)
-    socket?.close()
-  }
 }

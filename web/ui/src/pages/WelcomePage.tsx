@@ -1,11 +1,12 @@
-// "Bienvenida / Primeros pasos" — first page migrated to the new UI (phase 1).
+// Inicio — first page migrated to the new UI (phase 1 of issue #19).
 // Read-only except the helper install button (existing POST /api/v1/helper/install),
 // the public IP opt-in, the diagnostics card (doctor + export, GUI parity) and
-// Ajustes (update notice opt-in, "Borrar todos mis datos").
+// Ajustes (update notice opt-in, "Borrar todos mis datos"). Phase 2 turns it
+// into the full Home of docs/dashboard-parity.md.
+import { useEffect } from 'react'
 import { useConfigExport, useDoctor, useHelper, usePublicIP, useTunnels } from '../api/hooks'
 import { usePurgeData, useUpdates } from '../api/lifecycle-hooks'
 import { usePreferences } from '../app/preferences-context'
-import { AppShell } from '../components/layout/AppShell'
 import { ExternalLink } from '../components/ui/ExternalLink'
 import { ActionTiles } from '../components/welcome/ActionTiles'
 import { DiagnosticsCard } from '../components/welcome/DiagnosticsCard'
@@ -27,11 +28,16 @@ export function WelcomePage() {
   const purge = usePurgeData()
   const noVPNs = tunnels.tunnels !== null && tunnels.tunnels.length === 0
 
+  useEffect(() => {
+    document.title = `${t('nav.home')} · ${t('app.name')}`
+  }, [t])
+
   return (
-    <AppShell {...(helper.status?.cli_version ? { version: helper.status.cli_version } : {})}>
+    <>
       <section className="hero" aria-labelledby="welcome-title">
-        <p className="eyebrow">{t('welcome.eyebrow')}</p>
-        <h1 id="welcome-title">{t('welcome.title')}</h1>
+        <h1 id="welcome-title" tabIndex={-1}>
+          {t('welcome.title')}
+        </h1>
         <p className="lead">{t('welcome.lead')}</p>
         <ExternalLink href={guideLink('quickstart')}>{t('help.quickstart')}</ExternalLink>
       </section>
@@ -53,6 +59,6 @@ export function WelcomePage() {
           <DataCard state={purge} />
         </div>
       </section>
-    </AppShell>
+    </>
   )
 }

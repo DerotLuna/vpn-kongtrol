@@ -71,7 +71,8 @@ describe('WelcomePage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Bienvenido a Kongtrol' })).toBeInTheDocument()
     expect(await screen.findByText('1 de 2 conectadas')).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Instalar ayudante' })).toBeEnabled()
-    expect(await screen.findByText('Kongtrol v1.2.3')).toBeInTheDocument()
+    // No GET /api/v1/version on this daemon: the helper status' cli_version is the fallback.
+    expect((await screen.findAllByText('Versión v1.2.3'))[0]).toBeInTheDocument()
 
     const guideLinks = screen
       .getAllByRole('link')
@@ -95,7 +96,10 @@ describe('WelcomePage', () => {
     render(<App />)
 
     await userEvent.click(await screen.findByRole('button', { name: 'Install helper' }))
-    expect(await screen.findByText('Done: the helper is installed.')).toBeInTheDocument()
+    expect(await screen.findByText('Helper ready: no need to install it again.')).toBeInTheDocument()
+    // One confirmation toast, and the install button is gone at once (no poll wait).
+    expect(await screen.findByText('Helper ready · no need to install it again')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Install helper' })).toBeNull()
     const install = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')
     expect(new Headers(install?.[1]?.headers).get('X-Kongtrol-Lang')).toBe('en')
     // No VPNs yet: "Add VPN" is the primary action.

@@ -1,11 +1,8 @@
-// Kongtrol UI — update notice and "delete all my data" hooks · v0.1.0 · 2026-11-18
+// Kongtrol UI — update notice and "delete all my data" hooks · v0.1.1 · 2026-11-18
 import { useCallback, useEffect, useState } from 'react'
-import { ApiError, api } from './client'
+import { type ApiError, api } from './client'
+import { toApiError } from './errors'
 import type { UpdateStatus } from './types'
-
-function toApiError(err: unknown): ApiError {
-  return err instanceof ApiError ? err : new ApiError('server', 0, { error: String(err) })
-}
 
 export interface UpdatesState {
   status: UpdateStatus | null

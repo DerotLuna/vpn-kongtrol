@@ -30,11 +30,11 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
   const { report, error, running, run } = doctor
 
   // After a successful "Reparar", check again so the list reflects it.
-  const wasInstalling = useRef(false)
+  const wasInstalled = useRef(false)
   useEffect(() => {
-    if (wasInstalling.current && !helper.installing && helper.installed) run()
-    wasInstalling.current = helper.installing
-  }, [helper.installing, helper.installed, run])
+    if (helper.installed && !wasInstalled.current) run()
+    wasInstalled.current = helper.installed
+  }, [helper.installed, run])
 
   const problems = report?.checks.filter((c) => c.status !== 'ok') ?? []
   const passed = report?.checks.filter((c) => c.status === 'ok') ?? []
@@ -99,7 +99,6 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
           <p className="notice ok">{t('diag.fixed')}</p>
         )}
       </div>
-      {helper.installError && <ErrorNotice error={helper.installError} />}
 
       {report && passed.length > 0 && (
         <details className="check-ok">

@@ -1,4 +1,5 @@
-/* KONGTROL UI — base + component styles · v0.2.0 · 2026-11-18 */
+/* KONGTROL UI — base + Inicio styles · v0.3.0 · 2026-11-18
+   Kit: kit.css · shell: shell.css */
 @import './tokens.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,39 +29,7 @@ a:hover { color: var(--signal-hi); }
 }
 .skip-link:focus { top: 12px; color: var(--on-signal); }
 
-.shell { display: flex; flex-direction: column; min-height: 100dvh; }
-.container { width: 100%; max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
-
-/* ── Header ─────────────────────────────────────────────────────────────── */
-.app-header {
-  position: sticky; top: 0; z-index: 5;
-  background: color-mix(in srgb, var(--bg) 88%, transparent);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-}
-.app-header .container {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; min-height: 64px; flex-wrap: wrap;
-}
-.brand {
-  display: inline-flex; align-items: center; gap: 10px;
-  color: var(--text); text-decoration: none;
-  font: 700 18px/1 var(--font-display); letter-spacing: -0.01em;
-}
-.brand img { width: 32px; height: 32px; filter: var(--logo-filter); }
-.header-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.header-link, .icon-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  min-height: 40px; padding: 0 12px; border-radius: var(--radius);
-  border: 1px solid transparent; background: none; cursor: pointer;
-  color: var(--text-muted); font-size: 14px; font-weight: 500; text-decoration: none;
-}
-.header-link:hover, .icon-btn:hover { color: var(--text); background: var(--surface-2); }
-.icon-btn { min-width: 40px; justify-content: center; border-color: var(--border); }
-.icon-btn svg, .header-link svg { width: 16px; height: 16px; }
-
-/* ── Main / hero ───────────────────────────────────────────────────────── */
-main { flex: 1; padding: 40px 0 64px; }
+/* ── Hero (Inicio) ─────────────────────────────────────────────────────── */
 .hero {
   position: relative; overflow: hidden;
   padding: 40px 32px; margin-bottom: 32px;
@@ -74,10 +43,6 @@ main { flex: 1; padding: 40px 0 64px; }
   mask-image: radial-gradient(circle at 100% 0%, #000 0, transparent 70%);
 }
 .hero > * { position: relative; }
-.eyebrow {
-  font: 600 12px/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--signal); margin-bottom: 12px;
-}
 .hero h1 {
   font: 700 clamp(28px, 4.5vw, 44px)/1.1 var(--font-display);
   letter-spacing: -0.02em; margin-bottom: 12px; max-width: 18ch;
@@ -133,11 +98,23 @@ main { flex: 1; padding: 40px 0 64px; }
   font: 500 12px/1.2 var(--font-mono); white-space: nowrap;
   background: var(--surface-3); color: var(--text-muted);
 }
-.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+/* Four States Rule (DESIGN.md): word + color + dot shape, never color alone.
+   ok = filled dot, connecting = ring, caution = diamond, bad = square,
+   idle = hollow, unknown = dashed ring, on = filled neutral. Amber (the
+   brand) is never a state. */
+.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.pill { font-variant-numeric: tabular-nums; }
 .pill.ok { background: var(--live-soft); color: var(--live); }
-.pill.warn, .pill.on { background: var(--signal-soft); color: var(--signal); }
+.pill.connecting { background: var(--steel-soft); color: var(--steel); }
+.pill.connecting::before { background: none; box-shadow: inset 0 0 0 2px currentColor; }
 .pill.caution { background: var(--caution-soft); color: var(--caution); }
+.pill.caution::before { border-radius: 1px; transform: rotate(45deg) scale(0.9); }
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
+.pill.bad::before { border-radius: 1px; }
+.pill:not(.ok):not(.connecting):not(.caution):not(.bad):not(.on):not(.unknown)::before { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
+.pill.unknown { background: none; border: 1px dashed var(--border-2); color: var(--text-muted); }
+.pill.unknown::before { background: none; border: 1.5px dashed currentColor; width: 8px; height: 8px; }
+.pill.on { background: var(--surface-3); color: var(--text); }
 
 /* ── Tunnel list ───────────────────────────────────────────────────────── */
 .tunnel-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
@@ -201,22 +178,11 @@ main { flex: 1; padding: 40px 0 64px; }
 .notice-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
 .page-notice { margin-bottom: 24px; }
 
-/* ── Footer ────────────────────────────────────────────────────────────── */
-.app-footer { border-top: 1px solid var(--border); padding: 20px 0; font-size: 13px; color: var(--text-dim); }
-.app-footer .container { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-
 .ext::after { content: ' ↗'; }
 
 @media (max-width: 640px) {
-  .container { padding: 0 16px; }
-  main { padding-top: 24px; }
   .hero { padding: 28px 20px; }
   .lead { font-size: 16px; }
-  /* Icon-only on phones; the label stays for screen readers. */
-  .header-link .label {
-    position: absolute; width: 1px; height: 1px; overflow: hidden;
-    clip-path: inset(50%); white-space: nowrap;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
