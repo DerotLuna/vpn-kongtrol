@@ -107,3 +107,7 @@ audit.log
 
 # Wrangler local cache/state (account id, dev state) — machine-local
 .wrangler/
+
+# impeccable: solo design.json se versiona
+.impeccable/*
+!.impeccable/design.json

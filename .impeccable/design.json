@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T19:30:00Z",
+  "title": "Design System: VPN Kongtrol",
+  "extensions": {
+    "colorMeta": {
+      "signal": {
+        "role": "primary",
+        "displayName": "Phosphor Amber",
+        "canonical": "#ffb020",
+        "tonalRamp": [
+          "#3d2600",
+          "#5c3a00",
+          "#7a4c04",
+          "#9c5700",
+          "#c97a00",
+          "#ffb020",
+          "#ffc456",
+          "#ffe3a8"
+        ]
+      },
+      "steel": {
+        "role": "secondary",
+        "displayName": "Instrument Steel",
+        "canonical": "#7fb4d4",
+        "tonalRamp": [
+          "#10283a",
+          "#1b3c55",
+          "#2f6a8f",
+          "#4a86ab",
+          "#6ea8c9",
+          "#7fb4d4",
+          "#a8cde3",
+          "#d9ebf5"
+        ]
+      },
+      "live": {
+        "role": "tertiary",
+        "displayName": "Live Green (up / OK)",
+        "canonical": "#3ecf72",
+        "tonalRamp": [
+          "#0b2e18",
+          "#11462a",
+          "#157a3f",
+          "#1f9a52",
+          "#2fb862",
+          "#3ecf72",
+          "#7fe3a4",
+          "#c9f3d8"
+        ]
+      },
+      "caution": {
+        "role": "tertiary",
+        "displayName": "Caution Orange (no response)",
+        "canonical": "#ff8a3d",
+        "tonalRamp": [
+          "#3a1704",
+          "#5e2606",
+          "#8a3a07",
+          "#b54708",
+          "#de6416",
+          "#ff8a3d",
+          "#ffb487",
+          "#ffe0cc"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Fault Red",
+        "canonical": "#ff5a52",
+        "tonalRamp": [
+          "#3d0a08",
+          "#5f1310",
+          "#8c1c17",
+          "#b3261e",
+          "#e0403a",
+          "#ff5a52",
+          "#ff9690",
+          "#ffd6d3"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Tower Night",
+        "canonical": "#0a0c10",
+        "tonalRamp": [
+          "#0a0c10",
+          "#12151b",
+          "#171b23",
+          "#1d222c",
+          "#232833",
+          "#313847",
+          "#838d9d",
+          "#eef1f5"
+        ]
+      },
+      "bg-light": {
+        "role": "neutral",
+        "displayName": "Bone Paper",
+        "canonical": "#f1ede4",
+        "tonalRamp": [
+          "#1b1813",
+          "#4c4638",
+          "#635c4b",
+          "#c9bfa8",
+          "#ddd5c4",
+          "#ece6d8",
+          "#f1ede4",
+          "#fbf9f4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Section titles, balanced, max 30ch."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Guide section titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card and group headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Plain-language prose for people, max 65ch."
+      },
+      "label": {
+        "displayName": "Label (mono)",
+        "purpose": "Anything machine-like: flags, buttons, chips, commands."
+      },
+      "label-min": {
+        "displayName": "Label min (11px floor)",
+        "purpose": "tmux bar and fine print; nothing renders smaller."
+      },
+      "button": {
+        "displayName": "Button",
+        "purpose": "Button text; uppercase on the primary."
+      }
+    },
+    "shadows": [
+      {
+        "name": "terminal-float",
+        "value": "0 0 0 1px rgba(255,176,32,0.05), 0 30px 70px rgba(0,0,0,0.45)",
+        "purpose": "Hero terminal window only (dark). Light: 0 18px 44px rgba(60,50,25,0.12)."
+      },
+      {
+        "name": "signal-glow",
+        "value": "0 10px 28px -6px rgba(255,176,32,0.28)",
+        "purpose": "Primary button hover only."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Default state transitions (M3 standard)."
+      },
+      {
+        "name": "expo-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Reveals, theme wipe, demo entrances."
+      },
+      {
+        "name": "quart-out",
+        "value": "cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Button lift and icon nudge."
+      },
+      {
+        "name": "dur-short",
+        "value": "150ms",
+        "purpose": "Hover and color changes."
+      },
+      {
+        "name": "dur-medium",
+        "value": "250ms",
+        "purpose": "Open/close, expand."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "420px"
+      },
+      {
+        "name": "phone-wide",
+        "value": "520px"
+      },
+      {
+        "name": "small",
+        "value": "640px"
+      },
+      {
+        "name": "tablet-narrow",
+        "value": "720px"
+      },
+      {
+        "name": "diagram-list",
+        "value": "767px"
+      },
+      {
+        "name": "tablet",
+        "value": "960px"
+      },
+      {
+        "name": "desktop-narrow",
+        "value": "1080px"
+      },
+      {
+        "name": "max",
+        "value": "1160px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per section (download).",
+      "html": "<button class=\"ds-btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 3v12m0 0-5-5m5 5 5-5M5 21h14\"/></svg>Descargar para Windows</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:12px 22px;background:var(--signal,#ffb020);color:var(--on-signal,#0a0c10);border:1px solid var(--signal,#ffb020);border-radius:6px;font:600 0.82rem 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.04em;text-transform:uppercase;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.18);transition:transform .2s cubic-bezier(.25,1,.5,1),box-shadow .2s,background-color .2s}.ds-btn-primary:hover{background:var(--signal-hi,#ffc456);transform:translateY(-1px);box-shadow:0 10px 28px -6px rgba(255,176,32,.28)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:2px solid var(--signal,#ffb020);outline-offset:3px}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary action next to the primary (View on GitHub).",
+      "html": "<button class=\"ds-btn-ghost\">Ver en GitHub</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:12px 20px;background:transparent;color:var(--text,#eef1f5);border:1px solid var(--border-2,#313847);border-radius:6px;font:500 0.8rem 'IBM Plex Mono',ui-monospace,monospace;letter-spacing:.04em;cursor:pointer;transition:border-color .2s,color .2s,background-color .2s,transform .2s}.ds-btn-ghost:hover{border-color:var(--signal,#ffb020);color:var(--signal,#ffb020);background:rgba(255,176,32,.12);transform:translateY(-1px)}.ds-btn-ghost:focus-visible{outline:2px solid var(--signal,#ffb020);outline-offset:3px}"
+    },
+    {
+      "name": "Header Nav (CLI flags)",
+      "kind": "nav",
+      "refersTo": "nav",
+      "description": "Links read as CLI flags; dashes stay dim until hover.",
+      "html": "<nav class=\"ds-nav\"><span class=\"ds-brand\">KONGTROL</span><span class=\"ds-beta\">BETA</span><a class=\"ds-flag is-current\" href=\"#\"><span>--</span>inicio</a><a class=\"ds-flag\" href=\"#\"><span>--</span>guia</a></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;gap:20px;padding:12px 16px;background:var(--bg,#0a0c10);border-bottom:1px solid var(--border,#232833)}.ds-brand{font:600 .9rem 'Space Grotesk',system-ui,sans-serif;letter-spacing:.3em;color:var(--text,#eef1f5)}.ds-beta{font:500 .6875rem 'IBM Plex Mono',monospace;border:1px solid var(--border-2,#313847);padding:1px 6px;border-radius:4px;color:var(--text-muted,#99a3b3);margin-right:auto}.ds-flag{font:.76rem 'IBM Plex Mono',monospace;letter-spacing:.04em;color:var(--text-muted,#99a3b3);text-decoration:none;transition:color .15s}.ds-flag span{color:var(--text-dim,#8a94a4);transition:color .15s}.ds-flag:hover,.ds-flag.is-current{color:var(--signal,#ffb020)}.ds-flag:hover span,.ds-flag.is-current span{color:var(--signal,#ffb020)}"
+    },
+    {
+      "name": "Tunnel Status Chips",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Four States Rule: dot color plus word.",
+      "html": "<div class=\"ds-states\"><span class=\"ds-st ds-on\"><i></i>Conectado</span><span class=\"ds-st ds-ing\"><i></i>Conectando</span><span class=\"ds-st ds-deg\"><i></i>Sin respuesta</span><span class=\"ds-st ds-err\"><i></i>Error</span></div>",
+      "css": ".ds-states{display:flex;flex-wrap:wrap;gap:8px}.ds-st{display:inline-flex;align-items:center;gap:7px;font:500 .72rem 'IBM Plex Mono',monospace;padding:5px 10px;border-radius:999px;border:1px solid var(--border-2,#313847);color:var(--text,#eef1f5)}.ds-st i{width:8px;height:8px;border-radius:50%}.ds-on i{background:#3ecf72;box-shadow:0 0 0 3px rgba(62,207,114,.16)}.ds-ing i{background:#7fb4d4}.ds-deg{border-color:rgba(255,138,61,.55)}.ds-deg i{background:#ff8a3d}.ds-err{border-color:rgba(255,90,82,.55)}.ds-err i{background:#ff5a52}"
+    },
+    {
+      "name": "Terminal Window",
+      "kind": "custom",
+      "refersTo": "terminal-window",
+      "description": "Signature frame: the guest session at kongtrol.tower.",
+      "html": "<div class=\"ds-term\"><div class=\"ds-term-bar\"><i></i><i></i><i></i><span>ssh guest@kongtrol.tower</span></div><div class=\"ds-term-body\"><p class=\"ds-dim\">Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1</p><p><b>$</b> kongtrol up --group work</p><p class=\"ds-row\"><em>✔</em> office <span>FortiClient · 10.10.0.12</span></p></div></div>",
+      "css": ".ds-term{background:var(--surface,#12151b);border:1px solid var(--border,#232833);border-radius:12px;overflow:hidden;box-shadow:0 0 0 1px rgba(255,176,32,.05),0 30px 70px rgba(0,0,0,.45);font:.8rem 'IBM Plex Mono',monospace;color:var(--text,#eef1f5)}.ds-term-bar{display:flex;align-items:center;gap:7px;padding:12px 16px;background:var(--surface-2,#171b23);border-bottom:1px solid var(--border,#232833)}.ds-term-bar i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.ds-term-bar i:nth-child(2){background:#febc2e}.ds-term-bar i:nth-child(3){background:#28c840}.ds-term-bar span{flex:1;text-align:center;color:var(--text-muted,#99a3b3)}.ds-term-body{padding:16px 20px}.ds-term-body p{margin:0 0 6px}.ds-dim{color:var(--text-dim,#8a94a4)}.ds-term-body b{color:var(--signal,#ffb020)}.ds-row em{font-style:normal;color:#3ecf72}.ds-row span{color:var(--text-muted,#99a3b3);margin-left:12px}"
+    },
+    {
+      "name": "tmux Status Bar",
+      "kind": "nav",
+      "refersTo": "tmux-bar",
+      "description": "Fixed bottom bar: session, numbered section windows, kill-switch state, clock.",
+      "html": "<div class=\"ds-tmux\"><b>[kongtrol]</b><a class=\"is-active\">0:motd*</a><a>1:empezar</a><a>2:pasos</a><span>armed │ 12:53</span></div>",
+      "css": ".ds-tmux{display:flex;align-items:center;gap:8px;height:32px;padding:0 16px;background:var(--surface-2,#171b23);border-top:1px solid var(--border,#232833);font:.6875rem 'IBM Plex Mono',monospace;letter-spacing:.03em}.ds-tmux b{color:var(--signal,#ffb020);margin-right:8px}.ds-tmux a{display:inline-flex;align-items:center;min-height:24px;padding:2px 8px;border-radius:3px;color:var(--text-dim,#8a94a4);cursor:pointer}.ds-tmux a:hover{color:var(--text,#eef1f5)}.ds-tmux a.is-active{background:var(--signal,#ffb020);color:var(--on-signal,#0a0c10);font-weight:600}.ds-tmux span{margin-left:auto;color:var(--signal,#ffb020)}"
+    },
+    {
+      "name": "Provider Card",
+      "kind": "card",
+      "refersTo": "provider-card",
+      "description": "VPN card with our own monogram tile and OS chips; group tint amber (attach) or steel (direct).",
+      "html": "<div class=\"ds-prov\"><span class=\"ds-mono\">Nv</span><div><b>NordVPN</b><small>PRIVACIDAD</small></div><ul><li class=\"is-auto\">Windows <em>auto</em></li><li>macOS <em>manual</em></li></ul></div>",
+      "css": ".ds-prov{--tint:var(--signal,#ffb020);display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;padding:14px;border:1px solid var(--border,#232833);border-radius:6px;background:var(--surface,#12151b);color:var(--text,#eef1f5);transition:border-color .2s,background-color .2s}.ds-prov:hover{border-color:color-mix(in srgb,var(--tint) 45%,var(--border,#232833));background:var(--surface-2,#171b23)}.ds-mono{position:relative;display:grid;place-items:center;width:44px;height:44px;border-radius:11px;font:600 1rem 'Space Grotesk',sans-serif;border:1px solid color-mix(in srgb,var(--tint) 30%,var(--border-2,#313847));background:linear-gradient(160deg,color-mix(in srgb,var(--tint) 14%,var(--surface,#12151b)),var(--bg,#0a0c10))}.ds-mono::after{content:'';position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--tint)}.ds-prov b{font:600 .95rem 'Space Grotesk',sans-serif;display:block}.ds-prov small{font:.6875rem 'IBM Plex Mono',monospace;letter-spacing:.06em;color:var(--text-dim,#8a94a4)}.ds-prov ul{grid-column:1/-1;display:flex;gap:6px;list-style:none;margin:0;padding:0}.ds-prov li{font:.6875rem 'IBM Plex Mono',monospace;padding:3px 9px;border-radius:999px;border:1px solid var(--border-2,#313847);color:var(--text-muted,#99a3b3)}.ds-prov li em{font-style:normal}.ds-prov li.is-auto{border-color:color-mix(in srgb,var(--signal,#ffb020) 40%,var(--border,#232833))}.ds-prov li.is-auto em{color:var(--signal,#ffb020)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Sesión en la Torre",
+    "overview": "The site is not a page about Kongtrol; it is a guest session inside Kongtrol's control tower (ssh guest@kongtrol.tower). Everything a visitor reads arrives as terminal output: a \"Last login\" line, a block-letter ASCII banner, # comments, commands with $, tunnel rows with ✔, navigation written as CLI flags (--inicio, --guia) and a tmux status bar pinned to the bottom with numbered windows (0:motd, 1:empezar…), the kill-switch state (armed) and a clock. Plain-language sentences (Inter) sit inside that session so non-technical visitors are never left decoding jargon; the terminal is the frame, not a test.\n\nThe material is amber phosphor on near-black in the dark theme and ink on bone paper in the light theme, with a faint field of concentric contour rings echoing the monkey mark's line art. Density is calm: one terminal window per screen, generous section rhythm, no decorative imagery. Motion is reserved for things that explain: the boot timeline, the routing diagram, the attach demo, the theme wipe. Components themselves stay precise and quiet.",
+    "keyCharacteristics": [
+      "Terminal session as the page frame (window chrome, ASCII banner, tmux bar, CLI-flag navigation).",
+      "One brand accent (amber signal); every other color is a state.",
+      "Three type voices: Space Grotesk headings, Inter prose, IBM Plex Mono for everything machine-like.",
+      "Precise components, expressive demos.",
+      "Two complete themes (follows the OS preference until the visitor picks one; light on bone paper) plus a hidden green-phosphor CRT mode (↑↑↓↓←→←→BA)."
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "body": "Amber is the only brand color. If something is amber, it is the brand or the action; it is never a state.",
+        "section": "colors"
+      },
+      {
+        "name": "The Green Means Up Rule",
+        "body": "Green means up or OK: a connected or healthy tunnel, a passed check (✔ in terminal output), the attach demo's \"Conectado\". Groups, categories, \"auto\" support and decoration never use green.",
+        "section": "colors"
+      },
+      {
+        "name": "The Four States Rule",
+        "body": "Connected = green, connecting = steel, no response = caution orange, error = red. Each state also carries a word or icon; color is never the only signal.",
+        "section": "colors"
+      },
+      {
+        "name": "The Machine Speaks Mono Rule",
+        "body": "Anything a computer would print or accept — commands, flags, paths, IPs, filenames, states — is set in IBM Plex Mono. Sentences meant for people are Inter.",
+        "section": "typography"
+      },
+      {
+        "name": "The 11px Floor Rule",
+        "body": "No rendered text below 11px, on any screen size (ADR-0028).",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. Only the terminal window floats; everything else gains depth through tone or responds to interaction.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep amber as the only accent and use it for the one primary action per section.",
+      "Do use green only for \"connected\" or a passed check, caution orange for \"no response\", red for errors, steel for \"connecting\", always with a word or icon.",
+      "Do write anything machine-like in IBM Plex Mono and anything for people in Inter.",
+      "Do keep motion for demos that explain (routing, attach, boot) and animate only transform/opacity, on screen, respecting reduced motion.",
+      "Do keep the terminal frame (window chrome, ASCII banner, CLI-flag nav, tmux bar) when adding sections."
+    ],
+    "donts": [
+      "Don't use green for groups, categories, support levels or decoration.",
+      "Don't use amber to signal a state; it collides with the brand and the primary button.",
+      "Don't add glow, float or breathing effects to buttons and cards; expression belongs to the demos.",
+      "Don't render text below 11px or targets below 24px.",
+      "Don't use third-party VPN logos or brand colors.",
+      "Don't add shadows to anything except the terminal window and the primary button hover."
+    ]
+  }
+}
