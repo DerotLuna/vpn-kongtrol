@@ -64,7 +64,7 @@ func ReadManifest(dataDir string) (Manifest, bool) {
 	defer f.Close()
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
-		line := strings.TrimSpace(sc.Text())
+		line := strings.TrimSpace(strings.TrimPrefix(sc.Text(), "﻿"))
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}

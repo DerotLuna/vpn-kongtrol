@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.0.0 · 2026-11-18 · docs/adr/0025-desktop-release-channels-first-run.md
+# Version 2.1.0 · 2026-11-18 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0033-uninstall-keeps-data-by-default.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -9,6 +9,7 @@
 #   and the ad-hoc signed app opens without a Gatekeeper prompt.
 # Linux: kongtrol + kongtrol-tray go to the install dir, plus a menu entry and
 #   (unless KONGTROL_NO_AUTOSTART=1) an autostart entry for your user.
+# Uninstall: ... | sh -s -- --uninstall   (add --purge to also delete your data)
 # Run it again to upgrade: your settings in ~/.kongtrol are never touched, and
 # a running Kongtrol is restarted on the new version keeping its tunnels.
 #
@@ -27,6 +28,36 @@ VERSION="${KONGTROL_VERSION:-latest}"
 info() { printf '\033[1;34m==>\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$1"; }
 die()  { printf '\033[1;31merror:\033[0m %s\n' "$1" >&2; exit 1; }
+
+# --uninstall [--purge]: delegate to `kongtrol uninstall`, the same logic the
+# app uses (docs/adr/0033-uninstall-keeps-data-by-default.md). Your data stays
+# unless you add --purge.
+do_uninstall=0
+do_purge=0
+for arg in "$@"; do
+  case "$arg" in
+    --uninstall) do_uninstall=1 ;;
+    --purge) do_purge=1 ;;
+    *) die "unknown option: $arg (use --uninstall, optionally with --purge)" ;;
+  esac
+done
+if [ "$do_purge" = 1 ] && [ "$do_uninstall" = 0 ]; then
+  die "--purge only works with --uninstall"
+fi
+if [ "$do_uninstall" = 1 ]; then
+  bin="$(command -v kongtrol 2>/dev/null || true)"
+  if [ -z "$bin" ]; then
+    for d in "${KONGTROL_INSTALL_DIR:-}" /usr/local/bin "${HOME}/.local/bin"; do
+      if [ -n "$d" ] && [ -x "$d/kongtrol" ]; then bin="$d/kongtrol"; break; fi
+    done
+  fi
+  [ -n "$bin" ] || die "kongtrol is not installed here: nothing to remove"
+  set -- uninstall
+  [ "$do_purge" = 1 ] && set -- uninstall --purge
+  # Piped from curl, stdin is the script: ask on the terminal instead.
+  if [ -r /dev/tty ]; then exec "$bin" "$@" </dev/tty; fi
+  exec "$bin" "$@"
+fi
 
 os="$(uname -s)"
 case "$os" in
@@ -119,6 +150,22 @@ else
   fi
   info "Installed ${install_dir}/kongtrol and ${install_dir}/kongtrol-tray (+ menu entry)"
 fi
+
+# What this script installed, so `kongtrol uninstall` removes exactly that
+# and nothing a package manager owns (docs/adr/0033-…).
+mkdir -p "${HOME}/.kongtrol"
+{
+  echo "# Written by install.sh: files kongtrol uninstall may remove."
+  echo "file=${install_dir}/kongtrol"
+  if [ "$goos" = "darwin" ]; then
+    echo "file=${app_dir}/Kongtrol.app"
+  else
+    echo "file=${install_dir}/kongtrol-tray"
+    echo "file=${apps}/applications/kongtrol.desktop"
+    echo "file=${apps}/icons/hicolor/512x512/apps/kongtrol.png"
+    if [ "${KONGTROL_NO_AUTOSTART:-0}" != "1" ]; then echo "autostart=${autostart}/kongtrol.desktop"; fi
+  fi
+} > "${HOME}/.kongtrol/install.manifest"
 
 case ":$PATH:" in
   *":${install_dir}:"*) ;;
