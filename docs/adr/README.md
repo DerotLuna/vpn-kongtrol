@@ -49,6 +49,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0034](0034-uninstall-and-update-notice.md) | Uninstall keeps data unless asked (purge with exact keychain entries, never package-manager files); opt-in update notice from GitHub Releases, ≤1/24 h, never auto-update | Accepted | 2026-11-18 |
 | [0035](0035-install-scripts-pinned-and-release-assets.md) | One-line install scripts: pinned to the published tag from `landing/src/links.ts` now; from v0.6.0 release assets (+ checksums) behind `kongtrol.app/install.sh` (302 to `releases/latest/download`) | Accepted | 2026-11-18 |
 | [0036](0036-browser-sessions-one-time-nonce.md) | Browser sessions: one-time nonce (`#k=`, 60 s) minted by native clients, traded for an in-memory HttpOnly session cookie; pages never hand out credentials; Host checked on every route | Accepted | 2026-11-18 |
+| [0037](0037-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted | 2026-11-18 |
 
 ## Statuses
 

@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.7.0 · 2026-11-18
+Version 1.8.0 · 2026-11-18
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -39,6 +39,7 @@ reasoned but unverified.
 | [2026-11-18-cli-command-structure](2026-11-18-cli-command-structure.md) | clig.dev interactivity/deprecation/naming, cobra deprecation text, gh/tailscale/systemctl naming | ADR-0033 |
 | [2026-11-18-install-script-delivery](2026-11-18-install-script-delivery.md) | GitHub latest-download alias, GoReleaser release/checksum extra_files, Cloudflare Workers `_redirects` | ADR-0035 |
 | [2026-11-18-local-web-ui-auth](2026-11-18-local-web-ui-auth.md) | OWASP session/CSRF guidance, ASVS V3, Jupyter tokens, Syncthing Host check; token-on-page-load root cause | ADR-0036 |
+| [2026-11-18-security-hardening-review](2026-11-18-security-hardening-review.md) | wg dump + X25519 key binding, TrustedInstaller SID, Program Files ACL, cmd.exe quoting, GitHub Actions hardening, Renovate digest pinning, OWASP Top 10 / Desktop Top 10 | ADR-0037 |
 
 ## Template
 

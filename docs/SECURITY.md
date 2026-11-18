@@ -297,3 +297,23 @@ The watchdog polls every 5 seconds per profile. On an unexpected disconnect it w
 ## Graceful daemon shutdown
 
 `kongtrol down` asks a running `kongtrol up` daemon to shut down through its own API (`POST /api/v1/shutdown`) rather than killing the process directly. This runs the daemon's normal cleanup — DNS restore, kill switch teardown, history flush — before it exits, on every OS (a plain process kill has no cross-platform graceful-termination equivalent, particularly on Windows). A hard kill is only used as a fallback if the daemon doesn't respond.
+
+## OWASP mapping
+
+What the design covers and what is still open, mapped to
+[OWASP Top 10 2021](https://owasp.org/Top10/), [ASVS 4.0.3](https://github.com/OWASP/ASVS/tree/v4.0.3)
+and the [Desktop App Security Top 10](https://owasp.org/www-project-desktop-app-security-top-10/).
+This is a self-assessment, not an audit or certification.
+
+| Area | Covered | Known gaps |
+|---|---|---|
+| Access control — A01, DA5, ASVS V4 | Local API needs the file token (native) or a browser session; pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0036](adr/0036-browser-sessions-one-time-nonce.md), [ADR-0037](adr/0037-local-hardening-review-2026-11.md)). | Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
+| Session management — DA2, ASVS V3 | 256-bit random session ids distinct from the token, HttpOnly + SameSite=Strict, server-side idle (12 h) and absolute (7 d) timeouts, logout, single-use 60 s nonce, in-memory store. | No `Secure` flag (loopback HTTP by design); no per-session binding to the browser beyond the cookie. |
+| CSRF — A01, ASVS V4.2/V13 | SameSite=Strict, `Origin` must be the daemon's own when present (required for the nonce exchange), mutations only as `application/json`. | — |
+| Injection / XSS — A03, DA1 | Names restricted to a safe charset; the legacy dashboard escapes quotes and passes data via `data-*`; the new UI is React (escaped by default); the panel's CSP allows scripts only from the daemon. | The legacy dashboard CSP still has `'unsafe-inline'` scripts (inline handlers remain for static buttons); removed when the legacy dashboard is retired. |
+| Security misconfiguration — A05, DA6 | Loopback-only bind (non-loopback refused); security headers on every response; update and public IP checks off by default; restrictive file modes for state. | — |
+| Sensitive data / crypto — A02, DA3, DA4 | Credentials only in the OS keychain; HMAC-signed audit log; TLS 1.2+ with default verification for the two opt-in outbound calls. | — |
+| Insecure communication — DA7 | Only the opt-in outbound calls listed above, https only, constrained redirects; everything else is loopback or local IPC. | — |
+| Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts do not yet verify the cosign signature of `checksums.txt` (tracked in a GitHub issue); Windows binaries are unsigned until SignPath is configured. |
+| Logging — A09, DA10 | The helper audits every privileged request (read-only successes of managed tunnels excepted); HMAC-signed audit log in the daemon. | Browser session creation is not audited. |
+| Privileged helper / installer — Desktop Top 10 | Closed operation list, caller identified by the OS, lease-based fail-open cleanup, trusted-binary checks (Unix root-owned; Windows admin-owned and admin-writable only); uninstall deletes only Kongtrol's own files and refuses sudo. | Inno Setup uninstaller working directory not verified (issue). |
