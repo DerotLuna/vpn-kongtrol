@@ -22,13 +22,13 @@ export const META: Record<PageId, Record<Lang, Meta>> = {
   home: {
     es: {
       title: 'VPN Kongtrol — todas tus VPN en un solo lugar',
-      description: 'VPN Kongtrol (Kongtrol) reúne todas tus VPN en un solo lugar. Conecta en tu app de siempre — NordVPN, Proton VPN, Surfshark, FortiClient, WireGuard, OpenVPN, Tailscale, Cloudflare WARP, Cisco AnyConnect o GlobalProtect — y Kongtrol se encarga del resto: reconexión automática, protección contra fugas de DNS, kill switch y reglas de enrutamiento por destino. Ícono en la bandeja, panel web y CLI completa. Gratis y de código abierto para Windows, macOS y Linux.',
+      description: 'Une todas tus VPN en un solo lugar: reconexión automática, kill switch y reglas por destino. Funciona con NordVPN, Proton, WireGuard y más. Gratis y libre.',
       ogDescription: 'Conecta como siempre; Kongtrol se encarga del resto. 10 VPN, reconexión automática, protección contra fugas de DNS, kill switch y reglas de enrutamiento. Gratis y de código abierto para Windows, macOS y Linux.',
       index: true,
     },
     en: {
       title: 'VPN Kongtrol — all your VPNs in one place',
-      description: 'VPN Kongtrol (Kongtrol) puts all your VPNs in one place. Connect in your usual app — NordVPN, Proton VPN, Surfshark, FortiClient, WireGuard, OpenVPN, Tailscale, Cloudflare WARP, Cisco AnyConnect or GlobalProtect — and Kongtrol takes over: auto-reconnect, DNS leak protection, kill switch and per-destination routing rules. Tray app, web panel and full CLI. Free and open source for Windows, macOS and Linux.',
+      description: 'All your VPNs in one place: auto-reconnect, kill switch and per-destination routing. Works with NordVPN, Proton, WireGuard and more. Free and open source.',
       ogDescription: 'Connect the way you always do; Kongtrol handles the rest. 10 VPNs, auto-reconnect, DNS leak protection, kill switch and routing rules. Free and open source for Windows, macOS and Linux.',
       index: true,
     },
@@ -36,13 +36,13 @@ export const META: Record<PageId, Record<Lang, Meta>> = {
   guia: {
     es: {
       title: 'Guía de configuración de VPN Kongtrol — instalar, configurar y enrutar',
-      description: 'Guía paso a paso de VPN Kongtrol: instala el CLI, ejecuta el asistente, agrega perfiles WireGuard, OpenVPN, FortiClient, AnyConnect, ProtonVPN, GlobalProtect, Tailscale o WARP, escribe políticas de enrutamiento y verifícalo todo con kongtrol doctor. Windows, Linux y macOS.',
+      description: 'Guía paso a paso de VPN Kongtrol: instala, agrega tus VPN, crea reglas de enrutamiento y verifica todo con kongtrol doctor. Windows, macOS y Linux.',
       ogDescription: 'Instala el CLI, ejecuta el asistente, agrega tus perfiles VPN, escribe políticas de enrutamiento y verifica todo con kongtrol doctor. Paso a paso para cada sistema operativo.',
       index: true,
     },
     en: {
       title: 'VPN Kongtrol setup guide — install, configure and route',
-      description: 'Step-by-step VPN Kongtrol setup guide: install the CLI, run the wizard, add WireGuard, OpenVPN, FortiClient, AnyConnect, ProtonVPN, GlobalProtect, Tailscale or WARP profiles, write routing policies, and verify everything with kongtrol doctor. Windows, Linux and macOS.',
+      description: 'Step-by-step VPN Kongtrol guide: install, add your VPNs, write routing rules and check everything with kongtrol doctor. Windows, macOS and Linux.',
       ogDescription: 'Install the CLI, run the wizard, add your VPN profiles, write routing policies, and verify the whole stack with kongtrol doctor. Step by step for every OS.',
       index: true,
     },
