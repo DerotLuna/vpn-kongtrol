@@ -18,7 +18,7 @@ export function HelperCard({ helper }: { helper: HelperState }) {
     not_needed: { pill: <StatusPill tone="ok">{t('helper.pill.notNeeded')}</StatusPill>, line: t('helper.elevated') },
     ready: { pill: <StatusPill tone="ok">{t('helper.pill.ready')}</StatusPill>, line: t('helper.ready') },
     missing: { pill: <StatusPill tone="caution">{t('helper.pill.missing')}</StatusPill>, line: t('helper.needsInstall') },
-    outdated: { pill: <StatusPill tone="caution">{t('helper.pill.outdated')}</StatusPill>, line: t('helper.outdated') },
+    outdated: { pill: <StatusPill tone="caution">{t('helper.pill.outdated')}</StatusPill>, line: t('helper.needsUpdate') },
   }[state]
 
   return (

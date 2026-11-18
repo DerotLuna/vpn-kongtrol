@@ -1,10 +1,11 @@
 //go:build ignore
 
-// Brand asset generator — version 1.0.0 · 2026-11-17.
+// Brand asset generator — version 1.1.0 · 2026-11-18.
 //
 // Regenerates the raster fallbacks in assets/brand/ from the masters in
-// assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg) are
-// the masters for anything that can render vectors; the rasters exist only
+// assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg, plus
+// logo-kong-on-dark.svg, the white-ink mark the README shows on GitHub's dark
+// theme) are the masters for anything that can render vectors; the rasters exist only
 // for consumers that cannot (OS tray icons, Open Graph cards, app manifests,
 // README images).
 //
@@ -20,6 +21,12 @@
 //   - The Open Graph card is a photo-like gradient, so it is emitted as JPEG,
 //     which every OG/Twitter consumer accepts (https://ogp.me/#structured).
 //   - WebP is not emitted: golang.org/x/image/webp only decodes.
+//   - Tray / menu bar masks (tray-<px>.png) are rasterized straight from the
+//     vector master source/logo-kong.svg (golang.org/x/image/vector), cropped
+//     to the mark, as black line art on a TRANSPARENT background: the tray
+//     tints them for the taskbar theme (Windows, Linux) or hands them to
+//     macOS as a template image, and draws state badges on top at run time.
+//     One file per tray size, so small sizes are rendered, not downscaled.
 package main
 
 import (
@@ -30,13 +37,21 @@ import (
 	"image/jpeg"
 	"image/png"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"golang.org/x/image/draw"
+	"golang.org/x/image/vector"
 )
+
+// traySizes are the tray / menu bar icon sizes: Windows small icons at
+// 100–200 % scaling (16, 20, 24, 32), its large icon (32, 48), macOS
+// menu bar @1x/@2x (18/36 fit in 16..48 after scaling) and Linux panels.
+var traySizes = []int{16, 20, 24, 32, 48, 64}
 
 const dir = "assets/brand"
 
@@ -64,12 +79,20 @@ func main() {
 		{"source/social-preview.png", "og-1200x630.jpg", 1200, 630, photoJPEG},
 	}
 	for _, name := range []string{"logo.svg", "logo-kong.svg", "favicon.svg"} {
-		n, err := minifySVG(filepath.Join(dir, "source", name), filepath.Join(dir, name))
+		n, err := minifySVG(filepath.Join(dir, "source", name), filepath.Join(dir, name), false)
 		if err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("%-20s %9s %7d bytes\n", name, "vector", n)
 	}
+	// White-ink copy of the mark for dark backgrounds where the page picks the
+	// image (README <picture> with prefers-color-scheme sources), since an SVG
+	// in <img> follows the OS theme, not the site's theme.
+	n, err := minifySVG(filepath.Join(dir, "source", "logo-kong.svg"), filepath.Join(dir, "logo-kong-on-dark.svg"), true)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%-20s %9s %7d bytes\n", "logo-kong-on-dark.svg", "vector", n)
 	for _, j := range jobs {
 		src, err := load(filepath.Join(dir, j.src))
 		if err != nil {
@@ -81,6 +104,253 @@ func main() {
 		}
 		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", j.out, j.w, j.h, n)
 	}
+	paths, err := loadSVGPaths(filepath.Join(dir, "source", "logo-kong.svg"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, px := range traySizes {
+		out := fmt.Sprintf("tray-%d.png", px)
+		var buf bytes.Buffer
+		if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, rasterMask(paths, px)); err != nil {
+			log.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, out), buf.Bytes(), 0o644); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", out, px, px, buf.Len())
+	}
+	if err := renderCandidates(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// candidateSizes: Windows small-icon sizes at 100, 125, 150, 200, 250 and
+// 300 % scaling (16, 20, 24, 32, 40, 48), which also cover the macOS menu
+// bar (16 pt @1x/@2x) and Linux panels.
+var candidateSizes = []int{16, 20, 24, 32, 40, 48}
+
+// renderCandidates rasterizes every simplified tray glyph in
+// tray-candidates/*.svg (24-unit grid, placed by its viewBox, not cropped)
+// to <name>-<px>.png, black + alpha on transparent.
+func renderCandidates() error {
+	svgs, err := filepath.Glob(filepath.Join(dir, "tray-candidates", "*.svg"))
+	if err != nil {
+		return err
+	}
+	for _, src := range svgs {
+		paths, err := loadSVGPaths(src)
+		if err != nil {
+			return err
+		}
+		vb, err := svgViewBox(src)
+		if err != nil {
+			return err
+		}
+		base := strings.TrimSuffix(src, ".svg")
+		for _, px := range candidateSizes {
+			img := hint(rasterBox(paths, px, vb), px)
+			var buf bytes.Buffer
+			if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, img); err != nil {
+				return err
+			}
+			out := fmt.Sprintf("%s-%d.png", base, px)
+			if err := os.WriteFile(out, buf.Bytes(), 0o644); err != nil {
+				return err
+			}
+			fmt.Printf("%-34s %4dx%-4d %7d bytes\n", filepath.Base(out), px, px, buf.Len())
+		}
+	}
+	return nil
+}
+
+var svgViewBoxRe = regexp.MustCompile(`viewBox="([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)"`)
+
+// svgViewBox returns minX, minY, width, height of the root viewBox.
+func svgViewBox(path string) ([4]float64, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return [4]float64{}, err
+	}
+	m := svgViewBoxRe.FindStringSubmatch(string(b))
+	if m == nil {
+		return [4]float64{}, fmt.Errorf("%s: no viewBox", path)
+	}
+	return [4]float64{atof(m[1]), atof(m[2]), atof(m[3]), atof(m[4])}, nil
+}
+
+// rasterBox fills the outlines at px×px mapping the viewBox onto the
+// square (the glyph's own margins and optical balance are kept).
+func rasterBox(paths []seg, px int, vb [4]float64) *image.NRGBA {
+	k := float64(px) / math.Max(vb[2], vb[3])
+	return fill(paths, px, func(p pt) (float32, float32) {
+		return float32((p.x - vb[0]) * k), float32((p.y - vb[1]) * k)
+	})
+}
+
+// hint sharpens anti-aliased edges at small sizes (a contrast curve on the
+// coverage around 50 %), the raster equivalent of hinting a glyph to the
+// pixel grid: half-covered edge pixels become clearly on or off, so bold
+// shapes stay crisp at 16–24 px instead of turning grey. Not true
+// grid-fitting (no outline moves); larger sizes are left untouched.
+func hint(img *image.NRGBA, px int) *image.NRGBA {
+	gain := 1.0
+	switch {
+	case px <= 20:
+		gain = 1.8
+	case px <= 24:
+		gain = 1.5
+	case px <= 32:
+		gain = 1.2
+	}
+	if gain == 1 {
+		return img
+	}
+	for i := 3; i < len(img.Pix); i += 4 {
+		a := (float64(img.Pix[i])/255-0.5)*gain + 0.5
+		img.Pix[i] = uint8(math.Round(math.Max(0, math.Min(1, a)) * 255))
+	}
+	return img
+}
+
+// ── SVG master → tray masks ─────────────────────────────────────────────────
+
+type pt struct{ x, y float64 }
+
+// seg is one path command in viewBox units: 'M', 'L', 'C' (3 points) or 'Z'.
+type seg struct {
+	op byte
+	p  []pt
+}
+
+var (
+	svgPathD     = regexp.MustCompile(`<path[^>]*\sd="([^"]+)"`)
+	svgTransform = regexp.MustCompile(`translate\(([-\d.]+),([-\d.]+)\)\s*scale\(([-\d.]+),([-\d.]+)\)`)
+	svgToken     = regexp.MustCompile(`[MmLlCcZz]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?`)
+)
+
+// loadSVGPaths reads a potrace SVG (one <g transform="translate() scale()">
+// with M/m, L/l, C/c, Z/z paths, https://www.w3.org/TR/SVG2/paths.html) and
+// returns its outlines in viewBox units. Anything else is rejected rather
+// than silently drawn wrong.
+func loadSVGPaths(path string) ([]seg, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	s := string(b)
+	tx, ty, sx, sy := 0.0, 0.0, 1.0, 1.0
+	if m := svgTransform.FindStringSubmatch(s); m != nil {
+		tx, ty, sx, sy = atof(m[1]), atof(m[2]), atof(m[3]), atof(m[4])
+	}
+	xf := func(p pt) pt { return pt{tx + sx*p.x, ty + sy*p.y} }
+	var out []seg
+	for _, m := range svgPathD.FindAllStringSubmatch(s, -1) {
+		toks := svgToken.FindAllString(m[1], -1)
+		var cur, start pt
+		var cmd byte
+		i := 0
+		num := func() float64 { i++; return atof(toks[i-1]) }
+		for i < len(toks) {
+			if c := toks[i][0]; strings.ContainsRune("MmLlCcZz", rune(c)) {
+				cmd = c
+				i++
+				if cmd == 'Z' || cmd == 'z' {
+					out = append(out, seg{op: 'Z'})
+					cur = start
+					continue
+				}
+			}
+			rel := cmd >= 'a'
+			at := func(x, y float64) pt {
+				if rel {
+					return pt{cur.x + x, cur.y + y}
+				}
+				return pt{x, y}
+			}
+			switch cmd {
+			case 'M', 'm':
+				cur = at(num(), num())
+				start = cur
+				out = append(out, seg{op: 'M', p: []pt{xf(cur)}})
+				// Further pairs after a moveto are implicit linetos.
+				if cmd == 'm' {
+					cmd = 'l'
+				} else {
+					cmd = 'L'
+				}
+			case 'L', 'l':
+				cur = at(num(), num())
+				out = append(out, seg{op: 'L', p: []pt{xf(cur)}})
+			case 'C', 'c':
+				c1 := at(num(), num())
+				c2 := at(num(), num())
+				end := at(num(), num())
+				cur = end
+				out = append(out, seg{op: 'C', p: []pt{xf(c1), xf(c2), xf(end)}})
+			default:
+				return nil, fmt.Errorf("%s: unsupported path command %q", path, cmd)
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("%s: no paths", path)
+	}
+	return out, nil
+}
+
+func atof(s string) float64 {
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		log.Fatalf("svg number %q: %v", s, err)
+	}
+	return f
+}
+
+// rasterMask fills the outlines at px×px, cropped to the mark's bounding
+// box (square, centered, 1px margin), as black with anti-aliased alpha on
+// a transparent background. potrace emits holes with opposite winding, so
+// the rasterizer's non-zero accumulation keeps them open.
+func rasterMask(paths []seg, px int) *image.NRGBA {
+	minX, minY, maxX, maxY := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
+	for _, s := range paths {
+		for _, p := range s.p {
+			minX, minY = math.Min(minX, p.x), math.Min(minY, p.y)
+			maxX, maxY = math.Max(maxX, p.x), math.Max(maxY, p.y)
+		}
+	}
+	side := math.Max(maxX-minX, maxY-minY)
+	inner := float64(px) - 2
+	k := inner / side
+	ox := 1 + (inner-(maxX-minX)*k)/2 - minX*k
+	oy := 1 + (inner-(maxY-minY)*k)/2 - minY*k
+	return fill(paths, px, func(p pt) (float32, float32) { return float32(ox + p.x*k), float32(oy + p.y*k) })
+}
+
+// fill rasterizes the outlines mapped by f into a px×px black + alpha image.
+func fill(paths []seg, px int, f func(pt) (float32, float32)) *image.NRGBA {
+	r := vector.NewRasterizer(px, px)
+	for _, s := range paths {
+		switch s.op {
+		case 'M':
+			r.MoveTo(f(s.p[0]))
+		case 'L':
+			r.LineTo(f(s.p[0]))
+		case 'C':
+			x1, y1 := f(s.p[0])
+			x2, y2 := f(s.p[1])
+			x3, y3 := f(s.p[2])
+			r.CubeTo(x1, y1, x2, y2, x3, y3)
+		case 'Z':
+			r.ClosePath()
+		}
+	}
+	mask := image.NewAlpha(image.Rect(0, 0, px, px))
+	r.Draw(mask, mask.Bounds(), image.Opaque, image.Point{})
+	out := image.NewNRGBA(mask.Bounds())
+	for i, a := range mask.Pix {
+		out.Pix[i*4+3] = a // black ink, alpha = coverage
+	}
+	return out
 }
 
 func load(path string) (image.Image, error) {
@@ -154,8 +424,9 @@ var (
 // drops the XML prolog, DOCTYPE and comments, collapses whitespace, removes
 // the space before negative path numbers ("c-38 -5" -> "c-38-5", valid per
 // the SVG path grammar: https://www.w3.org/TR/SVG2/paths.html#PathDataBNF)
-// and redundant zero fractions. Geometry is unchanged.
-func minifySVG(src, dst string) (int, error) {
+// and redundant zero fractions. Geometry is unchanged. inverse turns the
+// black ink (potrace fill="#000000") white.
+func minifySVG(src, dst string, inverse bool) (int, error) {
 	b, err := os.ReadFile(src)
 	if err != nil {
 		return 0, err
@@ -166,6 +437,12 @@ func minifySVG(src, dst string) (int, error) {
 	s = strings.ReplaceAll(s, " -", "-")
 	s = svgZeroFrac.ReplaceAllString(s, "$1$2")
 	s = svgTrailing.ReplaceAllString(s, "$1$2")
+	if inverse {
+		if !strings.Contains(s, `fill="#000000"`) {
+			return 0, fmt.Errorf("%s: no fill=\"#000000\" to invert", src)
+		}
+		s = strings.ReplaceAll(s, `fill="#000000"`, `fill="#ffffff"`)
+	}
 	s = strings.TrimSpace(s) + "\n"
 	return len(s), os.WriteFile(dst, []byte(s), 0o644)
 }

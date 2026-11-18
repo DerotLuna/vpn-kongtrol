@@ -307,7 +307,8 @@ body::before {
   }
 
   body.sidebar-collapsed .brand-name,
-  body.sidebar-collapsed .side-nav-link span {
+  body.sidebar-collapsed .side-nav-link span,
+  body.sidebar-collapsed .side-version {
     display: none;
   }
 
@@ -447,6 +448,19 @@ body::before {
   height: 17px;
   flex-shrink: 0;
   opacity: 0.85;
+}
+
+/* Build version at the foot of the sidebar (GET /api/v1/version). */
+.side-version {
+  margin-top: auto;
+  padding: 0 12px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+.side-version[hidden] {
+  display: none;
 }
 
 .side-nav-link:hover {
@@ -1646,6 +1660,12 @@ button.action.disconnect:hover {
 }
 
 /* Provider attach-mode message under a tunnel's status (see attachMessage). */
+/* "· sin verificar" next to the state word; the reason is in the tooltip. */
+.tunnel-unverified {
+  color: var(--text-muted);
+  cursor: help;
+}
+
 .tunnel-attach {
   margin-top: 4px;
   max-width: 320px;

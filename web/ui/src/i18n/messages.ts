@@ -44,9 +44,12 @@ const es = {
   'helper.install': 'Instalar ayudante',
   'helper.installing': 'Instalando… Acepta el permiso en la ventana que aparece.',
   'helper.installed': 'Ayudante listo: ya no hace falta volver a instalarlo.',
+  'helper.needsUpdate':
+    'Está desactualizado: Kongtrol no puede comprobar si los servidores de tus VPN responden. Actualízalo una vez.',
   'helper.version': 'Versión {version}',
   'helper.pill.ready': 'Listo',
   'helper.pill.missing': 'Falta',
+  'helper.pill.outdated': 'Desactualizado',
   'helper.pill.notNeeded': 'No hace falta',
 
   'tunnels.title': 'Tus VPN',
@@ -166,8 +169,6 @@ const es = {
   'daemon.offline.auto': 'Esta página se vuelve a conectar sola en cuanto Kongtrol arranque.',
   'helper.notice.missing': 'Falta el ayudante del sistema',
   'helper.notice.outdated': 'El ayudante está desactualizado',
-  'helper.outdated': 'Responde, pero es de una versión anterior. Actualízalo para que Kongtrol pueda cambiar la red.',
-  'helper.pill.outdated': 'Desactualizado',
   'helper.update': 'Actualizar ayudante',
   'helper.installing.windows': 'Instalando… acepta el permiso de Windows en la ventana que aparece.',
   'helper.installing.mac': 'Instalando… escribe tu contraseña de macOS en la ventana que aparece.',
@@ -309,9 +310,12 @@ const en: Messages = {
   'helper.install': 'Install helper',
   'helper.installing': 'Installing… Accept the permission in the window that appears.',
   'helper.installed': 'Helper ready: no need to install it again.',
+  'helper.needsUpdate':
+    "It is out of date: Kongtrol can't check whether your VPN servers answer. Update it once.",
   'helper.version': 'Version {version}',
   'helper.pill.ready': 'Ready',
   'helper.pill.missing': 'Missing',
+  'helper.pill.outdated': 'Out of date',
   'helper.pill.notNeeded': 'Not needed',
 
   'tunnels.title': 'Your VPNs',
@@ -429,8 +433,6 @@ const en: Messages = {
   'daemon.offline.auto': 'This page reconnects by itself as soon as Kongtrol starts.',
   'helper.notice.missing': 'The system helper is missing',
   'helper.notice.outdated': 'The helper is out of date',
-  'helper.outdated': 'It answers, but it is from an older version. Update it so Kongtrol can change the network.',
-  'helper.pill.outdated': 'Out of date',
   'helper.update': 'Update helper',
   'helper.installing.windows': 'Installing… accept the Windows permission in the window that appears.',
   'helper.installing.mac': 'Installing… type your macOS password in the window that appears.',

@@ -69,7 +69,7 @@ export function AppNotices() {
           title={outdated ? t('helper.notice.outdated') : t('helper.notice.missing')}
           actions={<HelperInstallButton helper={helper} outdated={outdated} />}
         >
-          <p>{outdated ? t('helper.outdated') : t('helper.needsInstall')}</p>
+          <p>{outdated ? t('helper.needsUpdate') : t('helper.needsInstall')}</p>
           <HelperInstallProgress helper={helper} />
         </Banner>
       </div>

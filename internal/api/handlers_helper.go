@@ -34,14 +34,30 @@ type HelperStatus struct {
 	HelperVersion string `json:"helper_version"`
 	CLIVersion    string `json:"cli_version"`
 	NeedsInstall  bool   `json:"needs_install"`
+	// Outdated: the helper answers but speaks an older protocol
+	// (privops.ProtocolVersion), so clients say "update" instead of
+	// "install". Always false when no helper is needed (Elevated).
+	Outdated bool `json:"outdated"`
+}
+
+// VersionInfo is the body of GET /api/v1/version: this daemon's build
+// version, the same one `kongtrol version` prints.
+type VersionInfo struct {
+	Version string `json:"version"`
+}
+
+// GET /api/v1/version
+func (s *Server) handleVersion(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, VersionInfo{Version: s.version})
 }
 
 // SetHelperInstaller enables POST /api/v1/helper/install. fn installs the
 // privileged helper (one OS permission prompt) and returns a translated
 // error; wrap privhelper.ErrElevationCancelled when the user declined.
-// version is reported as cli_version. Call it before Start.
+// version is this build's version: cli_version and GET /api/v1/version.
+// Call it before Start.
 func (s *Server) SetHelperInstaller(version string, fn func(context.Context) error) {
-	s.helperVersion = version
+	s.version = version
 	s.helperInstall = fn
 }
 
@@ -51,7 +67,7 @@ func (s *Server) helperStatus(ctx context.Context) HelperStatus {
 		Installed:  st.Installed,
 		Running:    st.Running,
 		Elevated:   helperIsElevated(),
-		CLIVersion: s.helperVersion,
+		CLIVersion: s.version,
 	}
 	pctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -59,6 +75,7 @@ func (s *Server) helperStatus(ctx context.Context) HelperStatus {
 		out.Installed, out.Running = true, true
 		out.HelperVersion = res.Version
 		out.Available = res.Protocol == privops.ProtocolVersion
+		out.Outdated = !out.Available && !out.Elevated
 	}
 	out.NeedsInstall = !out.Elevated && !out.Available
 	return out

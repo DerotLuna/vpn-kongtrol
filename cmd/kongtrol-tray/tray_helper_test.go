@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
+	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
@@ -24,7 +25,7 @@ func stubHelperProbes(t *testing.T, daemonUp, daemonNeeds, elevated bool, ping f
 	pingHelper = func(context.Context) (privops.PingResult, error) { return ping() }
 }
 
-func TestHelperNeedsInstall(t *testing.T) {
+func TestHelperState(t *testing.T) {
 	missing := func() (privops.PingResult, error) { return privops.PingResult{}, privops.ErrHelperNotInstalled }
 	ok := func() (privops.PingResult, error) {
 		return privops.PingResult{Version: "v1", Protocol: privops.ProtocolVersion}, nil
@@ -36,23 +37,45 @@ func TestHelperNeedsInstall(t *testing.T) {
 		name                   string
 		daemonUp, needs, admin bool
 		ping                   func() (privops.PingResult, error)
-		want                   bool
+		want                   helperNeed
 	}{
-		{"daemon says missing", true, true, false, ok, true},
-		{"daemon says ready", true, false, false, missing, false},
+		{"daemon says missing", true, true, false, ok, helperMissing},
+		{"daemon says ready", true, false, false, missing, helperOK},
 		// Fresh macOS/Linux install: no daemon yet, no helper.
-		{"no daemon, no helper", false, false, false, missing, true},
-		{"no daemon, helper answers", false, false, false, ok, false},
-		{"no daemon, outdated helper", false, false, false, old, true},
-		{"no daemon, elevated", false, false, true, missing, false},
+		{"no daemon, no helper", false, false, false, missing, helperMissing},
+		{"no daemon, helper answers", false, false, false, ok, helperOK},
+		{"no daemon, outdated helper", false, false, false, old, helperOutdated},
+		{"no daemon, elevated", false, false, true, missing, helperOK},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			stubHelperProbes(t, c.daemonUp, c.needs, c.admin, c.ping)
-			if got := helperNeedsInstall(); got != c.want {
-				t.Fatalf("helperNeedsInstall() = %v, want %v", got, c.want)
+			if got := helperState(); got != c.want {
+				t.Fatalf("helperState() = %v, want %v", got, c.want)
 			}
 		})
+	}
+}
+
+func TestHelperState_DaemonSaysOutdated(t *testing.T) {
+	d := daemonHelperStatus
+	t.Cleanup(func() { daemonHelperStatus = d })
+	daemonHelperStatus = func() (daemonctl.HelperStatus, error) {
+		return daemonctl.HelperStatus{NeedsInstall: true, Outdated: true}, nil
+	}
+	if got := helperState(); got != helperOutdated {
+		t.Fatalf("helperState() = %v, want outdated", got)
+	}
+	trayLang = i18n.ES
+	if title, _ := helperItemText(helperOutdated); title != "Actualizar ayudante (una vez)" {
+		t.Fatalf("ES title = %q", title)
+	}
+	if title, _ := helperItemText(helperMissing); title != "Instalar ayudante (una vez)" {
+		t.Fatalf("ES title = %q", title)
+	}
+	trayLang = i18n.EN
+	if title, _ := helperItemText(helperOutdated); title != "Update helper (once)" {
+		t.Fatalf("EN title = %q", title)
 	}
 }
 

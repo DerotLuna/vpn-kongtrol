@@ -14,12 +14,8 @@ import (
 //go:embed brand/logo-512.png
 var LogoPNG []byte
 
-// LogoKongPNG is the icon-only mark, no text (512×512) — use for tray icons,
-// favicons, and any context smaller than ~128px where the wordmark would be
-// unreadable. TrayIcon downscales it.
-//
-//go:embed brand/logo-kong-512.png
-var LogoKongPNG []byte
+// The tray / menu bar icon is not here: icon.go renders it from the
+// tray-<px>.png masks (rasterized from the vector mark by generate.go).
 
 // brandFiles holds what the dashboard serves under /brand/: the SVG masters,
 // the PNG rasters and the self-hosted web fonts. generate.go, source/ masters

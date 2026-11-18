@@ -35,7 +35,7 @@ func (s *Server) handleDoctor(w http.ResponseWriter, r *http.Request) {
 	rep := runDoctor(doctor.Options{
 		Lang:       requestLang(r),
 		ConfigPath: s.configPath,
-		Version:    s.helperVersion,
+		Version:    s.version,
 		Daemon:     dm,
 	})
 	if s.helperInstall == nil {
