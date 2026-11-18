@@ -67,7 +67,9 @@
    admin prompt, in plain words. Collapsed by default so the cards stay first. */
 .dl-after { margin-top: 48px; }
 .dl-after .dl-others-title { margin-top: 0; }
-.dl-help { display: grid; gap: 12px; max-width: calc(var(--measure) + 120px); }
+/* same width as the download cards above; the prose inside keeps a reading
+   measure (--measure) so lines never run the full card */
+.dl-help { display: grid; gap: 12px; }
 .dl-more {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); overflow: hidden;
@@ -83,12 +85,13 @@
 .dl-more > summary:hover { background: var(--surface-2); }
 .dl-more > summary:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
 .dl-more-body { padding: 14px 16px 16px 40px; }
+.dl-more-body > *, .dl-admin > * { max-width: var(--measure); }
 .dl-steps { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; color: var(--text-muted); font-size: 0.92rem; line-height: 1.55; }
 .dl-steps strong, .dl-admin strong { color: var(--text); font-weight: 600; }
 .dl-note { margin: 10px 0 0; font-size: 0.88rem; line-height: 1.55; color: var(--text-muted); text-wrap: pretty; }
 
 .dl-admin {
-  margin-top: 20px; padding: 18px 20px; max-width: calc(var(--measure) + 120px);
+  margin-top: 20px; padding: 18px 20px;
   border: 1px solid var(--border); border-radius: var(--radius-lg);
 }
 .dl-admin-title { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; color: var(--text); }
