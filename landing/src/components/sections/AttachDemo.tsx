@@ -1,12 +1,13 @@
 import { Lang } from '../../i18n'
+import './attachdemo.css'
 
 interface Props {
   lang: Lang
 }
 
 // Attach mode in three beats: your VPN app connects → Kongtrol detects the
-// tunnel → the tray icon turns green. Pure CSS loop (see .attach in
-// index.css); under prefers-reduced-motion it renders the final state only.
+// tunnel → the tray icon turns green. Pure CSS loop (see attachdemo.css);
+// under prefers-reduced-motion it renders the final state only.
 // The moving parts are decorative (aria-hidden); the ordered captions carry
 // the meaning for screen readers and for anyone who skips the animation.
 export default function AttachDemo({ lang }: Props) {
@@ -79,6 +80,7 @@ export default function AttachDemo({ lang }: Props) {
         {/* 2 — Kongtrol picks the tunnel up */}
         <div className="attach-panel attach-detect">
           <div className="attach-radar">
+            <span className="attach-contour" />
             <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
             <img src={`${import.meta.env.BASE_URL}logo-kong.svg`} alt="" width="44" height="44" />
           </div>

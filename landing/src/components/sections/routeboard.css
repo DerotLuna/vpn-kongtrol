@@ -1,0 +1,100 @@
+/* Routing switchboard (#map) — version 1.0.0 · 2026-11-18.
+   Only .switchboard / .sb-* rules live here; tokens come from index.css.
+   Wires meet the core at two ports on its ring (IN left, OUT right) and fade
+   into it (SVG mask in Features.tsx). The ambient pulse is a ring INSIDE the
+   core ring, so it never covers the ports. Motion animates only
+   transform, opacity and stroke-dashoffset, and only under
+   prefers-reduced-motion: no-preference; otherwise the frame is static. */
+
+.switchboard {
+  margin-top: 40px; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface); padding: 22px 24px 20px; overflow: hidden;
+}
+.sb-legend {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
+  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 6px;
+}
+.sb-legend-item.in { text-align: left; }
+.sb-legend-item.core { color: var(--signal); text-align: center; white-space: nowrap; }
+.sb-legend-item.out { text-align: right; }
+
+.sb-svg { width: 100%; height: auto; display: block; }
+
+/* wires */
+.sb-wire { fill: none; stroke: var(--border-2); stroke-width: 1.5; stroke-linecap: round; transition: stroke 0.2s; }
+.sb-wire-group.active .sb-wire { stroke: var(--signal); stroke-width: 2.25; stroke-dasharray: 5 6; }
+.sb-wire-group.active.direct .sb-wire { stroke: var(--steel); }
+
+/* core: ring, ports and the inner pulse share one center (the <g> translate) */
+.sb-core .sb-ring { fill: none; stroke: var(--signal-line); stroke-width: 1.25; }
+.sb-core .sb-pulse {
+  fill: none; stroke: var(--signal); stroke-width: 1.25; opacity: 0.3;
+  transform-box: fill-box; transform-origin: center;
+}
+.sb-core .sb-logo { opacity: 0.9; }
+:root[data-theme='dark'] .sb-core .sb-logo { filter: invert(1); }
+
+.sb-port { fill: var(--surface); stroke: var(--signal); stroke-width: 1.5; transition: stroke 0.3s ease; }
+.sb-core.direct .sb-port.out { stroke: var(--steel); }
+.sb-port-label { font-family: var(--font-mono); font-size: 11px; fill: var(--text-dim); letter-spacing: 0.03em; }
+
+/* nodes */
+.sb-node { cursor: pointer; }
+.sb-node.out { cursor: default; }
+.sb-node rect {
+  fill: var(--surface-2); stroke: var(--border-2); stroke-width: 1;
+  transform-box: fill-box; transform-origin: center;
+  transition: fill 0.3s ease, stroke 0.3s ease, scale 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.sb-node text { font-family: var(--font-mono); font-size: 13px; fill: var(--text-muted); transition: fill 0.3s ease; }
+.sb-node:hover rect { stroke: var(--border-2); }
+.sb-node.in:hover rect { stroke: var(--signal); }
+.sb-node.active rect { fill: var(--signal-soft); stroke: var(--signal); scale: 1.035; }
+.sb-node.active text { fill: var(--signal); }
+.sb-node.active.direct rect { fill: var(--steel-soft); stroke: var(--steel); }
+.sb-node.active.direct text, .sb-node.active.direct .sb-out-name { fill: var(--steel); }
+.sb-out-name { font-weight: 600; }
+.sb-out-sub { font-size: 10.5px !important; fill: var(--text-dim) !important; letter-spacing: 0.04em; }
+.sb-node:focus { outline: none; }
+.sb-node:focus-visible rect { stroke: var(--signal); stroke-width: 2; }
+
+/* readout */
+.sb-readout {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  margin-top: 14px; padding: 12px 16px; border: 1px solid var(--border);
+  border-radius: var(--radius); background: var(--bg);
+  font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+  animation: sbReadoutIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes sbReadoutIn {
+  0% { opacity: 0; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.sb-readout-dest { color: var(--text); font-weight: 600; }
+.sb-readout-mid b { color: var(--signal); }
+.sb-readout-tunnel { color: var(--signal); font-weight: 600; }
+.sb-readout-tunnel.direct { color: var(--steel); }
+.sb-arrow { color: var(--text-dim); flex-shrink: 0; }
+.sb-hint { margin-top: 10px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sb-wire-group.active .sb-wire { animation: sbFlow 0.7s linear infinite; }
+  .sb-core .sb-pulse { animation: sbPulse 3.2s ease-out infinite; }
+}
+@keyframes sbFlow { to { stroke-dashoffset: -22; } }
+/* r 48 × 0.92…1.06 = 44…51: outside the logo (r 40), inside the ports (r 53) */
+@keyframes sbPulse {
+  0%   { opacity: 0.55; transform: scale(0.92); }
+  70%, 100% { opacity: 0; transform: scale(1.06); }
+}
+
+@container (max-width: 720px) {
+  .sb-legend { font-size: 0.58rem; }
+}
+@media (max-width: 480px) {
+  /* the readout wraps its pieces independently at this width, breaking
+     mid-sentence with an orphaned arrow — stack each piece instead */
+  .sb-readout { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .sb-arrow { display: none; }
+}
