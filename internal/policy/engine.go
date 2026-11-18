@@ -48,8 +48,13 @@ func New(cfg *config.Config) (*Engine, error) {
 		e.rules = append(e.rules, rule)
 	}
 
-	// Sort: higher priority first; among equal priority, more specific subnets first.
-	sort.Slice(e.rules, func(i, j int) bool {
+	// Sort: higher priority first; among equal priority, more specific
+	// subnets first; then config order. The sort must be stable: rules of
+	// profiles with the same explicit priority would otherwise come out in
+	// an arbitrary order, and an overlapping domain could resolve to a
+	// different tunnel from one run to the next. The position in
+	// cfg.Policies is the deterministic last key (ADR-0041).
+	sort.SliceStable(e.rules, func(i, j int) bool {
 		if e.rules[i].Priority != e.rules[j].Priority {
 			return e.rules[i].Priority > e.rules[j].Priority
 		}

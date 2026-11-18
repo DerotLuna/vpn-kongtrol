@@ -1,6 +1,7 @@
 package policy
 
 import (
+	"fmt"
 	"net"
 	"testing"
 
@@ -342,5 +343,36 @@ func TestResolveFlow_AppOnlyRuleStillMatches(t *testing.T) {
 	via, rule, ok := e.ResolveFlow("", "code-insiders.exe")
 	if !ok || via != "dev" || rule != "dev-tools" {
 		t.Fatalf("ResolveFlow app-only = (%q, %q, %v), want (dev, dev-tools, true)", via, rule, ok)
+	}
+}
+
+// Equal explicit priority: the overlapping domain goes to the rule written
+// first, on every build (sort.Slice was unstable and could flip it).
+func TestNew_EqualPriorityKeepsConfigOrder(t *testing.T) {
+	// "hi*" profiles share priority 10, "lo" has 5: interleaving them makes
+	// the sort move rules, which is where an unstable sort reorders ties.
+	vpns := map[string]config.VPNConfig{
+		"hi1": {Priority: 10}, "hi2": {Priority: 10}, "hi3": {Priority: 10}, "lo": {Priority: 5},
+	}
+	var policies, want []config.PolicyRule
+	for i := 0; i < 60; i++ {
+		via := []string{"lo", "hi3", "lo", "hi1", "hi2"}[i%5]
+		p := config.PolicyRule{
+			Name: fmt.Sprintf("p%02d-%s", i, via), Via: via,
+			Match: config.MatchSpec{Domains: []string{"*.shared.example"}},
+		}
+		policies = append(policies, p)
+		if via != "lo" {
+			want = append(want, p)
+		}
+	}
+	e := buildEngine(t, policies, vpns)
+	for j, w := range want {
+		if e.rules[j].Name != w.Name {
+			t.Fatalf("rule %d = %q, want %q (config order among equal priority)", j, e.rules[j].Name, w.Name)
+		}
+	}
+	if via, _ := e.ResolveDomain("x.shared.example"); via != "hi3" {
+		t.Fatalf("ResolveDomain = %q, want hi3 (first rule with the top priority)", via)
 	}
 }
