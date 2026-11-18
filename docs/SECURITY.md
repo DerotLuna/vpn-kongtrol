@@ -105,7 +105,18 @@ arbitrary command.
 - **Audit.** Every request — caller, operation, arguments, result, duration — is written to the
   helper's JSON-lines audit log (`internal/privhelper/audit.go`, rotated at 5 MB). The one
   exception is a *successful* read-only request (`wg.stats`, polled every 10 s per WireGuard
-  tunnel); its failures are audited.
+  tunnel) of a tunnel the helper started; its failures are audited, and a success authorized by
+  the caller's profile config (a tunnel Kongtrol did not start) is audited once per tunnel per hour.
+- **Tunnels Kongtrol did not start are bound by key.** `wg.stats`, `wg.remove` and
+  `wg.allowed_ips` accept such a tunnel only when the caller owns a profile `.conf` with the same
+  name **and** the public key derived from its `[Interface] PrivateKey` (Curve25519,
+  `golang.org/x/crypto/curve25519`) equals the running interface's public key (`wg show <if>
+  dump`). A same-named tunnel of someone else (IT-managed, another app) is denied
+  (`wg_not_managed`). The names `all` and `interfaces` (wg(8) keywords) are refused.
+- **Trusted WireGuard tools.** Windows: the helper runs `wg.exe` / `wireguard.exe` only from
+  `%ProgramFiles%\WireGuard` when the file and its folder are owned by SYSTEM, Administrators or
+  TrustedInstaller and no one else has write rights (`adminOnlyWritable`); Unix: root-owned, not
+  group/world-writable, in a trusted directory (`trustedBinary`).
 - **Read-only WireGuard counters.** `wg.stats` runs `wg show <iface> dump` only for a tunnel the
   helper manages (or the caller's own profile tunnel, checked like `wg.remove`, nothing adopted)
   and returns only peer public keys, latest handshake, rx/tx bytes and keepalive. The interface

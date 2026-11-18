@@ -44,6 +44,10 @@ type Local struct {
 	leases   *leaseTable
 	// releaseFn undoes one resource of an expired lease (stubbed in tests).
 	releaseFn func(context.Context, resource) error
+	// statsAudited throttles the audit of wg.stats authorized by a
+	// profile config (not a managed tunnel) to once per interface per
+	// hour; guarded by mu.
+	statsAudited map[string]time.Time
 }
 
 // NewLocal returns a Local.
@@ -301,7 +305,8 @@ var (
 // wireguard link; macOS: a wireguard-go tunnel), configPath must pass the
 // same checks as WGInstallTunnel, and its base name must equal name. The
 // validated config becomes the private copy, so the tunnel is managed from
-// then on (only with adopt; WGStats passes false and writes nothing).
+// then on (only with adopt; WGStats passes false and writes nothing). The
+// running interface must also use the config's key pair (wgKeyMatches).
 // present is false when no such tunnel exists (nothing to manage).
 // Call with l.mu held.
 func (l *Local) wgAuthorize(ctx context.Context, name, configPath string, adopt bool) (present bool, err error) {
@@ -332,8 +337,24 @@ func (l *Local) wgAuthorize(ctx context.Context, name, configPath string, adopt 
 	if !ok {
 		return false, nil
 	}
+	// Bind by key, not only by name: a foreign tunnel with the same name
+	// (IT-managed, another app) has another key pair.
+	if match, err := wgKeyMatches(ctx, name, data); err != nil {
+		return false, err
+	} else if !match {
+		return false, denied(DenyWGNotManaged, "tunnel %q does not use the key of profile config %s", name, base)
+	}
 	if !adopt {
-		return true, nil // read-only caller (WGStats): accept, write nothing
+		// Read-only caller (WGStats): accept, write nothing, audit the
+		// success at most once per interface per hour.
+		if now := time.Now(); now.Sub(l.statsAudited[name]) >= time.Hour {
+			if l.statsAudited == nil {
+				l.statsAudited = make(map[string]time.Time)
+			}
+			l.statsAudited[name] = now
+			markAudit(ctx)
+		}
+		return true, nil
 	}
 	if err := ensurePrivateDir(l.wgDir()); err != nil {
 		return false, failed("state dir", err)
