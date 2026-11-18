@@ -68,7 +68,7 @@ Chosen: **option 3**.
 - Bad: a bookmarked `http://127.0.0.1:9741/` works only while its session lives; afterwards the
   page asks to be opened from Kongtrol.
 - Bad: if a Windows URL handler dropped the fragment, the page would show that guidance instead
-  of signing in (**no verificado** on every Windows version; tracked in an issue).
+  of signing in (**no verificado** on every Windows version; [#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)).
 - Neutral: a daemon restart signs browsers out (open the panel again).
 
 ### Confirmation

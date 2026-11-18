@@ -74,7 +74,7 @@ Kongtrol (no silent failure).
 
 ## Open questions
 
-- Windows URL handlers and fragments (tracked in a GitHub issue).
+- Windows URL handlers and fragments ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)).
 
 ## Used by
 

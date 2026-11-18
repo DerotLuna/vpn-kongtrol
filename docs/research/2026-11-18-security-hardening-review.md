@@ -54,12 +54,12 @@ review). What do the primary sources say for each fix, and what stays unverified
 High for wg dump format, X25519 and the SID (checked against the OS). Medium for cmd.exe quote
 rules (documented, verified by `TestDeleteAfterExitCmd_DeletesFile` with a path with spaces).
 Unverified: sudo `HOME` handling per OS (`env_keep`), so `kongtrol uninstall` refuses sudo
-instead of guessing; Inno Setup `[UninstallRun]` working directory (issue).
+instead of guessing; Inno Setup `[UninstallRun]` working directory ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)).
 
 ## Open questions
 
 - Should a path containing `%` be deleted by the delayed delete? cmd expands `%VAR%` even
-  inside quotes; the install folder never has one, but a renamed one could (issue).
+  inside quotes; the install folder never has one, but a renamed one could ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)).
 
 ## Used by
 
