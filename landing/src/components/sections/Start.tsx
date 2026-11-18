@@ -5,6 +5,7 @@ import { downloadHref, downloadLabel, DownloadIcon } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
 import AttachDemo from './AttachDemo'
 import CodeBlock from '../ui/CodeBlock'
+import DevInstall from './DevInstall'
 import './start.css'
 
 interface Props {
@@ -37,12 +38,12 @@ export default function Start({ lang }: Props) {
       setupLink: 'Ver cómo, paso a paso',
       devsTitle: 'Para devs',
       devsLead: 'La misma app, con una CLI que hace todo lo que hace el panel. Ideal para scripts.',
-      devsCode: `$ kongtrol service install # una vez (pide admin)
-$ kongtrol init            # detecta tus VPN, crea perfiles
-$ kongtrol up              # arranca en segundo plano
-$ kongtrol dashboard       # abre el panel
-$ kongtrol status --watch  # estado en vivo`,
-      devsCta: 'man kongtrol — guía completa',
+      devsInstall: 'Instala con una línea',
+      devsNext: 'Configura y conecta',
+      devsCode: `$ kongtrol init       # detecta tus VPN e instala el ayudante
+$ kongtrol up         # conecta y muestra el estado en vivo
+$ kongtrol dashboard  # abre el panel`,
+      devsCta: 'Referencia de comandos →',
     }
     : {
       title: 'Ways to use Kongtrol',
@@ -59,12 +60,12 @@ $ kongtrol status --watch  # estado en vivo`,
       setupLink: 'See how, step by step',
       devsTitle: 'For devs',
       devsLead: 'The same app, with a CLI that does everything the panel does. Built for scripts.',
-      devsCode: `$ kongtrol service install # once (asks for admin)
-$ kongtrol init            # detects your VPNs, creates profiles
-$ kongtrol up              # starts in the background
-$ kongtrol dashboard       # opens the panel
-$ kongtrol status --watch  # live status`,
-      devsCta: 'man kongtrol — full guide',
+      devsInstall: 'Install in one line',
+      devsNext: 'Set up and connect',
+      devsCode: `$ kongtrol init       # detects your VPNs and installs the helper
+$ kongtrol up         # connects and shows live status
+$ kongtrol dashboard  # opens the panel`,
+      devsCta: 'Command reference →',
     }
 
   return (
@@ -107,9 +108,16 @@ $ kongtrol status --watch  # live status`,
           <div className="path path-devs">
             <h3>{t.devsTitle}</h3>
             <p className="path-lead">{t.devsLead}</p>
-            <CodeBlock ui={lang} lang="bash">{t.devsCode}</CodeBlock>
+            <div className="path-step">
+              <p className="path-step-title">{t.devsInstall}</p>
+              <DevInstall lang={lang} />
+            </div>
+            <div className="path-step">
+              <p className="path-step-title">{t.devsNext}</p>
+              <CodeBlock ui={lang} lang="bash">{t.devsCode}</CodeBlock>
+            </div>
             <div className="path-actions">
-              <a href={pathFor('guia', lang)} className="btn-ghost">{t.devsCta}</a>
+              <a href={`${pathFor('guia', lang)}#commands`} className="btn-ghost">{t.devsCta}</a>
             </div>
           </div>
         </div>

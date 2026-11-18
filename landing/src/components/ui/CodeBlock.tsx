@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { HTMLAttributes, ReactNode, useState } from 'react'
 import { Lang } from '../../i18n'
 
 interface Props {
   ui: Lang // page language for the button text: same in the prerender and the client
   lang?: string // code language label
+  /** replaces the language label in the header (e.g. a tablist) */
+  head?: ReactNode
+  /** attributes for the <pre> (e.g. role="tabpanel") */
+  panel?: HTMLAttributes<HTMLPreElement> & { 'aria-labelledby'?: string }
+  /** a new value re-mounts the <pre> and cross-fades it in */
+  swapKey?: string
   children: string
 }
 
-export default function CodeBlock({ ui, lang = 'bash', children }: Props) {
+export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, children }: Props) {
   // idle → copied | failed → idle. A refused clipboard (no permission, plain
   // http, old browser) says so instead of failing silently (Apple HIG Feedback).
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
@@ -15,7 +21,8 @@ export default function CodeBlock({ ui, lang = 'bash', children }: Props) {
 
   const copy = () => {
     // Strip prompt symbols before copying
-    const clean = children.replace(/^\$ /gm, '')
+    // ($ shell, > PowerShell: the same two prompts highlighted below)
+    const clean = children.replace(/^[$>] /gm, '')
     const done = (s: 'copied' | 'failed') => {
       setState(s)
       setTimeout(() => setState('idle'), s === 'copied' ? 1800 : 3200)
@@ -49,12 +56,12 @@ export default function CodeBlock({ ui, lang = 'bash', children }: Props) {
   return (
     <div className="code-block">
       <div className="code-block-header">
-        <span className="code-block-lang">{lang}</span>
+        {head ?? <span className="code-block-lang">{lang}</span>}
         <button type="button" className={`copy-btn${state === 'idle' ? '' : ` ${state}`}`} onClick={copy} aria-live="polite">
           {label}
         </button>
       </div>
-      <pre>{highlighted}</pre>
+      <pre key={swapKey} {...panel} className={swapKey ? 'is-swapped' : undefined}>{highlighted}</pre>
     </div>
   )
 }

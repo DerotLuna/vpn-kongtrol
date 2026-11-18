@@ -502,7 +502,7 @@ $ kongtrol up us-content`}</CodeBlock>
     kill_switch: false`}</CodeBlock>
               <p style={{ marginTop: 24 }}>{t.daily16}</p>
               <CodeBlock ui={lang} lang="bash">{t.daily17}</CodeBlock>
-              <h3 style={{ marginTop: 32 }}>{t.cmdref1}</h3>
+              <h3 id="commands" style={{ marginTop: 32, scrollMarginTop: 'calc(var(--nav-h) + 24px)' }}>{t.cmdref1}</h3>
               <p>{t.cmdref2}</p>
               {cmdref}
             </div>
