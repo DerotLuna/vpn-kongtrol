@@ -13,7 +13,7 @@ export default function Security({ lang }: Props) {
       defenses: [
         { name: 'Kill switch', desc: 'Si una VPN cae, bloquea el tráfico para que nada salga sin protección. Lo activas o lo apagas desde el panel.' },
         { name: 'Protección de DNS', desc: 'Tus consultas DNS van por la VPN activa y vuelven solas a la normalidad al desconectar.' },
-        { name: 'Detector de fugas (opcional)', desc: 'Si lo activas, consulta tu IP pública al conectar o desconectar y cuando lo pides, y te avisa si no es la esperada. Viene apagado: usa un servicio externo que ve tu IP.' },
+        { name: 'Detector de fugas (opcional)', desc: 'Si lo activas, consulta tu IP pública al conectar o desconectar y cuando lo pides, y te avisa si no es la IP que configuraste como esperada para esa VPN. Viene apagado: usa un servicio externo que ve tu IP.' },
         { name: 'Registro firmado', desc: 'Cada evento queda anotado y firmado. Si alguien lo altera, se nota.' },
         { name: 'Contraseñas en el llavero', desc: 'Se guardan en el llavero de tu sistema, nunca en archivos de configuración.' },
       ],
@@ -31,7 +31,7 @@ export default function Security({ lang }: Props) {
       defenses: [
         { name: 'Kill switch', desc: 'If a VPN drops, it blocks traffic so nothing leaves unprotected. Turn it on or off from the panel.' },
         { name: 'DNS protection', desc: 'Your DNS lookups go through the active VPN and return to normal on their own when you disconnect.' },
-        { name: 'Leak detector (optional)', desc: 'If you turn it on, it looks up your public IP when you connect or disconnect and when you ask, and warns you if it is not the expected one. Off by default: it uses an external service that sees your IP.' },
+        { name: 'Leak detector (optional)', desc: 'If you turn it on, it looks up your public IP when you connect or disconnect and when you ask, and warns you if it is not the IP you set as expected for that VPN. Off by default: it uses an external service that sees your IP.' },
         { name: 'Signed log', desc: 'Every event is recorded and signed. If anyone tampers with it, it shows.' },
         { name: 'Passwords in the keychain', desc: 'Stored in your system keychain, never in configuration files.' },
       ],

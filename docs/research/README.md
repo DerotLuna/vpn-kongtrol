@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.2.0 · 2026-11-17
+Version 1.3.0 · 2026-11-17
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -22,11 +22,13 @@ reasoned but unverified.
 | [2026-11-17-windows-network-configuration-operators](2026-11-17-windows-network-configuration-operators.md) | What that Windows group can and cannot do | ADR-0005 |
 | [2026-11-17-public-ip-services](2026-11-17-public-ip-services.md) | ipify and alternatives | ADR-0010 |
 | [2026-11-17-cloudflare-pages](2026-11-17-cloudflare-pages.md) | Cloudflare Pages build config and headers | ADR-0012, ADR-0015 |
+| [2026-11-17-cloudflare-workers-static-assets](2026-11-17-cloudflare-workers-static-assets.md) | Workers static assets, Workers Builds, redirects | ADR-0023 |
 | [2026-11-17-security-txt](2026-11-17-security-txt.md) | RFC 9116 `security.txt` | ADR-0016 |
 | [2026-11-17-agent-instructions](2026-11-17-agent-instructions.md) | `AGENTS.md` and Claude Code imports | ADR-0002 |
 | [2026-11-17-vpn-failover](2026-11-17-vpn-failover.md) | How VPN clients define failover (OpenVPN, NetworkManager, WireGuard, Cisco) | ADR-0018 |
 | [2026-11-17-forticlient-versions](2026-11-17-forticlient-versions.md) | FortiClient versions, command lines, version detection, test installers | ADR-0020 |
 | [2026-11-17-go-release-support](2026-11-17-go-release-support.md) | Go release support policy and the go.mod `toolchain` line | ADR-0019 |
+| [2026-11-17-provider-logo-guidelines](2026-11-17-provider-logo-guidelines.md) | Brand guidelines of the ten VPN brands for logos on the landing | ADR-0023 |
 
 ## Template
 

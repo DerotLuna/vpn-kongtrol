@@ -120,6 +120,7 @@ features:
       - docs/ARCHITECTURE.md#providers
       - landing/src/content/guide.es.tsx#providers
       - landing/src/content/guide.en.tsx#providers
+      - landing/src/components/sections/Providers.tsx#providers
 
   openvpn:
     code:

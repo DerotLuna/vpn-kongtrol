@@ -5,8 +5,8 @@ import { ENTRIES, entryFile, entryFor, headFor } from './src/seo'
 
 // Multi-page app (https://vite.dev/guide/build#multi-page-app): every page in
 // Spanish at the root and in English under /en/ — 10 thin HTML entries.
-// Served from the root of https://kongtrol.app (Cloudflare Pages maps clean
-// URLs like /guia to guia.html and /en/guide to en/guide.html on its own).
+// Served from the root of https://kongtrol.app (Workers static assets map clean
+// URLs like /guia to guia.html and /en/guide to en/guide.html; landing/wrangler.jsonc).
 
 // Fills each entry's <!--kongtrol:head--> with its title, meta, canonical,
 // hreflang, Open Graph and JSON-LD from src/seo.ts, in dev and build alike.

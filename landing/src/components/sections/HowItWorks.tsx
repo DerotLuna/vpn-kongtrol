@@ -15,13 +15,13 @@ export default function HowItWorks({ lang }: Props) {
       steps: [
         {
           name: 'Descarga e instala',
-          desc: 'Windows, macOS o Linux. Pide un solo permiso de administrador al instalar; después no necesitas abrir nada como administrador.',
+          desc: 'Windows, macOS o Linux. Luego corre kongtrol service install una vez: pide permiso de administrador. Después no abres nada como administrador.',
           alt: '',
         },
         {
           name: 'Agrega tus VPN',
-          desc: 'Desde el ícono de la bandeja, en «Abrir panel». Las contraseñas se guardan en el llavero de tu sistema, nunca en archivos.',
-          alt: 'o en la terminal: kongtrol init (detecta tus VPN instaladas)',
+          desc: 'La primera vez, con kongtrol init: detecta tus VPN instaladas y te guía. Las contraseñas se guardan en el llavero de tu sistema, nunca en archivos.',
+          alt: 'después, más VPN desde el panel (kongtrol dashboard); se activan al reiniciar Kongtrol',
         },
         {
           name: 'Conéctate como siempre',
@@ -39,13 +39,13 @@ export default function HowItWorks({ lang }: Props) {
       steps: [
         {
           name: 'Download and install',
-          desc: 'Windows, macOS or Linux. It asks for administrator permission once, at install; after that you never need to run anything as administrator.',
+          desc: 'Windows, macOS or Linux. Then run kongtrol service install once: it asks for administrator permission. After that you never run anything as administrator.',
           alt: '',
         },
         {
           name: 'Add your VPNs',
-          desc: 'From the tray icon, under “Open panel”. Passwords are stored in your system keychain, never in files.',
-          alt: 'or in the terminal: kongtrol init (detects installed VPNs)',
+          desc: 'The first time, with kongtrol init: it detects your installed VPNs and guides you. Passwords are stored in your system keychain, never in files.',
+          alt: 'later, more VPNs from the panel (kongtrol dashboard); they start working after restarting Kongtrol',
         },
         {
           name: 'Connect as usual',

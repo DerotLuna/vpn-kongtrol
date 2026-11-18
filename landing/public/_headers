@@ -1,5 +1,5 @@
-# Cloudflare Pages response headers — version 1.0.0 · 2026-11-17
-# Format: https://developers.cloudflare.com/pages/configuration/headers/
+# Cloudflare static-assets response headers (Workers) — version 1.0.0 · 2026-11-17
+# Format: https://developers.cloudflare.com/workers/static-assets/headers/
 # Rationale for every header: docs/deploy-cloudflare.md.
 #
 # CSP matches what the site loads today: everything from 'self' (self-hosted fonts, no

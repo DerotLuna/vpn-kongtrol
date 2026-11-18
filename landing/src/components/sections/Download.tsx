@@ -35,7 +35,7 @@ export default function Download({ os, setOS, lang }: Props) {
     ? {
       section: '$ make install',
       title: 'Descárgalo gratis.',
-      sub: 'Windows, macOS y Linux. Código abierto. Un solo permiso de administrador al instalar.',
+      sub: 'Windows, macOS y Linux. Código abierto. Un solo paso con permiso de administrador: kongtrol service install.',
       download: 'Descargar',
       allReleases: 'Ver todos los releases en GitHub',
       terminalTitle: 'INSTALAR POR TERMINAL',
@@ -60,13 +60,16 @@ $ make build-all-cli
 Get-FileHash kongtrol-windows-amd64.exe -Algorithm SHA256
 # compara el resultado con la línea correspondiente en checksums.txt del release
 
-# Verificar checksum (Linux/macOS)
-sha256sum -c checksums.txt`,
+# Verificar checksum (Linux)
+sha256sum -c --ignore-missing checksums.txt
+
+# Verificar checksum (macOS)
+shasum -a 256 -c --ignore-missing checksums.txt`,
     }
     : {
       section: '$ make install',
       title: 'Download it free.',
-      sub: 'Windows, macOS and Linux. Open source. One administrator prompt at install, that is it.',
+      sub: 'Windows, macOS and Linux. Open source. One step with administrator permission: kongtrol service install.',
       download: 'Download',
       allReleases: 'View all releases on GitHub',
       terminalTitle: 'INSTALL FROM TERMINAL',
@@ -91,8 +94,11 @@ $ make build-all-cli
 Get-FileHash kongtrol-windows-amd64.exe -Algorithm SHA256
 # compare the output against the matching line in the release's checksums.txt
 
-# Verify checksum (Linux/macOS)
-sha256sum -c checksums.txt`,
+# Verify checksum (Linux)
+sha256sum -c --ignore-missing checksums.txt
+
+# Verify checksum (macOS)
+shasum -a 256 -c --ignore-missing checksums.txt`,
     }
 
   return (

@@ -93,10 +93,12 @@ The guide markup lives once in `components/sections/Guide.tsx`; `content/guide.e
 `GuideContent` type), so both languages cannot drift structurally.
 
 Multi-page Vite build (`index.html` + `guia.html` + `terminos.html`) served from the
-root of **https://kongtrol.app** on Cloudflare Pages (`base: '/'`). Pages maps clean
-URLs (`/guia` → `guia.html`, `/en/guide` → `en/guide.html`) and serves `public/404.html` for unknown paths on its own,
-and applies the security headers in `public/_headers` (see `docs/deploy-cloudflare.md`). Cloudflare project settings: root directory
-`landing`, build command `pnpm run build`, output directory `dist`. The build reads
+root of **https://kongtrol.app** as a Cloudflare Worker with static assets only (`base: '/'`,
+config in `wrangler.jsonc`, ADR-0022). It maps clean URLs (`/guia` → `guia.html`,
+`/en/guide` → `en/guide.html`), serves `public/404.html` with status 404 for unknown paths,
+and applies the security headers in `public/_headers` (see `docs/deploy-cloudflare.md`).
+Workers Builds settings: root directory `landing`, build command `pnpm run build`, deploy
+command `npx wrangler deploy`. The build reads
 `../assets/brand` (the repo-wide brand source); Cloudflare clones the whole repository and runs
 the build command inside the root directory, so the parent folder is available.
 
