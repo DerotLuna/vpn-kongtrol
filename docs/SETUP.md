@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.2 · 2026-11-18
+Versión 1.3 · 2026-11-18
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -86,12 +86,18 @@ el ayudante de red se conservan; desinstalar tampoco borra tu configuración).
 1. Descarga `Kongtrol-Setup-windows-amd64.exe` de
    [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) y ábrelo. Se instala solo
    para tu usuario, sin permisos de administrador.
-2. Deja marcadas las opciones recomendadas: abrir Kongtrol al iniciar sesión e instalar el
-   ayudante de red (Windows pide permiso **una sola vez**).
+2. Deja marcadas las opciones recomendadas: abrir Kongtrol al iniciar sesión, instalar el
+   ayudante de red (Windows pide permiso **una sola vez**) y agregar el comando `kongtrol` a la
+   terminal (PATH de tu usuario; se quita al desinstalar).
 3. Al terminar se abre Kongtrol: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
 
 Para actualizar, ejecuta el instalador nuevo encima: cierra Kongtrol (las VPN se desconectan
-un momento; tu internet normal sigue funcionando), actualiza y lo vuelve a abrir.
+un momento; tu internet normal sigue funcionando), actualiza y lo vuelve a abrir. Si la versión
+nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la actualización.
+
+Si antes copiaste `kongtrol.exe` a mano en otra carpeta del PATH (por ejemplo `C:\tools`), la
+terminal puede seguir usando esa copia vieja: `kongtrol doctor` lo avisa en «kongtrol en la
+terminal». Bórrala o quita esa carpeta del PATH y abre una terminal nueva.
 
 Otras vías: `winget install Kongtrol.Kongtrol` (actualiza con `winget upgrade Kongtrol.Kongtrol`)
 o Scoop (`scoop bucket add kongtrol https://github.com/DerotLuna/scoop-bucket`,

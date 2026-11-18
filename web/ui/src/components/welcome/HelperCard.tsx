@@ -16,6 +16,9 @@ export function HelperCard({ helper }: { helper: HelperState }) {
     if (status.elevated) {
       pill = <StatusPill tone="ok">{t('helper.pill.notNeeded')}</StatusPill>
       line = t('helper.elevated')
+    } else if (status.needs_install && status.outdated) {
+      pill = <StatusPill tone="warn">{t('helper.pill.outdated')}</StatusPill>
+      line = t('helper.needsUpdate')
     } else if (status.needs_install) {
       pill = <StatusPill tone="warn">{t('helper.pill.missing')}</StatusPill>
       line = t('helper.needsInstall')
@@ -50,7 +53,7 @@ export function HelperCard({ helper }: { helper: HelperState }) {
 
       {status?.needs_install && (
         <button type="button" className="btn" onClick={install} disabled={installing}>
-          {t('helper.install')}
+          {t(status.outdated ? 'helper.update' : 'helper.install')}
         </button>
       )}
       <div aria-live="polite">

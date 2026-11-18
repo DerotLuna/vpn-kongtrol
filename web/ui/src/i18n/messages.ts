@@ -43,10 +43,14 @@ const es = {
   'helper.needsInstall': 'Falta instalarlo. Sin él, Kongtrol no puede conectar tus VPN.',
   'helper.install': 'Instalar ayudante',
   'helper.installing': 'Instalando… Acepta el permiso en la ventana que aparece.',
-  'helper.installed': 'Listo: el ayudante quedó instalado.',
+  'helper.installed': 'Ayudante listo · ya no hace falta volver a instalarlo.',
+  'helper.needsUpdate':
+    'Está desactualizado: Kongtrol no puede comprobar si los servidores de tus VPN responden. Actualízalo una vez.',
+  'helper.update': 'Actualizar ayudante',
   'helper.version': 'Versión {version}',
   'helper.pill.ready': 'Listo',
   'helper.pill.missing': 'Falta',
+  'helper.pill.outdated': 'Desactualizado',
   'helper.pill.notNeeded': 'No hace falta',
 
   'tunnels.title': 'Tus VPN',
@@ -234,10 +238,14 @@ const en: Messages = {
   'helper.needsInstall': 'Not installed yet. Without it, Kongtrol cannot connect your VPNs.',
   'helper.install': 'Install helper',
   'helper.installing': 'Installing… Accept the permission in the window that appears.',
-  'helper.installed': 'Done: the helper is installed.',
+  'helper.installed': 'Helper ready · no need to install it again.',
+  'helper.needsUpdate':
+    "It is out of date: Kongtrol can't check whether your VPN servers answer. Update it once.",
+  'helper.update': 'Update helper',
   'helper.version': 'Version {version}',
   'helper.pill.ready': 'Ready',
   'helper.pill.missing': 'Missing',
+  'helper.pill.outdated': 'Out of date',
   'helper.pill.notNeeded': 'Not needed',
 
   'tunnels.title': 'Your VPNs',

@@ -65,11 +65,17 @@ func initClient() error {
 // their own spawn; the shared spawn lock already prevents two daemons.
 var ensureMu sync.Mutex
 
+// startingDaemon is true while ensureDaemon runs, so the menu says
+// "Iniciando Kongtrol…" instead of "detenido" in the meantime.
+var startingDaemon atomic.Bool
+
 // ensureDaemon makes sure the daemon answers, spawning it detached exactly
 // like `kongtrol up` does when it doesn't.
 func ensureDaemon() error {
 	ensureMu.Lock()
 	defer ensureMu.Unlock()
+	startingDaemon.Store(true)
+	defer startingDaemon.Store(false)
 	sp := daemonctl.Spawner{
 		Probe: client.Probe,
 		Spawn: func(logPath string) (<-chan error, error) {
@@ -229,15 +235,17 @@ func refreshHelperItem() {
 		item.Show()
 		return
 	}
-	if !helperNeedsInstall() {
+	need := helperState()
+	if need == helperOK {
 		item.Hide()
 		return
 	}
-	item.SetTitle(trayT("tray.helper_install"))
-	item.SetTooltip(trayT("tray.helper_install_tip"))
+	title, tip := helperItemText(need)
+	item.SetTitle(title)
+	item.SetTooltip(tip)
 	item.Enable()
 	item.Show()
-	if claimOnce(helperNoticeMarker()) {
+	if need == helperMissing && claimOnce(helperNoticeMarker()) {
 		msg := trayT("tray.helper_first_run")
 		notifyError(msg, nil)
 		desktopNotify("VPN Kongtrol", msg)
@@ -253,22 +261,50 @@ var (
 	}
 )
 
-// helperNeedsInstall asks the daemon first. When no daemon answers (fresh
+// helperNeed is what the helper item offers.
+type helperNeed int
+
+const (
+	helperOK       helperNeed = iota // nothing to do: item hidden
+	helperMissing                    // "Instalar ayudante (una vez)"
+	helperOutdated                   // "Actualizar ayudante (una vez)"
+)
+
+// helperState asks the daemon first. When no daemon answers (fresh
 // install, first-run menu, daemon stopped) it asks the helper itself, with
 // the daemon's rule: not elevated and no helper answering with our
-// protocol. Before, a fresh macOS/Linux install never showed the item: the
-// daemon did not answer yet and the first-run menu had no item at all.
-func helperNeedsInstall() bool {
+// protocol; one that answers with an older protocol is outdated.
+func helperState() helperNeed {
 	if st, err := daemonHelperStatus(); err == nil {
-		return st.NeedsInstall
+		switch {
+		case !st.NeedsInstall:
+			return helperOK
+		case st.Outdated:
+			return helperOutdated
+		}
+		return helperMissing
 	}
 	if helperIsElevated() {
-		return false
+		return helperOK
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 	res, err := pingHelper(ctx)
-	return err != nil || res.Protocol != privops.ProtocolVersion
+	switch {
+	case err != nil:
+		return helperMissing
+	case res.Protocol != privops.ProtocolVersion:
+		return helperOutdated
+	}
+	return helperOK
+}
+
+// helperItemText is the helper item's title and tooltip for need.
+func helperItemText(need helperNeed) (title, tip string) {
+	if need == helperOutdated {
+		return trayT("tray.helper_update"), trayT("tray.helper_update_tip")
+	}
+	return trayT("tray.helper_install"), trayT("tray.helper_install_tip")
 }
 
 // helperNoticeMarker records that the "helper missing" notice was shown,
@@ -301,18 +337,22 @@ func addHelperMenuItem() *systray.MenuItem {
 	return mHelper
 }
 
-// installHelper asks the daemon to install the privileged helper: the OS
-// shows one permission prompt (UAC / macOS / polkit dialog), then the
-// status line says whether it worked and, if not, what to do.
+// installHelper asks the daemon to install (or update) the privileged
+// helper: the OS shows one permission prompt (UAC / macOS / polkit
+// dialog). While it runs the item, status line and icon tooltip say so;
+// afterwards a desktop notification confirms it ("ya no hace falta volver
+// a instalarlo") and the item disappears at once (status re-checked right
+// away, not on the next poll), or the status line says what to do.
 func installHelper() {
 	if !helperInstalling.CompareAndSwap(false, true) {
 		return
 	}
+	started := true
 	err := func() error {
 		defer helperInstalling.Store(false)
 		if err := ensureDaemon(); err != nil {
-			notifyError(trayT("tray.err_start"), err)
-			return nil
+			started = false
+			return err
 		}
 		refreshHelperItem()
 		notifyError(trayT("tray.helper_installing"), nil)
@@ -321,12 +361,17 @@ func installHelper() {
 	}()
 	var he *daemonctl.HelperInstallError
 	switch {
+	case !started:
+		notifyError(trayT("tray.err_start"), err)
 	case errors.As(err, &he):
 		notifyError(he.Message+" · "+he.Hint, err)
 	case err != nil:
 		notifyError(trayT("tray.helper_install_failed"), err)
 	default:
-		notifyError(trayT("tray.helper_installed"), nil)
+		msg := trayT("tray.helper_installed")
+		notifyError(msg, nil)
+		desktopNotify("VPN Kongtrol", msg)
 	}
 	refreshHelperItem()
+	requestRefresh()
 }

@@ -31,9 +31,9 @@ export default function guideEN(os: OS): GuideContent {
     // feature:first_run
     quickstart2: <>Kongtrol works with the VPNs you already have. Everything is done from the app (tray and dashboard); the terminal is optional and does the same. The sections below are reference: come back to them only if something doesn't fit.</>,
     quickstart3: <><strong>Install the app and open the dashboard</strong></>,
-    quickstart4: <>Use the installer from <a href="/en/#install">downloads</a>. When it opens, the Kongtrol icon shows up in the tray and the dashboard opens in your browser to create your first VPN. The first time, your system asks for permission once to install the helper (a service that changes routes and DNS for you).</>,
+    quickstart4: <>Use the installer from <a href="/en/#install">downloads</a>. When it opens, the Kongtrol icon shows up in the tray and the dashboard opens in your browser to create your first VPN. The first time, your system asks for permission once to install the helper (a service that changes routes and DNS for you); when you update Kongtrol with the installer, it asks again only if the helper is out of date.</>,
     quickstart5: <><strong>Connect from the tray or the dashboard</strong></>,
-    quickstart6: <>The "daemon" you'll see in the terminal is the Kongtrol process that keeps working in the background: you can close the dashboard or the terminal and your VPNs stay connected. Only "Quit and disconnect all" in the tray, or <IC c="kongtrol down" />, disconnects them.</>,
+    quickstart6: <>The "daemon" you'll see in the terminal is the Kongtrol process that keeps working in the background: you can close the dashboard or the terminal and your VPNs stay connected. Only "Quit and disconnect all" in the tray, or <IC c="kongtrol down" />, disconnects them. After <IC c="kongtrol down" /> the icon stays in the tray and says "Kongtrol stopped": choose "Start Kongtrol" to use it again.</>,
     quickstart7: <><strong>From the terminal (optional)</strong></>,
     quickstart8: <><IC c="kongtrol init" /> guides you, checks the helper (offers to install it) and at the end asks whether to connect now. Then: live status and the dashboard.</>,
     // feature:providers
@@ -82,7 +82,7 @@ Move-Item kongtrol.exe C:\\tools\\kongtrol.exe`,
 )`,
     install7: <>4. Open a <strong>new</strong> terminal and verify:</>,
     install8: <><strong>Why a new terminal?</strong> PATH changes only apply to
-                    terminals opened after the change; ones already open won't see it.</>,
+                    terminals opened after the change; ones already open won't see it. If you later use the installer, delete this copy (or remove <IC c="C:\tools" /> from PATH): the terminal runs the first copy it finds in PATH, and <IC c="kongtrol doctor" /> warns you when there is another.</>,
     install9: `# Apple Silicon (M1+)
 $ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
 $ sudo mv kongtrol /usr/local/bin/

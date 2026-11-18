@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,7 +14,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
-	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 )
 
 func onReady() {
@@ -32,13 +31,31 @@ func onReady() {
 	if runtime.GOOS == "windows" {
 		time.Sleep(150 * time.Millisecond)
 	}
-	setIcon(false)
+	if err := applyTrayIcon(assets.BadgeNone, trayIconTheme()); err != nil {
+		log.Printf("kongtrol-tray: tray icon: %v", err)
+	}
 	setupMenu()
+}
+
+// refreshCh asks the status loop for an immediate refresh (after a click
+// that changes state), instead of waiting for the next 3 s tick.
+var refreshCh = make(chan struct{}, 1)
+
+func requestRefresh() {
+	select {
+	case refreshCh <- struct{}{}:
+	default:
+	}
 }
 
 // setupMenu builds the full menu, or the first-run / error menu when the
 // tray cannot work yet. It runs again (after systray.ResetMenu) once a
 // first-run user has created the config.
+//
+// Layout (top to bottom): status header (VPNs up, kill switch, public IP)
+// and the lines that ask for an action (start Kongtrol, helper, policy);
+// primary actions (panel, VPN connections, groups); the version; the two
+// exit items.
 func setupMenu() {
 	if err := initClient(); err != nil {
 		switch {
@@ -54,58 +71,71 @@ func setupMenu() {
 		return
 	}
 
-	// ── Menu items ────────────────────────────────────────────────────────
+	m := &trayMenu{}
 
-	mDashboard := systray.AddMenuItem(trayT("tray.open_dashboard"), trayT("tray.open_dashboard_tip"))
-	labels := trayMenuLabels{dashboard: mDashboard}
-	onClick(mDashboard, openDashboard)
-	// Shown only while the privileged helper is missing (refreshHelperItem).
-	addHelperMenuItem()
-	systray.AddSeparator()
-
-	// Groups submenu — one entry per named group in kongtrol.yaml. Clicking
-	// a group connects every disconnected profile in it, or disconnects all
-	// of them if every profile in the group is already connected.
-	groupItems := make(map[string]*systray.MenuItem)
-	if len(cfg.Groups) > 0 {
-		mGroups := systray.AddMenuItem(trayT("tray.groups"), trayT("tray.groups_tip"))
-		labels.groups = mGroups
-		for _, name := range sortedKeys(cfg.Groups) {
-			item := mGroups.AddSubMenuItem(name, "")
-			groupItems[name] = item
-			onClick(item, func() { toggleGroup(name) })
-		}
-		systray.AddSeparator()
-	}
-
-	// Tunnels submenu — one entry per VPN profile.
-	mTunnels := systray.AddMenuItem(trayT("tray.tunnels"), trayT("tray.tunnels_tip"))
-	labels.tunnels = mTunnels
-	profileItems := make(map[string]*systray.MenuItem)
-	for _, name := range sortedKeys(cfg.VPNs) {
-		item := mTunnels.AddSubMenuItem(name, "")
-		profileItems[name] = item
-		onClick(item, func() { toggleProfile(name) })
-	}
-
-	systray.AddSeparator()
-	mStatus := systray.AddMenuItem(trayT("tray.status_loading"), "")
-	mStatus.Disable()
+	// ── Status header ─────────────────────────────────────────────────────
+	m.header = systray.AddMenuItem(trayT("tray.status_loading"), "")
+	m.header.Disable()
 	noticeMu.Lock()
-	statusItem = mStatus
+	statusItem = m.header
 	noticeMu.Unlock()
-	// "Conectar <perfil>" after a policy notice (see tray_policy.go).
-	addPolicyMenuItem()
 	addKillSwitchMenuItem()
 	addPublicIPMenuItem()
+	// Lines that ask for one action; hidden unless needed.
+	m.start = systray.AddMenuItem(trayT("tray.start"), trayT("tray.start_tip"))
+	m.start.Hide()
+	onClick(m.start, func() { startKongtrol(m) })
+	// Shown only while the privileged helper is missing or outdated.
+	addHelperMenuItem()
+	// "Conectar <perfil>" after a policy notice (see tray_policy.go).
+	addPolicyMenuItem()
 	systray.AddSeparator()
-	mStopAll := systray.AddMenuItem(trayT("tray.stop_all"), trayT("tray.stop_all_tip"))
-	labels.stopAll = mStopAll
-	onClick(mStopAll, stopKongtrol)
-	mQuit := systray.AddMenuItem(trayT("tray.quit"), trayT("tray.quit_tip"))
-	labels.quit = mQuit
+
+	// ── Primary actions ───────────────────────────────────────────────────
+	m.dash = systray.AddMenuItem(trayT("tray.open_dashboard"), trayT("tray.open_dashboard_tip"))
+	onClick(m.dash, openDashboard)
+
+	// One slot per VPN profile; renderTunnels relabels them so connected
+	// VPNs come first.
+	m.tunnels = systray.AddMenuItem(trayT("tray.tunnels"), trayT("tray.tunnels_tip"))
+	for _, name := range sortedKeys(cfg.VPNs) {
+		s := &slotItem{item: m.tunnels.AddSubMenuItemCheckbox(name, "", false), name: name}
+		m.profiles = append(m.profiles, s)
+		onClick(s.item, func() {
+			if n := m.slotName(s); n != "" {
+				toggleProfile(n)
+				requestRefresh()
+			}
+		})
+	}
+
+	// Groups — clicking connects every disconnected profile in the group,
+	// or disconnects all of them when every one is already connected.
+	if len(cfg.Groups) > 0 {
+		m.groups = systray.AddMenuItem(trayT("tray.groups"), trayT("tray.groups_tip"))
+		for _, name := range sortedKeys(cfg.Groups) {
+			s := &slotItem{item: m.groups.AddSubMenuItemCheckbox(name, "", false), name: name}
+			m.grpSlots = append(m.grpSlots, s)
+			onClick(s.item, func() {
+				toggleGroup(name)
+				requestRefresh()
+			})
+		}
+	}
+	systray.AddSeparator()
+
+	// ── Version ───────────────────────────────────────────────────────────
+	m.ver = systray.AddMenuItem("", "")
+	m.ver.Disable()
+	m.refreshVersion(false)
+	systray.AddSeparator()
+
+	// ── Exit ──────────────────────────────────────────────────────────────
+	m.stopAll = systray.AddMenuItem(trayT("tray.stop_all"), trayT("tray.stop_all_tip"))
+	onClick(m.stopAll, stopKongtrol)
+	m.quit = systray.AddMenuItem(trayT("tray.quit"), trayT("tray.quit_tip"))
 	// Quitting closes only the tray; the daemon keeps its tunnels up.
-	onClick(mQuit, systray.Quit)
+	onClick(m.quit, systray.Quit)
 	// Left click: branded flyout where supported (flyout*.go, ADR-0036);
 	// the menu above stays on the right click and as the fallback.
 	setupFlyout()
@@ -116,13 +146,29 @@ func setupMenu() {
 		if err := ensureDaemon(); err != nil {
 			notifyError(trayT("tray.err_start"), err)
 		}
-		updateTrayStatus(mStatus, profileItems, groupItems, labels)
+		updateTrayStatus(m)
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
-		for range ticker.C {
-			updateTrayStatus(mStatus, profileItems, groupItems, labels)
+		for {
+			select {
+			case <-ticker.C:
+			case <-refreshCh:
+			}
+			updateTrayStatus(m)
 		}
 	}()
+}
+
+// startKongtrol is "Iniciar Kongtrol": the menu shows it only while the
+// daemon is stopped (after `kongtrol down`). It starts the daemon exactly
+// like the tray does at login; the VPNs stay down until the user connects.
+func startKongtrol(m *trayMenu) {
+	m.start.Disable()
+	m.header.SetTitle(trayT("tray.header.starting"))
+	if err := ensureDaemon(); err != nil {
+		notifyError(trayT("tray.err_start"), err)
+	}
+	requestRefresh()
 }
 
 // showFatal leaves a tray with only an error title, a short translated
@@ -232,85 +278,79 @@ func onClick(item *systray.MenuItem, fn func()) {
 	}()
 }
 
-func updateTrayStatus(
-	mStatus *systray.MenuItem,
-	profileItems, groupItems map[string]*systray.MenuItem,
-	labels trayMenuLabels,
-) {
+// updateTrayStatus polls the daemon and renders the whole menu. It keeps
+// running while the daemon is stopped, so the menu recovers by itself when
+// the daemon comes back (CLI `kongtrol up`, the dashboard, "Iniciar").
+func updateTrayStatus(m *trayMenu) {
 	if refreshTrayLanguage() {
-		applyTrayMenuLanguage(labels)
+		applyTrayMenuLanguage(m)
 	}
 
 	notice := activeNotice()
 	states, err := client.TunnelStates()
+	d := classifyDaemon(err, startingDaemon.Load())
+	names := sortedKeys(cfg.VPNs)
 	if err != nil {
+		states = map[string]monitor.TunnelMetrics{}
+	}
+	views := trayTunnelViews(names, states)
+	header, badge := trayHeader(d, views)
+	m.renderDaemon(d, header, badge)
+	m.renderTunnels(views)
+	m.renderGroups(states)
+	m.refreshVersion(d == daemonRunning)
+	if err != nil {
+		tip := trayT("tray.daemon_unreachable")
+		if d == daemonStopped {
+			tip = trayT("tray.tooltip.stopped")
+		}
 		if notice != "" {
-			mStatus.SetTitle(notice)
-			systray.SetTooltip(notice)
-		} else {
-			mStatus.SetTitle(trayT("tray.daemon_unreachable"))
-			systray.SetTooltip(trayT("tray.daemon_unreachable"))
+			m.header.SetTitle(notice)
+			tip = notice
 		}
-		setIcon(false)
-		for name, item := range profileItems {
-			item.SetTitle(name)
-		}
+		systray.SetTooltip(tip)
+		hidePolicyAndStatusLines()
 		// No daemon: refreshHelperItem asks the helper directly.
 		refreshHelperItem()
 		return
 	}
-	systray.SetTooltip(trayT("tray.tooltip"))
 	refreshHelperItem()
 	pollPolicyEvents(states)
 	refreshKillSwitchItem()
 	refreshPublicIPItem()
 	notice = activeNotice() // a new policy notice shows at once
-
-	connectedCount := 0
-	for _, m := range states {
-		if m.Status == vpn.StatusConnected {
-			connectedCount++
-		}
-	}
 	if notice != "" {
-		mStatus.SetTitle(notice)
-	} else {
-		mStatus.SetTitle(trayF("tray.status_active", connectedCount))
+		m.header.SetTitle(notice)
 	}
-	setIcon(connectedCount > 0)
 
-	names := make([]string, 0, len(profileItems))
-	for name, item := range profileItems {
-		m, ok := states[name]
-		if !ok {
-			continue
-		}
-		names = append(names, name)
-		title, tooltip := trayTunnelLabel(name, m)
-		item.SetTitle(title)
-		item.SetTooltip(tooltip)
-	}
 	// A provider waiting for the user in its app (or dropped) is the most
 	// useful thing the icon tooltip can say.
-	sort.Strings(names)
-	if notice != "" {
+	sorted := append([]string(nil), names...)
+	sort.Strings(sorted)
+	switch tip := trayWaitingTooltip(states, sorted); {
+	case notice != "":
 		systray.SetTooltip(notice)
-	} else if tip := trayWaitingTooltip(states, names); tip != "" {
+	case tip != "":
 		systray.SetTooltip(tip)
+	default:
+		systray.SetTooltip(header + " · " + trayT("tray.tooltip"))
 	}
+}
 
-	for name, item := range groupItems {
-		g, ok := cfg.Groups[name]
-		if !ok {
-			continue
-		}
-		connected := 0
-		for _, p := range g.Profiles {
-			if m, ok := states[p]; ok && m.Status == vpn.StatusConnected {
-				connected++
-			}
-		}
-		item.SetTitle(fmt.Sprintf("%s (%d/%d)", name, connected, len(g.Profiles)))
+// hidePolicyAndStatusLines hides the kill switch and public IP lines while
+// no daemon answers: their last values would be stale.
+func hidePolicyAndStatusLines() {
+	policyMu.Lock()
+	ks := ksItem
+	policyMu.Unlock()
+	if ks != nil {
+		ks.Hide()
+	}
+	publicIPMu.Lock()
+	ip := publicIPItem
+	publicIPMu.Unlock()
+	if ip != nil {
+		ip.Hide()
 	}
 }
 
@@ -342,7 +382,7 @@ func refreshTrayLanguage() bool {
 	return changed
 }
 
-func applyTrayMenuLanguage(labels trayMenuLabels) {
+func applyTrayMenuLanguage(m *trayMenu) {
 	systray.SetTooltip(trayT("tray.tooltip"))
 	set := func(item *systray.MenuItem, title, tip string) {
 		if item != nil {
@@ -350,11 +390,17 @@ func applyTrayMenuLanguage(labels trayMenuLabels) {
 			item.SetTooltip(trayT(tip))
 		}
 	}
-	set(labels.dashboard, "tray.open_dashboard", "tray.open_dashboard_tip")
-	set(labels.groups, "tray.groups", "tray.groups_tip")
-	set(labels.tunnels, "tray.tunnels", "tray.tunnels_tip")
-	set(labels.stopAll, "tray.stop_all", "tray.stop_all_tip")
-	set(labels.quit, "tray.quit", "tray.quit_tip")
+	set(m.dash, "tray.open_dashboard", "tray.open_dashboard_tip")
+	set(m.groups, "tray.groups", "tray.groups_tip")
+	set(m.tunnels, "tray.tunnels", "tray.tunnels_tip")
+	set(m.start, "tray.start", "tray.start_tip")
+	set(m.stopAll, "tray.stop_all", "tray.stop_all_tip")
+	set(m.quit, "tray.quit", "tray.quit_tip")
+	m.verText = ""
+	// Profile / group titles carry translated state words: re-render all.
+	for _, s := range append(append([]*slotItem(nil), m.profiles...), m.grpSlots...) {
+		s.last = itemView{}
+	}
 }
 
 // sortedKeys returns m's keys in order, so the menu is stable across runs.
@@ -365,15 +411,4 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-func setIcon(connected bool) {
-	size := 32
-	iconBytes, err := assets.TrayIcon(size)
-	if err != nil {
-		// Fallback: use the full-res PNG and let systray resize.
-		iconBytes = assets.LogoKongPNG
-	}
-	systray.SetIcon(iconBytes)
-	_ = connected // future: swap to a grey version when disconnected
 }

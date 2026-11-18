@@ -49,6 +49,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0034](0034-uninstall-and-update-notice.md) | Uninstall keeps data unless asked (purge with exact keychain entries, never package-manager files); opt-in update notice from GitHub Releases, ≤1/24 h, never auto-update | Accepted | 2026-11-18 |
 | [0035](0035-install-scripts-pinned-and-release-assets.md) | One-line install scripts: pinned to the published tag from `landing/src/links.ts` now; from v0.6.0 release assets (+ checksums) behind `kongtrol.app/install.sh` (302 to `releases/latest/download`) | Accepted | 2026-11-18 |
 | [0036](0036-tray-flyout-window.md) | Branded tray flyout on left click: `web/ui` `/app/tray` in a pure-Go WebView2 popup next to the icon on Windows (loopback-only, origin filter, nonce bridge); native menu on right click and on macOS/Linux | Accepted | 2026-11-18 |
+| [0037](0037-native-tray-menu-states-and-installer-upgrade.md) | Native tray menu: translated states, connected first with state dots, stopped-daemon state with "Iniciar Kongtrol", version line, icon from the vector mark with a state badge; installer PATH on by default and helper updated on every upgrade when outdated; doctor warns about other kongtrol copies in PATH | Accepted | 2026-11-18 |
 
 ## Statuses
 

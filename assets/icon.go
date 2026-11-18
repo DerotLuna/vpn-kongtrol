@@ -2,59 +2,112 @@ package assets
 
 import (
 	"bytes"
+	"embed"
 	"encoding/binary"
+	"fmt"
 	"image"
+	"image/color"
 	"image/png"
-
-	"golang.org/x/image/draw"
 )
 
-// TrayIcon returns the logo resized to size×size pixels, wrapped in a minimal
-// single-frame .ico container, suitable for use with fyne.io/systray.SetIcon().
-// Uses Lanczos (CatmullRom) interpolation for crisp downscaling.
+// trayMaskFS holds the tray / menu bar masks rasterized from the vector
+// master by brand/generate.go: black line art, transparent background, one
+// file per size (MaskSizes).
 //
-// The .ico wrapping matters specifically on Windows: systray's Windows
-// backend loads icons via the Win32 LoadImage(IMAGE_ICON, ...) API, which
-// requires a real ICO container — a bare PNG fails to load there (LoadImage
-// returns 0, surfacing as a misleading "unable to set icon: The operation
-// completed successfully" error, and leaving the tray icon blank). ICO files
-// with a single PNG-compressed frame have been valid since Windows Vista and
-// are also accepted by systray on macOS/Linux, so this format works everywhere.
-func TrayIcon(size int) ([]byte, error) {
-	src, _, err := image.Decode(bytes.NewReader(LogoKongPNG))
+//go:embed brand/tray-*.png
+var trayMaskFS embed.FS
+
+// MaskSizes are the sizes generate.go renders (traySizes there).
+var MaskSizes = []int{16, 20, 24, 32, 48, 64}
+
+// Ink colors for the tray mark (DESIGN.md text tokens): light ink on dark
+// taskbars / panels, dark ink on light ones. InkTemplate is plain black for
+// macOS template images, where only the alpha channel counts.
+var (
+	InkOnDark   = color.RGBA{0xee, 0xf1, 0xf5, 0xff} // text
+	InkOnLight  = color.RGBA{0x1b, 0x18, 0x13, 0xff} // text-light
+	InkTemplate = color.RGBA{0, 0, 0, 0xff}
+)
+
+// TrayMark returns the mark at size×size (size must be one of MaskSizes)
+// tinted with ink, with the state badge drawn in the bottom-right corner.
+func TrayMark(size int, ink color.RGBA, badge TrayBadge) (*image.RGBA, error) {
+	b, err := trayMaskFS.ReadFile(fmt.Sprintf("brand/tray-%d.png", size))
+	if err != nil {
+		return nil, fmt.Errorf("assets: no tray mask for %dpx: %w", size, err)
+	}
+	mask, err := png.Decode(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
-
 	dst := image.NewRGBA(image.Rect(0, 0, size, size))
-	draw.CatmullRom.Scale(dst, dst.Bounds(), src, src.Bounds(), draw.Over, nil)
-
-	var pngBuf bytes.Buffer
-	if err := png.Encode(&pngBuf, dst); err != nil {
-		return nil, err
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			_, _, _, a := mask.At(x, y).RGBA()
+			if a == 0 {
+				continue
+			}
+			blend(dst, x, y, ink, float64(a)/0xffff)
+		}
 	}
-
-	return wrapICO(pngBuf.Bytes(), size), nil
+	drawBadge(dst, badge)
+	return dst, nil
 }
 
-// wrapICO wraps a single square PNG image in a minimal ICONDIR/ICONDIRENTRY
-// .ico header. See https://en.wikipedia.org/wiki/ICO_(file_format).
-func wrapICO(pngBytes []byte, size int) []byte {
-	dim := byte(size)
-	if size >= 256 {
-		dim = 0 // 0 means 256 in the ICO format's 1-byte width/height fields
+// TrayPNG is TrayMark encoded as PNG (macOS, Linux and menu items).
+func TrayPNG(size int, ink color.RGBA, badge TrayBadge) ([]byte, error) {
+	img, err := TrayMark(size, ink, badge)
+	if err != nil {
+		return nil, err
 	}
+	return encodePNG(img), nil
+}
 
-	const headerLen = 6 + 16 // ICONDIR + one ICONDIRENTRY
-	buf := make([]byte, 0, headerLen+len(pngBytes))
+// TrayICO renders every size in MaskSizes into one .ico, so Windows picks
+// a rendered frame for the current DPI instead of scaling one.
+//
+// The .ico container matters on Windows: systray's Windows backend loads
+// icons with LoadImage(IMAGE_ICON, LR_LOADFROMFILE|LR_DEFAULTSIZE), which
+// needs a real ICO; a bare PNG fails there (LoadImage returns 0 and the
+// tray icon stays blank). PNG-compressed ICO frames are valid since Vista.
+func TrayICO(ink color.RGBA, badge TrayBadge) ([]byte, error) {
+	frames := make([][]byte, 0, len(MaskSizes))
+	for _, s := range MaskSizes {
+		p, err := TrayPNG(s, ink, badge)
+		if err != nil {
+			return nil, err
+		}
+		frames = append(frames, p)
+	}
+	return wrapICO(frames, MaskSizes), nil
+}
 
-	// ICONDIR: reserved(2)=0, type(2)=1 (icon), count(2)=1
-	buf = append(buf, 0, 0, 1, 0, 1, 0)
-
-	// ICONDIRENTRY: width, height, colorCount, reserved, planes(2), bitCount(2)
-	buf = append(buf, dim, dim, 0, 0, 1, 0, 32, 0)
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(len(pngBytes))) // bytesInRes
-	buf = binary.LittleEndian.AppendUint32(buf, uint32(headerLen))    // imageOffset
-
-	return append(buf, pngBytes...)
+// wrapICO wraps square PNG images in an ICONDIR with one ICONDIRENTRY per
+// frame. See https://en.wikipedia.org/wiki/ICO_(file_format).
+func wrapICO(frames [][]byte, sizes []int) []byte {
+	headerLen := 6 + 16*len(frames)
+	total := headerLen
+	for _, f := range frames {
+		total += len(f)
+	}
+	buf := make([]byte, 0, total)
+	// ICONDIR: reserved(2)=0, type(2)=1 (icon), count(2)
+	buf = append(buf, 0, 0, 1, 0)
+	buf = binary.LittleEndian.AppendUint16(buf, uint16(len(frames)))
+	offset := headerLen
+	for i, f := range frames {
+		dim := byte(sizes[i])
+		if sizes[i] >= 256 {
+			dim = 0 // 0 means 256 in the 1-byte width/height fields
+		}
+		// ICONDIRENTRY: width, height, colorCount, reserved, planes(2), bitCount(2)
+		buf = append(buf, dim, dim, 0, 0, 1, 0, 32, 0)
+		buf = binary.LittleEndian.AppendUint32(buf, uint32(len(f)))
+		buf = binary.LittleEndian.AppendUint32(buf, uint32(offset))
+		offset += len(f)
+	}
+	for _, f := range frames {
+		buf = append(buf, f...)
+	}
+	return buf
 }

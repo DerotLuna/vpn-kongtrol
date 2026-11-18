@@ -19,6 +19,10 @@ import (
 // installed the helper: an elevated process may run as a different
 // account (over-the-shoulder admin), so the unprivileged parent sends it.
 var (
+	// svcIfOutdated (hidden, used by the Windows installer on upgrades):
+	// reinstall only a helper that answers with an older protocol; a
+	// missing or current helper is left alone, so no UAC prompt.
+	svcIfOutdated   bool
 	svcElevatedStep bool
 	svcUserSID      string
 	svcUserName     string
@@ -79,6 +83,8 @@ func init() {
 			_ = f.MarkHidden(n)
 		}
 	}
+	serviceInstallCmd.Flags().BoolVar(&svcIfOutdated, "if-outdated", false, "")
+	_ = serviceInstallCmd.Flags().MarkHidden("if-outdated")
 	serviceCmd.AddCommand(serviceInstallCmd, serviceUninstallCmd, serviceStatusCmd)
 	helperCmd.AddCommand(helperRunCmd)
 	rootCmd.AddCommand(serviceCmd)
@@ -122,6 +128,16 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 		return privhelper.Install(opts)
 	}
 
+	if svcIfOutdated {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		res, err := privops.NewClient().Ping(ctx)
+		cancel()
+		if install, key := outdatedHelperAction(res, err); !install {
+			say(tuiInfo(ct(key)))
+			return nil
+		}
+	}
+
 	res, err := installHelper()
 	if err != nil {
 		return err
@@ -132,6 +148,19 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 	say(tuiOK(ct("service.install.ok")))
 	say(tuiInfo(ct("service.install.next")))
 	return nil
+}
+
+// outdatedHelperAction decides `service install --if-outdated` from a
+// ping: reinstall only a helper that answers with another protocol
+// (privops.ProtocolVersion); otherwise the message key to print.
+func outdatedHelperAction(res privops.PingResult, pingErr error) (install bool, key string) {
+	switch {
+	case pingErr != nil:
+		return false, "service.install.nothing_to_update"
+	case res.Protocol == privops.ProtocolVersion:
+		return false, "service.install.up_to_date"
+	}
+	return true, ""
 }
 
 // installHelper installs (or updates) the helper from this executable,

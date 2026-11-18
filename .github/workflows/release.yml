@@ -95,7 +95,7 @@ jobs:
           ver="${GITHUB_REF_NAME#v}"
           go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows_amd64.syso
           CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${ver}" -o build/win/kongtrol.exe ./cmd/kongtrol
-          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui" -o build/win/kongtrol-tray.exe ./cmd/kongtrol-tray
+          CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H=windowsgui -X main.version=${ver}" -o build/win/kongtrol-tray.exe ./cmd/kongtrol-tray
           ./build/win/kongtrol.exe version --plain
       - name: Upload binaries for signing
         id: unsigned-bin

@@ -57,6 +57,8 @@ export interface HelperStatus {
   helper_version: string
   cli_version: string
   needs_install: boolean
+  /** The helper answers with an older protocol: "update" rather than "install". */
+  outdated?: boolean
 }
 
 /** internal/api/handlers_security.go `preferenceDTO`. Empty = no explicit choice. */

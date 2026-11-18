@@ -29,9 +29,9 @@ export default function guideES(os: OS) {
     // feature:first_run
     quickstart2: <>Kongtrol trabaja con las VPN que ya tienes. Todo se hace desde la app (bandeja y panel); la terminal es opcional y hace lo mismo. Las secciones de abajo son referencia: vuelve a ellas solo si algo no calza.</>,
     quickstart3: <><strong>Instala la app y abre el panel</strong></>,
-    quickstart4: <>Usa el instalador de <a href="/#install">descargas</a>. Al abrirla aparece el ícono de Kongtrol en la bandeja y el panel se abre en tu navegador para crear tu primera VPN. La primera vez el sistema te pide permiso una sola vez para instalar el ayudante (un servicio que cambia rutas y DNS por ti).</>,
+    quickstart4: <>Usa el instalador de <a href="/#install">descargas</a>. Al abrirla aparece el ícono de Kongtrol en la bandeja y el panel se abre en tu navegador para crear tu primera VPN. La primera vez el sistema te pide permiso una sola vez para instalar el ayudante (un servicio que cambia rutas y DNS por ti); al actualizar Kongtrol con el instalador, solo vuelve a pedirlo si el ayudante quedó desactualizado.</>,
     quickstart5: <><strong>Conecta desde la bandeja o el panel</strong></>,
-    quickstart6: <>El «daemon» que verás en la terminal es el proceso de Kongtrol que sigue funcionando en segundo plano: puedes cerrar el panel o la terminal y tus VPN siguen conectadas. Solo «Salir y desconectar todo» en la bandeja, o <IC c="kongtrol down" />, las desconecta.</>,
+    quickstart6: <>El «daemon» que verás en la terminal es el proceso de Kongtrol que sigue funcionando en segundo plano: puedes cerrar el panel o la terminal y tus VPN siguen conectadas. Solo «Salir y desconectar todo» en la bandeja, o <IC c="kongtrol down" />, las desconecta. Tras <IC c="kongtrol down" /> el ícono sigue en la bandeja y dice «Kongtrol detenido»: elige «Iniciar Kongtrol» para volver a usarlo.</>,
     quickstart7: <><strong>Desde la terminal (opcional)</strong></>,
     quickstart8: <><IC c="kongtrol init" /> te guía, revisa el ayudante (te ofrece instalarlo) y al final te pregunta si conectas ya. Después: estado en vivo y el panel.</>,
     // feature:providers
@@ -81,7 +81,7 @@ Move-Item kongtrol.exe C:\\tools\\kongtrol.exe`,
     install7: <>4. Abre una terminal <strong>nueva</strong> y verifica:</>,
     install8: <><strong>¿Por qué una terminal nueva?</strong> Los cambios al PATH solo
                     aplican en terminales abiertas después del cambio; las que ya estaban
-                    abiertas no lo ven.</>,
+                    abiertas no lo ven. Si después usas el instalador, borra esta copia (o quita <IC c="C:\tools" /> del PATH): la terminal usa la primera copia que encuentra en el PATH, y <IC c="kongtrol doctor" /> te avisa si hay otra.</>,
     install9: `# Apple Silicon (M1+)
 $ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
 $ sudo mv kongtrol /usr/local/bin/
