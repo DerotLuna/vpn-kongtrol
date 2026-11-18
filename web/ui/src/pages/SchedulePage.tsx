@@ -1,4 +1,4 @@
-// Horarios (/rules/schedule) — VPNs that connect and disconnect by themselves · v1.0.0 · 2026-11-18
+// Horarios (/rules/schedule) — VPNs that connect and disconnect by themselves · v1.0.1 · 2026-11-18
 //
 // Parity with the classic Settings "Scheduler" tab: on/off (saves at once,
 // and only that field), check interval (its own save), rule CRUD, refresh.
@@ -150,12 +150,13 @@ export function SchedulePage() {
             <IntervalForm key={settings.data.scheduler_interval} current={settings.data.scheduler_interval} />
           </>
         )}
-        <Banner tone="info" title={t('schedule.restart.title')}>
-          <p>
-            {t('schedule.restart.body')} <Link to="/settings">{t('schedule.restart.link')}</Link>
-          </p>
-        </Banner>
       </Card>
+      {/* Outside the card: a note about the page, never a card in a card. */}
+      <Banner tone="info" title={t('schedule.restart.title')}>
+        <p>
+          {t('schedule.restart.body')} <Link to="/settings">{t('schedule.restart.link')}</Link>
+        </p>
+      </Banner>
 
       {editor && (
         <ScheduleEditor
