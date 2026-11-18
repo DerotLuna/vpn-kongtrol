@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useInView } from '../../hooks/useInView'
 import { Lang } from '../../i18n'
 import './routeboard.css'
 
@@ -30,6 +31,12 @@ export default function Features({ lang }: Props) {
   // once the visitor picks a destination the board stops rotating for good
   // (WCAG 2.2.2) and the readout starts being announced
   const [touched, setTouched] = useState(false)
+  // rotates and animates its wires only while on screen (ADR-0031)
+  const boardRef = useRef<HTMLDivElement>(null)
+  const live = useInView(boardRef)
+  // .is-live is toggled on the node, not through className: useReveal adds
+  // .is-in to this .reveal element by hand, and a className re-render would drop it
+  useEffect(() => { boardRef.current?.classList.toggle('is-live', live) }, [live])
 
   const copy = lang === 'es'
     ? {
@@ -72,11 +79,11 @@ export default function Features({ lang }: Props) {
     }
 
   useEffect(() => {
-    if (paused || touched) return
+    if (paused || touched || !live) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const t = window.setInterval(() => setActive(a => (a + 1) % ROWS.length), 2600)
     return () => window.clearInterval(t)
-  }, [paused, touched])
+  }, [paused, touched, live])
 
   const routes = copy.routes
   const cur = routes[active]
@@ -92,6 +99,7 @@ export default function Features({ lang }: Props) {
 
         {/* ── SIGNATURE: live routing switchboard ── */}
         <div
+          ref={boardRef}
           className="switchboard reveal"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
@@ -194,7 +202,7 @@ export default function Features({ lang }: Props) {
                   <button type="button" className="sb-row-dest" aria-pressed={on} onClick={() => pick(i)}>
                     {r.dest}
                   </button>
-                  <span className="sb-row-wire" aria-hidden="true"><i /></span>
+                  <span className="sb-row-wire" aria-hidden="true"><b /><i /></span>
                   <span className="sb-row-out">
                     <b>{r.tunnel}</b>
                     <small>{r.adapter}</small>

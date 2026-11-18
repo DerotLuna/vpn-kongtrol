@@ -149,13 +149,8 @@ export function headFor(page: PageId, lang: Lang): string {
     `<link rel="icon" type="image/png" sizes="32x32" href="/logo-kong-32.png" />`,
     `<link rel="apple-touch-icon" href="/logo-kong-192.png" />`,
     `<link type="text/plain" rel="author" href="/humans.txt" />`,
-    // The two faces the first screen paints with (hero terminal = Plex Mono,
-    // the plain-language line = Inter), fetched in parallel with fonts.css
-    // instead of after it. Preloaded fonts need crossorigin even same-origin:
-    // https://web.dev/articles/preload-critical-assets
-    `<link rel="preload" href="/fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin />`,
-    `<link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />`,
-    `<link rel="stylesheet" href="/fonts/fonts.css" />`,
+    // Fonts: bundled by src/index.css (@import '@brand/fonts/fonts.css') with
+    // hashed names; vite.config.ts fontPreloads() adds their preloads (ADR-0031).
     `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0c10" />`,
     `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1ede4" />`,    `<meta property="og:type" content="${page === 'home' ? 'website' : 'article'}" />`,
     `<meta property="og:site_name" content="VPN Kongtrol" />`,

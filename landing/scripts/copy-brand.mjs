@@ -1,5 +1,5 @@
 // Copy brand assets from the repo-wide single source (../assets/brand) into
-// public/ before dev/build — version 1.1.0 · 2026-11-17.
+// public/ before dev/build — version 1.2.0 · 2026-11-18.
 //
 // Why: the logo used to be committed three times (assets/, web/dashboard/,
 // landing/public/). assets/brand/ is now the only committed copy; the landing
@@ -10,7 +10,7 @@
 // If it is missing the build fails loudly instead of shipping a page without
 // logos.
 
-import { copyFile, cp, mkdir, stat } from 'node:fs/promises'
+import { copyFile, mkdir, rm, stat } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -42,6 +42,7 @@ await mkdir(pub, { recursive: true })
 for (const [from, to] of Object.entries(FILES)) {
   await copyFile(resolve(brand, from), resolve(pub, to))
 }
-// Self-hosted fonts (fonts.css + woff2), shared with the dashboard and web/ui.
-await cp(resolve(brand, 'fonts'), resolve(pub, 'fonts'), { recursive: true })
-console.log(`copy-brand: ${Object.keys(FILES).length} files + fonts/ from assets/brand -> public/`)
+// Fonts are not copied: src/index.css bundles them from assets/brand (hashed,
+// ADR-0031). Remove the public/fonts/ an older build left behind.
+await rm(resolve(pub, 'fonts'), { recursive: true, force: true })
+console.log(`copy-brand: ${Object.keys(FILES).length} files from assets/brand -> public/`)

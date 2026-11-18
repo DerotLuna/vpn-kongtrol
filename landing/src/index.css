@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.4.1 · 2026-11-18
+   v2.5.0 · 2026-11-18
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
@@ -11,7 +11,13 @@
    hover only on what is interactive, underlined prose links, stacked
    tables and 44px targets on phones (ADR-0028).
    v2.4.1: hero contour anchored in px, not % of the hero height (CLS, ADR-0029).
+   v2.5: fonts bundled (hashed, immutable cache), demos animate only on
+   screen and only transform/opacity (ADR-0031).
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* self-hosted fonts (single source: assets/brand, alias @brand) — bundled with
+   hashed names so they are cached as immutable (public/_headers) */
+@import '@brand/fonts/fonts.css';
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
 :root {
@@ -643,9 +649,11 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* OS tabs */
 .os-tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; width: fit-content; }
-.os-tab { min-height: var(--tap); font-family: var(--font-mono); font-size: 0.76rem; padding: 8px 18px; background: var(--surface); border: none; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; border-right: 1px solid var(--border); transition: color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard); }
+.os-tab { min-height: var(--tap); font-family: var(--font-mono); font-size: 0.76rem; padding: 8px 18px; background: var(--surface); border: none; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; border-right: 1px solid var(--border); }
 .os-tab:last-child { border-right: none; }
-.os-tab:hover { color: var(--text); background: var(--surface-2); }
+/* the transition lives on :hover only: hover and a click under the pointer animate, the OS
+   picked by detection after hydration snaps (no color animation during load, ADR-0031) */
+.os-tab:hover { color: var(--text); background: var(--surface-2); transition: color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard); }
 .os-tab.active { background: var(--signal); color: var(--on-signal); font-weight: 600; }
 .os-panel { display: none; } .os-panel.active { display: block; }
 

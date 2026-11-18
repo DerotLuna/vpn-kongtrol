@@ -1,7 +1,9 @@
-/* Routing switchboard (#map) — version 1.1.0 · 2026-11-18.
+/* Routing switchboard (#map) — version 1.2.0 · 2026-11-18.
    Only .switchboard / .sb-* rules live here; tokens come from index.css.
    v1.1: ports are small dots on the ring; below 768px the SVG gives way to
    an HTML list (.sb-list) so no label renders under the 11px floor.
+   v1.2: loops run only while on screen (.is-live); the list's wire dashes
+   move by transform (ADR-0031).
    Wires meet the core at two ports on its ring (IN left, OUT right) and fade
    into it (SVG mask in Features.tsx). The ambient pulse is a ring INSIDE the
    core ring, so it never covers the ports. Motion animates only
@@ -83,8 +85,9 @@
 .sb-hint { margin-top: 10px; font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.03em; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .sb-wire-group.active .sb-wire { animation: sbFlow 0.7s linear infinite; }
-  .sb-core .sb-pulse { animation: sbPulse 3.2s ease-out infinite; }
+  /* only while the board is on screen (.is-live, Features.tsx) — ADR-0031 */
+  .switchboard.is-live .sb-wire-group.active .sb-wire { animation: sbFlow 0.7s linear infinite; }
+  .switchboard.is-live .sb-core .sb-pulse { animation: sbPulse 3.2s ease-out infinite; }
 }
 @keyframes sbFlow { to { stroke-dashoffset: -22; } }
 /* r 48 × 0.92…1.06 = 44…51: outside the logo (r 40), inside the ports (r 53) */
@@ -134,24 +137,31 @@
   .sb-row.active .sb-row-dest { color: var(--signal); background: var(--signal-soft); border-color: var(--signal); }
   .sb-row.active .sb-row-out { background: var(--signal-soft); border-color: var(--signal); }
   .sb-row.active .sb-row-out b { color: var(--signal); }
-  .sb-row.active .sb-row-wire {
-    background: repeating-linear-gradient(90deg, var(--signal) 0 5px, transparent 5px 11px);
+  /* the active wire's dashes: a strip one dash period (11px) wider than the
+     wire, clipped by <b> and slid by transform (compositor), not by
+     background-position (repaint every frame) — ADR-0031 */
+  .sb-row-wire b { position: absolute; inset: 0; overflow: hidden; }
+  .sb-row-wire b::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: -11px; right: 0;
+    --dash: var(--signal);
+    background: repeating-linear-gradient(90deg, var(--dash) 0 5px, transparent 5px 11px);
+    opacity: 0;
   }
+  .sb-row.active .sb-row-wire { background: transparent; }
+  .sb-row.active .sb-row-wire b::before { opacity: 1; }
   .sb-row.active .sb-row-wire i { border-color: var(--signal); }
   .sb-row.active.direct .sb-row-out { background: var(--steel-soft); border-color: var(--steel); }
   .sb-row.active.direct .sb-row-out b { color: var(--steel); }
-  .sb-row.active.direct .sb-row-wire {
-    background: repeating-linear-gradient(90deg, var(--steel) 0 5px, transparent 5px 11px);
-  }
+  .sb-row.active.direct .sb-row-wire b::before { --dash: var(--steel); }
   .sb-row.active.direct .sb-row-wire i { border-color: var(--steel); }
 }
 @media (max-width: 767px) and (hover: hover) {
   .sb-row-dest:hover { border-color: var(--signal); }
 }
 @media (max-width: 767px) and (prefers-reduced-motion: no-preference) {
-  .sb-row.active .sb-row-wire { animation: sbRowFlow 0.7s linear infinite; }
+  .switchboard.is-live .sb-row.active .sb-row-wire b::before { animation: sbRowFlow 0.7s linear infinite; }
 }
-@keyframes sbRowFlow { from { background-position: 0 0; } to { background-position: 11px 0; } }
+@keyframes sbRowFlow { from { transform: translateX(0); } to { transform: translateX(11px); } }
 
 @media (max-width: 480px) {
   /* the readout wraps its pieces independently at this width, breaking

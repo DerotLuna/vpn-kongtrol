@@ -1,3 +1,4 @@
+import { Suspense, useMemo } from 'react'
 import { useOS } from '../../hooks/useOS'
 import { useLangRouting, useTheme } from '../../hooks/usePreferences'
 import { Lang } from '../../i18n'
@@ -53,6 +54,26 @@ export default function App({ lang }: { lang: Lang }) {
   // this feeds the mobile-only jump menu that replaces it there
   const [activeSection, setActiveSection] = useActiveSection(windows.map(w => w.id), '-40% 0px -55% 0px')
 
+  // Each below-the-fold section is its own Suspense boundary: React 18
+  // hydrates the shell first, then each boundary in a later, lower-priority
+  // task, so hydration is several short tasks instead of one long one, and a
+  // click on a section hydrates it first. Nothing suspends, so the prerender
+  // is unchanged. Memoized: if this App re-renders (theme, OS, active section)
+  // before a boundary has hydrated, the same element reaches it and React
+  // skips it, instead of discarding its server HTML (ADR-0031).
+  const sections = useMemo(() => (
+    <>
+      <Suspense><Start lang={lang} /></Suspense>
+      <Suspense><HowItWorks lang={lang} /></Suspense>
+      <Suspense><Providers lang={lang} /></Suspense>
+      <Suspense><Features lang={lang} /></Suspense>
+      <Suspense><Security lang={lang} /></Suspense>
+      <Suspense><UnderTheHood lang={lang} /></Suspense>
+      <Suspense><Download lang={lang} /></Suspense>
+    </>
+  ), [lang])
+  const footer = useMemo(() => <Suspense><Footer lang={lang} page="home" /></Suspense>, [lang])
+
   return (
     <>
       <SkipLink lang={lang} />
@@ -79,16 +100,10 @@ export default function App({ lang }: { lang: Lang }) {
               document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
             }}
           />
-          <Start lang={lang} />
-          <HowItWorks lang={lang} />
-          <Providers lang={lang} />
-          <Features lang={lang} />
-          <Security lang={lang} />
-          <UnderTheHood lang={lang} />
-          <Download lang={lang} />
+          {sections}
         </div>
       </main>
-      <Footer lang={lang} page="home" />
+      {footer}
       <TmuxBar lang={lang} windows={windows} />
       <LangSuggest page="home" suggest={suggest} onDismiss={dismiss} />
     </>

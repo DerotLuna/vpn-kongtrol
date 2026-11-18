@@ -1,5 +1,9 @@
+import { useRef } from 'react'
+import { useInView } from '../../hooks/useInView'
 import { Lang } from '../../i18n'
 import './attachdemo.css'
+
+const SHIELD = 'M12 2.5 4.5 5.5v6c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10v-6L12 2.5Z'
 
 interface Props {
   lang: Lang
@@ -11,6 +15,9 @@ interface Props {
 // The moving parts are decorative (aria-hidden); the ordered captions carry
 // the meaning for screen readers and for anyone who skips the animation.
 export default function AttachDemo({ lang }: Props) {
+  // the loop runs only while the demo is on screen (ADR-0031)
+  const ref = useRef<HTMLElement>(null)
+  const live = useInView(ref)
   const es = lang === 'es'
   const t = es
     ? {
@@ -53,7 +60,7 @@ export default function AttachDemo({ lang }: Props) {
     }
 
   return (
-    <figure className="attach" aria-label={t.label}>
+    <figure ref={ref} className={`attach${live ? ' is-live' : ''}`} aria-label={t.label}>
       <div className="attach-stage" aria-hidden="true">
         {/* 1 — the provider's own app (generic window, no third-party marks) */}
         <div className="attach-panel attach-app">
@@ -62,15 +69,27 @@ export default function AttachDemo({ lang }: Props) {
             <em>{t.app}</em>
           </div>
           <div className="attach-app-body">
-            <svg className="attach-shield" viewBox="0 0 24 24" width="30" height="30">
-              <path d="M12 2.5 4.5 5.5v6c0 4.6 3.1 8.6 7.5 10 4.4-1.4 7.5-5.4 7.5-10v-6L12 2.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-              <path className="attach-shield-check" d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {/* off and on shields stacked: the loop cross-fades them (opacity
+                only — a color animation would repaint on every frame) */}
+            <span className="attach-shield">
+              <svg className="sh-off" viewBox="0 0 24 24" width="30" height="30">
+                <path d={SHIELD} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+              </svg>
+              <svg className="sh-on" viewBox="0 0 24 24" width="30" height="30">
+                <path d={SHIELD} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                <path d="m8.5 12 2.4 2.4 4.6-4.8" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
             <span className="attach-app-state">
               <b className="st-off">{t.off}</b>
               <b className="st-on">{t.on}</b>
             </span>
-            <span className="attach-app-btn">{t.connect}</span>
+            {/* idle, pressed and done looks stacked, cross-faded the same way */}
+            <span className="attach-app-btn">
+              <span className="b-idle">{t.connect}</span>
+              <span className="b-done">{t.connect}</span>
+              <span className="b-press">{t.connect}</span>
+            </span>
           </div>
           <small className="attach-app-list">{t.apps}</small>
         </div>

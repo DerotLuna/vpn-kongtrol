@@ -50,23 +50,42 @@ type ShellEntry =
   | { kind: 'cmd'; text: string }
   | { kind: 'out'; lines: { cls: string; text: string }[] }
 
+// The tunnel rows with their live uptime. The 1-second clock lives here, not
+// in Hero, so each tick re-renders three rows instead of the whole hero
+// (ADR-0031).
+function BootRows() {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const t = window.setInterval(() => setElapsed(v => v + 1), 1000)
+    return () => window.clearInterval(t)
+  }, [])
+  const uptime = `${Math.floor(elapsed / 60)}m ${String(elapsed % 60).padStart(2, '0')}s`
+  return (
+    <div className="boot-rows">
+      {TUNNELS.map((t, i) => (
+        <div key={t.profile} className="boot-row boot-step" style={at(BOOT.rows + i * BOOT.rowGap)}>
+          <span className="boot-check" aria-hidden="true">✔</span>
+          <span className="boot-profile">{t.profile}</span>
+          <span className="boot-adapter">{t.adapter}</span>
+          <span className="boot-ip">{t.ip}</span>
+          <span className="boot-uptime">{uptime}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Hero({ os, lang }: Props) {
   // The boot sequence is a CSS timeline (index.css, .boot-step): every line is
   // in the markup from the first byte — prerendered HTML included — so the
   // terminal never grows (no layout shift) and crawlers read the whole hero.
   // hydrateRoot() keeps the prerendered nodes, so their CSS animations run on
   // from first paint without restarting.
-  const [elapsed, setElapsed] = useState(0)
   const [shell, setShell] = useState<ShellEntry[]>([])
   const [input, setInput] = useState('')
   const [usContent, setUsContent] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const t = window.setInterval(() => setElapsed(v => v + 1), 1000)
-    return () => window.clearInterval(t)
-  }, [])
 
   // keep the newest line in view once the visitor starts interacting
   useEffect(() => {
@@ -106,13 +125,6 @@ export default function Hero({ os, lang }: Props) {
       hint: 'type "help" and press Enter ↵',
       srTitle: 'VPN Kongtrol — all your VPNs in one place',
     }
-
-  const fmtUptime = (offset: number) => {
-    const total = Math.max(0, elapsed - offset)
-    const m = Math.floor(total / 60)
-    const s = total % 60
-    return `${m}m ${String(s).padStart(2, '0')}s`
-  }
 
   const runCommand = (raw: string): ShellEntry[] => {
     const cmd = raw.trim()
@@ -274,17 +286,7 @@ export default function Hero({ os, lang }: Props) {
 
             <div className="boot-line boot-step t-dim" style={at(BOOT.resolving)}>{copy.resolving}</div>
 
-            <div className="boot-rows">
-              {TUNNELS.map((t, i) => (
-                <div key={t.profile} className="boot-row boot-step" style={at(BOOT.rows + i * BOOT.rowGap)}>
-                  <span className="boot-check" aria-hidden="true">✔</span>
-                  <span className="boot-profile">{t.profile}</span>
-                  <span className="boot-adapter">{t.adapter}</span>
-                  <span className="boot-ip">{t.ip}</span>
-                  <span className="boot-uptime">{fmtUptime(0)}</span>
-                </div>
-              ))}
-            </div>
+            <BootRows />
 
             <div className="boot-line boot-security boot-step" style={at(BOOT.security)}>
               {copy.security[0]} <strong>{copy.security[1]}</strong> {copy.security[2]} <strong>{copy.security[3]}</strong>

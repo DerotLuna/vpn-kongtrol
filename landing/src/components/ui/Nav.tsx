@@ -71,10 +71,16 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   ]
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 16)
+    // one read per frame, at its start (rAF), never in the middle of DOM writes
+    let frame = 0
+    const read = () => { frame = 0; setScrolled(window.scrollY > 16) }
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(read) }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      cancelAnimationFrame(frame)
+    }
   }, [])
 
   useEffect(() => {
@@ -83,18 +89,33 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
       .map(id => document.getElementById(id))
       .filter((el): el is HTMLElement => el !== null)
     if (targets.length === 0 || typeof IntersectionObserver === 'undefined') { setOwnCtaInView(false); return }
-    // the sticky header covers the top --nav-h px: a button under it is not "in view"
-    const navH = navRef.current?.offsetHeight ?? 0
-    const inView = new Map<Element, boolean>()
-    const io = new IntersectionObserver(
-      entries => {
-        for (const e of entries) inView.set(e.target, e.isIntersecting)
-        setOwnCtaInView([...inView.values()].some(Boolean))
-      },
-      { rootMargin: `-${navH}px 0px 0px 0px` },
-    )
-    for (const t of targets) io.observe(t)
-    return () => io.disconnect()
+    // The sticky header covers the top --nav-h px: a button under it is not
+    // "in view". Its height comes from a ResizeObserver, delivered after layout,
+    // instead of offsetHeight, which forced a layout during hydration (ADR-0031).
+    const nav = navRef.current
+    let io: IntersectionObserver | null = null
+    let navH = -1
+    const watch = (h: number) => {
+      if (h === navH) return
+      navH = h
+      io?.disconnect()
+      const inView = new Map<Element, boolean>()
+      io = new IntersectionObserver(
+        entries => {
+          for (const e of entries) inView.set(e.target, e.isIntersecting)
+          setOwnCtaInView([...inView.values()].some(Boolean))
+        },
+        { rootMargin: `-${h}px 0px 0px 0px` },
+      )
+      for (const t of targets) io.observe(t)
+    }
+    if (!nav || typeof ResizeObserver === 'undefined') {
+      watch(0)
+      return () => io?.disconnect()
+    }
+    const ro = new ResizeObserver(([e]) => watch(Math.round(e.borderBoxSize?.[0]?.blockSize ?? e.contentRect.height)))
+    ro.observe(nav)
+    return () => { ro.disconnect(); io?.disconnect() }
   }, [page])
 
   useEffect(() => {

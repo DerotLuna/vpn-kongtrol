@@ -1,5 +1,5 @@
-import { relative, resolve } from 'node:path'
-import { defineConfig, Plugin } from 'vite'
+import { basename, relative, resolve } from 'node:path'
+import { defineConfig, HtmlTagDescriptor, Plugin, Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
 import { ENTRIES, entryFile, entryFor, headFor } from './src/seo'
 
@@ -27,9 +27,39 @@ function seoHead(): Plugin {
   }
 }
 
+// The faces the first screen paints with (hero terminal = Plex Mono, the
+// plain-language line = Inter). Fonts are bundled from assets/brand/fonts with
+// content-hashed names (cached as immutable, public/_headers), so their URLs
+// exist only after bundling: the preloads are added then (ADR-0031).
+// Preloaded fonts need crossorigin even same-origin:
+// https://web.dev/articles/preload-critical-assets
+const PRELOAD_FONTS = ['ibm-plex-mono-latin-400.woff2', 'inter-latin-var.woff2']
+function fontPreloads(): Plugin {
+  return {
+    name: 'kongtrol-font-preloads',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const assets = Object.values(ctx.bundle ?? {}).filter((o): o is Rollup.OutputAsset => o.type === 'asset')
+        const tags: HtmlTagDescriptor[] = PRELOAD_FONTS.map(font => {
+          const asset = assets.find(a => a.originalFileNames.some(f => basename(f) === font))
+          if (!asset) throw new Error(`font preload: ${font} is not in the bundle (src/index.css @import)`)
+          return { tag: 'link', attrs: { rel: 'preload', href: `/${asset.fileName}`, as: 'font', type: 'font/woff2', crossorigin: true }, injectTo: 'head' }
+        })
+        return { html, tags }
+      },
+    },
+  }
+}
+
 export default defineConfig({
   base: '/',
-  plugins: [react(), seoHead()],
+  plugins: [react(), seoHead(), fontPreloads()],
+  resolve: {
+    // single source of brand assets (assets/brand), shared with web/ui and the dashboard
+    alias: { '@brand': resolve(__dirname, '..', 'assets', 'brand') },
+  },
   build: {
     rollupOptions: {
       input: Object.fromEntries(ENTRIES.map(({ page, lang }) => [`${lang}-${page}`, resolve(__dirname, entryFile(page, lang))])),

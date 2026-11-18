@@ -1,4 +1,4 @@
-# Cloudflare static-assets response headers (Workers) — version 1.0.1 · 2026-11-18
+# Cloudflare static-assets response headers (Workers) — version 1.1.0 · 2026-11-18
 # Format: https://developers.cloudflare.com/workers/static-assets/headers/
 # Rationale for every header: docs/deploy-cloudflare.md.
 #
@@ -9,12 +9,32 @@
 # Editing either changes its hash: scripts/prerender.mjs fails the build when an inline
 # script in dist/ has no matching hash here, and prints the hash to paste.
 # style-src keeps 'unsafe-inline' because React style={{}} props are prerendered as style=""
-# attributes (and 404.html has a <style> block); styles cannot execute code.
+# attributes, and every page inlines its CSS in a <style> block (ADR-0031); styles
+# cannot execute code.
 
 /*
   Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-iXTdPzuHcTYqURXj+6TsLVnxn1bFgbiG/VTc43uzcfA=' 'sha256-wi36Ewm8K6C0UcZcEhUxEakTJaMLtN90wPYKuyZVM68='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
   X-Frame-Options: DENY
   Cross-Origin-Opener-Policy: same-origin
+
+# Caching (ADR-0031). Cloudflare's default is "public, max-age=0, must-revalidate"
+# plus an ETag; a Cache-Control set here replaces it. The /* rule above sets none,
+# so no "! Cache-Control" detach is needed (it only removes what earlier rules added).
+#
+# /assets/* — JS and fonts from Vite, content-hashed: new content gets a new URL,
+# so a year without revalidation is safe (RFC 8246 immutable).
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Brand files under stable URLs (favicons, logos, og image) are linked from outside
+# (shares, hotlinks), so they keep their names: one day fresh, then revalidated by
+# ETag — a new logo reaches everyone within 24 h. HTML keeps the default.
+/favicon.svg
+  Cache-Control: public, max-age=86400
+/logo*
+  Cache-Control: public, max-age=86400
+/og-1200x630.jpg
+  Cache-Control: public, max-age=86400

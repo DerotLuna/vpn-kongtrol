@@ -17,12 +17,15 @@ export function useReveal() {
     if (!('IntersectionObserver' in window)) return
 
     const els = Array.from(document.querySelectorAll<HTMLElement>('.reveal'))
+    // read every position first, then write: interleaving setProperty with
+    // getBoundingClientRect forced one layout per element (ADR-0031)
     const vh = window.innerHeight
-    els.forEach(el => {
+    const onScreen = els.map(el => el.getBoundingClientRect().top < vh)
+    els.forEach((el, n) => {
       // stagger siblings: 2nd card waits 70ms, 3rd 140ms… (index.css --i)
       const sibs = el.parentElement ? Array.from(el.parentElement.children).filter(c => c.classList.contains('reveal')) : []
       el.style.setProperty('--i', String(Math.min(sibs.indexOf(el), 5)))
-      if (el.getBoundingClientRect().top < vh) el.classList.add('is-in')
+      if (onScreen[n]) el.classList.add('is-in')
     })
 
     const io = new IntersectionObserver(entries => {

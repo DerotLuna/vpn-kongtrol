@@ -1,6 +1,6 @@
 # VPN Kongtrol Landing (`landing/`)
 
-Version 2.5.0 · 2026-11-18
+Version 2.6.0 · 2026-11-18
 
 Public marketing/docs site for **VPN Kongtrol** (short name: *Kongtrol*, CLI binary `kongtrol`),
 separate from the embedded dashboard (`web/dashboard`).
@@ -79,8 +79,8 @@ landing/
 ├── vite.config.ts                # MPA inputs + seo head plugin
 ├── scripts/
 │   ├── copy-brand.mjs            # copies ../assets/brand into public/ (git-ignored copies)
-│   └── prerender.mjs             # post-build static prerender + sitemap.xml
-├── public/                       # robots.txt, llms.txt, 404.html, fonts/, .well-known/security.txt
+│   └── prerender.mjs             # post-build prerender, CSS inlining, sitemap.xml
+├── public/                       # robots.txt, llms.txt, 404.html, _headers, .well-known/security.txt
 └── src/
     ├── site.ts                   # routes per language, site version/date
     ├── seo.ts                    # titles, descriptions, canonical, hreflang, OG, JSON-LD, sitemap
@@ -119,7 +119,9 @@ stubs to kongtrol.app, deployed by `.github/workflows/landing.yml`.
   https://developers.google.com/search/docs/specialty/international/localized-versions).
 - `public/robots.txt` allows everything and points at the sitemap; `public/llms.txt` is the
   plain-text summary for LLM crawlers.
-- Fonts are self-hosted in `public/fonts/` (no request to Google).
+- Fonts are self-hosted: `src/index.css` bundles them from `../assets/brand/fonts` (alias `@brand`)
+  with hashed names, cached as immutable; no request to Google. Each page inlines its CSS at
+  prerender time (no render-blocking stylesheet), ADR-0031.
 
 The canonical host is `https://kongtrol.app/`. If it ever changes, update `SITE_URL` in
 `src/site.ts`, `robots.txt`, `llms.txt`, `.well-known/security.txt` and the redirect stubs in

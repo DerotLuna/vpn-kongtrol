@@ -2,7 +2,7 @@
 
 # Deploying the landing to Cloudflare (Workers static assets)
 
-Version 2.0.1 · 2026-11-18
+Version 2.1.0 · 2026-11-18
 
 How `landing/` is published at **https://kongtrol.app**, plus the free security settings for the
 zone. Everything here is on the Cloudflare Free plan. Decision: ADR-0022 (Workers static assets;
@@ -77,7 +77,7 @@ Apply on the `kongtrol.app` zone (and the HTTPS ones on `kongtrol.dev` too).
 | DDoS protection | automatic | Nothing to do | L3/4 and HTTP DDoS mitigation is always on, on every plan. https://developers.cloudflare.com/ddos-protection/ |
 | WAF managed rules (Free) | Security → WAF → Managed rules | Cloudflare Free Managed Ruleset: enabled (default) | Blocks high-impact, widely exploited vulnerabilities at the edge. https://developers.cloudflare.com/waf/managed-rules/ |
 
-### Security headers (`landing/public/_headers`)
+### Security and cache headers (`landing/public/_headers`)
 
 Workers static assets apply `_headers` to every asset response (https://developers.cloudflare.com/workers/static-assets/headers/).
 The file sets:
@@ -87,7 +87,9 @@ The file sets:
 | `Content-Security-Policy` | `default-src 'self'`; scripts only from `'self'` + 2 SHA-256 hashes; `style-src 'self' 'unsafe-inline'`; `img-src 'self' data:`; `font-src 'self'`; `object-src 'none'`; `base-uri 'self'`; `form-action 'none'`; `frame-ancestors 'none'`; `upgrade-insecure-requests` | Matches what the site loads: self-hosted fonts, no third parties. Injected scripts cannot run. https://developer.mozilla.org/docs/Web/HTTP/CSP |
 | `X-Content-Type-Options` | `nosniff` | Stops MIME sniffing. |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Sends only the origin to other sites. |
-| `Permissions-Policy` | camera, microphone, geolocation, payment, usb off | The site uses none of them. |
+| `Permissions-Policy` | camera, microphone, geolocation, payment, usb off | The site uses none of them. `interest-cohort` (FLoC) was removed: Chrome no longer knows it and logs "Unrecognized feature" (ADR-0031). |
+| `Cache-Control` (`/assets/*`) | `public, max-age=31536000, immutable` | Vite output (JS, fonts) is content-hashed: new content gets a new URL (RFC 8246). |
+| `Cache-Control` (`/favicon.svg`, `/logo*`, `/og-1200x630.jpg`) | `public, max-age=86400` | Stable URLs linked from outside; one day fresh, then revalidated by ETag. HTML keeps Cloudflare's default `public, max-age=0, must-revalidate`. |
 | `X-Frame-Options` | `DENY` | Clickjacking protection for old browsers (`frame-ancestors` covers modern ones). |
 | `Cross-Origin-Opener-Policy` | `same-origin` | Isolates the browsing context from cross-origin popups. |
 
@@ -100,7 +102,8 @@ CSP details:
   `_headers`) and prints the new hash to paste.
 - JSON-LD blocks (`type="application/ld+json"`) are data, not executed, so CSP does not apply.
 - `style-src` keeps `'unsafe-inline'`: React `style={{}}` props are prerendered as `style=""`
-  attributes, and `404.html` has a `<style>` block. Inline styles cannot execute code.
+  attributes, every page inlines its CSS in a `<style>` block (ADR-0031), and `404.html` has
+  one too. Inline styles cannot execute code.
 - Adding any third-party resource (analytics, CDN, embed) requires updating the CSP first.
 
 How it was verified: `pnpm run build`, then `dist/` served with these headers and every ES/EN route

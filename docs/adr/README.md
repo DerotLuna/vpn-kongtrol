@@ -42,6 +42,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0027](0027-landing-download-ctas.md) | Landing download buttons: one primary per view, recommended OS, phones send the page to a computer | Accepted | 2026-11-18 |
 | [0028](0028-landing-hig-material3-review.md) | Landing review with Apple HIG and Material 3: 11px text floor, 44px targets, state layers, readable guide on phones | Accepted | 2026-11-18 |
 | [0029](0029-landing-device-class-before-first-paint.md) | Landing marks phones before first paint (boot script `data-device`) so the hero never shifts | Accepted | 2026-11-18 |
+| [0031](0031-landing-load-performance.md) | Landing load performance: inline CSS, hashed fonts, immutable caching, composited and on-screen-only demo loops, Suspense-split hydration | Accepted | 2026-11-18 |
 
 ## Statuses
 
