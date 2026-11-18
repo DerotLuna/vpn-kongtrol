@@ -47,6 +47,8 @@ builds:
     goarch: [amd64, arm64]
     ldflags:
       - -s -w
+      # Shown in the tray menu while the daemon is stopped.
+      - -X main.version={{.Version}}
       # No console window on Windows.
       - '{{ if eq .Os "windows" }}-H=windowsgui{{ end }}'
 

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -35,30 +33,6 @@ func trayHealthLine(h *vpn.TunnelHealth) string {
 		line += " · " + trayT(fix)
 	}
 	return line
-}
-
-// trayTunnelLabel decides one profile menu item's title and tooltip:
-// a phase that needs the user (waiting / dropped) replaces the status in
-// the title; so does a tunnel whose server does not answer (or can't be
-// checked); a failed connect shows its error (the translated "what to do"
-// line when the daemon sent its key); otherwise "name [status]" with the
-// attach message (how it came up) as tooltip.
-func trayTunnelLabel(name string, m monitor.TunnelMetrics) (title, tooltip string) {
-	msg := trayAttachLine(m.Attach)
-	health := trayHealthLine(m.Health)
-	switch {
-	case m.Attach != nil && m.Attach.Waiting() && msg != "":
-		return name + " · " + msg, msg
-	case health != "":
-		return name + " · " + trayT("health.short."+string(m.Health.State)), health
-	case (m.LastError != "" || m.LastErrorKey != "") && m.Status != vpn.StatusConnected:
-		if m.LastErrorKey != "" {
-			return trayF("tray.tunnel_error", name), trayT(m.LastErrorKey)
-		}
-		return trayF("tray.tunnel_error", name), m.LastError
-	default:
-		return fmt.Sprintf("%s [%s]", name, m.Status), msg
-	}
 }
 
 // trayWaitingTooltip returns the first message of a tunnel that needs the

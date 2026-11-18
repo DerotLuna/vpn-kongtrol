@@ -34,14 +34,6 @@ func trayT(key string) string { return i18n.T(trayLang, key) }
 
 func trayF(key string, args ...any) string { return i18n.F(trayLang, key, args...) }
 
-type trayMenuLabels struct {
-	dashboard *systray.MenuItem
-	groups    *systray.MenuItem
-	tunnels   *systray.MenuItem
-	stopAll   *systray.MenuItem
-	quit      *systray.MenuItem
-}
-
 func main() {
 	setupLogging()
 	if !acquireSingleInstance() {
