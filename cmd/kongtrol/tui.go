@@ -190,17 +190,21 @@ func PrintHeader(ver string) {
 	if outputQuiet {
 		return
 	}
-	fmt.Println()
+	fmt.Print(headerText(ver))
+}
+
+// headerText is the compact banner PrintHeader prints, with its blank
+// lines around it.
+func headerText(ver string) string {
 	line := kongTitle()
 	if ver != "" {
 		line += "  " + styleDim.Render(ver)
 	}
 	line += " " + styleInfo.Render("[beta]")
 	line += "  " + styleDim.Render(sym("·", "-")+"  "+ct("cli.header.subtitle"))
-	fmt.Println("  " + line)
 	// Thin separator rule under the header
-	fmt.Println("  " + lipgloss.NewStyle().Foreground(colRule).Render(strings.Repeat("─", 62)))
-	fmt.Println()
+	rule := lipgloss.NewStyle().Foreground(colRule).Render(strings.Repeat("─", 62))
+	return "\n  " + line + "\n  " + rule + "\n\n"
 }
 
 // clearScreen wipes the terminal (including scrollback) before redrawing a
