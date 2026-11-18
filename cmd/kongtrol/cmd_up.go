@@ -107,15 +107,27 @@ func runUp(ctx context.Context, targets []string) error {
 		// the user in the app replaces the spinner text; how the tunnel
 		// came up replaces the generic "connected" line.
 		var attach *vpn.AttachState
-		already, err := connectViaDaemonProgress(ctx, base, name, func(m monitor.TunnelMetrics) {
+		onState := func(m monitor.TunnelMetrics) {
 			attach = m.Attach
 			if l := attachSpinnerLabel(name, m.Attach, "attach.hint.cancel"); l != "" {
 				spin.SetLabel(l)
 			} else {
 				spin.SetLabel(baseLabel)
 			}
-		})
+		}
+		already, err := connectViaDaemonProgress(ctx, base, name, onState)
 		spin.Stop()
+		// First run: the helper is missing or outdated. On an interactive
+		// terminal offer to install it (one OS permission prompt) and try
+		// this profile once more; otherwise the error below says how.
+		if need := connectHelperNeed(err); need != helperReady && canPrompt() {
+			if offerHelperInstall(need, false) {
+				spin = newSpinner(baseLabel)
+				spin.Start()
+				already, err = connectViaDaemonProgress(ctx, base, name, onState)
+				spin.Stop()
+			}
+		}
 		elapsed := time.Since(startedProfile).Round(time.Second)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -207,6 +219,27 @@ func connectViaDaemonProgress(ctx context.Context, base, name string, onState fu
 	}
 }
 
+// upConnectError is a failed connect as the daemon reported it: the
+// translated line and the guidance key it came with ("" when none).
+type upConnectError struct{ msg, key string }
+
+func (e *upConnectError) Error() string { return e.msg }
+
+// connectHelperNeed says whether err failed because the privileged helper
+// is missing or outdated (a tunnel's last_error_key, or the daemon's
+// error_key on the connect request itself).
+func connectHelperNeed(err error) helperNeed {
+	var ce *upConnectError
+	if errors.As(err, &ce) {
+		return helperNeedFromKey(ce.key)
+	}
+	var keyed interface{ ErrorKey() string }
+	if errors.As(err, &keyed) {
+		return helperNeedFromKey(keyed.ErrorKey())
+	}
+	return helperReady
+}
+
 // upConnectDecision decides, from one read of the daemon's view of a
 // tunnel after its connect was accepted, whether `up` is done waiting and
 // with which result. The daemon clears a tunnel's last error when the
@@ -218,7 +251,10 @@ func upConnectDecision(state monitor.TunnelMetrics, known, seenProgress bool, el
 	}
 	failed := func() error {
 		if state.LastError != "" {
-			return fmt.Errorf("%s", cf("cli.daemon.up.connect_failed_reason", tunnelErrorText(state)))
+			return &upConnectError{
+				msg: cf("cli.daemon.up.connect_failed_reason", tunnelErrorText(state)),
+				key: state.LastErrorKey,
+			}
 		}
 		return fmt.Errorf("%s", ct("cli.daemon.up.connect_failed"))
 	}

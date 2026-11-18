@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
@@ -47,6 +48,45 @@ func helperState() helperNeed {
 	case err != nil:
 		return helperMissing
 	case res.Protocol != privops.ProtocolVersion:
+		return helperOutdated
+	}
+	return helperReady
+}
+
+// offerHelperInstall is the first-run check shared by init and up: when the
+// helper is missing or outdated it says why Kongtrol needs it and offers to
+// install it now (default yes; yes skips the question). Without an
+// interactive terminal it only prints the "what to do" line. It reports
+// whether the helper answers afterwards.
+func offerHelperInstall(need helperNeed, yes bool) bool {
+	if need == helperReady {
+		return true
+	}
+	if need == helperOutdated {
+		fmt.Println(tuiWarn(ct("cli.helper.outdated")))
+	} else {
+		fmt.Println(tuiWarn(ct("cli.helper.missing")))
+	}
+	fmt.Println(tuiInfo(paint(cDim, ct("cli.helper.why"))))
+	if !confirmAction(ct("cli.helper.ask_install"), yes, true) {
+		fmt.Println(tuiInfo(ct(need.guidanceKey())))
+		return false
+	}
+	if err := installHelperFn(); err != nil {
+		fmt.Println(tuiWarn(err.Error()))
+		return false
+	}
+	fmt.Println(tuiOK(ct("service.install.ok")))
+	return true
+}
+
+// helperNeedFromKey maps a guidance key the daemon sent back (a tunnel's
+// last_error_key or an API error_key) to what the helper needs.
+func helperNeedFromKey(key string) helperNeed {
+	switch key {
+	case "service.error.not_installed":
+		return helperMissing
+	case "service.error.outdated":
 		return helperOutdated
 	}
 	return helperReady
