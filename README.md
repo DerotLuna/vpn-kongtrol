@@ -1,4 +1,4 @@
-<!-- README version 2.0.0 · 2026-11-18.
+<!-- README version 2.1.0 · 2026-11-18.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -85,8 +85,8 @@ Kongtrol keeps running in the background after you close the window.
   blocked and the DNS servers in use), with a signed local audit
   log whose signatures are checked when you read it. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`
   <sub>(command since v0.6.0, pre-release)</sub>.
-- **Browser panel and tray icon.** Profiles, groups, rules, security switches, settings, audit log
-  and traffic charts; compiled into the program, no external server. Tray icon
+- **Browser panel and tray icon.** One panel (the tray or `kongtrol dashboard` opens it) with seven sections: Home, Profiles (and groups), Rules (and schedules), Traffic, Security, Activity (audit log and notices), Settings
+  (diagnostics, export, updates); compiled into the program, no external server. Tray icon
   <sub>since v0.6.0 (pre-release)</sub>.
 - **Setup wizard** (`kongtrol init`): finds the VPN clients you have and saves passwords in the
   system keychain.

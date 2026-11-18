@@ -398,24 +398,32 @@ $ kongtrol up us-content`}</CodeBlock>
                   </thead>
                   <tbody>
                     <tr>
-                      <td>Overview</td>
-                      <td>{t.dashboard5}</td>
+                      <td>{t.dashName1}</td>
+                      <td>{t.dashDesc1}</td>
                     </tr>
                     <tr>
-                      <td>Studio</td>
-                      <td>{t.dashboard6}</td>
+                      <td>{t.dashName2}</td>
+                      <td>{t.dashDesc2}</td>
                     </tr>
                     <tr>
-                      <td>Security</td>
-                      <td>{t.dashboard7}</td>
+                      <td>{t.dashName3}</td>
+                      <td>{t.dashDesc3}</td>
                     </tr>
                     <tr>
-                      <td>Audit Log</td>
-                      <td>{t.dashboard8}</td>
+                      <td>{t.dashName4}</td>
+                      <td>{t.dashDesc4}</td>
                     </tr>
                     <tr>
-                      <td>Settings</td>
-                      <td>{t.dashboard9}</td>
+                      <td>{t.dashName5}</td>
+                      <td>{t.dashDesc5}</td>
+                    </tr>
+                    <tr>
+                      <td>{t.dashName6}</td>
+                      <td>{t.dashDesc6}</td>
+                    </tr>
+                    <tr>
+                      <td>{t.dashName7}</td>
+                      <td>{t.dashDesc7}</td>
                     </tr>
                   </tbody>
                 </table>

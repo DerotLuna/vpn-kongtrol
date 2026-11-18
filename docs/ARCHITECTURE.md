@@ -109,22 +109,12 @@ vpn-kongtrol/
 │       └── ws.go                  # WebSocket live metrics feed
 │
 ├── web/
-│   ├── assets.go                  # //go:embed dashboard
-│   └── dashboard/                 # full management UI, vanilla JS/CSS, no bundler
-│       ├── shell.js               # shared sidebar (collapsible, full-height) + topbar
-│       ├── toast.js               # toast notifications
-│       ├── select.js              # custom-styled <select> replacement, used everywhere
-│       ├── charts.js              # dependency-free canvas charts (sparklines, time series)
-│       ├── index.html / app.js    # Overview: tunnels, traffic charts, routes, policy
-│       │                          #   resolver, groups quick-launch
-│       ├── studio.html / .js      # Studio: tabbed policy CRUD + VPN profile CRUD +
-│       │                          #   groups CRUD/connect/disconnect (shared tabs.js-less
-│       │                          #   initTabs() helper in shell.js)
-│       ├── security.html / .js    # live kill switch/DNS guard toggles, per-profile override
-│       ├── settings.html / .js    # tabbed: general/security tuning + scheduler rules CRUD
-│       ├── audit.html / .js       # audit log viewer (filter by profile/level)
-│       └── style.css              # shared styles (light/dark theme via [data-theme]);
-│                                  #   logos + fonts come from /brand/ (assets.Brand())
+│   ├── ui_embed.go                # //go:embed all:ui/dist → served at / (ADR-0043)
+│   └── ui/                        # the dashboard: Vite + React + TS (pnpm, oxlint, Vitest)
+│       └── src/                   # App.tsx (routes), pages/, components/, data/ (TanStack
+│                                  #   Query + WebSocket), api/ (client, auth), i18n/ (ES+EN);
+│                                  #   sections: Inicio, Perfiles, Reglas, Tráfico, Seguridad,
+│                                  #   Actividad, Ajustes; /tray is the tray flyout
 │
 ├── configs/
 │   └── example.yaml

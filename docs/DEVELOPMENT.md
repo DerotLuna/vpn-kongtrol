@@ -79,7 +79,7 @@ individuals): the build then needs a `codesign`/`notarytool` step added to
 
 ## Landing site
 
-The public marketing site under `landing/` is independent from the embedded dashboard (`web/dashboard`):
+The public marketing site under `landing/` is independent from the embedded dashboard (`web/ui`):
 
 ```bash
 make build-all-cli          # produce CLI binaries in build/dist/

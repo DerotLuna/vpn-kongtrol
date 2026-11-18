@@ -1,7 +1,7 @@
 // Copy brand assets from the repo-wide single source (../assets/brand) into
 // public/ before dev/build — version 1.2.0 · 2026-11-18.
 //
-// Why: the logo used to be committed three times (assets/, web/dashboard/,
+// Why: the logo used to be committed three times (assets/, the old dashboard,
 // landing/public/). assets/brand/ is now the only committed copy; the landing
 // receives its files at build time and public/ copies are git-ignored.
 //

@@ -2,11 +2,11 @@
 
 # Local API reference
 
-Version 1.7 · 2026-11-18
+Version 1.8 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
-both dashboards (`web/dashboard/`, `web/ui/`) are clients of it — everything they can do is
+the dashboard (`web/ui/`, served at `/`) are clients of it — everything they can do is
 reachable directly too. All endpoints are under `http://127.0.0.1:9741` by default and require
 the local capability stored in `~/.kongtrol/api-token`:
 
@@ -24,7 +24,7 @@ DELETE /api/v1/session         # sign the browser out
 ```
 
 Clients open pages with `daemonctl.(*Client).PanelURL(path)`, which returns
-`<base><path>#k=<nonce>`; the page (`web/dashboard/auth.js`, `web/ui/src/api/session.ts`) trades
+`<base><path>#k=<nonce>` (`/`, `/tray`, `/profiles`…); the page (`web/ui/src/api/auth.ts`) trades
 the nonce for the cookie. Pages never set credentials; a 401 means "open it from Kongtrol".
 
 Commands: [CLI.en.md](CLI.en.md) (Español: [CLI.md](CLI.md)).
@@ -97,7 +97,7 @@ POST /api/v1/shutdown                        # ask a running daemon to shut down
 
 # Diagnostics, helper and export
 GET  /api/v1/doctor                          # same checks as `kongtrol doctor`, in the daemon, translated (X-Kongtrol-Lang): {"checks":[{section,label,status ok|warn|fail,detail,hint,fix}],"failures","warnings"}; fix is only "helper_install"
-GET  /api/v1/version                         # {"version"}: the daemon build version (what `kongtrol version` prints); tray menu and both dashboards show it
+GET  /api/v1/version                         # {"version"}: the daemon build version (what `kongtrol version` prints); tray menu and the dashboard show it
 GET  /api/v1/helper/status                   # {"installed","running","available","elevated","needs_install","outdated",…}; outdated = answers with an older protocol ("Actualizar ayudante")
 POST /api/v1/helper/install                  # installs the privileged helper (one OS permission prompt)
 GET  /api/v1/config/export                   # kongtrol.yaml as a download (application/yaml, kongtrol-export.yaml; no passwords: they stay in the keychain); 404 export.err.no_config before the first profile

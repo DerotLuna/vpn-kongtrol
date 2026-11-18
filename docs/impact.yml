@@ -1,4 +1,4 @@
-# Change-impact map — version 1.6 · 2026-11-18
+# Change-impact map — version 1.7 · 2026-11-18
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -30,8 +30,7 @@ features:
       - internal/api/handlers_security.go
       - internal/daemonctl/security.go
       - cmd/kongtrol/cmd_config_security.go
-      - web/dashboard/security.js
-      - web/dashboard/shell.js
+      - web/ui/src/components/security/**
     surfaces:
       - README.md#killswitch
       - AGENTS.md#killswitch
@@ -62,7 +61,7 @@ features:
       - cmd/kongtrol/cmd_config_publicip.go
       - cmd/kongtrol/cmd_check.go
       - cmd/kongtrol-tray/tray_publicip.go
-      - web/dashboard/publicip.js
+      - web/ui/src/components/security/PublicIPCheckCard.tsx
     surfaces:
       - AGENTS.md#public_ip
       - docs/SECURITY.md
@@ -77,8 +76,8 @@ features:
       - cmd/kongtrol/policy_cmd.go
       - cmd/kongtrol/wizard_policies.go
       - cmd/kongtrol-tray/tray_policy.go
-      - web/dashboard/studio.js
-      - web/dashboard/notices.js
+      - web/ui/src/components/rules/**
+      - web/ui/src/components/home/NoticesCard.tsx
     surfaces:
       - AGENTS.md#policies
       - docs/SETUP.md#policies
@@ -206,7 +205,6 @@ features:
       - internal/i18n/**
       - cmd/kongtrol/localize.go
       - cmd/kongtrol/help.go
-      - web/dashboard/i18n.js
       - web/ui/src/i18n/**
     surfaces:
       - AGENTS.md#i18n
@@ -215,7 +213,6 @@ features:
 
   dashboard_theme:
     code:
-      - web/dashboard/style.css
       - web/ui/src/theme/**
     surfaces:
       - AGENTS.md#i18n
@@ -224,7 +221,7 @@ features:
   dashboard:
     code:
       - internal/api/**
-      - web/dashboard/**
+      - web/ui_embed.go
       - web/ui/src/**
       - cmd/kongtrol/cmd_dashboard.go
     surfaces:
@@ -266,7 +263,6 @@ features:
       - cmd/kongtrol/prompt.go
       - cmd/kongtrol-tray/tray_actions.go
       - cmd/kongtrol-tray/tray_menu.go
-      - web/dashboard/studio.js
       - web/ui/src/components/profiles/FirstRun.tsx
       - web/ui/src/components/profiles/useRestartAction.ts
       - internal/api/handlers_detect.go
