@@ -1,0 +1,40 @@
+/* "Para todos" (#start) and "Cómo empezar" (#steps) — version 1.0.0 · 2026-11-18.
+   Only .path-pair*, .path-who, .path-setup and .how-cmd rules live here;
+   tokens and the shared .path / .how-step frames come from index.css. */
+
+/* Tú / Kongtrol pairs: what the person does, then what Kongtrol does. The
+   "who" word is visible text (not colour alone); people text stays Inter. */
+.path-pairs { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.path-pair {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1px;
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  background: var(--border);
+}
+.path-you, .path-kong {
+  display: grid; gap: 4px; align-content: start; padding: 10px 12px;
+  font-size: 0.94rem; line-height: 1.45; text-wrap: pretty;
+}
+.path-you { background: var(--bg); color: var(--text); }
+.path-kong { background: var(--signal-soft); color: var(--text); }
+.path-who {
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.path-kong .path-who { color: var(--signal); }
+
+.path-setup { font-size: 0.9rem; line-height: 1.55; color: var(--text-muted); max-width: 52ch; text-wrap: pretty; }
+.path-setup a {
+  display: inline-block; min-height: 24px; color: var(--signal); font-weight: 600;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+@media (max-width: 420px) {
+  .path-pair { grid-template-columns: 1fr; }
+}
+
+/* "Cómo empezar": the command is a small secondary detail under each step */
+.how-step .how-cmd {
+  margin-top: 2px; font-size: 0.8rem; line-height: 1.5; color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+.how-step .how-cmd code { font-family: var(--font-mono); color: var(--text-muted); overflow-wrap: anywhere; }

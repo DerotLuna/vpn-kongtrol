@@ -5,6 +5,7 @@ import { downloadHref, downloadLabel, DownloadIcon } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
 import AttachDemo from './AttachDemo'
 import CodeBlock from '../ui/CodeBlock'
+import './start.css'
 
 interface Props {
   lang: Lang
@@ -12,6 +13,9 @@ interface Props {
 
 // The plain-language promise right under the terminal hero, plus the two
 // ways in: the app (everyone) and the CLI (devs). Same product, same engine.
+// "Para todos" says what the person does and what Kongtrol does, in plain
+// words; every literal command lives in the devs column. "Cómo empezar"
+// (HowItWorks) covers the first-time setup, so the two blocks don't repeat.
 export default function Start({ lang }: Props) {
   const detectedOS = useDetectedOS()
   const mobile = useIsMobile()
@@ -22,18 +26,23 @@ export default function Start({ lang }: Props) {
       sub: 'Conéctate como siempre; Kongtrol se encarga del resto.',
       lead: 'Conectas en tu app de VPN de siempre. Kongtrol detecta el túnel y se hace cargo: lo vigila, lo reconecta si cae, protege tu DNS y aplica tus reglas. Donde el proveedor lo permite, también abre la app y conecta por ti.',
       everyoneTitle: 'Para todos',
-      everyoneLead: 'Un comando para empezar; después, todo desde el panel.',
+      everyoneLead: 'Tú haces lo de siempre. Kongtrol hace el resto.',
+      youLabel: 'Tú',
+      kongLabel: 'Kongtrol',
       everyone: [
-        'Descarga Kongtrol para tu sistema.',
-        'Corre kongtrol init una vez: detecta tus VPN y te guía.',
-        'Corre kongtrol dashboard: el panel se abre en tu navegador para conectar y ajustar todo.',
+        { you: 'Conectas tu VPN como siempre.', kong: 'La detecta, la vigila y la reconecta si se cae.' },
+        { you: 'Eliges qué sitios van por cada VPN.', kong: 'Manda cada sitio por la VPN correcta.' },
+        { you: 'Cierras el panel cuando quieras.', kong: 'Sigue trabajando en segundo plano.' },
       ],
-      everyoneNote: 'Cerrar el panel o la terminal no desconecta: Kongtrol sigue en segundo plano.',
+      setupNote: 'La primera vez, todavía se configura escribiendo un par de comandos. Sin problema: la guía te dice cuáles, y Kongtrol te pregunta lo demás.',
+      setupLink: 'Ver cómo, paso a paso',
       devsTitle: 'Para devs',
       devsLead: 'La misma app, con una CLI que hace todo lo que hace el panel. Ideal para scripts.',
-      devsCode: `$ kongtrol init           # detecta tus VPN y crea perfiles
-$ kongtrol up             # arranca en segundo plano
-$ kongtrol status --watch # estado en vivo`,
+      devsCode: `$ kongtrol service install # una vez (pide admin)
+$ kongtrol init            # detecta tus VPN, crea perfiles
+$ kongtrol up              # arranca en segundo plano
+$ kongtrol dashboard       # abre el panel
+$ kongtrol status --watch  # estado en vivo`,
       devsCta: 'man kongtrol — guía completa',
     }
     : {
@@ -41,18 +50,23 @@ $ kongtrol status --watch # estado en vivo`,
       sub: 'Connect the way you always do; Kongtrol handles the rest.',
       lead: 'You connect in the VPN app you already use. Kongtrol detects the tunnel and takes over: it watches it, reconnects it if it drops, protects your DNS and applies your rules. Where the provider allows it, it can also open the app and connect for you.',
       everyoneTitle: 'For everyone',
-      everyoneLead: 'One command to set up; then everything from the panel.',
+      everyoneLead: 'You do what you always do. Kongtrol does the rest.',
+      youLabel: 'You',
+      kongLabel: 'Kongtrol',
       everyone: [
-        'Download Kongtrol for your system.',
-        'Run kongtrol init once: it detects your VPNs and guides you.',
-        'Run kongtrol dashboard: the panel opens in your browser to connect and adjust everything.',
+        { you: 'Connect your VPN as usual.', kong: 'Detects it, watches it and reconnects it if it drops.' },
+        { you: 'Choose which sites go through each VPN.', kong: 'Sends each site through the right VPN.' },
+        { you: 'Close the panel whenever you like.', kong: 'Keeps working in the background.' },
       ],
-      everyoneNote: 'Closing the panel or the terminal does not disconnect: Kongtrol keeps running in the background.',
+      setupNote: 'For now, the first setup still means typing a couple of commands. No worries: the guide shows you which ones, and Kongtrol asks you the rest.',
+      setupLink: 'See how, step by step',
       devsTitle: 'For devs',
       devsLead: 'The same app, with a CLI that does everything the panel does. Built for scripts.',
-      devsCode: `$ kongtrol init           # detects your VPNs, creates profiles
-$ kongtrol up             # starts in the background
-$ kongtrol status --watch # live status`,
+      devsCode: `$ kongtrol service install # once (asks for admin)
+$ kongtrol init            # detects your VPNs, creates profiles
+$ kongtrol up              # starts in the background
+$ kongtrol dashboard       # opens the panel
+$ kongtrol status --watch  # live status`,
       devsCta: 'man kongtrol — full guide',
     }
 
@@ -71,9 +85,18 @@ $ kongtrol status --watch # live status`,
           <div className="path path-everyone">
             <h3>{t.everyoneTitle}</h3>
             <p className="path-lead">{t.everyoneLead}</p>
-            <ol className="path-list">
-              {t.everyone.map((s, i) => <li key={i}>{s}</li>)}
-            </ol>
+            <ul className="path-pairs">
+              {t.everyone.map(p => (
+                <li key={p.you} className="path-pair">
+                  <p className="path-you"><span className="path-who">{t.youLabel}</span>{p.you}</p>
+                  <p className="path-kong"><span className="path-who">{t.kongLabel}</span>{p.kong}</p>
+                </li>
+              ))}
+            </ul>
+            <p className="path-setup">
+              {t.setupNote}{' '}
+              <a href={`${pathFor('guia', lang)}#quickstart`}>{t.setupLink}</a>
+            </p>
             {/* same as the hero: scroll to the download section; phones get "send to my computer" */}
             {mobile ? (
               <SendToComputer lang={lang} className="path-stc" />
@@ -85,7 +108,6 @@ $ kongtrol status --watch # live status`,
                 </a>
               </div>
             )}
-            <p className="path-note">{t.everyoneNote}</p>
           </div>
 
           <div className="path path-devs">
