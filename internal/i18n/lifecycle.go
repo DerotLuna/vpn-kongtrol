@@ -17,7 +17,7 @@ var lifecycleMessages = map[Lang]map[string]string{
 		// kongtrol uninstall
 		"help.kongtrol.uninstall.short":   "Desinstala Kongtrol de este equipo (tus datos se quedan)",
 		"help.kongtrol.uninstall.long":    "Desconecta tus VPN, cierra Kongtrol, quita el ayudante de red, el inicio automático y el PATH que agregó su instalador. Borra la app solo si la instaló install.sh o install.ps1; si vino de un gestor de paquetes (Homebrew, npm…) o del instalador de Windows, te dice cómo terminar. Tu configuración y tus contraseñas se quedan, para que todo vuelva al reinstalar; --purge también las borra.",
-		"help.kongtrol.uninstall.example": "  kongtrol uninstall --dry-run      # muestra qué haría, sin cambiar nada\n  kongtrol uninstall                # quita la app, guarda tus datos\n  kongtrol uninstall --purge        # quita la app y borra tus datos y contraseñas\n  kongtrol uninstall --data-only    # solo borra tus datos; la app queda instalada",
+		"help.kongtrol.uninstall.example": "  kongtrol uninstall --dry-run      # muestra qué haría, sin cambiar nada\n  kongtrol uninstall                # quita la app, guarda tus datos\n  kongtrol uninstall --purge        # quita la app y borra tus datos y contraseñas",
 		"cli.flag.uninstall.purge":        "también borra tu configuración (~/.kongtrol) y las contraseñas guardadas",
 		"cli.flag.uninstall.data_only":    "solo borra tus datos y contraseñas; la app queda instalada",
 		"cli.flag.uninstall.yes":          "no pregunta (para scripts)",
@@ -83,7 +83,7 @@ var lifecycleMessages = map[Lang]map[string]string{
 	EN: {
 		"help.kongtrol.uninstall.short":   "Uninstall Kongtrol from this computer (your data stays)",
 		"help.kongtrol.uninstall.long":    "Disconnects your VPNs, closes Kongtrol, removes the network helper, the autostart entry and the PATH entry its installer added. It deletes the app only when install.sh or install.ps1 installed it; if it came from a package manager (Homebrew, npm…) or the Windows installer, it tells you how to finish. Your settings and passwords stay, so everything comes back if you reinstall; --purge deletes them too.",
-		"help.kongtrol.uninstall.example": "  kongtrol uninstall --dry-run      # shows what it would do, changes nothing\n  kongtrol uninstall                # removes the app, keeps your data\n  kongtrol uninstall --purge        # removes the app and deletes your data and passwords\n  kongtrol uninstall --data-only    # only deletes your data; the app stays installed",
+		"help.kongtrol.uninstall.example": "  kongtrol uninstall --dry-run      # shows what it would do, changes nothing\n  kongtrol uninstall                # removes the app, keeps your data\n  kongtrol uninstall --purge        # removes the app and deletes your data and passwords",
 		"cli.flag.uninstall.purge":        "also delete your settings (~/.kongtrol) and saved passwords",
 		"cli.flag.uninstall.data_only":    "only delete your data and passwords; the app stays installed",
 		"cli.flag.uninstall.yes":          "do not ask (for scripts)",

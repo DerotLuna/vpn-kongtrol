@@ -38,7 +38,7 @@ var rootLayout = []struct {
 	{"init", groupSetup}, {"config", groupSetup}, {"policy", groupSetup},
 	{"reload", groupSetup}, {"restart", groupSetup}, {"export", groupSetup},
 	{"doctor", groupDiagnostics}, {"check", groupDiagnostics}, {"logs", groupDiagnostics},
-	{"service", groupSystem}, {"version", groupSystem}, {"help", groupSystem},
+	{"service", groupSystem}, {"uninstall", groupSystem}, {"version", groupSystem}, {"help", groupSystem},
 }
 
 var helpCmd = &cobra.Command{
