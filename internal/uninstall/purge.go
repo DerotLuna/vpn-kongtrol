@@ -135,9 +135,12 @@ type PurgeOptions struct {
 	// a custom audit log path); YAML ones are read for profile names.
 	ExtraFiles []string
 	// KeepRuntime keeps the files a running daemon needs (api-token, run/,
-	// logs) and the install manifest: used when the app stays installed
-	// (dashboard "Borrar todos mis datos", Windows uninstaller).
+	// logs) and the install manifest: the dashboard's "Borrar todos mis
+	// datos", done by the running daemon itself.
 	KeepRuntime bool
+	// KeepManifest keeps only install.manifest: `--data-only` (the app
+	// stays installed; the daemon is already stopped).
+	KeepManifest bool
 	DryRun      bool
 	// Delete removes one keychain entry; nil = DeleteFromKeychain.
 	Delete func(Credential) error
@@ -190,12 +193,12 @@ func Purge(opts PurgeOptions) PurgeReport {
 		}
 		return rep
 	}
-	if !opts.KeepRuntime {
+	if !opts.KeepRuntime && !opts.KeepManifest {
 		rep.remove(opts.DataDir, opts.DryRun)
 		return rep
 	}
 	for _, e := range entries {
-		if runtimeFiles[e.Name()] {
+		if (opts.KeepRuntime && runtimeFiles[e.Name()]) || e.Name() == ManifestName {
 			continue
 		}
 		rep.remove(filepath.Join(opts.DataDir, e.Name()), opts.DryRun)

@@ -110,7 +110,7 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 
 	// 3. Data and saved passwords, only when asked.
 	if plan.Purge {
-		rep := uninstall.Purge(uninstall.PurgeOptions{DataDir: plan.DataDir, ExtraFiles: extra, KeepRuntime: plan.DataOnly})
+		rep := uninstall.Purge(uninstall.PurgeOptions{DataDir: plan.DataDir, ExtraFiles: extra, KeepManifest: plan.DataOnly})
 		if err := rep.Err(); err != nil {
 			say(tuiErr(cf("cli.uninstall.purge_failed", err)))
 			say(tuiInfo(ct("cli.uninstall.purge_failed_fix")))
