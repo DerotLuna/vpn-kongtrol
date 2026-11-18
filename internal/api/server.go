@@ -59,10 +59,11 @@ type Server struct {
 	upgrader          websocket.Upgrader
 	srv               *http.Server
 	onShutdown        func()
-	// helperInstall / helperVersion back /api/v1/helper/*; see
-	// SetHelperInstaller.
+	// helperInstall backs POST /api/v1/helper/install; version (this
+	// build's version) backs GET /api/v1/version and the helper status.
+	// See SetHelperInstaller.
 	helperInstall func(context.Context) error
-	helperVersion string
+	version       string
 	// ksStatus / events back the split-tunnel kill switch state and the
 	// policy notices; see SetKillSwitchStatus / SetEventLog.
 	ksStatus func() security.KillSwitchStatus
@@ -191,6 +192,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/shutdown", s.handleShutdown)
 	mux.HandleFunc("POST /api/v1/restart", s.handleRestart)
 	mux.HandleFunc("GET /api/v1/setup", s.handleSetupStatus)
+	mux.HandleFunc("GET /api/v1/version", s.handleVersion)
 	mux.HandleFunc("GET /api/v1/helper/status", s.handleHelperStatus)
 	mux.HandleFunc("POST /api/v1/helper/install", s.handleHelperInstall)
 	mux.HandleFunc("GET /api/v1/doctor", s.handleDoctor)
