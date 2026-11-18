@@ -29,11 +29,12 @@ func runEditMenu(lang i18n.Lang, doc *yaml.Node, existing *config.Config, detect
 	var addedProfiles []profileSummary
 	var addedPolicies []string
 	sec := securitySummary{
-		killSwitch: existing.Security.KillSwitch.Enabled,
-		dnsGuard:   existing.Security.DNSGuard.Enabled,
-		auditLog:   existing.Security.AuditLog.Sign,
-		monitor:    existing.Monitor.Enabled,
-		publicIP:   existing.PublicIPCheckEnabled(),
+		killSwitch:  existing.Security.KillSwitch.Enabled,
+		dnsGuard:    existing.Security.DNSGuard.Enabled,
+		auditLog:    existing.Security.AuditLog.Sign,
+		monitor:     existing.Monitor.Enabled,
+		publicIP:    existing.PublicIPCheckEnabled(),
+		updateCheck: existing.UpdateCheckEnabled(),
 	}
 
 	for {

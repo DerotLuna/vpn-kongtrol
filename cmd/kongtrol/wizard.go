@@ -474,6 +474,8 @@ type securitySummary struct {
 	killSwitch, dnsGuard, auditLog, monitor bool
 	// publicIP: opt-in external public IP lookup (off by default).
 	publicIP bool
+	// updateCheck: opt-in update notice (off by default, ADR-0032).
+	updateCheck bool
 }
 
 // valueOf reads a scalar field out of a profile's yaml.Node mapping — used to

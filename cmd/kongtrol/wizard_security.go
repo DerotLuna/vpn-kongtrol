@@ -33,6 +33,7 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 	enableAudit := current.auditLog
 	enableMonitor := current.monitor
 	enablePublicIP := current.publicIP
+	enableUpdateCheck := current.updateCheck
 
 	if err := runForm(newForm(
 		huh.NewGroup(
@@ -59,6 +60,10 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 				Title(t("security.public_ip")).
 				Description(styleDim.Render(i18n.F(lang, "cli.public_ip.notice", config.EndpointHost(config.DefaultPublicIPEndpoint)))).
 				Value(&enablePublicIP),
+			huh.NewConfirm().
+				Title(t("update.wizard.title")).
+				Description(styleDim.Render(t("update.wizard.desc"))).
+				Value(&enableUpdateCheck),
 		),
 	)); err != nil {
 		return securitySummary{}, err
@@ -97,6 +102,6 @@ func collectSecurityHuh(lang i18n.Lang, doc *yaml.Node, home string, current sec
 
 	return securitySummary{
 		killSwitch: enableKS, dnsGuard: enableDNS, auditLog: enableAudit, monitor: enableMonitor,
-		publicIP: enablePublicIP,
+		publicIP: enablePublicIP, updateCheck: enableUpdateCheck,
 	}, nil
 }
