@@ -6,6 +6,8 @@ import LangSuggest from '../../components/ui/LangSuggest'
 import { useKonami } from '../../hooks/useKonami'
 import { useActiveSection } from '../../hooks/useActiveSection'
 import Nav from '../../components/ui/Nav'
+import SkipLink from '../../components/ui/SkipLink'
+import { useReveal } from '../../hooks/useReveal'
 import Hero from '../../components/sections/Hero'
 import Start from '../../components/sections/Start'
 import Providers from '../../components/sections/Providers'
@@ -45,6 +47,7 @@ export default function App({ lang }: { lang: Lang }) {
   const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting('home', lang)
   useKonami()
+  useReveal()
 
   const windows = lang === 'es' ? HOME_WINDOWS_ES : HOME_WINDOWS_EN
   // same tracking TmuxBar uses below — the tmux bar hides under 720px, so
@@ -53,13 +56,14 @@ export default function App({ lang }: { lang: Lang }) {
 
   return (
     <>
+      <SkipLink lang={lang} />
       <Nav
         page="home"
         lang={lang}
         theme={theme}
         setTheme={setTheme}
       />
-      <main>
+      <main id="main" tabIndex={-1}>
         <Hero os={os} lang={lang} />
         {/* wraps every section the jump menu can point to, so its sticky
             position has room to stay pinned under the header for the whole

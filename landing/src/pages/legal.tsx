@@ -2,6 +2,7 @@ import { Lang } from '../i18n'
 import { PageId } from '../site'
 import { useLangRouting, useTheme } from '../hooks/usePreferences'
 import Nav from '../components/ui/Nav'
+import SkipLink from '../components/ui/SkipLink'
 import Footer from '../components/ui/Footer'
 import TmuxBar from '../components/ui/TmuxBar'
 import LangSuggest from '../components/ui/LangSuggest'
@@ -18,8 +19,9 @@ export default function LegalApp({ page, lang, doc: docs }: Props) {
 
   return (
     <>
+      <SkipLink lang={lang} />
       <Nav page={page} lang={lang} theme={theme} setTheme={setTheme} />
-      <main>
+      <main id="main" tabIndex={-1}>
         <header className="guide-hero">
           <div className="container">
             <div className="section-label cmd-label">{doc.label}</div>

@@ -29,17 +29,17 @@ export default function Guide({ os, setOS, lang }: Props) {
           <p>{t.intro2}</p>
           <div className="guide-flow">
             <div className="guide-flow-col">
-              <h4>{t.intro3}</h4>
+              <p className="guide-flow-h">{t.intro3}</p>
               <p>{t.intro4}</p>
             </div>
             <div className="guide-flow-arrow" aria-hidden="true">──▶</div>
             <div className="guide-flow-col">
-              <h4>kongtrol</h4>
+              <p className="guide-flow-h">kongtrol</p>
               <p>{t.intro5}</p>
             </div>
             <div className="guide-flow-arrow" aria-hidden="true">──▶</div>
             <div className="guide-flow-col guide-flow-vpns">
-              <h4>{t.intro6}</h4>
+              <p className="guide-flow-h">{t.intro6}</p>
               <div className="guide-flow-vpn"><strong>FortiClient</strong><span>office</span></div>
               <div className="guide-flow-vpn"><strong>OpenVPN</strong><span>dev-server</span></div>
               <div className="guide-flow-vpn"><strong>ProtonVPN</strong><span>us-content</span></div>
@@ -182,7 +182,7 @@ $ kongtrol dashboard`}</CodeBlock>
             <div id="install" className="guide-section">
               <div className="guide-section-num">2</div>
               <h2 className="guide-section-title">{t.install1}</h2>
-              <OsTabs os={os} setOS={setOS} />
+              <OsTabs os={os} setOS={setOS} lang={lang} />
               {os === 'windows' && (
                 <div className="os-panel active">
                   <p>{t.install2}</p>
@@ -503,7 +503,7 @@ $ kongtrol up us-content`}</CodeBlock>
               <div className="guide-section-num">10</div>
               <h2 className="guide-section-title">{t.trouble1}</h2>
               <p>{t.trouble2}</p>
-              <OsTabs os={os} setOS={setOS} />
+              <OsTabs os={os} setOS={setOS} lang={lang} />
               {os === 'windows' && (
                 <CodeBlock lang="bash">{`$ netsh interface ip set dns "Ethernet" dhcp`}</CodeBlock>
               )}
@@ -516,7 +516,7 @@ $ kongtrol up us-content`}</CodeBlock>
               <p style={{ marginTop: 32 }}>{t.trouble3}</p>
               <CodeBlock lang="bash">{t.trouble4}</CodeBlock>
               <p>{t.trouble5}</p>
-              <OsTabs os={os} setOS={setOS} />
+              <OsTabs os={os} setOS={setOS} lang={lang} />
               {os === 'windows' && (
                 <CodeBlock lang="bash">{t.trouble6}</CodeBlock>
               )}

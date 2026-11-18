@@ -47,13 +47,13 @@ export default function TmuxBar({ lang, session = 'kongtrol', windows = HOME_WIN
       <ul className="tmux-windows">
         {windows.map(w => (
           <li key={w.n}>
-            <a href={`#${w.id}`} className={active === w.id ? 'active' : ''}>
+            <a href={`#${w.id}`} className={active === w.id ? 'active' : ''} aria-current={active === w.id ? 'true' : undefined}>
               {w.n}:{w.name}{active === w.id ? '*' : ''}
             </a>
           </li>
         ))}
       </ul>
-      <span className="tmux-right">
+      <span className="tmux-right" aria-hidden="true">
         {showStatus && (
           <>
             <span className="tmux-shield">⛨ armed</span>

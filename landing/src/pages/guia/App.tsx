@@ -5,6 +5,7 @@ import { Lang } from '../../i18n'
 import LangSuggest from '../../components/ui/LangSuggest'
 import { useKonami } from '../../hooks/useKonami'
 import Nav from '../../components/ui/Nav'
+import SkipLink from '../../components/ui/SkipLink'
 import Guide from '../../components/sections/Guide'
 import Footer from '../../components/ui/Footer'
 import TmuxBar, { TmuxWindow } from '../../components/ui/TmuxBar'
@@ -51,13 +52,14 @@ export default function GuideApp({ lang }: { lang: Lang }) {
 
   return (
     <>
+      <SkipLink lang={lang} />
       <Nav
         page="guia"
         lang={lang}
         theme={theme}
         setTheme={setTheme}
       />
-      <main>
+      <main id="main" tabIndex={-1}>
         <header className="guide-hero">
           <div className="container">
             <div className="section-label cmd-label">{head.label}</div>

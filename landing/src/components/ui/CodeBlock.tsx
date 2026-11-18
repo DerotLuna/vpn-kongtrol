@@ -43,7 +43,7 @@ export default function CodeBlock({ lang = 'bash', children }: Props) {
     <div className="code-block">
       <div className="code-block-header">
         <span className="code-block-lang">{lang}</span>
-        <button className={`copy-btn${copied ? ' copied' : ''}`} onClick={copy}>
+        <button type="button" className={`copy-btn${copied ? ' copied' : ''}`} onClick={copy} aria-live="polite">
           {copied ? (isES ? 'copiado ✓' : 'copied ✓') : (isES ? 'copiar' : 'copy')}
         </button>
       </div>

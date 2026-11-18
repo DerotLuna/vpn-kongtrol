@@ -1,10 +1,12 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.2.0 · 2026-11-17
+   v2.3.0 · 2026-11-18
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
    scroll-driven reveals, CRT easter egg (↑↑↓↓←→←→BA).
+   v2.3: CSS boot timeline (no layout shift), spacing/type scale, 44px CTAs,
+   reveal fallback, theme wipe from the toggle, a11y fixes (ADR-0024).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
@@ -30,7 +32,7 @@
 
   --text:        #eef1f5;
   --text-muted:  #99a3b3;
-  --text-dim:    #7a8494;   /* ≥4.5:1 on --bg and --surface */
+  --text-dim:    #838d9d;   /* ≥4.5:1 on every surface incl. --surface-3 and --signal-soft (4.75 / 4.81) */
   --danger:      #ff5a52;
   --ok:          var(--signal);
   /* live = a tunnel that is up right now (tray dot, attach demo) */
@@ -48,6 +50,23 @@
   --max-w:    1160px;
   --nav-h:    66px;
   --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --quart-out: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* spacing scale (4px base) + fluid section rhythm — v2.3 */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+  --section-y: clamp(72px, 6vw + 40px, 120px);
+  --gutter: clamp(16px, 3vw, 24px);
+
+  /* fluid type scale (1.25 ratio, clamped; display ≤ 6rem) */
+  --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.9rem);
+  --step-0:  clamp(1rem, 0.96rem + 0.2vw, 1.08rem);
+  --step-1:  clamp(1.15rem, 1.08rem + 0.35vw, 1.35rem);
+  --step-3:  clamp(2rem, 1.5rem + 2.4vw, 3rem);
+  --measure: 65ch;
+
+  /* touch target floor for primary actions (WCAG 2.5.8 asks 24px; 44px for comfort) */
+  --tap: 44px;
 
   /* the signature: a contour-ring paint reusable anywhere */
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
@@ -77,7 +96,7 @@
 
   --text:        #1b1813;
   --text-muted:  #4c4638;
-  --text-dim:    #6a6352;
+  --text-dim:    #635c4b;   /* ≥4.5:1 on every surface incl. --signal-soft (4.84) */
   --danger:      #b3261e;
   --live:        #187a42;
   --live-soft:   rgba(24,122,66,0.14);
@@ -91,39 +110,37 @@
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-
-/* ── Theme toggle — View Transitions API ───────────────────────────────────── */
-::view-transition-group(root) {
-  animation-timing-function: var(--expo-out);
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--nav-h) + 12px); }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
-::view-transition-new(root) {
-  mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><filter id="blur"><feGaussianBlur stdDeviation="2"/></filter></defs><circle cx="0" cy="0" r="18" fill="white" filter="url(%23blur)"/></svg>') top left / 0 no-repeat;
-  mask-origin: content-box;
-  animation: scale 1s;
-  animation-fill-mode: both;
-  transform-origin: top left;
-}
-
-::view-transition-old(root),
-:root[data-theme='dark']::view-transition-old(root) {
-  animation: scale 1s;
-  animation-fill-mode: both;
-  transform-origin: top left;
-  z-index: -1;
-}
-
-@keyframes scale {
-  to { mask-size: 350vmax; }
-}
-
+/* Reduced motion safety net: anything that still animates finishes at once.
+   Pattern: https://web.dev/articles/prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(root),
-  ::view-transition-new(root),
-  ::view-transition-old(root) {
-    animation: none !important;
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Theme toggle — View Transitions API ───────────────────────────────────────
+   The new theme wipes in as a circle growing from the toggle button
+   (--vt-x/--vt-y, set by Nav.tsx). Pattern from
+   https://developer.chrome.com/docs/web-platform/view-transitions/same-document
+   Browsers without the API, and reduced-motion visitors, switch instantly. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  animation: themeWipe 0.7s var(--quart-out) both;
+}
+@keyframes themeWipe {
+  from { clip-path: circle(0 at var(--vt-x, 100%) var(--vt-y, 0)); }
+  to   { clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 100%) var(--vt-y, 0)); }
 }
 
 /* ── Scrollbar ──────────────────────────────────────────────────────────────── */
@@ -178,7 +195,7 @@ h1, h2, h3, h4 {
 code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* section eyebrow ring glyph — a tiny contour mark before every label */
-.eyebrow-ring, .section-label::before {
+.section-label::before {
   content: '';
   display: inline-block;
   width: 11px; height: 11px;
@@ -284,19 +301,11 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   transform: translateY(-1px); box-shadow: 0 6px 20px var(--signal-glow);
 }
 
-.nav-os-switcher, .nav-lang-switcher, .nav-theme-switcher {
+.nav-lang-switcher, .nav-theme-switcher {
   display: flex; align-items: center; gap: 3px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 3px;
 }
-.nav-os-btn {
-  font-family: var(--font-mono); font-size: 0.7rem;
-  padding: 4px 11px; border: none; background: transparent;
-  color: var(--text-muted); border-radius: 3px; cursor: pointer;
-  transition: all 0.15s; letter-spacing: 0.03em;
-}
-.nav-os-btn:hover { color: var(--text); }
-.nav-os-btn.active { background: var(--signal); color: var(--on-signal); font-weight: 600; }
 
 .nav-controls { display: flex; align-items: center; gap: 8px; }
 .nav-utils {
@@ -319,12 +328,12 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .nav-lang-toggle { text-decoration: none; }
 .nav-theme-toggle:hover, .nav-lang-toggle:hover { color: var(--signal); background: var(--signal-soft); }
 
-/* sun and moon crossfade with a quarter-turn rotation, timed to the same 1s as
+/* sun and moon crossfade with a quarter-turn rotation, timed to the same 0.7s as
    the page-wide view transition so the button never looks frozen mid-swap */
 .theme-icon-stack { position: relative; display: inline-flex; width: 15px; height: 15px; }
 .theme-icon-stack svg {
   position: absolute; inset: 0; width: 15px; height: 15px;
-  transition: opacity 1s var(--expo-out), transform 1s var(--expo-out);
+  transition: opacity 0.7s var(--expo-out), transform 0.7s var(--expo-out);
 }
 .theme-icon-stack.light .theme-icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
 .theme-icon-stack.light .theme-icon-moon { opacity: 0; transform: rotate(-90deg) scale(.5); }
@@ -348,14 +357,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 
 /* ── Hero ───────────────────────────────────────────────────────────────────── */
-.hero {
-  min-height: calc(100vh - var(--nav-h));
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(500px, 560px);
-  align-items: center; gap: 52px;
-  padding: 72px 0 96px; position: relative;
-}
-
 /* SIGNATURE — Kong contour rings + radar sweep behind the hero */
 .hero-contour {
   position: absolute; z-index: 0; pointer-events: none;
@@ -388,80 +389,43 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   box-shadow: 0 0 0 5px var(--signal-soft), 0 0 26px color-mix(in srgb, var(--signal) 45%, transparent);
 }
 @keyframes radarSweep { to { transform: rotate(360deg); } }
+/* transform-only pulse (compositor), the glow itself stays static */
 @keyframes corePulse {
-  0%,100% { box-shadow: 0 0 0 5px var(--signal-soft), 0 0 20px var(--signal-glow); }
-  50%     { box-shadow: 0 0 0 9px transparent, 0 0 34px var(--signal-glow); }
+  0%,100% { scale: 1; }
+  50%     { scale: 1.4; }
 }
 
-.hero-text { position: relative; z-index: 1; }
-
-.hero-kicker {
-  display: inline-flex; align-items: center; gap: 9px;
-  font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.14em;
-  text-transform: uppercase; color: var(--text-muted);
-  border: 1px solid var(--border-2); border-radius: 999px;
-  padding: 5px 13px 5px 11px; margin-bottom: 22px;
+/* ── Buttons — one family: solid signal (primary) and outline (secondary).
+   Every action is ≥44px tall, lifts 1px on hover, presses down on :active. */
+.btn-download, .btn-ghost, .th-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: var(--tap);
+  font-family: var(--font-mono); letter-spacing: 0.04em;
+  border-radius: var(--radius); cursor: pointer; text-decoration: none;
+  transition: transform 0.2s var(--quart-out), box-shadow 0.2s var(--quart-out),
+              background-color 0.2s, border-color 0.2s, color 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
-.hero-kicker b { color: var(--signal); font-weight: 600; }
-.hero-kicker .dot {
-  width: 7px; height: 7px; border-radius: 50%; background: var(--signal);
-  box-shadow: 0 0 0 3px var(--signal-soft); animation: corePulse 2.6s ease-in-out infinite;
-}
-
-.hero-title {
-  font-size: clamp(3rem, 6.4vw, 5.4rem);
-  font-weight: 700; line-height: 0.98; letter-spacing: -0.02em;
-  text-wrap: balance; text-transform: uppercase; color: var(--text);
-  margin-bottom: 20px;
-}
-.hero-en .hero-title { font-size: clamp(2.9rem, 6vw, 5rem); }
-.hero-title span { color: var(--signal); }
-
-.hero-sub {
-  font-size: 1.08rem; color: var(--text-muted);
-  max-width: 500px; margin-bottom: 28px; line-height: 1.6; text-wrap: pretty;
-}
-
-.hero-cta { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.btn-download:hover, .btn-ghost:hover, .th-btn:hover { text-decoration: none; transform: translateY(-1px); }
+.btn-download:active, .btn-ghost:active, .th-btn:active { transform: translateY(0) scale(0.98); transition-duration: 0.06s; }
 
 .btn-download {
-  display: inline-flex; align-items: center; gap: 10px;
-  background: var(--signal); color: var(--on-signal);
-  font-family: var(--font-mono); font-weight: 600;
-  font-size: 0.82rem; letter-spacing: 0.04em; text-transform: uppercase;
-  padding: 13px 22px; border: none; border-radius: var(--radius);
-  cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s;
-  text-decoration: none;
+  background: var(--signal); color: var(--on-signal); font-weight: 600;
+  font-size: 0.82rem; text-transform: uppercase;
+  padding: 12px 22px; border: 1px solid var(--signal);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
 }
-.btn-download:hover {
-  background: var(--signal-hi); text-decoration: none;
-  transform: translateY(-2px); box-shadow: 0 10px 30px var(--signal-glow);
-}
-.btn-download svg { flex-shrink: 0; }
+.btn-download:hover { background: var(--signal-hi); border-color: var(--signal-hi); box-shadow: 0 10px 28px -6px var(--signal-glow); }
+.btn-download svg { flex-shrink: 0; transition: transform 0.25s var(--quart-out); }
+.btn-download:hover svg { transform: translateY(2px); }
 
 .btn-ghost {
-  font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
-  letter-spacing: 0.04em; padding: 13px 20px;
-  border: 1px solid var(--border-2); border-radius: var(--radius);
-  cursor: pointer; background: transparent; transition: all 0.2s; text-decoration: none;
+  font-size: 0.8rem; color: var(--text); background: transparent;
+  padding: 12px 20px; border: 1px solid var(--border-2);
 }
-.btn-ghost:hover { color: var(--text); border-color: var(--signal); text-decoration: none; }
-
-.hero-detected {
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);
-  letter-spacing: 0.04em; margin-top: 20px;
-}
-.hero-detected span { color: var(--signal); }
-
-.hero-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
-.hero-pill {
-  font-family: var(--font-mono); font-size: 0.68rem; color: var(--signal);
-  background: var(--signal-soft); border: 1px solid var(--signal-line);
-  border-radius: 999px; padding: 5px 10px; letter-spacing: 0.04em;
-}
+.btn-ghost:hover { border-color: var(--signal); color: var(--signal); background: var(--signal-soft); }
 
 /* ── Terminal — the live instrument panel ───────────────────────────────────── */
-.hero-terminal-wrap { position: relative; z-index: 1; inline-size: min(100%, 560px); justify-self: end; }
 
 .terminal {
   position: relative; background: var(--surface); border: 1px solid var(--border);
@@ -493,43 +457,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
 .hero-cmd-line { margin-bottom: 4px; }
 
-.hero-status-summary.cli {
-  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
-  margin: 14px 0 8px; font-size: 0.9em;
-}
-.summary-token { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.summary-token b { font-weight: 700; }
-.summary-token.connected { color: var(--signal); }
-.summary-token.connecting { color: var(--steel); }
-.summary-token.error { color: var(--danger); }
-.summary-token.disconnected { color: var(--text-muted); }
-
-.hero-security-line {
-  display: flex; flex-wrap: wrap; gap: 16px;
-  margin: 6px 0 14px; color: var(--text-muted); font-size: 0.9em;
-}
-.hero-security-line b { color: var(--signal); font-weight: 700; }
-.hero-security-line strong { color: var(--text); }
-
-.hero-status-grid { border-top: 1px solid var(--border-2); border-bottom: 1px solid var(--border-2); padding: 3px 0; }
-.hero-status-head, .hero-status-row {
-  display: grid;
-  grid-template-columns: minmax(120px, 1.2fr) minmax(120px, 1fr) minmax(50px, .8fr) minmax(86px, 1fr);
-  gap: 12px; align-items: center; padding: 8px 10px;
-}
-.hero-status-head { color: var(--text-dim); font-size: 0.68rem; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
-.hero-status-row { border-top: 1px solid var(--border); color: var(--text-muted); transition: background 0.16s; }
-.hero-status-row:hover { background: var(--signal-soft); }
-.hero-status-row span:last-child, .hero-status-row span:nth-child(3) { text-align: right; white-space: nowrap; }
-.hero-status-row span:first-child { white-space: nowrap; }
-.status-cell { display: inline-flex; align-items: center; gap: 6px; }
-.status-cell i { font-style: normal; font-size: 0.9em; }
-.hero-status-row.connected .status-cell, .hero-status-row.connected .status-cell i { color: var(--signal); }
-.hero-status-row.connecting .status-cell i { color: var(--steel); }
-.hero-status-row.disconnected .status-cell, .hero-status-row.disconnected .status-cell i { color: var(--text-dim); }
-
 /* ── Section shells ─────────────────────────────────────────────────────────── */
-.section { padding: 104px 0; position: relative; }
+.section { padding: var(--section-y) 0; position: relative; scroll-margin-top: var(--nav-h); }
 .section + .section { border-top: 1px solid var(--border); }
 
 .section-label {
@@ -541,10 +470,10 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .section-label.cmd-label { text-transform: none; letter-spacing: 0.05em; font-size: 0.8rem; }
 .section-label.cmd-label::before { content: none; }
 .section-title {
-  font-size: clamp(2rem, 4vw, 3rem); color: var(--text);
-  margin-bottom: 16px; text-wrap: balance; max-width: 30ch;
+  font-size: var(--step-3); color: var(--text); letter-spacing: -0.02em;
+  margin-bottom: var(--space-4); text-wrap: balance; max-width: 30ch;
 }
-.section-sub { font-size: 1.06rem; color: var(--text-muted); max-width: 100%; text-wrap: pretty; }
+.section-sub { font-size: var(--step-0); line-height: 1.6; color: var(--text-muted); max-width: var(--measure); text-wrap: pretty; }
 
 /* ── Features / Control tower ───────────────────────────────────────────────── */
 .features-section { scroll-margin-top: calc(var(--nav-h) + 14px); container-type: inline-size; }
@@ -636,46 +565,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .sb-arrow { color: var(--text-dim); flex-shrink: 0; }
 .sb-hint { margin-top: 10px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
 
-/* ── Capability pillars ── */
-.pillars-head {
-  margin-top: 64px; font-family: var(--font-mono); font-size: 0.74rem;
-  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 20px;
-}
-.pillars { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-.pillar {
-  position: relative; background: var(--surface); padding: 28px 26px 26px;
-  display: grid; gap: 10px; align-content: start; overflow: hidden; transition: background 0.2s;
-}
-.pillar-glyph {
-  position: absolute; top: -46px; right: -46px; width: 132px; height: 132px; pointer-events: none;
-  --cx: 50%; --cy: 50%; background: var(--contour); opacity: 0; transition: opacity 0.3s;
-  border-radius: 50%;
-}
-.pillar:hover { background: var(--surface-2); }
-.pillar:hover .pillar-glyph { opacity: 1; }
-.pillar-k { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; color: var(--signal); }
-.pillar h3 { font-family: var(--font-display); font-size: 1.15rem; color: var(--text); font-weight: 600; }
-.pillar p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.55; max-width: 42ch; }
-.pillar-metric {
-  justify-self: start; margin-top: 4px; font-family: var(--font-mono); font-size: 0.64rem;
-  letter-spacing: 0.06em; color: var(--signal); border: 1px solid var(--signal-line);
-  border-radius: 999px; padding: 5px 11px;
-}
-
-/* ── Adapters ── */
-.adapters { margin-top: 64px; }
-.adapters-head h3 { font-family: var(--font-display); color: var(--text); font-size: clamp(1.3rem, 2.6vw, 1.7rem); margin-bottom: 8px; text-wrap: balance; }
-.adapters-head p { color: var(--text-muted); font-size: 0.92rem; max-width: 100%; }
-.adapter-grid { margin-top: 22px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.adapter-chip {
-  display: flex; flex-direction: column; gap: 4px;
-  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px;
-  background: var(--surface); transition: border-color 0.2s, transform 0.2s, background 0.2s;
-}
-.adapter-chip:hover { border-color: var(--signal-line); background: var(--surface-2); transform: translateY(-2px); }
-.adapter-name { font-family: var(--font-display); font-weight: 600; font-size: 0.92rem; color: var(--text); }
-.adapter-tag { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--signal); }
-
 /* ── Download ───────────────────────────────────────────────────────────────── */
 .download-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
@@ -724,8 +613,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .code-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-width: 0; }
 .code-block-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
 .code-block-lang { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; }
-.copy-btn { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); background: transparent; border: none; cursor: pointer; letter-spacing: 0.06em; padding: 3px 0; transition: color 0.15s; }
-.copy-btn:hover, .copy-btn.copied { color: var(--signal); }
+.copy-btn { display: inline-flex; align-items: center; min-height: 28px; margin-right: -8px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); background: transparent; border: none; border-radius: 4px; cursor: pointer; letter-spacing: 0.06em; padding: 4px 8px; transition: color 0.15s, background-color 0.15s; }
+.copy-btn:hover, .copy-btn.copied { color: var(--signal); background: var(--signal-soft); }
 .code-block pre { padding: 18px 20px; overflow-x: auto; font-size: 0.82rem; line-height: 1.75; color: var(--text); }
 .code-block pre .comment { color: var(--text-dim); }
 .code-block pre .prompt { color: var(--signal); user-select: none; }
@@ -754,7 +643,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   width: 100%; border: 1px solid var(--border); border-radius: var(--radius-lg);
   background: var(--surface); padding: 28px 32px; margin: 4px 0 0;
 }
-.guide-flow-col h4 { font-family: var(--font-mono); font-size: 0.92rem; color: var(--text); font-weight: 600; margin-bottom: 8px; }
 .guide-flow-col p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; max-width: none; margin: 0; }
 .guide-flow-arrow { color: var(--signal); font-family: var(--font-mono); font-size: 1.3rem; text-align: center; }
 .guide-flow-vpns { display: grid; gap: 8px; }
@@ -843,7 +731,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* OS tabs */
 .os-tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; width: fit-content; }
-.os-tab { font-family: var(--font-mono); font-size: 0.74rem; padding: 8px 18px; background: var(--surface); border: none; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; border-right: 1px solid var(--border); transition: all 0.15s; }
+.os-tab { min-height: 40px; font-family: var(--font-mono); font-size: 0.76rem; padding: 8px 18px; background: var(--surface); border: none; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; border-right: 1px solid var(--border); transition: all 0.15s; }
 .os-tab:last-child { border-right: none; }
 .os-tab:hover { color: var(--text); background: var(--surface-2); }
 .os-tab.active { background: var(--signal); color: var(--on-signal); font-weight: 600; }
@@ -914,30 +802,16 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 .footer-meta.has-legal { justify-content: space-between; }
 .footer-wink { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; }
-.footer-legal-link { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; transition: color 0.15s; }
+.footer-legal-link { display: inline-block; padding: 4px 0; font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.04em; transition: color 0.15s; }
 .footer-legal-link:hover { color: var(--signal); text-decoration: none; }
 .footer-legal { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0; padding: 0; }
 
-/* ── Animations ─────────────────────────────────────────────────────────────── */
-@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.fade-up { animation: fadeUp 0.7s ease both; }
-.fade-up-1 { animation-delay: 0.05s; }
-.fade-up-2 { animation-delay: 0.18s; }
-.fade-up-3 { animation-delay: 0.32s; }
-.fade-up-4 { animation-delay: 0.46s; }
-
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @container (max-width: 720px) {
-  .pillars { grid-template-columns: 1fr; }
-  .adapter-grid { grid-template-columns: repeat(2, 1fr); }
   .sb-legend { font-size: 0.58rem; }
 }
 
 @media (max-width: 960px) {
-  .hero { grid-template-columns: 1fr; gap: 44px; padding: 52px 0 76px; }
-  .hero-contour { right: -40%; opacity: 0.5; }
-  .hero-terminal-wrap { order: 2; justify-self: stretch; inline-size: 100%; }
   .terminal-body { min-height: 262px; }
   .guide-layout { grid-template-columns: 1fr; }
   .guide-sidebar { display: none; }
@@ -961,10 +835,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   }
   .nav-links { display: none; }
   .nav-inner { grid-template-columns: auto auto; }
-  .nav-os-switcher { display: none; }
   .nav-utils { border-inline-start: none; padding-inline-start: 0; }
   .download-grid { grid-template-columns: 1fr; }
-  .section { padding: 76px 0; }
 
   /* header wordmark drops on mobile/tablet — the hamburger below covers
      home/guide navigation, so the full logo lockup isn't needed — but the
@@ -994,16 +866,23 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .nav-hamburger.open span:nth-child(2) { opacity: 0; }
   .nav-hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 
+  /* closed = visibility:hidden, so its links leave the tab order and the
+     accessibility tree; it slides + fades (transform/opacity) instead of
+     animating max-height, which re-ran layout every frame */
   .nav-mobile-menu {
     display: block;
     position: absolute; top: 100%; left: 0; right: 0; z-index: 99;
-    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
     backdrop-filter: blur(14px) saturate(1.2);
-    border-bottom: 1px solid transparent;
-    max-height: 0; overflow: hidden;
-    transition: max-height 0.28s var(--expo-out), border-color 0.28s ease;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 18px 30px -18px rgba(0,0,0,0.45);
+    opacity: 0; transform: translateY(-8px); visibility: hidden;
+    transition: opacity 0.22s var(--quart-out), transform 0.28s var(--quart-out), visibility 0s linear 0.28s;
   }
-  .nav-mobile-menu.open { max-height: 220px; border-bottom-color: var(--border); }
+  .nav-mobile-menu.open {
+    opacity: 1; transform: none; visibility: visible;
+    transition: opacity 0.22s var(--quart-out), transform 0.28s var(--quart-out), visibility 0s;
+  }
   .nav-mobile-menu ul { list-style: none; display: flex; flex-direction: column; padding: 8px 24px 16px; }
   .nav-mobile-menu a {
     display: block; padding: 13px 2px; font-family: var(--font-mono); font-size: 0.84rem;
@@ -1080,20 +959,9 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; visibility: visible;
 }
 .jump-select-list li + li { margin-top: 1px; }
-.jump-select-list button {
-  width: 100%; display: flex; align-items: baseline; gap: 8px; text-align: left;
-  font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted);
-  background: transparent; border: none; border-radius: 4px; padding: 9px 10px; cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.jump-select-list button:hover { background: var(--signal-soft); color: var(--text); }
-.jump-select-list button.active { color: var(--signal); background: var(--signal-soft); }
 .jump-select-list .guide-num { color: var(--text-dim); margin-right: 2px; }
 
 @media (max-width: 640px) {
-  .hero-title { font-size: clamp(2.4rem, 12vw, 3.3rem); }
-  .hero-status-head, .hero-status-row { grid-template-columns: 1.1fr 1fr 0.8fr 1fr; gap: 8px; padding-inline: 6px; }
-  .platform-outcome { padding: 0 14px; }
   .footer-grid { grid-template-columns: 1fr; gap: 28px; }
   .footer-meta { justify-content: flex-start; }
   .source-install { grid-template-columns: 1fr; gap: 12px; }
@@ -1116,15 +984,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
    v2 additions — terminal boot, security, how-it-works, /guia, CRT mode
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* hero kicker as a shell comment instead of a pill */
-.hero-kicker.mono-comment {
-  border: none; border-radius: 0; padding: 0;
-  font-size: 0.78rem; letter-spacing: 0.03em; text-transform: none;
-  color: var(--text-dim); font-style: normal;
-}
-
 /* ── Boot sequence terminal ── */
-.terminal-body.boot { min-height: 300px; }
+/* lines the visitor's own commands print */
 .boot-line, .boot-row { animation: bootIn 0.22s ease both; }
 @keyframes bootIn { from { opacity: 0; translate: 0 4px; } to { opacity: 1; translate: 0 0; } }
 .boot-line { margin: 3px 0; }
@@ -1199,15 +1060,25 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .guide-hero { padding: 48px 0 8px; }
 .guide-hero + * .guide-layout, .guide-hero ~ section .guide-layout { padding-top: 40px; }
 
-/* ── Scroll-driven reveals — decorative, progressive enhancement ── */
+/* ── Reveals — decorative, progressive enhancement ──────────────────────────────
+   1. CSS scroll-driven animations where supported (no JS at all).
+   2. Elsewhere useReveal() adds .reveal-io to <html> and .is-in per element
+      via IntersectionObserver; what is already on screen is never hidden.
+   Opacity + transform only; reduced motion and no-JS keep everything visible. */
+@keyframes revealUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: no-preference) {
   @supports ((animation-timeline: view()) and (animation-range: entry)) {
     .reveal {
-      animation: fadeUp auto ease backwards;
+      animation: revealUp auto var(--quart-out) both;
       animation-timeline: view();
-      animation-range: entry 0% entry 45%;
+      animation-range: entry 0% entry 50%;
     }
   }
+  .reveal-io .reveal {
+    transition: opacity 0.6s var(--quart-out), transform 0.6s var(--quart-out);
+    transition-delay: calc(var(--i, 0) * 70ms);
+  }
+  .reveal-io .reveal:not(.is-in) { opacity: 0; transform: translateY(18px); }
 }
 
 /* ── CRT easter egg — ↑↑↓↓←→←→BA flips the signal to green phosphor ── */
@@ -1273,40 +1144,78 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   font-family: var(--font-mono); font-size: clamp(5.5px, 1.35vw, 12.5px);
   line-height: 1.18; color: var(--signal);
   text-shadow: 0 0 18px var(--signal-glow);
-  animation: thGlow 1.1s ease both;
-}
-@keyframes thGlow {
-  from { opacity: 0; text-shadow: 0 0 0 transparent; }
-  to   { opacity: 1; text-shadow: 0 0 18px var(--signal-glow); }
 }
 
+/* the one plain-language sentence in the hero: body face, full contrast,
+   readable size — it is what a non-technical visitor reads first */
 .th-meta { margin-top: 12px; }
 .th-sub {
-  color: var(--text-muted); max-width: 76ch; margin: 10px 0 0;
-  font-size: 0.84rem; line-height: 1.7;
+  color: var(--text); max-width: 58ch; margin: 14px 0 0;
+  font-family: var(--font-body); font-size: var(--step-1); line-height: 1.5;
+  letter-spacing: -0.005em; text-wrap: pretty;
 }
 
-.th-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0 22px; }
+.th-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0 24px; }
 .th-btn {
-  font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.03em;
-  padding: 10px 16px; border-radius: var(--radius); text-decoration: none;
-  border: 1px solid var(--signal-line); color: var(--signal);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s, color 0.16s;
+  font-size: 0.8rem; padding: 10px 18px;
+  border: 1px solid var(--signal-line); color: var(--signal); background: transparent;
 }
-.th-btn:hover { text-decoration: none; background: var(--signal-soft); transform: translateY(-1px); }
+.th-btn:hover { background: var(--signal-soft); border-color: var(--signal); }
 .th-btn.primary { background: var(--signal); color: var(--on-signal); border-color: var(--signal); font-weight: 600; }
-.th-btn.primary:hover { background: var(--signal-hi); box-shadow: 0 8px 26px var(--signal-glow); }
+.th-btn.primary:hover { background: var(--signal-hi); border-color: var(--signal-hi); box-shadow: 0 10px 28px -6px var(--signal-glow); }
 
 .th-cmd { margin-top: 4px; }
 
-.th-prompt { display: flex; align-items: center; gap: 0; margin-top: 8px; }
+/* ── Boot timeline ─────────────────────────────────────────────────────────────
+   Every line is in the markup from the start (prerender included), so the
+   terminal keeps its final size: nothing shifts. Lines fade in on a timeline
+   (--at, from Hero.tsx); --boot-offset resumes it after React swaps the
+   prerendered nodes. Opacity + transform only. Without motion: final frame. */
+@media (prefers-reduced-motion: no-preference) {
+  .th-body .boot-step {
+    animation: bootStep 0.42s var(--quart-out) both;
+    animation-delay: calc(var(--at, 0ms) - var(--boot-offset, 0ms));
+  }
+  .th-body .th-banner.boot-step { animation-name: bootBanner; animation-duration: 0.9s; }
+  /* the command types itself: a step clip reveals one monospace cell per
+     step while the caret walks along — both on the compositor-friendly path */
+  .th-typed .t-cmd {
+    display: inline-block;
+    animation: thType calc(var(--n) * 36ms) steps(var(--n), end) both;
+    animation-delay: calc(var(--at) + 120ms - var(--boot-offset, 0ms));
+  }
+  .th-typed-cursor {
+    opacity: 1;
+    animation:
+      thCaret calc(var(--n) * 36ms) steps(var(--n), end) both,
+      thCaretOff 0.01ms linear both;
+    animation-delay:
+      calc(var(--at) + 120ms - var(--boot-offset, 0ms)),
+      calc(var(--at) + 120ms + var(--n) * 36ms + 260ms - var(--boot-offset, 0ms));
+  }
+}
+.th-typed { position: relative; display: inline-block; white-space: pre; vertical-align: top; }
+.th-typed-cursor {
+  position: absolute; right: -9px; top: 50%; width: 8px; height: 14px; margin-top: -7px;
+  background: var(--signal); opacity: 0; pointer-events: none;
+}
+@keyframes bootStep { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes bootBanner { from { opacity: 0; transform: scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes thType { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes thCaret { from { transform: translateX(calc(var(--n) * -1ch)); } to { transform: translateX(0); } }
+@keyframes thCaretOff { from { opacity: 1; } to { opacity: 0; } }
+
+.th-prompt { display: flex; align-items: center; gap: 0; margin-top: 8px; border-radius: 3px; }
+/* the input draws no box of its own (it is a shell prompt) — the focus ring
+   goes on the prompt line instead, so keyboard focus is always visible */
+.th-prompt:focus-within { outline: 2px solid var(--signal); outline-offset: 4px; }
 .th-prompt .t-prompt { white-space: pre; }
 .th-input {
   flex: 1; min-width: 0; background: transparent; border: none; outline: none;
   font-family: var(--font-mono); font-size: inherit; color: var(--text);
   caret-color: var(--signal); padding: 0;
 }
-.th-input::placeholder { color: var(--text-dim); opacity: 0.7; }
+.th-input::placeholder { color: var(--text-dim); opacity: 1; }
 
 /* ── tmux status bar — sections as windows ── */
 .tmux-bar {
@@ -1321,7 +1230,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .tmux-session { color: var(--signal); font-weight: 600; }
 .tmux-windows { display: flex; gap: 4px; list-style: none; flex: 1; overflow: hidden; }
 .tmux-windows a {
-  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  display: inline-flex; align-items: center; min-height: 24px; padding: 2px 8px; border-radius: 3px;
   color: var(--text-dim); transition: color 0.15s, background 0.15s;
 }
 .tmux-windows a:hover { color: var(--text); text-decoration: none; }
@@ -1348,17 +1257,15 @@ body:has(.tmux-bar) { padding-bottom: 34px; }
   .boot-row { grid-template-columns: 14px 1fr auto; }
   .boot-adapter, .boot-ip { display: none; }
   .footer-term { font-size: 0.72rem; }
-  .th-body { padding: 18px 14px 22px; min-height: min(420px, 58vh); max-height: none; overflow-y: visible; }
-  .th-sub { font-size: 0.8rem; }
+  .th-body { padding: 18px 14px 22px; max-height: none; overflow-y: visible; }
+  .th-ctas { gap: 10px; }
+  .th-ctas .th-btn { flex: 1 1 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-contour::before, .hero-contour::after, .hero-kicker .dot { animation: none; }
-  .vpn-brand-track { animation: none; }
-  .fade-up { animation: none; }
+  .hero-contour::before, .hero-contour::after { animation: none; }
   .boot-line, .boot-row { animation: none; }
   .t-cursor { animation: none; }
-  .th-banner { animation: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1645,6 +1552,59 @@ a { text-underline-offset: 3px; }
 .lang-suggest a { font-weight: 600; }
 .lang-suggest button {
   background: none; border: 0; color: var(--text-dim, inherit); font-size: 1.2rem; line-height: 1;
-  cursor: pointer; padding: 4px 6px; border-radius: 6px;
+  cursor: pointer; padding: 4px 6px; border-radius: 6px; min-width: 32px; min-height: 32px;
 }
 .lang-suggest button:hover, .lang-suggest button:focus-visible { background: var(--surface-2, rgba(127,127,127,0.15)); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   v2.3 · 2026-11-18 — accessibility + polish (ADR-0024)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* skip link — first focusable element on every page (WCAG 2.4.1) */
+.skip-link {
+  position: fixed; top: 10px; left: 10px; z-index: 1000;
+  display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 18px;
+  background: var(--signal); color: var(--on-signal); border-radius: var(--radius);
+  font-family: var(--font-mono); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.03em;
+  box-shadow: 0 10px 28px -8px rgba(0,0,0,0.5);
+  transform: translateY(-200%);
+  transition: transform 0.2s var(--quart-out);
+}
+.skip-link:focus, .skip-link:focus-visible { transform: none; text-decoration: none; outline-offset: 2px; }
+main:focus { outline: none; }
+
+/* browser surfaces carry the palette too: form controls, scrollbars and
+   autofill follow the active theme, not the OS one */
+html { accent-color: var(--signal); color-scheme: dark; }
+:root[data-theme='light'] { color-scheme: light; }
+
+/* OS selector (radio group): selected state also readable without color */
+.os-tab[aria-checked='true'] { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--on-signal) 45%, transparent); }
+.os-tab:focus-visible { outline-offset: -3px; }
+
+/* jump menu items: real ≥44px targets, the current one marked */
+.jump-select-list a {
+  width: 100%; display: flex; align-items: center; gap: 8px; min-height: var(--tap);
+  text-align: left; text-decoration: none;
+  font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
+  border-radius: 4px; padding: 8px 10px; transition: background-color 0.15s, color 0.15s;
+}
+.jump-select-list a:hover, .jump-select-list a:focus-visible { background: var(--signal-soft); color: var(--text); text-decoration: none; }
+.jump-select-list a[aria-current='true'] { color: var(--signal); background: var(--signal-soft); }
+.jump-select-trigger { min-height: var(--tap); }
+
+/* nav: current page also marked for assistive tech (aria-current) */
+.nav-mobile-menu a { min-height: var(--tap); display: flex; align-items: center; }
+.nav-hamburger { touch-action: manipulation; }
+
+/* guide architecture diagram column titles (were h4 — broke heading order) */
+.guide-flow-col .guide-flow-h { font-family: var(--font-mono); font-size: 0.92rem; color: var(--text); font-weight: 600; margin-bottom: 8px; }
+
+/* cards: hover lifts on transform only */
+.path { transition: background-color 0.25s; }
+.path:hover { background: var(--surface-2); }
+.how-step { transition: border-color 0.25s, transform 0.3s var(--quart-out); }
+.how-step:hover { transform: translateY(-3px); }
+
+/* tabular numerals wherever numbers tick */
+.boot-uptime, .tmux-right, .attach-taskbar .tb-clock, .footer-term-out { font-variant-numeric: tabular-nums; }

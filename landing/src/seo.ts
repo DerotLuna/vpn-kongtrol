@@ -1,4 +1,4 @@
-// SEO head + sitemap, single source for every page and language — version 2.4.0 · 2026-11-17.
+// SEO head + sitemap, single source for every page and language — version 2.5.0 · 2026-11-18.
 //
 // Used at build time only (vite.config.ts injects headFor() into each HTML entry,
 // scripts/prerender.mjs writes sitemapXml()). Specs followed:
@@ -80,9 +80,8 @@ function jsonLd(page: PageId, lang: Lang): object {
       inLanguage: lang,
       url,
       image: OG_IMAGE,
-      codeRepository: REPO,
       downloadUrl: `${REPO}/releases/latest`,
-      softwareHelp: urlFor('guia', lang),
+      softwareHelp: { '@type': 'CreativeWork', url: urlFor('guia', lang) },
       license: 'https://www.apache.org/licenses/LICENSE-2.0',
       isAccessibleForFree: true,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
@@ -100,7 +99,7 @@ function jsonLd(page: PageId, lang: Lang): object {
       inLanguage: lang,
       dateModified: SITE_UPDATED,
       author: AUTHOR,
-      about: { '@type': 'SoftwareApplication', name: 'VPN Kongtrol', applicationCategory: 'SecurityApplication', operatingSystem: 'Windows, Linux, macOS', codeRepository: REPO },
+      about: { '@type': 'SoftwareApplication', name: 'VPN Kongtrol', applicationCategory: 'SecurityApplication', operatingSystem: 'Windows, Linux, macOS', sameAs: [REPO] },
       isPartOf: site,
     }
   }
@@ -144,8 +143,15 @@ export function headFor(page: PageId, lang: Lang): string {
     `<link rel="icon" type="image/png" sizes="32x32" href="/logo-kong-32.png" />`,
     `<link rel="apple-touch-icon" href="/logo-kong-192.png" />`,
     `<link type="text/plain" rel="author" href="/humans.txt" />`,
+    // The two faces the first screen paints with (hero terminal = Plex Mono,
+    // the plain-language line = Inter), fetched in parallel with fonts.css
+    // instead of after it. Preloaded fonts need crossorigin even same-origin:
+    // https://web.dev/articles/preload-critical-assets
+    `<link rel="preload" href="/fonts/ibm-plex-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin />`,
+    `<link rel="preload" href="/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />`,
     `<link rel="stylesheet" href="/fonts/fonts.css" />`,
-    `<meta property="og:type" content="${page === 'home' ? 'website' : 'article'}" />`,
+    `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0c10" />`,
+    `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1ede4" />`,    `<meta property="og:type" content="${page === 'home' ? 'website' : 'article'}" />`,
     `<meta property="og:site_name" content="VPN Kongtrol" />`,
     `<meta property="og:title" content="${esc(m.title)}" />`,
     `<meta property="og:description" content="${esc(og)}" />`,

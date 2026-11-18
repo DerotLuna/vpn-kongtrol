@@ -2,6 +2,7 @@ import { OS, OS_LABELS } from '../../hooks/useOS'
 import { Lang } from '../../i18n'
 import { GITHUB_RELEASES, GITHUB_REPO, releaseAsset } from '../../links'
 import CodeBlock from '../ui/CodeBlock'
+import OsTabs from '../ui/OsTabs'
 
 interface Binary {
   filename: string
@@ -101,13 +102,7 @@ sha256sum -c checksums.txt`,
         <h2 className="section-title">{copy.title}</h2>
         <p className="section-sub">{copy.sub}</p>
 
-        <div className="os-tabs" style={{ marginTop: 32 }}>
-          {(['windows', 'macos', 'linux'] as OS[]).map(o => (
-            <button key={o} className={`os-tab${os === o ? ' active' : ''}`} onClick={() => setOS(o)}>
-              {OS_LABELS[o]}
-            </button>
-          ))}
-        </div>
+        <OsTabs os={os} setOS={setOS} lang={lang} style={{ marginTop: 32 }} />
 
         <div className="download-grid" style={{ marginTop: 20 }}>
           {(Object.entries(BINARIES) as [OS, Binary[]][]).map(([osKey, bins]) => (

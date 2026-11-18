@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Lang } from '../../i18n'
 import { Theme } from '../../theme'
 import { GITHUB_RELEASES } from '../../links'
@@ -23,13 +23,24 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const langPulseTimer = useRef<number | null>(null)
   const themeTransitioning = useRef(false)
+  const navRef = useRef<HTMLElement>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
 
-  const toggleTheme = () => {
+  const toggleTheme = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (themeTransitioning.current) return
     const next = theme === 'dark' ? 'light' : 'dark'
     const switchTheme = () => setTheme(next)
     const doc = document as DocumentWithViewTransition
-    if (!doc.startViewTransition) { switchTheme(); return }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!doc.startViewTransition || reduced) { switchTheme(); return }
+    // the new theme grows as a circle from the button (index.css themeWipe)
+    const r = e.currentTarget.getBoundingClientRect()
+    const x = r.left + r.width / 2
+    const y = r.top + r.height / 2
+    const root = document.documentElement.style
+    root.setProperty('--vt-x', `${x}px`)
+    root.setProperty('--vt-y', `${y}px`)
+    root.setProperty('--vt-r', `${Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))}px`)
     themeTransitioning.current = true
     doc.startViewTransition(switchTheme).finished.finally(() => {
       themeTransitioning.current = false
@@ -61,11 +72,24 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     }
   }, [])
 
+  // disclosure menu: Escape closes and gives focus back to the button; a tap
+  // or click outside the header closes it too
   useEffect(() => {
     if (!menuOpen) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false) }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setMenuOpen(false)
+      menuButton.current?.focus()
+    }
+    const onPointer = (e: PointerEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointer)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointer)
+    }
   }, [menuOpen])
 
   const handleLangToggle = () => {
@@ -82,12 +106,12 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   }
 
   return (
-    <nav className={`nav${scrolled ? ' is-sticky' : ''}`}>
+    <nav ref={navRef} className={`nav${scrolled ? ' is-sticky' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
       <div className="nav-inner">
         <a href={page === 'home' ? '#motd' : pathFor('home', lang)} className="nav-logo">
           <img src={logoSrc} alt="Kongtrol" className={theme === 'dark' ? 'logo-dark-invert' : ''} />
           <span className="nav-logo-name">
-            <strong>K O N G T R O L</strong>
+            <strong aria-hidden="true">K O N G T R O L</strong>
             <small className="beta">BETA</small>
           </span>
         </a>
@@ -96,7 +120,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
           <ul className="nav-links">
             {links.map(l => (
               <li key={l.flag}>
-                <a href={l.href} className={l.current ? 'current' : ''}>
+                <a href={l.href} className={l.current ? 'current' : ''} aria-current={l.current ? 'page' : undefined}>
                   <span className="nav-flag-dashes">--</span>{l.flag.slice(2)}
                 </a>
               </li>
@@ -150,6 +174,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
 
           <button
             type="button"
+            ref={menuButton}
             className={`nav-hamburger${menuOpen ? ' open' : ''}`}
             aria-label={labels.menu}
             aria-expanded={menuOpen}
@@ -165,7 +190,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
         <ul>
           {links.map(l => (
             <li key={l.flag}>
-              <a href={l.href} className={l.current ? 'current' : ''} onClick={() => setMenuOpen(false)}>
+              <a href={l.href} className={l.current ? 'current' : ''} aria-current={l.current ? 'page' : undefined} onClick={() => setMenuOpen(false)}>
                 <span className="nav-flag-dashes">--</span>{l.flag.slice(2)}
               </a>
             </li>

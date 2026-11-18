@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react'
 import { OS } from '../../hooks/useOS'
 import { Lang } from '../../i18n'
 import { GITHUB_RELEASES, GITHUB_REPO } from '../../links'
@@ -31,46 +31,40 @@ const BIN: Record<OS, string> = {
   linux: 'kongtrol-linux-amd64',
 }
 
+// Boot timeline (ms after first paint). The meaningful content (banner, the
+// plain-language line, the two buttons) is in place within ~0.6s; the typed
+// command and the tunnel rows are the show that follows.
+const BOOT = {
+  login: 0, banner: 80, tag1: 240, tag2: 300, sub: 360, ctas: 460,
+  cmd: 760, resolving: 1840, rows: 2100, rowGap: 260,
+  security: 2900, watchdog: 3160, bin: 3420, prompt: 3680,
+}
+const at = (ms: number, extra?: Record<string, string | number>) =>
+  ({ '--at': `${ms}ms`, ...extra }) as CSSProperties
+
 // one shell entry: a command the visitor typed, or output lines
 type ShellEntry =
   | { kind: 'cmd'; text: string }
   | { kind: 'out'; lines: { cls: string; text: string }[] }
 
 export default function Hero({ os, lang }: Props) {
-  const reduced = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    [],
-  )
-  // boot stages: 1 login · 2 banner · 3 meta · 4 ctas · 5 typing · 6.. rows · security · watchdog · bin hint · prompt
-  const ROWS_AT = 6
-  const SEC_AT = ROWS_AT + TUNNELS.length      // 9
-  const WD_AT = SEC_AT + 1                     // 10
-  const BIN_AT = WD_AT + 1                     // 11
-  const PROMPT_AT = BIN_AT + 1                 // 12
-  const [stage, setStage] = useState(reduced ? PROMPT_AT : 0)
-  const [typed, setTyped] = useState(reduced ? CMD.length : 0)
+  // The boot sequence is a CSS timeline (index.css, .boot-step): every line is
+  // in the markup from the first byte — prerendered HTML included — so the
+  // terminal never grows (no layout shift) and crawlers read the whole hero.
+  // createRoot() replaces the prerendered nodes, which restarts their CSS
+  // animations; reading how far the prerendered timeline already ran lets the
+  // new nodes resume at the same frame instead of replaying from zero.
+  const [bootOffset] = useState(() => {
+    if (typeof document === 'undefined') return 0
+    const t = document.querySelector('.th-body .boot-step')?.getAnimations?.()[0]?.currentTime
+    return typeof t === 'number' ? Math.round(t) : 0
+  })
   const [elapsed, setElapsed] = useState(0)
   const [shell, setShell] = useState<ShellEntry[]>([])
   const [input, setInput] = useState('')
   const [usContent, setUsContent] = useState(false)
   const bodyRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const timers = useRef<number[]>([])
-
-  useEffect(() => {
-    if (reduced) return
-    const at = (ms: number, fn: () => void) => timers.current.push(window.setTimeout(fn, ms))
-    at(250, () => setStage(1))
-    at(550, () => setStage(2))
-    at(950, () => setStage(3))
-    at(1250, () => setStage(4))
-    at(1650, () => setStage(5))
-    for (let i = 1; i <= CMD.length; i++) at(1650 + i * 38, () => setTyped(i))
-    const out = 1650 + CMD.length * 38 + 380
-    for (let s = ROWS_AT; s <= PROMPT_AT; s++) at(out + (s - ROWS_AT + 1) * 460, () => setStage(s))
-    return () => { timers.current.forEach(t => window.clearTimeout(t)); timers.current = [] }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced])
 
   useEffect(() => {
     const t = window.setInterval(() => setElapsed(v => v + 1), 1000)
@@ -81,7 +75,7 @@ export default function Hero({ os, lang }: Props) {
   useEffect(() => {
     const el = bodyRef.current
     if (el && shell.length > 0) el.scrollTop = el.scrollHeight
-  }, [shell, stage])
+  }, [shell])
 
   const es = lang === 'es'
   const copy = es
@@ -225,93 +219,88 @@ export default function Hero({ os, lang }: Props) {
       <h1 className="sr-only">{copy.srTitle}</h1>
       <div className="container">
         <div className="hero-contour th-contour" aria-hidden="true" />
-        <div className="terminal crt th-terminal fade-up">
+        <div className="terminal crt th-terminal">
           <div className="terminal-bar">
-            <div className="terminal-dots">
+            <div className="terminal-dots" aria-hidden="true">
               <div className="terminal-dot red" />
               <div className="terminal-dot yellow" />
               <div className="terminal-dot green" />
             </div>
             <span className="terminal-title">ssh guest@kongtrol.tower</span>
           </div>
-          <div className="terminal-body th-body" ref={bodyRef} onClick={focusInput}>
-            {stage >= 1 && <div className="boot-line t-dim">{copy.lastLogin}</div>}
+          <div
+            className="terminal-body th-body"
+            ref={bodyRef}
+            onClick={focusInput}
+            style={{ '--boot-offset': `${bootOffset}ms` } as CSSProperties}
+          >
+            <div className="boot-line boot-step t-dim" style={at(BOOT.login)}>{copy.lastLogin}</div>
 
-            {stage >= 2 && (
-              <pre className="th-banner" aria-hidden="true">{BANNER}</pre>
-            )}
+            <pre className="th-banner boot-step" style={at(BOOT.banner)} aria-hidden="true">{BANNER}</pre>
 
-            {stage >= 3 && (
-              <div className="th-meta">
-                <div className="boot-line t-dim">{copy.tag1}</div>
-                <div className="boot-line t-dim">{copy.tag2}</div>
-                <p className="th-sub">{copy.sub}</p>
-              </div>
-            )}
+            <div className="th-meta">
+              <div className="boot-line boot-step t-dim" style={at(BOOT.tag1)}>{copy.tag1}</div>
+              <div className="boot-line boot-step t-dim" style={at(BOOT.tag2)}>{copy.tag2}</div>
+              <p className="th-sub boot-step" style={at(BOOT.sub)}>{copy.sub}</p>
+            </div>
 
-            {stage >= 4 && (
-              <div className="th-ctas">
-                <a href={GITHUB_RELEASES} className="th-btn primary" target="_blank" rel="noreferrer">{copy.ctaDownload}</a>
-                <a href={pathFor('guia', lang)} className="th-btn">{copy.ctaGuide}</a>
-              </div>
-            )}
+            <div className="th-ctas boot-step" style={at(BOOT.ctas)}>
+              <a href={GITHUB_RELEASES} className="th-btn primary" target="_blank" rel="noreferrer">{copy.ctaDownload}</a>
+              <a href={pathFor('guia', lang)} className="th-btn">{copy.ctaGuide}</a>
+            </div>
 
-            {stage >= 5 && (
-              <div className="hero-cmd-line th-cmd">
-                <span className="t-prompt">$ </span>
-                <span className="t-cmd">{CMD.slice(0, typed)}</span>
-                {typed < CMD.length && <span className="t-cursor" />}
-              </div>
-            )}
+            <div className="hero-cmd-line th-cmd boot-step" style={at(BOOT.cmd)}>
+              <span className="t-prompt">$ </span>
+              <span className="th-typed" style={at(BOOT.cmd, { '--n': CMD.length })}>
+                <span className="t-cmd">{CMD}</span>
+                <span className="th-typed-cursor" aria-hidden="true" />
+              </span>
+            </div>
 
-            {stage >= ROWS_AT && <div className="boot-line t-dim">{copy.resolving}</div>}
+            <div className="boot-line boot-step t-dim" style={at(BOOT.resolving)}>{copy.resolving}</div>
 
             <div className="boot-rows">
               {TUNNELS.map((t, i) => (
-                stage >= ROWS_AT + i && (
-                  <div key={t.profile} className="boot-row">
-                    <span className="boot-check">✔</span>
-                    <span className="boot-profile">{t.profile}</span>
-                    <span className="boot-adapter">{t.adapter}</span>
-                    <span className="boot-ip">{t.ip}</span>
-                    <span className="boot-uptime">{fmtUptime(0)}</span>
-                  </div>
-                )
+                <div key={t.profile} className="boot-row boot-step" style={at(BOOT.rows + i * BOOT.rowGap)}>
+                  <span className="boot-check" aria-hidden="true">✔</span>
+                  <span className="boot-profile">{t.profile}</span>
+                  <span className="boot-adapter">{t.adapter}</span>
+                  <span className="boot-ip">{t.ip}</span>
+                  <span className="boot-uptime">{fmtUptime(0)}</span>
+                </div>
               ))}
             </div>
 
-            {stage >= SEC_AT && (
-              <div className="boot-line boot-security">
-                {copy.security[0]} <strong>{copy.security[1]}</strong> {copy.security[2]} <strong>{copy.security[3]}</strong>
-              </div>
-            )}
-            {stage >= WD_AT && <div className="boot-line t-muted">{copy.watchdog}</div>}
-            {stage >= BIN_AT && <div className="boot-line t-dim">{copy.binHint}</div>}
+            <div className="boot-line boot-security boot-step" style={at(BOOT.security)}>
+              {copy.security[0]} <strong>{copy.security[1]}</strong> {copy.security[2]} <strong>{copy.security[3]}</strong>
+            </div>
+            <div className="boot-line boot-step t-muted" style={at(BOOT.watchdog)}>{copy.watchdog}</div>
+            <div className="boot-line boot-step t-dim" style={at(BOOT.bin)}>{copy.binHint}</div>
 
-            {/* visitor shell history */}
-            {shell.map((entry, i) => (
-              entry.kind === 'cmd'
-                ? <div key={i} className="hero-cmd-line"><span className="t-prompt">$ </span><span className="t-cmd">{entry.text}</span></div>
-                : <div key={i}>{entry.lines.map((l, j) => <div key={j} className={`boot-line ${l.cls}`}>{l.text}</div>)}</div>
-            ))}
+            {/* visitor shell history — announced to screen readers as it arrives */}
+            <div aria-live="polite">
+              {shell.map((entry, i) => (
+                entry.kind === 'cmd'
+                  ? <div key={i} className="hero-cmd-line"><span className="t-prompt">$ </span><span className="t-cmd">{entry.text}</span></div>
+                  : <div key={i}>{entry.lines.map((l, j) => <div key={j} className={`boot-line ${l.cls}`}>{l.text}</div>)}</div>
+              ))}
+            </div>
 
-            {stage >= PROMPT_AT && (
-              <form className="th-prompt" onSubmit={onSubmit}>
-                <span className="t-prompt">$ </span>
-                <input
-                  ref={inputRef}
-                  className="th-input"
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  placeholder={copy.hint}
-                  aria-label={es ? 'terminal interactiva de demostración' : 'interactive demo terminal'}
-                  autoComplete="off"
-                  autoCapitalize="off"
-                  spellCheck={false}
-                  maxLength={80}
-                />
-              </form>
-            )}
+            <form className="th-prompt boot-step" style={at(BOOT.prompt)} onSubmit={onSubmit}>
+              <span className="t-prompt" aria-hidden="true">$ </span>
+              <input
+                ref={inputRef}
+                className="th-input"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                placeholder={copy.hint}
+                aria-label={es ? 'terminal interactiva de demostración' : 'interactive demo terminal'}
+                autoComplete="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                maxLength={80}
+              />
+            </form>
           </div>
         </div>
       </div>

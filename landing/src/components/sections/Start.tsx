@@ -65,7 +65,7 @@ $ kongtrol status --watch # live status`,
 
         <AttachDemo lang={lang} />
 
-        <div className="paths">
+        <div className="paths reveal">
           <div className="path path-everyone">
             <h3>{t.everyoneTitle}</h3>
             <p className="path-lead">{t.everyoneLead}</p>

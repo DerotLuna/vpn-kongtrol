@@ -51,7 +51,7 @@ export default function UnderTheHood({ lang }: Props) {
 
         <dl className="hood-list">
           {t.rows.map(r => (
-            <div key={r.k} className="hood-row">
+            <div key={r.k} className="hood-row reveal">
               <dt>{r.k}</dt>
               <dd className="hood-desc">{r.v}</dd>
               <dd className="hood-metric">{r.m}</dd>

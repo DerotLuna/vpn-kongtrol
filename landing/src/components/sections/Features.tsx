@@ -20,6 +20,9 @@ const ROWS = [64, 141, 219, 296]
 export default function Features({ lang }: Props) {
   const [active, setActive] = useState(0)
   const [paused, setPaused] = useState(false)
+  // once the visitor picks a destination the board stops rotating for good
+  // (WCAG 2.2.2) and the readout starts being announced
+  const [touched, setTouched] = useState(false)
 
   const copy = lang === 'es'
     ? {
@@ -58,10 +61,11 @@ export default function Features({ lang }: Props) {
     }
 
   useEffect(() => {
-    if (paused) return
+    if (paused || touched) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const t = window.setInterval(() => setActive(a => (a + 1) % ROWS.length), 2600)
     return () => window.clearInterval(t)
-  }, [paused])
+  }, [paused, touched])
 
   const routes = copy.routes
   const cur = routes[active]
@@ -75,9 +79,11 @@ export default function Features({ lang }: Props) {
 
         {/* ── SIGNATURE: live routing switchboard ── */}
         <div
-          className="switchboard"
+          className="switchboard reveal"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
+          onFocus={() => setPaused(true)}
+          onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setPaused(false) }}
         >
           <div className="sb-legend">
             <span className="sb-legend-item in">{copy.boardIn}</span>
@@ -85,7 +91,7 @@ export default function Features({ lang }: Props) {
             <span className="sb-legend-item out">{copy.boardOut}</span>
           </div>
 
-          <svg className="sb-svg" viewBox="0 0 640 360" role="img" aria-label={copy.boardCore}>
+          <svg className="sb-svg" viewBox="0 0 640 360" role="group" aria-label={copy.boardCore}>
             {/* wires — behind nodes */}
             {routes.map((r, i) => {
               const y = ROWS[i]
@@ -113,10 +119,11 @@ export default function Features({ lang }: Props) {
                 <g
                   key={`in-${i}`}
                   className={`sb-node in${on ? ' active' : ''}`}
-                  onClick={() => setActive(i)}
+                  onClick={() => { setActive(i); setTouched(true) }}
+                  aria-pressed={on}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(i) } }}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(i); setTouched(true) } }}
                 >
                   <rect x="6" y={y - 18} width="150" height="36" rx="6" />
                   <text x="20" y={y + 4}>{r.dest}</text>
@@ -138,7 +145,7 @@ export default function Features({ lang }: Props) {
             })}
           </svg>
 
-          <div className="sb-readout" key={active} aria-live="polite">
+          <div className="sb-readout" key={active} aria-live={touched ? 'polite' : 'off'}>
             <span className="sb-readout-dest">{cur.dest}</span>
             <svg className="sb-arrow" width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M0 5h13M9 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {cur.direct ? (
