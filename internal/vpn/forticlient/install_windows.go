@@ -3,13 +3,12 @@
 package forticlient
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"unsafe"
 
-	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 // DetectInstall finds FortiClient without launching anything: the
@@ -34,7 +33,7 @@ func DetectInstall(appPath string) Install {
 	if _, err := os.Stat(in.Path); err != nil {
 		return Install{}
 	}
-	in.Version = productVersion(in.Path)
+	in.Version = vpndetect.FileVersion(in.Path)
 	if fv := filepath.Join(dir, "FortiVPN.exe"); fileExists(fv) {
 		in.FortiVPN = fv
 	}
@@ -44,24 +43,4 @@ func DetectInstall(appPath string) Install {
 func fileExists(p string) bool {
 	fi, err := os.Stat(p)
 	return err == nil && fi.Mode().IsRegular()
-}
-
-// productVersion reads VS_FIXEDFILEINFO.ProductVersion ("6.4.10.1821").
-func productVersion(path string) string {
-	size, err := windows.GetFileVersionInfoSize(path, nil)
-	if err != nil || size == 0 {
-		return ""
-	}
-	buf := make([]byte, size)
-	if err := windows.GetFileVersionInfo(path, 0, size, unsafe.Pointer(&buf[0])); err != nil {
-		return ""
-	}
-	var fixed *windows.VS_FIXEDFILEINFO
-	var n uint32
-	if err := windows.VerQueryValue(unsafe.Pointer(&buf[0]), `\`, unsafe.Pointer(&fixed), &n); err != nil || fixed == nil || n == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%d.%d.%d.%d",
-		fixed.ProductVersionMS>>16, fixed.ProductVersionMS&0xffff,
-		fixed.ProductVersionLS>>16, fixed.ProductVersionLS&0xffff)
 }

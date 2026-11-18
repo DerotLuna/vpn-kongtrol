@@ -89,15 +89,15 @@ func TestFormatStatusUptimeLongUsesDate(t *testing.T) {
 	}
 }
 
-func TestDoctorPrefersDaemonState(t *testing.T) {
-	rt := &doctorRuntime{}
-	rt.setDaemonState([]monitor.TunnelMetrics{{Name: "a", Status: vpn.StatusConnected}},
-		&apiSecurityStatus{DNSGuardEnabled: true, DNSGuard: true})
-	d := &doctor{rt: rt}
-	if !d.dnsGuardActive() {
-		t.Fatal("doctor must use the daemon's DNS guard state")
+// doctor gets the daemon's own state (it owns tunnels, kill switch and DNS
+// guard); internal/doctor tests that the state wins over fresh adapters.
+func TestDoctorDaemonFromSnapshot(t *testing.T) {
+	d := doctorDaemonFromSnapshot([]monitor.TunnelMetrics{{Name: "a", Status: vpn.StatusConnected}},
+		&apiSecurityStatus{DNSGuardEnabled: true, DNSGuard: true, KillSwitchEnabled: true})
+	if !d.DNSGuardActive || !d.KillSwitchEnabled {
+		t.Fatalf("security state lost: %+v", d)
 	}
-	if rt.daemonTunnels["a"].Status != vpn.StatusConnected {
+	if d.Tunnels["a"] != vpn.StatusConnected {
 		t.Fatal("daemon tunnel state missing")
 	}
 }
