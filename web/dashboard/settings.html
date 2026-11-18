@@ -125,12 +125,6 @@
                   <textarea id="s-publicip-endpoints" rows="2" placeholder="https://api.ipify.org"></textarea>
                 </label>
                 <p class="muted" data-i18n="settings.publicIpNote">Off by default. When on, the service sees your public IP; Kongtrol asks only when a tunnel connects or disconnects and when you press Check.</p>
-                <label><span data-i18n="settings.action">Action</span>
-                  <select id="s-leak-action">
-                    <option value="notify">notify</option>
-                    <option value="killswitch_and_notify">killswitch_and_notify</option>
-                  </select>
-                </label>
               </div>
             </section>
 
@@ -143,7 +137,10 @@
                   <input id="s-audit-path" type="text" placeholder="~/.kongtrol/audit.log" />
                 </label>
                 <label><span data-i18n="settings.maxSize">Max size (MB)</span>
-                  <input id="s-audit-maxsize" type="number" placeholder="100" />
+                  <input id="s-audit-maxsize" type="number" min="1" max="1024" placeholder="100" />
+                </label>
+                <label><span data-i18n="settings.retention">Days kept (0 = today and yesterday)</span>
+                  <input id="s-audit-retention" type="number" min="0" max="365" placeholder="30" />
                 </label>
                 <label class="security-row" style="padding:0; border:none;">
                   <span data-i18n="settings.sign">HMAC sign entries</span>

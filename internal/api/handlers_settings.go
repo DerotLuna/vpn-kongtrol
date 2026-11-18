@@ -36,8 +36,6 @@ func settingsToDTO(cfg *config.Config) settingsDTO {
 		LeakDetectionEnabled:  cfg.PublicIPCheckEnabled(),
 		PublicIPCheckEnabled:  cfg.PublicIPCheckEnabled(),
 		PublicIPEndpoints:     cfg.PublicIPEndpoints(),
-		LeakDetectionInterval: cfg.Security.LeakDetection.Interval,
-		LeakDetectionAction:   cfg.Security.LeakDetection.Action,
 		AuditLogPath:          cfg.Security.AuditLog.Path,
 		AuditLogMaxSizeMB:     cfg.Security.AuditLog.MaxSizeMB,
 		AuditLogRetentionDays: cfg.Security.AuditLog.RetentionDays,
@@ -54,7 +52,7 @@ func (s *Server) handleUpdateSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for _, p := range []*string{req.HealthCheckInterval, req.HealthCheckTimeout, req.SchedulerInterval, req.SplitDNSInterval, req.LeakDetectionInterval} {
+	for _, p := range []*string{req.HealthCheckInterval, req.HealthCheckTimeout, req.SchedulerInterval, req.SplitDNSInterval} {
 		d := strVal(p)
 		if d == "" {
 			continue
@@ -159,8 +157,6 @@ type settingsPatch struct {
 	KillSwitchAllowLAN    *bool     `json:"kill_switch_allow_lan"`
 	DNSGuardFallbackDNS   *string   `json:"dns_guard_fallback_dns"`
 	LeakDetectionEnabled  *bool     `json:"leak_detection_enabled"`
-	LeakDetectionInterval *string   `json:"leak_detection_interval"`
-	LeakDetectionAction   *string   `json:"leak_detection_action"`
 	PublicIPCheckEnabled  *bool     `json:"public_ip_check_enabled"`
 	PublicIPEndpoints     *[]string `json:"public_ip_endpoints"`
 	AuditLogPath          *string   `json:"audit_log_path"`
@@ -205,8 +201,6 @@ func (p settingsPatch) applyTo(cfg *config.Config) {
 		}
 		cfg.Security.PublicIPCheck.Endpoints = eps
 	}
-	setTrimmed(&cfg.Security.LeakDetection.Interval, p.LeakDetectionInterval)
-	setTrimmed(&cfg.Security.LeakDetection.Action, p.LeakDetectionAction)
 	setTrimmed(&cfg.Security.AuditLog.Path, p.AuditLogPath)
 	if p.AuditLogMaxSizeMB != nil {
 		cfg.Security.AuditLog.MaxSizeMB = *p.AuditLogMaxSizeMB

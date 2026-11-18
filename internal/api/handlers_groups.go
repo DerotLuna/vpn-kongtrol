@@ -357,9 +357,7 @@ type settingsDTO struct {
 
 	DNSGuardFallbackDNS string `json:"dns_guard_fallback_dns"`
 
-	LeakDetectionEnabled  bool   `json:"leak_detection_enabled"`
-	LeakDetectionInterval string `json:"leak_detection_interval"`
-	LeakDetectionAction   string `json:"leak_detection_action"`
+	LeakDetectionEnabled bool `json:"leak_detection_enabled"`
 
 	// Public IP lookup opt-in (leak_detection_enabled mirrors it) and its
 	// endpoints (default https://api.ipify.org).
@@ -367,7 +365,7 @@ type settingsDTO struct {
 	PublicIPEndpoints    []string `json:"public_ip_endpoints"`
 
 	// Audit log, applied live: path, size of one file before the day goes
-	// on in .1, .2… (0 = no limit), days kept (0 = today and yesterday).
+	// on in .1, .2… (default 100), days kept (0 = today and yesterday).
 	AuditLogPath          string `json:"audit_log_path"`
 	AuditLogMaxSizeMB     int    `json:"audit_log_max_size_mb"`
 	AuditLogRetentionDays int    `json:"audit_log_retention_days"`

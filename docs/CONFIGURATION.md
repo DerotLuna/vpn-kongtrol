@@ -138,14 +138,13 @@ security:
     #   - https://icanhazip.com
 
   # Legacy: leak_detection.enabled: true still opts in to the lookup above;
-  # its interval is ignored (no periodic checks any more).
-  leak_detection:
-    action: notify   # notify | killswitch_and_notify
+  # its old interval and action keys are ignored and dropped on save: a
+  # leak only notifies, it never drives the kill switch (ADR-0041).
 
   audit_log:
     path: ~/.kongtrol/audit.log   # a file, never a folder; daily files audit-YYYY-MM-DD.log
     # max_size_mb: one file per day up to this size; past it the day goes on in
-    # audit-YYYY-MM-DD.1.log, .2… (0 = no limit). retention_days: days kept,
+    # audit-YYYY-MM-DD.1.log, .2… (default 100). retention_days: days kept,
     # today included (0 = today and yesterday, max 365). Both apply live.
     max_size_mb: 10
     retention_days: 30

@@ -36,3 +36,27 @@ func TestPublicIPCheckDefaults(t *testing.T) {
 		t.Error("SetPublicIPCheck(false) should also clear the legacy flag")
 	}
 }
+
+// ADR-0041: leak_detection.interval/action were removed; an existing
+// config that still has them must keep loading (enabled still opts in).
+func TestLoad_LegacyLeakDetectionKeysStillLoad(t *testing.T) {
+	path := writeConfig(t, `
+vpns:
+  office:
+    type: wireguard
+    auth:
+      method: certificate
+security:
+  leak_detection:
+    enabled: true
+    interval: 120s
+    action: killswitch_and_notify
+`)
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("legacy keys broke loading: %v", err)
+	}
+	if !c.PublicIPCheckEnabled() {
+		t.Error("leak_detection.enabled should still opt in")
+	}
+}

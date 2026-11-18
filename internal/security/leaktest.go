@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -48,9 +49,12 @@ type LeakTesterOptions struct {
 	Enabled     bool
 	Endpoints   []string          // https URLs, tried in order; empty = default
 	ExpectedIPs map[string]string // vpnName → expected public IP (leak check)
-	Client      *http.Client      // nil = 5s-timeout client (tests inject a fake)
-	MinInterval time.Duration     // 0 = DefaultPublicIPMinInterval
-	SettleDelay time.Duration     // 0 = 3s; negative = no delay
+	// Active lists the profiles connected now; only their expected IPs
+	// count. nil = every expected IP (tests).
+	Active      func() []string
+	Client      *http.Client  // nil = 5s-timeout client (tests inject a fake)
+	MinInterval time.Duration // 0 = DefaultPublicIPMinInterval
+	SettleDelay time.Duration // 0 = 3s; negative = no delay
 }
 
 // LeakTester looks up the public IP through an external service, only when
@@ -62,6 +66,7 @@ type LeakTester struct {
 	enabled     bool
 	endpoints   []string
 	expectedIPs map[string]string
+	active      func() []string
 	client      *http.Client
 	minInterval time.Duration
 	settle      time.Duration
@@ -80,6 +85,7 @@ func NewLeakTester(opts LeakTesterOptions) *LeakTester {
 		client:      opts.Client,
 		minInterval: opts.MinInterval,
 		settle:      opts.SettleDelay,
+		active:      opts.Active,
 	}
 	if t.client == nil {
 		t.client = &http.Client{Timeout: publicIPTimeout, CheckRedirect: publicIPRedirect}
@@ -203,6 +209,7 @@ func (t *LeakTester) CheckNow() LeakResult {
 	t.mu.Lock()
 	endpoints := append([]string(nil), t.endpoints...)
 	expected := t.expectedIPs
+	active := t.active
 	t.lastRun = time.Now()
 	t.mu.Unlock()
 
@@ -212,13 +219,7 @@ func (t *LeakTester) CheckNow() LeakResult {
 		result.Reason = fmt.Sprintf("IP check failed: %v", err) // a network error is not a leak
 	} else {
 		result.PublicIP = ip
-		for vpnName, expectedIP := range expected {
-			if expectedIP != "" && !strings.EqualFold(ip, expectedIP) {
-				result.HasLeak = true
-				result.Reason = fmt.Sprintf("expected IP %s for VPN %q, got %s", expectedIP, vpnName, ip)
-				break
-			}
-		}
+		result.HasLeak, result.Reason = leakVerdict(ip, expected, active)
 	}
 
 	t.mu.Lock()
@@ -234,6 +235,39 @@ func (t *LeakTester) CheckNow() LeakResult {
 		cb(result)
 	}
 	return result
+}
+
+// leakVerdict compares the public IP with the expected IPs of the profiles
+// that are connected now (all of them when active is nil). Only connected
+// profiles count: a profile that is off cannot be the egress, so its
+// expected IP never makes a leak. The traffic leaks when no connected
+// profile's expected IP matches; no connected profile with an expected IP
+// means there is nothing to compare.
+func leakVerdict(ip string, expected map[string]string, active func() []string) (bool, string) {
+	var names []string
+	if active == nil {
+		for name := range expected {
+			names = append(names, name)
+		}
+	} else {
+		names = active()
+	}
+	sort.Strings(names)
+	var want []string
+	for _, name := range names {
+		exp := strings.TrimSpace(expected[name])
+		if exp == "" {
+			continue
+		}
+		if strings.EqualFold(ip, exp) {
+			return false, ""
+		}
+		want = append(want, fmt.Sprintf("%s for VPN %q", exp, name))
+	}
+	if len(want) == 0 {
+		return false, ""
+	}
+	return true, fmt.Sprintf("expected IP %s, got %s", strings.Join(want, " or "), ip)
 }
 
 // LastResult returns the most recent result (nil before the first lookup or

@@ -52,6 +52,33 @@ func TestLeakTester_CheckNow_LeakDetected(t *testing.T) {
 	}
 }
 
+// Only connected profiles count: a profile that is off is never "the
+// expected egress", and any connected profile's expected IP is a match.
+func TestLeakVerdict_OnlyConnectedProfiles(t *testing.T) {
+	expected := map[string]string{"office": "1.2.3.4", "home": "5.6.7.8"}
+	on := func(names ...string) func() []string { return func() []string { return names } }
+	cases := []struct {
+		name   string
+		ip     string
+		active func() []string
+		leak   bool
+	}{
+		{"nothing connected", "9.9.9.9", on(), false},
+		{"connected without expected IP", "9.9.9.9", on("other"), false},
+		{"office up, office IP", "1.2.3.4", on("office"), false},
+		{"office up, other IP", "9.9.9.9", on("office"), true},
+		{"home off is ignored", "1.2.3.4", on("office"), false},
+		{"both up, home IP", "5.6.7.8", on("office", "home"), false},
+		{"both up, neither", "9.9.9.9", on("office", "home"), true},
+	}
+	for _, c := range cases {
+		leak, reason := leakVerdict(c.ip, expected, c.active)
+		if leak != c.leak || (leak && reason == "") {
+			t.Errorf("%s: leak=%v (%q), want %v", c.name, leak, reason, c.leak)
+		}
+	}
+}
+
 func TestLeakTester_CheckNow_ServerDown(t *testing.T) {
 	lt := NewLeakTester(LeakTesterOptions{Enabled: true, Endpoints: []string{"https://127.0.0.1:1"}})
 	result := lt.CheckNow()

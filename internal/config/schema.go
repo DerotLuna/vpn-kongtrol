@@ -199,13 +199,12 @@ type IntegrityCheckConfig struct {
 // compares the public IP (see PublicIPCheckConfig) with
 // integrity_check.expected_ips, so it needs the public IP lookup:
 // enabled: true here still counts as opting in to that lookup
-// (Config.PublicIPCheckEnabled). Interval is ignored: the lookup runs only
-// on tunnel connect/disconnect and on demand, never periodically.
+// (Config.PublicIPCheckEnabled). A detected leak notifies (alert, audit
+// entry, dashboards); it never drives the kill switch (ADR-0041). The old
+// interval and action keys are gone: a config that still has them loads
+// and they are dropped on the next save.
 type LeakDetectionConfig struct {
-	Enabled  bool   `yaml:"enabled,omitempty"`
-	Interval string `yaml:"interval,omitempty"` // deprecated, ignored
-	// notify | killswitch_and_notify
-	Action string `yaml:"action,omitempty" validate:"omitempty,oneof=notify killswitch_and_notify"`
+	Enabled bool `yaml:"enabled,omitempty"`
 }
 
 // PublicIPCheckConfig configures the opt-in public IP lookup: an HTTPS GET
@@ -224,7 +223,7 @@ type PublicIPCheckConfig struct {
 type AuditLogConfig struct {
 	Path string `yaml:"path,omitempty"`
 	// MaxSizeMB is the largest size of one audit file (MB): past it the
-	// same day continues in "<base>-YYYY-MM-DD.1<ext>", ".2"… 0 = no limit.
+	// same day continues in "<base>-YYYY-MM-DD.1<ext>", ".2"… (default 100).
 	MaxSizeMB int `yaml:"max_size_mb,omitempty"`
 	// RetentionDays keeps the files of the last N days, today included
 	// (0 = 2: today and yesterday; at most 365). Older days are deleted.

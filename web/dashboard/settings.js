@@ -35,10 +35,10 @@ const I18N = {
     'settings.leakDetection': 'IP pública y fugas',
     'settings.publicIpEndpoints': 'Servicios de IP pública (una URL https:// por línea)',
     'settings.publicIpNote': 'Apagado por defecto. Encendido, el servicio ve tu IP pública; Kongtrol solo pregunta al conectar o desconectar un túnel y cuando pulsas Revisar.',
-    'settings.action': 'Acción',
     'settings.auditLog': 'Registro de Auditoría',
     'settings.path': 'Ruta del archivo de log',
-    'settings.maxSize': 'Tamaño máx. (MB)',
+    'settings.maxSize': 'Tamaño máx. de un archivo (MB, 1–1024)',
+    'settings.retention': 'Días que se guardan (0 = hoy y ayer)',
     'settings.sign': 'Firmar entradas con HMAC',
     'settings.save': 'Guardar Configuración',
     'settings.revert': 'Revertir',
@@ -107,10 +107,10 @@ const I18N = {
     'settings.leakDetection': 'Public IP and leaks',
     'settings.publicIpEndpoints': 'Public IP services (one https:// URL per line)',
     'settings.publicIpNote': 'Off by default. When on, the service sees your public IP; Kongtrol asks only when a tunnel connects or disconnects and when you press Check.',
-    'settings.action': 'Action',
     'settings.auditLog': 'Audit Log',
     'settings.path': 'Log file path',
-    'settings.maxSize': 'Max size (MB)',
+    'settings.maxSize': 'Max size of one file (MB, 1–1024)',
+    'settings.retention': 'Days kept (0 = today and yesterday)',
     'settings.sign': 'HMAC sign entries',
     'settings.save': 'Save Settings',
     'settings.revert': 'Revert',
@@ -175,12 +175,11 @@ function fillSettingsForm(s) {
   document.getElementById('s-dns-fallback').value = s.dns_guard_fallback_dns || '';
   document.getElementById('s-leak-enabled').checked = !!s.leak_detection_enabled;
   document.getElementById('s-publicip-endpoints').value = (s.public_ip_endpoints || []).join('\n');
-  document.getElementById('s-leak-action').value = s.leak_detection_action || 'notify';
   document.getElementById('s-audit-path').value = s.audit_log_path || '';
   document.getElementById('s-audit-maxsize').value = s.audit_log_max_size_mb || '';
+  document.getElementById('s-audit-retention').value = s.audit_log_retention_days || '';
   document.getElementById('s-audit-sign').checked = !!s.audit_log_sign;
   enhanceSelect(document.getElementById('s-ks-mode'));
-  enhanceSelect(document.getElementById('s-leak-action'));
 }
 
 function draftSettings() {
@@ -196,9 +195,9 @@ function draftSettings() {
     dns_guard_fallback_dns: document.getElementById('s-dns-fallback').value.trim(),
     leak_detection_enabled: document.getElementById('s-leak-enabled').checked,
     public_ip_endpoints: document.getElementById('s-publicip-endpoints').value.split('\n').map((l) => l.trim()).filter(Boolean),
-    leak_detection_action: document.getElementById('s-leak-action').value,
     audit_log_path: document.getElementById('s-audit-path').value.trim(),
     audit_log_max_size_mb: parseInt(document.getElementById('s-audit-maxsize').value, 10) || 0,
+    audit_log_retention_days: parseInt(document.getElementById('s-audit-retention').value, 10) || 0,
     audit_log_sign: document.getElementById('s-audit-sign').checked,
   };
 }

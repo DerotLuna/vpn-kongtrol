@@ -217,7 +217,7 @@ func TestUpdateSettings_PartialBodyKeepsFields(t *testing.T) {
 	if !cfg.Monitor.Scheduler.Enabled {
 		t.Error("scheduler_enabled not applied")
 	}
-	if cfg.Security.AuditLog.Path != "/var/log/kongtrol/audit.log" || !cfg.Security.AuditLog.Sign || cfg.Security.LeakDetection.Action != "notify" {
+	if cfg.Security.AuditLog.Path != "/var/log/kongtrol/audit.log" || !cfg.Security.AuditLog.Sign {
 		t.Errorf("unsent settings lost: %+v", cfg.Security)
 	}
 }

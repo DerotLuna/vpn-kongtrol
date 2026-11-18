@@ -11,6 +11,8 @@ func newPublicIPChecker(c *config.Config) *security.LeakTester {
 		Enabled:     c.PublicIPCheckEnabled(),
 		Endpoints:   c.PublicIPEndpoints(),
 		ExpectedIPs: c.Security.IntegrityCheck.ExpectedIPs,
+		// Only connected profiles count in the leak check.
+		Active: connectedProfiles,
 	})
 }
 
