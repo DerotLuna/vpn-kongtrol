@@ -1,4 +1,4 @@
-// Kongtrol UI — Seguridad (/security) data: queries + mutations · v1.0.1 · 2026-11-18
+// Kongtrol UI — Seguridad (/security) data: queries + mutations · v1.1.0 · 2026-11-18
 //
 // Everything the Security page reads or changes, on the shared cache
 // (ADR-0038). Cache keys name resources, so another page reading the same
@@ -41,6 +41,20 @@ export interface SecurityState extends SecurityStatus {
   dns_guard_servers?: string[]
   dns_guard_interface?: string
   dns_guard_profiles?: Record<string, string[]>
+}
+
+/** GET /api/v1/security/blocked (handlers_security.go handleSecurityBlocked). */
+export interface BlockedList {
+  state: 'off' | 'armed' | 'active'
+  /** CIDR prefixes blocked now. */
+  prefixes: string[]
+  count: number
+  /** Tunnels that dropped and are blocked. */
+  blocking: string[]
+  /** Of those, the ones that carried all traffic (everything but endpoints is blocked). */
+  full_tunnel: string[]
+  /** Policies with on_tunnel_down: block whose VPN is off. */
+  policy_blocking: string[]
 }
 
 /** internal/api/handlers_groups.go `settingsDTO`: the fields this page edits. */
@@ -99,6 +113,7 @@ export const securityKeys = {
   vpns: ['vpns'] as const,
   policies: ['policies'] as const,
   policyEvents: ['events', 'policy'] as const,
+  blocked: ['security', 'blocked'] as const,
 } as const
 
 /** Legacy security.js polled every 15 s; the shared security query polls every 5 s. */
@@ -118,6 +133,7 @@ const fetchers = {
     http
       .get<{ events: DaemonEvent[] | null; seq: number }>('/api/v1/events?after=0')
       .then((r) => (r.events ?? []).filter((e) => e.kind === 'policy_tunnel_down').slice(-5).reverse()),
+  blocked: () => http.get<BlockedList>('/api/v1/security/blocked'),
 }
 
 // ── Queries ───────────────────────────────────────────────────────────────
@@ -142,6 +158,19 @@ export function usePolicies() {
 /** Latest "traffic for a rule whose VPN is off" warnings (policy watch), newest first. */
 export function usePolicyEvents() {
   return useQuery({ queryKey: securityKeys.policyEvents, queryFn: fetchers.policyEvents, refetchInterval: SLOW_POLL_MS })
+}
+
+/**
+ * What the kill switch blocks right now. Read only while it is on (nothing
+ * to list otherwise), at the status cadence so the list follows a drop.
+ */
+export function useBlockedDestinations(enabled: boolean) {
+  return useQuery({
+    queryKey: securityKeys.blocked,
+    queryFn: fetchers.blocked,
+    enabled,
+    refetchInterval: enabled ? SECURITY_POLL_MS : false,
+  })
 }
 
 // ── Mutations ─────────────────────────────────────────────────────────────
@@ -288,6 +317,43 @@ export function invalidEndpoints(list: readonly string[]): string[] {
       return true
     }
   })
+}
+
+/** One editable row of security.integrity_check.expected_ips. */
+export interface ExpectedRow {
+  profile: string
+  ip: string
+}
+
+/** The stored map as rows, by profile name (stable order). */
+export function expectedRows(map: Record<string, string> | undefined): ExpectedRow[] {
+  return Object.entries(map ?? {})
+    .map(([profile, ip]) => ({ profile, ip }))
+    .sort((a, b) => a.profile.localeCompare(b.profile))
+}
+
+export type ExpectedProblem =
+  | { row: number; field: 'profile'; kind: 'pick' | 'duplicate' }
+  | { row: number; field: 'ip'; kind: 'invalid' }
+
+/** First problem per row: no VPN picked, a VPN twice, or a value that is not an IP. */
+export function expectedProblems(rows: readonly ExpectedRow[], isIP: (v: string) => boolean): ExpectedProblem[] {
+  const seen = new Set<string>()
+  const out: ExpectedProblem[] = []
+  rows.forEach((r, row) => {
+    if (!r.profile) out.push({ row, field: 'profile', kind: 'pick' })
+    else if (seen.has(r.profile)) out.push({ row, field: 'profile', kind: 'duplicate' })
+    else if (!isIP(r.ip)) out.push({ row, field: 'ip', kind: 'invalid' })
+    seen.add(r.profile)
+  })
+  return out
+}
+
+/** Rows → the PUT /api/v1/settings `expected_ips` patch (the whole map is replaced). */
+export function expectedMap(rows: readonly ExpectedRow[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const r of rows) if (r.profile && r.ip.trim()) out[r.profile] = r.ip.trim()
+  return out
 }
 
 /** LAN allowed now: allow_lan, or the legacy `mode: loose` (schema.go LANAllowed). */

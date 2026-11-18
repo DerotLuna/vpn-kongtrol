@@ -1,4 +1,4 @@
-// Kongtrol UI — Seguridad: opt-in public IP check · v1.0.0 · 2026-11-18
+// Kongtrol UI — Seguridad: opt-in public IP check · v1.1.0 · 2026-11-18
 //
 // AGENTS.md "Local only" + "Public IP lookup (opt-in)": off by default; the
 // notice "Usa un servicio externo (<host>) que ve tu IP pública" is shown
@@ -23,6 +23,7 @@ import { RefreshIcon } from '../ui/icons'
 import { Skeleton } from '../ui/States'
 import { StatusPill } from '../ui/StatusPill'
 import { Switch } from '../ui/Switch'
+import { ExpectedIPs } from './ExpectedIPs'
 import { LEAK_TONE, leakPhase } from './model'
 import { ConfirmDialog, SettingForm, TechDetails } from './parts'
 
@@ -122,10 +123,25 @@ export function PublicIPCheckCard({ status }: { status: SecurityState }) {
         )}
       </div>
 
+      <div className="sec-sub">
+        {settings.data ? (
+          <ExpectedIPs
+            key={`ex-${JSON.stringify(settings.data.expected_ips ?? {})}`}
+            stored={settings.data.expected_ips}
+          />
+        ) : (
+          <Skeleton lines={2} label={t('security.loading')} />
+        )}
+      </div>
+
       <TechDetails>
         <dl className="sec-dl">
           <dt>kongtrol.yaml</dt>
-          <dd className="mono">security.public_ip_check.enabled: {String(on)}</dd>
+          <dd className="mono">
+            security.public_ip_check.enabled: {String(on)}
+            <br />
+            security.integrity_check.expected_ips
+          </dd>
           <dt>CLI</dt>
           <dd className="mono">kongtrol config public-ip on|off · kongtrol check</dd>
           {lk?.reason && (
@@ -135,7 +151,6 @@ export function PublicIPCheckCard({ status }: { status: SecurityState }) {
             </>
           )}
         </dl>
-        <p className="sec-meta">{t('security.ip.expected')}</p>
       </TechDetails>
 
       <ConfirmDialog

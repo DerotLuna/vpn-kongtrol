@@ -1,4 +1,4 @@
-// Kongtrol UI — Seguridad: kill switch · v1.0.0 · 2026-11-18
+// Kongtrol UI — Seguridad: kill switch · v1.1.0 · 2026-11-18
 //
 // What it does, whether it acts now (off / ready / protecting / blocking,
 // AGENTS.md "Policy routing, kill switch"), which tunnels and rules it
@@ -20,6 +20,7 @@ import { Banner, Skeleton } from '../ui/States'
 import { Card } from '../ui/Card'
 import { HelperInstallButton } from '../ui/HelperInstall'
 import { Switch } from '../ui/Switch'
+import { BlockedList } from './BlockedList'
 import { killSwitchView } from './model'
 import { ConfirmDialog, StateLine, TechDetails } from './parts'
 
@@ -58,6 +59,7 @@ export function KillSwitchCard({ status }: { status: SecurityState }) {
   const d = status.kill_switch_status
   const helperState = helperUiState(helper.status ?? undefined)
   const helperNeeded = helperState === 'missing' || helperState === 'outdated'
+  const ksError = status.kill_switch_error
 
   return (
     <Card title={t('security.ks.title')} className="sec-card sec-card--wide">
@@ -76,13 +78,14 @@ export function KillSwitchCard({ status }: { status: SecurityState }) {
         {view.pill === 'security.ks.pill.active' && <p className="sec-fix">{t('security.ks.state.active.fix')}</p>}
       </StateLine>
 
-      {d?.error && (
+      {/* The daemon's own words for the last failure (message + what to do, ADR-0042). */}
+      {ksError && (
         <Banner
           tone="bad"
-          title={t('security.ks.error')}
+          title={ksError.message}
           actions={helperNeeded ? <HelperInstallButton helper={helper} outdated={helperState === 'outdated'} /> : undefined}
         >
-          <p>{t('security.ks.error.fix')}</p>
+          {ksError.hint && <p>{ksError.hint}</p>}
         </Banner>
       )}
 
@@ -90,11 +93,7 @@ export function KillSwitchCard({ status }: { status: SecurityState }) {
         <div className="sec-cover">
           <Names label={t('security.ks.protected')} names={d?.protected} />
           <Names label={t('security.ks.blocking')} names={d?.blocking} />
-          {!!d?.blocked_count && <p className="sec-meta">{t('security.ks.blockedCount', { n: d.blocked_count })}</p>}
-          {!!d?.full_tunnel?.length && <p className="sec-meta">{t('security.ks.fullTunnel', { names: d.full_tunnel.join(', ') })}</p>}
-          {!!d?.policy_blocking?.length && (
-            <p className="sec-meta">{t('security.ks.policyBlocking', { names: d.policy_blocking.join(', ') })}</p>
-          )}
+          <BlockedList enabled={status.kill_switch_enabled} />
         </div>
       )}
 
@@ -138,10 +137,13 @@ export function KillSwitchCard({ status }: { status: SecurityState }) {
           <dd className="mono">kongtrol config killswitch on|off|status</dd>
           <dt>{t('security.helper.label')}</dt>
           <dd>{t(HELPER_TEXT[helperState])}</dd>
-          {d?.error && (
+          {(ksError?.detail || d?.error) && (
             <>
               <dt>error</dt>
-              <dd className="mono">{d.error_key ? `${d.error_key} · ` : ''}{d.error}</dd>
+              <dd className="mono">
+                {ksError?.error_key || d?.error_key ? `${ksError?.error_key || d?.error_key} · ` : ''}
+                {ksError?.detail || d?.error}
+              </dd>
             </>
           )}
         </dl>

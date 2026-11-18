@@ -8,7 +8,7 @@ import { messages } from '../../i18n/messages'
 import { helperReady, json, stubFetch, type Routes } from '../../test/fakes'
 import type { SecuritySettings, SecurityState } from '../../data/security'
 import { dnsView, isDuration, isIP, killSwitchView, leakPhase } from './model'
-import { invalidEndpoints, lanPatch, parseEndpoints } from '../../data/security'
+import { expectedMap, expectedProblems, expectedRows, invalidEndpoints, lanPatch, parseEndpoints } from '../../data/security'
 
 class SilentSocket {
   onopen: (() => void) | null = null
@@ -163,9 +163,95 @@ describe('Seguridad page', () => {
     expect(field).toHaveAttribute('aria-invalid', 'true')
     expect(posts(fetchMock, '/api/v1/settings')).toHaveLength(0)
   })
+
+  it('lists what the kill switch blocks, the daemon’s own error and the DNS servers in use', async () => {
+    setup(
+      {
+        'GET /api/v1/security/blocked': () =>
+          json({
+            state: 'active',
+            prefixes: ['10.20.0.0/16', '192.0.2.10/32'],
+            count: 2,
+            blocking: ['oficina'],
+            full_tunnel: [],
+            policy_blocking: ['intranet'],
+          }),
+      },
+      {
+        ...armed,
+        kill_switch_state: 'active',
+        kill_switch_status: { state: 'active', protected: ['oficina'], blocking: ['oficina'], blocked_count: 2 },
+        kill_switch_error: {
+          message: 'Falta el servicio de Kongtrol para aplicar el bloqueo.',
+          hint: 'Instálalo una vez desde Ajustes.',
+          error_key: 'privops.err.helper_missing',
+          detail: 'helper not installed',
+        },
+        dns_guard_servers: ['10.0.0.53', '10.0.0.54'],
+        dns_guard_interface: 'Ethernet 3',
+        dns_guard_profiles: { oficina: ['10.0.0.53', '10.0.0.54'] },
+      },
+    )
+    expect(await screen.findByText('Falta el servicio de Kongtrol para aplicar el bloqueo.')).toBeInTheDocument()
+    expect(screen.getByText('Instálalo una vez desde Ajustes.')).toBeInTheDocument()
+    const summary = await screen.findByText('Ver los 2 destinos bloqueados')
+    await userEvent.click(summary)
+    const list = screen.getByRole('list', { name: 'Destinos bloqueados' })
+    expect(within(list).getByText('10.20.0.0/16')).toBeInTheDocument()
+    expect(screen.getByText('Reglas bloqueadas porque su VPN está apagada: intranet')).toBeInTheDocument()
+    const dns = screen.getByRole('group', { name: 'Servidores DNS en uso' })
+    expect(within(dns).getByText('Servidores DNS en uso, en la conexión Ethernet 3')).toBeInTheDocument()
+    expect(within(dns).getByText('10.0.0.53, 10.0.0.54')).toBeInTheDocument()
+  })
+
+  it('edits the expected public IP per VPN: checks rows, then saves the whole map', async () => {
+    let saved: unknown
+    const fetchMock = setup({
+      'GET /api/v1/settings': () => json({ ...settings, expected_ips: { oficina: '203.0.113.7' } }),
+      'GET /api/v1/vpns': () =>
+        json([
+          { name: 'oficina', type: 'forticlient', kill_switch_override: 'inherit' },
+          { name: 'casa', type: 'wireguard', kill_switch_override: 'inherit' },
+        ]),
+      'PUT /api/v1/settings': (init) => {
+        saved = JSON.parse(String(init?.body))
+        return json({ ...settings, expected_ips: { oficina: '203.0.113.7', casa: '198.51.100.4' } })
+      },
+    })
+    const title = await screen.findByRole('heading', { name: 'IP pública esperada por VPN' })
+    const form = title.closest('form')!
+    expect(within(form).getByRole('textbox', { name: 'IP esperada de oficina' })).toHaveValue('203.0.113.7')
+    await userEvent.click(within(form).getByRole('button', { name: 'Agregar VPN' }))
+    const ip = within(form).getByRole('textbox', { name: 'IP esperada de casa' })
+    await userEvent.type(ip, '198.51.100.999')
+    await userEvent.click(within(form).getByRole('button', { name: 'Guardar' }))
+    expect(within(form).getByText('«198.51.100.999» no es una IP.')).toBeInTheDocument()
+    expect(ip).toHaveAttribute('aria-invalid', 'true')
+    expect(posts(fetchMock, '/api/v1/settings')).toHaveLength(0)
+    await userEvent.clear(ip)
+    await userEvent.type(ip, '198.51.100.4')
+    await userEvent.click(within(form).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(saved).toEqual({ expected_ips: { oficina: '203.0.113.7', casa: '198.51.100.4' } }))
+  })
 })
 
 describe('Seguridad model', () => {
+  it('expected IP rows: problems and the saved map', () => {
+    const rows = [
+      { profile: 'a', ip: '1.1.1.1' },
+      { profile: '', ip: '2.2.2.2' },
+      { profile: 'a', ip: '3.3.3.3' },
+      { profile: 'b', ip: 'nope' },
+    ]
+    expect(expectedProblems(rows, isIP)).toEqual([
+      { row: 1, field: 'profile', kind: 'pick' },
+      { row: 2, field: 'profile', kind: 'duplicate' },
+      { row: 3, field: 'ip', kind: 'invalid' },
+    ])
+    expect(expectedMap([{ profile: 'a', ip: ' 1.1.1.1 ' }, { profile: 'b', ip: '' }])).toEqual({ a: '1.1.1.1' })
+    expect(expectedRows({ z: '1.1.1.1', a: '2.2.2.2' }).map((r) => r.profile)).toEqual(['a', 'z'])
+  })
+
   it('maps every kill switch phase to a pill and a sentence', () => {
     expect(killSwitchView({ ...armed, kill_switch_enabled: false }).pill).toBe('security.ks.pill.off')
     expect(killSwitchView({ ...armed, kill_switch_status: { state: 'armed', blocked_count: 0 } }).pill).toBe('security.ks.pill.armedNone')

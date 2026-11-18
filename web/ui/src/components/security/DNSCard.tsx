@@ -1,4 +1,4 @@
-// Kongtrol UI — Seguridad: DNS protection + split DNS · v1.0.0 · 2026-11-18
+// Kongtrol UI — Seguridad: DNS protection + split DNS · v1.1.0 · 2026-11-18
 //
 // DNS guard switch (optimistic; turning it off asks first, it lowers
 // privacy), its state in plain words, the fallback DNS, and split DNS
@@ -12,6 +12,47 @@ import { Skeleton } from '../ui/States'
 import { Switch } from '../ui/Switch'
 import { dnsView, isDuration, isIP } from './model'
 import { ConfirmDialog, SettingForm, StateLine, TechDetails } from './parts'
+
+/**
+ * The DNS servers the guard applies now and which VPN each comes from
+ * (security/status dns_guard_servers / _interface / _profiles, ADR-0042).
+ * Nothing while the guard is idle.
+ */
+function DNSInUse({ status }: { status: SecurityState }) {
+  const { t } = usePreferences()
+  const servers = status.dns_guard_servers ?? []
+  if (!status.dns_guard_enabled || servers.length === 0) return null
+  const byProfile = Object.entries(status.dns_guard_profiles ?? {})
+    .filter(([, list]) => list.length > 0)
+    .sort(([a], [b]) => a.localeCompare(b))
+  return (
+    <div className="sec-dns" aria-label={t('security.dns.inUse')} role="group">
+      <p className="sec-names__label">
+        {status.dns_guard_interface
+          ? t('security.dns.inUse.iface', { iface: status.dns_guard_interface })
+          : t('security.dns.inUse')}
+      </p>
+      {byProfile.length > 0 ? (
+        <dl className="sec-dl">
+          {byProfile.map(([profile, list]) => (
+            <div key={profile} className="sec-dl__pair">
+              <dt className="mono">{profile}</dt>
+              <dd className="mono">{list.join(', ')}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <ul className="sec-chips">
+          {servers.map((s) => (
+            <li key={s} className="sec-chip mono">
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export function DNSCard({ status }: { status: SecurityState }) {
   const { t } = usePreferences()
@@ -36,6 +77,7 @@ export function DNSCard({ status }: { status: SecurityState }) {
         disabled={toggle.isPending}
       />
       <StateLine view={view} />
+      <DNSInUse status={status} />
 
       <div className="sec-sub">
         {s ? (
@@ -103,7 +145,6 @@ export function DNSCard({ status }: { status: SecurityState }) {
           <dt>CLI</dt>
           <dd className="mono">kongtrol config dns-guard on|off|status</dd>
         </dl>
-        <p className="sec-meta">{t('security.dns.servers.note')}</p>
       </TechDetails>
 
       <ConfirmDialog
