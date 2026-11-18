@@ -8,6 +8,7 @@
 import type { OS } from '../hooks/useOS'
 import IC from '../components/ui/InlineCode'
 import { pathFor } from '../site'
+import { INSTALL_CMD, UNINSTALL_SCRIPT_BASE } from '../links'
 
 export default function guideES(os: OS) {
   return {
@@ -614,10 +615,10 @@ Contraseñas guardadas en:
     update3: <><strong>Instalador de Windows:</strong> descarga el nuevo desde{' '}
                 <a href="/#install">la sección de descargas</a> y ábrelo.</>,
     update4: `# Script (Linux / macOS): vuelve a correrlo
-$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+$ ${INSTALL_CMD.unix}
 
 # Script (Windows, PowerShell): vuelve a correrlo
-> iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
+> ${INSTALL_CMD.windows}
 
 # Homebrew
 $ brew upgrade kongtrol
@@ -650,10 +651,10 @@ $ kongtrol uninstall --data-only        # solo borra tus datos; la app se queda
 $ kongtrol uninstall --purge --dry-run  # muestra qué haría, sin tocar nada`,
     uninstall6: <><strong>Con el script de instalación:</strong></>,
     uninstall7: `# Linux / macOS (agrega --purge para borrar también tus datos)
-$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh -s -- --uninstall
+$ curl -fsSL ${UNINSTALL_SCRIPT_BASE}install.sh | sh -s -- --uninstall
 
 # Windows, PowerShell (agrega -Purge para borrar también tus datos)
-> & ([scriptblock]::Create((iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb))) -Uninstall`,
+> & ([scriptblock]::Create((iwr ${UNINSTALL_SCRIPT_BASE}install.ps1 -useb))) -Uninstall`,
     uninstall8: <><strong>Homebrew o npm:</strong> no borran tus datos. Si quieres borrarlos, corre primero{' '}
                 <IC c="kongtrol uninstall --purge" /> y después desinstala:</>,
     uninstall9: `$ kongtrol uninstall --purge

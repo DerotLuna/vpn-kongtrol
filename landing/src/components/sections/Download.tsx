@@ -1,7 +1,7 @@
 import { OS, OS_LABELS } from '../../hooks/useOS'
 import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_RELEASES, GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset } from '../../links'
+import { GITHUB_RELEASES, GITHUB_REPO, INSTALL_CMD, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset } from '../../links'
 import CodeBlock from '../ui/CodeBlock'
 import { DOWNLOAD_SECTION_ID, DownloadIcon } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
@@ -74,10 +74,10 @@ export default function Download({ lang }: Props) {
       terminalTitle: 'INSTALAR POR TERMINAL',
       terminalText: 'También puedes instalar kongtrol directo desde la terminal: el script detecta tu sistema operativo y arquitectura, descarga el binario correcto de la última release, verifica su checksum SHA256, y lo deja listo en el PATH.',
       terminalScript: `# Linux / macOS
-$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+$ ${INSTALL_CMD.unix}
 
 # Windows (PowerShell)
-$ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex`,
+$ ${INSTALL_CMD.windows}`,
       beta: 'Beta pública.',
       betaText: 'Todavía no está probado con cada VPN en cada sistema. Si algo no va bien,',
       betaLink: 'cuéntanoslo en GitHub',
@@ -139,10 +139,10 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       terminalTitle: 'INSTALL FROM TERMINAL',
       terminalText: 'You can also install kongtrol straight from the terminal: the script detects your OS and architecture, downloads the correct binary from the latest release, verifies its SHA256 checksum, and drops it on your PATH.',
       terminalScript: `# Linux / macOS
-$ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+$ ${INSTALL_CMD.unix}
 
 # Windows (PowerShell)
-$ iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex`,
+$ ${INSTALL_CMD.windows}`,
       beta: 'Public beta.',
       betaText: "It isn't tested yet with every VPN on every system. If something doesn't work,",
       betaLink: 'tell us on GitHub',
