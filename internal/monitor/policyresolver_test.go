@@ -204,6 +204,23 @@ func contains(ss []string, s string) bool {
 	return false
 }
 
+func TestPolicyResolver_ResolvedIPsExpiry(t *testing.T) {
+	r := testResolver(t, policyCfg(), newFakeRoutes(), map[string][]string{"claude.ai": {"2.2.2.2", "1.1.1.1"}})
+	now := time.Unix(1000, 0)
+	r.now = func() time.Time { return now }
+	r.resolve("", 0)
+	got := r.ResolvedIPs("ai")
+	if len(got) != 2 || got[0].CIDR != "1.1.1.1/32" || got[1].CIDR != "2.2.2.2/32" {
+		t.Fatalf("resolved = %+v", got)
+	}
+	if got[0].Host != "claude.ai" || !got[0].LastSeen.Equal(now) || !got[0].ExpiresAt.Equal(now.Add(staleAfter)) {
+		t.Fatalf("entry = %+v", got[0])
+	}
+	if other := r.ResolvedIPs("corp"); len(other) != 0 {
+		t.Fatalf("corp has no domains, got %+v", other)
+	}
+}
+
 type fakeMatcher map[netip.Addr]PolicyMatch
 
 func (f fakeMatcher) MatchAddr(a netip.Addr) (PolicyMatch, bool) { m, ok := f[a]; return m, ok }

@@ -82,7 +82,7 @@ func NewLeakTester(opts LeakTesterOptions) *LeakTester {
 		settle:      opts.SettleDelay,
 	}
 	if t.client == nil {
-		t.client = &http.Client{Timeout: publicIPTimeout}
+		t.client = &http.Client{Timeout: publicIPTimeout, CheckRedirect: publicIPRedirect}
 	}
 	if t.minInterval <= 0 {
 		t.minInterval = DefaultPublicIPMinInterval
@@ -298,6 +298,20 @@ func (t *LeakTester) fetchOne(endpoint string) (string, error) {
 
 // checkEndpoint re-checks at request time what config validation enforces:
 // https only, with a host and no credentials.
+// publicIPRedirect lets a public IP service redirect only over https to
+// the same host (at most 3 times): the endpoint the user chose is the
+// only one that ever sees the request, and never in clear text.
+func publicIPRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 3 {
+		return errors.New("too many redirects")
+	}
+	if !strings.EqualFold(req.URL.Scheme, "https") || req.URL.User != nil ||
+		!strings.EqualFold(req.URL.Hostname(), via[0].URL.Hostname()) {
+		return errors.New("redirect to another host or to http refused")
+	}
+	return nil
+}
+
 func checkEndpoint(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil || !strings.EqualFold(u.Scheme, "https") || u.Hostname() == "" || u.User != nil {

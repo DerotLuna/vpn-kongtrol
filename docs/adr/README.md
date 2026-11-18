@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.9.0 · 2026-11-18
+Version 1.10.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -51,6 +51,8 @@ decision live in [`docs/research/`](../research/README.md).
 | [0036](0036-tray-flyout-window.md) | Branded tray flyout on left click: `web/ui` `/app/tray` in a pure-Go WebView2 popup next to the icon on Windows (loopback-only, origin filter, nonce bridge); native menu on right click and on macOS/Linux | Accepted | 2026-11-18 |
 | [0037](0037-native-tray-menu-states-and-installer-upgrade.md) | Native tray menu: translated states, connected first with state dots, stopped-daemon state with "Iniciar Kongtrol", version line, icon from the vector mark with a state badge; installer PATH on by default and helper updated on every upgrade when outdated; doctor warns about other kongtrol copies in PATH | Accepted | 2026-11-18 |
 | [0038](0038-new-dashboard-architecture-and-patterns.md) | New dashboard: react-router + TanStack Query fed by the WebSocket, isolated auth, shared helper state, IA of 7 sections, component kit, vector theme-adaptive brand | Accepted | 2026-11-18 |
+| [0039](0039-browser-sessions-one-time-nonce.md) | Browser sessions: one-time nonce (`#k=`, 60 s) minted by native clients, traded for an in-memory HttpOnly session cookie; pages never hand out credentials; Host checked on every route | Accepted | 2026-11-18 |
+| [0040](0040-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted | 2026-11-18 |
 
 ## Statuses
 

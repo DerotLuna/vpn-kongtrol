@@ -51,9 +51,10 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
-    // 127.0.0.1, not localhost: the daemon's auth cookie (kongtrol_control)
-    // is host-only, and cookies ignore the port, so opening the dashboard at
-    // http://127.0.0.1:9741/ once makes the browser send it here as well.
+    // 127.0.0.1, not localhost: the daemon's session cookie (kongtrol_session,
+    // ADR-0039) is host-only, and cookies ignore the port, so opening the
+    // dashboard from Kongtrol (`kongtrol dashboard`) once makes the browser
+    // send it here as well.
     // The token is never read or injected by this config.
     host: devHost,
     port: devPort,

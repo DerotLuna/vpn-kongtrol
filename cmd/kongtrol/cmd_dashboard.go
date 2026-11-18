@@ -40,7 +40,7 @@ var dashboardCmd = &cobra.Command{
 		}
 		fmt.Println(tuiOK(styleBright.Render(ct("cli.dashboard.running")) + "  " + paint(cDim, "→") + "  " + stylePrompt.Render(base)))
 		fmt.Println(paint(cDim, "  "+ct("cli.dashboard.opening")))
-		if err := openBrowserFn(base); err != nil {
+		if err := openBrowserFn(daemonPanelURLFn(base, "/")); err != nil {
 			fmt.Println(tuiWarn(cf("cli.dashboard.open_failed", err)))
 		}
 		fmt.Println(tuiInfo(paint(cDim, ct("cli.dashboard.keeps_running"))))

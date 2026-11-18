@@ -212,13 +212,17 @@ function renderProfileOverrides(profiles) {
   tbody.innerHTML = profiles.map((p) => `<tr>
       <td>${esc(p.name)}</td>
       <td>
-        <select onchange='onChangeProfileOverride(${JSON.stringify(p.name)}, this.value)'>
+        <select data-profile="${esc(p.name)}">
           <option value="inherit" ${p.kill_switch_override === 'inherit' ? 'selected' : ''}>${t('override.inherit')}</option>
           <option value="on" ${p.kill_switch_override === 'on' ? 'selected' : ''}>${t('override.on')}</option>
           <option value="off" ${p.kill_switch_override === 'off' ? 'selected' : ''}>${t('override.off')}</option>
         </select>
       </td>
     </tr>`).join('');
+  // The name travels in data-profile, never inside an inline handler.
+  tbody.querySelectorAll('select[data-profile]').forEach((sel) => {
+    sel.addEventListener('change', () => onChangeProfileOverride(sel.dataset.profile, sel.value));
+  });
   enhanceAllSelects(tbody);
 }
 

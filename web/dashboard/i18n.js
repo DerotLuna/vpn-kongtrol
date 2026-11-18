@@ -147,8 +147,15 @@ window.addEventListener('kongtrol:preferences-loaded', (event) => {
 });
 if (window.kongtrolPreferences) applyPreferenceLanguage(window.kongtrolPreferences);
 
+// esc makes any value safe in HTML text and in quoted attribute values
+// (both quote kinds). It is NOT safe inside inline event handlers
+// (onclick="…"): the browser decodes entities before running the JS, so
+// pages pass data through data-* attributes and addEventListener instead.
 function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

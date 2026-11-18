@@ -11,6 +11,7 @@ package update
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,7 +19,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -94,10 +97,82 @@ func New(current string, enabled func() bool) *Checker {
 		APIBase:   DefaultAPIBase,
 		Repo:      DefaultRepo,
 		StatePath: DefaultStatePath(),
-		Client:    &http.Client{Timeout: Timeout},
+		Client:    NewHTTPClient(),
 		Now:       time.Now,
 		Enabled:   enabled,
 	}
+}
+
+// NewHTTPClient is the only client the update check uses: TLS with the
+// system roots and default verification (TLS 1.2+), the standard proxy
+// environment (HTTPS_PROXY / NO_PROXY, like any Go program), a 5 s
+// timeout, and redirects only over https to api.github.com (GitHub
+// answers a renamed repository with a redirect there), at most 3.
+func NewHTTPClient() *http.Client {
+	tr := http.DefaultTransport.(*http.Transport).Clone()
+	tr.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	return &http.Client{
+		Timeout:       Timeout,
+		Transport:     tr,
+		CheckRedirect: checkRedirect,
+	}
+}
+
+func checkRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= 3 {
+		return errors.New("update: too many redirects")
+	}
+	if !strings.EqualFold(req.URL.Scheme, "https") || req.URL.User != nil || req.URL.Port() != "" ||
+		!strings.EqualFold(req.URL.Hostname(), "api.github.com") {
+		return fmt.Errorf("update: refused redirect to %s", req.URL.Redacted())
+	}
+	return nil
+}
+
+// ReleasePagePrefix is the only release page Kongtrol links to. The page
+// is built from the validated version, never taken from the API answer
+// (html_url), so a spoofed or altered answer cannot point users elsewhere.
+const ReleasePagePrefix = "https://github.com/" + DefaultRepo + "/releases/tag/"
+
+// strictTag is a stable semantic version tag exactly as published: vX.Y.Z,
+// no leading zeros, no pre-release or build suffix.
+var strictTag = regexp.MustCompile(`^v(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$`)
+
+// ValidTag reports whether tag is a strict stable vX.Y.Z.
+func ValidTag(tag string) bool { return strictTag.MatchString(tag) }
+
+// ReleaseURL is the release page of tag, or "" when tag is not strict.
+func ReleaseURL(tag string) string {
+	if !ValidTag(tag) {
+		return ""
+	}
+	return ReleasePagePrefix + tag
+}
+
+// ValidReleaseURL reports whether raw is exactly a Kongtrol release page:
+// https, host github.com (no userinfo, port, trailing dot or look-alike),
+// no query or fragment, no backslash or encoded separators, a clean path
+// under /DerotLuna/vpn-kongtrol/releases/tag/ ending in a strict tag.
+func ValidReleaseURL(raw string) bool {
+	if raw == "" || strings.ContainsAny(raw, "\\ \t\r\n") {
+		return false
+	}
+	low := strings.ToLower(raw)
+	for _, enc := range []string{"%2f", "%2e", "%5c", "%00"} {
+		if strings.Contains(low, enc) {
+			return false
+		}
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.User != nil || u.Port() != "" || u.Opaque != "" ||
+		!strings.EqualFold(u.Host, "github.com") || u.RawQuery != "" || u.Fragment != "" || u.ForceQuery {
+		return false
+	}
+	if path.Clean(u.Path) != u.Path || u.RawPath != "" {
+		return false
+	}
+	const prefix = "/" + DefaultRepo + "/releases/tag/"
+	return strings.HasPrefix(u.Path, prefix) && ValidTag(strings.TrimPrefix(u.Path, prefix))
 }
 
 func (c *Checker) now() time.Time {
@@ -118,6 +193,14 @@ func LoadState(path string) State {
 		return st
 	}
 	_ = json.Unmarshal(data, &st)
+	// The file is user-writable: keep only values that pass the same
+	// checks as a fresh answer.
+	if !ValidTag(st.Latest) {
+		st.Latest = ""
+	}
+	if !ValidReleaseURL(st.URL) || st.URL != ReleaseURL(st.Latest) {
+		st.URL = ""
+	}
 	return st
 }
 
@@ -154,7 +237,7 @@ func resultFrom(current string, st State) Result {
 	return Result{
 		Current:   current,
 		Latest:    st.Latest,
-		URL:       st.URL,
+		URL:       ReleaseURL(st.Latest), // built here, never read back
 		Newer:     Newer(current, st.Latest),
 		CheckedAt: st.LastCheck,
 	}
@@ -177,9 +260,9 @@ func (c *Checker) Check(ctx context.Context) (Result, error) {
 		return resultFrom(c.Current, st), nil
 	}
 	st.LastCheck = now
-	tag, page, err := c.fetchLatest(ctx)
+	tag, err := c.fetchLatest(ctx)
 	if err == nil {
-		st.Latest, st.URL = tag, page
+		st.Latest, st.URL = tag, ReleaseURL(tag)
 	}
 	if serr := saveState(c.StatePath, st); serr != nil && err == nil {
 		err = serr
@@ -204,27 +287,28 @@ func (c *Checker) TakeNotice(r Result) (Result, bool) {
 	return r, true
 }
 
+// releaseDTO reads only what the check needs. html_url is deliberately
+// not read: the page link is built from the tag (ReleaseURL).
 type releaseDTO struct {
 	TagName    string `json:"tag_name"`
-	HTMLURL    string `json:"html_url"`
 	Draft      bool   `json:"draft"`
 	Prerelease bool   `json:"prerelease"`
 }
 
-func (c *Checker) fetchLatest(ctx context.Context) (tag, page string, err error) {
+func (c *Checker) fetchLatest(ctx context.Context) (string, error) {
 	base, err := url.Parse(c.APIBase)
 	if err != nil || base.Host == "" {
-		return "", "", fmt.Errorf("update: bad API base %q", c.APIBase)
+		return "", fmt.Errorf("update: bad API base %q", c.APIBase)
 	}
 	if !strings.EqualFold(base.Scheme, "https") && !testAllowHTTP {
-		return "", "", fmt.Errorf("update: API base must be https")
+		return "", fmt.Errorf("update: API base must be https")
 	}
 	endpoint := strings.TrimRight(c.APIBase, "/") + "/repos/" + c.Repo + "/releases/latest"
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 	// Only what GitHub needs: a generic User-Agent (required by its API) and
 	// the documented Accept header. No token, no cookies, no user data.
@@ -232,31 +316,27 @@ func (c *Checker) fetchLatest(ctx context.Context) (tag, page string, err error)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	client := c.Client
 	if client == nil {
-		client = &http.Client{Timeout: Timeout}
+		client = NewHTTPClient()
 	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", "", fmt.Errorf("update: %w", err)
+		return "", fmt.Errorf("update: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		return "", "", fmt.Errorf("update: GitHub answered %d", resp.StatusCode)
+		return "", fmt.Errorf("update: GitHub answered %d", resp.StatusCode)
 	}
 	var rel releaseDTO
 	if err := json.NewDecoder(io.LimitReader(resp.Body, MaxBody)).Decode(&rel); err != nil {
-		return "", "", fmt.Errorf("update: bad answer: %w", err)
+		return "", fmt.Errorf("update: bad answer: %w", err)
 	}
-	tag = canonical(rel.TagName)
-	if rel.Draft || rel.Prerelease || tag == "" || semver.Prerelease(tag) != "" {
-		// "latest" never returns these (GitHub docs); ignore them anyway.
-		return "", "", fmt.Errorf("update: no stable release")
+	// "latest" never returns drafts or pre-releases (GitHub docs); refuse
+	// them anyway, and anything but a strict vX.Y.Z tag.
+	if rel.Draft || rel.Prerelease || !ValidTag(rel.TagName) {
+		return "", fmt.Errorf("update: no stable release")
 	}
-	page = rel.HTMLURL
-	if u, perr := url.Parse(page); perr != nil || !strings.EqualFold(u.Scheme, "https") {
-		page = ""
-	}
-	return tag, page, nil
+	return rel.TagName, nil
 }
 
 // testAllowHTTP lets tests use an httptest (http://) server.

@@ -36,8 +36,6 @@ describe('shell and routes', () => {
     expect(h1).toHaveFocus()
     expect(document.title).toBe('Security · Kongtrol')
     expect(within(nav).getByRole('link', { name: 'Security' })).toHaveAttribute('aria-current', 'page')
-    // placeholder points to the classic page that has it today
-    expect(screen.getByRole('link', { name: 'Open in the classic dashboard' })).toHaveAttribute('href', '/security.html')
   })
 
   it('routes tabs as sub-pages and unknown paths to a guided 404', async () => {
