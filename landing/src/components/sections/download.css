@@ -6,7 +6,7 @@
   margin-top: 40px; padding: clamp(24px, 4vw, 40px);
   background: var(--surface-2); border: 1px solid var(--signal-line);
   border-radius: var(--radius-lg);
-  box-shadow: inset 0 2px 0 var(--signal), 0 18px 40px -24px var(--signal-glow);
+  box-shadow: inset 0 2px 0 var(--signal);
   display: grid; gap: 14px;
 }
 .dl-featured-tag {

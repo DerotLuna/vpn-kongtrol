@@ -1229,18 +1229,7 @@ a { text-underline-offset: 3px; }
 .path { background: var(--surface); padding: 30px 30px 28px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .path h3 { font-size: 1.45rem; color: var(--text); }
 .path-lead { color: var(--text-muted); font-size: 0.96rem; max-width: 48ch; }
-.path-list { list-style: none; counter-reset: path; display: grid; gap: 10px; }
-.path-list li {
-  counter-increment: path; display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: baseline;
-  color: var(--text); font-size: 0.98rem;
-}
-.path-list li::before {
-  content: counter(path); font-family: var(--font-mono); font-size: 0.74rem; font-weight: 600;
-  color: var(--signal); border: 1px solid var(--signal-line); border-radius: 50%;
-  width: 24px; height: 24px; display: grid; place-items: center; line-height: 1;
-}
 .path-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: auto; padding-top: 6px; }
-.path-note { font-size: 0.84rem; color: var(--text-dim); }
 .path-devs .code-block pre { font-size: 0.78rem; }
 
 /* ── Cómo empezar ── */
@@ -1250,10 +1239,6 @@ a { text-underline-offset: 3px; }
   letter-spacing: -0.02em; color: var(--signal);
 }
 .how-step p { font-size: 0.95rem; }
-.how-step .how-alt {
-  justify-self: start; margin-top: 4px; font-family: var(--font-body); font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px;
-}
 
 /* ── Providers: styles live in components/sections/providers.css ── */
 
