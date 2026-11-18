@@ -8,7 +8,8 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { useSaveSettings, validateMaxSize, type Invalid, type Settings } from '../../data/settings'
-import { focusFirstInvalid, useUnsavedWarning } from '../settings/form'
+import { useUnsavedChanges } from '../../app/unsaved'
+import { focusFirstInvalid } from '../settings/form'
 import { FormBar, SettingsSection } from '../settings/SettingsSection'
 import { TextField } from '../ui/Field'
 import { Switch } from '../ui/Switch'
@@ -35,7 +36,7 @@ export function AuditConfig({ settings }: { settings: Settings }) {
 
   const value = draft ?? saved
   const dirty = draft !== null && (draft.path !== saved.path || draft.size !== saved.size || draft.sign !== saved.sign)
-  useUnsavedWarning(dirty)
+  useUnsavedChanges(dirty)
 
   const edit = (patch: Partial<Draft>) => setDraft({ ...value, ...patch })
 

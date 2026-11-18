@@ -7,6 +7,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
+import { useUnsavedChanges } from '../../app/unsaved'
 import type { SettingsPatch } from '../../data/security'
 import { useSettingsSave } from '../../data/security'
 import { Button } from '../ui/Button'
@@ -100,6 +101,7 @@ export function SettingForm({ label, hint, initial, validate, toPatch, multiline
   const [value, setValue] = useState(initial)
   const [local, setLocal] = useState<FieldError | null>(null)
   const dirty = value.trim() !== initial.trim()
+  useUnsavedChanges(dirty)
   const remote = save.error ? describeError(save.error, t) : null
   const error = local ?? (remote ? { message: remote.message, fix: remote.fix } : null)
 

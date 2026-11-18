@@ -39,6 +39,38 @@ function openSettings() {
   render(<App />)
 }
 
+describe('Ajustes: cambios sin guardar', () => {
+  it('asks before leaving with unsaved edits; Seguir editando stays, Descartar leaves', async () => {
+    stubFetch(base)
+    openSettings()
+    const interval = await screen.findByLabelText('Revisar cada')
+    await userEvent.clear(interval)
+    await userEvent.type(interval, '45s')
+    const nav = screen.getAllByRole('navigation', { name: 'Secciones' })[0]!
+    await userEvent.click(within(nav).getByRole('link', { name: 'Inicio' }))
+    const dialog = await screen.findByRole('alertdialog', { name: 'Tienes cambios sin guardar' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Seguir editando' }))
+    expect(screen.getByRole('heading', { level: 1, name: 'Ajustes' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Revisar cada')).toHaveValue('45s')
+
+    await userEvent.click(within(nav).getByRole('link', { name: 'Inicio' }))
+    await userEvent.click(
+      within(await screen.findByRole('alertdialog', { name: 'Tienes cambios sin guardar' })).getByRole('button', { name: 'Descartar' }),
+    )
+    expect(await screen.findByRole('heading', { level: 1, name: 'Inicio' })).toBeInTheDocument()
+  })
+
+  it('leaves without asking when nothing changed', async () => {
+    stubFetch(base)
+    openSettings()
+    await screen.findByLabelText('Revisar cada')
+    const nav = screen.getAllByRole('navigation', { name: 'Secciones' })[0]!
+    await userEvent.click(within(nav).getByRole('link', { name: 'Inicio' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Inicio' })).toBeInTheDocument()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+})
+
 describe('Ajustes', () => {
   it('shows version, config file and the read-only panel address with its CLI commands', async () => {
     stubFetch(base)

@@ -5,6 +5,7 @@
 // **fix**), so an unknown name cannot be typed. Checks on save, then live.
 import { useId, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
+import { useUnsavedChanges } from '../../app/unsaved'
 import type { Group } from '../../api/types'
 import type { VPNProfile } from '../../data/profiles'
 import { Button } from '../ui/Button'
@@ -28,6 +29,7 @@ export function GroupEditor({ open, onClose, editing, groups, profiles, onSave }
   const [name, setName] = useState(editing?.name ?? '')
   const [members, setMembers] = useState<string[]>(editing?.profiles ?? [])
   const [tried, setTried] = useState(false)
+  useUnsavedChanges(name !== (editing?.name ?? '') || members.join('\n') !== (editing?.profiles ?? []).join('\n'))
 
   const trimmed = name.trim()
   const nameError = !tried

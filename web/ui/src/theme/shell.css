@@ -78,9 +78,6 @@
 .k-page-head h1:focus-visible { box-shadow: var(--focus); }
 .k-page-head__lead { color: var(--text-muted); max-width: 65ch; }
 .k-page-head .k-tabs__list { margin-top: 12px; }
-.k-soon { max-width: 720px; }
-.k-soon__list { margin: 4px 0 8px 20px; display: flex; flex-direction: column; gap: 4px; }
-.k-soon .k-btn { align-self: flex-start; }
 
 /* ── Bottom bar (phones) ──────────────────────────────────────────────── */
 .k-bottombar {

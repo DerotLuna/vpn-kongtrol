@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { usePreferences } from '../app/preferences-context'
+import { useUnsavedChanges } from '../app/unsaved'
 import { ClockIcon, EditIcon, TrashIcon } from '../components/rules/icons'
 import {
   DURATION_RE,
@@ -237,6 +238,7 @@ function IntervalForm({ current }: { current: string }) {
   const [value, setValue] = useState(current || '1m')
   const [invalid, setInvalid] = useState(false)
   const dirty = value.trim() !== (current || '1m')
+  useUnsavedChanges(dirty)
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault()

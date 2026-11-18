@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.10.0 · 2026-11-18
+Version 1.11.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -53,6 +53,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0038](0038-new-dashboard-architecture-and-patterns.md) | New dashboard: react-router + TanStack Query fed by the WebSocket, isolated auth, shared helper state, IA of 7 sections, component kit, vector theme-adaptive brand | Accepted | 2026-11-18 |
 | [0039](0039-browser-sessions-one-time-nonce.md) | Browser sessions: one-time nonce (`#k=`, 60 s) minted by native clients, traded for an in-memory HttpOnly session cookie; pages never hand out credentials; Host checked on every route | Accepted | 2026-11-18 |
 | [0040](0040-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted | 2026-11-18 |
+| [0041](0041-dashboard-data-router-and-unsaved-guard.md) | New dashboard: data router (`createBrowserRouter`), "Tienes cambios sin guardar" guard with `useBlocker` + `beforeunload`, pages loaded on demand; supersedes ADR-0038 decision 1 | Accepted | 2026-11-18 |
 
 ## Statuses
 

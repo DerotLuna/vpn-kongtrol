@@ -6,7 +6,9 @@
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent
 //   NavigationView): sidebar with labels ≥ 840px, rail 600–839px, bottom
 //   bar under 600px with four sections + "Más" (a sheet with the rest).
-// - App-wide notices (daemon stopped, helper missing/outdated) above the page.
+// - App-wide notices (daemon stopped, helper missing/outdated) above the page;
+//   daemon notices as toasts; "Tienes cambios sin guardar" before leaving a
+//   form with edits (UnsavedChangesGuard).
 // - After navigation, focus moves to the new page's h1 so screen readers
 //   announce it; the page fades in (opacity/transform, 150ms, none with
 //   reduced motion).
@@ -24,6 +26,7 @@ import { Logo } from '../ui/Logo'
 import { Toaster } from '../ui/Toaster'
 import { AggregateStatus, VersionTag } from './AggregateStatus'
 import { AppNotices } from './AppNotices'
+import { UnsavedChangesGuard } from './UnsavedChangesGuard'
 
 function SideNav() {
   const { t } = usePreferences()
@@ -169,6 +172,7 @@ export function AppShell() {
       </main>
       <BottomBar />
       <Toaster />
+      <UnsavedChangesGuard />
     </div>
   )
 }

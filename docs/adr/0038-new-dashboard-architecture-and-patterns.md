@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-18
 
-Status: Accepted · Date: 2026-11-18 · Decision-makers: project maintainer
+Status: Accepted (decision 1, router mode, superseded by ADR-0041) · Date: 2026-11-18 · Decision-makers: project maintainer
 
 ## Context and Problem Statement
 
