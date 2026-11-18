@@ -30,7 +30,7 @@ func TestPurge_EnumeratesExactlyKongtrolCredentials(t *testing.T) {
 	var deleted []string
 	rep := Purge(PurgeOptions{
 		DataDir:      dir,
-		ExtraConfigs: []string{elsewhere},
+		ExtraFiles: []string{elsewhere},
 		Delete: func(c Credential) error {
 			deleted = append(deleted, c.String())
 			return nil

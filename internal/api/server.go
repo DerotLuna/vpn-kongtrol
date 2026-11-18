@@ -23,6 +23,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
+	"github.com/vpn-kongtrol/kongtrol/internal/update"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 	assets "github.com/vpn-kongtrol/kongtrol/web"
 )
@@ -70,6 +71,11 @@ type Server struct {
 	// SetSetupMode and SetRestarter.
 	setupMode atomic.Bool
 	restart   func() error
+	// updateLast / onUpdateToggle / purgeData back /api/v1/updates and
+	// /api/v1/data/purge; see handlers_lifecycle.go.
+	updateLast     func() update.Result
+	onUpdateToggle func(bool)
+	purgeData      func() error
 }
 
 // NewServer creates a new API server.
@@ -188,6 +194,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/helper/status", s.handleHelperStatus)
 	mux.HandleFunc("POST /api/v1/helper/install", s.handleHelperInstall)
 	mux.HandleFunc("GET /api/v1/events", s.handleEvents)
+	mux.HandleFunc("GET /api/v1/updates", s.handleGetUpdates)
+	mux.HandleFunc("POST /api/v1/updates", s.handleSetUpdates)
+	mux.HandleFunc("POST /api/v1/data/purge", s.handlePurgeData)
 
 	// WebSocket live metrics feed.
 	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)

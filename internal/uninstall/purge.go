@@ -131,8 +131,9 @@ func DeleteFromKeychain(c Credential) error {
 // PurgeOptions says what to delete.
 type PurgeOptions struct {
 	DataDir string // ~/.kongtrol
-	// ExtraConfigs are config files outside DataDir (e.g. --config).
-	ExtraConfigs []string
+	// ExtraFiles are files outside DataDir to delete too (a --config file,
+	// a custom audit log path); YAML ones are read for profile names.
+	ExtraFiles []string
 	// KeepRuntime keeps the files a running daemon needs (api-token, run/,
 	// logs) and the install manifest: used when the app stays installed
 	// (dashboard "Borrar todos mis datos", Windows uninstaller).
@@ -163,7 +164,7 @@ func Purge(opts PurgeOptions) PurgeReport {
 	if del == nil {
 		del = DeleteFromKeychain
 	}
-	creds := Credentials(ProfileNames(ConfigFiles(opts.DataDir, opts.ExtraConfigs...)))
+	creds := Credentials(ProfileNames(ConfigFiles(opts.DataDir, opts.ExtraFiles...)))
 	for _, c := range creds {
 		if !opts.DryRun {
 			if err := del(c); err != nil {
@@ -173,7 +174,7 @@ func Purge(opts PurgeOptions) PurgeReport {
 		}
 		rep.Credentials = append(rep.Credentials, c)
 	}
-	for _, p := range opts.ExtraConfigs {
+	for _, p := range opts.ExtraFiles {
 		if p == "" || isWithin(opts.DataDir, p) {
 			continue
 		}

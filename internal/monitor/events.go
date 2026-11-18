@@ -30,6 +30,10 @@ const EventPolicyTunnelDown = "policy_tunnel_down"
 // retrying), a declared failover backup took over, or the tunnel came back.
 const EventTunnelWatchdog = "tunnel_watchdog"
 
+// EventUpdateAvailable: the opt-in update notice found a newer version
+// (ADR-0032). Args: latest, current, release page. Emitted once per version.
+const EventUpdateAvailable = "update_available"
+
 // EventLog keeps the latest events in memory for clients to poll
 // (GET /api/v1/events?after=<seq>).
 type EventLog struct {
