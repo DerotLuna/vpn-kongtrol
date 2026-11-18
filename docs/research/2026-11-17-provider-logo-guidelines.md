@@ -5,13 +5,13 @@
 Version 1.1.0 · 2026-11-18
 
 Outcome (1.1.0): the maintainer chose our own monograms for all ten VPNs, Proton included
-(ADR-0022). The verdicts below record what each brand allows; none of their logos is used.
+(ADR-0023). The verdicts below record what each brand allows; none of their logos is used.
 
 ## Question
 
 Can the landing's VPN section show each supported VPN's official logo — monochrome, from
 [Simple Icons](https://simpleicons.org) 16.38.0 (CC0), self-hosted and drawn in `currentColor` —
-next to its name, for an independent open-source project with no affiliation? For ADR-0022.
+next to its name, for an independent open-source project with no affiliation? For ADR-0023.
 
 ## Sources
 
@@ -46,7 +46,7 @@ NordVPN, WireGuard, OpenVPN, Cloudflare and Palo Alto Networks only [1].
 | Brand (slug) | What the owner says | Verdict |
 |---|---|---|
 | NordVPN (`nordvpn`) | Marks "should be used exactly as provided"; "Don't change the Nord trademark colors"; other uses need a request to press@nordsec.com; descriptive (fair) use of the name is allowed [4]. Press area: use the original logo, the white version only on dark backgrounds [3]. Both pages answered HTTP 403 to the fetch tool; the wording comes from the search index: **no verificado** on the live page. | Monogram. A `currentColor` recolour changes the trademark colours. |
-| Proton VPN (`protonvpn`) | "These images and brand assets may be freely used, provided the accompanying media refers back to proton.me." Nothing on colour or modification [5]. | Logo allowed with a link to proton.me. Not used: monogram for consistency (ADR-0022). |
+| Proton VPN (`protonvpn`) | "These images and brand assets may be freely used, provided the accompanying media refers back to proton.me." Nothing on colour or modification [5]. | Logo allowed with a link to proton.me. Not used: monogram for consistency (ADR-0023). |
 | Surfshark (`surfshark`) | "For non-commercial use only"; "You may not reproduce, modify, create derivative works from or sell any Logos & Media Assets" [6]. | Monogram. A recolour is a modification. |
 | FortiClient (`fortinet`) | "Users are not permitted to use these Marks without the prior written consent of Fortinet" [7]. | Monogram. |
 | WireGuard (`wireguard`) | Section B.5 bars using the marks to suggest "compatibility" or "relatedness"; the logo must not be modified and its colour is fixed at `#88171a` [8]. | Monogram. |
@@ -78,4 +78,4 @@ silent or unclear.
 
 ## Used by
 
-- ADR-0022
+- ADR-0023

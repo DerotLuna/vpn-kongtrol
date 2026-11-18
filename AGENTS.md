@@ -191,7 +191,7 @@ ProfileService.Disconnect(name)
 | `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
 | `web/` | legacy dashboard `web/dashboard/` (vanilla JS, embedded by `web/assets.go`, served at `/`) and the new UI `web/ui/` (see below) |
 | `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run assets/brand/generate.go`); `assets/embed.go`, `TrayIcon(size)` in `assets/icon.go` |
-| `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed to Cloudflare Pages |
+| `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed by Cloudflare Workers Builds as static assets (`landing/wrangler.jsonc`, ADR-0022) |
 | `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
 | `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only) |
 

@@ -1,45 +1,52 @@
 <img src="../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# Deploying the landing to Cloudflare Pages
+# Deploying the landing to Cloudflare (Workers static assets)
 
-Version 1.0.0 · 2026-11-17
+Version 2.0.0 · 2026-11-17
 
 How `landing/` is published at **https://kongtrol.app**, plus the free security settings for the
-zone. Everything here is on the Cloudflare Free plan.
+zone. Everything here is on the Cloudflare Free plan. Decision: ADR-0022 (Workers static assets;
+Cloudflare labels the Pages Git flow "legacy").
 
-## 1. Pages project
+## 1. Worker with Git integration (Workers Builds)
 
-Dashboard: **Workers & Pages → Create → Pages → Connect to Git** → select this repository.
-Docs: https://developers.cloudflare.com/pages/get-started/git-integration/
+The serving config is in the repo: `landing/wrangler.jsonc` (assets only, `./dist`,
+`html_handling: auto-trailing-slash`, `not_found_handling: 404-page`, custom domain
+`kongtrol.app`). The Git connection is set once in the dashboard:
+
+**Workers & Pages → Create application → Continue with GitHub** → install the Cloudflare GitHub
+App with access to **only** `DerotLuna/vpn-kongtrol` → select it.
+Docs: https://developers.cloudflare.com/workers/ci-cd/builds/
 
 | Setting | Value |
 |---|---|
-| Production branch | `main` |
-| Framework preset | None |
-| Root directory | `landing` |
+| Project name | `kongtrol` (must match `name` in `wrangler.jsonc`) |
 | Build command | `pnpm run build` |
-| Build output directory | `dist` |
-| Environment variable | `NODE_VERSION` = `20` (same as `.github/workflows/landing.yml`) (Production and Preview) |
+| Deploy command | `npx wrangler deploy` |
+| Root directory (Advanced) | `landing` |
+| Production branch | `main` |
+| Build variable | `NODE_VERSION` = `20` (same as `.github/workflows/landing.yml`) |
+| API token | leave the default: Cloudflare creates it; nothing is stored in GitHub |
 
-- pnpm is detected from `landing/pnpm-lock.yaml` and the `packageManager` field
-  (https://developers.cloudflare.com/pages/configuration/build-image/).
-- The build reads `../assets/brand` (copied by `scripts/copy-brand.mjs`), which works because Pages
-  clones the whole repository.
-- **Build watch paths** (Settings → Builds → Build watch paths): include `landing/**`, `docs/cli.json` and
-  `assets/brand/**`, so Go-only commits do not trigger a deploy
-  (https://developers.cloudflare.com/pages/configuration/build-watch-paths/).
-
-Pages serves clean URLs on its own (`/guia` → `guia.html`, `/en/guide` → `en/guide.html`) and
-`dist/404.html` for unknown paths (https://developers.cloudflare.com/pages/configuration/serving-pages/).
-It also reads `dist/_headers` (from `landing/public/_headers`), see section 4.
+- **Build watch paths** (Worker → Settings → Build → Build watch paths): include `landing/*`,
+  `assets/brand/*`, `docs/cli.json`, so Go-only commits do not trigger a deploy
+  (https://developers.cloudflare.com/workers/ci-cd/builds/build-watch-paths/).
+- The build reads `../assets/brand` (copied by `scripts/copy-brand.mjs`); Workers Builds clones
+  the whole repository and runs commands inside the root directory.
+- Clean URLs: `/guia` → `guia.html`, `/guia.html` → 307 `/guia`, `/en/` → `en/index.html`;
+  unknown paths → `dist/404.html` with status 404
+  (https://developers.cloudflare.com/workers/static-assets/routing/advanced/html-handling/).
+- `dist/_headers` (from `landing/public/_headers`) is applied natively, see section 4.
 
 ## 2. Custom domain `kongtrol.app`
 
-1. Add `kongtrol.app` as a zone in Cloudflare and point the registrar's nameservers to Cloudflare.
-2. Pages project → **Custom domains → Set up a custom domain** → `kongtrol.app` (Cloudflare creates
-   the CNAME). Optionally add `www.kongtrol.app` and redirect it like `kongtrol.dev` below.
-   Docs: https://developers.cloudflare.com/pages/configuration/custom-domains/
-3. Keep `*.pages.dev` out of search: the canonical tags already point at `kongtrol.app`.
+1. `kongtrol.app` is a zone in the same Cloudflare account (nameservers at Cloudflare).
+2. `wrangler deploy` attaches it from `routes` in `wrangler.jsonc` (`custom_domain: true`):
+   Cloudflare creates the DNS record and certificate
+   (https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
+3. `www.kongtrol.app`: proxied `AAAA www 100::` + a Single Redirect like section 3, with
+   expression `concat("https://kongtrol.app", http.request.uri.path)`.
+4. `workers_dev` is off, so there is no `*.workers.dev` copy to index.
 
 ## 3. `kongtrol.dev` → `kongtrol.app` (301)
 
@@ -60,7 +67,7 @@ Apply on the `kongtrol.app` zone (and the HTTPS ones on `kongtrol.dev` too).
 
 | Setting | Where | Value | Why |
 |---|---|---|---|
-| SSL/TLS mode | SSL/TLS → Overview | Full (strict) — Pages is automatic | Encrypted and validated end to end. https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/ |
+| SSL/TLS mode | SSL/TLS → Overview | Full (strict) — a Workers custom domain is automatic | Encrypted and validated end to end. https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/ |
 | Always Use HTTPS | SSL/TLS → Edge Certificates | On | Redirects every `http://` request to `https://`. https://developers.cloudflare.com/ssl/edge-certificates/additional-options/always-use-https/ |
 | HSTS | SSL/TLS → Edge Certificates | On, max-age 12 months, include subdomains, preload on, No-Sniff on | Browsers refuse plain HTTP after the first visit. Note: `.app` and `.dev` are whole-TLD entries on the HSTS preload list, so browsers already force HTTPS for both domains before any visit; the header still covers non-browser clients and documents intent. https://developers.cloudflare.com/ssl/edge-certificates/additional-options/http-strict-transport-security/ |
 | Minimum TLS version | SSL/TLS → Edge Certificates | TLS 1.2 | TLS 1.0/1.1 are deprecated (RFC 8996). https://developers.cloudflare.com/ssl/edge-certificates/additional-options/minimum-tls/ |
@@ -72,7 +79,7 @@ Apply on the `kongtrol.app` zone (and the HTTPS ones on `kongtrol.dev` too).
 
 ### Security headers (`landing/public/_headers`)
 
-Pages applies `_headers` to every response (https://developers.cloudflare.com/pages/configuration/headers/).
+Workers static assets apply `_headers` to every asset response (https://developers.cloudflare.com/workers/static-assets/headers/).
 The file sets:
 
 | Header | Value (summary) | Why |
@@ -105,8 +112,8 @@ Cloudflare Web Analytics is cookieless and does not fingerprint visitors
 (https://developers.cloudflare.com/web-analytics/about/). It is **not** enabled in the code.
 If you enable it:
 
-1. Prefer the automatic setup for Pages projects (Pages → Metrics → Web Analytics), which injects
-   the beacon at the edge. https://developers.cloudflare.com/pages/how-to/web-analytics/
+1. Add the site under Analytics & Logs → Web Analytics and include the JS beacon in the pages
+   (https://developers.cloudflare.com/web-analytics/get-started/).
 2. Allow it in the CSP: `script-src` + `https://static.cloudflareinsights.com`, `connect-src` +
    `https://cloudflareinsights.com`.
 3. Update the privacy policy at `/privacidad` and `/en/privacy` (`landing/src/content/legal/privacidad.tsx`):

@@ -1,7 +1,7 @@
 // VPN section of the landing — version 2.1.0 · 2026-11-18.
 // Two groups (attach vs direct, from internal/vpn/* — the attach group is the
 // adapters built on internal/vpn/appattach) and per-OS support checked against
-// each adapter's platform files. No third-party logos (ADR-0022): every VPN
+// each adapter's platform files. No third-party logos (ADR-0023): every VPN
 // gets our own monogram tile.
 import { Lang } from '../../i18n'
 import './providers.css'

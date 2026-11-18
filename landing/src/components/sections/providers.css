@@ -32,7 +32,7 @@
   background: var(--surface-2);
 }
 
-/* Monogram tile: our own mark, never a brand's logo or colour (ADR-0022).
+/* Monogram tile: our own mark, never a brand's logo or colour (ADR-0023).
    Fixed 44×44 box, so nothing shifts while the display font loads. */
 .provider-mark {
   position: relative; box-sizing: border-box; width: 44px; height: 44px;

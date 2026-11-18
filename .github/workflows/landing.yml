@@ -1,7 +1,8 @@
 name: landing-ci
 
-# The landing is hosted on Cloudflare Pages at https://kongtrol.app (Cloudflare
-# builds it from this repo: root `landing`, `pnpm run build`, output `dist`).
+# The landing is a Cloudflare Worker (static assets) at https://kongtrol.app (Cloudflare
+# builds it from this repo: root `landing`, `pnpm run build`, `npx wrangler deploy`; see
+# landing/wrangler.jsonc and ADR-0022).
 #
 # This workflow does two things:
 #   1. build-landing — CI check on every PR/push that touches landing/.

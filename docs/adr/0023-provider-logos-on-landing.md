@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0022: No third-party logos on the landing — our own monograms for every VPN
+# ADR-0023: No third-party logos on the landing — our own monograms for every VPN
 
 Version 1.1.0 · 2026-11-18
 
