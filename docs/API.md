@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.5 · 2026-11-18
+Version 1.6 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -40,6 +40,7 @@ POST /api/v1/policies/test                   # dry-run a policy against a target
 
 # VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
 GET/POST  /api/v1/vpns
+GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing)
 PUT/DELETE /api/v1/vpns/{name}
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 

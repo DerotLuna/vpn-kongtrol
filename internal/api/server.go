@@ -160,6 +160,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/security/publicip", s.handleTogglePublicIP)
 	mux.HandleFunc("POST /api/v1/security/publicip/check", s.handleCheckPublicIP)
 	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
+	mux.HandleFunc("GET /api/v1/vpns/detect", s.handleDetectVPNs)
 	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
 	mux.HandleFunc("DELETE /api/v1/vpns/{name}", s.handleDeleteVPN)
