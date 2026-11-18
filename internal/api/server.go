@@ -232,7 +232,7 @@ func (s *Server) Start() error {
 	mux.Handle(uiPrefix, newUIHandler(uiFS, uiBuilt))
 
 	addr := net.JoinHostPort(listenHost(s.bind), fmt.Sprintf("%d", s.port))
-	s.srv =&http.Server{
+	s.srv = &http.Server{
 		Addr:         addr,
 		Handler:      s.secureHandler(mux),
 		ReadTimeout:  30 * time.Second,

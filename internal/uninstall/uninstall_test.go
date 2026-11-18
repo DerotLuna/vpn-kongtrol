@@ -29,7 +29,7 @@ func TestPurge_EnumeratesExactlyKongtrolCredentials(t *testing.T) {
 
 	var deleted []string
 	rep := Purge(PurgeOptions{
-		DataDir:      dir,
+		DataDir:    dir,
 		ExtraFiles: []string{elsewhere},
 		Delete: func(c Credential) error {
 			deleted = append(deleted, c.String())
@@ -55,6 +55,39 @@ func TestPurge_EnumeratesExactlyKongtrolCredentials(t *testing.T) {
 	}
 	if _, err := os.Stat(elsewhere); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("--config file outside the data dir must be removed")
+	}
+}
+
+// Regression: an extra path from settings (security.audit_log.path) was
+// removed with RemoveAll, so a folder like $HOME was deleted recursively.
+func TestPurge_ExtraFilesOnlyRegularFiles(t *testing.T) {
+	data := t.TempDir()
+	outside := t.TempDir()
+	keep := filepath.Join(outside, "precious", "doc.txt")
+	write(t, keep, "x")
+	file := filepath.Join(outside, "audit-2026-11-18.log")
+	write(t, file, "{}")
+	link := filepath.Join(outside, "link.log")
+	linked := os.Symlink(keep, link) == nil
+
+	rep := Purge(PurgeOptions{
+		DataDir:    data,
+		ExtraFiles: []string{filepath.Join(outside, "precious"), outside, file, link},
+		Delete:     func(Credential) error { return nil },
+	})
+	if rep.Err() != nil {
+		t.Fatal(rep.Err())
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatalf("a directory given as extra file was removed: %v", err)
+	}
+	if _, err := os.Stat(file); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("regular extra file must be removed")
+	}
+	if linked {
+		if _, err := os.Lstat(link); err != nil {
+			t.Fatal("symlink extra file must be left alone")
+		}
 	}
 }
 

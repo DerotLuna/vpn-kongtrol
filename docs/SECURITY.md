@@ -42,7 +42,11 @@ Uninstalling keeps your data unless you ask: `kongtrol uninstall --purge`, "Borr
 in the dashboard, or "Sí" in the Windows uninstaller delete `~/.kongtrol` and exactly Kongtrol's
 keychain entries (`vpn-kongtrol` / `<profile>.username`, `<profile>.password` for every profile
 named in `kongtrol.yaml` and its backups, and `_system.audit_hmac_key`). Files owned by a package
-manager are never deleted. See [ADR-0034](adr/0034-uninstall-and-update-notice.md).
+manager are never deleted. Outside `~/.kongtrol` only single regular files are removed (a
+`--config` file and the daily `audit-YYYY-MM-DD.log` files of a custom `security.audit_log.path`),
+never a folder, link or anything recursively; `audit_log.path` must name a file, not a folder
+(config validation). See [ADR-0034](adr/0034-uninstall-and-update-notice.md) and
+[ADR-0037](adr/0037-local-hardening-review-2026-11.md).
 
 Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
 plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its

@@ -2,16 +2,39 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 )
+
+// ValidateAuditLogPath rejects a security.audit_log.path that is a folder
+// (existing, or written with a trailing separator): it must name a file.
+// Empty means the default.
+func ValidateAuditLogPath(p string) error {
+	if p == "" {
+		return nil
+	}
+	home, _ := os.UserHomeDir()
+	expanded := expandHome(p, home)
+	if strings.HasSuffix(expanded, "/") || strings.HasSuffix(expanded, string(filepath.Separator)) {
+		return newValidationError("config.err.audit_log_dir", p)
+	}
+	if fi, err := os.Stat(expanded); err == nil && fi.IsDir() {
+		return newValidationError("config.err.audit_log_dir", p)
+	}
+	return nil
+}
 
 func validateSemantics(cfg *Config) error {
 	if cfg.Monitor.Dashboard.Bind != "" {
 		if err := ValidateDashboardBind(cfg.Monitor.Dashboard.Bind); err != nil {
 			return err
 		}
+	}
+	if err := ValidateAuditLogPath(cfg.Security.AuditLog.Path); err != nil {
+		return err
 	}
 	for _, ep := range cfg.Security.PublicIPCheck.Endpoints {
 		if err := ValidatePublicIPEndpoint(ep); err != nil {

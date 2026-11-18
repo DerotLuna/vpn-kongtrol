@@ -9,6 +9,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/api"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/uninstall"
 	"github.com/vpn-kongtrol/kongtrol/internal/update"
 )
@@ -65,11 +66,12 @@ func kongtrolDataDir() string {
 }
 
 // purgeExtraFiles are user files Kongtrol keeps outside ~/.kongtrol: a
-// --config file elsewhere and a custom audit log path.
+// --config file elsewhere and the daily files of a custom audit log path
+// (security.AuditLogFiles; never the path itself, which may be anything).
 func purgeExtraFiles(c *config.Config) []string {
 	extra := []string{activeCfgPath}
 	if c != nil && c.Security.AuditLog.Path != "" {
-		extra = append(extra, c.Security.AuditLog.Path)
+		extra = append(extra, security.AuditLogFiles(c.Security.AuditLog.Path)...)
 	}
 	return extra
 }

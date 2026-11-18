@@ -11,6 +11,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/privhelper"
+	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/uninstall"
 )
 
@@ -57,7 +58,8 @@ func uninstallEnv() uninstall.Env {
 	}
 }
 
-// uninstallExtraFiles: a --config file and a custom audit log path, read
+// uninstallExtraFiles: a --config file and the daily files of a custom
+// audit log path (security.AuditLogFiles), read
 // from the config when it still loads.
 func uninstallExtraFiles() []string {
 	var extra []string
@@ -65,7 +67,7 @@ func uninstallExtraFiles() []string {
 		extra = append(extra, cfgPath)
 	}
 	if c, err := config.Load(cfgPath); err == nil && c.Security.AuditLog.Path != "" {
-		extra = append(extra, c.Security.AuditLog.Path)
+		extra = append(extra, security.AuditLogFiles(c.Security.AuditLog.Path)...)
 	}
 	return extra
 }
