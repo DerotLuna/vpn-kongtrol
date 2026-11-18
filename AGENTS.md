@@ -313,8 +313,9 @@ User-facing validation errors are `*config.ValidationError` (`internal/config/er
 i18n key (`config.err.*`, with a `.fix` "what to do" line) + args; `Error()` stays English.
 Clients render it via `config.LocalizeError`: CLI `localizeConfigErr`/`localizedErrText`
 (`cmd/kongtrol/localize.go`), API `writeLocalizedError` (language from `X-Kongtrol-Lang`, then
-`Accept-Language`; body adds `hint` + `error_key`). Provider checks use it; other semantic
-errors are still plain English and can migrate the same way.
+`Accept-Language`; body adds `hint` + `error_key`). Provider, failover, policy, group and
+scheduler checks use it, and so do the group/scheduler API errors (`api.err.*`); remaining
+plain-English errors migrate the same way.
 
 ### Dashboard REST API + machine-local preferences
 

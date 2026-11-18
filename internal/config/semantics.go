@@ -101,26 +101,35 @@ func validateSemantics(cfg *Config) error {
 
 	policyNames := make(map[string]struct{}, len(cfg.Policies))
 
-	for i, pol := range cfg.Policies {
+	for _, pol := range cfg.Policies {
 		if _, ok := cfg.VPNs[pol.Via]; !ok {
-			return fmt.Errorf("policy %q references unknown profile %q", pol.Name, pol.Via)
+			return newValidationError("config.err.policy_unknown_profile", pol.Name, pol.Via)
 		}
 		if len(pol.Match.IPRanges) == 0 && len(pol.Match.Domains) == 0 && len(pol.Match.Apps) == 0 {
-			return fmt.Errorf("policy %q must define at least one matcher (ip_ranges, domains, or apps)", pol.Name)
+			return newValidationError("config.err.policy_no_match", pol.Name)
 		}
 		if err := ValidateOnTunnelDown(pol); err != nil {
 			return err
 		}
 		if _, exists := policyNames[pol.Name]; exists {
-			return fmt.Errorf("duplicate policy name %q at index %d", pol.Name, i)
+			return newValidationError("config.err.policy_duplicate", pol.Name)
 		}
 		policyNames[pol.Name] = struct{}{}
 	}
 
-	for groupName, group := range cfg.Groups {
+	groupNames := make([]string, 0, len(cfg.Groups))
+	for g := range cfg.Groups {
+		groupNames = append(groupNames, g)
+	}
+	sort.Strings(groupNames) // the same config always reports the same error
+	for _, groupName := range groupNames {
+		group := cfg.Groups[groupName]
+		if len(group.Profiles) == 0 {
+			return newValidationError("config.err.group_empty", groupName)
+		}
 		for _, profile := range group.Profiles {
 			if _, ok := cfg.VPNs[profile]; !ok {
-				return fmt.Errorf("group %q references unknown profile %q", groupName, profile)
+				return newValidationError("config.err.group_unknown_profile", groupName, profile)
 			}
 		}
 	}
@@ -130,30 +139,30 @@ func validateSemantics(cfg *Config) error {
 	}
 	for i, rule := range cfg.Monitor.Scheduler.Rules {
 		if rule.Name == "" {
-			return fmt.Errorf("scheduler rule at index %d must define name", i)
+			return newValidationError("config.err.rule_no_name", i+1)
 		}
 		if len(rule.Profiles) == 0 {
-			return fmt.Errorf("scheduler rule %q must define at least one profile", rule.Name)
+			return newValidationError("config.err.rule_no_profiles", rule.Name)
 		}
 		for _, p := range rule.Profiles {
 			if _, ok := cfg.VPNs[p]; !ok {
-				return fmt.Errorf("scheduler rule %q references unknown profile %q", rule.Name, p)
+				return newValidationError("config.err.rule_unknown_profile", rule.Name, p)
 			}
 		}
 		for _, day := range rule.Weekdays {
 			day = strings.ToLower(strings.TrimSpace(day))
 			if _, ok := allowedWeekdays[day]; !ok {
-				return fmt.Errorf("scheduler rule %q has invalid weekday %q", rule.Name, day)
+				return newValidationError("config.err.rule_weekday", rule.Name, day)
 			}
 		}
 		if rule.Start != "" {
 			if err := parseHHMM(rule.Start); err != nil {
-				return fmt.Errorf("scheduler rule %q has invalid start time %q", rule.Name, rule.Start)
+				return newValidationError("config.err.rule_time", rule.Name, rule.Start)
 			}
 		}
 		if rule.End != "" {
 			if err := parseHHMM(rule.End); err != nil {
-				return fmt.Errorf("scheduler rule %q has invalid end time %q", rule.Name, rule.End)
+				return newValidationError("config.err.rule_time", rule.Name, rule.End)
 			}
 		}
 	}

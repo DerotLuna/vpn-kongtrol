@@ -32,12 +32,12 @@ func (s *Server) handleListScheduleRules(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleCreateScheduleRule(w http.ResponseWriter, r *http.Request) {
 	var patch scheduleRulePatch
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
 	req := patch.applyTo(config.ScheduleRule{})
 	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "rule name is required")
+		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.name_required"})
 		return
 	}
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -47,12 +47,12 @@ func (s *Server) handleCreateScheduleRule(w http.ResponseWriter, r *http.Request
 	}
 	for _, rule := range cfg.Monitor.Scheduler.Rules {
 		if strings.EqualFold(rule.Name, req.Name) {
-			writeError(w, http.StatusConflict, "scheduler rule already exists")
+			writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.rule_exists", Args: []any{req.Name}})
 			return
 		}
 	}
-	if err := s.saveScheduleRule(cfg, cfgPath, -1, req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	if status, err := s.saveScheduleRule(cfg, cfgPath, -1, req); err != nil {
+		writeLocalizedError(w, r, status, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "created", "rule": req.Name})
@@ -63,7 +63,7 @@ func (s *Server) handleUpdateScheduleRule(w http.ResponseWriter, r *http.Request
 	name := r.PathValue("name")
 	var patch scheduleRulePatch
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -79,22 +79,30 @@ func (s *Server) handleUpdateScheduleRule(w http.ResponseWriter, r *http.Request
 		}
 	}
 	if idx == -1 {
-		writeError(w, http.StatusNotFound, "scheduler rule not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.rule_not_found", Args: []any{name}})
 		return
 	}
 	req := patch.applyTo(cfg.Monitor.Scheduler.Rules[idx])
 	if req.Name == "" {
 		req.Name = cfg.Monitor.Scheduler.Rules[idx].Name
 	}
-	if err := s.saveScheduleRule(cfg, cfgPath, idx, req); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	if status, err := s.saveScheduleRule(cfg, cfgPath, idx, req); err != nil {
+		writeLocalizedError(w, r, status, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "rule": name})
 }
 
-func (s *Server) saveScheduleRule(cfg *config.Config, cfgPath string, idx int, rule config.ScheduleRule) error {
-
+// saveScheduleRule validates the rule on a trial copy (config.Validate,
+// localized) and only then persists it. idx < 0 appends. A rename onto
+// another rule's name is a conflict. The status is 400/409 for a rejected
+// rule, 500 when writing fails.
+func (s *Server) saveScheduleRule(cfg *config.Config, cfgPath string, idx int, rule config.ScheduleRule) (int, error) {
+	for i, other := range cfg.Monitor.Scheduler.Rules {
+		if i != idx && strings.EqualFold(other.Name, rule.Name) {
+			return http.StatusConflict, &config.ValidationError{Key: "api.err.rule_exists", Args: []any{rule.Name}}
+		}
+	}
 	trial := *cfg
 	trialRules := make([]config.ScheduleRule, len(cfg.Monitor.Scheduler.Rules))
 	copy(trialRules, cfg.Monitor.Scheduler.Rules)
@@ -105,11 +113,14 @@ func (s *Server) saveScheduleRule(cfg *config.Config, cfgPath string, idx int, r
 	}
 	trial.Monitor.Scheduler.Rules = trialRules
 	if err := config.Validate(&trial); err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	cfg.Monitor.Scheduler.Rules = trialRules
-	return s.saveRuntimeConfig(cfgPath, cfg)
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		return http.StatusInternalServerError, err
+	}
+	return http.StatusOK, nil
 }
 
 // DELETE /api/v1/scheduler/rules/{name}
@@ -128,7 +139,7 @@ func (s *Server) handleDeleteScheduleRule(w http.ResponseWriter, r *http.Request
 		}
 	}
 	if idx == -1 {
-		writeError(w, http.StatusNotFound, "scheduler rule not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.rule_not_found", Args: []any{name}})
 		return
 	}
 	cfg.Monitor.Scheduler.Rules = append(cfg.Monitor.Scheduler.Rules[:idx], cfg.Monitor.Scheduler.Rules[idx+1:]...)

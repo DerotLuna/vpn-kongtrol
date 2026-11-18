@@ -35,16 +35,19 @@ type groupReq struct {
 	Profiles *[]string `json:"profiles"`
 }
 
+// errInvalidJSON is the localized 400 for a body that is not the expected JSON.
+var errInvalidJSON = &config.ValidationError{Key: "api.err.invalid_json"}
+
 // POST /api/v1/groups
 func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	var req groupReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
 	if req.Name == "" {
-		writeError(w, http.StatusBadRequest, "group name is required")
+		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.name_required"})
 		return
 	}
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -53,15 +56,15 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, exists := cfg.Groups[req.Name]; exists {
-		writeError(w, http.StatusConflict, "group already exists")
+		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.group_exists", Args: []any{req.Name}})
 		return
 	}
 	var profiles []string
 	if req.Profiles != nil {
 		profiles = *req.Profiles
 	}
-	if err := s.saveGroup(cfg, cfgPath, req.Name, profiles); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	if status, err := s.saveGroup(cfg, cfgPath, req.Name, profiles); err != nil {
+		writeLocalizedError(w, r, status, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "created", "group": req.Name})
@@ -70,13 +73,9 @@ func (s *Server) handleCreateGroup(w http.ResponseWriter, r *http.Request) {
 // PUT /api/v1/groups/{name}
 func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if name == "" {
-		writeError(w, http.StatusBadRequest, "missing group name")
-		return
-	}
 	var req groupReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -86,40 +85,38 @@ func (s *Server) handleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	existing, exists := cfg.Groups[name]
 	if !exists {
-		writeError(w, http.StatusNotFound, "group not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.group_not_found", Args: []any{name}})
 		return
 	}
 	profiles := existing.Profiles
 	if req.Profiles != nil {
 		profiles = *req.Profiles
 	}
-	if err := s.saveGroup(cfg, cfgPath, name, profiles); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	if status, err := s.saveGroup(cfg, cfgPath, name, profiles); err != nil {
+		writeLocalizedError(w, r, status, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "group": name})
 }
 
-func (s *Server) saveGroup(cfg *config.Config, cfgPath, name string, profiles []string) error {
-	clean := make([]string, 0, len(profiles))
-	for _, p := range profiles {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		if _, ok := cfg.VPNs[p]; !ok {
-			return fmt.Errorf("group references unknown profile %q", p)
-		}
-		clean = append(clean, p)
+// saveGroup validates the group on a trial copy (config.Validate: names,
+// empty group, unknown profiles — all localized) and only then persists it.
+// The status is 400 for a validation error, 500 when writing fails.
+func (s *Server) saveGroup(cfg *config.Config, cfgPath, name string, profiles []string) (int, error) {
+	trial := *cfg
+	trial.Groups = make(map[string]config.GroupConfig, len(cfg.Groups)+1)
+	for k, v := range cfg.Groups {
+		trial.Groups[k] = v
 	}
-	if len(clean) == 0 {
-		return fmt.Errorf("group must include at least one profile")
+	trial.Groups[name] = config.GroupConfig{Profiles: filterNonEmpty(profiles)}
+	if err := config.Validate(&trial); err != nil {
+		return http.StatusBadRequest, err
 	}
-	if cfg.Groups == nil {
-		cfg.Groups = make(map[string]config.GroupConfig)
+	*cfg = trial
+	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+		return http.StatusInternalServerError, err
 	}
-	cfg.Groups[name] = config.GroupConfig{Profiles: clean}
-	return s.saveRuntimeConfig(cfgPath, cfg)
+	return http.StatusOK, nil
 }
 
 // DELETE /api/v1/groups/{name}
@@ -131,7 +128,7 @@ func (s *Server) handleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, ok := cfg.Groups[name]; !ok {
-		writeError(w, http.StatusNotFound, "group not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.group_not_found", Args: []any{name}})
 		return
 	}
 	delete(cfg.Groups, name)
@@ -154,7 +151,7 @@ func (s *Server) handleConnectGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	g, ok := cfg.Groups[name]
 	if !ok {
-		writeError(w, http.StatusNotFound, "group not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.group_not_found", Args: []any{name}})
 		return
 	}
 
@@ -205,7 +202,7 @@ func (s *Server) handleDisconnectGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	g, ok := cfg.Groups[name]
 	if !ok {
-		writeError(w, http.StatusNotFound, "group not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.group_not_found", Args: []any{name}})
 		return
 	}
 
@@ -250,12 +247,12 @@ func (s *Server) handleReloadGroup(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	cfg, err := s.reloadRuntimeConfig()
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 	g, ok := cfg.Groups[name]
 	if !ok {
-		writeError(w, http.StatusNotFound, "group not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: "api.err.group_not_found", Args: []any{name}})
 		return
 	}
 

@@ -133,7 +133,7 @@ monitor:
         end: "18:00"
 `)
 	_, err := Load(path)
-	if err == nil || !strings.Contains(err.Error(), "invalid start time") {
+	if err == nil || !strings.Contains(err.Error(), `invalid time "9:00"`) {
 		t.Fatalf("expected scheduler invalid start time error, got: %v", err)
 	}
 }
