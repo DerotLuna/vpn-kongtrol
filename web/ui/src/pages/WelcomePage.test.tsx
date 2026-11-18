@@ -116,7 +116,8 @@ describe('WelcomePage', () => {
     })
     render(<App />)
 
-    expect(await screen.findByText('Sin respuesta')).toBeInTheDocument()
+    // caution (orange), not the red of an error nor the green of "connected"
+    expect(await screen.findByText('Sin respuesta')).toHaveClass('pill', 'caution')
     expect(screen.getByText(/Sin respuesta del servidor · Kongtrol reintenta solo/)).toBeInTheDocument()
     expect(screen.getByText(/el ayudante está desactualizado/)).toBeInTheDocument()
   })

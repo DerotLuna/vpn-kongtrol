@@ -1,4 +1,4 @@
-// VPN section of the landing — version 2.1.0 · 2026-11-18.
+// VPN section of the landing — version 2.2.0 · 2026-11-18.
 // Two groups (attach vs direct, from internal/vpn/* — the attach group is the
 // adapters built on internal/vpn/appattach) and per-OS support checked against
 // each adapter's platform files. No third-party logos (ADR-0023): every VPN
@@ -12,8 +12,8 @@ interface Props {
 
 // yes: works (direct group). auto: Kongtrol connects through the official
 // CLI. manual: you connect in the app, Kongtrol attaches. partial: works with
-// a limit (see the group note). unverified: nobody has tested it yet.
-type Support = 'yes' | 'auto' | 'manual' | 'partial' | 'unverified'
+// a limit (see the group note).
+type Support = 'yes' | 'auto' | 'manual' | 'partial'
 type OS = 'win' | 'mac' | 'linux'
 
 type Provider = {
@@ -27,13 +27,15 @@ type Provider = {
 // NordVPN: official CLI on Windows + Linux (platform_windows.go / platform_linux.go),
 // attach only on macOS (platform_other.go). Proton: CLI on Linux only
 // (platform_linux.go). Surfshark: no CLI, AutoConnect nil (cli.go).
-// FortiClient: Windows strategies per ADR-0020; Linux/macOS no verificado
-// (docs/forticlient-support.md).
+// FortiClient: Windows strategies per ADR-0020. macOS/Linux are still "no
+// verificado" in docs/forticlient-support.md (the technical truth); the owner
+// decided to list them as plain chips, with no qualifier, and take problems
+// as GitHub issues.
 const ATTACH: Provider[] = [
   { name: 'NordVPN', mark: 'Nv', kind: 'privacy', os: { win: 'auto', mac: 'manual', linux: 'auto' } },
   { name: 'Proton VPN', mark: 'Pv', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'auto' } },
   { name: 'Surfshark', mark: 'Ss', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'manual' } },
-  { name: 'FortiClient', mark: 'Fc', kind: 'enterprise', os: { win: 'auto', mac: 'unverified', linux: 'unverified' } },
+  { name: 'FortiClient', mark: 'Fc', kind: 'enterprise', os: { win: 'auto', mac: 'yes', linux: 'yes' } },
 ]
 
 // Direct group: Kongtrol brings the tunnel up itself (WireGuard, OpenVPN) or
@@ -63,15 +65,14 @@ export default function Providers({ lang }: Props) {
       directTitle: 'Kongtrol conecta directo',
       directDesc: 'Kongtrol levanta el túnel por ti, con tu archivo de configuración o el cliente oficial.',
       osLabel: 'Sistemas',
-      state: { yes: '', auto: 'auto', manual: 'manual', partial: 'parcial', unverified: 'sin probar' },
+      state: { yes: '', auto: 'auto', manual: 'manual', partial: 'parcial' },
       stateLong: {
         yes: 'compatible',
         auto: 'Kongtrol conecta solo',
         manual: 'conectas en la app y Kongtrol se adjunta',
         partial: 'con límites',
-        unverified: 'sin verificar todavía',
       },
-      attachKey: 'auto: Kongtrol conecta solo · manual: conectas en la app y Kongtrol se adjunta · sin probar: nadie lo ha verificado aún.',
+      attachKey: 'auto: Kongtrol conecta solo · manual: conectas en la app y Kongtrol se adjunta.',
       directKey: 'parcial: OpenVPN en macOS necesita, por ahora, ejecutarse como administrador.',
       kinds: { privacy: 'Privacidad', enterprise: 'Empresa', open: 'Estándar abierto', network: 'Red privada' },
       note: 'Los nombres son marcas de sus respectivos dueños. Kongtrol es un proyecto independiente, sin afiliación con ellos.',
@@ -84,15 +85,14 @@ export default function Providers({ lang }: Props) {
       directTitle: 'Kongtrol connects directly',
       directDesc: 'Kongtrol brings the tunnel up for you, from your config file or the official client.',
       osLabel: 'Systems',
-      state: { yes: '', auto: 'auto', manual: 'manual', partial: 'partial', unverified: 'untested' },
+      state: { yes: '', auto: 'auto', manual: 'manual', partial: 'partial' },
       stateLong: {
         yes: 'supported',
         auto: 'Kongtrol connects on its own',
         manual: 'connect in the app and Kongtrol attaches',
         partial: 'with limits',
-        unverified: 'not verified yet',
       },
-      attachKey: 'auto: Kongtrol connects on its own · manual: connect in the app and Kongtrol attaches · untested: nobody has verified it yet.',
+      attachKey: 'auto: Kongtrol connects on its own · manual: connect in the app and Kongtrol attaches.',
       directKey: 'partial: OpenVPN on macOS needs, for now, to run as administrator.',
       kinds: { privacy: 'Privacy', enterprise: 'Enterprise', open: 'Open standard', network: 'Private network' },
       note: 'Names are trademarks of their respective owners. Kongtrol is an independent project, not affiliated with them.',

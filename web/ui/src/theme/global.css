@@ -135,7 +135,8 @@ main { flex: 1; padding: 40px 0 64px; }
 }
 .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .pill.ok { background: var(--live-soft); color: var(--live); }
-.pill.warn { background: var(--signal-soft); color: var(--signal); }
+.pill.warn, .pill.on { background: var(--signal-soft); color: var(--signal); }
+.pill.caution { background: var(--caution-soft); color: var(--caution); }
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
 
 /* ── Tunnel list ───────────────────────────────────────────────────────── */
@@ -163,7 +164,8 @@ main { flex: 1; padding: 40px 0 64px; }
   border: 1px solid var(--border-2); background: var(--surface-2); font-size: 14px;
 }
 .notice.bad { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: var(--danger-soft); }
-.notice.ok { border-color: color-mix(in srgb, var(--live) 45%, transparent); background: var(--live-soft); }
+/* a confirmation ("done"), not a connection: amber, never the --live green */
+.notice.ok { border-color: color-mix(in srgb, var(--signal) 45%, transparent); background: var(--signal-soft); }
 .notice strong { font-weight: 600; }
 .notice-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
 .page-notice { margin-bottom: 24px; }

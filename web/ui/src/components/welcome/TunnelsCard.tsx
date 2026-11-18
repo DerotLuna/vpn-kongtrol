@@ -66,7 +66,7 @@ export function TunnelsCard({ state }: { state: TunnelsState }) {
             {sorted.map((tn) => {
               const noResponse = tn.health?.state === 'no_response'
               const s = noResponse
-                ? { key: 'tunnels.status.noResponse' as MessageKey, tone: 'bad' as PillTone }
+                ? { key: 'tunnels.status.noResponse' as MessageKey, tone: 'caution' as PillTone }
                 : (STATUS[tn.Status] ?? STATUS.disconnected)
               const note = healthNote(tn)
               return (

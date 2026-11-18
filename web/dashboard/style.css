@@ -8,12 +8,17 @@
   --signal-hi: #ffc456;
   --signal-soft: rgba(255, 176, 32, 0.12);
   --signal-line: rgba(255, 176, 32, 0.3);
-  --steel: #6ea8c9;
-  --steel-soft: rgba(110, 168, 201, 0.16);
+  --steel: #7fb4d4;
+  --steel-soft: rgba(127, 180, 212, 0.16);
   --text: #eef1f5;
   --text-muted: #99a3b3;
-  --text-dim: #616b7b;
+  --text-dim: #8a94a4;
   --danger: #ff5a52;
+  /* palette "Sesión en la Torre" (DESIGN.md): green only for "connected";
+     caution = needs attention, not broken (server not answering) */
+  --live: #3ecf72;
+  --live-glow: rgba(62, 207, 114, 0.5);
+  --caution: #ff8a3d;
   --radius: 6px;
   --radius-lg: 12px;
   --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -28,16 +33,19 @@
   --surface-2: #eef1f5;
   --border: #e1e5eb;
   --border-2: #d3d9e1;
-  --signal: #d68910;
-  --signal-hi: #b36a00;
-  --signal-soft: rgba(214, 137, 16, 0.12);
-  --signal-line: rgba(214, 137, 16, 0.35);
-  --steel: #2e6f94;
-  --steel-soft: rgba(46, 111, 148, 0.12);
+  --signal: #9c5700;
+  --signal-hi: #834900;
+  --signal-soft: rgba(156, 87, 0, 0.1);
+  --signal-line: rgba(156, 87, 0, 0.28);
+  --steel: #2f6a8f;
+  --steel-soft: rgba(47, 106, 143, 0.12);
   --text: #14181f;
   --text-muted: #4d5665;
-  --text-dim: #8993a4;
+  --text-dim: #635c4b;
   --danger: #d43a32;
+  --live: #157a3f;
+  --live-glow: rgba(21, 122, 63, 0.35);
+  --caution: #b54708;
 }
 
 @media (prefers-color-scheme: light) {
@@ -47,16 +55,19 @@
     --surface-2: #eef1f5;
     --border: #e1e5eb;
     --border-2: #d3d9e1;
-    --signal: #d68910;
-    --signal-hi: #b36a00;
-    --signal-soft: rgba(214, 137, 16, 0.12);
-    --signal-line: rgba(214, 137, 16, 0.35);
-    --steel: #2e6f94;
-    --steel-soft: rgba(46, 111, 148, 0.12);
+    --signal: #9c5700;
+    --signal-hi: #834900;
+    --signal-soft: rgba(156, 87, 0, 0.1);
+    --signal-line: rgba(156, 87, 0, 0.28);
+    --steel: #2f6a8f;
+    --steel-soft: rgba(47, 106, 143, 0.12);
     --text: #14181f;
     --text-muted: #4d5665;
-    --text-dim: #8993a4;
+    --text-dim: #635c4b;
     --danger: #d43a32;
+    --live: #157a3f;
+    --live-glow: rgba(21, 122, 63, 0.35);
+    --caution: #b54708;
   }
 }
 
@@ -781,8 +792,8 @@ tr:hover td {
 }
 
 .status-dot.connected {
-  background: var(--signal);
-  box-shadow: 0 0 7px rgba(255, 176, 32, 0.58);
+  background: var(--live);
+  box-shadow: 0 0 7px var(--live-glow);
 }
 
 .status-dot.connecting {
@@ -846,7 +857,7 @@ tr:hover td {
 .badge.pending {
   background: var(--steel-soft);
   color: var(--steel);
-  border-color: rgba(110, 168, 201, 0.3);
+  border-color: rgba(127, 180, 212, 0.3);
 }
 
 #security-list,
@@ -1138,7 +1149,7 @@ tr:hover td {
 }
 
 .route-tag.default {
-  border-color: rgba(110, 168, 201, 0.38);
+  border-color: rgba(127, 180, 212, 0.38);
   color: var(--steel);
 }
 
@@ -1313,7 +1324,7 @@ button.action.disconnect:hover {
 
 .match-tag.domain {
   color: var(--steel);
-  border-color: rgba(110, 168, 201, 0.35);
+  border-color: rgba(127, 180, 212, 0.35);
 }
 
 .match-tag.ip {
@@ -1648,6 +1659,11 @@ button.action.disconnect:hover {
   color: var(--signal);
 }
 
+/* The server stopped answering (health no_response): needs attention, not an error. */
+.tunnel-attach.caution {
+  color: var(--caution);
+}
+
 /* "Qué sale por este túnel": per-tunnel routes drawer (see renderTunnelRoutesDrawer). */
 .tunnel-routes-toggle {
   margin-top: 4px;
@@ -1718,7 +1734,7 @@ button.action.disconnect:hover {
 }
 
 .route-tag.origin-server {
-  border-color: rgba(110, 168, 201, 0.38);
+  border-color: rgba(127, 180, 212, 0.38);
   color: var(--steel);
 }
 

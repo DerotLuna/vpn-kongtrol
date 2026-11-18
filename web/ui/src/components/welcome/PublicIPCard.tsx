@@ -19,7 +19,7 @@ export function PublicIPCard({ state }: { state: PublicIPState }) {
       <div className="card-head">
         <h2 id="publicip-title">{t('publicip.title')}</h2>
         {status && (
-          <StatusPill tone={on ? 'ok' : 'idle'}>{on ? t('publicip.pill.on') : t('publicip.pill.off')}</StatusPill>
+          <StatusPill tone={on ? 'on' : 'idle'}>{on ? t('publicip.pill.on') : t('publicip.pill.off')}</StatusPill>
         )}
       </div>
       {error ? (

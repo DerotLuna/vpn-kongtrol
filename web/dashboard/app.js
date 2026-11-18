@@ -542,10 +542,12 @@ function renderTunnels(tunnels, opts = {}) {
         ? `<div class="tunnel-attach${attachWaiting(m.attach) ? ' waiting' : ''}">${esc(attachMsg)}</div>`
         : '';
       // Does the server answer (WireGuard handshake, ADR-0030)? See
-      // healthMessage; problems are highlighted like a waiting attach.
+      // healthMessage; "no answer" uses the caution colour, other problems
+      // are highlighted like a waiting attach.
       const healthMsg = healthMessage(m.health);
+      const healthCls = m.health?.state === 'no_response' ? ' caution' : healthProblem(m.health) ? ' waiting' : '';
       const healthLine = healthMsg
-        ? `<div class="tunnel-attach${healthProblem(m.health) ? ' waiting' : ''}">${esc(healthMsg)}</div>`
+        ? `<div class="tunnel-attach${healthCls}">${esc(healthMsg)}</div>`
         : '';
       const tr = isConnected ? tunnelRoutesFor(name) : null;
       const routesToggle = tr

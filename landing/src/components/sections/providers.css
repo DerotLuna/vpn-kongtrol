@@ -1,4 +1,4 @@
-/* Providers section (#vpns) — version 2.1.0 · 2026-11-18.
+/* Providers section (#vpns) — version 2.2.0 · 2026-11-18.
    Only .providers-*, .provider*, .os* rules live here; tokens come from index.css. */
 
 .providers-group { margin-top: 36px; }
@@ -16,9 +16,10 @@
 .provider-grid.is-attach { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .provider-grid.is-direct { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
-/* Group tint: attach = --live (the "connected" green), direct = --steel. Used only
-   for borders, the corner tick and a faint wash — letters stay --text for contrast. */
-.provider-grid.is-attach { --tint: var(--live); }
+/* Group tint: attach = --signal, direct = --steel (green --live is only for
+   "connected", never a group). Used only for borders, the corner tick and a
+   faint wash — letters stay --text for contrast. */
+.provider-grid.is-attach { --tint: var(--signal); }
 .provider-grid.is-direct { --tint: var(--steel); }
 
 .provider {
@@ -74,12 +75,10 @@
   border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; background: var(--bg);
 }
 .provider-os .os-state { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.04em; }
-.provider-os .is-auto .os-state { color: var(--live); }
-.provider-os .is-auto { border-color: color-mix(in srgb, var(--live) 40%, var(--border)); }
+.provider-os .is-auto .os-state { color: var(--signal); }
+.provider-os .is-auto { border-color: color-mix(in srgb, var(--signal) 40%, var(--border)); }
 .provider-os .is-manual .os-state { color: var(--text-muted); }
 .provider-os .is-partial .os-state { color: var(--signal); }
-.provider-os .is-unverified { border-style: dashed; }
-.provider-os .is-unverified .os-state { color: var(--text-dim); }
 
 .providers-key { margin-top: 10px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
 .providers-note { margin-top: 28px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }

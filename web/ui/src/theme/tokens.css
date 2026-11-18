@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   KONGTROL UI — design tokens · v0.1.0 · 2026-11-17
+   KONGTROL UI — design tokens · v0.2.0 · 2026-11-18
    Copied from the landing's "Signal Contour" system (landing/src/index.css,
-   v2.2.0 · 2026-11-17) so both read as one brand. Keep values in sync until
+   v2.6.0 · 2026-11-18, palette "Sesión en la Torre" in DESIGN.md) so both
+   read as one brand. Keep values in sync until
    phase 2 moves them to one shared file both builds import.
    Dark is the base; [data-theme='light'] overrides. The page sets
    data-theme before first paint (main.tsx) from: explicit choice, else
@@ -22,16 +23,20 @@
   --signal-glow: rgba(255,176,32,0.28);
   --signal-line: rgba(255,176,32,0.30);
 
-  --steel:       #6ea8c9;
-  --steel-soft:  rgba(110,168,201,0.14);
+  --steel:       #7fb4d4;
+  --steel-soft:  rgba(127,180,212,0.14);
 
   --text:        #eef1f5;
   --text-muted:  #99a3b3;
-  --text-dim:    #7a8494;
+  --text-dim:    #8a94a4;
   --danger:      #ff5a52;
   --danger-soft: rgba(255,90,82,0.12);
+  /* live = ONLY "connected / up" (DESIGN.md "Sesión en la Torre") */
   --live:        #3ecf72;
   --live-soft:   rgba(62,207,114,0.16);
+  /* caution = needs attention, not broken (server not answering) */
+  --caution:      #ff8a3d;
+  --caution-soft: rgba(255,138,61,0.14);
   --on-signal:   #0a0c10;
 
   --font-display: 'Space Grotesk', system-ui, sans-serif;
@@ -59,22 +64,24 @@
   --border:      #ddd5c4;
   --border-2:    #c9bfa8;
 
-  --signal:      #8f5a06;
-  --signal-hi:   #7a4c04;
-  --signal-soft: rgba(181,115,10,0.12);
-  --signal-glow: rgba(181,115,10,0.20);
-  --signal-line: rgba(181,115,10,0.28);
+  --signal:      #9c5700;
+  --signal-hi:   #834900;
+  --signal-soft: rgba(156,87,0,0.10);
+  --signal-glow: rgba(156,87,0,0.20);
+  --signal-line: rgba(156,87,0,0.28);
 
-  --steel:       #3f6f8c;
-  --steel-soft:  rgba(63,111,140,0.12);
+  --steel:       #2f6a8f;
+  --steel-soft:  rgba(47,106,143,0.12);
 
   --text:        #1b1813;
   --text-muted:  #4c4638;
-  --text-dim:    #6a6352;
+  --text-dim:    #635c4b;
   --danger:      #b3261e;
   --danger-soft: rgba(179,38,30,0.10);
-  --live:        #187a42;
-  --live-soft:   rgba(24,122,66,0.14);
+  --live:        #157a3f;
+  --live-soft:   rgba(21,122,63,0.14);
+  --caution:      #b54708;
+  --caution-soft: rgba(181,71,8,0.12);
   --on-signal:   #fbf9f4;
   --logo-filter: none;
 
