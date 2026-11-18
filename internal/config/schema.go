@@ -9,6 +9,14 @@ type Config struct {
 	Policies []PolicyRule           `yaml:"policies,omitempty"`
 	Security SecurityConfig         `yaml:"security,omitempty"`
 	Monitor  MonitorConfig          `yaml:"monitor,omitempty"`
+	Updates  UpdatesConfig          `yaml:"updates,omitempty"`
+}
+
+// UpdatesConfig is the opt-in update notice (ADR-0032). Off by default: with
+// check_enabled false Kongtrol never contacts api.github.com. It only tells
+// the user a newer version exists; it never downloads or installs.
+type UpdatesConfig struct {
+	CheckEnabled bool `yaml:"check_enabled,omitempty"`
 }
 
 // GroupConfig defines a named set of VPN profiles that can be
