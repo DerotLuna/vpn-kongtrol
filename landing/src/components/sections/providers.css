@@ -1,0 +1,83 @@
+/* Providers section (#vpns) — version 2.0.0 · 2026-11-17.
+   Only .providers-*, .provider*, .os* rules live here; tokens come from index.css.
+   Logos/monograms are a fixed 40×40 box so nothing shifts while fonts or SVGs load. */
+
+.providers-group { margin-top: 36px; }
+.providers-group + .providers-group { margin-top: 44px; }
+.providers-group-title {
+  font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; line-height: 1.3;
+  color: var(--text);
+}
+.providers-group-desc { margin-top: 6px; font-size: 0.92rem; color: var(--text-muted); max-width: 70ch; }
+
+.provider-grid {
+  list-style: none; margin: 16px 0 0; padding: 0;
+  display: grid; gap: 10px;
+}
+.provider-grid.is-attach { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.provider-grid.is-direct { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+.provider {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; row-gap: 12px;
+  align-items: center; min-width: 0;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); transition: border-color 0.2s, background-color 0.2s;
+}
+.provider:hover { border-color: var(--border-2); background: var(--surface-2); }
+
+.provider-mark {
+  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
+  border: 1px solid var(--border-2); background: var(--bg);
+}
+.provider-logo { display: block; width: 22px; height: 22px; color: var(--text); }
+
+.provider-text { display: grid; gap: 2px; min-width: 0; }
+.provider-name {
+  font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; line-height: 1.2;
+  color: var(--text); overflow-wrap: anywhere;
+}
+.provider-kind {
+  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* OS chips: the state word is visible text, never colour alone (WCAG 1.4.1). */
+.provider-os {
+  grid-column: 1 / -1; list-style: none; margin: 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.provider-os .os {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  font-size: 0.74rem; line-height: 1.2; color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; background: var(--bg);
+}
+.provider-os .os-state { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.04em; }
+.provider-os .is-auto .os-state { color: var(--live); }
+.provider-os .is-auto { border-color: color-mix(in srgb, var(--live) 40%, var(--border)); }
+.provider-os .is-manual .os-state { color: var(--text-muted); }
+.provider-os .is-partial .os-state { color: var(--signal); }
+.provider-os .is-unverified { border-style: dashed; }
+.provider-os .is-unverified .os-state { color: var(--text-dim); }
+
+.providers-key { margin-top: 10px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
+.providers-note { margin-top: 28px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
+.providers-note a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
+.providers-note a:hover { color: var(--text); }
+.providers-note a:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 2px; }
+
+@media (max-width: 1080px) {
+  .provider-grid.is-attach { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .provider-grid.is-attach,
+  .provider-grid.is-direct { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .provider { padding: 12px 10px; column-gap: 10px; }
+}
+@media (max-width: 420px) {
+  .provider-grid.is-attach,
+  .provider-grid.is-direct { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .provider { transition: none; }
+}

@@ -1553,34 +1553,7 @@ a { text-underline-offset: 3px; }
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 9px;
 }
 
-/* ── Providers ── */
-.providers-legend {
-  display: flex; align-items: center; gap: 9px; margin-top: 28px;
-  font-size: 0.86rem; color: var(--text-muted);
-}
-.attach-pip { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--live); flex-shrink: 0; }
-.provider-grid {
-  list-style: none; margin-top: 16px;
-  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px;
-}
-.provider {
-  position: relative; display: flex; align-items: center; gap: 12px; min-width: 0;
-  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
-  background: var(--surface); transition: border-color 0.2s, background 0.2s;
-}
-.provider:hover { border-color: var(--signal-line); background: var(--surface-2); }
-.provider.is-attach { border-color: color-mix(in srgb, var(--live) 34%, var(--border)); }
-.provider-mark {
-  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
-  font-family: var(--font-mono); font-size: 0.78rem; font-weight: 600; color: var(--text-muted);
-  border: 1px solid var(--border-2); background: var(--bg);
-  box-shadow: inset 0 0 0 4px var(--bg), inset 0 0 0 5px var(--border);
-}
-.provider-text { display: grid; gap: 2px; min-width: 0; }
-.provider-name { font-family: var(--font-display); font-weight: 600; font-size: 0.95rem; color: var(--text); line-height: 1.2; overflow-wrap: anywhere; }
-.provider-kind { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
-.provider .attach-pip { position: absolute; top: 9px; right: 9px; }
-.providers-note { margin-top: 18px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
+/* ── Providers: styles live in components/sections/providers.css ── */
 
 /* ── Security: plain list, no spec chips ── */
 .defense h3 { margin-bottom: 4px; }
@@ -1601,9 +1574,6 @@ a { text-underline-offset: 3px; }
 }
 
 /* ── v2.2 responsive ── */
-@media (max-width: 1080px) {
-  .provider-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
 @media (max-width: 960px) {
   /* 8 tmux windows + status don't fit between 721–960px; keep the clock only */
   .tmux-right > :not(:last-child) { display: none; }
@@ -1625,13 +1595,7 @@ a { text-underline-offset: 3px; }
   .hood-metric { justify-self: start; margin-top: 4px; }
 }
 @media (max-width: 640px) {
-  .provider-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .provider { padding: 12px 10px; gap: 10px; }
-  .provider-mark { width: 30px; height: 30px; font-size: 0.7rem; }
   .path { padding: 24px 18px; }
-}
-@media (max-width: 340px) {
-  .provider-grid { grid-template-columns: 1fr; }
 }
 
 /* ── language suggestion bar (client-only, dismissible) ── */
