@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.10 · 2026-11-18
+Version 1.11 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -254,7 +254,7 @@ ProfileService.Disconnect(name)
 | `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run assets/brand/generate.go`); `assets/embed.go`, `TrayIcon(size)` in `assets/icon.go` |
 | `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed by Cloudflare Workers Builds as static assets (`landing/wrangler.jsonc`, ADR-0022) |
 | `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
-| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only) |
+| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only). Left click on Windows opens the flyout (`flyout*.go`, `web/ui` `/app/tray`, ADR-0036); right click and other OSes keep the native menu |
 
 ### OS-specific files
 
@@ -386,6 +386,21 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 - Interface names: FortiClient, NordVPN (NordLynx, TAP-NordVPN) and Proton (TAP-ProtonVPN, Linux proton0/pvpn*) are documented or known; Surfshark ("Surfshark DCO adapter" per its docs, Linux `surfshark*`) and the macOS Network Extension services are best effort, so `interface:` overrides them.
 
 <!-- feature:i18n -->
+<!-- feature:tray_flyout -->
+### Tray flyout (ADR-0036)
+
+- Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
+  window next to the icon showing `web/ui` `/app/tray`; right click, macOS, Linux and a missing
+  runtime keep the native menu. Portable rules in `cmd/kongtrol-tray/flyout.go` (tested), the
+  window in `flyout_windows.go` (`github.com/jchv/go-webview2/pkg/edge`, pure Go: the tray
+  still builds with `CGO_ENABLED=0`).
+- Only `http://<loopback>:<port>/app/tray` loads (`flyoutURL`); requests outside the daemon's
+  origin get 403; an injected script pins the page and exposes `window.kongtrolTray.post` with
+  a per-launch nonce. Page → tray messages are the closed list in `flyoutMessages`
+  (`web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
+- The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
+  Escape) appear only when the bridge exists, so `/app/tray` also works in a browser tab.
+
 ## Internationalization (i18n)
 
 All user-visible strings — prompts, error messages, status output, banners — must be internationalized using `internal/i18n`. **Never hardcode strings directly in user-facing code.**
