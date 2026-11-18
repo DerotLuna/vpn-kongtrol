@@ -9,6 +9,7 @@ export const keys = {
   version: ['version'] as const,
   security: ['security'] as const,
   updates: ['updates'] as const,
+  groups: ['groups'] as const,
 } as const
 
 /** Mutation keys, so any component can show "in progress" for a shared action. */

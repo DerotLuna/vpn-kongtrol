@@ -85,6 +85,13 @@ export function useTunnelAction() {
   })
 }
 
+// ── Groups ────────────────────────────────────────────────────────────────
+
+/** VPN groups (name + profiles). Phase 2 (/profiles/groups) adds the CRUD next to it. */
+export function useGroupsQuery() {
+  return useQuery({ queryKey: keys.groups, queryFn: api.groups })
+}
+
 // ── Security toggles ──────────────────────────────────────────────────────
 
 export function useSecurityQuery() {

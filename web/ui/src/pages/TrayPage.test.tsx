@@ -58,7 +58,7 @@ function baseRoutes(tunnels: TunnelMetrics[]): Routes {
     'GET /api/v1/tunnels': () => json(tunnels),
     'GET /api/v1/groups': () => json([{ name: 'trabajo', profiles: ['oficina', 'cliente'] }]),
     'GET /api/v1/security/status': () => json(security),
-    'GET /api/v1/updates': () => json({ check_enabled: false, host: 'github.com', current: 'v0.7.0', newer: false }),
+    'GET /api/v1/version': () => json({ version: 'v0.7.0' }),
   }
 }
 

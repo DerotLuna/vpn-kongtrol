@@ -1,4 +1,4 @@
-// Kongtrol UI — tray flyout page (/app/tray) · v1.0.0 · 2026-11-18 (ADR-0036)
+// Kongtrol UI — tray flyout page (/app/tray) · v1.1.0 · 2026-11-18 (ADR-0036, ADR-0038)
 //
 // The compact window that opens next to the tray icon on a left click
 // (cmd/kongtrol-tray/flyout_windows.go). Same data as the dashboard, from the
@@ -11,8 +11,11 @@ import logoUrl from '@brand/logo-kong.svg'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useTunnels } from '../api/hooks'
-import type { Group, SecurityStatus, TunnelMetrics } from '../api/types'
+import type { Group, TunnelMetrics } from '../api/types'
+import { useQueryClient } from '@tanstack/react-query'
 import { usePreferences } from '../app/preferences-context'
+import { keys } from '../data/keys'
+import { useAppVersion, useGroupsQuery, useSecurityQuery } from '../data/resources'
 import { LEGACY } from '../links'
 import { SHOWN_EVENT, trayHost } from '../tray/bridge'
 import {
@@ -27,32 +30,30 @@ import {
 } from '../tray/model'
 import '../theme/tray.css'
 
-const POLL_MS = 5_000
 /** A request the feed never confirmed stops showing as pending after this. */
 const PENDING_MS = 60_000
 
+/**
+ * Groups, protection state and version from the shared cache (src/data,
+ * ADR-0038): the same requests and polling as the panel. Showing the
+ * flyout again refreshes them.
+ */
 function useTrayData(shownTick: number) {
-  const [groups, setGroups] = useState<Group[]>([])
-  const [security, setSecurity] = useState<SecurityStatus | null>(null)
-  const [version, setVersion] = useState('')
+  const client = useQueryClient()
+  const groups = useGroupsQuery().data ?? NO_GROUPS
+  const security = useSecurityQuery().data ?? null
+  const version = useAppVersion()
 
   useEffect(() => {
-    api.groups().then(setGroups, () => setGroups([]))
-    api.updates().then(
-      (u) => setVersion(u.current),
-      () => {},
-    )
-  }, [shownTick])
-
-  useEffect(() => {
-    const load = () => api.security().then(setSecurity, () => {})
-    load()
-    const poll = setInterval(load, POLL_MS) // local state only, no lookup
-    return () => clearInterval(poll)
-  }, [shownTick])
+    if (shownTick === 0) return
+    void client.invalidateQueries({ queryKey: keys.groups })
+    void client.invalidateQueries({ queryKey: keys.security })
+  }, [client, shownTick])
 
   return { groups, security, version }
 }
+
+const NO_GROUPS: Group[] = []
 
 function Dot({ tone }: { tone: Tone }) {
   return <span className={`tray-dot ${tone}`} aria-hidden="true" />
