@@ -17,6 +17,37 @@ type SecurityState struct {
 	DNSGuardEnabled   bool                       `json:"dns_guard_enabled"`
 	// DNSGuardState is disabled | idle | active.
 	DNSGuardState string `json:"dns_guard_state"`
+	// DNSGuardServers are the DNS servers the guard applies now.
+	DNSGuardServers []string `json:"dns_guard_servers"`
+	// KillSwitchError is the last apply failure (clients render ErrorKey in
+	// their own language); nil when the last apply worked.
+	KillSwitchError *KillSwitchError `json:"kill_switch_error,omitempty"`
+}
+
+// KillSwitchError is GET /api/v1/security/status kill_switch_error.
+type KillSwitchError struct {
+	Message  string `json:"message"`
+	Hint     string `json:"hint,omitempty"`
+	ErrorKey string `json:"error_key"`
+	Detail   string `json:"detail,omitempty"`
+}
+
+// Blocked reads the prefixes the kill switch blocks now
+// (GET /api/v1/security/blocked).
+func (c *Client) Blocked() ([]string, error) {
+	resp, err := c.do(http.MethodGet, "/api/v1/security/blocked", 3*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, APIError(resp)
+	}
+	var body struct {
+		Prefixes []string `json:"prefixes"`
+	}
+	err = json.NewDecoder(resp.Body).Decode(&body)
+	return body.Prefixes, err
 }
 
 // Security reads the kill switch and DNS guard state.

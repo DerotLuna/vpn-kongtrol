@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 )
 
@@ -104,6 +105,14 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 		// KillSwitchStatus is the split-tunnel kill switch detail (which
 		// tunnels it protects / blocks); render with its state key.
 		KillSwitchStatus *security.KillSwitchStatus `json:"kill_switch_status,omitempty"`
+		// KillSwitchError is the last failure applying the block, in the
+		// request's language (nil when the last apply worked).
+		KillSwitchError *killSwitchErrorDTO `json:"kill_switch_error,omitempty"`
+		// DNSGuardServers are the DNS servers the guard applies now (empty
+		// when idle); DNSGuardProfiles says which tunnel each comes from.
+		DNSGuardServers   []string            `json:"dns_guard_servers"`
+		DNSGuardInterface string              `json:"dns_guard_interface,omitempty"`
+		DNSGuardProfiles  map[string][]string `json:"dns_guard_profiles"`
 	}
 
 	sec := s.securityState()
@@ -137,8 +146,71 @@ func (s *Server) handleSecurityStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status.LeakCheck = leakCheckDTO(s.leakTest.LastResult())
+	if ksStatus != nil {
+		status.KillSwitchError = localizeKillSwitchError(*ksStatus, requestLang(r))
+	}
+	dns := s.dnsMgr.Snapshot()
+	status.DNSGuardServers, status.DNSGuardInterface, status.DNSGuardProfiles = dns.Servers, dns.Interface, dns.Profiles
 
 	writeJSON(w, http.StatusOK, status)
+}
+
+// killSwitchErrorDTO is a kill switch apply failure for people: message
+// and "what to do" in the request's language, the i18n key, and the raw
+// English error as detail (for a bug report).
+type killSwitchErrorDTO struct {
+	Message  string `json:"message"`
+	Hint     string `json:"hint,omitempty"`
+	ErrorKey string `json:"error_key"`
+	Detail   string `json:"detail,omitempty"`
+}
+
+// localizeKillSwitchError renders st.Error: a known privops guidance key
+// (helper missing, outdated, denied…) is already one line with what to do;
+// anything else gets the generic killswitch.err.apply + its .fix line.
+func localizeKillSwitchError(st security.KillSwitchStatus, lang i18n.Lang) *killSwitchErrorDTO {
+	if st.Error == "" {
+		return nil
+	}
+	if st.ErrorKey != "" {
+		return &killSwitchErrorDTO{Message: i18n.T(lang, st.ErrorKey), ErrorKey: st.ErrorKey, Detail: st.Error}
+	}
+	return &killSwitchErrorDTO{
+		Message:  i18n.T(lang, "killswitch.err.apply"),
+		Hint:     i18n.T(lang, "killswitch.err.apply.fix"),
+		ErrorKey: "killswitch.err.apply",
+		Detail:   st.Error,
+	}
+}
+
+// SetBlockedList sets the source of GET /api/v1/security/blocked (the kill
+// switch service's prefixes in place now).
+func (s *Server) SetBlockedList(fn func() []string) { s.blockedList = fn }
+
+// GET /api/v1/security/blocked — the destinations (CIDR prefixes) the kill
+// switch / on_tunnel_down: block rules block right now, with the tunnels
+// and policies that caused them. Read-only.
+func (s *Server) handleSecurityBlocked(w http.ResponseWriter, r *http.Request) {
+	out := struct {
+		State          string   `json:"state"`
+		Prefixes       []string `json:"prefixes"`
+		Count          int      `json:"count"`
+		Blocking       []string `json:"blocking"`
+		FullTunnel     []string `json:"full_tunnel"`
+		PolicyBlocking []string `json:"policy_blocking"`
+	}{State: security.KillSwitchOff, Prefixes: []string{}, Blocking: []string{}, FullTunnel: []string{}, PolicyBlocking: []string{}}
+	if s.blockedList != nil {
+		out.Prefixes = s.blockedList()
+	}
+	if s.ksStatus != nil {
+		st := s.ksStatus()
+		out.State = st.State
+		out.Blocking = append(out.Blocking, st.Blocking...)
+		out.FullTunnel = append(out.FullTunnel, st.FullTunnel...)
+		out.PolicyBlocking = append(out.PolicyBlocking, st.PolicyBlocking...)
+	}
+	out.Count = len(out.Prefixes)
+	writeJSON(w, http.StatusOK, out)
 }
 
 // securityRuntime is the daemon's live kill switch / DNS guard state, shared

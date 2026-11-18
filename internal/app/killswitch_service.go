@@ -48,8 +48,10 @@ type KillSwitchService struct {
 	now      func() time.Time
 	lookupIP func(host string) []net.IP
 
-	state       map[string]*ksProfile
-	status      security.KillSwitchStatus
+	state  map[string]*ksProfile
+	status security.KillSwitchStatus
+	// blocked is the prefix set last sent to the blocker (Blocked()).
+	blocked     []netip.Prefix
 	legacyClean bool
 }
 
@@ -319,8 +321,26 @@ func (s *KillSwitchService) Apply() error {
 	}
 	s.mu.Lock()
 	s.status = status
+	if err == nil {
+		s.blocked = block // what is in place now; a failed Set keeps the last one
+	}
 	s.mu.Unlock()
 	return err
+}
+
+// Blocked returns the prefixes blocked now, sorted (empty when nothing is).
+func (s *KillSwitchService) Blocked() []string {
+	out := []string{}
+	if s == nil {
+		return out
+	}
+	s.mu.Lock()
+	for _, p := range s.blocked {
+		out = append(out, p.String())
+	}
+	s.mu.Unlock()
+	sort.Strings(out)
+	return out
 }
 
 // capture records a connected tunnel's interface, endpoints, routes and

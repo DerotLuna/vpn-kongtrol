@@ -48,6 +48,8 @@ type securityToggle struct {
 	fromFile func() bool // configured value when no daemon runs
 	// state renders the daemon's runtime state ("" when none).
 	state func(daemonctl.SecurityState) (enabled bool, detail string)
+	// more adds what the feature is doing now (text lines + JSON fields).
+	more func(*daemonctl.Client, daemonctl.SecurityState) ([]string, map[string]any)
 }
 
 var killSwitchToggle = securityToggle{
@@ -60,6 +62,27 @@ var killSwitchToggle = securityToggle{
 		}
 		key, args := st.KillSwitchStatus.StateKey()
 		return st.KillSwitchEnabled, cf(key, args...)
+	},
+	more: func(c *daemonctl.Client, st daemonctl.SecurityState) ([]string, map[string]any) {
+		var lines []string
+		blocked, _ := c.Blocked()
+		if len(blocked) > 0 {
+			shown := blocked
+			if len(shown) > 10 {
+				shown = shown[:10]
+			}
+			lines = append(lines, cf("cli.killswitch.blocked", len(blocked), strings.Join(shown, ", ")))
+		}
+		if e := st.KillSwitchError; e != nil {
+			lines = append(lines, ct(e.ErrorKey))
+			if fix := e.ErrorKey + ".fix"; ct(fix) != fix {
+				lines = append(lines, ct(fix))
+			}
+		}
+		if blocked == nil {
+			blocked = []string{}
+		}
+		return lines, map[string]any{"blocked": blocked, "error": st.KillSwitchError}
 	},
 }
 
@@ -75,6 +98,17 @@ var dnsGuardToggle = securityToggle{
 			return st.DNSGuardEnabled, ct("cli.dnsguard.state.idle")
 		}
 		return st.DNSGuardEnabled, ""
+	},
+	more: func(_ *daemonctl.Client, st daemonctl.SecurityState) ([]string, map[string]any) {
+		servers := st.DNSGuardServers
+		if servers == nil {
+			servers = []string{}
+		}
+		var lines []string
+		if len(servers) > 0 {
+			lines = append(lines, cf("cli.dnsguard.servers", strings.Join(servers, ", ")))
+		}
+		return lines, map[string]any{"servers": servers}
 	},
 }
 
@@ -118,16 +152,28 @@ func (tg securityToggle) command(use string) *cobra.Command {
 
 func (tg securityToggle) printStatus(base string, running bool) error {
 	enabled, detail := tg.fromFile(), ""
+	var lines []string
+	out := map[string]any{}
 	if running {
-		st, err := daemonClient(base).Security()
+		c := daemonClient(base)
+		st, err := c.Security()
 		if err != nil {
 			return err
 		}
 		enabled, detail = tg.state(st)
+		if tg.more != nil {
+			lines, out = tg.more(c, st)
+		}
 	}
 	if outputJSON {
-		return emitJSON(map[string]any{"enabled": enabled, "state": detail})
+		out["enabled"], out["state"] = enabled, detail
+		return emitJSON(out)
 	}
+	defer func() {
+		for _, l := range lines {
+			fmt.Println(tuiInfo(paint(cDim, l)))
+		}
+	}()
 	word := ct("cli.config.toggle.off")
 	if enabled {
 		word = ct("cli.config.toggle.on")

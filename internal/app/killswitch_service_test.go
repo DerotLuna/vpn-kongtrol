@@ -94,11 +94,17 @@ func TestKillSwitch_SplitTunnelDropBlocksOnlyItsDestinations(t *testing.T) {
 	if st := s.Status(); st.State != "active" || st.Blocking[0] != "brainbox" {
 		t.Fatalf("status = %+v", st)
 	}
+	if got := s.Blocked(); !slices.Equal(got, []string{"10.20.0.0/16", "160.79.104.10/32"}) {
+		t.Fatalf("Blocked() = %v", got)
+	}
 	// The user turns it off: no block, traffic goes to the normal internet.
 	s.NoteIntent("brainbox", true)
 	_ = s.Apply()
 	if len(b.set) != 0 || s.Status().State != "armed" {
 		t.Fatalf("blocked after down: %v %+v", b.set, s.Status())
+	}
+	if got := s.Blocked(); len(got) != 0 {
+		t.Fatalf("Blocked() after down = %v", got)
 	}
 }
 

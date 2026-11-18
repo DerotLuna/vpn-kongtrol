@@ -36,6 +36,7 @@ func settingsToDTO(cfg *config.Config) settingsDTO {
 		LeakDetectionEnabled:  cfg.PublicIPCheckEnabled(),
 		PublicIPCheckEnabled:  cfg.PublicIPCheckEnabled(),
 		PublicIPEndpoints:     cfg.PublicIPEndpoints(),
+		ExpectedIPs:           expectedIPsDTO(cfg),
 		AuditLogPath:          cfg.Security.AuditLog.Path,
 		AuditLogMaxSizeMB:     cfg.Security.AuditLog.MaxSizeMB,
 		AuditLogRetentionDays: cfg.Security.AuditLog.RetentionDays,
@@ -163,6 +164,8 @@ type settingsPatch struct {
 	AuditLogMaxSizeMB     *int      `json:"audit_log_max_size_mb"`
 	AuditLogRetentionDays *int      `json:"audit_log_retention_days"`
 	AuditLogSign          *bool     `json:"audit_log_sign"`
+	// ExpectedIPs replaces the whole map; an empty value drops that profile.
+	ExpectedIPs *map[string]string `json:"expected_ips"`
 }
 
 func setBool(dst *bool, src *bool) {
@@ -209,4 +212,26 @@ func (p settingsPatch) applyTo(cfg *config.Config) {
 		cfg.Security.AuditLog.RetentionDays = *p.AuditLogRetentionDays
 	}
 	setBool(&cfg.Security.AuditLog.Sign, p.AuditLogSign)
+	if p.ExpectedIPs != nil {
+		// A fresh map: the trial copy must not share the stored one.
+		m := map[string]string{}
+		for name, ip := range *p.ExpectedIPs {
+			if ip = strings.TrimSpace(ip); ip != "" {
+				m[strings.TrimSpace(name)] = ip
+			}
+		}
+		if len(m) == 0 {
+			m = nil
+		}
+		cfg.Security.IntegrityCheck.ExpectedIPs = m
+	}
+}
+
+// expectedIPsDTO is security.integrity_check.expected_ips, never null.
+func expectedIPsDTO(cfg *config.Config) map[string]string {
+	out := map[string]string{}
+	for k, v := range cfg.Security.IntegrityCheck.ExpectedIPs {
+		out[k] = v
+	}
+	return out
 }

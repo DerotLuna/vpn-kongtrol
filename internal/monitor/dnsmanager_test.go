@@ -2,6 +2,7 @@ package monitor_test
 
 import (
 	"net"
+	"strings"
 	"sync"
 	"testing"
 
@@ -187,5 +188,28 @@ func TestDNSManager_SkipEmptyDNS(t *testing.T) {
 
 	if g.IsActive() {
 		t.Fatal("guard should not activate for a profile with no DNS servers")
+	}
+}
+
+// Snapshot: merged servers deduped in profile-name order, per profile
+// lists, and empty once the last tunnel drops.
+func TestDNSManager_Snapshot(t *testing.T) {
+	mgr, _ := newMgr(t)
+	if s := mgr.Snapshot(); len(s.Servers) != 0 || len(s.Profiles) != 0 {
+		t.Fatalf("idle snapshot = %+v", s)
+	}
+	mgr.OnConnect("zeta", "wg1", []net.IP{net.ParseIP("10.0.0.53"), net.ParseIP("1.1.1.1")})
+	mgr.OnConnect("alpha", "wg0", []net.IP{net.ParseIP("1.1.1.1")})
+	s := mgr.Snapshot()
+	if got := strings.Join(s.Servers, ","); got != "1.1.1.1,10.0.0.53" {
+		t.Fatalf("servers = %s", got)
+	}
+	if len(s.Profiles) != 2 || s.Interface != "wg0" {
+		t.Fatalf("snapshot = %+v", s)
+	}
+	mgr.OnDisconnect("alpha")
+	mgr.OnDisconnect("zeta")
+	if s := mgr.Snapshot(); len(s.Servers) != 0 || s.Interface != "" {
+		t.Fatalf("after last drop = %+v", s)
 	}
 }

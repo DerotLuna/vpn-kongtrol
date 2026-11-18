@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/netip"
 	"os"
 	"path/filepath"
 	"sort"
@@ -64,6 +65,9 @@ func validateSemantics(cfg *Config) error {
 	}
 	if n := cfg.Security.AuditLog.RetentionDays; n < 0 || n > 365 {
 		return newValidationError("config.err.audit_retention", n)
+	}
+	if err := validateExpectedIPs(cfg); err != nil {
+		return err
 	}
 	for _, ep := range cfg.Security.PublicIPCheck.Endpoints {
 		if err := ValidatePublicIPEndpoint(ep); err != nil {
@@ -173,6 +177,27 @@ func validateSemantics(cfg *Config) error {
 		}
 	}
 
+	return nil
+}
+
+// validateExpectedIPs checks security.integrity_check.expected_ips: every
+// key is an existing profile and every value one IP address (the leak
+// check compares the public IP with it).
+func validateExpectedIPs(cfg *Config) error {
+	names := make([]string, 0, len(cfg.Security.IntegrityCheck.ExpectedIPs))
+	for n := range cfg.Security.IntegrityCheck.ExpectedIPs {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
+		if _, ok := cfg.VPNs[n]; !ok {
+			return newValidationError("config.err.expected_ip_profile", n)
+		}
+		ip := cfg.Security.IntegrityCheck.ExpectedIPs[n]
+		if _, err := netip.ParseAddr(strings.TrimSpace(ip)); err != nil {
+			return newValidationError("config.err.expected_ip", n, ip)
+		}
+	}
 	return nil
 }
 

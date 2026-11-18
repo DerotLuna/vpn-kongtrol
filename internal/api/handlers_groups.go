@@ -363,6 +363,9 @@ type settingsDTO struct {
 	// endpoints (default https://api.ipify.org).
 	PublicIPCheckEnabled bool     `json:"public_ip_check_enabled"`
 	PublicIPEndpoints    []string `json:"public_ip_endpoints"`
+	// ExpectedIPs: profile → the public IP expected while it is connected
+	// (leak check, security.integrity_check.expected_ips). Always an object.
+	ExpectedIPs map[string]string `json:"expected_ips"`
 
 	// Audit log, applied live: path, size of one file before the day goes
 	// on in .1, .2… (default 100), days kept (0 = today and yesterday).

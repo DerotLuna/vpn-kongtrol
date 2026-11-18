@@ -72,6 +72,8 @@ type Server struct {
 	// auditVerify checks an audit entry's HMAC (SetAuditVerifier); the
 	// key never reaches the API.
 	auditVerify func(security.AuditEvent) bool
+	// blockedList returns the prefixes blocked now (SetBlockedList).
+	blockedList func() []string
 	// setupMode / restart back /api/v1/setup and /api/v1/restart; see
 	// SetSetupMode and SetRestarter.
 	setupMode atomic.Bool
@@ -164,6 +166,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/routes", s.handleListRoutes)
 	mux.HandleFunc("GET /api/v1/network/overview", s.handleNetworkOverview)
 	mux.HandleFunc("GET /api/v1/security/status", s.handleSecurityStatus)
+	mux.HandleFunc("GET /api/v1/security/blocked", s.handleSecurityBlocked)
 	mux.HandleFunc("POST /api/v1/security/killswitch", s.handleToggleKillSwitch)
 	mux.HandleFunc("POST /api/v1/security/dnsguard", s.handleToggleDNSGuard)
 	mux.HandleFunc("POST /api/v1/security/publicip", s.handleTogglePublicIP)

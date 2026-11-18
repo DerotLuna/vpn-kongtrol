@@ -154,6 +154,7 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	srv.SetHelperInstaller(version, installHelperFromGUI)
 	// Split-tunnel kill switch state and policy notices for every client.
 	srv.SetKillSwitchStatus(killSwitchSvc.Status)
+	srv.SetBlockedList(killSwitchSvc.Blocked)
 	srv.SetEventLog(daemonEvents)
 	// Audit entries are checked against the signing key, which stays here.
 	srv.SetAuditVerifier(auditVerifier())

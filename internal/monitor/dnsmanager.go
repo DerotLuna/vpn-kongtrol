@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"net"
+	"sort"
 	"sync"
 
 	"go.uber.org/zap"
@@ -99,6 +100,47 @@ func (m *DNSManager) IsActive() bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	return len(m.active) > 0
+}
+
+// DNSGuardSnapshot is what the DNS guard is doing now, for status views.
+type DNSGuardSnapshot struct {
+	Interface string              `json:"interface,omitempty"`
+	Servers   []string            `json:"servers"`  // merged, deduped, in profile name order
+	Profiles  map[string][]string `json:"profiles"` // profile → its DNS servers
+}
+
+// Snapshot returns the servers the guard applies now (empty when idle).
+// Deterministic: profiles are visited in name order.
+func (m *DNSManager) Snapshot() DNSGuardSnapshot {
+	out := DNSGuardSnapshot{Servers: []string{}, Profiles: map[string][]string{}}
+	if m == nil {
+		return out
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.active) == 0 {
+		return out
+	}
+	out.Interface = m.iface
+	names := make([]string, 0, len(m.active))
+	for n := range m.active {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	seen := map[string]bool{}
+	for _, n := range names {
+		var list []string
+		for _, ip := range m.active[n] {
+			s := ip.String()
+			list = append(list, s)
+			if !seen[s] {
+				seen[s] = true
+				out.Servers = append(out.Servers, s)
+			}
+		}
+		out.Profiles[n] = list
+	}
+	return out
 }
 
 // merged returns a deduped list of all DNS servers from active profiles.

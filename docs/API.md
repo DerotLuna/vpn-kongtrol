@@ -65,14 +65,16 @@ POST /api/v1/groups/{name}/disconnect
 POST /api/v1/groups/{name}/reload            # reload kongtrol.yaml + restart the group's active tunnels in place
 
 # Security — live toggles, immediately re-applied (not just persisted)
-GET  /api/v1/security/status
+GET  /api/v1/security/status                # + dns_guard_servers [ip], dns_guard_interface, dns_guard_profiles {profile:[ip]},
+                                             #   kill_switch_error {message,hint,error_key,detail} in X-Kongtrol-Lang (absent when the last apply worked)
+GET  /api/v1/security/blocked                # read-only: {"state","prefixes":[cidr],"count","blocking":[profile],"full_tunnel":[profile],"policy_blocking":[policy]}
 POST /api/v1/security/killswitch             # {"enabled": true|false}
 POST /api/v1/security/publicip               # {"enabled": true|false} — opt-in public IP lookup (off by default)
 POST /api/v1/security/publicip/check         # one lookup now ("Revisar"); 409 publicip.err.disabled while off
 POST /api/v1/security/dnsguard               # {"enabled": true|false}
 
 # Settings & scheduler
-GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints), audit log
+GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints, expected_ips {profile: ip} — replaced whole, empty value drops it, validated: existing profile + one IP), audit log (audit_log_path, audit_log_max_size_mb, audit_log_retention_days, audit_log_sign; applied live)
 GET/POST  /api/v1/scheduler/rules
 PUT/DELETE /api/v1/scheduler/rules/{name}
 
