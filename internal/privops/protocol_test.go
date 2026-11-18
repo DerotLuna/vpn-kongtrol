@@ -44,6 +44,9 @@ func (f *fakeOps) WGRemoveTunnel(_ context.Context, r WGRemoveRequest) error {
 func (f *fakeOps) WGSetAllowedIPs(_ context.Context, r WGAllowedIPsRequest) error {
 	return f.rec(OpWGAllowedIPs, r)
 }
+func (f *fakeOps) WGStats(_ context.Context, r WGStatsRequest) (WGStats, error) {
+	return WGStats{Peers: []WGPeerStats{{PublicKey: "k", LatestHandshake: 1700000000, RxBytes: 1, TxBytes: 2, PersistentKeepalive: 25}}}, f.rec(OpWGStats, r)
+}
 func (f *fakeOps) OpenVPNStart(_ context.Context, r OpenVPNStartRequest) (OpenVPNSession, error) {
 	return OpenVPNSession{ID: "abc", PID: 42, MgmtAddr: "127.0.0.1:1", MgmtPassword: "pw"}, f.rec(OpOpenVPNStart, r)
 }

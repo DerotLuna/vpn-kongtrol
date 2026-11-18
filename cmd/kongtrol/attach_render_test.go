@@ -81,6 +81,34 @@ func TestAttachRenderingDecisions(t *testing.T) {
 	}
 }
 
+// Issue #33: the status table's health line under a WireGuard tunnel.
+func TestHealthLine(t *testing.T) {
+	t.Setenv("KONGTROL_LANG", "es")
+	cases := []struct {
+		h    *vpn.TunnelHealth
+		want string
+	}{
+		{nil, ""},
+		{&vpn.TunnelHealth{State: vpn.HealthOK}, ""},
+		{&vpn.TunnelHealth{State: vpn.HealthIdle}, "Sin tráfico reciente · normal si no la estás usando"},
+		{&vpn.TunnelHealth{State: vpn.HealthNoResponse}, "Sin respuesta del servidor · Kongtrol reintenta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN"},
+		{&vpn.TunnelHealth{State: vpn.HealthUnknown, ReasonKey: "service.error.outdated"},
+			"No se puede comprobar si el servidor responde · El ayudante está desactualizado. Actualízalo: kongtrol service install"},
+		{&vpn.TunnelHealth{State: vpn.HealthUnknown},
+			"No se puede comprobar si el servidor responde · si algo no carga, desconéctala y vuelve a conectarla"},
+	}
+	for _, c := range cases {
+		if got := healthLine(c.h); got != c.want {
+			t.Errorf("healthLine(%+v) = %q, want %q", c.h, got, c.want)
+		}
+	}
+	lines := renderAttachLines([]monitor.TunnelMetrics{{Name: "brainbox", Status: vpn.StatusError,
+		Health: &vpn.TunnelHealth{State: vpn.HealthNoResponse}}})
+	if len(lines) != 1 || !strings.Contains(lines[0], "brainbox") || !strings.Contains(lines[0], "Sin respuesta del servidor") {
+		t.Errorf("renderAttachLines = %q", lines)
+	}
+}
+
 func TestWaitManualDown(t *testing.T) {
 	old := downPollInterval
 	downPollInterval = 5 * time.Millisecond

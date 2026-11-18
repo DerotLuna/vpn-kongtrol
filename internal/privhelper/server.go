@@ -58,7 +58,8 @@ func (s *Server) Serve(ctx context.Context, l net.Listener) error {
 }
 
 // HandleConn authenticates the peer, reads one request, runs it under the
-// op's timeout and writes the response. Every request is audited.
+// op's timeout and writes the response. Every request is audited, except
+// successful read-only ones (privops.ReadOnlyOp).
 func (s *Server) HandleConn(ctx context.Context, conn net.Conn) {
 	defer conn.Close()
 	start := time.Now()
@@ -94,10 +95,13 @@ func (s *Server) HandleConn(ctx context.Context, conn net.Conn) {
 	resp := privops.Dispatch(opCtx, s.Ops, req)
 	cancel()
 
-	s.Audit.Record(AuditEntry{
-		Time: start, Caller: caller.Name, CallerID: caller.ID, Op: req.Op, Args: req.Args,
-		OK: resp.OK, Code: resp.Code, Error: resp.Error, Millis: time.Since(start).Milliseconds(),
-	})
+	// Read-only ops are polled every few seconds: audit only failures.
+	if !resp.OK || !privops.ReadOnlyOp(req.Op) {
+		s.Audit.Record(AuditEntry{
+			Time: start, Caller: caller.Name, CallerID: caller.ID, Op: req.Op, Args: req.Args,
+			OK: resp.OK, Code: resp.Code, Error: resp.Error, Millis: time.Since(start).Milliseconds(),
+		})
+	}
 	_ = conn.SetWriteDeadline(time.Now().Add(writeTimeout))
 	_ = privops.WriteFrame(conn, resp)
 }

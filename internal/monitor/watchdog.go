@@ -55,6 +55,10 @@ type HealthCheckFunc func(ctx context.Context, name string, adapter vpn.VPNAdapt
 //   - health_degraded: the active health probe failed (reported only).
 //   - manual_reconnect_required: adapter Capabilities().ManualReconnect;
 //     notified once per drop, never reconnected.
+//   - no_response: once per outage, the tunnel was up but its server
+//     stopped answering (vpn.HealthNoResponse; the adapter reports
+//     StatusError, so it is reconnected / failed over like a drop).
+//   - responding: after no_response, the server answers again.
 type WatchdogEvent struct {
 	Profile string
 	Event   string
@@ -329,6 +333,9 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 	manualNotified := false
 	failingNotified := false
 	failoverTried := false
+	// noResponse: this outage began with a tunnel that was up but whose
+	// server stopped answering (vpn.HealthNoResponse, ADR-0030).
+	noResponse := false
 	resetOutage := func() {
 		attempt = 0
 		failingNotified = false
@@ -341,7 +348,18 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 			return
 		case <-ticker.C:
 			status := adapter.Status().Normalize()
+			health := tunnelHealth(adapter)
 			if status == vpn.StatusConnected {
+				if noResponse {
+					if health == nil || health.State != vpn.HealthOK {
+						// Up again but the server has not answered yet:
+						// the outage (backoff, one failover) goes on.
+						continue
+					}
+					noResponse = false
+					w.emit(WatchdogEvent{Profile: name, Event: "responding"})
+					w.log.Info("watchdog: tunnel responds again", zap.String("profile", name))
+				}
 				resetOutage() // reset backoff on healthy state
 				manualNotified = false
 				w.runHealthCheck(ctx, name, adapter)
@@ -356,7 +374,17 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 				// User requested disconnect, or a declared backup took
 				// over — do not reconnect.
 				resetOutage()
+				noResponse = false
 				continue
+			}
+
+			// Once per outage: the tunnel is up but its server stopped
+			// answering. It is then handled like any drop below.
+			if !noResponse && health != nil && health.State == vpn.HealthNoResponse {
+				noResponse = true
+				w.emit(WatchdogEvent{Profile: name, Event: "no_response"})
+				w.log.Warn("watchdog: tunnel up but the server does not answer",
+					zap.String("profile", name), zap.Time("last_handshake", health.LastHandshake))
 			}
 
 			// Provider app with no automatic connect path (no CLI, or
@@ -532,6 +560,15 @@ func (w *Watchdog) takeOver(source, target string, attempt int) {
 		zap.String("from", source),
 		zap.String("to", target),
 	)
+}
+
+// tunnelHealth returns adapter's tunnel health, or nil when it does not
+// report one.
+func tunnelHealth(adapter vpn.VPNAdapter) *vpn.TunnelHealth {
+	if r, ok := adapter.(vpn.HealthReporter); ok {
+		return r.TunnelHealth()
+	}
+	return nil
 }
 
 // backoff returns exponential delay with a cap, no jitter needed for CLI.

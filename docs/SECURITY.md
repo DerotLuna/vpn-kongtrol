@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.2.0 · 2026-11-18
+Version 2.3.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -62,7 +62,14 @@ arbitrary command.
 - **Bounded work.** One request per connection; each operation runs under its own timeout
   (`privops.OpTimeout`, 15–45 s).
 - **Audit.** Every request — caller, operation, arguments, result, duration — is written to the
-  helper's JSON-lines audit log (`internal/privhelper/audit.go`, rotated at 5 MB).
+  helper's JSON-lines audit log (`internal/privhelper/audit.go`, rotated at 5 MB). The one
+  exception is a *successful* read-only request (`wg.stats`, polled every 10 s per WireGuard
+  tunnel); its failures are audited.
+- **Read-only WireGuard counters.** `wg.stats` runs `wg show <iface> dump` only for a tunnel the
+  helper manages (or the caller's own profile tunnel, checked like `wg.remove`, nothing adopted)
+  and returns only peer public keys, latest handshake, rx/tx bytes and keepalive. The interface
+  private key and preshared keys in the dump never leave the helper, and a failed read never
+  echoes the command output ([ADR-0030](adr/0030-wireguard-liveness-by-handshake.md)).
 
 ### Leases: no orphaned state
 

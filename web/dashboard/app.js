@@ -125,6 +125,10 @@ const I18N = {
     'attach.automation_failed': 'Auto-conexión falló ({reason}) · conéctate en {app}',
     'attach.waiting_disconnect': 'Desconéctate en {app} · esperando…',
     'attach.dropped': '{app} se cayó · reconéctate en la app',
+    'health.no_response': 'Sin respuesta del servidor · Kongtrol reintenta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
+    'health.idle': 'Sin tráfico reciente · normal si no la estás usando',
+    'health.unknown': 'No se puede comprobar si el servidor responde',
+    'health.unknown.fix': 'si algo no carga, desconéctala y vuelve a conectarla',
     'badge.disabled': 'DESHABILITADO',
     'badge.active': 'ACTIVO',
     'badge.armed': 'ARMADO',
@@ -267,6 +271,10 @@ const I18N = {
     'attach.automation_failed': 'Auto-connect failed ({reason}) · connect in {app}',
     'attach.waiting_disconnect': 'Disconnect in {app} · waiting…',
     'attach.dropped': '{app} dropped · reconnect in the app',
+    'health.no_response': 'No answer from the server · Kongtrol keeps retrying; if it persists, check your internet or tell whoever runs that VPN',
+    'health.idle': 'No recent traffic · normal if you are not using it',
+    'health.unknown': "Can't check whether the server answers",
+    'health.unknown.fix': "if something doesn't load, disconnect and connect it again",
     'badge.disabled': 'DISABLED',
     'badge.active': 'ACTIVE',
     'badge.armed': 'ARMED',
@@ -533,6 +541,12 @@ function renderTunnels(tunnels, opts = {}) {
       const attachLine = attachMsg
         ? `<div class="tunnel-attach${attachWaiting(m.attach) ? ' waiting' : ''}">${esc(attachMsg)}</div>`
         : '';
+      // Does the server answer (WireGuard handshake, ADR-0030)? See
+      // healthMessage; problems are highlighted like a waiting attach.
+      const healthMsg = healthMessage(m.health);
+      const healthLine = healthMsg
+        ? `<div class="tunnel-attach${healthProblem(m.health) ? ' waiting' : ''}">${esc(healthMsg)}</div>`
+        : '';
       const tr = isConnected ? tunnelRoutesFor(name) : null;
       const routesToggle = tr
         ? `<div><button class="link-btn tunnel-routes-toggle" aria-expanded="${openRouteDrawers.has(name)}" onclick="toggleTunnelRoutes('${esc(name)}')">${esc(tr.all_traffic ? t('tunnelRoutes.toggleAll') : t('tunnelRoutes.toggle', { n: tr.total }))}</button></div>`
@@ -559,7 +573,7 @@ function renderTunnels(tunnels, opts = {}) {
 
       return `<tr>
         <td>${name}</td>
-        <td>${dot}${statusLabel}${attachLine}${lastErr}${routesToggle}</td>
+        <td>${dot}${statusLabel}${attachLine}${healthLine}${lastErr}${routesToggle}</td>
         <td>${ip}</td>
         <td>${up}</td>
         <td>${sent}</td>
@@ -1040,6 +1054,27 @@ function attachMessage(a) {
     case 'dropped': return t('attach.dropped', vars);
     default: return '';
   }
+}
+
+// healthMessage mirrors healthLine (cmd/kongtrol/attach_render.go) on
+// vpn.TunnelHealth: whether a connected tunnel's server answers, or ''.
+// "unknown" adds the helper's "what to do" line when the daemon sent one.
+function healthMessage(h) {
+  if (!h || !h.state) return '';
+  switch (h.state) {
+    case 'idle': return t('health.idle');
+    case 'no_response': return t('health.no_response');
+    case 'unknown': {
+      const fix = LAST_ERROR_KEYS[h.reason_key];
+      return `${t('health.unknown')} · ${fix ? t(fix) : t('health.unknown.fix')}`;
+    }
+    default: return '';
+  }
+}
+
+// healthProblem mirrors vpn.TunnelHealth.Problem.
+function healthProblem(h) {
+  return !!h && (h.state === 'no_response' || h.state === 'unknown');
 }
 
 // attachWaiting mirrors vpn.AttachState.Waiting: the user has to act.

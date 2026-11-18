@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -173,21 +172,6 @@ func ParseConfigAddress(configPath string) (net.IP, error) { return parseConfigA
 
 // ParseConfigDNS is the exported form of parseConfigDNS for cross-package use.
 func ParseConfigDNS(configPath string) []net.IP { return parseConfigDNS(configPath) }
-
-// parseTransfer extracts (sent, received) byte counts from `wg show <iface> transfer`.
-func parseTransfer(raw string) (sent, recv uint64) {
-	lines := strings.Split(strings.TrimSpace(raw), "\n")
-	if len(lines) == 0 {
-		return
-	}
-	// Take the first peer's line: "<pubkey>\t<rx>\t<tx>"
-	fields := strings.Fields(lines[0])
-	if len(fields) >= 3 {
-		recv, _ = strconv.ParseUint(fields[1], 10, 64)
-		sent, _ = strconv.ParseUint(fields[2], 10, 64)
-	}
-	return
-}
 
 // ifaceExists returns true if a network interface with the given name exists.
 func ifaceExists(name string) bool {

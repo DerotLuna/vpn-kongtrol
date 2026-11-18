@@ -166,8 +166,22 @@ func sysWGDown(ctx context.Context, _ string, confPath string) error {
 	return err
 }
 
+func wgTool() (string, error) {
+	return trustedBinary("/usr/bin/wg", "/usr/local/bin/wg", "/opt/homebrew/bin/wg", toolPath("wg"))
+}
+
+// sysWGDump runs "wg show <name> dump" (root only: it reads the kernel
+// interface or the wireguard-go UAPI socket).
+func sysWGDump(ctx context.Context, name string) (string, error) {
+	exe, err := wgTool()
+	if err != nil {
+		return "", fmt.Errorf("%w: %v", ErrNotFound, err)
+	}
+	return run(ctx, exe, "show", name, "dump")
+}
+
 func sysWGSet(ctx context.Context, req WGAllowedIPsRequest) error {
-	exe, err := trustedBinary("/usr/bin/wg", "/usr/local/bin/wg", "/opt/homebrew/bin/wg", toolPath("wg"))
+	exe, err := wgTool()
 	if err != nil {
 		return fmt.Errorf("%w: %v", ErrNotFound, err)
 	}

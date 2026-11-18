@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.3.0 · 2026-11-17
+Version 1.4.0 · 2026-11-18
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -32,6 +32,7 @@ reasoned but unverified.
 | [2026-11-17-landing-ux-a11y-perf](2026-11-17-landing-ux-a11y-perf.md) | Motion without CLS, WCAG 2.2 AA gaps, fonts, JSON-LD; Lighthouse before/after | ADR-0024 |
 | [2026-11-18-desktop-release-channels](2026-11-18-desktop-release-channels.md) | Tray build per OS, GoReleaser OSS vs Pro, Inno Setup, SignPath, macOS quarantine, npm layout, package managers | ADR-0025 |
 | [2026-11-18-react-hydration](2026-11-18-react-hydration.md) | hydrateRoot, useSyncExternalStore server snapshots, jsdom hydration check; Lighthouse before/after | ADR-0026 |
+| [2026-11-18-wireguard-liveness](2026-11-18-wireguard-liveness.md) | wg(8) dump, WireGuard timers, wireguard-windows access rights, Tailscale/NetBird handshake use; issue #33 root cause | ADR-0030 |
 | [2026-11-18-landing-download-ctas](2026-11-18-landing-download-ctas.md) | HIG/Material 3 button hierarchy, phone/tablet detection, Web Share + clipboard, Apple Silicon vs Intel check | ADR-0027 |
 | [2026-11-18-landing-hig-material3-review](2026-11-18-landing-hig-material3-review.md) | Apple HIG (buttons, typography, accessibility, feedback, motion, layout) and M3 tokens applied to the landing; Lighthouse before/after | ADR-0028 |
 

@@ -87,16 +87,3 @@ func tunnelServiceRunning(ifaceName string) bool {
 	st, ok := serviceState(ifaceName)
 	return ok && (st == windows.SERVICE_RUNNING || st == windows.SERVICE_START_PENDING)
 }
-
-// wgShow returns the output of `wg show <iface>`. wg.exe talks to the
-// tunnel's named pipe, which only administrators may open, so this fails
-// for the unprivileged daemon and Status() falls back to the interface.
-func wgShow(ifaceName string) (string, error) {
-	return runCmd("wg", "show", ifaceName)
-}
-
-// wgTransfer returns byte counts for a tunnel (administrators only, see
-// wgShow).
-func wgTransfer(ifaceName string) (string, error) {
-	return runCmd("wg", "show", ifaceName, "transfer")
-}

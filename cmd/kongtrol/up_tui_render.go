@@ -63,11 +63,13 @@ func (m upModel) filteredRows() []tunnelRow {
 		status := vpn.StatusDisconnected
 		ip, uptime := "—", "—"
 		var attach *vpn.AttachState
+		var health *vpn.TunnelHealth
 
 		if snapshot != nil {
 			if tm, ok := snapshot[name]; ok {
 				status = tm.Status.Normalize()
 				attach = tm.Attach
+				health = tm.Health
 				if tm.AssignedIP != "" {
 					ip = tm.AssignedIP
 				}
@@ -79,6 +81,9 @@ func (m upModel) filteredRows() []tunnelRow {
 			status = adapter.Status().Normalize()
 			if r, ok := adapter.(vpn.AttachReporter); ok {
 				attach = r.AttachState()
+			}
+			if r, ok := adapter.(vpn.HealthReporter); ok {
+				health = r.TunnelHealth()
 			}
 			if info, err := adapter.TunnelInfo(); err == nil && info != nil {
 				if info.AssignedIP != nil {
@@ -93,7 +98,7 @@ func (m upModel) filteredRows() []tunnelRow {
 		if !m.passesFilter(status) {
 			continue
 		}
-		rows = append(rows, tunnelRow{Name: name, Status: status, IP: ip, Uptime: uptime, Attach: attach})
+		rows = append(rows, tunnelRow{Name: name, Status: status, IP: ip, Uptime: uptime, Attach: attach, Health: health})
 	}
 	return rows
 }

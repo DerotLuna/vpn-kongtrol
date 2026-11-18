@@ -20,16 +20,37 @@ func trayAttachLine(st *vpn.AttachState) string {
 	return trayF(key, args...)
 }
 
+// trayHealthLine renders a tunnel's health problem (server not answering,
+// or not verifiable, ADR-0030) with its "what to do", or "".
+func trayHealthLine(h *vpn.TunnelHealth) string {
+	if h == nil || !h.Problem() {
+		return ""
+	}
+	line := trayT(h.MessageKey())
+	if h.State == vpn.HealthUnknown {
+		fix := h.ReasonKey
+		if fix == "" {
+			fix = "health.unknown.fix"
+		}
+		line += " · " + trayT(fix)
+	}
+	return line
+}
+
 // trayTunnelLabel decides one profile menu item's title and tooltip:
 // a phase that needs the user (waiting / dropped) replaces the status in
-// the title; a failed connect shows its error (the translated "what to do"
+// the title; so does a tunnel whose server does not answer (or can't be
+// checked); a failed connect shows its error (the translated "what to do"
 // line when the daemon sent its key); otherwise "name [status]" with the
 // attach message (how it came up) as tooltip.
 func trayTunnelLabel(name string, m monitor.TunnelMetrics) (title, tooltip string) {
 	msg := trayAttachLine(m.Attach)
+	health := trayHealthLine(m.Health)
 	switch {
 	case m.Attach != nil && m.Attach.Waiting() && msg != "":
 		return name + " · " + msg, msg
+	case health != "":
+		return name + " · " + trayT("health.short."+string(m.Health.State)), health
 	case (m.LastError != "" || m.LastErrorKey != "") && m.Status != vpn.StatusConnected:
 		if m.LastErrorKey != "" {
 			return trayF("tray.tunnel_error", name), trayT(m.LastErrorKey)
@@ -47,6 +68,11 @@ func trayWaitingTooltip(states map[string]monitor.TunnelMetrics, names []string)
 		m, ok := states[name]
 		if ok && m.Attach != nil && m.Attach.Waiting() {
 			if msg := trayAttachLine(m.Attach); msg != "" {
+				return name + ": " + msg
+			}
+		}
+		if ok {
+			if msg := trayHealthLine(m.Health); msg != "" {
 				return name + ": " + msg
 			}
 		}

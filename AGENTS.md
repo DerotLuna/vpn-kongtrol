@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.5 · 2026-11-18
+Version 1.6 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -292,6 +292,7 @@ changing the port from the page serving that request would cut the connection mi
 - It only reconnects profiles that were brought up (`MarkActive`). **No implicit failover** (ADR-0018): profiles reach different networks and are never linked by name, type or `priority`. The only other profiles it may connect are those the user declared on the dropped profile, `vpns.<name>.failover: [backup, …]` (validated: exist, not itself, once, no cycles), tried in order once per outage; a backup that takes over pauses retries of the original until the user connects it again.
 - No declared backup (or none worked): keep retrying the same profile and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard `notices.js`, live view render them). Health-check failures only notify.
 - `MarkIntended` cancels the watchdog's in-flight reconnect/failover for that profile; `ProfileService.Disconnect` also cancels and waits for any running `Connect` of the profile (`trackConnect`/`cancelConnects`), so `down` reports a final status and no provider app opens afterwards.
+- WireGuard liveness (ADR-0030): an existing interface is not "connected". The adapter reads `privops.WGStats` every 10s and `healthTracker` decides `vpn.TunnelHealth` (`ok` / `idle` / `no_response` / `unknown`, `vpn.HealthReporter`, `TunnelMetrics.Health` json `health`). `no_response` (handshake older than 200 s with PersistentKeepalive, or tx growing with rx flat for 15 s, or never handshaked but sent something; 30 s grace after connect) makes `Status()` return `StatusError`, so watchdog reconnect/failover, kill switch and `on_tunnel_down` treat it like a drop; the reconnect replaces the tunnel (`wgUp` restart). An unused tunnel without keepalive is `idle`, never flagged. Stats unreadable (helper missing/outdated) → `unknown` + `ReasonKey`, status stays connected. The watchdog emits `no_response` once per outage and `responding` when the handshake is fresh again (`watchdog.event.*`); clients render health with `health.*` keys.
 - `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset = position (earlier first).
 
 ### DNS manager internals
@@ -314,6 +315,7 @@ changing the port from the page serving that request would cut the connection mi
 - All privileged ops go through `privops.Default()` (`Local` when elevated, `Client` to the helper otherwise; `ErrHelperNotInstalled` → `GuidanceKey`). Installed once with `kongtrol service install`.
 - The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change — an older installed helper is reported as outdated and the user re-runs `kongtrol service install`) and carries a per-process lease (renew 5s, expire 20s); expiry undoes OpenVPN, DNS, hosts, blocked destinations, kill switch (fail-open, so a crashed daemon never leaves the user offline). WireGuard and routes aren't leased.
 - `block.set` (`SetBlockedDestinations`) replaces the whole set of blocked outbound prefixes: Windows Firewall BLOCK rules `KongtrolBlock`, Linux `KONGTROL_BLOCK` iptables/ip6tables chains (REJECT), macOS pf anchor `com.kongtrol` table. Only block rules: in Windows Defender Firewall a block rule always beats an allow rule, so "block all + allow exceptions" cannot work — a full-tunnel block is sent as the complement of its exceptions. An older helper answers "unknown operation" → `ErrHelperOutdated`.
+- `wg.stats` (`WGStats`, protocol 4) is read-only: `wg show <iface> dump` for a tunnel the helper manages, or the caller's own profile tunnel (same checks as `wg.remove`, nothing adopted). Only peer public key, latest handshake, rx/tx and keepalive leave the helper (`ParseWGDump` drops private/preshared keys; a failure never echoes the output). Successful read-only ops are not audited (polled every 10s); failures are.
 - The helper only runs root/admin-owned binaries; Homebrew binaries are refused (user-swappable dylibs), so macOS OpenVPN via the helper needs a bundled signed openvpn (pending).
 
 <!-- feature:killswitch feature:policies feature:routes -->

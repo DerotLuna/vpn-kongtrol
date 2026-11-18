@@ -19,6 +19,28 @@ func attachLine(st *vpn.AttachState) string {
 	return cf(key, args...)
 }
 
+// healthLine renders a tunnel's health (does its server answer, ADR-0030)
+// as one translated line, or "" when there is nothing to say. "unknown"
+// adds what to do: the helper guidance (ReasonKey) or a generic hint.
+func healthLine(h *vpn.TunnelHealth) string {
+	if h == nil {
+		return ""
+	}
+	key := h.MessageKey()
+	if key == "" {
+		return ""
+	}
+	line := ct(key)
+	if h.State == vpn.HealthUnknown {
+		fix := h.ReasonKey
+		if fix == "" {
+			fix = "health.unknown.fix"
+		}
+		line += " · " + ct(fix)
+	}
+	return line
+}
+
 // attachSpinnerLabel is the `up` / `down` spinner text while a provider
 // waits for the user: "<profile>  <message> (Ctrl+C ...)". It returns ""
 // when st is not a waiting phase, so the caller keeps its own label.
@@ -56,8 +78,8 @@ func attachWaitingUser(st *vpn.AttachState) bool {
 func renderAttachRowLines(rows []tunnelRow) []string {
 	tunnels := make([]monitor.TunnelMetrics, 0, len(rows))
 	for _, r := range rows {
-		if r.Attach != nil {
-			tunnels = append(tunnels, monitor.TunnelMetrics{Name: r.Name, Status: r.Status, Attach: r.Attach})
+		if r.Attach != nil || r.Health != nil {
+			tunnels = append(tunnels, monitor.TunnelMetrics{Name: r.Name, Status: r.Status, Attach: r.Attach, Health: r.Health})
 		}
 	}
 	return renderAttachLines(tunnels)

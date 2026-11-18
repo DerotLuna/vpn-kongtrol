@@ -26,6 +26,7 @@ const (
 	OpWGInstall        = "wg.install"
 	OpWGRemove         = "wg.remove"
 	OpWGAllowedIPs     = "wg.allowed_ips"
+	OpWGStats          = "wg.stats"
 	OpOpenVPNStart     = "openvpn.start"
 	OpOpenVPNStop      = "openvpn.stop"
 	OpOpenVPNStatus    = "openvpn.status"

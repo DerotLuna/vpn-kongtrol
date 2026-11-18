@@ -34,7 +34,22 @@ type Adapter struct {
 	// profileConfig is the profile .conf (never a temporary patched copy),
 	// sent on disconnect so the helper can adopt a tunnel it did not start.
 	profileConfig string
+
+	// Liveness (ADR-0030): handshake + counters read through privops
+	// at most every statsEvery; statsMu keeps one read at a time.
+	statsMu  sync.Mutex
+	statsAt  time.Time
+	statsGen uint64 // bumped on reset: drops a read of the old tunnel
+	tracker  healthTracker
+	health   *vpn.TunnelHealth
 }
+
+// statsEvery is how often Status reads the tunnel counters (each read is
+// one helper call running wg show).
+const statsEvery = 10 * time.Second
+
+// now is the clock (tests).
+var now = time.Now
 
 // Configure pre-seeds the adapter config so Status() can probe the WireGuard
 // interface even when Connect() has not been called in this process lifetime.
@@ -79,6 +94,8 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	if a.status == vpn.StatusConnected || a.status == vpn.StatusConnecting {
 		return fmt.Errorf("wireguard: already %s", a.status)
 	}
+	// A tunnel that is up but stopped responding is replaced, not reused.
+	restart := a.health != nil && a.health.State == vpn.HealthNoResponse
 
 	a.status = vpn.StatusConnecting
 	a.lastCfg = cfg
@@ -106,7 +123,7 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	a.assignedIP, _ = parseConfigAddress(configPath)
 	a.dnsServers = parseConfigDNS(configPath)
 
-	if err := wgUp(configPath, a.ifaceName); err != nil {
+	if err := wgUp(configPath, a.ifaceName, restart); err != nil {
 		a.status = vpn.StatusError
 		return fmt.Errorf("wireguard: %w", err)
 	}
@@ -119,7 +136,16 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 
 	a.connectedAt = time.Now()
 	a.status = vpn.StatusConnected
+	a.resetHealthLocked()
 	return nil
+}
+
+// resetHealthLocked starts judging the tunnel afresh. Call with a.mu held.
+func (a *Adapter) resetHealthLocked() {
+	a.tracker.reset(now())
+	a.statsAt = time.Time{}
+	a.statsGen++
+	a.health = nil
 }
 
 func (a *Adapter) Disconnect(ctx context.Context) error {
@@ -132,6 +158,7 @@ func (a *Adapter) Disconnect(ctx context.Context) error {
 	}
 
 	a.status = vpn.StatusDisconnected
+	a.resetHealthLocked()
 	return nil
 }
 
@@ -144,37 +171,31 @@ func (a *Adapter) Reconnect(ctx context.Context) error {
 
 func (a *Adapter) Status() vpn.Status {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-
 	iface := a.ifaceName
 	if iface == "" {
 		// No iface known in-memory — nothing to check.
+		defer a.mu.Unlock()
+		return a.status.Normalize()
+	}
+	if !ifaceExists(iface) {
+		defer a.mu.Unlock()
+		a.health = nil
+		// Interface not in net.Interfaces(). On Windows, the service may be
+		// starting or restarting — avoid false error during that window.
+		if tunnelServiceRunning(iface) {
+			return vpn.StatusConnecting
+		}
+		if a.status == vpn.StatusConnected {
+			a.status = vpn.StatusError
+		}
 		return a.status.Normalize()
 	}
 
-	raw, err := wgShow(iface)
-	if err != nil || raw == "" {
-		// wg show failed — wg CLI may be unavailable or the named pipe not yet ready.
-		// Fall back to checking the network interface directly.
-		if ifaceExists(iface) {
-			// Interface is up; reconcile state as connected below.
-			raw = "fallback"
-		} else {
-			// Interface not in net.Interfaces(). On Windows, the service may be
-			// starting or restarting — avoid false error during that window.
-			if tunnelServiceRunning(iface) {
-				return vpn.StatusConnecting
-			}
-			if a.status == vpn.StatusConnected {
-				a.status = vpn.StatusError
-			}
-			return a.status.Normalize()
-		}
-	}
-
-	// Interface is up — reconcile in-memory state.
-	if a.status != vpn.StatusConnected {
+	// Interface is up — reconcile in-memory state, unless it is up but its
+	// server stopped answering (kept as StatusError until it answers).
+	if a.status != vpn.StatusConnected && !a.noResponseLocked() {
 		a.status = vpn.StatusConnected
+		a.resetHealthLocked()
 		if a.connectedAt.IsZero() {
 			a.connectedAt = time.Now()
 		}
@@ -185,7 +206,67 @@ func (a *Adapter) Status() vpn.Status {
 			a.dnsServers = parseConfigDNS(a.lastCfg.ConfigPath)
 		}
 	}
-	return vpn.StatusConnected
+	profileCfg := a.profileConfig
+	a.mu.Unlock()
+
+	// The interface existing is not enough: WireGuard has no connection
+	// state, so judge it by the peer's latest handshake (ADR-0030).
+	a.refreshHealth(iface, profileCfg)
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	switch {
+	case a.ifaceName != iface:
+		// Reconfigured meanwhile: report what we have.
+	case a.noResponseLocked() && a.status == vpn.StatusConnected:
+		a.status = vpn.StatusError
+	case !a.noResponseLocked() && a.status == vpn.StatusError:
+		a.status = vpn.StatusConnected // answering again
+	}
+	return a.status.Normalize()
+}
+
+// noResponseLocked reports whether the tunnel is up but its server stopped
+// answering. Call with a.mu held.
+func (a *Adapter) noResponseLocked() bool {
+	return a.health != nil && a.health.State == vpn.HealthNoResponse
+}
+
+// refreshHealth reads the tunnel counters through privops at most every
+// statsEvery and updates a.health. A concurrent caller skips the read.
+func (a *Adapter) refreshHealth(iface, profileCfg string) {
+	if !a.statsMu.TryLock() {
+		return
+	}
+	defer a.statsMu.Unlock()
+	a.mu.Lock()
+	due := a.statsAt.IsZero() || now().Sub(a.statsAt) >= statsEvery
+	gen := a.statsGen
+	a.mu.Unlock()
+	if !due {
+		return
+	}
+	st, err := wgStatsFunc(iface, profileCfg)
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if gen != a.statsGen || a.ifaceName != iface {
+		return // the tunnel was re-created meanwhile: this read is stale
+	}
+	a.statsAt = now()
+	h := a.tracker.observe(a.statsAt, st, err)
+	a.health = &h
+}
+
+// TunnelHealth reports whether the connected tunnel's server answers
+// (vpn.HealthReporter). nil while the tunnel is down or not read yet.
+func (a *Adapter) TunnelHealth() *vpn.TunnelHealth {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	if a.health == nil || (a.status != vpn.StatusConnected && a.status != vpn.StatusError) {
+		return nil
+	}
+	h := *a.health
+	return &h
 }
 
 func (a *Adapter) TunnelInfo() (*vpn.TunnelInfo, error) {
@@ -203,9 +284,10 @@ func (a *Adapter) TunnelInfo() (*vpn.TunnelInfo, error) {
 		ConnectedAt:   a.connectedAt,
 	}
 
-	// Live byte counts from wg transfer.
-	if raw, err := wgTransfer(a.ifaceName); err == nil {
-		info.BytesSent, info.BytesReceived = parseTransfer(raw)
+	// Byte counts from the last counters read (Status); without them the
+	// collector uses the OS interface counters.
+	if rx, tx, ok := a.tracker.totals(); ok {
+		info.BytesSent, info.BytesReceived = tx, rx
 	}
 
 	// Resolve actual interface IP in case wg-quick adjusted it. Don't assume

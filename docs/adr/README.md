@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.3.0 · 2026-11-17
+Version 1.4.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -42,6 +42,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0027](0027-landing-download-ctas.md) | Landing download buttons: one primary per view, recommended OS, phones send the page to a computer | Accepted | 2026-11-18 |
 | [0028](0028-landing-hig-material3-review.md) | Landing review with Apple HIG and Material 3: 11px text floor, 44px targets, state layers, readable guide on phones | Accepted | 2026-11-18 |
 | [0029](0029-landing-device-class-before-first-paint.md) | Landing marks phones before first paint (boot script `data-device`) so the hero never shifts | Accepted | 2026-11-18 |
+| [0030](0030-wireguard-liveness-by-handshake.md) | WireGuard liveness by latest handshake (read-only helper op `wg.stats`); a silent server is a drop, unreadable counters say "unknown" | Accepted | 2026-11-18 |
 
 ## Statuses
 

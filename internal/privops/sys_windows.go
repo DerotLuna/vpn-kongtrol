@@ -485,6 +485,17 @@ func sysWGSet(ctx context.Context, req WGAllowedIPsRequest) error {
 	return err
 }
 
+// sysWGDump runs the admin-installed wg.exe ("wg show <name> dump"),
+// which reads the tunnel's runtime state from the WireGuardNT driver /
+// tunnel service; only Administrators and SYSTEM may do so.
+func sysWGDump(ctx context.Context, name string) (string, error) {
+	exe, err := wgExe("wg.exe")
+	if err != nil {
+		return "", err
+	}
+	return run(ctx, exe, "show", name, "dump")
+}
+
 // ── OpenVPN ─────────────────────────────────────────────────────────────
 
 // openvpnBinary resolves openvpn.exe from the installer's registry key or

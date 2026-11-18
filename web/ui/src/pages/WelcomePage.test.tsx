@@ -102,6 +102,25 @@ describe('WelcomePage', () => {
     expect(screen.getByRole('link', { name: /Add VPN/ })).toHaveClass('primary')
   })
 
+  // Issue #33: a WireGuard tunnel whose server stopped answering is not
+  // shown as connected, and an unverifiable one says what to do.
+  it('flags tunnels whose server does not answer', async () => {
+    stubApi({
+      'GET /api/v1/preferences': () => json({ language: '', theme: '' }),
+      'GET /api/v1/helper/status': () => json({ ...helperMissing, installed: true, running: true, available: true, needs_install: false }),
+      'GET /api/v1/tunnels': () =>
+        json([
+          { ...tunnel('brainbox', 'error'), health: { state: 'no_response' } },
+          { ...tunnel('home', 'connected'), health: { state: 'unknown', reason_key: 'service.error.outdated' } },
+        ]),
+    })
+    render(<App />)
+
+    expect(await screen.findByText('Sin respuesta')).toBeInTheDocument()
+    expect(screen.getByText(/Sin respuesta del servidor · Kongtrol reintenta solo/)).toBeInTheDocument()
+    expect(screen.getByText(/el ayudante está desactualizado/)).toBeInTheDocument()
+  })
+
   it('explains what to do when Kongtrol is not running', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new TypeError('Failed to fetch'))))
     vi.stubGlobal('WebSocket', SilentSocket)

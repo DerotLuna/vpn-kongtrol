@@ -87,6 +87,9 @@ type tunnelRow struct {
 	// Attach is a provider adapter's attach phase (nil for others); the
 	// live view prints its message under the table.
 	Attach *vpn.AttachState
+	// Health: does the server answer (nil when not reported); printed
+	// under the table like Attach.
+	Health *vpn.TunnelHealth
 }
 
 type tunnelTableLayout struct {

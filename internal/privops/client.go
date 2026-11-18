@@ -190,6 +190,18 @@ func (c *Client) WGSetAllowedIPs(ctx context.Context, req WGAllowedIPsRequest) e
 	return c.Call(ctx, OpWGAllowedIPs, req, nil)
 }
 
+// WGStats reads a tunnel's handshake and transfer counters. A helper
+// installed by an older Kongtrol rejects the newer protocol version, or
+// does not know the op: both map to ErrHelperOutdated.
+func (c *Client) WGStats(ctx context.Context, req WGStatsRequest) (WGStats, error) {
+	var s WGStats
+	err := c.Call(ctx, OpWGStats, req, &s)
+	if errors.Is(err, ErrInvalidRequest) && strings.Contains(err.Error(), "unknown operation") {
+		return WGStats{}, ErrHelperOutdated
+	}
+	return s, err
+}
+
 func (c *Client) OpenVPNStart(ctx context.Context, req OpenVPNStartRequest) (OpenVPNSession, error) {
 	var s OpenVPNSession
 	err := c.Call(ctx, OpOpenVPNStart, req, &s)
