@@ -27,11 +27,11 @@ export const CTA_COPY: Record<Lang, {
   shareTitle: string
 }> = {
   es: {
-    generic: 'Descargar gratis',
-    forOS: { windows: 'Descargar para Windows', macos: 'Descargar para Mac', linux: 'Descargar para Linux' },
+    generic: 'Ver descargas',
+    forOS: { windows: 'Ver descargas para Windows', macos: 'Ver descargas para Mac', linux: 'Ver descargas para Linux' },
     github: 'Ver en GitHub',
     githubLabel: 'Kongtrol en GitHub',
-    navDownload: 'Descargar',
+    navDownload: 'Descargas',
     mobileNotice: 'Estás en un celular: Kongtrol se instala en tu computador.',
     send: 'Enviar a mi computador',
     copy: 'Copiar enlace',
@@ -40,11 +40,11 @@ export const CTA_COPY: Record<Lang, {
     shareTitle: 'Kongtrol — todas tus VPN en un solo lugar',
   },
   en: {
-    generic: 'Download free',
-    forOS: { windows: 'Download for Windows', macos: 'Download for Mac', linux: 'Download for Linux' },
+    generic: 'See downloads',
+    forOS: { windows: 'See downloads for Windows', macos: 'See downloads for Mac', linux: 'See downloads for Linux' },
     github: 'View on GitHub',
     githubLabel: 'Kongtrol on GitHub',
-    navDownload: 'Download',
+    navDownload: 'Downloads',
     mobileNotice: "You're on a phone: Kongtrol installs on your computer.",
     send: 'Send to my computer',
     copy: 'Copy link',
@@ -54,7 +54,7 @@ export const CTA_COPY: Record<Lang, {
   },
 }
 
-/** "Descargar para Windows", or the generic label while the OS is unknown (prerender). */
+/** "Ver descargas para Windows", or the generic label while the OS is unknown (prerender). */
 export const downloadLabel = (lang: Lang, os: OS | null) =>
   os ? CTA_COPY[lang].forOS[os] : CTA_COPY[lang].generic
 
