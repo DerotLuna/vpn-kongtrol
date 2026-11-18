@@ -20,13 +20,13 @@ else
   TRAY_LDFLAGS := $(LDFLAGS)
 endif
 
-# ── New UI (web/ui: Vite + React + TypeScript, pnpm) ─────────────────────────
+# ── Dashboard UI (web/ui: Vite + React + TypeScript, pnpm) ─────────────────────────
 #
-# web/ui/dist is embedded by web/ui_embed.go and served at /app/. It is
+# web/ui/dist is embedded by web/ui_embed.go and served at /. It is
 # rebuilt only when a UI source is newer than dist/index.html (plain make
 # file dependencies), so `make build` with an unchanged UI never runs Node.
 # Without pnpm, the UI step is skipped with a warning and the binary serves a
-# "UI not built" page at /app/; release.yml always builds it.
+# "UI not built" page at /; release.yml always builds it.
 
 UI_DIR      := web/ui
 UI_INDEX    := $(UI_DIR)/dist/index.html
@@ -52,7 +52,7 @@ ui-install: $(UI_DEPS)
 .PHONY: ui-build
 ui-build: $(UI_DEPS) $(UI_INDEX)
 
-# Dev server at http://127.0.0.1:5173/app/ with hot reload; /api (REST +
+# Dev server at http://127.0.0.1:5173/ with hot reload; /api (REST +
 # WebSocket) is proxied to the running daemon (KONGTROL_DAEMON_URL, default
 # http://127.0.0.1:9741). Open the dashboard once at http://127.0.0.1:9741/
 # first so the browser holds its login cookie.
@@ -70,7 +70,7 @@ ui-if-available:
 	@if command -v pnpm >/dev/null 2>&1; then \
 		"$(MAKE)" --no-print-directory ui-build; \
 	else \
-		echo "⚠ pnpm not found: building without the new UI (/app/ shows how to build it)."; \
+		echo "⚠ pnpm not found: building without the dashboard UI (/ shows how to build it)."; \
 	fi
 
 # ── Local build ──────────────────────────────────────────────────────────────
@@ -248,10 +248,9 @@ docs:
 	go generate ./cmd/kongtrol
 
 # Report-only checks, like CI's docs job (never fails): generated docs,
-# change impact against main, dashboard + landing i18n parity.
+# change impact against main, landing i18n parity (web/ui's is in its tests).
 .PHONY: docs-check
 docs-check:
 	go run ./cmd/kongtrol gen-docs --check
 	go run ./internal/impact/impactcheck -base main -head HEAD
-	node --test 'scripts/i18n/*.test.mjs'
 	@if [ -d landing/node_modules ]; then cd landing && pnpm run check:i18n; fi
