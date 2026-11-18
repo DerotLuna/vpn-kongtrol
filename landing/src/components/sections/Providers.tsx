@@ -1,10 +1,9 @@
-// VPN section of the landing — version 2.0.0 · 2026-11-17.
+// VPN section of the landing — version 2.1.0 · 2026-11-18.
 // Two groups (attach vs direct, from internal/vpn/* — the attach group is the
 // adapters built on internal/vpn/appattach) and per-OS support checked against
-// each adapter's platform files. Brand logos: ADR-0022; only brands whose
-// published rules allow it get a logo, the rest keep our own monogram.
+// each adapter's platform files. No third-party logos (ADR-0022): every VPN
+// gets our own monogram tile.
 import { Lang } from '../../i18n'
-import { PROTON_HOME } from '../../links'
 import './providers.css'
 
 interface Props {
@@ -20,7 +19,6 @@ type OS = 'win' | 'mac' | 'linux'
 type Provider = {
   name: string
   mark: string // two-letter monogram — our own mark, not the provider's logo
-  logo?: 'proton' // a brand logo only where its owner's rules allow it (ADR-0022)
   kind: 'privacy' | 'enterprise' | 'open' | 'network'
   os: Partial<Record<OS, Support>> // missing OS = not supported
 }
@@ -33,7 +31,7 @@ type Provider = {
 // (docs/forticlient-support.md).
 const ATTACH: Provider[] = [
   { name: 'NordVPN', mark: 'Nv', kind: 'privacy', os: { win: 'auto', mac: 'manual', linux: 'auto' } },
-  { name: 'Proton VPN', mark: 'Pv', logo: 'proton', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'auto' } },
+  { name: 'Proton VPN', mark: 'Pv', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'auto' } },
   { name: 'Surfshark', mark: 'Ss', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'manual' } },
   { name: 'FortiClient', mark: 'Fc', kind: 'enterprise', os: { win: 'auto', mac: 'unverified', linux: 'unverified' } },
 ]
@@ -53,17 +51,6 @@ const DIRECT: Provider[] = [
 
 const OS_ORDER: OS[] = ['win', 'mac', 'linux']
 const OS_NAME: Record<OS, string> = { win: 'Windows', mac: 'macOS', linux: 'Linux' }
-
-// Proton VPN symbol, monochrome path from Simple Icons 16.38.0 (CC0-1.0,
-// slug "protonvpn"), drawn in currentColor. Proton's media kit allows its
-// brand assets if the page refers back to proton.me (see the note link).
-function ProtonLogo() {
-  return (
-    <svg className="provider-logo" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="m10.176 20.058.858-1.28 6.513-9.838c.57-.86.026-2.014-1.005-2.131L.378 4.95l8.373 15.055a.84.84 0 0 0 1.424.052h.001zM23.586 7.14l-9.662 14.61c-1.036 1.567-3.38 1.478-4.293-.162l-.093-.168c.3-.01.594-.086.855-.235a1.85 1.85 0 0 0 .612-.57l.86-1.28 6.516-9.844c.46-.694.525-1.56.173-2.314a2.375 2.375 0 0 0-1.899-1.364L.493 3.956l-.476-.054C-.163 2.392 1.101.95 2.784 1.143l18.991 2.16c1.856.21 2.835 2.289 1.812 3.838z" />
-    </svg>
-  )
-}
 
 export default function Providers({ lang }: Props) {
   const es = lang === 'es'
@@ -87,8 +74,7 @@ export default function Providers({ lang }: Props) {
       attachKey: 'auto: Kongtrol conecta solo · manual: conectas en la app y Kongtrol se adjunta · sin probar: nadie lo ha verificado aún.',
       directKey: 'parcial: OpenVPN en macOS necesita, por ahora, ejecutarse como administrador.',
       kinds: { privacy: 'Privacidad', enterprise: 'Empresa', open: 'Estándar abierto', network: 'Red privada' },
-      note: 'Los nombres y logotipos son marcas de sus respectivos dueños. Kongtrol es un proyecto independiente, sin afiliación con ellos.',
-      protonCredit: 'Logo de Proton VPN del kit de prensa de',
+      note: 'Los nombres son marcas de sus respectivos dueños. Kongtrol es un proyecto independiente, sin afiliación con ellos.',
     }
     : {
       title: 'Works with the VPNs you already use.',
@@ -109,14 +95,13 @@ export default function Providers({ lang }: Props) {
       attachKey: 'auto: Kongtrol connects on its own · manual: connect in the app and Kongtrol attaches · untested: nobody has verified it yet.',
       directKey: 'partial: OpenVPN on macOS needs, for now, to run as administrator.',
       kinds: { privacy: 'Privacy', enterprise: 'Enterprise', open: 'Open standard', network: 'Private network' },
-      note: 'Names and logos are trademarks of their respective owners. Kongtrol is an independent project, not affiliated with them.',
-      protonCredit: 'Proton VPN logo from the press kit at',
+      note: 'Names are trademarks of their respective owners. Kongtrol is an independent project, not affiliated with them.',
     }
 
   const card = (p: Provider) => (
     <li key={p.name} className="provider">
       <span className="provider-mark" aria-hidden="true">
-        {p.logo === 'proton' ? <ProtonLogo /> : p.mark}
+        {p.mark}
       </span>
       <span className="provider-text">
         <span className="provider-name">{p.name}</span>
@@ -158,10 +143,7 @@ export default function Providers({ lang }: Props) {
           <p className="providers-key">{t.directKey}</p>
         </div>
 
-        <p className="providers-note">
-          {t.note} {t.protonCredit}{' '}
-          <a href={PROTON_HOME} rel="noopener noreferrer">proton.me</a>.
-        </p>
+        <p className="providers-note">{t.note}</p>
       </div>
     </section>
   )

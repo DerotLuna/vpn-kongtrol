@@ -1,6 +1,5 @@
-/* Providers section (#vpns) — version 2.0.0 · 2026-11-17.
-   Only .providers-*, .provider*, .os* rules live here; tokens come from index.css.
-   Logos/monograms are a fixed 40×40 box so nothing shifts while fonts or SVGs load. */
+/* Providers section (#vpns) — version 2.1.0 · 2026-11-18.
+   Only .providers-*, .provider*, .os* rules live here; tokens come from index.css. */
 
 .providers-group { margin-top: 36px; }
 .providers-group + .providers-group { margin-top: 44px; }
@@ -17,20 +16,42 @@
 .provider-grid.is-attach { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .provider-grid.is-direct { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 
+/* Group tint: attach = --live (the "connected" green), direct = --steel. Used only
+   for borders, the corner tick and a faint wash — letters stay --text for contrast. */
+.provider-grid.is-attach { --tint: var(--live); }
+.provider-grid.is-direct { --tint: var(--steel); }
+
 .provider {
-  display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; row-gap: 12px;
+  display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; row-gap: 12px;
   align-items: center; min-width: 0;
   padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--surface); transition: border-color 0.2s, background-color 0.2s;
 }
-.provider:hover { border-color: var(--border-2); background: var(--surface-2); }
-
-.provider-mark {
-  width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
-  font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; color: var(--text-muted);
-  border: 1px solid var(--border-2); background: var(--bg);
+.provider:hover {
+  border-color: color-mix(in srgb, var(--tint) 45%, var(--border));
+  background: var(--surface-2);
 }
-.provider-logo { display: block; width: 22px; height: 22px; color: var(--text); }
+
+/* Monogram tile: our own mark, never a brand's logo or colour (ADR-0022).
+   Fixed 44×44 box, so nothing shifts while the display font loads. */
+.provider-mark {
+  position: relative; box-sizing: border-box; width: 44px; height: 44px;
+  display: grid; place-items: center; border-radius: 11px;
+  font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: -0.02em;
+  line-height: 1; color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--tint) 30%, var(--border-2));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--tint) 14%, var(--surface)) 0%, var(--bg) 100%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 7%, transparent);
+  transition: border-color 0.2s, transform 0.2s var(--expo-out);
+}
+.provider-mark::after {
+  content: ''; position: absolute; top: 6px; right: 6px; width: 5px; height: 5px;
+  border-radius: 50%; background: var(--tint);
+}
+.provider:hover .provider-mark {
+  border-color: color-mix(in srgb, var(--tint) 60%, var(--border-2));
+  transform: translateY(-1px);
+}
 
 .provider-text { display: grid; gap: 2px; min-width: 0; }
 .provider-name {
@@ -62,9 +83,6 @@
 
 .providers-key { margin-top: 10px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
 .providers-note { margin-top: 28px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
-.providers-note a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
-.providers-note a:hover { color: var(--text); }
-.providers-note a:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 2px; }
 
 @media (max-width: 1080px) {
   .provider-grid.is-attach { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -79,5 +97,6 @@
   .provider-grid.is-direct { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .provider { transition: none; }
+  .provider, .provider-mark { transition: none; }
+  .provider:hover .provider-mark { transform: none; }
 }

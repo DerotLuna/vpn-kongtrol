@@ -34,7 +34,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0019](0019-track-supported-go-release.md) | Track a supported Go release (1.27) | Accepted | 2026-11-17 |
 | [0020](0020-forticlient-multi-version-strategies.md) | FortiClient multi-version support: detect the version, pick a strategy, keep attach fallback | Accepted | 2026-11-17 |
 | [0021](0021-renovate-for-dependency-updates.md) | Renovate for dependency updates; Dependabot only for alerts | Accepted | 2026-11-17 |
-| [0022](0022-provider-logos-on-landing.md) | Provider logos on the landing only where the brand's rules allow it | Accepted | 2026-11-17 |
+| [0022](0022-provider-logos-on-landing.md) | No third-party logos on the landing: our own monograms for every VPN | Accepted | 2026-11-18 |
 
 ## Statuses
 

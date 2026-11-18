@@ -9,7 +9,3 @@ export const GITHUB_RELEASES = `${GITHUB_REPO}/releases/latest`
 export function releaseAsset(filename: string): string {
   return `${GITHUB_REPO}/releases/latest/download/${filename}`
 }
-
-// Proton's media kit allows its brand assets when the page refers back to
-// proton.me (ADR-0022); the providers section links here.
-export const PROTON_HOME = 'https://proton.me'
