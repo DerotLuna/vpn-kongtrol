@@ -49,6 +49,7 @@ func init() {
 	upCmd.Flags().StringVar(&upGroup, "group", "", ct("cli.up.flag.group"))
 	upCmd.Flags().BoolVar(&upDryRun, "dry-run", false, ct("cli.up.dry_run_help"))
 	upCmd.Flags().BoolVar(&upFavorites, "fav", false, ct("cli.up.flag.fav"))
+	upCmd.Flags().BoolVar(&alertBell, "alert-bell", false, ct("cli.flag.alert_bell"))
 }
 
 // Indirections so runUp is testable without a terminal or a real daemon.

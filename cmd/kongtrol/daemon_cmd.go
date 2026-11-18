@@ -30,6 +30,10 @@ var daemonCmd = &cobra.Command{
 
 func init() {
 	daemonCmd.Short = ct("cli.daemon.short")
+	// Passed on by up (daemonArgs); local so the deprecated global one
+	// is not what the daemon parses.
+	daemonCmd.Flags().BoolVar(&alertBell, "alert-bell", false, "")
+	_ = daemonCmd.Flags().MarkHidden("alert-bell")
 	rootCmd.AddCommand(daemonCmd)
 }
 

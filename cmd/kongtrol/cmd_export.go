@@ -117,11 +117,15 @@ var exportCmd = &cobra.Command{
 var versionCmd = &cobra.Command{
 	Use: "version",
 	Run: func(cmd *cobra.Command, args []string) {
-		// Piped / quiet output stays a bare, parseable version string.
-		if outputQuiet || outputPlain || !isTerminal() {
-			fmt.Println(version)
-			return
-		}
-		PrintHeader(version)
+		fmt.Print(versionText())
 	},
+}
+
+// versionText is the output of `kongtrol version` and `kongtrol --version`.
+// Piped / quiet output stays a bare, parseable version string.
+func versionText() string {
+	if outputQuiet || outputPlain || !isTerminal() {
+		return version + "\n"
+	}
+	return headerText(version)
 }
