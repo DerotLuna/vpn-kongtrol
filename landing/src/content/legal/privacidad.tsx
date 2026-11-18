@@ -16,7 +16,7 @@
 // - new version notice: opt-in `updates.check_enabled` (default false), GET api.github.com/repos/DerotLuna/
 //   vpn-kongtrol/releases/latest at most every 24h, headers User-Agent "kongtrol/<version>" + Accept only (ADR-0034).
 // - no telemetry / analytics / crash reporting: repo-wide search, no such code.
-// - dashboard fonts/logos self-hosted: web/dashboard/*.html -> /brand/ (internal/api/brand_assets.go); dashboard localStorage: web/dashboard/*.js.
+// - dashboard fonts/logos self-hosted: bundled by Vite into web/ui/dist (embedded, web/ui_embed.go); dashboard localStorage: web/ui/src/lib/storage.ts.
 // Re-check these when the code changes (CLAUDE.md "Docs stay in sync").
 import type { Lang } from '../../i18n'
 import type { LegalDocContent } from '../../components/sections/LegalDoc'

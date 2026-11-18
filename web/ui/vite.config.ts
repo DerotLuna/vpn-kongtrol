@@ -1,9 +1,9 @@
 /// <reference types="vitest/config" />
-// Kongtrol UI — Vite config · v0.1.0 · 2026-11-17
+// Kongtrol UI — Vite config · v0.2.0 · 2026-11-18
 //
 // Build: `pnpm build` writes web/ui/dist, which web/ui_embed.go embeds into the
-// Go binary and internal/api serves under /app/ (the legacy dashboard keeps /).
-// Dev:   `pnpm dev` (or `make ui-dev`) serves http://127.0.0.1:5173/app/ and
+// Go binary and internal/api serves at / (ADR-0043).
+// Dev:   `pnpm dev` (or `make ui-dev`) serves http://127.0.0.1:5173/ and
 //        proxies /api (REST + WebSocket) to the running daemon.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
@@ -37,7 +37,7 @@ function keepDistMarker(): Plugin {
 }
 
 export default defineConfig({
-  base: '/app/',
+  base: '/',
   plugins: [react(), keepDistMarker()],
   resolve: {
     alias: {

@@ -66,7 +66,7 @@ function setLang(lang: string) {
   Object.defineProperty(navigator, 'languages', { value: [lang], configurable: true })
 }
 
-describe('TrayPage (/app/tray)', () => {
+describe('TrayPage (/tray)', () => {
   beforeEach(() => {
     window.history.pushState({}, '', `${import.meta.env.BASE_URL}tray`)
     localStorage.clear()

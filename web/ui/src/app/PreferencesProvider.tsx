@@ -1,7 +1,6 @@
-// Language + theme for the whole UI. Rules mirror the legacy dashboard so a
-// choice made in either one applies to both (same storage keys, same
-// ~/.kongtrol/preferences.json via /api/v1/preferences, which is
-// authoritative once loaded).
+// Language + theme for the whole UI. A choice is kept in this browser and
+// in ~/.kongtrol/preferences.json via /api/v1/preferences, which is
+// authoritative once loaded.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { api, setApiLang } from '../api/client'
 import { browserLang, initialLang, isLang, storeLang, storedLang } from '../i18n/lang'

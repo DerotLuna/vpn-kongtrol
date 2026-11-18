@@ -1,7 +1,7 @@
 // Kongtrol UI — the only module that deals with authentication · v0.2.0 · 2026-11-18
 //
 // One-time bootstrap (ADR-0039): the tray / CLI open
-// `/app/#k=<one-time nonce>` (daemonctl.Client.PanelURL), this module trades
+// `/#k=<one-time nonce>` (daemonctl.Client.PanelURL), this module trades
 // the nonce for the HttpOnly SameSite=Strict `kongtrol_session` cookie
 // (POST /api/v1/session) and the page never sees the file token. The daemon
 // no longer sets any cookie when it serves a page. A 404 on the exchange

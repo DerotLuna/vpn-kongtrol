@@ -1,4 +1,4 @@
-// Kongtrol UI — component kit review page (/app/_kit) · v0.1.0 · 2026-11-18
+// Kongtrol UI — component kit review page (/_kit) · v0.1.0 · 2026-11-18
 //
 // Development builds only (App.tsx loads it behind import.meta.env.DEV), so
 // it never ships and its sample text lives here, not in messages.ts. Shows

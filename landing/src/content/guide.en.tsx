@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 2.5.0 · 2026-11-18.
+// Version 2.6.0 · 2026-11-18.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -506,14 +506,23 @@ $ kongtrol status --watch`,
     // feature:dashboard
     dashboard1: <>Web dashboard</>,
     dashboard2: <>Open it from the tray icon ("Open dashboard") or with <IC c="kongtrol dashboard" />: it opens in
-                your browser already authorized. Typing the address by hand is not enough, for security. It's a full management console, with sidebar navigation:</>,
+                your browser already authorized. Typing the address by hand is not enough, for security. It's a full management console, with seven sections:</>,
     dashboard3: <>Page</>,
     dashboard4: <>What it does</>,
-    dashboard5: <>Live tunnels, per-tunnel traffic charts, active routes, policy resolver, group quick-launch, connect/disconnect all</>,
-    dashboard6: <>Tabs: routing policies (CRUD + rule tester), VPN profiles (CRUD, config + keychain), and groups (CRUD + connect/disconnect)</>,
-    dashboard7: <>Live Kill Switch/DNS Guard toggles, per-profile kill switch override, leak check status, optional public IP lookup (off by default) with a Check button</>,
-    dashboard8: <>Audit events filterable by profile/level, with an HMAC-signed indicator</>,
-    dashboard9: <>Health check, scheduler + rules, split DNS, kill switch/DNS guard tuning, public IP services, audit log</>,
+    dashName1: <>Home</>,
+    dashDesc1: <>Your VPNs live (state, IP, time, traffic, latency) with connect / cancel / disconnect / reload, notices, protection summary, internet egress and group quick-launch</>,
+    dashName2: <>Profiles</>,
+    dashDesc2: <>Create, edit, rename and delete VPN profiles (the password goes to the system keychain), backup (failover) and the first-run guide; Groups tab to connect several VPNs at once</>,
+    dashName3: <>Rules</>,
+    dashDesc3: <>Which sites, networks and apps go through each VPN, tested before saving, and what happens when their VPN is off; Schedule tab to connect or disconnect at set times</>,
+    dashName4: <>Traffic</>,
+    dashDesc4: <>Traffic per VPN over time, where a site or IP goes out, each tunnel's routes and the computer's route table</>,
+    dashName5: <>Security</>,
+    dashDesc5: <>Live Kill Switch and DNS Guard with their settings, per-profile switch, split DNS and the optional public IP lookup (off by default) with a Check button</>,
+    dashName6: <>Activity</>,
+    dashDesc6: <>Audit log with filters (date, profile, level) and checked HMAC signatures, plus Kongtrol's notices</>,
+    dashName7: <>Settings</>,
+    dashDesc7: <>Language, theme, diagnostics (with Repair and Export configuration), health check, new version notice, restart or stop Kongtrol and delete your data</>,
     dashboard10: `# Useful endpoints
 GET  /api/v1/metrics/history
 GET  /api/v1/dns/resolve?domain=claude.ai&via=us-content

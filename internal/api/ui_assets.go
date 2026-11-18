@@ -3,10 +3,13 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/base64"
 	"html/template"
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -16,10 +19,21 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 )
 
-// uiPrefix is where the new UI (web/ui, embedded by web/ui_embed.go) is
-// served. The legacy dashboard (web/dashboard) keeps "/" until every page
-// has migrated; then the prefix can move to "/" in one place.
-const uiPrefix = "/app/"
+// The dashboard (web/ui, embedded by web/ui_embed.go) is served at "/"
+// (ADR-0043). Until then it lived under legacyUIPrefix, next to the classic
+// dashboard; bookmarks and older tray builds still open those addresses, so
+// they get a permanent redirect to the same page under "/".
+const legacyUIPrefix = "/app"
+
+// legacyPages are the classic dashboard's pages (deleted, ADR-0043) and the
+// section that took each one over, so bookmarks and older tray builds (the
+// first-run "/studio.html") still land on the right page.
+var legacyPages = map[string]string{
+	"/studio.html":   "/profiles",
+	"/security.html": "/security",
+	"/settings.html": "/settings",
+	"/audit.html":    "/activity",
+}
 
 // uiContentTypes pins the types the UI build emits. mime.TypeByExtension
 // consults the Windows registry, which can map .js to text/plain; with
@@ -41,7 +55,8 @@ var uiContentTypes = map[string]string{
 }
 
 // newUIHandler serves the built single-page app from fsys (rooted at the
-// Vite outDir) under uiPrefix. built=false serves a translated page telling
+// Vite outDir) at "/", the catch-all of the server mux: every path that no
+// API route claimed. built=false serves a translated page telling
 // developers to build the UI. Auth and Host/Origin checks stay in
 // secureHandler; this only serves static files.
 //
@@ -51,33 +66,71 @@ var uiContentTypes = map[string]string{
 func newUIHandler(fsys fs.FS, built bool) http.Handler {
 	gz := &gzipCache{}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// An API path no route matched is an API 404, never the page.
+		if r.URL.Path == "/api" || strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if target, ok := legacyUIRedirect(r.URL); ok {
+			// 308 keeps the method; the browser re-attaches the "#k=…"
+			// sign-in fragment, which never reaches the server, because
+			// Location carries none (RFC 9110 §10.2.2).
+			http.Redirect(w, r, target, http.StatusPermanentRedirect)
 			return
 		}
 		if !built {
 			serveUINotBuilt(w, r)
 			return
 		}
-		name := strings.TrimPrefix(path.Clean("/"+strings.TrimPrefix(r.URL.Path, uiPrefix)), "/")
+		name := strings.TrimPrefix(path.Clean("/"+r.URL.Path), "/")
 		if name == "" {
 			name = "index.html"
 		}
 		if serveUIFile(w, r, fsys, gz, name) {
 			return
 		}
-		// A missing hashed asset is a real 404: answering with HTML would
-		// make the browser report a confusing MIME error instead.
-		if name == "assets" || strings.HasPrefix(name, "assets/") {
+		// A missing file is a real 404: answering with HTML would make the
+		// browser report a confusing MIME error instead. Hashed assets live
+		// under assets/; a name with an extension (favicon.ico, robots.txt,
+		// an old /studio.html) is a file too. Client routes have neither.
+		if name == "assets" || strings.HasPrefix(name, "assets/") || path.Ext(name) != "" {
 			http.NotFound(w, r)
 			return
 		}
-		// Client-side route (e.g. /app/settings): hand it to the SPA.
+		// Client-side route (e.g. /settings): hand it to the SPA.
 		if !serveUIFile(w, r, fsys, gz, "index.html") {
 			http.NotFound(w, r)
 		}
 	})
+}
+
+// legacyUIRedirect maps an address of the old /app/ prefix to the same page
+// at "/" (query kept): /app → /, /app/rules?x=1 → /rules?x=1. Paths that
+// only start with the letters (/apple) are not redirected. Classic
+// dashboard pages map to their new section (legacyPages).
+func legacyUIRedirect(u *url.URL) (string, bool) {
+	p := u.Path
+	if to, ok := legacyPages[p]; ok {
+		return to, true
+	}
+	if p != legacyUIPrefix && !strings.HasPrefix(p, legacyUIPrefix+"/") {
+		return "", false
+	}
+	target := path.Clean("/" + strings.TrimPrefix(p, legacyUIPrefix))
+	// Browsers read "/\host" as "//host" (another site): never redirect
+	// there; such a path is no page of ours anyway.
+	if strings.ContainsRune(target, '\\') {
+		return "/", true
+	}
+	if u.RawQuery != "" {
+		target += "?" + u.RawQuery
+	}
+	return target, true
 }
 
 // serveUIFile serves one regular file and reports whether it existed.
@@ -194,13 +247,22 @@ func acceptsGzip(header string) bool {
 	return star
 }
 
+// uiNotBuiltCSS is the not-built page's only style. The page CSP allows no
+// inline style, so this response names the block by its SHA-256 hash (CSP
+// Level 3 hash-source) instead of turning on 'unsafe-inline'.
+const uiNotBuiltCSS = `body{font:16px/1.55 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem}`
+
+var uiNotBuiltCSP = func() string {
+	sum := sha256.Sum256([]byte(uiNotBuiltCSS))
+	return "default-src 'none'; style-src 'sha256-" + base64.StdEncoding.EncodeToString(sum[:]) + "'; frame-ancestors 'none'"
+}()
+
 var uiNotBuiltPage = template.Must(template.New("ui").Parse(`<!doctype html>
 <html lang="{{.Lang}}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark"><title>Kongtrol</title>
-<style>body{font:16px/1.55 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem}
-code{font-family:ui-monospace,monospace}</style></head>
-<body><h1>{{.Title}}</h1><p>{{.Body}}</p><p>{{.Fix}}</p><p><a href="/">{{.Back}}</a></p></body></html>
+<style>` + uiNotBuiltCSS + `</style></head>
+<body><h1>{{.Title}}</h1><p>{{.Body}}</p><p>{{.Fix}}</p></body></html>
 `))
 
 // serveUINotBuilt answers 503 so scripts and smoke tests can tell a binary
@@ -209,6 +271,7 @@ func serveUINotBuilt(w http.ResponseWriter, r *http.Request) {
 	lang := requestLang(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Security-Policy", uiNotBuiltCSP)
 	w.WriteHeader(http.StatusServiceUnavailable)
 	if r.Method == http.MethodHead {
 		return
@@ -219,6 +282,5 @@ func serveUINotBuilt(w http.ResponseWriter, r *http.Request) {
 		"Title": i18n.T(lang, "ui.not_built.title"),
 		"Body":  i18n.T(lang, "ui.not_built.body"),
 		"Fix":   i18n.T(lang, "ui.not_built.fix"),
-		"Back":  i18n.T(lang, "ui.not_built.back"),
 	})
 }

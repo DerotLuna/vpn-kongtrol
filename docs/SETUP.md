@@ -615,7 +615,7 @@ All checks passed. You're good to go.
 
 <!-- feature:wizard -->
 Cada aviso o error trae debajo una línea **qué hacer** (`→ …`). Lo mismo, sin terminal: en el
-panel nuevo (`/app/`) la tarjeta **Diagnóstico** → «Revisar ahora» muestra cada comprobación
+panel, **Ajustes → Diagnóstico** → «Revisar ahora» muestra cada comprobación
 con su estado y qué hacer, y ofrece **Reparar** cuando falta el ayudante (pide el permiso del
 sistema una vez). API: `GET /api/v1/doctor`.
 
@@ -702,12 +702,13 @@ la página te pedirá abrirla desde Kongtrol ([ADR-0039](adr/0039-browser-sessio
 Es una consola de gestión completa, no solo
 monitoreo, con estas páginas:
 
-- **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo
-- **Studio** — pestañas: políticas de routing (CRUD + probador de reglas), perfiles VPN (CRUD, actualiza config + keychain; requiere reiniciar el daemon para conectar con un perfil nuevo/editado), y grupos (CRUD + conectar/desconectar)
-- **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check y consulta de IP pública opcional (apagada por defecto, botón Revisar)
-- **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
-- **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, IP pública y fugas: servicios https opcionales, audit log), scheduler (reglas)
-- **Panel nuevo (`/app/`)** — **Inicio**: tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos del daemon (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos. **Ajustes → Diagnóstico**: las mismas comprobaciones que `kongtrol doctor` con qué hacer en cada aviso, **Reparar** si falta el ayudante y **Exportar configuración** (sin contraseñas)
+- **Inicio** — tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos
+- **Perfiles** — crear, editar, renombrar y borrar perfiles VPN (la contraseña va al llavero del sistema), respaldo (`failover`) y la guía del primer uso; pestaña **Grupos** (crear, editar, conectar o desconectar varias VPN a la vez)
+- **Reglas** — qué sitios, redes y apps salen por cada VPN (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su VPN está apagada; pestaña **Horarios** (conectar o desconectar VPN a ciertas horas)
+- **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel y la tabla de rutas del equipo
+- **Seguridad** — Kill Switch y DNS Guard en vivo (con sus ajustes), el interruptor por perfil, la IP pública opcional (apagada por defecto) y DNS dividido
+- **Actividad** — registro de auditoría (filtros por fecha, perfil y nivel; firma HMAC comprobada) y los avisos del daemon
+- **Ajustes** — idioma, tema, **Diagnóstico** (las mismas comprobaciones que `kongtrol doctor`, **Reparar** si falta el ayudante, **Exportar configuración** sin contraseñas), comprobación de salud, avisos de versión nueva, ayudante, reiniciar / detener Kongtrol y borrar datos
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
 > puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —
@@ -789,7 +790,7 @@ kongtrol export > kongtrol-template.yaml
 
 Esto genera el YAML completo (perfiles, políticas, grupos, seguridad, programador) **sin
 contraseñas** — Kongtrol las guarda en el llavero del sistema, no en el archivo. El resultado se
-vuelve a cargar tal cual. Sin terminal: panel nuevo → tarjeta **Diagnóstico** → «Exportar
+vuelve a cargar tal cual. Sin terminal: panel → **Ajustes → Diagnóstico** → «Exportar
 configuración» (descarga `kongtrol-export.yaml`; API `GET /api/v1/config/export`). Ejemplo:
 
 ```yaml

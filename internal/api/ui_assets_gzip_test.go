@@ -33,7 +33,7 @@ func TestUIHandler_Gzip(t *testing.T) {
 	}
 
 	for i := 0; i < 2; i++ { // second time from the cache
-		rec := get("/app/assets/app-1.js", "br, gzip;q=0.8")
+		rec := get("/assets/app-1.js", "br, gzip;q=0.8")
 		if rec.Header().Get("Content-Encoding") != "gzip" || rec.Header().Get("Vary") != "Accept-Encoding" {
 			t.Fatalf("headers = %v", rec.Header())
 		}
@@ -52,25 +52,25 @@ func TestUIHandler_Gzip(t *testing.T) {
 			t.Fatalf("type = %q", rec.Header().Get("Content-Type"))
 		}
 	}
-	if rec := get("/app/settings", "gzip"); rec.Header().Get("Content-Encoding") != "gzip" {
+	if rec := get("/settings", "gzip"); rec.Header().Get("Content-Encoding") != "gzip" {
 		t.Fatal("SPA index.html not compressed")
 	}
 	for _, c := range []struct{ path, ae string }{
-		{"/app/assets/app-1.js", ""},
-		{"/app/assets/app-1.js", "gzip;q=0, br"},
-		{"/app/assets/app-1.js", "identity"},
-		{"/app/assets/tiny-1.js", "gzip"},
-		{"/app/assets/font-1.woff2", "gzip"},
+		{"/assets/app-1.js", ""},
+		{"/assets/app-1.js", "gzip;q=0, br"},
+		{"/assets/app-1.js", "identity"},
+		{"/assets/tiny-1.js", "gzip"},
+		{"/assets/font-1.woff2", "gzip"},
 	} {
 		rec := get(c.path, c.ae)
 		if rec.Header().Get("Content-Encoding") != "" || rec.Code != http.StatusOK {
 			t.Fatalf("%s %q: encoded %q", c.path, c.ae, rec.Header().Get("Content-Encoding"))
 		}
-		if want := string(fsys[strings.TrimPrefix(c.path, "/app/")].Data); rec.Body.String() != want {
+		if want := string(fsys[strings.TrimPrefix(c.path, "/")].Data); rec.Body.String() != want {
 			t.Fatalf("%s: plain body differs", c.path)
 		}
 	}
-	if v := get("/app/assets/font-1.woff2", "gzip").Header().Get("Vary"); v != "" {
+	if v := get("/assets/font-1.woff2", "gzip").Header().Get("Vary"); v != "" {
 		t.Fatalf("binary asset Vary = %q", v)
 	}
 	if !acceptsGzip("*") || acceptsGzip("*;q=0") || acceptsGzip("br") || !acceptsGzip("GZIP") {

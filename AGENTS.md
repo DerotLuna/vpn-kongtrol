@@ -92,7 +92,7 @@ When adding a new adapter:
 **First run and restart (ADR-0025).**
 - With no `kongtrol.yaml`, only `kongtrol daemon` may start, in **setup mode**
   (`config.NewEmpty()`, `GET /api/v1/setup`): the tray starts it and opens the dashboard's
-  Studio, whose profile editor writes the first profile to `config.DefaultPaths()[0]`. Every
+  Perfiles page (`/profiles`), whose profile editor writes the first profile to `config.DefaultPaths()[0]`. Every
   other command still points to `kongtrol init`, which stays the terminal path.
 - Restart = new daemon process: the dashboard's `POST /api/v1/restart` makes the daemon spawn
   `daemon --restart <connected profiles>` from its own executable and then stop like `down`;
@@ -169,7 +169,7 @@ notes stay only while an ADR cites them.
 `/en/privacy`) and listed in `docs/SECURITY.md`.
 
 **Docs stay in sync.** Every change updates, in the same work, every surface it touches: CLI
-`--help` and `docs/CLI.md`, README, `AGENTS.md`, both dashboards (`web/dashboard`, `web/ui`),
+`--help` and `docs/CLI.md`, README, `AGENTS.md`, the dashboard (`web/ui`),
 the tray, the wizard, `configs/example.yaml`, `docs/` and the landing (`landing/`, ES+EN,
 including the guide). The landing only advertises what already works.
 
@@ -254,11 +254,11 @@ ProfileService.Disconnect(name)
 | `internal/netstats` | No-admin per-interface traffic counters |
 | `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
 | `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
-| `web/` | legacy dashboard `web/dashboard/` (vanilla JS, embedded by `web/assets.go`, served at `/`) and the new UI `web/ui/` (see below) |
+| `web/` | the dashboard `web/ui/` (see below), embedded by `web/ui_embed.go` and served at `/` |
 | `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run assets/brand/generate.go`); `assets/embed.go`; tray / menu bar icons come from `brand/tray-<px>.png` (transparent masks that `generate.go` rasterizes from `source/logo-kong.svg`), tinted and badged at run time by `TrayMark`/`TrayICO`/`TrayPNG` in `assets/icon.go` and `assets/state_icons.go` |
 | `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed by Cloudflare Workers Builds as static assets (`landing/wrangler.jsonc`, ADR-0022) |
 | `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
-| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only). Left click on Windows opens the flyout (`flyout*.go`, `web/ui` `/app/tray`, ADR-0036); right click and other OSes keep the native menu. Native menu (ADR-0037): header → actions → version → exits; VPN lines are always "name · <state word>" (`tray_state.go`, never a raw status), connected ones checked and first, a DESIGN.md state dot per line; icon badge = aggregate state; per-OS icon code in `trayicon_<os>.go` |
+| `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only). Left click on Windows opens the flyout (`flyout*.go`, `web/ui` `/tray`, ADR-0036); right click and other OSes keep the native menu. Native menu (ADR-0037): header → actions → version → exits; VPN lines are always "name · <state word>" (`tray_state.go`, never a raw status), connected ones checked and first, a DESIGN.md state dot per line; icon badge = aggregate state; per-OS icon code in `trayicon_<os>.go` |
 
 ### OS-specific files
 
@@ -273,23 +273,25 @@ Build tags control OS implementations — never use runtime `switch runtime.GOOS
 ### `//go:embed` constraints
 
 Go embed paths are relative to the source file — no `../` allowed. Embed points:
-- `web/assets.go` embeds `dashboard/`; `web/ui_embed.go` embeds `ui/dist/`
+- `web/ui_embed.go` embeds `ui/dist/`
 - `assets/embed.go` embeds from `assets/brand/`
-- Never commit duplicate brand files: web clients get logos from `assets/brand` (served by the Go side or copied at build time).
+- Never commit duplicate brand files: web clients get logos from `assets/brand` (bundled by Vite from `@brand` or copied at build time).
 
-### New dashboard UI (`web/ui/`)
+### Dashboard (`web/ui/`)
 
-Vite + React + TS (pnpm, oxlint, Vitest), migrating the legacy dashboard page by page. Built to
-`web/ui/dist`, embedded by `web/ui_embed.go`, served at `/app/` by `internal/api/ui_assets.go`;
-legacy `web/dashboard` keeps `/` until migrated. Only `dist/.gitkeep` is tracked, so `go build`
+Vite + React + TS (pnpm, oxlint, Vitest), the only dashboard (ADR-0043 replaced the classic
+`web/dashboard`). Built to `web/ui/dist`, embedded by `web/ui_embed.go`, served at `/` by
+`internal/api/ui_assets.go`: build files as they are, a missing file → 404, any other non-`/api`
+path → `index.html` (client routes); `/app/*` and the classic page names (`/studio.html`, …)
+answer 308 to the same page at `/` (the `#k=` fragment survives). Page CSP has no
+`'unsafe-inline'`: no inline script or style in `web/ui`. Only `dist/.gitkeep` is tracked, so `go build`
 works without Node (shows a "not built" page); release builds always build the UI. `make ui-dev`
 proxies `/api` to the daemon. External URLs only in `src/links.ts`.
 
-Architecture (ADR-0038); the migration contract is `docs/dashboard-parity.md` (every legacy
-behaviour, tick each row with the new file; nothing dropped without an ADR):
-- Routes: `react-router` data router (`createBrowserRouter`, `basename` `/app`, ADR-0041) in
+Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the migration:
+- Routes: `react-router` data router (`createBrowserRouter`, `basename` `/`, ADR-0041) in
   `src/App.tsx`, pages loaded with route `lazy` (Inicio eager); sections in `src/app/sections.ts`.
-  `/app/tray` is the tray flyout (ADR-0036), outside the shell.
+  `/tray` is the tray flyout (ADR-0036), outside the shell.
 - A form with edits calls `useUnsavedChanges(dirty)` (`src/app/unsaved.ts`): the tab-close prompt
   and the shell's "Tienes cambios sin guardar" dialog (`useBlocker`) follow from it.
 - Data only via `src/data` (TanStack Query, cache keyed by resource in `keys.ts` or a
@@ -299,7 +301,7 @@ behaviour, tick each row with the new file; nothing dropped without an ADR):
   Requests only through `http.get/post/put/delete` in `src/api/client.ts` (language header,
   auth, reachability, `ApiError`); data modules keep their endpoints next to their hooks.
 - Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
-- UI kit in `src/components/ui` (review at `/app/_kit`, dev builds only); shell in
+- UI kit in `src/components/ui` (review at `/_kit`, dev builds only); shell in
   `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.
 - Strings: `src/i18n/common.ts` (shared) + `src/i18n/pages/<page>.ts`, composed in
   `src/i18n/messages.ts`; ES+EN parity and no duplicate key across modules are tested.
@@ -362,7 +364,7 @@ changing the port from the page serving that request would cut the connection mi
 `monitor.Watchdog` polls adapter `Status()` every 5 seconds per profile goroutine. Call `MarkIntended(name)` **before** `Disconnect()` to suppress reconnect. Call `MarkActive(name)` **after** a successful `Connect()` to re-arm it. Backoff: `2s × 2^attempt`, capped at 5 minutes.
 
 - It only reconnects profiles that were brought up (`MarkActive`). **No implicit failover** (ADR-0018): profiles reach different networks and are never linked by name, type or `priority`. The only other profiles it may connect are those the user declared on the dropped profile, `vpns.<name>.failover: [backup, …]` (validated: exist, not itself, once, no cycles), tried in order once per outage; a backup that takes over pauses retries of the original until the user connects it again.
-- No declared backup (or none worked): keep retrying the same profile and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard `notices.js`, live view render them). Health-check failures only notify.
+- No declared backup (or none worked): keep retrying the same profile and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard toasts and Actividad, live view render them). Health-check failures only notify.
 - `MarkIntended` cancels the watchdog's in-flight reconnect/failover for that profile; `ProfileService.Disconnect` also cancels and waits for any running `Connect` of the profile (`trackConnect`/`cancelConnects`), so `down` reports a final status and no provider app opens afterwards.
 - WireGuard liveness (ADR-0030): an existing interface is not "connected". The adapter reads `privops.WGStats` every 10s and `healthTracker` decides `vpn.TunnelHealth` (`ok` / `idle` / `no_response` / `unknown`, `vpn.HealthReporter`, `TunnelMetrics.Health` json `health`). `no_response` (handshake older than 200 s with PersistentKeepalive, or tx growing with rx flat for 15 s, or never handshaked but sent something; 30 s grace after connect) makes `Status()` return `StatusError`, so watchdog reconnect/failover, kill switch and `on_tunnel_down` treat it like a drop; the reconnect replaces the tunnel (`wgUp` restart). An unused tunnel without keepalive is `idle`, never flagged. Stats unreadable (helper missing/outdated) → `unknown` + `ReasonKey`, status stays connected. The watchdog emits `no_response` once per outage and `responding` when the handshake is fresh again (`watchdog.event.*`); clients render health with `health.*` keys.
 - `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset = position (earlier first).
@@ -397,7 +399,7 @@ changing the port from the page serving that request would cut the connection mi
 The user decides which tunnels are up; a policy whose tunnel is off uses the normal internet unless `on_tunnel_down` says otherwise.
 - `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Overlaps follow the policy engine order. Resolved IPs expire after 6h unseen.
 - `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints (+ LAN with `allow_lan` / legacy `mode: loose`). Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far.
-- `monitor.PolicyWatch` checks open TCP connections (Windows GetExtendedTcpTable, Linux /proc/net/tcp; macOS unsupported) every 15s and emits `monitor.Event`s (i18n key + args, throttled 30 min per policy; `connect` rate-limited 3 min) served by `GET /api/v1/events?after=<seq>` to tray, dashboard (`notices.js`) and the live view.
+- `monitor.PolicyWatch` checks open TCP connections (Windows GetExtendedTcpTable, Linux /proc/net/tcp; macOS unsupported) every 15s and emits `monitor.Event`s (i18n key + args, throttled 30 min per policy; `connect` rate-limited 3 min) served by `GET /api/v1/events?after=<seq>` to tray, dashboard (toasts + Actividad, `web/ui/src/data/home.ts`) and the live view.
 
 ### Public IP lookup (opt-in)
 
@@ -411,7 +413,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 - `Session.Connect`: (1) interface already up → `PhaseAttached`; (2) `auto_connect` + `AutoConnect` → wait `AutoWait` → `PhaseAuto`; any failure falls through; (3) launch app → `PhaseWaitingUser` (Status `connecting`, `Reason` = short automation error) → wait `wait_timeout` (default 5m) → `PhaseUser`, or `vpn.ErrUserActionTimeout`. No lock is held while waiting.
 - `Session.Disconnect`: `Disconnect` func then wait for the drop; otherwise launch app, `PhaseWaitingDisconnect`, return `vpn.ErrManualDisconnect` (Status stays `connected` until the interface drops). `ProfileService` runs DNS / kill-switch cleanup in the background once it drops; the API answers 202 `{"status":"waiting_user"}`; `daemonctl.Client.Disconnect` maps that back to `ErrManualDisconnect`; `kongtrol down` polls and shows the message.
 - `Session.Status`: interface detection on every call; an external tunnel becomes `PhaseAttached`; an unrequested drop becomes `PhaseDropped` when `Capabilities().ManualReconnect` (no automatic path, or `auto_connect: false`). The watchdog then emits `manual_reconnect_required` once per drop instead of reconnecting; the daemon turns it into the notice `watchdog.event.manual_reconnect` (tray, both dashboards, live view).
-- User-facing state: `vpn.AttachState` (`AttachReporter`) → `monitor.TunnelMetrics.Attach` (`json:"attach"`) in `/api/v1/tunnels` and the WebSocket snapshot. Clients render `AttachState.MessageKey()` with `internal/i18n` (`attach.*`) in their own language; the dashboard mirrors it in `attachMessage()` (`web/dashboard/app.js`). Never pre-render these strings in the daemon.
+- User-facing state: `vpn.AttachState` (`AttachReporter`) → `monitor.TunnelMetrics.Attach` (`json:"attach"`) in `/api/v1/tunnels` and the WebSocket snapshot. Clients render `AttachState.MessageKey()` with `internal/i18n` (`attach.*`) in their own language; the dashboard mirrors it in `attachKey()` (`web/ui/src/components/home/model.ts`). Never pre-render these strings in the daemon.
 - Config: standard fields `auto_connect` (*bool, default true), `country`, `city`, `server` (exact), `interface`, `wait_timeout`, `app_path`; nordvpn-only `group`. `VPNConfig.AdapterExtra()` is the single mapping to `AdapterConfig.Extra`; `validateProvider` (`internal/config/semantics.go`) rejects location fields on providers that cannot select (surfshark, forticlient).
 - FortiClient versions (ADR-0020, matrix in `docs/forticlient-support.md` — update it with every change): `DetectInstall` (folder from `app_path` / registry `INSTALLDIR`, `FortiClient.exe` ProductVersion via the Win32 version API, `FortiVPN.exe` presence) → `SelectPlan` (pure, one test case per matrix row): `FortiVPN.exe` → `fortivpn-cli` (`--cli --connect --tunnel` + native auth dialog, contributor-reported); 6.x or unknown → `gui-6.4` (verified on 6.4.10 only); other versions → `attach` (no automation). Never click a layout nobody measured; never pass credentials on a command line (`FortiSSLVPNclient.exe -u user:pass` is rejected for that). `kongtrol doctor` shows version · strategy · status.
 - FortiClient GUI automation (`internal/vpn/forticlient/script.go` generates, `gui_windows.go` runs): the script text holds no user data — FortiClient path, tunnel, username and password go on stdin as base64 lines (a typographic quote also ends a PowerShell single-quoted string); booleans render as `$true`/`$false`; written as UTF-8 **with BOM** (Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which broke parsing and mangled non-ASCII text); golden files in `testdata/` (`go test ./internal/vpn/forticlient -run Golden -update` after a reviewed change) and the Windows PowerShell parser test (fails, not skips, in CI); its failure becomes one line (`scriptErrorLine`: the script's `ERROR:` line or PowerShell's message + script line, never the source excerpt); cancelling the connect kills the script and clears the clipboard.
@@ -422,16 +424,16 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 ### Tray flyout (ADR-0036)
 
 - Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
-  window next to the icon showing `web/ui` `/app/tray`; right click, macOS, Linux and a missing
+  window next to the icon showing `web/ui` `/tray`; right click, macOS, Linux and a missing
   runtime keep the native menu. Portable rules in `cmd/kongtrol-tray/flyout.go` (tested), the
   window in `flyout_windows.go` (`github.com/jchv/go-webview2/pkg/edge`, pure Go: the tray
   still builds with `CGO_ENABLED=0`).
-- Only `http://<loopback>:<port>/app/tray` loads (`flyoutURL`); requests outside the daemon's
+- Only `http://<loopback>:<port>/tray` loads (`flyoutURL`); requests outside the daemon's
   origin get 403; an injected script pins the page and exposes `window.kongtrolTray.post` with
   a per-launch nonce. Page → tray messages are the closed list in `flyoutMessages`
   (`web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
 - The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
-  Escape) appear only when the bridge exists, so `/app/tray` also works in a browser tab.
+  Escape) appear only when the bridge exists, so `/tray` also works in a browser tab.
 
 ## Internationalization (i18n)
 

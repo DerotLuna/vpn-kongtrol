@@ -8,9 +8,9 @@ import (
 
 func TestFlyoutURL(t *testing.T) {
 	ok := map[string]string{
-		"http://127.0.0.1:9741":  "http://127.0.0.1:9741/app/tray",
-		"http://[::1]:9741":      "http://[::1]:9741/app/tray",
-		"http://localhost:8080/": "http://localhost:8080/app/tray",
+		"http://127.0.0.1:9741":  "http://127.0.0.1:9741/tray",
+		"http://[::1]:9741":      "http://[::1]:9741/tray",
+		"http://localhost:8080/": "http://localhost:8080/tray",
 	}
 	for base, want := range ok {
 		got, err := flyoutURL(base)
@@ -34,11 +34,11 @@ func TestFlyoutURL(t *testing.T) {
 }
 
 func TestFlyoutRequestAllowed(t *testing.T) {
-	page := "http://127.0.0.1:9741/app/tray"
+	page := "http://127.0.0.1:9741/tray"
 	allowed := []string{
 		page,
-		"http://127.0.0.1:9741/app/assets/index-abc.js",
-		"http://127.0.0.1:9741/brand/fonts/inter.woff2",
+		"http://127.0.0.1:9741/assets/index-abc.js",
+		"http://127.0.0.1:9741/assets/inter-abc.woff2",
 		"http://127.0.0.1:9741/api/v1/tunnels",
 		"ws://127.0.0.1:9741/api/v1/ws/metrics",
 	}
@@ -49,11 +49,11 @@ func TestFlyoutRequestAllowed(t *testing.T) {
 	}
 	blocked := []string{
 		"https://kongtrol.app/guia",
-		"http://127.0.0.1:9742/app/tray", // another port = another program
-		"http://localhost:9741/app/tray", // another origin for the cookie
+		"http://127.0.0.1:9742/tray", // another port = another program
+		"http://localhost:9741/tray", // another origin for the cookie
 		"http://evil.example/",
-		"https://127.0.0.1:9741/app/tray",
-		"http://user@127.0.0.1:9741/app/tray",
+		"https://127.0.0.1:9741/tray",
+		"http://user@127.0.0.1:9741/tray",
 		"data:text/html,hi",
 		"javascript:alert(1)",
 		"file:///C:/Windows/win.ini",
@@ -69,7 +69,7 @@ func TestFlyoutRequestAllowed(t *testing.T) {
 // a bootstrap fragment (#k=<nonce>) added in flyoutLoadURL keeps working
 // with the filter and the injected script; no token in path or query.
 func TestFlyoutLoadURL(t *testing.T) {
-	page := "http://127.0.0.1:9741/app/tray"
+	page := "http://127.0.0.1:9741/tray"
 	old := flyoutPanelURL
 	t.Cleanup(func() { flyoutPanelURL = old })
 	flyoutPanelURL = func(base, path string) (string, error) { return base + path + "#k=n0nce", nil }
@@ -81,7 +81,7 @@ func TestFlyoutLoadURL(t *testing.T) {
 		t.Errorf("flyoutLoadURL = %q, want the page with the sign-in nonce", got)
 	}
 	// A PanelURL answer that leaves the daemon's page is never loaded.
-	flyoutPanelURL = func(string, string) (string, error) { return "http://evil.example/app/tray#k=x", nil }
+	flyoutPanelURL = func(string, string) (string, error) { return "http://evil.example/tray#k=x", nil }
 	if got, _ := flyoutLoadURL(page); got != page {
 		t.Errorf("foreign URL used: %q", got)
 	}
@@ -95,13 +95,13 @@ func TestFlyoutLoadURL(t *testing.T) {
 }
 
 func TestFlyoutInitScript(t *testing.T) {
-	s, err := flyoutInitScript("http://127.0.0.1:9741/app/tray", "n0nce")
+	s, err := flyoutInitScript("http://127.0.0.1:9741/tray", "n0nce")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
 		`location.origin !== "http://127.0.0.1:9741"`,
-		`location.pathname !== "/app/tray"`,
+		`location.pathname !== "/tray"`,
 		`w.postMessage("kongtrol:off-page")`,
 		`var nonce = "n0nce"`,
 		`window.open = function () { return null; }`,

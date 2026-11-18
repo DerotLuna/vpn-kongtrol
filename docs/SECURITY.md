@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.6.0 · 2026-11-18
+Version 2.7.0 · 2026-11-18
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -67,8 +67,8 @@ an IP works. Each one sees your public IP; pick the one you trust. See
 
 Loopback only: the OpenVPN management interface (`internal/vpn/openvpn/management.go`) and the
 privileged helper's socket or named pipe (below). Your VPN clients (NordVPN, FortiClient, OpenVPN,
-WireGuard) make their own connections; those depend on each provider. The dashboard serves its
-fonts and logos from the binary (`/brand/`), so opening it contacts no third party.
+WireGuard) make their own connections; those depend on each provider. The dashboard bundles its
+fonts and logos into the binary (`web/ui`), so opening it contacts no third party.
 
 ## Local panel sign-in
 
@@ -89,7 +89,7 @@ The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refu
   restart ends them), expire after 12 h without use and after 7 days in any case, and only their
   SHA-256 digests are stored. `DELETE /api/v1/session` signs out.
 
-Pages (`/`, `/app/`) never set credentials. Every route, pages included, checks that the Host
+Pages (`/` and every dashboard route; `/app/*` only redirects there) never set credentials. Every route, pages included, checks that the Host
 header is a loopback name with the daemon's port (DNS rebinding); API requests with an `Origin`
 must come from the daemon's own origin, and mutations must be `application/json` (so a
 cross-site form or `text/plain` request cannot reach them). A page opened another way (a
@@ -313,7 +313,7 @@ This is a self-assessment, not an audit or certification.
 | Access control — A01, DA5, ASVS V4 | Local API needs the file token (native) or a browser session; pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md), [ADR-0040](adr/0040-local-hardening-review-2026-11.md)). | Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
 | Session management — DA2, ASVS V3 | 256-bit random session ids distinct from the token, HttpOnly + SameSite=Strict, server-side idle (12 h) and absolute (7 d) timeouts, logout, single-use 60 s nonce, in-memory store. | No `Secure` flag (loopback HTTP by design); no per-session binding to the browser beyond the cookie. |
 | CSRF — A01, ASVS V4.2/V13 | SameSite=Strict, `Origin` must be the daemon's own when present (required for the nonce exchange), mutations only as `application/json`. | — |
-| Injection / XSS — A03, DA1 | Names restricted to a safe charset; the legacy dashboard escapes quotes and passes data via `data-*`; the new UI is React (escaped by default); the panel's CSP allows scripts only from the daemon. | The legacy dashboard CSP still has `'unsafe-inline'` scripts (inline handlers remain for static buttons); removed when the legacy dashboard is retired. |
+| Injection / XSS — A03, DA1 | Names restricted to a safe charset; the dashboard is React (escaped by default); the page CSP allows scripts and styles only from the daemon, no `'unsafe-inline'` (ADR-0043). | — |
 | Security misconfiguration — A05, DA6 | Loopback-only bind (non-loopback refused); security headers on every response; update and public IP checks off by default; restrictive file modes for state. | — |
 | Sensitive data / crypto — A02, DA3, DA4 | Credentials only in the OS keychain; HMAC-signed audit log; TLS 1.2+ with default verification for the two opt-in outbound calls. | — |
 | Insecure communication — DA7 | Only the opt-in outbound calls listed above, https only, constrained redirects; everything else is loopback or local IPC. | — |

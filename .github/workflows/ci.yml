@@ -22,7 +22,6 @@ on:
       - "configs/**"
       - "Makefile"
       - "docs/impact.yml"
-      - "scripts/i18n/**"
       - ".goreleaser.yaml"
       - "packaging/**"
       - "install.sh"
@@ -42,7 +41,6 @@ jobs:
     outputs:
       go: ${{ steps.filter.outputs.go }}
       ui: ${{ steps.filter.outputs.ui }}
-      dashboard: ${{ steps.filter.outputs.dashboard }}
       packaging: ${{ steps.filter.outputs.packaging }}
     steps:
       - uses: actions/checkout@v4
@@ -59,10 +57,6 @@ jobs:
               - "configs/**"
               - "Makefile"
               - "docs/impact.yml"
-              - ".github/workflows/ci.yml"
-            dashboard:
-              - "web/dashboard/**"
-              - "scripts/i18n/**"
               - ".github/workflows/ci.yml"
             ui:
               - "web/ui/**"
@@ -114,21 +108,7 @@ jobs:
           node /tmp/kt-npm/kongtrol/bin/kongtrol.js version --plain
           (cd /tmp/kt-npm/kongtrol && npm pack --dry-run)
 
-  # Legacy dashboard (web/dashboard): ES/EN parity of every dictionary
-  # (Node built-in test runner, no install: https://nodejs.org/api/test.html).
-  dashboard-i18n:
-    needs: changes
-    if: needs.changes.outputs.dashboard == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: i18n parity
-        run: node --test 'scripts/i18n/*.test.mjs'
-
-  # New dashboard UI (web/ui): lint + typecheck, unit tests, production build.
+  # Dashboard UI (web/ui): lint + typecheck, unit tests, production build.
   # The build is handed to the Go test job so the binary is tested with the
   # real embedded UI instead of the "not built" placeholder.
   ui:
@@ -251,7 +231,7 @@ jobs:
   # which would block required checks — hence no paths filter on pull_request.
   ci-ok:
     if: always()
-    needs: [changes, dashboard-i18n, ui, test, race, security, packaging]
+    needs: [changes, ui, test, race, security, packaging]
     runs-on: ubuntu-latest
     steps:
       - name: All jobs passed or were skipped

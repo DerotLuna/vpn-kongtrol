@@ -2,7 +2,13 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.3.0 · 2026-11-18
+Version 1.4.0 · 2026-11-18
+
+**Complete.** Every row is ticked or justified (`replaced`, `dropped: ADR-0043`, `n/a`). The legacy
+dashboard was deleted and the new UI moved to `/` ([ADR-0043](adr/0043-new-dashboard-replaces-classic.md)).
+This file stays as the record that ADR-0038, ADR-0042 and ADR-0043 cite: legacy `file:line`
+references point to the tree before that change (`git show 35a2630:web/dashboard/<file>`), and
+routes below are now served at `/` instead of `/app/`.
 
 ## 1. Purpose and how to use
 
@@ -160,13 +166,13 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 - [x] Loading skeleton rows (tunnels, policies, routes, base network, groups) — legacy index.html:43-44, 55, 90-91, 103-107, 155-156 — API — — target `/`, `/traffic` — status: done (web/ui/src/components/home/*: Skeleton per card on first load)
 - [x] Empty: no tunnels / no policies / no policies for filter / no routes for filter / no groups / chart no data — legacy app.js:517, 959, 970, 822, 1143, 615 — API — — target `/`, `/traffic` — status: done (web/ui/src/components/home/*: no VPNs, no groups, no notices, sparkline "Midiendo"; policies/routes/chart empties are /traffic)
-- [ ] Fetch errors: legacy silently ignores (`catch (_) {}`) — legacy app.js:459-468, 652-659, 718-726 … — API all — target shell (every page) — status: new UI has it (components/ui/States.tsx `ErrorState`); **fix**: every card shows an error + "what to do"
+- [x] Fetch errors: legacy silently ignores (`catch (_) {}`) — legacy app.js:459-468, 652-659, 718-726 … — API all — target shell (every page) — status: done (components/ui/States.tsx `ErrorState`: every card shows the error + a "what to do" line)
 - [x] Button state per tunnel status (connect / cancel / disconnect+reload) — legacy app.js:568-574 — API `Status` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
 - [x] First-run redirect: `needs_setup` → profile editor — legacy app.js:1242-1247 — API GET /api/v1/setup (handlers_setup.go:39) `needs_setup` — target `/` → `/profiles` — status: done (web/ui/src/components/home/TunnelsCard.tsx: first-run step "Agregar VPN" → /profiles, no automatic redirect)
 
 #### Notices / toasts
 
-- [ ] `toast.daemonLost` (error, 8 s) / `toast.daemonRestored` (success) on WS state change, not on first load — legacy app.js:442-455 — API WS — target shell (every page) — status: missing
+- [x] `toast.daemonLost` (error, 8 s) / `toast.daemonRestored` (success) on WS state change, not on first load — legacy app.js:442-455 — API WS — target shell (every page) — status: done, as a persistent inline notice instead of an 8 s toast (components/layout/AppNotices.tsx: what to do + automatic reconnect + Retry; components/layout/AggregateStatus.tsx "Reconectando…"); it clears itself when the daemon answers again
 - [x] `toast.groupConnecting` / `toast.groupDisconnecting` / `toast.groupActionFailed` — legacy app.js:1159-1172 — API group connect/disconnect — target `/` — status: done (web/ui/src/data/home.ts useGroupAction)
 - [x] `toast.tunnelReloading` (info), `toast.tunnelRestartRequired` (409), `alerts.tunnelReloadFailed` via `showApiError` — legacy app.js:1110-1121 — API tunnel reload — target `/` — status: done (web/ui/src/data/home.ts useTunnelReload)
 - [x] `helper.installing` (busy banner), `helper.installed` (success toast), `helper.failed` + `helper.failedHint` / daemon `error`+`hint`+`detail` — legacy app.js:390-415 — API POST /api/v1/helper/install (handlers_helper.go:74; 403 cancelled, 504 timeout, 500 failed) — target `/` + `/settings` — status: done (web/ui/src/components/home/HelperBanner.tsx)
@@ -174,13 +180,13 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 #### Keyboard / focus
 
 - [x] Enter in resolve input runs Check — legacy app.js:1012-1014 — API GET /api/v1/resolve — target `/traffic` — status: done (web/ui/src/components/traffic/LookupCard.tsx: a real form, Enter submits)
-- [ ] Route-drawer toggle is a button with `aria-expanded` — legacy app.js:554 — API — — target `/traffic` / `/` — status: partial (web/ui/src/components/traffic/TunnelTrafficCard.tsx: `/traffic` done; Home toggle pending, deep link `/traffic#<tunnelAnchor(name)>`)
+- [x] Route-drawer toggle is a button with `aria-expanded` — legacy app.js:554 — API — — target `/traffic` / `/` — status: done (components/home/TunnelRoutes.tsx and components/traffic/TunnelTrafficCard.tsx: buttons with `aria-expanded`)
 
 #### Endpoints / cadence
 
 - [x] WS `/api/v1/ws/metrics` (ws.go:17; push on change + every 5 s), reconnect after 3 s — legacy app.js:419-440 — target `/` — status: done (web/ui/src/pages/HomePage.tsx via api/hooks.ts useTunnels + data/live.ts)
 - [x] Poll 30 s: security status, routes (+tunnel routes), policies, network overview, metrics history, groups, helper status — legacy app.js:1231-1238 — target `/`, `/traffic` — status: done (web/ui/src/data/home.ts SLOW_POLL_MS (security 5 s, helper 10 s while missing))
-- [ ] Re-render cached data on language change (policies, routes, charts, helper banner) — legacy app.js:317-322 — API — — target shell (every page) — status: new UI has it (React re-render via app/PreferencesProvider.tsx)
+- [x] Re-render cached data on language change (policies, routes, charts, helper banner) — legacy app.js:317-322 — API — — target shell (every page) — status: done (React re-render via app/PreferencesProvider.tsx)
 
 ### 3.2 `studio.html` + `studio.js` (Studio)
 
@@ -189,7 +195,7 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 - [x] Tabs Profiles / Policies / Groups, last tab remembered (localStorage `kongtrol-dashboard-tab-studio`) — legacy studio.html:20-25, shell.js:327-346 — API — — target `/profiles`, `/profiles/groups`, `/rules` (routes replace tabs) — status: done (web/ui/src/components/profiles/Bits.tsx `ProfilesHeader`: routes + TabLinks replace tabs, so the URL remembers the sub-page)
 - [x] Active config file path line (read-only, `--config`) — legacy studio.html:27, studio.js:448-451 — API GET /api/v1/policies/meta (handlers_policy.go:113) `config_path` — target `/settings` (also shown on `/profiles`) **IA: revisar** — status: done (pages/SettingsPage.tsx, components/settings/SystemSection.tsx: from GET /api/v1/setup `config_path`)
 - [x] Error toast text: localized `error`+`hint` when `error_key` set, else page text + raw detail — legacy studio.js:341-345 — API `writeLocalizedError` body `error, hint, error_key` (errors_i18n.go) — target `/profiles`, `/rules` — status: done (web/ui/src/components/profiles/errors.ts: known plain-English profile/group errors rewritten as message + what to do; translated `error_key` bodies shown as sent, web/ui/src/api/errors.ts)
-- [ ] Requests send `X-Kongtrol-Lang` — legacy studio.js:483, 504, 551, 742, 772, 967, 989 — API — — target shell (api/client.ts) — status: new UI has it (api/client.ts `setApiLang`)
+- [x] Requests send `X-Kongtrol-Lang` — legacy studio.js:483, 504, 551, 742, 772, 967, 989 — API — — target shell (api/client.ts) — status: done (api/client.ts `setApiLang`)
 
 #### Tab: VPN Profiles → `/profiles`
 
@@ -390,20 +396,20 @@ Table / states / notices
 
 #### `shell.js` (nav, header, theme, shortcuts)
 
-- [ ] Sidebar nav: Overview, Studio, Security, Audit Log, Settings, active item — legacy shell.js:11-17, 47-52 — target app router nav (8 routes, §2) — status: missing (components/layout/AppShell.tsx has header links only)
-- [ ] Brand logo top-left + name + BETA badge — legacy shell.js:43-46 — target shell — status: partial (components/layout/AppShell.tsx: logo + name; no BETA)
-- [ ] Desktop collapse rail, remembered (`kongtrol-dashboard-sidebar-collapsed`), tooltips mirror labels — legacy shell.js:59-67, 257-289 — target shell — status: missing
-- [ ] Mobile drawer + scrim, closes on nav click — legacy shell.js:73-75, 90-95, 232-252 — target shell — status: missing
-- [ ] Page title in top bar (`page.*.title`) — legacy shell.js:76 — target shell — status: missing
-- [ ] Theme: explicit choice persisted (localStorage + preferences), choosing the system theme clears it, follows `prefers-color-scheme` live — legacy shell.js:103-160 — API PUT /api/v1/preferences (handlers_security.go:199) `theme` — target shell — status: new UI has it (app/PreferencesProvider.tsx)
-- [ ] Theme switch circular reveal (view transition, reduced-motion off) — legacy shell.js:167-175, style.css:92-146 — target shell — status: missing (optional polish)
-- [ ] Preferences load is authoritative (clears stale browser copy) — legacy shell.js:194-207 — API GET /api/v1/preferences (handlers_security.go:188) — target shell — status: new UI has it (app/PreferencesProvider.tsx)
-- [ ] Language toggle with flash animation — legacy shell.js:80-83, 214-230 — target shell — status: partial (components/layout/AppShell.tsx: toggle, no animation)
-- [ ] Live connection indicator + label (`ws.*`) — legacy shell.js:84-85, app.js:444-448 — target shell — status: partial (components/welcome/TunnelsCard.tsx "live" text); **fix**: dot is color-only; other legacy pages force it "connected" (i18n.js:110-113)
-- [ ] Tabs component remembers last tab — legacy shell.js:327-346 — target router (URL is the memory) — status: missing; **fix**: no `role=tab`/`aria-selected`/arrow keys
+- [x] Sidebar nav: Overview, Studio, Security, Audit Log, Settings, active item — legacy shell.js:11-17, 47-52 — target app router nav (8 routes, §2) — status: done (components/layout/AppShell.tsx `SideNav` + app/sections.ts: seven sections, active item)
+- [x] Brand logo top-left + name + BETA badge — legacy shell.js:43-46 — target shell — status: done for logo + name (components/layout/AppShell.tsx); BETA badge dropped: ADR-0043 (the version tag shows the build)
+- [x] Desktop collapse rail, remembered (`kongtrol-dashboard-sidebar-collapsed`), tooltips mirror labels — legacy shell.js:59-67, 257-289 — target shell — status: replaced by the width-based rail 600–839px (ADR-0038, components/layout/AppShell.tsx + theme/shell.css); manual collapse memory dropped: ADR-0043
+- [x] Mobile drawer + scrim, closes on nav click — legacy shell.js:73-75, 90-95, 232-252 — target shell — status: replaced by the bottom bar + "Más" sheet (components/layout/AppShell.tsx `BottomBar`, closes on navigation)
+- [x] Page title in top bar (`page.*.title`) — legacy shell.js:76 — target shell — status: done as each page's focusable h1 (components/layout/PageHeader.tsx)
+- [x] Theme: explicit choice persisted (localStorage + preferences), choosing the system theme clears it, follows `prefers-color-scheme` live — legacy shell.js:103-160 — API PUT /api/v1/preferences (handlers_security.go:199) `theme` — target shell — status: done (app/PreferencesProvider.tsx)
+- [x] Theme switch circular reveal (view transition, reduced-motion off) — legacy shell.js:167-175, style.css:92-146 — target shell — status: dropped: ADR-0043 (optional polish; the theme switches at once)
+- [x] Preferences load is authoritative (clears stale browser copy) — legacy shell.js:194-207 — API GET /api/v1/preferences (handlers_security.go:188) — target shell — status: done (app/PreferencesProvider.tsx)
+- [x] Language toggle with flash animation — legacy shell.js:80-83, 214-230 — target shell — status: done for the toggle (components/layout/AppShell.tsx); flash animation dropped: ADR-0043
+- [x] Live connection indicator + label (`ws.*`) — legacy shell.js:84-85, app.js:444-448 — target shell — status: done (components/layout/AggregateStatus.tsx: text + icon, never color only)
+- [x] Tabs component remembers last tab — legacy shell.js:327-346 — target router (URL is the memory) — status: done (components/ui/Tabs.tsx: `role=tab`, `aria-selected`, arrow/Home/End keys; the URL is the memory)
 - [x] Kill switch detail text (ARMED protecting n / ACTIVE blocking names) — legacy shell.js:359-381 — API `kill_switch_status{state,protected,blocking}` — target `/`, `/security` — status: done (web/ui/src/components/home/SecurityCard.tsx + web/ui/src/components/home/model.ts securityView); **fix**: own dict duplicates `killswitch.state.*` of internal/i18n
-- [ ] Keyboard shortcuts — legacy none found — target — — status: n/a (do not invent without ADR)
-- [ ] Skip link to main content — legacy none — target shell — status: new UI has it (components/layout/AppShell.tsx)
+- [x] Keyboard shortcuts — legacy none found — target — — status: n/a (no shortcuts in legacy; none invented)
+- [x] Skip link to main content — legacy none — target shell — status: done (components/layout/AppShell.tsx)
 
 #### `notices.js` (live notices)
 
@@ -416,8 +422,8 @@ Table / states / notices
 
 #### `toast.js`
 
-- [ ] Toast stack: message, optional detail line, raw API error as tooltip, click to dismiss, default 4.5 s — legacy toast.js:41-74 — target shell (`aria-live` region) — status: missing; **fix**: no `role=status`/`aria-live`
-- [ ] `showApiError`: context message + translated hint per API `code` (8 codes) + raw detail as tooltip — legacy toast.js:6-39 — API `code` from `writeError` (handlers_common.go:23-48) — target shell — status: partial (components/ui/States.tsx `ErrorState`)
+- [x] Toast stack: message, optional detail line, raw API error as tooltip, click to dismiss, default 4.5 s — legacy toast.js:41-74 — target shell (`aria-live` region) — status: done (components/ui/Toaster.tsx: polite/assertive live regions, detail line, dismiss button, auto-close paused on hover/focus)
+- [x] `showApiError`: context message + translated hint per API `code` (8 codes) + raw detail as tooltip — legacy toast.js:6-39 — API `code` from `writeError` (handlers_common.go:23-48) — target shell — status: done (api/client.ts `ApiError` with translated `hint` + `error_key`; components/ui/States.tsx `ErrorState`)
 
 #### `publicip.js`
 
@@ -433,17 +439,17 @@ Table / states / notices
 
 #### `select.js`
 
-- [ ] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: missing; **fix**: trigger lacks `aria-haspopup/expanded`, options lack `aria-selected`, adds global listeners per select (leak)
-- [ ] Keyboard: ArrowDown/Enter/Space opens, arrows move, Enter/Space selects, Escape closes, focus returns to trigger — legacy select.js:47-56, 69, 81-85 — target shared component — status: missing
+- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: replaced by the native `<select>` (components/ui/Field.tsx `SelectField`): keyboard and screen readers for free; custom widget dropped: ADR-0043
+- [x] Keyboard: ArrowDown/Enter/Space opens, arrows move, Enter/Space selects, Escape closes, focus returns to trigger — legacy select.js:47-56, 69, 81-85 — target shared component — status: done by the native `<select>` (components/ui/Field.tsx `SelectField`)
 
 #### `i18n.js`
 
-- [ ] Language resolution: explicit choice (localStorage `kongtrol-dashboard-lang` + preferences) else browser (`es*` → es) — legacy i18n.js:28-58, 131-140 — API preferences `language` — target shell — status: new UI has it (app/PreferencesProvider.tsx, i18n/lang.ts)
-- [ ] Follow browser `languagechange` when no explicit choice — legacy i18n.js:141-143 — target shell — status: missing (`no verificado` in PreferencesProvider)
-- [ ] `t()` with `{var}` interpolation, EN fallback — legacy i18n.js:60-64 — target `src/i18n/messages.ts` — status: new UI has it
-- [ ] Rich text with `<code>` only, no innerHTML — legacy i18n.js:82-92 — target messages — status: missing (needed for `editor.template`)
-- [ ] `html lang` attribute updated — legacy i18n.js:68 — API — — target shell — status: `no verificado` in new UI
-- [ ] Refresh-button titles + lang-toggle aria label translated — legacy i18n.js:100-108 — target shell — status: new UI has it (components/layout/AppShell.tsx)
+- [x] Language resolution: explicit choice (localStorage `kongtrol-dashboard-lang` + preferences) else browser (`es*` → es) — legacy i18n.js:28-58, 131-140 — API preferences `language` — target shell — status: done (app/PreferencesProvider.tsx, i18n/lang.ts)
+- [x] Follow browser `languagechange` when no explicit choice — legacy i18n.js:141-143 — target shell — status: done (app/PreferencesProvider.tsx `languagechange` listener)
+- [x] `t()` with `{var}` interpolation, EN fallback — legacy i18n.js:60-64 — target `src/i18n/messages.ts` — status: done (src/i18n/messages.ts)
+- [x] Rich text with `<code>` only, no innerHTML — legacy i18n.js:82-92 — target messages — status: done (JSX `<code>` elements, no innerHTML)
+- [x] `html lang` attribute updated — legacy i18n.js:68 — API — — target shell — status: done (app/PreferencesProvider.tsx sets `document.documentElement.lang`)
+- [x] Refresh-button titles + lang-toggle aria label translated — legacy i18n.js:100-108 — target shell — status: done (components/layout/AppShell.tsx)
 
 ## 4. Endpoints matrix
 
@@ -561,14 +567,9 @@ Rows = checkbox rows in §3, counted on the first target route named in the row 
 
 | Target page | Rows | Covered in new UI | Partial |
 |---|---|---|---|
-| `/` Home | 54 | 54 (done) | 0 |
-| `/profiles` | 40 | 0 | 1 |
-| `/profiles/groups` | 10 | 0 | 0 |
-| `/rules` | 20 | 20 | 0 |
-| `/rules/schedule` | 10 | 10 | 0 |
-| `/traffic` | 26 | 0 | 0 |
-| `/security` | 24 | 23 (phase 2) | 0 |
-| `/activity` | 10 | 0 | 0 |
-| `/settings` | 16 | 6 | 0 |
-| Shell / cross-cutting | 34 | 9 | 4 |
-| **Total** | **244** | **122** | **5** |
+| All pages + shell | 244 | 244 ticked | 0 |
+
+Final gate (phase 3, 2026-11-18): 244 of 244 rows ticked. Of those, 5 rows drop a cosmetic part
+(`dropped: ADR-0043`: BETA badge, manual rail collapse memory, theme reveal animation, language
+toggle flash, custom select widget replaced by the native `<select>`), 5 are met by a different,
+standard pattern (`replaced` / `done as`), and 1 is `n/a`. No capability is lost.

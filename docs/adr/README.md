@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.12.0 · 2026-11-18
+Version 1.13.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -23,7 +23,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0008](0008-policy-routing-on-tunnel-down.md) | Policy routing for all adapters, `on_tunnel_down`, notices | Accepted | 2026-11-17 |
 | [0009](0009-kill-switch-split-tunneling.md) | Kill switch for split tunneling: block-only, per destination | Accepted | 2026-11-17 |
 | [0010](0010-public-ip-check-opt-in.md) | Public IP check is opt-in (Local only) | Accepted | 2026-11-17 |
-| [0011](0011-dashboard-vite-react-ts.md) | Dashboard migration to Vite + React + TS by phases, at `/app/` | Accepted | 2026-11-17 |
+| [0011](0011-dashboard-vite-react-ts.md) | Dashboard migration to Vite + React + TS by phases, at `/app/` | Superseded by ADR-0043 | 2026-11-17 |
 | [0012](0012-landing-cloudflare-pages-multilingual.md) | Landing on Cloudflare Pages, `kongtrol.app`, ES + EN | Accepted; hosting superseded by 0022 | 2026-11-17 |
 | [0013](0013-brand-single-source.md) | Brand assets: single source in `assets/brand` | Accepted | 2026-11-17 |
 | [0014](0014-i18n-language-resolution.md) | i18n: saved choice, then OS; dashboards follow the browser | Accepted | 2026-11-17 |
@@ -55,6 +55,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0040](0040-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted | 2026-11-18 |
 | [0041](0041-dashboard-data-router-and-unsaved-guard.md) | New dashboard: data router (`createBrowserRouter`), "Tienes cambios sin guardar" guard with `useBlocker` + `beforeunload`, pages loaded on demand; supersedes ADR-0038 decision 1 | Accepted | 2026-11-18 |
 | [0042](0042-dashboard-api-completeness.md) | Dashboard API completeness: audit verified/rotated by size/retention/date query, leak action removed (leak only notifies, connected profiles only), profile rename + delete with references + file import, localized group/scheduler errors, scheduler hot reload + rule `enabled`, stable policy order, manual-reconnect notice, gzip for `/app/` | Accepted | 2026-11-18 |
+| [0043](0043-new-dashboard-replaces-classic.md) | The new dashboard replaces the classic one and moves to `/`: parity gate closed, `/app/*` and classic pages redirect (308), `/tray`, classic dashboard + `/brand/` deleted, CSP without `unsafe-inline`; supersedes ADR-0011 | Accepted | 2026-11-18 |
 
 ## Statuses
 

@@ -7,7 +7,7 @@ build/npm-bin/
 dist-extra/
 brew-assets/
 dist/
-# web/ui/dist is the new UI build embedded by web/ui_embed.go. Only its
+# web/ui/dist is the dashboard build embedded by web/ui_embed.go. Only its
 # .gitkeep is tracked, so `go build` works on a fresh clone without Node.
 !web/ui/dist/
 web/ui/dist/*

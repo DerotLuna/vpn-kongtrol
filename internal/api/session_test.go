@@ -66,10 +66,10 @@ func exchangeNonce(h http.Handler, nonce string) *httptest.ResponseRecorder {
 	})
 }
 
-// Regression: GET / and /app/ handed the file token to anyone as a cookie.
+// Regression: GET / handed the file token to anyone as a cookie.
 func TestPagesNeverSetCredentials(t *testing.T) {
 	_, h := sessionTestServer()
-	for _, p := range []string{"/", "/app/", "/studio.html"} {
+	for _, p := range []string{"/", "/settings", "/tray"} {
 		rec := doReq(h, http.MethodGet, p, "", nil)
 		if len(rec.Result().Cookies()) != 0 {
 			t.Fatalf("%s set cookies %v", p, rec.Result().Cookies())

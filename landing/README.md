@@ -3,7 +3,7 @@
 Version 2.6.0 · 2026-11-18
 
 Public marketing/docs site for **VPN Kongtrol** (short name: *Kongtrol*, CLI binary `kongtrol`),
-separate from the embedded dashboard (`web/dashboard`).
+separate from the embedded dashboard (`web/ui`).
 
 Five pages, each in Spanish (root URLs) and English (`/en/...`) — a Vite multi-page app
 with 10 HTML entries:

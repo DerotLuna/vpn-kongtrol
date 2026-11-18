@@ -2,7 +2,7 @@
 
 # How docs stay current
 
-Version 1.0 · 2026-11-17
+Version 1.1 · 2026-11-18
 
 Rule: nothing may ever be out of date — enforced by tooling, not memory. Docs never block a merge:
 code checks fail CI, doc checks only warn (annotations + one sticky PR comment).
@@ -29,7 +29,6 @@ JSON, because `cobra/doc` only emits English headings.
 - `internal/i18n`: ES/EN same keys, no empty text, same `fmt` arguments and verbs.
 - `cmd/kongtrol`: every visible flag's text is an i18n key (so help and docs translate).
 - `internal/config`: `configs/example.yaml` loads, validates and has no unknown key (strict decode).
-- `scripts/i18n/dashboard.test.mjs` (`node --test 'scripts/i18n/*.test.mjs'`): every `web/dashboard` dictionary.
 - `web/ui`: `src/i18n/messages.test.ts`.
 - `internal/impact`: every top-level package in `internal/` and `cmd/` is in `docs/impact.yml`.
 

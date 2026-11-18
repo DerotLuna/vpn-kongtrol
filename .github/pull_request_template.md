@@ -12,7 +12,7 @@ Tick what you updated, or write `no aplica: <reason>`. See `docs/impact.yml` and
 - [ ] `make docs` (CLI `--help` → docs/CLI*.md, cli.json · config → docs/CONFIG*.md)
 - [ ] README
 - [ ] AGENTS.md
-- [ ] Dashboards: `web/dashboard` + `web/ui` (ES + EN)
+- [ ] Panel / Dashboard: `web/ui` (ES + EN)
 - [ ] Bandeja / Tray
 - [ ] Asistente / Wizard (`kongtrol init`)
 - [ ] `configs/example.yaml`

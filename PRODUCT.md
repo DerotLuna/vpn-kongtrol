@@ -2,7 +2,7 @@
 
 # Product
 
-Versión 1.0.1 · 2026-11-18
+Versión 1.0.2 · 2026-11-18
 
 <!-- impeccable:product-schema 1 -->
 
@@ -30,7 +30,7 @@ Kongtrol puts all your VPNs in one place. You connect the way you always do (in 
 
 ## Operating Context
 
-- Surfaces covered by this record: the public site `landing/` and the web dashboards `web/dashboard`, `web/ui`. The product itself is a desktop app (tray, dashboard, CLI) for Windows, macOS and Linux.
+- Surfaces covered by this record: the public site `landing/` and the web dashboard `web/ui`. The product itself is a desktop app (tray, dashboard, CLI) for Windows, macOS and Linux.
 - Runs as a background daemon per user; tray, dashboard and CLI are clients of its local API. Closing a window never disconnects.
 - Network changes go through a privileged helper installed once (one admin prompt), so daily use needs no admin terminal.
 - Distribution: GitHub Releases, installers and package managers (winget, Scoop, Homebrew tap, .deb/.rpm, AUR, npm/pnpm); macOS binaries are not notarized (no paid Apple account).

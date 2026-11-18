@@ -51,7 +51,7 @@ func TestFlyoutWindowSmoke(t *testing.T) {
 			// page. Later loads only say ready.
 			leave := ""
 			if pageLoads.Add(1) == 1 {
-				leave = `setTimeout(function () { location.href = "/app/other"; }, 300);`
+				leave = `setTimeout(function () { location.href = "/other"; }, 300);`
 			}
 			fmt.Fprintf(w, `<!doctype html><title>t</title><script>
 fetch(%q).catch(function () {}).finally(function () {
@@ -59,7 +59,7 @@ fetch(%q).catch(function () {}).finally(function () {
   %s
 });
 </script>`, outside.URL+"/leak", leave)
-		case "/app/other":
+		case "/other":
 			fmt.Fprint(w, `<!doctype html><title>o</title><script>
 if (window.kongtrolTray) fetch("/bridge-leaked");
 </script>`)

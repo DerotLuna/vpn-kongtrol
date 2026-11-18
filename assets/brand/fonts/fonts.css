@@ -1,7 +1,7 @@
-/* Self-hosted web fonts — version 1.1.0 · 2026-11-17.
+/* Self-hosted web fonts — version 1.2.0 · 2026-11-18.
  * Space Grotesk, Inter and IBM Plex Mono, all under the SIL Open Font License 1.1
  * (https://openfontlicense.org). Single source for the landing (copied to public/fonts by
- * landing/scripts/copy-brand.mjs), the dashboard (served by the daemon at /brand/fonts/) and
+ * landing/scripts/copy-brand.mjs) and the dashboard
  * web/ui (bundled by Vite), so no page sends the visitor's IP address to Google.
  * Subsets: latin, latin-ext. Regenerate from https://fonts.googleapis.com/css2 if weights change. */
 

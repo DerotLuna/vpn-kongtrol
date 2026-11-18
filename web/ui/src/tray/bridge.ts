@@ -24,7 +24,7 @@ export function trayHost(): TrayHost | null {
   return typeof window !== 'undefined' && window.kongtrolTray ? window.kongtrolTray : null
 }
 
-// The flyout page is the `tray` route under /app (App.tsx; flyoutPath in
+// The flyout page is the `tray` route at /tray (App.tsx; flyoutPath in
 // cmd/kongtrol-tray/flyout.go).
 
 /** Sent by the tray every time the flyout is shown again (not the first time). */
