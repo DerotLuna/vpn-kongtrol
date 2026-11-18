@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.6 · 2026-11-18
+Version 1.7 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -95,6 +95,9 @@ When adding a new adapter:
   `kongtrol restart` stops it and spawns the replacement from the CLI's own executable (after a
   package-manager upgrade the binary path may change). The replacement waits for the old API to
   go away (holding the spawn lock) and drops profiles that no longer exist.
+- The first-run tray menu also carries "Instalar ayudante (una vez)" (shown while the helper is
+  missing, checked by pinging it when no daemon answers) plus a one-time notice
+  `tray.helper_first_run` (ADR-0032).
 
 <!-- feature:distribution -->
 **Distribution (ADR-0025).** Tags `v*` run `release.yml`: macOS app (native, cgo), Windows Inno
@@ -206,7 +209,9 @@ ProfileService.Disconnect(name)
 | `internal/privhelper` | Privileged helper service (named pipe / unix socket, caller auth, lease, audit) |
 | `internal/daemonctl` | Shared daemon client + spawn logic used by CLI and tray |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
-| `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor) |
+| `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
+| `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
+| `internal/configexport` | `Write(w, cfg, lang, Style)`: the config as YAML that loads back unchanged (no secrets: passwords live in the keychain); `kongtrol export` and `GET /api/v1/config/export` |
 | `internal/netstats` | No-admin per-interface traffic counters |
 | `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
 | `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
@@ -313,6 +318,7 @@ changing the port from the page serving that request would cut the connection mi
 ### Privileged helper internals
 
 - All privileged ops go through `privops.Default()` (`Local` when elevated, `Client` to the helper otherwise; `ErrHelperNotInstalled` → `GuidanceKey`). Installed once with `kongtrol service install`.
+- GUI install (always one OS permission prompt, never silent elevation): tray item "Instalar ayudante (una vez)" on every OS, also in the first-run menu; with no daemon answering the tray pings the helper itself, and tells the user once (`tray.helper_first_run`). The dashboard's Diagnóstico card offers "Reparar" for checks with `fix: helper_install`; both use `POST /api/v1/helper/install`.
 - The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change — an older installed helper is reported as outdated and the user re-runs `kongtrol service install`) and carries a per-process lease (renew 5s, expire 20s); expiry undoes OpenVPN, DNS, hosts, blocked destinations, kill switch (fail-open, so a crashed daemon never leaves the user offline). WireGuard and routes aren't leased.
 - `block.set` (`SetBlockedDestinations`) replaces the whole set of blocked outbound prefixes: Windows Firewall BLOCK rules `KongtrolBlock`, Linux `KONGTROL_BLOCK` iptables/ip6tables chains (REJECT), macOS pf anchor `com.kongtrol` table. Only block rules: in Windows Defender Firewall a block rule always beats an allow rule, so "block all + allow exceptions" cannot work — a full-tunnel block is sent as the complement of its exceptions. An older helper answers "unknown operation" → `ErrHelperOutdated`.
 - `wg.stats` (`WGStats`, protocol 4) is read-only: `wg show <iface> dump` for a tunnel the helper manages, or the caller's own profile tunnel (same checks as `wg.remove`, nothing adopted). Only peer public key, latest handshake, rx/tx and keepalive leave the helper (`ParseWGDump` drops private/preshared keys; a failure never echoes the output). Successful read-only ops are not audited (polled every 10s); failures are.

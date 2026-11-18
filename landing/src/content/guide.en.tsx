@@ -469,7 +469,7 @@ All checks passed. You're good to go.`
   ✓  dns guard           platform implementation available
 
 All checks passed. You're good to go.`,
-    doctor4: <>If any line shows ✗, the message tells you exactly what's missing.</>,
+    doctor4: <>If any line shows ✗ or !, the line below says what to do. No terminal: in the dashboard, the <strong>Diagnostics</strong> card shows the same, offers <strong>Fix</strong> when the helper is missing, and <strong>Export configuration</strong> (no passwords).</>,
     // feature:daemon_lifecycle
     connect1: <>First connection</>,
     connect2: <><strong>A whole group:</strong></>,
