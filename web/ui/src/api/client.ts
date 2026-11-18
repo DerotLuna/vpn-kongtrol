@@ -7,10 +7,13 @@ import type { Lang } from '../i18n/messages'
 import type {
   ApiErrorBody,
   DoctorReport,
+  Group,
   HelperStatus,
   Preferences,
   PublicIPStatus,
   PurgeResult,
+  SecurityStatus,
+  TunnelActionResult,
   TunnelMetrics,
   UpdateStatus,
 } from './types'
@@ -102,6 +105,19 @@ export const api = {
   setUpdates: (enabled: boolean) => sendJSON<UpdateStatus>('POST', '/api/v1/updates', { enabled }),
   /** "Borrar todos mis datos": the daemon then restarts into first-run setup. */
   purgeData: () => sendJSON<PurgeResult>('POST', '/api/v1/data/purge', { confirm: true }),
+  /** Accepted (202) at once; the tunnel feed reports when it is up. */
+  connect: (name: string) =>
+    request<TunnelActionResult>(`/api/v1/tunnels/${encodeURIComponent(name)}/connect`, { method: 'POST' }),
+  /** 202 waiting_user: the provider app must be disconnected by hand. */
+  disconnect: (name: string) =>
+    request<TunnelActionResult>(`/api/v1/tunnels/${encodeURIComponent(name)}/disconnect`, { method: 'POST' }),
+  groups: () => request<Group[]>('/api/v1/groups'),
+  connectGroup: (name: string) =>
+    request<unknown>(`/api/v1/groups/${encodeURIComponent(name)}/connect`, { method: 'POST' }),
+  disconnectGroup: (name: string) =>
+    request<unknown>(`/api/v1/groups/${encodeURIComponent(name)}/disconnect`, { method: 'POST' }),
+  /** Kill switch, DNS guard and public IP state; reading never looks the IP up. */
+  security: () => request<SecurityStatus>('/api/v1/security/status'),
   /** Same checks as `kongtrol doctor`, run by the daemon; takes a few seconds. */
   doctor: () => request<DoctorReport>('/api/v1/doctor'),
   /** kongtrol.yaml as a file (no passwords); errors arrive translated. */

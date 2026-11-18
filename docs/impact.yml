@@ -1,4 +1,4 @@
-# Change-impact map — version 1.4 · 2026-11-18
+# Change-impact map — version 1.5 · 2026-11-18
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -190,6 +190,16 @@ features:
       - AGENTS.md#tray_exits
       - landing/src/content/guide.es.tsx#daemon_lifecycle
       - landing/src/content/guide.en.tsx#daemon_lifecycle
+
+  tray_flyout:
+    code:
+      - cmd/kongtrol-tray/flyout*.go
+      - web/ui/src/pages/TrayPage.tsx
+      - web/ui/src/tray/**
+      - web/ui/src/theme/tray.css
+    surfaces:
+      - AGENTS.md#tray_flyout
+      - docs/adr/0036-tray-flyout-window.md
 
   i18n:
     code:
