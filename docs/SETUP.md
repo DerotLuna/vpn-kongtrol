@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.3 · 2026-11-18
+Versión 1.4 · 2026-11-18
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -681,7 +681,10 @@ kongtrol dashboard
 # Dashboard running at http://127.0.0.1:9741
 ```
 
-Abre `http://localhost:9741` en tu navegador. Es una consola de gestión completa, no solo
+`kongtrol dashboard` (o "Abrir panel" en el ícono de la bandeja) abre el panel en tu navegador
+ya autorizado, con un código de un solo uso. Escribir `http://127.0.0.1:9741` a mano no basta:
+la página te pedirá abrirla desde Kongtrol ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)).
+Es una consola de gestión completa, no solo
 monitoreo, con estas páginas:
 
 - **Overview** — túneles en tiempo real, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo
@@ -689,7 +692,7 @@ monitoreo, con estas páginas:
 - **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check y consulta de IP pública opcional (apagada por defecto, botón Revisar)
 - **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
 - **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, IP pública y fugas: servicios https opcionales, audit log), scheduler (reglas)
-- **Panel nuevo (`/app/`)** — primeros pasos (ayudante, tus VPN, IP pública) y **Diagnóstico**: las mismas comprobaciones que `kongtrol doctor` con qué hacer en cada aviso, **Reparar** si falta el ayudante y **Exportar configuración** (sin contraseñas)
+- **Panel nuevo (`/app/`)** — **Inicio**: tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos del daemon (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos. **Ajustes → Diagnóstico**: las mismas comprobaciones que `kongtrol doctor` con qué hacer en cada aviso, **Reparar** si falta el ayudante y **Exportar configuración** (sin contraseñas)
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
 > puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —

@@ -503,8 +503,8 @@ Kill switch: ARMADO (protegiendo 3 túnel(es))
 $ kongtrol status --watch`,
     // feature:dashboard
     dashboard1: <>Dashboard web</>,
-    dashboard2: <>Abre <a href="http://localhost:9741" target="_blank" rel="noreferrer">http://localhost:9741</a> en
-                tu navegador. Es una consola de gestión completa, con navegación lateral:</>,
+    dashboard2: <>Ábrelo desde el ícono de la bandeja («Abrir panel») o con <IC c="kongtrol dashboard" />: se abre en
+                tu navegador ya autorizado. Escribir la dirección a mano no basta, por seguridad. Es una consola de gestión completa, con navegación lateral:</>,
     dashboard3: <>Página</>,
     dashboard4: <>Qué hace</>,
     dashboard5: <>Túneles en vivo, gráficos de tráfico por túnel, rutas activas, resolución de policy, grupos de acceso rápido, conectar/desconectar todo</>,

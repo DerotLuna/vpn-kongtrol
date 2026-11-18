@@ -15,6 +15,18 @@ curl -H "X-Kongtrol-Token: $(cat ~/.kongtrol/api-token)" \
   http://127.0.0.1:9741/api/v1/tunnels
 ```
 
+Browsers never get that token ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)):
+
+```bash
+POST   /api/v1/session/nonce   # token header only → {"nonce","expires_in":60}; single use
+POST   /api/v1/session         # {"nonce"} from the page; Origin required → kongtrol_session cookie
+DELETE /api/v1/session         # sign the browser out
+```
+
+Clients open pages with `daemonctl.(*Client).PanelURL(path)`, which returns
+`<base><path>#k=<nonce>`; the page (`web/dashboard/auth.js`, `web/ui/src/api/session.ts`) trades
+the nonce for the cookie. Pages never set credentials; a 401 means "open it from Kongtrol".
+
 Commands: [CLI.en.md](CLI.en.md) (Español: [CLI.md](CLI.md)).
 
 ## Endpoints
@@ -33,7 +45,7 @@ GET  /api/v1/dns/resolve?domain=...&via=...  # split-DNS resolution for a specif
 GET  /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app + target)
 
 # Policies
-GET/POST  /api/v1/policies
+GET/POST  /api/v1/policies                  # GET: each policy + `resolved` [{cidr, host, last_seen, expires_at}] (resolved IPs expire 6h unseen)
 PUT/DELETE /api/v1/policies/{name}
 POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
@@ -89,7 +101,7 @@ POST /api/v1/data/purge                      # {"confirm": true} (required, else
 **Update notice and purge.** Reading `/api/v1/updates` never makes a request; with
 `check_enabled` the daemon asks GitHub at most once per 24 h and emits one `update_available`
 event (`update.event.available`, args latest, current, release page) per new version on
-`/api/v1/events`. `/api/v1/data/purge` uses the same auth as every route (token or control
+`/api/v1/events`. `/api/v1/data/purge` uses the same auth as every route (token or session
 cookie, same origin, `application/json`) plus the explicit `confirm`; the running daemon keeps
 `api-token`, `run/` and its logs until it restarts.
 

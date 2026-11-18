@@ -59,6 +59,9 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 		Apps          []string `json:"apps"`
 		OnTunnelDown  string   `json:"on_tunnel_down"`
 		ResolvedCIDRs []string `json:"resolved_cidrs"`
+		// Resolved: this policy's own resolved IPs with their expiry
+		// (resolved_cidrs above stays every IP of the profile, as before).
+		Resolved []monitor.ResolvedIP `json:"resolved"`
 	}
 
 	// Start from the policy engine rules (static config).
@@ -100,6 +103,7 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 			if snap, ok := byProfile[out[i].Via]; ok {
 				out[i].ResolvedCIDRs = snap.ResolvedCIDRs
 			}
+			out[i].Resolved = s.policyResolver.ResolvedIPs(out[i].Name)
 		}
 	}
 

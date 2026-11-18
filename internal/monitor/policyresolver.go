@@ -368,6 +368,29 @@ func (r *PolicyResolver) Snapshot() []ProfileSnapshot {
 	return out
 }
 
+// ResolvedIP is one address a policy domain resolved to, with when it was
+// last seen and when it expires if not seen again (staleAfter).
+type ResolvedIP struct {
+	CIDR      string    `json:"cidr"`
+	Host      string    `json:"host,omitempty"`
+	LastSeen  time.Time `json:"last_seen"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// ResolvedIPs returns the addresses one policy's domains resolved to, sorted
+// by CIDR (read-only; the dashboard shows them with their expiry).
+func (r *PolicyResolver) ResolvedIPs(policy string) []ResolvedIP {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	m := r.resolved[policy]
+	out := make([]ResolvedIP, 0, len(m))
+	for c, s := range m {
+		out = append(out, ResolvedIP{CIDR: c, Host: s.host, LastSeen: s.last, ExpiresAt: s.last.Add(staleAfter)})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].CIDR < out[j].CIDR })
+	return out
+}
+
 // PolicyDestinations returns one policy's static CIDRs plus its resolved
 // domain IPs (tunnel up or not).
 func (r *PolicyResolver) PolicyDestinations(policy string) []netip.Prefix {

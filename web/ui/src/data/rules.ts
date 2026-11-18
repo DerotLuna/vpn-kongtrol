@@ -37,7 +37,11 @@ export interface SchedulerSettings {
 }
 
 export const rulesKeys = {
-  policies: ['policies'] as const,
+  // Other pages cache GET /api/v1/policies under ['policies'] sorted by name;
+  // this page needs the daemon's evaluation order, so it keeps its own entry
+  // under the same prefix (invalidating ['policies'] refreshes both).
+  policies: ['policies', 'evaluation-order'] as const,
+  anyPolicies: ['policies'] as const,
   policyMeta: ['policy-meta'] as const,
   explain: ['policy-explain'] as const,
   schedule: ['scheduler-rules'] as const,
@@ -94,6 +98,7 @@ export function useSavePolicy() {
     queryKey: rulesKeys.policies,
     mutationFn: async ({ original, payload }) => {
       const res = original ? await rulesApi.updatePolicy(original, payload) : await rulesApi.createPolicy(payload)
+      void client.invalidateQueries({ queryKey: rulesKeys.anyPolicies })
       void client.invalidateQueries({ queryKey: rulesKeys.explain })
       return res
     },
@@ -114,6 +119,7 @@ export function useDeletePolicy() {
     queryKey: rulesKeys.policies,
     mutationFn: async (name) => {
       const res = await rulesApi.deletePolicy(name)
+      void client.invalidateQueries({ queryKey: rulesKeys.anyPolicies })
       void client.invalidateQueries({ queryKey: rulesKeys.explain })
       return res
     },
@@ -135,7 +141,7 @@ export function useReloadPolicies() {
       toasts.show({ tone: 'bad', message: t('rules.toast.reloadFailed'), detail: `${message} ${fix}` })
     },
     onSettled: () => {
-      void client.invalidateQueries({ queryKey: rulesKeys.policies })
+      void client.invalidateQueries({ queryKey: rulesKeys.anyPolicies })
       void client.invalidateQueries({ queryKey: rulesKeys.explain })
     },
   })

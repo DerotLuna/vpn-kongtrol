@@ -13,12 +13,16 @@ import { DataProvider } from './app/DataProvider'
 import { BASENAME, PLACEHOLDERS } from './app/placeholders'
 import { PreferencesProvider } from './app/PreferencesProvider'
 import { AppShell } from './components/layout/AppShell'
+import { ActivityPage } from './pages/ActivityPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { RulesPage } from './pages/RulesPage'
 import { SchedulePage } from './pages/SchedulePage'
+import { SecurityPage } from './pages/SecurityPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { TrafficPage } from './pages/TrafficPage'
 import { TrayPage } from './pages/TrayPage'
-import { WelcomePage } from './pages/WelcomePage'
+import { HomePage } from './pages/HomePage'
 
 // Component review page: development builds only, never shipped.
 const KitPage = import.meta.env.DEV ? lazy(() => import('./pages/KitPage')) : null
@@ -28,7 +32,11 @@ function AppRoutes() {
     <Routes>
       <Route path="tray" element={<TrayPage />} />
       <Route element={<AppShell />}>
-        <Route index element={<WelcomePage />} />
+        <Route index element={<HomePage />} />
+        <Route path="traffic" element={<TrafficPage />} />
+        <Route path="activity" element={<ActivityPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="security" element={<SecurityPage />} />
         <Route path="rules" element={<RulesPage />} />
         <Route path="rules/schedule" element={<SchedulePage />} />
         {Object.entries(PLACEHOLDERS).map(([path, spec]) => (

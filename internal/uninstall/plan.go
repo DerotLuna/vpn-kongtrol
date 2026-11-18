@@ -75,9 +75,13 @@ func ReadManifest(dataDir string) (Manifest, bool) {
 		}
 		switch strings.TrimSpace(k) {
 		case "file":
-			m.Files = append(m.Files, filepath.Clean(v))
+			if ScriptFileNames[filepath.Base(v)] {
+				m.Files = append(m.Files, filepath.Clean(v))
+			}
 		case "autostart":
-			m.Autostart = append(m.Autostart, filepath.Clean(v))
+			if filepath.Base(v) == "kongtrol.desktop" {
+				m.Autostart = append(m.Autostart, filepath.Clean(v))
+			}
 		case "path":
 			m.PathEntries = append(m.PathEntries, filepath.Clean(v))
 		}
@@ -139,9 +143,23 @@ func Detect(env Env, purge, dataOnly bool) Plan {
 	return p
 }
 
+// ScriptFileNames are the only base names install.sh / install.ps1 write
+// to install.manifest. Any other entry (a hand-edited or planted
+// "file=/" or "file=$HOME") is ignored, so uninstall never deletes it.
+var ScriptFileNames = map[string]bool{
+	"kongtrol": true, "kongtrol-tray": true, "kongtrol.exe": true, "kongtrol-tray.exe": true,
+	AppBundleName: true, "kongtrol.desktop": true, "kongtrol.png": true,
+}
+
+// AppBundleName is the macOS app folder; the only manifest entry that is
+// a directory (removed recursively) and may contain the executable.
+const AppBundleName = "Kongtrol.app"
+
+// manifestOwns: the running executable is listed exactly, or lives inside
+// a listed Kongtrol.app bundle. A parent folder never counts.
 func manifestOwns(m Manifest, exe string) bool {
 	for _, f := range m.Files {
-		if strings.EqualFold(f, exe) || isWithin(f, exe) {
+		if strings.EqualFold(f, exe) || (filepath.Base(f) == AppBundleName && isWithin(f, exe)) {
 			return true
 		}
 	}
