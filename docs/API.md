@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.5 · 2026-11-18
+Version 1.6 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -33,7 +33,7 @@ GET  /api/v1/dns/resolve?domain=...&via=...  # split-DNS resolution for a specif
 GET  /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app + target)
 
 # Policies
-GET/POST  /api/v1/policies
+GET/POST  /api/v1/policies                  # GET: each policy + `resolved` [{cidr, host, last_seen, expires_at}] (resolved IPs expire 6h unseen)
 PUT/DELETE /api/v1/policies/{name}
 POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
