@@ -170,6 +170,7 @@ const es = {
   'home.notice.watchdog.reconnected': '{0} se reconectó',
   'home.notice.watchdog.noResponse': '{0} dejó de responder: su servidor no contesta · Kongtrol la reconecta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
   'home.notice.watchdog.responding': '{0} vuelve a responder',
+  'home.notice.watchdog.manualReconnect': '{0} se cayó · Kongtrol no puede reconectarla solo: conéctala en su app y Kongtrol la sigue',
   'home.notice.update.available': 'Hay una versión nueva de Kongtrol: {0} (tienes {1}) · actualiza con tu instalador o tu gestor de paquetes, o descárgala desde kongtrol.app · novedades: {2}',
   'home.notice.generic': 'Aviso de Kongtrol sobre {profile}',
 
@@ -338,6 +339,7 @@ const en: Strings<typeof es> = {
   'home.notice.watchdog.reconnected': '{0} reconnected',
   'home.notice.watchdog.noResponse': '{0} stopped responding: its server does not answer · Kongtrol reconnects it on its own; if it persists, check your internet or tell whoever runs that VPN',
   'home.notice.watchdog.responding': '{0} responds again',
+  'home.notice.watchdog.manualReconnect': '{0} dropped · Kongtrol can’t reconnect it on its own: connect it in its app and Kongtrol follows it',
   'home.notice.update.available': 'A new Kongtrol version is out: {0} (you have {1}) · update with your installer or package manager, or download it from kongtrol.app · what’s new: {2}',
   'home.notice.generic': 'Kongtrol notice about {profile}',
 

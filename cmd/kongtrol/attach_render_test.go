@@ -41,7 +41,7 @@ func TestAttachMessagesTranslated(t *testing.T) {
 				t.Errorf("%s %s: message too long (%d): %q", lang, st.Phase, len([]rune(msg)), msg)
 			}
 		}
-		for _, k := range []string{"attach.hint.cancel", "attach.hint.stop_waiting", "cli.attach.wait_timeout", "cli.attach.disconnect_timeout", "cli.alert.manual_reconnect_required"} {
+		for _, k := range []string{"attach.hint.cancel", "attach.hint.stop_waiting", "cli.attach.wait_timeout", "cli.attach.disconnect_timeout", "watchdog.event.manual_reconnect"} {
 			if i18n.T(lang, k) == k {
 				t.Errorf("%s: missing key %s", lang, k)
 			}

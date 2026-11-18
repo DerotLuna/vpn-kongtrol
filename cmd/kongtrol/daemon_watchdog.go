@@ -49,8 +49,9 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 	case "responding":
 		watchdogNotice("INFO", "vpn.responding", "watchdog.event.responding", profile)
 	case "manual_reconnect_required":
-		emitAlert("WARN", profile, cf("cli.alert.manual_reconnect_required", profile))
-		logAudit("WARN", "vpn.manual_reconnect_required", profile, cf("cli.alert.manual_reconnect_required", profile))
+		// Once per drop: no automatic path (no CLI, or auto_connect off),
+		// so the user has to reconnect in the provider's app.
+		watchdogNotice("WARN", "vpn.manual_reconnect_required", "watchdog.event.manual_reconnect", profile)
 	}
 }
 

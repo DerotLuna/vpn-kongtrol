@@ -39,6 +39,7 @@ const es = {
   'activity.event.watchdog.event.reconnected': '{0} se reconectó',
   'activity.event.watchdog.event.no_response': '{0} dejó de responder: su servidor no contesta · Kongtrol la reconecta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
   'activity.event.watchdog.event.responding': '{0} vuelve a responder',
+  'activity.event.watchdog.event.manual_reconnect': '{0} se cayó · Kongtrol no puede reconectarla solo: conéctala en su app y Kongtrol la sigue',
   'activity.event.update.event.available': 'Hay una versión nueva de Kongtrol: {0} (tienes {1}) · actualiza con tu instalador o tu gestor de paquetes, o descárgala desde kongtrol.app',
 
   'activity.audit.title': 'Registro de auditoría',
@@ -131,6 +132,7 @@ const en: Strings<typeof es> = {
   'activity.event.watchdog.event.reconnected': '{0} reconnected',
   'activity.event.watchdog.event.no_response': '{0} stopped responding: its server does not answer · Kongtrol reconnects it on its own; if it persists, check your internet or tell whoever runs that VPN',
   'activity.event.watchdog.event.responding': '{0} responds again',
+  'activity.event.watchdog.event.manual_reconnect': '{0} dropped · Kongtrol can’t reconnect it on its own: connect it in its app and Kongtrol follows it',
   'activity.event.update.event.available': 'A new Kongtrol version is out: {0} (you have {1}) · update with your installer or package manager, or download it from kongtrol.app',
 
   'activity.audit.title': 'Audit log',

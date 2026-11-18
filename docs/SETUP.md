@@ -515,7 +515,7 @@ Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera r
 <!-- feature:watchdog -->
 #### Si una VPN se cae y no vuelve (failover)
 
-Kongtrol reintenta solo **esa misma** VPN (espera 2 s, 4 s, 8 s… hasta 5 min) y te avisa una vez en la bandeja, el dashboard y la vista en vivo. Nunca conecta otra VPN por su cuenta: cada perfil llega a redes distintas, aunque los nombres se parezcan.
+Kongtrol reintenta solo **esa misma** VPN (espera 2 s, 4 s, 8 s… hasta 5 min) y te avisa una vez en la bandeja, el dashboard y la vista en vivo. Nunca conecta otra VPN por su cuenta: cada perfil llega a redes distintas, aunque los nombres se parezcan. Si la VPN es de una app de proveedor que Kongtrol no puede reconectar (sin CLI, o con `auto_connect: false`), te avisa igual en esos tres lugares para que la conectes en su app; Kongtrol la sigue en cuanto vuelve.
 
 Si tienes un perfil de respaldo que llega a **las mismas redes**, decláralo en el perfil principal:
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 )
 
 // The user's real config: similar names and priorities, no failover
@@ -29,5 +30,25 @@ func TestProfileFailover_OnlyExplicitDeclarations(t *testing.T) {
 	want := map[string][]string{"brainbox": {"brainbox-ovpn"}}
 	if got := profileFailover(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("profileFailover() = %v, want %v", got, want)
+	}
+}
+
+// A provider tunnel Kongtrol cannot reconnect on its own must reach every
+// client as a notice (tray, dashboards, live view), not only the daemon log.
+func TestOnWatchdogEvent_ManualReconnectIsANotice(t *testing.T) {
+	old := daemonEvents
+	t.Cleanup(func() { daemonEvents = old })
+	daemonEvents = monitor.NewEventLog(10)
+
+	onWatchdogEvent(monitor.WatchdogEvent{Profile: "proton", Event: "manual_reconnect_required"})
+
+	evs, _ := daemonEvents.After(0)
+	if len(evs) != 1 {
+		t.Fatalf("events = %d, want 1", len(evs))
+	}
+	e := evs[0]
+	if e.Kind != monitor.EventTunnelWatchdog || e.Key != "watchdog.event.manual_reconnect" ||
+		e.Profile != "proton" || !reflect.DeepEqual(e.Args, []string{"proton"}) || e.Level != "WARN" {
+		t.Fatalf("event = %+v", e)
 	}
 }

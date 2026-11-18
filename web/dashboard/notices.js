@@ -19,6 +19,7 @@ const NOTICE_I18N = {
     'watchdog.event.reconnected': '{0} se reconectó',
     'watchdog.event.no_response': '{0} dejó de responder: su servidor no contesta · Kongtrol la reconecta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
     'watchdog.event.responding': '{0} vuelve a responder',
+    'watchdog.event.manual_reconnect': '{0} se cayó · Kongtrol no puede reconectarla solo: conéctala en su app y Kongtrol la sigue',
     'update.event.available': 'Hay una versión nueva de Kongtrol: {0} (tienes {1}) · actualiza con tu instalador o tu gestor de paquetes, o descárgala desde kongtrol.app · novedades: {2}',
   },
   en: {
@@ -34,6 +35,7 @@ const NOTICE_I18N = {
     'watchdog.event.reconnected': '{0} reconnected',
     'watchdog.event.no_response': '{0} stopped responding: its server does not answer · Kongtrol reconnects it on its own; if it persists, check your internet or tell whoever runs that VPN',
     'watchdog.event.responding': '{0} responds again',
+    'watchdog.event.manual_reconnect': "{0} dropped · Kongtrol can't reconnect it on its own: connect it in its app and Kongtrol follows it",
     'update.event.available': "A new Kongtrol version is out: {0} (you have {1}) · update with your installer or package manager, or download it from kongtrol.app · what's new: {2}",
   },
 };

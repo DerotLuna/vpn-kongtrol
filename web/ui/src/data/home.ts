@@ -517,6 +517,7 @@ const NOTICE_TEXT: Record<string, MessageKey> = {
   'watchdog.event.reconnected': 'home.notice.watchdog.reconnected',
   'watchdog.event.no_response': 'home.notice.watchdog.noResponse',
   'watchdog.event.responding': 'home.notice.watchdog.responding',
+  'watchdog.event.manual_reconnect': 'home.notice.watchdog.manualReconnect',
   'update.event.available': 'home.notice.update.available',
 }
 
