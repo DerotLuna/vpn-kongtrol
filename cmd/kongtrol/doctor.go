@@ -9,15 +9,15 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
+	"github.com/vpn-kongtrol/kongtrol/internal/doctor"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
-// doctorVersionCheckTimeout bounds each VPN client binary's --version-style
-// probe. doctor is meant to be a quick, safe diagnostic — a misbehaving or
-// hung client binary (or a PowerShell VersionInfo lookup that never
-// returns) must not be able to make it hang indefinitely.
-const doctorVersionCheckTimeout = 5 * time.Second
-
+// The checks live in internal/doctor (shared with GET /api/v1/doctor and
+// the dashboard); this command only renders them.
 var doctorCmd = &cobra.Command{
 	Use: "doctor",
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -30,22 +30,21 @@ var doctorCmd = &cobra.Command{
 				fmt.Println(tuiInfo(cf("cli.doctor.fix.applied", n)))
 			}
 		}
-		d := &doctor{}
-		d.run()
+		rep := runDoctor()
 		if outputJSON {
-			if err := emitJSON(d.report()); err != nil {
+			if err := emitJSON(rep); err != nil {
 				return err
 			}
 		} else {
-			if d.warnings > 0 {
-				fmt.Printf("\n%s\n", tuiWarn(cf("cli.doctor.summary.warn", d.warnings)))
+			if rep.Warnings > 0 {
+				fmt.Printf("\n%s\n", tuiWarn(cf("cli.doctor.summary.warn", rep.Warnings)))
 			}
-			if d.failures == 0 {
+			if rep.Failures == 0 {
 				fmt.Println("\n" + tuiOK(ct("cli.doctor.summary.ok")))
 			}
 		}
-		if d.failures > 0 {
-			return fmt.Errorf("%s", cf("cli.doctor.error.failed_checks", d.failures))
+		if rep.Failures > 0 {
+			return fmt.Errorf("%s", cf("cli.doctor.error.failed_checks", rep.Failures))
 		}
 		return nil
 	},
@@ -100,67 +99,56 @@ func applyDoctorFixes() (int, error) {
 	return applied, nil
 }
 
-type doctorCheck struct {
-	Section string `json:"section"`
-	Label   string `json:"label"`
-	Status  string `json:"status"` // ok|warn|fail
-	Detail  string `json:"detail"`
-}
-
-type doctorReport struct {
-	Checks   []doctorCheck `json:"checks"`
-	Failures int           `json:"failures"`
-	Warnings int           `json:"warnings"`
-}
-
-// ── doctor ────────────────────────────────────────────────────────────────────
-
-type doctor struct {
-	failures int
-	warnings int
-	sectionN string
-	checks   []doctorCheck
-	rt       *doctorRuntime
-}
-
-func (d *doctor) run() {
+// runDoctor runs the shared checks, printing each one as it arrives
+// (unless --json), with the daemon's own state when one answers.
+func runDoctor() doctor.Report {
+	opt := doctor.Options{
+		Lang:       cliLang(),
+		ConfigPath: cfgPath,
+		Version:    version,
+		Daemon:     doctorDaemonState(),
+	}
 	if !outputJSON {
 		fmt.Println(stylePrompt.Render(sym("◎", "#")) + "  " + styleBright.Render(ct("cli.doctor.title")))
 		fmt.Println(styleDim.Render(doctorRule()))
+		opt.OnSection = printDoctorSection
+		opt.OnCheck = printDoctorCheck
 	}
-
-	d.section(ct("cli.doctor.section.configuration"))
-	_, cfg := d.checkConfig()
-	d.rt = newDoctorRuntime(cfg)
-
-	d.section(ct("cli.doctor.section.binaries"))
-	d.checkBinaries(cfg)
-
-	d.section(ct("cli.doctor.section.certs"))
-	d.checkCerts(cfg)
-
-	d.section(ct("cli.doctor.section.keychain"))
-	d.checkKeychain(cfg)
-
-	d.section(ct("cli.doctor.section.permissions"))
-	d.checkPermissions()
-
-	d.section(ct("cli.doctor.section.runtime"))
-	d.checkRuntimeNetworking(cfg)
-
-	d.section(ct("cli.doctor.section.adapters_status"))
-	d.checkAdapterStatus(cfg)
-
-	d.section(ct("cli.doctor.section.adapters_registered"))
-	d.checkAdapters(cfg)
+	return doctor.Run(opt)
 }
 
-func (d *doctor) report() doctorReport {
-	return doctorReport{
-		Checks:   d.checks,
-		Failures: d.failures,
-		Warnings: d.warnings,
+// doctorDaemonState asks the daemon at the configured dashboard address
+// for its tunnels and security state (nil when none answers). Read-only:
+// the API token is read, never created.
+func doctorDaemonState() *doctor.Daemon {
+	c, err := config.Load(cfgPath)
+	if err != nil {
+		return nil
 	}
+	if apiToken == "" {
+		tok, err := config.ReadAPIToken()
+		if err != nil {
+			return nil
+		}
+		apiToken = tok
+	}
+	tunnels, sec, err := fetchDaemonSnapshotAt(daemonctl.APIBase(c.Monitor.Dashboard.Bind, c.Monitor.Dashboard.Port))
+	if err != nil {
+		return nil
+	}
+	return doctorDaemonFromSnapshot(tunnels, sec)
 }
 
-// ── config ────────────────────────────────────────────────────────────────────
+func doctorDaemonFromSnapshot(tunnels []monitor.TunnelMetrics, sec *apiSecurityStatus) *doctor.Daemon {
+	d := &doctor.Daemon{Tunnels: make(map[string]vpn.Status, len(tunnels))}
+	for _, t := range tunnels {
+		d.Tunnels[t.Name] = t.Status
+	}
+	if sec != nil {
+		d.KillSwitchEnabled = sec.KillSwitchEnabled
+		d.KillSwitchActive = sec.KillSwitch
+		d.KillSwitch = sec.KillSwitchStatus
+		d.DNSGuardActive = sec.DNSGuard
+	}
+	return d
+}

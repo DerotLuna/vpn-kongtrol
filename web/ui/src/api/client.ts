@@ -1,4 +1,4 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.2.0 · 2026-11-17
+// Kongtrol UI — typed client for the daemon's local API · v0.3.0 · 2026-11-18
 //
 // Same-origin only: the daemon serves this UI and sets the HttpOnly
 // `kongtrol_control` cookie, so requests carry no token in JS. The daemon
@@ -6,6 +6,7 @@
 import type { Lang } from '../i18n/messages'
 import type {
   ApiErrorBody,
+  DoctorReport,
   HelperStatus,
   Preferences,
   PublicIPStatus,
@@ -40,16 +41,23 @@ export function setApiLang(lang: Lang): void {
   currentLang = lang
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function send(path: string, init: RequestInit, accept: string): Promise<Response> {
   const headers = new Headers(init.headers)
   headers.set('X-Kongtrol-Lang', currentLang)
-  headers.set('Accept', 'application/json')
-  let res: Response
+  headers.set('Accept', accept)
   try {
-    res = await fetch(path, { ...init, headers, credentials: 'same-origin' })
+    return await fetch(path, { ...init, headers, credentials: 'same-origin' })
   } catch {
     throw new ApiError('offline', 0)
   }
+}
+
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await send(path, init, 'application/json')
+  return parse<T>(res)
+}
+
+async function parse<T>(res: Response): Promise<T> {
   const text = await res.text()
   let body: unknown = null
   if (text) {
@@ -94,6 +102,14 @@ export const api = {
   setUpdates: (enabled: boolean) => sendJSON<UpdateStatus>('POST', '/api/v1/updates', { enabled }),
   /** "Borrar todos mis datos": the daemon then restarts into first-run setup. */
   purgeData: () => sendJSON<PurgeResult>('POST', '/api/v1/data/purge', { confirm: true }),
+  /** Same checks as `kongtrol doctor`, run by the daemon; takes a few seconds. */
+  doctor: () => request<DoctorReport>('/api/v1/doctor'),
+  /** kongtrol.yaml as a file (no passwords); errors arrive translated. */
+  exportConfig: async (): Promise<Blob> => {
+    const res = await send('/api/v1/config/export', {}, 'application/yaml, application/json')
+    if (!res.ok) return parse<Blob>(res)
+    return res.blob()
+  },
 }
 
 /**

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/doctor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -154,7 +155,7 @@ func TestDoctor_JSON(t *testing.T) {
 		t.Fatalf("expected doctor to fail with missing config")
 	}
 
-	var got doctorReport
+	var got doctor.Report
 	if jerr := json.Unmarshal([]byte(strings.TrimSpace(out)), &got); jerr != nil {
 		t.Fatalf("decode json: %v\noutput=%s", jerr, out)
 	}

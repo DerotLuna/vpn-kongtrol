@@ -4,57 +4,45 @@ import (
 	"fmt"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/doctor"
 )
 
-func (d *doctor) section(name string) {
-	d.sectionN = name
-	if !outputJSON {
-		fmt.Printf("\n  %s\n", styleBright.Render(name))
-		fmt.Printf("  %s\n", styleDim.Render(doctorRule()))
+const checkWidth = 36
+
+func printDoctorSection(name string) {
+	fmt.Printf("\n  %s\n", styleBright.Render(name))
+	fmt.Printf("  %s\n", styleDim.Render(doctorRule()))
+}
+
+// printDoctorCheck prints one check; warnings and errors add their
+// "what to do" line underneath.
+func printDoctorCheck(c doctor.Check) {
+	level := "OK"
+	switch c.Status {
+	case doctor.StatusWarn:
+		level = "WARN"
+	case doctor.StatusFail:
+		level = "ERROR"
 	}
-}
-
-func (d *doctor) record(status, label, detail string) {
-	d.checks = append(d.checks, doctorCheck{
-		Section: d.sectionN,
-		Label:   label,
-		Status:  status,
-		Detail:  detail,
-	})
-}
-
-func (d *doctor) ok(label, detail string) {
-	d.record("ok", label, detail)
-	if !outputJSON {
-		d.printCheckLine("OK", label, detail)
-	}
-}
-
-func (d *doctor) warn(label, detail string) {
-	d.warnings++
-	d.record("warn", label, detail)
-	if !outputJSON {
-		d.printCheckLine("WARN", label, detail)
-	}
-}
-
-func (d *doctor) fail(label, detail string) {
-	d.failures++
-	d.record("fail", label, detail)
-	if !outputJSON {
-		d.printCheckLine("ERROR", label, detail)
-	}
-}
-
-func (d *doctor) printCheckLine(level, label, detail string) {
-	lines := wrapText(detail, doctorDetailWidth())
+	lines := wrapText(c.Detail, doctorDetailWidth())
 	if len(lines) == 0 {
 		lines = []string{""}
 	}
-	badge := renderLevelBadge(level)
-	fmt.Printf("  %s  %-*s  %s\n", badge, checkWidth, label, lines[0])
-	for i := 1; i < len(lines); i++ {
-		fmt.Printf("  %s  %-*s  %s\n", styleDim.Render(sym("│", "|")), checkWidth, "", styleDim.Render(lines[i]))
+	fmt.Printf("  %s  %-*s  %s\n", renderLevelBadge(level), checkWidth, c.Label, lines[0])
+	cont := styleDim.Render(sym("│", "|"))
+	for _, l := range lines[1:] {
+		fmt.Printf("  %s  %-*s  %s\n", cont, checkWidth, "", styleDim.Render(l))
+	}
+	if c.Hint == "" || c.Status == doctor.StatusOK {
+		return
+	}
+	for i, l := range wrapText(c.Hint, doctorDetailWidth()-2) {
+		mark := "  "
+		if i == 0 {
+			mark = styleInfo.Render(sym("→", ">")) + " "
+		}
+		fmt.Printf("  %s  %-*s  %s%s\n", cont, checkWidth, "", mark, l)
 	}
 }
 

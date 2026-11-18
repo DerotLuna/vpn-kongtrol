@@ -37,6 +37,17 @@
             <p class="mono muted" style="margin-top:4px;">kongtrol config dashboard set-port &lt;port&gt;<br />kongtrol config dashboard set-bind &lt;address&gt;</p>
           </section>
 
+          <section class="card" style="margin-top:22px;">
+            <div class="card-header">
+              <h2 data-i18n="settings.diag">Diagnostics and backup</h2>
+            </div>
+            <p class="muted" data-i18n="settings.diagNote">Check whether everything is ready (and what to do if not) in the new dashboard, or download your configuration without passwords.</p>
+            <p style="margin-top:10px; display:flex; gap:16px; flex-wrap:wrap;">
+              <a href="/app/" data-i18n="settings.diagOpen">Open Diagnostics</a>
+              <a href="/api/v1/config/export" download="kongtrol-export.yaml" data-i18n="settings.diagExport">Export configuration</a>
+            </p>
+          </section>
+
           <div class="side-grid" style="margin-top:22px;">
             <section class="card">
               <div class="card-header">

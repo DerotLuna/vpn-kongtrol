@@ -42,7 +42,7 @@ func versionOf(path string, args []string) string {
 			return v
 		}
 	}
-	if v := peVersion(path); v != "" {
+	if v := vpndetect.FileVersion(path); v != "" {
 		return v
 	}
 	parent := filepath.Base(filepath.Dir(path))

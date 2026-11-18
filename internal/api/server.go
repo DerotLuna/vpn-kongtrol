@@ -193,6 +193,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/setup", s.handleSetupStatus)
 	mux.HandleFunc("GET /api/v1/helper/status", s.handleHelperStatus)
 	mux.HandleFunc("POST /api/v1/helper/install", s.handleHelperInstall)
+	mux.HandleFunc("GET /api/v1/doctor", s.handleDoctor)
+	mux.HandleFunc("GET /api/v1/config/export", s.handleConfigExport)
 	mux.HandleFunc("GET /api/v1/events", s.handleEvents)
 	mux.HandleFunc("GET /api/v1/updates", s.handleGetUpdates)
 	mux.HandleFunc("POST /api/v1/updates", s.handleSetUpdates)
