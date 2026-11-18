@@ -339,9 +339,16 @@ func (f *winFlyout) configure(ch *edge.Chromium) {
 	}
 }
 
+// navigate loads the flyout page; the address always comes from
+// flyoutLoadURL (one-time auth step lives there, never the file token).
 func (f *winFlyout) navigate() {
-	f.chromium.Navigate(f.url)
 	f.navigatedAt = time.Now()
+	target, err := flyoutLoadURL(f.url)
+	if err != nil {
+		log.Printf("kongtrol-tray: flyout could not prepare its page: %v", err)
+		return
+	}
+	f.chromium.Navigate(target)
 }
 
 // onRequest answers 403 to anything outside the daemon's origin. Only the

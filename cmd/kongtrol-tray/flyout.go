@@ -57,6 +57,18 @@ func flyoutURL(base string) (string, error) {
 	return "http://" + u.Host + flyoutPath, nil
 }
 
+// flyoutLoadURL is the ONE place that turns the flyout page URL into the
+// address the window navigates to, called before every navigation. Today it
+// is the page itself (the daemon sets its HttpOnly cookie on /app/*). The
+// planned one-time bootstrap nonce goes here: ask the daemon for a nonce
+// (authenticated with the file token, which never enters a URL) and return
+// pageURL + "#k=<nonce>". A fragment keeps the path /app/tray, so the
+// request filter and flyoutInitScript stay unchanged, and the fragment is
+// never sent over HTTP nor logged.
+func flyoutLoadURL(pageURL string) (string, error) {
+	return pageURL, nil
+}
+
 func isLoopbackHost(host string) bool {
 	if strings.EqualFold(strings.TrimSuffix(host, "."), "localhost") {
 		return true

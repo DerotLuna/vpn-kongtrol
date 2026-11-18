@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -61,6 +62,24 @@ func TestFlyoutRequestAllowed(t *testing.T) {
 		if flyoutRequestAllowed(page, u) {
 			t.Errorf("allowed %q", u)
 		}
+	}
+}
+
+// The address the window loads must stay on the flyout page and origin, so
+// a bootstrap fragment (#k=<nonce>) added in flyoutLoadURL keeps working
+// with the filter and the injected script; no token in path or query.
+func TestFlyoutLoadURL(t *testing.T) {
+	page := "http://127.0.0.1:9741/app/tray"
+	got, err := flyoutLoadURL(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	u, err := url.Parse(got)
+	if err != nil || u.Path != flyoutPath || u.RawQuery != "" || !flyoutRequestAllowed(page, got) {
+		t.Errorf("flyoutLoadURL(%q) = %q", page, got)
+	}
+	if !flyoutRequestAllowed(page, page+"#k=abc") {
+		t.Error("a bootstrap fragment must pass the filter")
 	}
 }
 
