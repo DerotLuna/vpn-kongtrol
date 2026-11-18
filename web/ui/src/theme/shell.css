@@ -84,7 +84,9 @@
 .k-bottombar .k-nav-item.active .k-nav-item__icon,
 .k-bottombar .k-nav-item[aria-current='page'] .k-nav-item__icon { background: var(--state-select); }
 .k-sidenav { display: none; }
-.k-topbar__label, .k-topbar__legacy, .k-topbar__version { display: none; }
+/* Hidden visually only: the links keep their names for screen readers. */
+.k-topbar__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.k-topbar__legacy, .k-topbar__version { display: none; }
 /* The toast sits above the bottom bar on phones. */
 .k-toaster { bottom: calc(var(--bottombar-h) + 12px + env(safe-area-inset-bottom)); }
 
@@ -117,10 +119,12 @@
   .k-app { grid-template-columns: var(--sidebar-w) 1fr; }
   .k-sidenav { padding: 16px 12px; }
   .k-sidenav .k-nav-item { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: var(--tap); padding: 0 14px; font-size: 14px; text-align: left; }
-  .k-topbar__label, .k-topbar__version { display: inline; }
+  .k-topbar__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  .k-topbar__version { display: inline; }
   .k-main { padding: 32px 40px 56px; }
 }
 
 @media (max-width: 420px) {
-  .k-brand span { display: none; }
+  /* Logo stays top-left; only the name hides on the narrowest phones. */
+  .k-brand > span:not(.k-logo) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }

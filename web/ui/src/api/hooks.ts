@@ -6,7 +6,7 @@
 // themselves.
 import { useCallback, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useLiveState } from '../data/connection'
+import { useDaemonState, useLiveState } from '../data/connection'
 import { keys } from '../data/keys'
 import {
   useHelperInstall,
@@ -23,6 +23,8 @@ function errorOf(err: unknown): ApiError | null {
   return err ? toApiError(err) : null
 }
 
+const OFFLINE = new ApiError('offline', 0)
+
 export interface TunnelsState {
   tunnels: TunnelMetrics[] | null
   error: ApiError | null
@@ -34,9 +36,13 @@ export interface TunnelsState {
 export function useTunnels(): TunnelsState {
   const query = useTunnelsQuery()
   const live = useLiveState() === 'live'
+  const daemon = useDaemonState()
   const { refetch } = query
   const reload = useCallback(() => void refetch(), [refetch])
-  return { tunnels: query.data ?? null, error: errorOf(query.error), live, reload }
+  // Say "Kongtrol is not answering" at the first failed request, not after
+  // the retries: with nothing cached there is nothing better to show.
+  const error = errorOf(query.error) ?? (daemon === 'offline' && !query.data ? OFFLINE : null)
+  return { tunnels: query.data ?? null, error, live, reload }
 }
 
 export interface HelperState {

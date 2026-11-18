@@ -129,7 +129,7 @@ export function AppShell() {
       </a>
       <header className="k-topbar">
         <Link className="k-brand" to="/">
-          <Logo size={28} />
+          <Logo size={32} />
           <span>{t('app.name')}</span>
         </Link>
         <AggregateStatus />
@@ -146,10 +146,11 @@ export function AppShell() {
           <button
             type="button"
             className="k-icon-btn k-icon-btn--standard k-lang"
-            aria-label={t('header.lang.switchLabel')}
             onClick={() => setLang(lang === 'es' ? 'en' : 'es')}
           >
-            <span aria-hidden="true">{lang === 'es' ? 'EN' : 'ES'}</span>
+            {/* Visible "EN"/"ES" stays in the accessible name (WCAG 2.5.3). */}
+            {lang === 'es' ? 'EN' : 'ES'}
+            <span className="visually-hidden"> · {t('header.lang.switchLabel')}</span>
           </button>
           <IconButton label={themeLabel} icon={theme === 'dark' ? <SunIcon /> : <MoonIcon />} onClick={toggleTheme} />
           <VersionTag className="k-topbar__version" />

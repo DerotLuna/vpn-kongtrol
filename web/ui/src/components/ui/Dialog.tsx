@@ -61,7 +61,11 @@ export function Dialog({ open, onClose, title, description, children, actions, v
     >
       <div className="k-dialog__body">
         <header className="k-dialog__head">
-          <h2 id={`${id}-t`}>{title}</h2>
+          {/* showModal() focuses the autofocus element: the title, so screen
+              readers start there and the close button's tooltip stays shut. */}
+          <h2 id={`${id}-t`} tabIndex={-1} autoFocus>
+            {title}
+          </h2>
           <IconButton label={t('kit.close')} icon={<CloseIcon />} onClick={onClose} />
         </header>
         {description && (
