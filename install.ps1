@@ -1,5 +1,5 @@
 # Installs the kongtrol CLI from the latest GitHub release.
-# Version 1.1.0 · 2026-11-18 · docs/adr/0033-uninstall-keeps-data-by-default.md
+# Version 1.1.0 · 2026-11-18 · docs/adr/0034-uninstall-and-update-notice.md
 #
 #   iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
 #

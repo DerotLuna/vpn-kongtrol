@@ -1,5 +1,5 @@
 // Package uninstall plans and runs "remove Kongtrol" and "delete all my
-// data" (ADR-0033). Keeping data is the default everywhere: nothing here runs
+// data" (ADR-0034). Keeping data is the default everywhere: nothing here runs
 // unless the user asked for it (`kongtrol uninstall [--purge]`, the
 // dashboard's "Borrar todos mis datos", or "Sí" in the Windows uninstaller).
 package uninstall

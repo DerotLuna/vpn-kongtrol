@@ -6,7 +6,7 @@ import { StatusPill } from '../ui/StatusPill'
 
 // feature:update_check
 /**
- * Opt-in new version notice (ADR-0032). Off by default; while off nothing
+ * Opt-in new version notice (ADR-0034). Off by default; while off nothing
  * leaves the machine. It only tells the user how to update, never installs.
  */
 export function UpdatesCard({ state }: { state: UpdatesState }) {

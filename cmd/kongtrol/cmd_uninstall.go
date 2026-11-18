@@ -16,7 +16,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/uninstall"
 )
 
-// `kongtrol uninstall` (ADR-0033). Keeping data is the default; --purge also
+// `kongtrol uninstall` (ADR-0034). Keeping data is the default; --purge also
 // deletes ~/.kongtrol and Kongtrol's keychain entries; --data-only deletes
 // only the data (the Windows uninstaller and the dashboard use the same
 // purge). Files are deleted only when Kongtrol's own install scripts put

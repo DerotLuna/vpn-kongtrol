@@ -148,7 +148,7 @@ begin
   Result := Pos(';' + Uppercase(Dir) + ';', ';' + Uppercase(OrigPath) + ';') = 0;
 end;
 
-// Uninstall keeps the user's data by default (docs/adr/0033-…). An
+// Uninstall keeps the user's data by default (docs/adr/0034-uninstall-and-update-notice.md). An
 // interactive uninstall asks once, defaulting to No (MsgBox with
 // MB_DEFBUTTON2); a silent one (UninstallSilent) never deletes data.
 // https://jrsoftware.org/ishelp/topic_isxfunc_msgbox.htm

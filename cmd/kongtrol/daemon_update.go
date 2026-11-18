@@ -13,8 +13,8 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/update"
 )
 
-// Opt-in update notice (ADR-0032) and the dashboard's "Borrar todos mis
-// datos" (ADR-0033), wired into the daemon.
+// Opt-in update notice (ADR-0034) and the dashboard's "Borrar todos mis
+// datos" (ADR-0034), wired into the daemon.
 
 var (
 	updateChecker = update.New(version, func() bool { return cfg.UpdateCheckEnabled() })

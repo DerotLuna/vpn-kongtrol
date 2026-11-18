@@ -12,7 +12,7 @@ type Config struct {
 	Updates  UpdatesConfig          `yaml:"updates,omitempty"`
 }
 
-// UpdatesConfig is the opt-in update notice (ADR-0032). Off by default: with
+// UpdatesConfig is the opt-in update notice (ADR-0034). Off by default: with
 // check_enabled false Kongtrol never contacts api.github.com. It only tells
 // the user a newer version exists; it never downloads or installs.
 type UpdatesConfig struct {

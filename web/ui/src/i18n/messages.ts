@@ -92,7 +92,7 @@ const es = {
   'help.connect': 'Cómo hacer la primera conexión',
   'help.trouble': 'Solución de problemas',
 
-  // Ajustes: aviso de versión nueva (opt-in, ADR-0032) y borrar mis datos (ADR-0033)
+  // Ajustes: aviso de versión nueva (opt-in, ADR-0034) y borrar mis datos (ADR-0034)
   'settings.title': 'Ajustes',
   'updates.title': 'Aviso de versión nueva',
   'updates.what': 'Te avisa cuando sale una versión nueva. Nunca descarga ni instala nada.',

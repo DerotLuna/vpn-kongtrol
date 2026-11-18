@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.1.0 · 2026-11-18 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0033-uninstall-keeps-data-by-default.md
+# Version 2.1.0 · 2026-11-18 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -30,7 +30,7 @@ warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$1"; }
 die()  { printf '\033[1;31merror:\033[0m %s\n' "$1" >&2; exit 1; }
 
 # --uninstall [--purge]: delegate to `kongtrol uninstall`, the same logic the
-# app uses (docs/adr/0033-uninstall-keeps-data-by-default.md). Your data stays
+# app uses (docs/adr/0034-uninstall-and-update-notice.md). Your data stays
 # unless you add --purge.
 do_uninstall=0
 do_purge=0
@@ -152,7 +152,7 @@ else
 fi
 
 # What this script installed, so `kongtrol uninstall` removes exactly that
-# and nothing a package manager owns (docs/adr/0033-…).
+# and nothing a package manager owns (docs/adr/0034-uninstall-and-update-notice.md).
 mkdir -p "${HOME}/.kongtrol"
 {
   echo "# Written by install.sh: files kongtrol uninstall may remove."

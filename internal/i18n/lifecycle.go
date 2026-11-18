@@ -1,7 +1,7 @@
 package i18n
 
 // Strings for uninstall, "delete all my data" and the opt-in update notice
-// (ADR-0032, ADR-0033). Kept in their own file and merged into the catalog
+// (ADR-0034). Kept in their own file and merged into the catalog
 // at init, so the parity test covers them like every other key.
 
 func init() {

@@ -15,7 +15,7 @@ import (
 )
 
 // configUpdateCheckCmd turns the opt-in update notice on or off
-// (updates.check_enabled, ADR-0032), or shows its state. Same path as
+// (updates.check_enabled, ADR-0034), or shows its state. Same path as
 // `config public-ip`: through the daemon's API when it runs (applies at
 // once), otherwise editing kongtrol.yaml in place, keeping comments.
 var configUpdateCheckCmd = &cobra.Command{

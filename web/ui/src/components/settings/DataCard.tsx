@@ -5,7 +5,7 @@ import { ErrorNotice } from '../ui/ErrorNotice'
 
 // feature:uninstall
 /**
- * "Borrar todos mis datos" (ADR-0033): a danger action behind a
+ * "Borrar todos mis datos" (ADR-0034): a danger action behind a
  * confirmation that lists exactly what is deleted and says the app stays
  * installed. Cancel is the default focus. Uninstalling the app itself is
  * the system's job (or `kongtrol uninstall`), so it is only explained here.

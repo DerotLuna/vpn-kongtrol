@@ -474,7 +474,7 @@ type securitySummary struct {
 	killSwitch, dnsGuard, auditLog, monitor bool
 	// publicIP: opt-in external public IP lookup (off by default).
 	publicIP bool
-	// updateCheck: opt-in update notice (off by default, ADR-0032).
+	// updateCheck: opt-in update notice (off by default, ADR-0034).
 	updateCheck bool
 }
 

@@ -1,4 +1,4 @@
-// Package update is Kongtrol's opt-in update notice (ADR-0032). It asks
+// Package update is Kongtrol's opt-in update notice (ADR-0034). It asks
 // GitHub Releases for the latest published, non-prerelease version at most
 // once every 24 hours and only when the user turned it on
 // (updates.check_enabled). It never downloads or installs anything: callers
