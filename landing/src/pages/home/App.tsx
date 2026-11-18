@@ -16,6 +16,7 @@ import Security from '../../components/sections/Security'
 import HowItWorks from '../../components/sections/HowItWorks'
 import UnderTheHood from '../../components/sections/UnderTheHood'
 import Download from '../../components/sections/Download'
+import FinalCta from '../../components/sections/FinalCta'
 import Footer from '../../components/ui/Footer'
 import TmuxBar, { TmuxWindow } from '../../components/ui/TmuxBar'
 import SectionJumpMenu from '../../components/ui/SectionJumpMenu'
@@ -70,6 +71,7 @@ export default function App({ lang }: { lang: Lang }) {
       <Suspense><Security lang={lang} /></Suspense>
       <Suspense><UnderTheHood lang={lang} /></Suspense>
       <Suspense><Download lang={lang} /></Suspense>
+      <Suspense><FinalCta lang={lang} /></Suspense>
     </>
   ), [lang])
   const footer = useMemo(() => <Suspense><Footer lang={lang} page="home" /></Suspense>, [lang])

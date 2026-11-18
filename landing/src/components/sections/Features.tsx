@@ -9,6 +9,9 @@ interface Props {
 
 type Route = {
   dest: string
+  /** what the destination is, in everyday words — kept short so it fits the
+      150-unit node at 11px in the SVG */
+  human: string
   rule: string
   match: string
   tunnel: string
@@ -42,7 +45,7 @@ export default function Features({ lang }: Props) {
     ? {
       label: '$ kongtrol map claude.ai',
       title: 'Cada sitio, por la VPN correcta.',
-      sub: 'Tú eliges qué direcciones y qué dominios van por cada VPN. Lo demás sale directo, sin VPN. Varias VPN a la vez, sin pelearse.',
+      sub: 'Tú eliges qué sitios y redes van por cada VPN: el sistema de tu empresa por la VPN del trabajo, otro sitio por tu VPN personal. Lo demás sale directo, sin VPN. Varias VPN a la vez, sin pelearse.',
       boardIn: 'Destino',
       boardCore: 'Reglas de Kongtrol',
       boardOut: 'Sale por',
@@ -50,18 +53,18 @@ export default function Features({ lang }: Props) {
       portOut: 'VPN o internet',
       readoutRule: 'regla',
       readoutNoRule: 'sin regla — sale directo, sin VPN',
-      hint: 'Toca un destino para ver cómo se resuelve',
+      hint: 'Toca un destino para ver por dónde sale',
       routes: [
-        { dest: '10.10.0.0/16', rule: 'Red de oficina', match: 'rango de IP', tunnel: 'office', adapter: 'FortiClient' },
-        { dest: '*.amazonaws.com', rule: 'AWS workloads', match: 'dominio', tunnel: 'aws', adapter: 'OpenVPN' },
-        { dest: 'claude.ai', rule: 'Contenido US', match: 'dominio', tunnel: 'us-content', adapter: 'Proton VPN' },
-        { dest: 'gmail.com', rule: '', match: '', tunnel: 'directo', adapter: 'sin VPN', direct: true },
+        { dest: '10.10.0.0/16', human: 'sistema de tu empresa', rule: 'Red de oficina', match: 'rango de IP', tunnel: 'office', adapter: 'FortiClient' },
+        { dest: '*.amazonaws.com', human: 'servidores en la nube', rule: 'AWS workloads', match: 'dominio', tunnel: 'aws', adapter: 'OpenVPN' },
+        { dest: 'claude.ai', human: 'un sitio en EE. UU.', rule: 'Contenido US', match: 'dominio', tunnel: 'us-content', adapter: 'Proton VPN' },
+        { dest: 'gmail.com', human: 'tu correo de siempre', rule: '', match: '', tunnel: 'directo', adapter: 'sin VPN', direct: true },
       ] as Route[],
     }
     : {
       label: '$ kongtrol map claude.ai',
       title: 'Every site, through the right VPN.',
-      sub: 'You choose which addresses and domains go through each VPN. Everything else goes out directly, no VPN. Several VPNs at once, no fighting.',
+      sub: 'You choose which sites and networks go through each VPN: your company system through the work VPN, another site through your personal VPN. Everything else goes out directly, no VPN. Several VPNs at once, no fighting.',
       boardIn: 'Destination',
       boardCore: 'Kongtrol rules',
       boardOut: 'Goes through',
@@ -69,12 +72,12 @@ export default function Features({ lang }: Props) {
       portOut: 'VPN or internet',
       readoutRule: 'rule',
       readoutNoRule: 'no rule — goes out directly, no VPN',
-      hint: 'Tap a destination to see how it resolves',
+      hint: 'Tap a destination to see where it goes out',
       routes: [
-        { dest: '10.10.0.0/16', rule: 'Office network', match: 'IP range', tunnel: 'office', adapter: 'FortiClient' },
-        { dest: '*.amazonaws.com', rule: 'AWS workloads', match: 'domain', tunnel: 'aws', adapter: 'OpenVPN' },
-        { dest: 'claude.ai', rule: 'US content', match: 'domain', tunnel: 'us-content', adapter: 'Proton VPN' },
-        { dest: 'gmail.com', rule: '', match: '', tunnel: 'direct', adapter: 'no VPN', direct: true },
+        { dest: '10.10.0.0/16', human: 'your company system', rule: 'Office network', match: 'IP range', tunnel: 'office', adapter: 'FortiClient' },
+        { dest: '*.amazonaws.com', human: 'cloud servers', rule: 'AWS workloads', match: 'domain', tunnel: 'aws', adapter: 'OpenVPN' },
+        { dest: 'claude.ai', human: 'a site in the US', rule: 'US content', match: 'domain', tunnel: 'us-content', adapter: 'Proton VPN' },
+        { dest: 'gmail.com', human: 'your everyday email', rule: '', match: '', tunnel: 'direct', adapter: 'no VPN', direct: true },
       ] as Route[],
     }
 
@@ -168,8 +171,9 @@ export default function Features({ lang }: Props) {
                   tabIndex={0}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(i) } }}
                 >
-                  <rect x="6" y={y - 18} width="150" height="36" rx="6" />
-                  <text x="20" y={y + 4}>{r.dest}</text>
+                  <rect x="6" y={y - 20} width="150" height="40" rx="6" />
+                  <text x="20" y={y - 2}>{r.dest}</text>
+                  <text className="sb-in-human" x="20" y={y + 13}>{r.human}</text>
                 </g>
               )
             })}
@@ -200,7 +204,8 @@ export default function Features({ lang }: Props) {
               return (
                 <div key={`row-${i}`} className={`sb-row${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
                   <button type="button" className="sb-row-dest" aria-pressed={on} onClick={() => pick(i)}>
-                    {r.dest}
+                    <span>{r.dest}</span>
+                    <small>{r.human}</small>
                   </button>
                   <span className="sb-row-wire" aria-hidden="true"><b /><i /></span>
                   <span className="sb-row-out">
@@ -213,7 +218,7 @@ export default function Features({ lang }: Props) {
           </div>
 
           <div className="sb-readout" key={active} aria-live={touched ? 'polite' : 'off'}>
-            <span className="sb-readout-dest">{cur.dest}</span>
+            <span className="sb-readout-dest">{cur.dest} <span className="sb-readout-human">({cur.human})</span></span>
             <svg className="sb-arrow" width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M0 5h13M9 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {cur.direct ? (
               <span className="sb-readout-mid">{copy.readoutNoRule}</span>

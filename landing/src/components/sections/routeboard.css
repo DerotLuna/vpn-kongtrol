@@ -1,4 +1,4 @@
-/* Routing switchboard (#map) — version 1.2.0 · 2026-11-18.
+/* Routing switchboard (#map) — version 1.3.0 · 2026-11-18.
    Only .switchboard / .sb-* rules live here; tokens come from index.css.
    v1.1: ports are small dots on the ring; below 768px the SVG gives way to
    an HTML list (.sb-list) so no label renders under the 11px floor.
@@ -168,4 +168,16 @@
      mid-sentence with an orphaned arrow — stack each piece instead */
   .sb-readout { flex-direction: column; align-items: flex-start; gap: 6px; }
   .sb-arrow { display: none; }
+}
+
+/* v1.3: every destination carries an everyday label under the technical one
+   (Inter, people text) in the SVG node, the narrow-screen list and the
+   readout. 11 units in a 640-unit SVG that only shows at ≥768px, so ≥11px. */
+.sb-node text.sb-in-human { font-family: var(--font-body); font-size: 11px; fill: var(--text-dim); letter-spacing: 0; }
+.sb-node.active text.sb-in-human { fill: var(--text-muted); }
+.sb-readout-human { font-family: var(--font-body); font-weight: 400; color: var(--text-muted); }
+@media (max-width: 767px) {
+  .sb-row-dest { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; }
+  .sb-row-dest small { font-family: var(--font-body); font-size: var(--text-min); line-height: 1.3; color: var(--text-dim); }
+  .sb-row.active .sb-row-dest small { color: var(--text-muted); }
 }

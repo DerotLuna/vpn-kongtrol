@@ -1,4 +1,4 @@
-/* Providers section (#vpns) — version 2.2.0 · 2026-11-18.
+/* Providers section (#vpns) — version 2.3.0 · 2026-11-18.
    Only .providers-*, .provider*, .os* rules live here; tokens come from index.css. */
 
 .providers-group { margin-top: 36px; }
@@ -69,18 +69,23 @@
   grid-column: 1 / -1; list-style: none; margin: 0; padding: 0;
   display: flex; flex-wrap: wrap; gap: 6px;
 }
-.provider-os .os {
+:is(.provider-os, .providers-legend) .os {
   display: inline-flex; align-items: baseline; gap: 5px;
   font-size: 0.74rem; line-height: 1.2; color: var(--text-muted);
   border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; background: var(--bg);
 }
-.provider-os .os-state { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.04em; }
-.provider-os .is-auto .os-state { color: var(--signal); }
-.provider-os .is-auto { border-color: color-mix(in srgb, var(--signal) 40%, var(--border)); }
-.provider-os .is-manual .os-state { color: var(--text-muted); }
-.provider-os .is-partial .os-state { color: var(--signal); }
+:is(.provider-os, .providers-legend) .os-state { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.04em; }
+:is(.provider-os, .providers-legend) .is-auto .os-state { color: var(--signal); }
+:is(.provider-os, .providers-legend) .is-auto { border-color: color-mix(in srgb, var(--signal) 40%, var(--border)); }
+:is(.provider-os, .providers-legend) .is-manual .os-state { color: var(--text-muted); }
+:is(.provider-os, .providers-legend) .is-partial .os-state { color: var(--signal); }
 
-.providers-key { margin-top: 10px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
+/* Legend above each grid (v2.3): the chip as it appears on the cards, then
+   what it means in plain words. */
+.providers-legend { margin: 14px 0 0; display: grid; gap: 6px; max-width: 80ch; }
+.providers-legend-item { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.providers-legend dt { margin: 0; }
+.providers-legend dd { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--text-muted); text-wrap: pretty; }
 .providers-note { margin-top: 28px; font-size: 0.78rem; color: var(--text-dim); max-width: 80ch; }
 
 @media (max-width: 1080px) {
