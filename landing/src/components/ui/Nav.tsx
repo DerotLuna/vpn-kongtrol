@@ -5,7 +5,7 @@ import { GITHUB_REPO } from '../../links'
 import { PageId, pathFor } from '../../site'
 import { chooseLang } from '../../hooks/usePreferences'
 import { useIsMobile } from '../../hooks/useVisitor'
-import { CTA_COPY, downloadHref, DownloadIcon, GitHubIcon } from './downloadCta'
+import { CTA_COPY, DOWNLOAD_SECTION_ID, downloadHref, DownloadIcon, GitHubIcon } from './downloadCta'
 import SendToComputer from './SendToComputer'
 import './download-cta.css'
 
@@ -31,12 +31,13 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   const menuButton = useRef<HTMLButtonElement>(null)
   const mobile = useIsMobile()
   const cta = CTA_COPY[lang]
-  // On the home page the header's download button waits until the hero's own
-  // download button (#hero-cta) has left the viewport, so the two never
-  // compete. It keeps its space while hidden (no layout shift) and is
-  // visibility:hidden, so it is neither focusable nor announced. Other pages
-  // show it from the start. Starts hidden on home in the prerender too.
-  const [heroCtaInView, setHeroCtaInView] = useState(page === 'home')
+  // On the home page the header's download button hides while the hero's own
+  // download button (#hero-cta) or the download section (#install) is in view,
+  // so it never competes with them. It keeps its space while hidden (no layout
+  // shift) and is visibility:hidden, so it is neither focusable nor announced.
+  // Other pages show it from the start. Starts hidden on home in the
+  // prerender too.
+  const [ownCtaInView, setOwnCtaInView] = useState(page === 'home')
 
   const toggleTheme = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (themeTransitioning.current) return
@@ -78,15 +79,21 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
 
   useEffect(() => {
     if (page !== 'home') return
-    const target = document.getElementById('hero-cta')
-    if (!target || typeof IntersectionObserver === 'undefined') { setHeroCtaInView(false); return }
+    const targets = ['hero-cta', DOWNLOAD_SECTION_ID]
+      .map(id => document.getElementById(id))
+      .filter((el): el is HTMLElement => el !== null)
+    if (targets.length === 0 || typeof IntersectionObserver === 'undefined') { setOwnCtaInView(false); return }
     // the sticky header covers the top --nav-h px: a button under it is not "in view"
     const navH = navRef.current?.offsetHeight ?? 0
+    const inView = new Map<Element, boolean>()
     const io = new IntersectionObserver(
-      ([entry]) => setHeroCtaInView(entry.isIntersecting),
+      entries => {
+        for (const e of entries) inView.set(e.target, e.isIntersecting)
+        setOwnCtaInView([...inView.values()].some(Boolean))
+      },
       { rootMargin: `-${navH}px 0px 0px 0px` },
     )
-    io.observe(target)
+    for (const t of targets) io.observe(t)
     return () => io.disconnect()
   }, [page])
 
@@ -153,7 +160,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
             ))}
           </ul>
 
-          <span className={`nav-dl-slot${page === 'home' && heroCtaInView ? ' is-hidden' : ''}`}>
+          <span className={`nav-dl-slot${page === 'home' && ownCtaInView ? ' is-hidden' : ''}`}>
             {mobile ? (
               <SendToComputer lang={lang} variant="compact" />
             ) : (

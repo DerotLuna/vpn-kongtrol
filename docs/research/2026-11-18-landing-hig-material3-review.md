@@ -2,7 +2,7 @@
 
 # Research: landing review against Apple HIG and Material Design 3
 
-Version 1.0.0 · 2026-11-18
+Version 1.1.0 · 2026-11-18
 
 ## Question
 
@@ -67,3 +67,29 @@ Measured on a local production build (`vite preview`), 390px and 1440px, dark an
 
 See [ADR-0028](../adr/0028-landing-hig-material3-review.md) for the table; `before` = `origin/main`
 at 3220c92, `after` = this change merged on it.
+
+## Follow-up: hero CLS and small text on phones
+
+Sources (accessed 2026-11-18):
+
+- Layout Instability API — a shift is any visible element whose start position changes between
+  frames, absolutely positioned ones included: https://wicg.github.io/layout-instability/
+- CLS in Lighthouse and the field: https://web.dev/articles/cls
+- `hydrateRoot` must match the server HTML: https://react.dev/reference/react-dom/client/hydrateRoot
+
+Findings (measured with Lighthouse 12 mobile and a Playwright `PerformanceObserver` on
+`layout-shift`, Moto G4 emulation, 4× CPU throttle):
+
+- The only shift source was `.hero-contour.th-contour` (plus, once, `.th-cmd`), ~700 ms after
+  FCP = hydration. Cause: on a phone UA the hero swapped desktop buttons for the taller "send to
+  my computer" block after hydration; the 980px contour, placed at `top: 46%` of the section,
+  moved with the new height. Runs where hydration finished before first paint scored 0, hence the
+  intermittent 0.0905. A smaller 0.0002 shift came from the send button's label changing once
+  Web Share was detected. Fix: [ADR-0029](../adr/0029-landing-device-class-before-first-paint.md).
+- Router diagram: the 640-unit SVG scaled to ~308px at 390px, so 10.5–13-unit labels rendered
+  at ~5–6px (scale 0.48). It needs ≥640px of width to keep 11-unit text ≥11px, reached at a
+  768px viewport. Below that an HTML list replaces it (CSS media query, both in the markup, so
+  no hydration difference). After: the smallest rendered text in the diagram and the attach demo
+  is 11px at 360, 390, 768 and 1280px.
+- Attach demo "Conectar": `--text-muted` at 45% opacity measured 2.4:1 (Lighthouse
+  `color-contrast`); `--text-dim` at full opacity is 5.84:1 (dark) and 5.68:1 (light) on `--bg`.

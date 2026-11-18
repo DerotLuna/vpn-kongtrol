@@ -1,4 +1,4 @@
-// Hydration check for the built landing — version 1.1.0 · 2026-11-18.
+// Hydration check for the built landing — version 1.2.0 · 2026-11-18.
 //
 // Every entry hydrates the HTML that scripts/prerender.mjs wrote (hydrateRoot,
 // ADR-0026). React requires the first client render to match that HTML
@@ -11,7 +11,8 @@
 //   - default:  no stored choice, light OS theme, Windows, browser in the page language
 //   - stored:   dark theme + page language stored, macOS
 //   - system:   dark OS theme, Linux, browser in the other language (language banner)
-//   - mobile:   iPhone (touch): download buttons become "send to my computer" (ADR-0027)
+//   - mobile:   iPhone (touch): boot script marks data-device=mobile, so CSS shows
+//               "send to my computer" instead of download buttons (ADR-0027, ADR-0029)
 // The inline theme boot script in <head> runs first, as in a browser. The
 // check FAILS (exit 1) on any console.error/console.warn from React (the
 // development build reports every mismatch, text and attributes alike), any
@@ -137,13 +138,16 @@ try {
         record('os', [`hero does not show the ${visitor.os} binary after hydration`])
       }
       if (page === 'home') {
+        // The hero carries both variants; CSS shows one by <html data-device>,
+        // which the boot script sets before first paint (ADR-0029).
         const heroCta = container.querySelector('#hero-cta')
-        const sendsToComputer = !!heroCta?.querySelector('[data-send-to-computer]')
-        if (visitor.mobile && !sendsToComputer) record('mobile', ['hero still shows download buttons on a phone'])
+        const device = window.document.documentElement.getAttribute('data-device')
+        if (!heroCta?.querySelector('.th-ctas-mobile[data-send-to-computer]')) record('mobile', ['hero has no "send to my computer" block'])
+        if (visitor.mobile && device !== 'mobile') record('mobile', [`data-device=${device} on a phone: hero would show download buttons`])
         if (!visitor.mobile) {
-          const primary = heroCta?.querySelector('a.primary')?.textContent ?? ''
-          if (sendsToComputer || !primary.includes(OS_WORD[visitor.os])) {
-            record('cta', [`hero download button is "${primary}", expected one for ${OS_WORD[visitor.os]}`])
+          const primary = heroCta?.querySelector('.th-ctas-desktop a.primary')?.textContent ?? ''
+          if (device !== null || !primary.includes(OS_WORD[visitor.os])) {
+            record('cta', [`data-device=${device}, hero download button is "${primary}", expected one for ${OS_WORD[visitor.os]}`])
           }
         }
       }

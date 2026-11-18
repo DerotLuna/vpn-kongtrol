@@ -1,4 +1,6 @@
-/* Attach-mode demo (AttachDemo.tsx) — version 1.0.0 · 2026-11-18.
+/* Attach-mode demo (AttachDemo.tsx) — version 1.1.0 · 2026-11-18.
+   v1.1: every label ≥11px (--text-min); the idle "Conectar" button is
+   --text-dim at full opacity (≥4.5:1) instead of a 45% fade (2.4:1).
    Only .attach* rules live here; tokens come from index.css.
    The default styles ARE the final frame (app connected, tray green), so
    reduced-motion visitors and no-animation renders get a complete picture.
@@ -24,7 +26,7 @@
 }
 .attach-app-bar span { width: 7px; height: 7px; border-radius: 50%; background: var(--border-2); }
 .attach-app-bar em {
-  margin-left: 6px; font-style: normal; font-family: var(--font-mono); font-size: 0.66rem;
+  margin-left: 6px; font-style: normal; font-family: var(--font-mono); font-size: var(--text-min);
   color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .attach-app-body {
@@ -38,11 +40,11 @@
 .attach-app-state .st-off { opacity: 0; color: var(--text-muted); }
 .attach-app-state .st-on { color: var(--live); }
 .attach-app-btn {
-  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.04em;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.04em;
   padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border-2);
-  color: var(--text-muted); opacity: 0.45;
+  color: var(--text-dim);
 }
-.attach-app-list { font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-dim); text-align: center; line-height: 1.5; }
+.attach-app-list { font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-dim); text-align: center; line-height: 1.5; }
 
 /* 2 · Kongtrol detects */
 /* One coordinate system: every layer (contour, disc, rings, logo) is
@@ -96,7 +98,7 @@
 .attach-taskbar .tb-kong img { width: 16px; height: 16px; }
 :root[data-theme='dark'] .attach-taskbar .tb-kong img { filter: invert(1); }
 .attach-taskbar .tb-dot { position: absolute; right: -2px; bottom: -2px; box-shadow: 0 0 0 2px var(--surface-3); }
-.attach-taskbar .tb-clock { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.attach-taskbar .tb-clock { font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* captions — the accessible, always-visible version of the story */
 .attach-steps {
@@ -123,10 +125,10 @@
   .attach-menu         { animation: atMenu 9s var(--expo-out) infinite; }
 }
 @keyframes atBtn {
-  0%, 8%    { opacity: 1; transform: scale(1); background: transparent; color: var(--text); border-color: var(--border-2); }
-  10%       { opacity: 1; transform: scale(0.92); background: var(--signal); color: var(--on-signal); border-color: var(--signal); }
-  16%, 92%  { opacity: 0.45; transform: scale(1); background: transparent; color: var(--text-muted); border-color: var(--border-2); }
-  98%, 100% { opacity: 1; }
+  0%, 8%    { transform: scale(1); background: transparent; color: var(--text); border-color: var(--border-2); }
+  10%       { transform: scale(0.92); background: var(--signal); color: var(--on-signal); border-color: var(--signal); }
+  16%, 92%  { transform: scale(1); background: transparent; color: var(--text-dim); border-color: var(--border-2); }
+  98%, 100% { color: var(--text); }
 }
 @keyframes atShield { 0%, 12% { color: var(--text-dim); } 16%, 92% { color: var(--live); } 98%, 100% { color: var(--text-dim); } }
 @keyframes atCheck  { 0%, 13% { stroke-dashoffset: 14; } 20%, 92% { stroke-dashoffset: 0; } 98%, 100% { stroke-dashoffset: 14; } }

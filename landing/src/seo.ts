@@ -119,9 +119,15 @@ function jsonLd(page: PageId, lang: Lang): object {
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const OG_LOCALE: Record<Lang, string> = { es: 'es_ES', en: 'en_US' }
 
-// Applies the stored theme (explicit choice) or the system theme before first
-// paint, so a dark-mode visitor never sees a light flash. Must mirror useTheme().
-const THEME_BOOT = `(function(){try{var t=localStorage.getItem('kgtheme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();`
+// Runs before first paint, outside the React tree (<html> attributes only):
+// 1. data-theme: the stored theme (explicit choice) or the system theme, so a
+//    dark-mode visitor never sees a light flash. Must mirror useTheme().
+// 2. data-device="mobile" on phones/tablets, so CSS can pick the hero's
+//    "send to my computer" block in the first paint — no swap, no layout
+//    shift after hydration (ADR-0029). Must mirror detectMobile() in
+//    hooks/useVisitor.ts.
+// Editing it changes its CSP hash: update public/_headers (the build says so).
+const THEME_BOOT = `(function(){var d=document.documentElement;try{var t=localStorage.getItem('kgtheme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}d.setAttribute('data-theme',t)}catch(e){}try{var n=navigator,u=n.userAgent,h=n.userAgentData;if((h&&h.mobile)||/Android|iPhone|iPad|iPod/i.test(u)||(/Macintosh/i.test(u)&&(n.maxTouchPoints||0)>1))d.setAttribute('data-device','mobile')}catch(e){}})();`
 
 export function headFor(page: PageId, lang: Lang): string {
   const m = META[page][lang]

@@ -64,11 +64,23 @@
 }
 .stc-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .stc-btn { cursor: pointer; }
+.stc-label { display: inline-grid; }
+.stc-label > span { grid-area: 1 / 1; }
+.stc-label > .is-off { visibility: hidden; }
 .stc-status {
   margin: 0; min-height: 1.4em; /* reserved: the confirmation never shifts the layout */
   font-family: var(--font-mono); font-size: 0.75rem; color: var(--live);
 }
 .stc-status.failed { color: var(--danger); }
+
+/* hero: both variants are in the markup; <html data-device="mobile"> (boot
+   script in seo.ts, before first paint) picks one, so nothing swaps after
+   hydration and the hero never shifts (ADR-0029). display:none keeps the
+   other one out of the tab order and the accessibility tree. */
+.th-ctas-desktop { display: contents; }
+.th-ctas .th-ctas-mobile { display: none; }
+:root[data-device='mobile'] .th-ctas-desktop { display: none; }
+:root[data-device='mobile'] .th-ctas .th-ctas-mobile { display: grid; }
 
 /* inside the hero terminal: same voice as the terminal lines */
 .th-stc { max-width: none; }

@@ -1,6 +1,6 @@
 import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react'
 import { OS } from '../../hooks/useOS'
-import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
+import { useDetectedOS } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
 import { GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey } from '../../links'
 import { pathFor, SITE_UPDATED, SITE_VERSION } from '../../site'
@@ -75,9 +75,9 @@ export default function Hero({ os, lang }: Props) {
   }, [shell])
 
   // download CTA: label follows the detected OS after hydration ("Descargar
-  // gratis" in the prerender); phones/tablets get "send to my computer"
+  // gratis" in the prerender); phones/tablets get "send to my computer",
+  // chosen by CSS from <html data-device> (see the markup below)
   const detectedOS = useDetectedOS()
-  const mobile = useIsMobile()
   const cta = CTA_COPY[lang]
 
   const es = lang === 'es'
@@ -242,25 +242,26 @@ export default function Hero({ os, lang }: Props) {
               <p className="th-sub boot-step" style={at(BOOT.sub)}>{copy.sub}</p>
             </div>
 
-            {/* id="hero-cta" stays on the same element across the desktop/mobile
-                swap: the header watches it to reveal its own download button */}
+            {/* Both variants are always in the markup; CSS shows one from the
+                first paint by <html data-device> (set by the boot script in
+                seo.ts), so nothing swaps after hydration — no layout shift
+                (ADR-0029). The hidden one is display:none: not focusable, not
+                announced. The header watches #hero-cta to reveal its own
+                download button. */}
             <div id="hero-cta" className="th-ctas boot-step" style={at(BOOT.ctas)}>
-              {mobile ? (
-                <SendToComputer lang={lang} className="th-stc">
-                  <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
-                    <GitHubIcon />{cta.github}
-                  </a>
-                </SendToComputer>
-              ) : (
-                <>
-                  <a href={downloadHref('home', lang)} className="th-btn primary">
-                    <DownloadIcon />{downloadLabel(lang, detectedOS)}
-                  </a>
-                  <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
-                    <GitHubIcon />{cta.github}
-                  </a>
-                </>
-              )}
+              <div className="th-ctas-desktop">
+                <a href={downloadHref('home', lang)} className="th-btn primary">
+                  <DownloadIcon />{downloadLabel(lang, detectedOS)}
+                </a>
+                <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
+                  <GitHubIcon />{cta.github}
+                </a>
+              </div>
+              <SendToComputer lang={lang} className="th-stc th-ctas-mobile">
+                <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
+                  <GitHubIcon />{cta.github}
+                </a>
+              </SendToComputer>
             </div>
 
             <div className="hero-cmd-line th-cmd boot-step" style={at(BOOT.cmd)}>

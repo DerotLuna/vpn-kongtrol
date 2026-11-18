@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.4.0 · 2026-11-18
+   v2.4.1 · 2026-11-18
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
@@ -10,6 +10,7 @@
    v2.4: HIG + Material 3 pass — 11px text floor, M3 motion/state tokens,
    hover only on what is interactive, underlined prose links, stacked
    tables and 44px targets on phones (ADR-0028).
+   v2.4.1: hero contour anchored in px, not % of the hero height (CLS, ADR-0029).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
@@ -1022,9 +1023,16 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   padding: calc(24px + var(--nav-h)) 0 40px;
   overflow: hidden;
 }
+/* Anchored a fixed distance from the section's top, never a % of its height:
+   with top:46% any later change in the hero's height (font swap, hydration)
+   moved this 980px box and Chrome counted it as a layout shift (CLS ~0.09
+   on mobile Lighthouse). Same centers as before: ~363px desktop, ~506px phone. */
 .th-contour {
-  position: absolute; left: 50%; top: 46%; right: auto;
+  position: absolute; left: 50%; top: calc(var(--nav-h) + 297px); right: auto;
   translate: -50% -50%; width: 980px; height: 980px; opacity: 0.5;
+}
+@media (max-width: 720px) {
+  .th-contour { top: calc(var(--nav-h) + 440px); }
 }
 .th-terminal { position: relative; z-index: 1; max-width: 100%; min-width: 0; }
 .th-body {

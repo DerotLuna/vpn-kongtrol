@@ -73,7 +73,13 @@ export default function SendToComputer({ lang, variant = 'full', children, class
       <div className="stc-actions">
         <button type="button" className="btn-download stc-btn" onClick={send}>
           <SendIcon size={18} />
-          {label}
+          {/* both labels share one grid cell, so the button keeps its width
+              when canShare flips after hydration (no layout shift); the
+              unused one is visibility:hidden, never read */}
+          <span className="stc-label">
+            <span className={canShare ? undefined : 'is-off'}>{t.send}</span>
+            <span className={canShare ? 'is-off' : undefined}>{t.copy}</span>
+          </span>
         </button>
         {children}
       </div>

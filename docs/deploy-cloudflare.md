@@ -2,7 +2,7 @@
 
 # Deploying the landing to Cloudflare (Workers static assets)
 
-Version 2.0.0 · 2026-11-17
+Version 2.0.1 · 2026-11-18
 
 How `landing/` is published at **https://kongtrol.app**, plus the free security settings for the
 zone. Everything here is on the Cloudflare Free plan. Decision: ADR-0022 (Workers static assets;
@@ -93,8 +93,9 @@ The file sets:
 
 CSP details:
 
-- The only inline scripts are `THEME_BOOT` (`landing/src/seo.ts`, avoids a theme flash before first
-  paint) and the script in `landing/public/404.html`. Both are allowed by hash. If you edit either,
+- The only inline scripts are `THEME_BOOT` (`landing/src/seo.ts`, sets the theme and the phone class
+  `data-device` before first paint, ADR-0029; so there is no theme flash and no layout shift at
+  hydration) and the script in `landing/public/404.html`. Both are allowed by hash. If you edit either,
   the build fails (`scripts/prerender.mjs` checks every inline script in `dist/` against
   `_headers`) and prints the new hash to paste.
 - JSON-LD blocks (`type="application/ld+json"`) are data, not executed, so CSP does not apply.

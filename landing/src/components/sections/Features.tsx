@@ -17,11 +17,12 @@ type Route = {
 
 // Fixed row centers inside the 640×360 SVG viewBox — no DOM measurement needed.
 const ROWS = [64, 141, 219, 296]
-// Core geometry: center (320,180), ring r 56. Ports sit on the ring at
-// x 264 (IN) and 376 (OUT); wires stop at each port's outer edge.
+// Core geometry: center (320,180), ring r 56. Ports are small dots ON the
+// ring (r 3) at x 264 (IN) and 376 (OUT); wires stop at each dot's outer edge.
 const CORE_R = 56
-const PORT_L = 320 - CORE_R - 3
-const PORT_R = 320 + CORE_R + 3
+const PORT_DOT = 3
+const PORT_L = 320 - CORE_R - PORT_DOT
+const PORT_R = 320 + CORE_R + PORT_DOT
 
 export default function Features({ lang }: Props) {
   const [active, setActive] = useState(0)
@@ -79,6 +80,8 @@ export default function Features({ lang }: Props) {
 
   const routes = copy.routes
   const cur = routes[active]
+  // the visitor picked a destination (click, tap, Enter or Space)
+  const pick = (i: number) => { setActive(i); setTouched(true) }
 
   return (
     <section id="map" className="section features-section">
@@ -137,8 +140,8 @@ export default function Features({ lang }: Props) {
               <circle className="sb-pulse" r="48" />
               <circle className="sb-ring" r={CORE_R} />
               <image className="sb-logo" href={`${import.meta.env.BASE_URL}logo-kong.svg`} x="-40" y="-40" width="80" height="80" />
-              <rect className="sb-port in" x={-CORE_R - 3} y="-8" width="6" height="16" rx="3" />
-              <rect className="sb-port out" x={CORE_R - 3} y="-8" width="6" height="16" rx="3" />
+              <circle className="sb-port in" cx={-CORE_R} r={PORT_DOT} />
+              <circle className="sb-port out" cx={CORE_R} r={PORT_DOT} />
               <text className="sb-port-label" x={-CORE_R} y={CORE_R + 26} textAnchor="middle">{copy.portIn}</text>
               <text className="sb-port-label" x={CORE_R} y={CORE_R + 26} textAnchor="middle">{copy.portOut}</text>
             </g>
@@ -151,11 +154,11 @@ export default function Features({ lang }: Props) {
                 <g
                   key={`in-${i}`}
                   className={`sb-node in${on ? ' active' : ''}`}
-                  onClick={() => { setActive(i); setTouched(true) }}
+                  onClick={() => pick(i)}
                   aria-pressed={on}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(i); setTouched(true) } }}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(i) } }}
                 >
                   <rect x="6" y={y - 18} width="150" height="36" rx="6" />
                   <text x="20" y={y + 4}>{r.dest}</text>
@@ -176,6 +179,30 @@ export default function Features({ lang }: Props) {
               )
             })}
           </svg>
+
+          {/* Narrow screens: the scaled SVG would shrink its labels below 11px,
+              so the same board is laid out in HTML — one row per destination,
+              real buttons, same state, readout and live region. routeboard.css
+              swaps the two by media query (never by JS), so the prerender and
+              the first client render match; the hidden one is display:none, out
+              of the tab order and the accessibility tree. */}
+          <div className="sb-list" role="group" aria-label={copy.boardCore}>
+            {routes.map((r, i) => {
+              const on = i === active
+              return (
+                <div key={`row-${i}`} className={`sb-row${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
+                  <button type="button" className="sb-row-dest" aria-pressed={on} onClick={() => pick(i)}>
+                    {r.dest}
+                  </button>
+                  <span className="sb-row-wire" aria-hidden="true"><i /></span>
+                  <span className="sb-row-out">
+                    <b>{r.tunnel}</b>
+                    <small>{r.adapter}</small>
+                  </span>
+                </div>
+              )
+            })}
+          </div>
 
           <div className="sb-readout" key={active} aria-live={touched ? 'polite' : 'off'}>
             <span className="sb-readout-dest">{cur.dest}</span>
