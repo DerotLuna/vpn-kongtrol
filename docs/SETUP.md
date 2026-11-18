@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.3 · 2026-11-18
+Versión 1.4 · 2026-11-18
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -689,7 +689,7 @@ monitoreo, con estas páginas:
 - **Security** — activar/desactivar Kill Switch y DNS Guard en vivo, override de kill switch por perfil, estado de leak check y consulta de IP pública opcional (apagada por defecto, botón Revisar)
 - **Audit Log** — eventos filtrables por perfil/nivel, con indicador de firma HMAC
 - **Settings** — pestañas: general (health check, split DNS), seguridad (kill switch/DNS guard tuning, IP pública y fugas: servicios https opcionales, audit log), scheduler (reglas)
-- **Panel nuevo (`/app/`)** — primeros pasos (ayudante, tus VPN, IP pública) y **Diagnóstico**: las mismas comprobaciones que `kongtrol doctor` con qué hacer en cada aviso, **Reparar** si falta el ayudante y **Exportar configuración** (sin contraseñas)
+- **Panel nuevo (`/app/`)** — **Inicio**: tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos del daemon (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos. **Ajustes → Diagnóstico**: las mismas comprobaciones que `kongtrol doctor` con qué hacer en cada aviso, **Reparar** si falta el ayudante y **Exportar configuración** (sin contraseñas)
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El
 > puerto/bind del propio dashboard es CLI-only (`kongtrol config dashboard set-port <puerto>`) —

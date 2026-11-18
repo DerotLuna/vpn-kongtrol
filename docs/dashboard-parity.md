@@ -65,47 +65,47 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### Screens / sections
 
-- [ ] Tunnels card (title, table) — legacy index.html:19 — API GET /api/v1/tunnels (handlers_tunnels.go:40) + WS — target `/` — status: partial (components/welcome/TunnelsCard.tsx: list only)
-- [ ] Groups quick-launch card — legacy index.html:49, app.js:1140 — API GET /api/v1/groups (handlers_groups.go:17) — target `/` — status: missing
+- [x] Tunnels card (title, table) — legacy index.html:19 — API GET /api/v1/tunnels (handlers_tunnels.go:40) + WS — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Groups quick-launch card — legacy index.html:49, app.js:1140 — API GET /api/v1/groups (handlers_groups.go:17) — target `/` — status: done (web/ui/src/components/home/GroupsCard.tsx)
 - [ ] Traffic over time card — legacy index.html:59, app.js:609 — API GET /api/v1/metrics/history (handlers_tunnels.go:31) + WS — target `/traffic` — status: missing
 - [ ] Traffic map & policy resolver card — legacy index.html:68 — API GET /api/v1/policies (handlers_policy.go:53), GET /api/v1/resolve (handlers_policy.go:309) — target `/traffic` — status: missing
-- [ ] Base network egress card — legacy index.html:97, app.js:852 — API GET /api/v1/network/overview (handlers_routes.go:94) — target `/` (same data reused by `/traffic` network overview) — status: missing
-- [ ] Security controls summary card + "Manage →" link — legacy index.html:112-116 — API GET /api/v1/security/status (handlers_security.go:91) — target `/` (link to `/security`) — status: partial (components/welcome/PublicIPCard.tsx: public IP only)
+- [x] Base network egress card — legacy index.html:97, app.js:852 — API GET /api/v1/network/overview (handlers_routes.go:94) — target `/` (same data reused by `/traffic` network overview) — status: done (web/ui/src/components/home/NetworkCard.tsx)
+- [x] Security controls summary card + "Manage →" link — legacy index.html:112-116 — API GET /api/v1/security/status (handlers_security.go:91) — target `/` (link to `/security`) — status: done (web/ui/src/components/home/SecurityCard.tsx)
 - [ ] Active routes (live) card — legacy index.html:142, app.js:803 — API GET /api/v1/routes (handlers_routes.go:13) — target `/traffic` — status: missing
-- [ ] Helper install banner (prepended to `main`, `role=status`) — legacy app.js:357-386 — API GET /api/v1/helper/status (handlers_helper.go:67) — target `/` (+ `/settings` helper section) — status: new UI has it (components/welcome/HelperCard.tsx)
-- [ ] Aggregate status headline (N of M connected) — legacy none (new) — API GET /api/v1/tunnels — target `/` — status: new UI has it (components/welcome/TunnelsCard.tsx)
+- [x] Helper install banner (prepended to `main`, `role=status`) — legacy app.js:357-386 — API GET /api/v1/helper/status (handlers_helper.go:67) — target `/` (+ `/settings` helper section) — status: done (web/ui/src/components/home/HelperBanner.tsx)
+- [x] Aggregate status headline (N of M connected) — legacy none (new) — API GET /api/v1/tunnels — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
 
 #### Tunnels table: fields per row
 
-- [ ] Profile name, rows sorted by name (`localeCompare`) — legacy app.js:523, app.js:577 — API WS snapshot `Name` key — target `/` — status: new UI has it (components/welcome/TunnelsCard.tsx); **fix**: legacy injects `name` unescaped into HTML and `onclick` (app.js:568-577)
-- [ ] Status dot + translated label (`status.connected|connecting|disconnected|error`) — legacy app.js:525-530 — API `Status` — target `/` — status: new UI has it (components/welcome/TunnelsCard.tsx, StatusPill)
-- [ ] Attach line (provider adapters, `attach.*` 7 phases, `waiting` style when user must act) — legacy app.js:540-543, app.js:1047-1059, app.js:1083 — API `attach {phase,app,location,reason}` — target `/` — status: missing
-- [ ] Health line (`health.idle|no_response|unknown` + fix from `reason_key`), caution vs waiting style — legacy app.js:547-551, app.js:1064-1080 — API `health {state,reason_key}` — target `/` — status: partial (components/welcome/TunnelsCard.tsx: no `idle` line, only 2 reason keys mapped)
-- [ ] Last error line `tunnel.lastError ({time})` + translated `last_error_key` (8 keys), raw error as tooltip, hidden when connected — legacy app.js:327-341, app.js:535-537 — API `last_error`, `last_error_key`, `last_error_at` — target `/` — status: missing
-- [ ] "What goes through this tunnel (n / everything)" toggle (`aria-expanded`) — legacy app.js:552-555, app.js:747 — API GET /api/v1/tunnels/routes (handlers_tunnel_routes.go:76) — target `/` (opens `/traffic` per-tunnel view or inline) — status: missing
-- [ ] Assigned IP (— when empty) — legacy app.js:559 — API `AssignedIP` — target `/` — status: missing
-- [ ] Uptime (`formatDuration`, only when connected) — legacy app.js:560, app.js:1196 — API `UptimeSeconds` — target `/` — status: missing
-- [ ] Bytes sent / received (`formatBytes`, — when 0) — legacy app.js:561-562, app.js:1189 — API `BytesSent`, `BytesReceived` — target `/` — status: missing
-- [ ] Latency `{n}ms` — legacy app.js:563 — API `LatencyMS` — target `/` — status: missing
-- [ ] Latency trend sparkline (canvas, connected only, redrawn on theme change) — legacy app.js:564-566, app.js:591-596, app.js:1221-1229 — API WS samples — target `/` — status: missing; **fix**: canvas has no text alternative
+- [x] Profile name, rows sorted by name (`localeCompare`) — legacy app.js:523, app.js:577 — API WS snapshot `Name` key — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx); **fix**: legacy injects `name` unescaped into HTML and `onclick` (app.js:568-577)
+- [x] Status dot + translated label (`status.connected|connecting|disconnected|error`) — legacy app.js:525-530 — API `Status` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Attach line (provider adapters, `attach.*` 7 phases, `waiting` style when user must act) — legacy app.js:540-543, app.js:1047-1059, app.js:1083 — API `attach {phase,app,location,reason}` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
+- [x] Health line (`health.idle|no_response|unknown` + fix from `reason_key`), caution vs waiting style — legacy app.js:547-551, app.js:1064-1080 — API `health {state,reason_key}` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
+- [x] Last error line `tunnel.lastError ({time})` + translated `last_error_key` (8 keys), raw error as tooltip, hidden when connected — legacy app.js:327-341, app.js:535-537 — API `last_error`, `last_error_key`, `last_error_at` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
+- [x] "What goes through this tunnel (n / everything)" toggle (`aria-expanded`) — legacy app.js:552-555, app.js:747 — API GET /api/v1/tunnels/routes (handlers_tunnel_routes.go:76) — target `/` (opens `/traffic` per-tunnel view or inline) — status: done (web/ui/src/components/home/TunnelRoutes.tsx: inline disclosure + link to /traffic)
+- [x] Assigned IP (— when empty) — legacy app.js:559 — API `AssignedIP` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Uptime (`formatDuration`, only when connected) — legacy app.js:560, app.js:1196 — API `UptimeSeconds` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Bytes sent / received (`formatBytes`, — when 0) — legacy app.js:561-562, app.js:1189 — API `BytesSent`, `BytesReceived` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Latency `{n}ms` — legacy app.js:563 — API `LatencyMS` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Latency trend sparkline (canvas, connected only, redrawn on theme change) — legacy app.js:564-566, app.js:591-596, app.js:1221-1229 — API WS samples — target `/` — status: done (web/ui/src/components/home/Sparkline.tsx: SVG with a text alternative); **fix**: canvas has no text alternative
 
 #### Tunnels: actions
 
-- [ ] Connect (disconnected/error rows) — legacy app.js:568, app.js:1020 — API POST /api/v1/tunnels/{name}/connect (handlers_tunnels.go:50; 202 `connecting`, 200 `already_connected`, 404, 409 in progress, 503) — target `/` — status: missing; **fix**: legacy omits `encodeURIComponent` (app.js:1022) and swallows errors (no toast)
-- [ ] Cancel (connecting rows) — legacy app.js:572-573, app.js:1033 — API POST /api/v1/tunnels/{name}/cancel_connect (handlers_tunnels.go:88) — target `/` — status: missing; **fix**: same encoding/error issues (app.js:1035)
-- [ ] Disconnect (connected rows) — legacy app.js:569-570, app.js:1087 — API POST /api/v1/tunnels/{name}/disconnect (handlers_tunnels.go:112; 202 `waiting_user` for manual disconnect) — target `/` — status: missing; **fix**: legacy ignores 202 `waiting_user` (must say "disconnect in the app") and errors
-- [ ] Reload (connected rows; re-reads yaml, restarts tunnel in place) — legacy app.js:571, app.js:1107-1128 — API POST /api/v1/tunnels/{name}/reload (handlers_tunnels.go:150; 409 `restart_required`, 202 `restarting|skipped_not_connected`) — target `/` — status: missing; **fix**: `skipped_not_connected` still toasts "Reloading"
-- [ ] Connect all (non-connected tunnels, parallel) — legacy index.html:23, app.js:1177 — API POST …/connect ×N — target `/` — status: missing
-- [ ] Disconnect all (connected tunnels, parallel) — legacy index.html:24, app.js:1182 — API POST …/disconnect ×N — target `/` — status: missing
-- [ ] Refresh tunnels button — legacy index.html:25, app.js:459 — API GET /api/v1/tunnels — target `/` — status: partial (components/ui/ErrorNotice.tsx retry only on error)
-- [ ] After any tunnel action: refresh routes + network overview after 600 ms — legacy app.js:1026-1029, 1038-1041, 1092-1095, 1123-1126 — API GET /api/v1/routes, /network/overview — target `/` — status: missing
+- [x] Connect (disconnected/error rows) — legacy app.js:568, app.js:1020 — API POST /api/v1/tunnels/{name}/connect (handlers_tunnels.go:50; 202 `connecting`, 200 `already_connected`, 404, 409 in progress, 503) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: legacy omits `encodeURIComponent` (app.js:1022) and swallows errors (no toast)
+- [x] Cancel (connecting rows) — legacy app.js:572-573, app.js:1033 — API POST /api/v1/tunnels/{name}/cancel_connect (handlers_tunnels.go:88) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: same encoding/error issues (app.js:1035)
+- [x] Disconnect (connected rows) — legacy app.js:569-570, app.js:1087 — API POST /api/v1/tunnels/{name}/disconnect (handlers_tunnels.go:112; 202 `waiting_user` for manual disconnect) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: legacy ignores 202 `waiting_user` (must say "disconnect in the app") and errors
+- [x] Reload (connected rows; re-reads yaml, restarts tunnel in place) — legacy app.js:571, app.js:1107-1128 — API POST /api/v1/tunnels/{name}/reload (handlers_tunnels.go:150; 409 `restart_required`, 202 `restarting|skipped_not_connected`) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: `skipped_not_connected` still toasts "Reloading"
+- [x] Connect all (non-connected tunnels, parallel) — legacy index.html:23, app.js:1177 — API POST …/connect ×N — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Disconnect all (connected tunnels, parallel) — legacy index.html:24, app.js:1182 — API POST …/disconnect ×N — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] Refresh tunnels button — legacy index.html:25, app.js:459 — API GET /api/v1/tunnels — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
+- [x] After any tunnel action: refresh routes + network overview after 600 ms — legacy app.js:1026-1029, 1038-1041, 1092-1095, 1123-1126 — API GET /api/v1/routes, /network/overview — target `/` — status: done (web/ui/src/data/home.ts settleNetwork)
 
 #### Groups quick launch
 
-- [ ] Group chip: name, `{n} profiles`, Connect, Disconnect — legacy app.js:1146-1153 — API GET /api/v1/groups — target `/` — status: missing
-- [ ] Connect group — legacy app.js:1156-1165 — API POST /api/v1/groups/{name}/connect (handlers_groups.go:148; 202 `started[]`, `already_connected[]`) — target `/` — status: missing; **fix**: ignores `res.ok` and both lists
-- [ ] Disconnect group — legacy app.js:1167-1175 — API POST /api/v1/groups/{name}/disconnect (handlers_groups.go:199; 500 joined errors) — target `/` — status: missing
-- [ ] Refresh groups button — legacy index.html:52 — API GET /api/v1/groups — target `/` — status: missing
+- [x] Group chip: name, `{n} profiles`, Connect, Disconnect — legacy app.js:1146-1153 — API GET /api/v1/groups — target `/` — status: done (web/ui/src/components/home/GroupsCard.tsx)
+- [x] Connect group — legacy app.js:1156-1165 — API POST /api/v1/groups/{name}/connect (handlers_groups.go:148; 202 `started[]`, `already_connected[]`) — target `/` — status: done (web/ui/src/components/home/GroupsCard.tsx); **fix**: ignores `res.ok` and both lists
+- [x] Disconnect group — legacy app.js:1167-1175 — API POST /api/v1/groups/{name}/disconnect (handlers_groups.go:199; 500 joined errors) — target `/` — status: done (web/ui/src/components/home/GroupsCard.tsx)
+- [x] Refresh groups button — legacy index.html:52 — API GET /api/v1/groups — target `/` — status: done (web/ui/src/components/home/GroupsCard.tsx)
 
 #### Traffic over time (per connected tunnel)
 
@@ -140,36 +140,36 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### Base network egress
 
-- [ ] Connected tunnels count — legacy index.html:103, app.js:854 — API GET /api/v1/network/overview `connected_tunnels` — target `/` — status: missing
-- [ ] Default egress `iface (metric n)` — legacy index.html:104, app.js:856-860 — API `default_routes[0].interface, metric` — target `/` — status: missing
-- [ ] Gateway (or `on-link`) — legacy index.html:105, app.js:861 — API `default_routes[0].gateway` — target `/` — status: missing
-- [ ] Local IPs — legacy index.html:106, app.js:863-864 — API `local_ips` — target `/` — status: missing
-- [ ] Public IP row + Check button — legacy index.html:107, app.js:865-869 — API `public_ip, public_ip_check_enabled` — target `/` — status: new UI has it (components/welcome/PublicIPCard.tsx)
-- [ ] Note "Unmatched traffic follows your default route" — legacy index.html:109 — API — — target `/` — status: missing
-- [ ] Refresh button — legacy index.html:100 — API GET /api/v1/network/overview — target `/` — status: missing
+- [x] Connected tunnels count — legacy index.html:103, app.js:854 — API GET /api/v1/network/overview `connected_tunnels` — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx)
+- [x] Default egress `iface (metric n)` — legacy index.html:104, app.js:856-860 — API `default_routes[0].interface, metric` — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx)
+- [x] Gateway (or `on-link`) — legacy index.html:105, app.js:861 — API `default_routes[0].gateway` — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx)
+- [x] Local IPs — legacy index.html:106, app.js:863-864 — API `local_ips` — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx)
+- [x] Public IP row + Check button — legacy index.html:107, app.js:865-869 — API `public_ip, public_ip_check_enabled` — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx; "Revisar" in web/ui/src/components/home/SecurityCard.tsx)
+- [x] Note "Unmatched traffic follows your default route" — legacy index.html:109 — API — — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx)
+- [x] Refresh button — legacy index.html:100 — API GET /api/v1/network/overview — target `/` — status: done (web/ui/src/components/home/NetworkCard.tsx)
 
 #### Security summary
 
-- [ ] Kill switch badge (ACTIVE/ARMED/OFF + detail text) — legacy index.html:118-121, app.js:670-671, shell.js:299-306 — API GET /api/v1/security/status `kill_switch, kill_switch_enabled, kill_switch_status` — target `/` — status: missing
-- [ ] DNS guard badge (ACTIVE/IDLE/DISABLED) — legacy index.html:122-125, app.js:672 — API `dns_guard, dns_guard_enabled` — target `/` — status: missing
-- [ ] Leak check badge (CLEAN/LEAK/ERROR/PENDING/UNAVAILABLE/DISABLED) — legacy index.html:126-129, app.js:673, shell.js:312-318 — API `leak_check, leak_check_available, leak_detection_configured` — target `/` — status: missing
-- [ ] Public IP + Check (hidden while lookup off, hint instead) — legacy index.html:130-134, app.js:677-680 — API `public_ip_check_enabled, leak_check.public_ip` — target `/` — status: new UI has it (components/welcome/PublicIPCard.tsx)
-- [ ] Last checked time (`toLocaleTimeString(lang)`, — when off) — legacy index.html:135-138, app.js:682-698 — API `leak_check.checked_at` — target `/` — status: missing
+- [x] Kill switch badge (ACTIVE/ARMED/OFF + detail text) — legacy index.html:118-121, app.js:670-671, shell.js:299-306 — API GET /api/v1/security/status `kill_switch, kill_switch_enabled, kill_switch_status` — target `/` — status: done (web/ui/src/components/home/SecurityCard.tsx)
+- [x] DNS guard badge (ACTIVE/IDLE/DISABLED) — legacy index.html:122-125, app.js:672 — API `dns_guard, dns_guard_enabled` — target `/` — status: done (web/ui/src/components/home/SecurityCard.tsx)
+- [x] Leak check badge (CLEAN/LEAK/ERROR/PENDING/UNAVAILABLE/DISABLED) — legacy index.html:126-129, app.js:673, shell.js:312-318 — API `leak_check, leak_check_available, leak_detection_configured` — target `/` — status: done (web/ui/src/components/home/SecurityCard.tsx)
+- [x] Public IP + Check (hidden while lookup off, hint instead) — legacy index.html:130-134, app.js:677-680 — API `public_ip_check_enabled, leak_check.public_ip` — target `/` — status: done (web/ui/src/components/home/SecurityCard.tsx)
+- [x] Last checked time (`toLocaleTimeString(lang)`, — when off) — legacy index.html:135-138, app.js:682-698 — API `leak_check.checked_at` — target `/` — status: done (web/ui/src/components/home/SecurityCard.tsx)
 
 #### States
 
-- [ ] Loading skeleton rows (tunnels, policies, routes, base network, groups) — legacy index.html:43-44, 55, 90-91, 103-107, 155-156 — API — — target `/`, `/traffic` — status: partial (components/welcome/TunnelsCard.tsx: text loading, `aria-busy`)
-- [ ] Empty: no tunnels / no policies / no policies for filter / no routes for filter / no groups / chart no data — legacy app.js:517, 959, 970, 822, 1143, 615 — API — — target `/`, `/traffic` — status: partial (components/welcome/TunnelsCard.tsx: no tunnels only)
+- [x] Loading skeleton rows (tunnels, policies, routes, base network, groups) — legacy index.html:43-44, 55, 90-91, 103-107, 155-156 — API — — target `/`, `/traffic` — status: done (web/ui/src/components/home/*: Skeleton per card on first load)
+- [x] Empty: no tunnels / no policies / no policies for filter / no routes for filter / no groups / chart no data — legacy app.js:517, 959, 970, 822, 1143, 615 — API — — target `/`, `/traffic` — status: done (web/ui/src/components/home/*: no VPNs, no groups, no notices, sparkline "Midiendo"; policies/routes/chart empties are /traffic)
 - [ ] Fetch errors: legacy silently ignores (`catch (_) {}`) — legacy app.js:459-468, 652-659, 718-726 … — API all — target shell (every page) — status: new UI has it (components/ui/ErrorNotice.tsx); **fix**: every card shows an error + "what to do"
-- [ ] Button state per tunnel status (connect / cancel / disconnect+reload) — legacy app.js:568-574 — API `Status` — target `/` — status: missing
-- [ ] First-run redirect: `needs_setup` → profile editor — legacy app.js:1242-1247 — API GET /api/v1/setup (handlers_setup.go:39) `needs_setup` — target `/` → `/profiles` — status: missing
+- [x] Button state per tunnel status (connect / cancel / disconnect+reload) — legacy app.js:568-574 — API `Status` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
+- [x] First-run redirect: `needs_setup` → profile editor — legacy app.js:1242-1247 — API GET /api/v1/setup (handlers_setup.go:39) `needs_setup` — target `/` → `/profiles` — status: done (web/ui/src/components/home/TunnelsCard.tsx: first-run step "Agregar VPN" → /profiles, no automatic redirect)
 
 #### Notices / toasts
 
 - [ ] `toast.daemonLost` (error, 8 s) / `toast.daemonRestored` (success) on WS state change, not on first load — legacy app.js:442-455 — API WS — target shell (every page) — status: missing
-- [ ] `toast.groupConnecting` / `toast.groupDisconnecting` / `toast.groupActionFailed` — legacy app.js:1159-1172 — API group connect/disconnect — target `/` — status: missing
-- [ ] `toast.tunnelReloading` (info), `toast.tunnelRestartRequired` (409), `alerts.tunnelReloadFailed` via `showApiError` — legacy app.js:1110-1121 — API tunnel reload — target `/` — status: missing
-- [ ] `helper.installing` (busy banner), `helper.installed` (success toast), `helper.failed` + `helper.failedHint` / daemon `error`+`hint`+`detail` — legacy app.js:390-415 — API POST /api/v1/helper/install (handlers_helper.go:74; 403 cancelled, 504 timeout, 500 failed) — target `/` + `/settings` — status: new UI has it (components/welcome/HelperCard.tsx)
+- [x] `toast.groupConnecting` / `toast.groupDisconnecting` / `toast.groupActionFailed` — legacy app.js:1159-1172 — API group connect/disconnect — target `/` — status: done (web/ui/src/data/home.ts useGroupAction)
+- [x] `toast.tunnelReloading` (info), `toast.tunnelRestartRequired` (409), `alerts.tunnelReloadFailed` via `showApiError` — legacy app.js:1110-1121 — API tunnel reload — target `/` — status: done (web/ui/src/data/home.ts useTunnelReload)
+- [x] `helper.installing` (busy banner), `helper.installed` (success toast), `helper.failed` + `helper.failedHint` / daemon `error`+`hint`+`detail` — legacy app.js:390-415 — API POST /api/v1/helper/install (handlers_helper.go:74; 403 cancelled, 504 timeout, 500 failed) — target `/` + `/settings` — status: done (web/ui/src/components/home/HelperBanner.tsx)
 
 #### Keyboard / focus
 
@@ -178,8 +178,8 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 
 #### Endpoints / cadence
 
-- [ ] WS `/api/v1/ws/metrics` (ws.go:17; push on change + every 5 s), reconnect after 3 s — legacy app.js:419-440 — target `/` — status: new UI has it (api/client.ts `subscribeTunnels`, api/hooks.ts `useTunnels` + 5 s poll fallback)
-- [ ] Poll 30 s: security status, routes (+tunnel routes), policies, network overview, metrics history, groups, helper status — legacy app.js:1231-1238 — target `/`, `/traffic` — status: partial (api/hooks.ts: helper + public IP poll 5 s)
+- [x] WS `/api/v1/ws/metrics` (ws.go:17; push on change + every 5 s), reconnect after 3 s — legacy app.js:419-440 — target `/` — status: done (web/ui/src/pages/HomePage.tsx via api/hooks.ts useTunnels + data/live.ts)
+- [x] Poll 30 s: security status, routes (+tunnel routes), policies, network overview, metrics history, groups, helper status — legacy app.js:1231-1238 — target `/`, `/traffic` — status: done (web/ui/src/data/home.ts SLOW_POLL_MS (security 5 s, helper 10 s while missing))
 - [ ] Re-render cached data on language change (policies, routes, charts, helper banner) — legacy app.js:317-322 — API — — target shell (every page) — status: new UI has it (React re-render via app/PreferencesProvider.tsx)
 
 ### 3.2 `studio.html` + `studio.js` (Studio)
@@ -401,7 +401,7 @@ Table / states / notices
 - [ ] Language toggle with flash animation — legacy shell.js:80-83, 214-230 — target shell — status: partial (components/layout/AppShell.tsx: toggle, no animation)
 - [ ] Live connection indicator + label (`ws.*`) — legacy shell.js:84-85, app.js:444-448 — target shell — status: partial (components/welcome/TunnelsCard.tsx "live" text); **fix**: dot is color-only; other legacy pages force it "connected" (i18n.js:110-113)
 - [ ] Tabs component remembers last tab — legacy shell.js:327-346 — target router (URL is the memory) — status: missing; **fix**: no `role=tab`/`aria-selected`/arrow keys
-- [ ] Kill switch detail text (ARMED protecting n / ACTIVE blocking names) — legacy shell.js:359-381 — API `kill_switch_status{state,protected,blocking}` — target `/`, `/security` — status: missing; **fix**: own dict duplicates `killswitch.state.*` of internal/i18n
+- [x] Kill switch detail text (ARMED protecting n / ACTIVE blocking names) — legacy shell.js:359-381 — API `kill_switch_status{state,protected,blocking}` — target `/`, `/security` — status: done (web/ui/src/components/home/SecurityCard.tsx + web/ui/src/components/home/model.ts securityView); **fix**: own dict duplicates `killswitch.state.*` of internal/i18n
 - [ ] Keyboard shortcuts — legacy none found — target — — status: n/a (do not invent without ADR)
 - [ ] Skip link to main content — legacy none — target shell — status: new UI has it (components/layout/AppShell.tsx)
 
@@ -421,14 +421,14 @@ Table / states / notices
 
 #### `publicip.js`
 
-- [ ] Render IP or — + hint `publicip.hint` while off; Check buttons only while on — legacy publicip.js:41-63 — target `/`, `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx)
-- [ ] Check now: busy `publicip.checking`, error `publicip.failed` + `failedHint` or daemon error/hint, leak_check error state — legacy publicip.js:66-89 — API POST /api/v1/security/publicip/check (handlers_security.go:77; 409 `publicip.err.disabled`) — target `/`, `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx)
+- [x] Render IP or — + hint `publicip.hint` while off; Check buttons only while on — legacy publicip.js:41-63 — target `/`, `/security` — status: done (web/ui/src/components/home/SecurityCard.tsx)
+- [x] Check now: busy `publicip.checking`, error `publicip.failed` + `failedHint` or daemon error/hint, leak_check error state — legacy publicip.js:66-89 — API POST /api/v1/security/publicip/check (handlers_security.go:77; 409 `publicip.err.disabled`) — target `/`, `/security` — status: done (web/ui/src/components/home/SecurityCard.tsx)
 - [ ] Toggle: `publicip.on` + notice with host / `publicip.off` / `publicip.toggleFailed`; revert switch on error — legacy publicip.js:93-116 — API POST /api/v1/security/publicip (handlers_security.go:47) — target `/security` — status: new UI has it (components/welcome/PublicIPCard.tsx)
 
 #### `charts.js`
 
 - [ ] HiDPI canvas prep — legacy charts.js:4-14 — target `/traffic` — status: missing
-- [ ] Sparkline (min-max scaled) — legacy charts.js:17-40 — target `/` — status: missing
+- [x] Sparkline (min-max scaled) — legacy charts.js:17-40 — target `/` — status: done (web/ui/src/components/home/Sparkline.tsx: SVG with a text alternative)
 - [ ] Time series with 4-line grid, shared max — legacy charts.js:44-80 — target `/traffic` — status: missing; **fix**: no axes/units/text summary
 
 #### `select.js`
@@ -556,7 +556,7 @@ Rows = checkbox rows in §3, counted on the first target route named in the row 
 
 | Target page | Rows | Covered in new UI | Partial |
 |---|---|---|---|
-| `/` Home | 54 | 10 | 7 |
+| `/` Home | 54 | 54 (done) | 0 |
 | `/profiles` | 40 | 0 | 1 |
 | `/profiles/groups` | 10 | 0 | 0 |
 | `/rules` | 20 | 0 | 0 |

@@ -16,7 +16,7 @@ import { AppShell } from './components/layout/AppShell'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { TrayPage } from './pages/TrayPage'
-import { WelcomePage } from './pages/WelcomePage'
+import { HomePage } from './pages/HomePage'
 
 // Component review page: development builds only, never shipped.
 const KitPage = import.meta.env.DEV ? lazy(() => import('./pages/KitPage')) : null
@@ -26,7 +26,7 @@ function AppRoutes() {
     <Routes>
       <Route path="tray" element={<TrayPage />} />
       <Route element={<AppShell />}>
-        <Route index element={<WelcomePage />} />
+        <Route index element={<HomePage />} />
         {Object.entries(PLACEHOLDERS).map(([path, spec]) => (
           <Route key={path} path={path} element={<PlaceholderPage spec={spec} />} />
         ))}
