@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"fyne.io/systray"
 	"github.com/vpn-kongtrol/kongtrol/assets"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -143,25 +145,53 @@ func showFatal(title, hint string, err error) {
 }
 
 // showFirstRun is the menu before any config exists: a translated "set
-// it up" line, an item opening a terminal with `kongtrol init` where the
-// OS allows it, and a close item. When the config appears the full menu
-// replaces this one.
+// it up" line, "Set up now…" (starts the daemon in setup mode and opens the
+// dashboard's profile editor, no terminal needed) and a close item. The
+// dashboard is also opened once on its own, so a fresh install lands on
+// the setup page. When the config appears the full menu replaces this one;
+// `kongtrol init` stays the terminal path to the same result.
+// firstRunMarker records that the setup page was opened automatically, so a
+// user who postpones the setup gets the browser once, not at every login
+// (the tray autostarts). The menu item stays available.
+func firstRunMarker() string {
+	return filepath.Join(daemonctl.StateDir(), "run", "setup-opened")
+}
+
+// claimFirstRunOpen reports whether this is the first automatic opening
+// and records it. Without a writable state dir it opens nothing on its own.
+func claimFirstRunOpen() bool {
+	path := firstRunMarker()
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return false
+	}
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+	if err != nil {
+		return false
+	}
+	_ = f.Close()
+	return true
+}
+
 func showFirstRun() {
 	msg := trayT("tray.first_run")
 	systray.SetTooltip(msg)
-	log.Println("kongtrol-tray: no config file found; waiting for kongtrol init")
+	log.Println("kongtrol-tray: no config file found; offering setup in the dashboard")
 
 	mMsg := systray.AddMenuItem(msg, trayT("tray.first_run_tip"))
 	mMsg.Disable()
-	if canRunInit && kongtrolExe != "" {
-		mInit := systray.AddMenuItem(trayT("tray.run_init"), trayT("tray.run_init_tip"))
-		onClick(mInit, func() {
-			if err := runInitInTerminal(kongtrolExe); err != nil {
-				log.Printf("kongtrol-tray: open kongtrol init: %v", err)
-				mMsg.SetTitle(trayT("tray.run_init_failed"))
-				systray.SetTooltip(trayT("tray.run_init_failed"))
-			}
-		})
+	mSetup := systray.AddMenuItem(trayT("tray.setup_open"), trayT("tray.setup_open_tip"))
+	openSetup := func() {
+		if !openDashboardPage(setupPagePath) {
+			mMsg.SetTitle(trayT("tray.setup_failed"))
+			systray.SetTooltip(trayT("tray.setup_failed"))
+			return
+		}
+		mMsg.SetTitle(msg)
+		systray.SetTooltip(msg)
+	}
+	onClick(mSetup, openSetup)
+	if claimFirstRunOpen() {
+		go openSetup()
 	}
 	mQuit := systray.AddMenuItem(trayT("tray.exit"), trayT("tray.exit"))
 	done := make(chan struct{})
@@ -171,7 +201,8 @@ func showFirstRun() {
 		systray.Quit()
 	}()
 
-	// Rebuild the full menu as soon as `kongtrol init` saved the config.
+	// Rebuild the full menu as soon as the dashboard (or `kongtrol init`)
+	// saved the config.
 	go func() {
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()

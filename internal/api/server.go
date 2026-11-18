@@ -66,6 +66,10 @@ type Server struct {
 	// policy notices; see SetKillSwitchStatus / SetEventLog.
 	ksStatus func() security.KillSwitchStatus
 	events   *monitor.EventLog
+	// setupMode / restart back /api/v1/setup and /api/v1/restart; see
+	// SetSetupMode and SetRestarter.
+	setupMode atomic.Bool
+	restart   func() error
 }
 
 // NewServer creates a new API server.
@@ -179,6 +183,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/resolve", s.handleResolve)
 	mux.HandleFunc("GET /api/v1/dns/resolve", s.handleDNSResolve)
 	mux.HandleFunc("POST /api/v1/shutdown", s.handleShutdown)
+	mux.HandleFunc("POST /api/v1/restart", s.handleRestart)
+	mux.HandleFunc("GET /api/v1/setup", s.handleSetupStatus)
 	mux.HandleFunc("GET /api/v1/helper/status", s.handleHelperStatus)
 	mux.HandleFunc("POST /api/v1/helper/install", s.handleHelperInstall)
 	mux.HandleFunc("GET /api/v1/events", s.handleEvents)

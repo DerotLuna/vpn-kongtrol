@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.1 · 2026-11-17
+Version 1.2 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -66,4 +66,16 @@ PUT/DELETE /api/v1/scheduler/rules/{name}
 GET  /api/v1/audit?profile=...&level=...&limit=...
 
 POST /api/v1/shutdown                        # ask a running daemon to shut down gracefully
+
+# First run and restart (ADR-0025)
+GET  /api/v1/setup                           # {"setup_mode","needs_setup","restart_pending","config_path"}: daemon started with no kongtrol.yaml
+POST /api/v1/restart                         # 202 {"status":"restarting"}: starts a fresh daemon (re-reads kongtrol.yaml, reconnects the tunnels that were up), then this one stops; 500 if the replacement could not start (this daemon keeps running)
 ```
+
+<!-- feature:first_run -->
+**Setup mode.** A daemon started with no config file (the tray spawns it on first run) serves the
+dashboard with no profiles; `GET /api/v1/vpns` returns `[]` and the first valid
+`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml`. VPN profile changes answer
+`restart_required: true` because the adapters are built at daemon start: the dashboard then
+offers `POST /api/v1/restart` (after the first profile it restarts on its own). CLI:
+`kongtrol restart`.

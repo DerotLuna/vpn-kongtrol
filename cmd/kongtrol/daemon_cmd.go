@@ -41,12 +41,21 @@ func init() {
 // Requested profiles are connected after the API is up, so `up` can detect
 // the daemon immediately and follow each connect's progress through it.
 func runDaemon(signalCtx context.Context, targets []string) error {
+	base := daemonAPIBase()
+	releaseRestartLock := func() {}
+	if daemonRestartWait {
+		release, kept, err := prepareReplacement(base, targets)
+		if err != nil {
+			return err
+		}
+		releaseRestartLock, targets = release, kept
+		defer releaseRestartLock()
+	}
 	for _, name := range targets {
 		if _, ok := adapters[name]; !ok {
 			return fmt.Errorf("%s", cf("cli.error.unknown_profile", name))
 		}
 	}
-	base := daemonAPIBase()
 	if daemonProbeFn(base) {
 		return fmt.Errorf("%s", cf("cli.daemon.already_running", base))
 	}
@@ -65,6 +74,11 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 		defer c()
 		_ = srv.Shutdown(shutCtx)
 	}()
+	// A replacement daemon answers now: clients may stop waiting.
+	releaseRestartLock()
+	if setupMode {
+		fmt.Println(tuiInfo(cf("cli.daemon.setup_mode", activeCfgPath)))
+	}
 
 	// Only the daemon writes the PID file; `down` uses it as the kill
 	// fallback and waits for its removal as the "fully stopped" signal.

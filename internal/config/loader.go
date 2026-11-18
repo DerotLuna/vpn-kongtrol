@@ -65,6 +65,17 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// NewEmpty returns a config with no VPN profiles and every default applied.
+// It is the first-run (setup mode) config the daemon serves before
+// kongtrol.yaml exists. It does not pass Validate (vpns needs at least one
+// profile), so it is never written as is: the first profile created from
+// the dashboard makes it valid, and only then is the file saved.
+func NewEmpty() *Config {
+	cfg := &Config{VPNs: map[string]VPNConfig{}}
+	applyDefaults(cfg)
+	return cfg
+}
+
 // Validate runs the same struct-tag and semantic validation Load uses. It's
 // exported for callers (e.g. the dashboard API) that mutate an already-loaded
 // config in memory and need to check it before persisting.

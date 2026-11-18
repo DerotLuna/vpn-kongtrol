@@ -64,7 +64,7 @@ const I18N = {
     'alerts.policyReloadFailed': 'Error al recargar las políticas desde disco',
     'toast.policiesReloaded': 'Políticas recargadas desde kongtrol.yaml.',
 
-    'profileStudio.restartNote': 'Los cambios aquí actualizan el archivo de config y el keychain del sistema — reinicia el daemon para conectar con un perfil nuevo o editado.',
+    'profileStudio.restartNote': 'Los cambios aquí actualizan el archivo de config y el keychain del sistema. Para conectar con un perfil nuevo o editado, reinicia Kongtrol con el botón que aparece aquí.',
     'pEditor.name': 'Nombre',
     'pEditor.namePlaceholder': 'oficina',
     'pEditor.type': 'Tipo',
@@ -123,9 +123,19 @@ const I18N = {
     'alerts.profileSelectFirst': 'Selecciona primero un perfil o escribe un nombre.',
     'alerts.profileSelectDelete': 'Selecciona un perfil para eliminar.',
     'confirm.deleteProfile': '¿Eliminar el perfil "{name}"? Esto no afecta túneles ya conectados hasta el próximo reinicio.',
-    'toast.profileCreated': 'Perfil "{name}" creado. Reinicia el daemon para activarlo.',
-    'toast.profileUpdated': 'Perfil "{name}" actualizado. Reinicia el daemon para aplicar los cambios.',
+    'toast.profileCreated': 'Perfil "{name}" creado. Reinicia Kongtrol para activarlo.',
+    'toast.profileUpdated': 'Perfil "{name}" actualizado. Reinicia Kongtrol para aplicar los cambios.',
     'toast.profileDeleted': 'Perfil "{name}" eliminado.',
+    'setup.title': 'Bienvenido a Kongtrol · crea tu primera VPN',
+    'setup.body': 'Elige el tipo, completa los datos y pulsa Crear. Kongtrol se reinicia solo para activarla.',
+    'setup.saved': 'Listo · Kongtrol se reinicia para activar tu VPN…',
+    'restart.pending': 'Reinicia Kongtrol para usar los perfiles nuevos o editados',
+    'restart.pendingHint': 'Las VPN conectadas se desconectan y se vuelven a conectar solas.',
+    'restart.button': 'Reiniciar ahora',
+    'restart.running': 'Reiniciando Kongtrol · espera unos segundos…',
+    'restart.done': 'Kongtrol reiniciado · ya puedes conectar tus VPN',
+    'restart.failed': 'No se pudo reiniciar Kongtrol · ciérralo con "Salir y desconectar todo" en el ícono y vuelve a abrirlo',
+    'restart.timeout': 'Kongtrol no volvió a responder · ábrelo de nuevo desde el menú de inicio o el ícono',
 
     'groups.editorTitle': 'Editor de Grupo',
     'groups.name': 'Nombre',
@@ -214,7 +224,7 @@ const I18N = {
     'alerts.policyReloadFailed': 'Failed to reload policies from disk',
     'toast.policiesReloaded': 'Policies reloaded from kongtrol.yaml.',
 
-    'profileStudio.restartNote': 'Changes here update the config file and OS keychain only — restart the daemon to connect through a new or edited profile.',
+    'profileStudio.restartNote': 'Changes here update the config file and OS keychain. To connect through a new or edited profile, restart Kongtrol with the button that appears here.',
     'pEditor.name': 'Name',
     'pEditor.namePlaceholder': 'office',
     'pEditor.type': 'Type',
@@ -273,9 +283,19 @@ const I18N = {
     'alerts.profileSelectFirst': 'Select a profile first or provide a name.',
     'alerts.profileSelectDelete': 'Select a profile to delete.',
     'confirm.deleteProfile': 'Delete profile "{name}"? This does not affect already-connected tunnels until the next restart.',
-    'toast.profileCreated': 'Profile "{name}" created. Restart the daemon to activate it.',
-    'toast.profileUpdated': 'Profile "{name}" updated. Restart the daemon to apply the change.',
+    'toast.profileCreated': 'Profile "{name}" created. Restart Kongtrol to turn it on.',
+    'toast.profileUpdated': 'Profile "{name}" updated. Restart Kongtrol to apply the change.',
     'toast.profileDeleted': 'Profile "{name}" deleted.',
+    'setup.title': 'Welcome to Kongtrol · create your first VPN',
+    'setup.body': 'Pick the type, fill in the details and press Create. Kongtrol restarts on its own to turn it on.',
+    'setup.saved': 'Done · Kongtrol is restarting to turn your VPN on…',
+    'restart.pending': 'Restart Kongtrol to use the new or edited profiles',
+    'restart.pendingHint': 'Connected VPNs disconnect and reconnect on their own.',
+    'restart.button': 'Restart now',
+    'restart.running': 'Restarting Kongtrol · wait a few seconds…',
+    'restart.done': 'Kongtrol restarted · you can connect your VPNs now',
+    'restart.failed': 'Could not restart Kongtrol · close it with "Quit and disconnect all" on the icon and open it again',
+    'restart.timeout': 'Kongtrol did not answer again · open it again from the Start menu or the icon',
 
     'groups.editorTitle': 'Group Editor',
     'groups.name': 'Name',
@@ -727,9 +747,17 @@ async function createProfile() {
     showToast(apiErrorText(e, 'alerts.profileCreateFailed'), 'error');
     return;
   }
-  showToast(t('toast.profileCreated', { name: draft.name }), 'success', 7000);
-  await loadProfiles();
   selectedProfileName = draft.name;
+  // First run: the daemon has no config yet; restart it right away (no
+  // tunnel can be up) and land on the overview once it is back.
+  if (setupState.needs_setup) {
+    showToast(t('setup.saved'), 'success', 7000);
+    await restartKongtrol({ thenGoTo: '/' });
+    return;
+  }
+  showToast(t('toast.profileCreated', { name: draft.name }), 'success', 7000);
+  showRestartBanner();
+  await loadProfiles();
 }
 
 async function updateProfile() {
@@ -750,6 +778,7 @@ async function updateProfile() {
     return;
   }
   showToast(t('toast.profileUpdated', { name: draft.name || key }), 'success', 7000);
+  showRestartBanner();
   await loadProfiles();
   selectedProfileName = draft.name || key;
 }
@@ -772,8 +801,97 @@ async function deleteProfileByName(name) {
     return;
   }
   showToast(t('toast.profileDeleted', { name }), 'info');
+  showRestartBanner();
   if (selectedProfileName === name) clearProfileForm();
   await loadProfiles();
+}
+
+// ── First run (setup mode) and daemon restart ───────────────────────────────
+//
+// GET /api/v1/setup says whether the daemon started with no kongtrol.yaml
+// (the tray opens this page then). VPN profile changes need a daemon restart
+// (the daemon builds its VPN list only at start): POST /api/v1/restart starts
+// a fresh daemon that reconnects the tunnels that were up.
+
+let setupState = { setup_mode: false, needs_setup: false, restart_pending: false };
+
+async function loadSetupState() {
+  try {
+    const res = await fetch(`${API}/api/v1/setup`);
+    if (!res.ok) return;
+    setupState = await res.json();
+  } catch {
+    return;
+  }
+  const banner = document.getElementById('setup-banner');
+  if (banner) banner.hidden = !setupState.needs_setup;
+  if (setupState.needs_setup) {
+    document.querySelector('[data-tabs-id="studio"] [data-tab="profiles"]')?.click();
+  }
+  // The first profile was saved but the restart did not happen (page
+  // closed meanwhile): offer it.
+  if (setupState.restart_pending) showRestartBanner();
+}
+
+function showRestartBanner() {
+  const banner = document.getElementById('restart-banner');
+  if (banner) banner.hidden = false;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// daemonAnswers reports whether the daemon's API answers right now.
+async function daemonAnswers() {
+  try {
+    const res = await fetch(`${API}/api/v1/setup`, { cache: 'no-store' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// restartKongtrol asks for the restart, waits for the old daemon to go and
+// the new one to answer, then reloads the page (or goes to thenGoTo).
+async function restartKongtrol(opts = {}) {
+  const btn = document.getElementById('restart-btn');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch(`${API}/api/v1/restart`, { method: 'POST' });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      showToast(apiErrorText(e, 'restart.failed'), 'error', 10000);
+      return;
+    }
+    showToast(t('restart.running'), 'info', 10000);
+    // Old daemon: disconnects its tunnels, then its API stops (≤ 2 min).
+    let gone = false;
+    for (let i = 0; i < 240 && !gone; i++) {
+      await sleep(500);
+      gone = !(await daemonAnswers());
+    }
+    // New daemon: answers within a few seconds of the old one stopping.
+    let back = false;
+    for (let i = 0; gone && i < 120 && !back; i++) {
+      await sleep(500);
+      back = await daemonAnswers();
+    }
+    if (!back) {
+      showToast(t('restart.timeout'), 'error', 15000);
+      return;
+    }
+    showToast(t('restart.done'), 'success', 7000);
+    if (opts.thenGoTo) {
+      window.location.href = opts.thenGoTo;
+      return;
+    }
+    document.getElementById('restart-banner').hidden = true;
+    await loadSetupState();
+    await loadProfiles();
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function deleteProfileByIndex(index) {
@@ -965,3 +1083,4 @@ loadPolicies();
 updateProfileFields();
 loadProfiles();
 loadGroups();
+loadSetupState();

@@ -70,21 +70,39 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the full feature/status matrix.
 | Tailscale | `tailscale` | Win / Linux / macOS |
 | Cloudflare WARP | `cloudflarewarp` | Win / Linux / macOS |
 
+<!-- feature:distribution -->
 ## Quick start
 
-Install with one command (downloads the latest release, verifies its checksum):
+**No terminal needed.** Install the app, open it, and the dashboard opens in your browser to
+create your first VPN ("Set up now…" in the tray icon opens it again). Kongtrol restarts on
+its own once the VPN is saved.
+
+| System | Install | Upgrade |
+|---|---|---|
+| Windows | [`Kongtrol-Setup-windows-amd64.exe`](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) (per-user, no admin; asks once to install the network helper) | run the new installer |
+| macOS | `curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh \| sh` (installs `~/Applications/Kongtrol.app` + `kongtrol`) | run it again |
+| Linux | `.deb` / `.rpm` from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) (double-click) or the same `install.sh` | `apt`/`dnf upgrade`, or run it again |
+
+Package managers (CLI + tray unless noted):
 
 ```bash
-# Linux / macOS
-curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+winget install Kongtrol.Kongtrol                          # Windows
+scoop bucket add kongtrol https://github.com/DerotLuna/scoop-bucket && scoop install kongtrol
+brew install DerotLuna/tap/kongtrol                       # macOS / Linux (formula, not a cask)
+yay -S kongtrol-bin                                       # Arch (AUR)
+npx kongtrol init   # or: npm i -g kongtrol · pnpm add -g kongtrol · bun add -g kongtrol (CLI only)
 ```
 
-```powershell
-# Windows (PowerShell)
-iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
-```
+Upgrading keeps everything: settings in `~/.kongtrol`, credentials in the OS keychain and the
+network helper. After a package-manager upgrade run `kongtrol restart` (or press Restart in the
+dashboard) to switch to the new version with your connected VPNs reconnected; uninstalling never
+deletes your settings. macOS: the app is ad-hoc signed, not notarized (Apple charges $99/year);
+`install.sh`, Homebrew formulas and npm don't mark downloads as quarantined, so it opens normally.
+If you download the `.zip` with a browser, open it once with right-click → Open (or System
+Settings → Privacy & Security → Open Anyway). Verifying downloads (checksums, Sigstore, build
+provenance): [docs/SECURITY.md](docs/SECURITY.md#verifying-releases).
 
-Or grab the binary for your platform from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases), or build from source (requires Go 1.27+):
+Or build from source (requires Go 1.27+):
 
 ```bash
 git clone https://github.com/DerotLuna/vpn-kongtrol
@@ -94,11 +112,11 @@ make build   # → build/dist/kongtrol
 
 > **Windows:** run your shell as **Administrator** for `kongtrol init`, `up`, `down`, and `doctor` — they need elevated permissions for routing, DNS, and firewall.
 
-> **Antivirus/SmartScreen warning?** Kongtrol is unsigned (no paid code-signing cert — this is an
-> unfunded open-source project) and touches routing/DNS/firewall, which AV heuristics flag on sight.
-> It's a known false positive, not malware. Verify the download against the release's
-> `checksums.txt`, or build from source and judge the code yourself. See
-> [docs/SECURITY.md](docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives).
+> **Antivirus/SmartScreen warning?** Windows binaries are unsigned until the project's
+> application to SignPath Foundation (free code signing for open source) is approved, and
+> Kongtrol touches routing/DNS/firewall, which AV heuristics flag on sight. It's a known false
+> positive, not malware. Verify the download (see above), or build from source and judge the code
+> yourself. See [docs/SECURITY.md](docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives).
 
 ```bash
 kongtrol init           # interactive wizard: detects clients, stores credentials in OS keychain

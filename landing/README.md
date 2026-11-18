@@ -54,7 +54,7 @@ emits an empty `<div id="root"></div>`; anything that does not execute JavaScrip
 Bing, DuckDuckGo, social preview crawlers, LLM crawlers — would otherwise index a
 blank page. `scripts/prerender.mjs` server-renders each entry with `react-dom/server`
 and injects the markup into the built HTML. The client hydrates it with
-`hydrateRoot()` (ADR-0025), so its first render must match the prerender exactly: never
+`hydrateRoot()` (ADR-0026), so its first render must match the prerender exactly: never
 read `window`, `document`, `navigator`, storage, `matchMedia` or the clock during render or
 in a `useState` initializer — use an effect or `useSyncExternalStore` with a server snapshot
 (see `useTheme`, `useOS`).

@@ -1,0 +1,64 @@
+# Homebrew formula for Kongtrol (CLI + tray) — template version 1.0.0 · 2026-11-18.
+# Rendered and pushed to DerotLuna/homebrew-tap by packaging/homebrew/publish.sh
+# (release.yml). A formula, not a cask: Homebrew sets com.apple.quarantine only
+# on cask downloads, so the ad-hoc signed app opens without a Gatekeeper prompt
+# (docs/adr/0025-desktop-release-channels-first-run.md).
+class Kongtrol < Formula
+  desc "Connect and control several VPNs from one tray app"
+  homepage "https://kongtrol.app"
+  version "__VERSION__"
+  license "Apache-2.0"
+
+  on_macos do
+    url "https://github.com/DerotLuna/vpn-kongtrol/releases/download/v__VERSION__/Kongtrol-macos-universal.zip"
+    sha256 "__SHA_MACOS__"
+  end
+
+  on_linux do
+    on_intel do
+      url "https://github.com/DerotLuna/vpn-kongtrol/releases/download/v__VERSION__/kongtrol_linux_amd64.tar.gz"
+      sha256 "__SHA_LINUX_AMD64__"
+    end
+    on_arm do
+      url "https://github.com/DerotLuna/vpn-kongtrol/releases/download/v__VERSION__/kongtrol_linux_arm64.tar.gz"
+      sha256 "__SHA_LINUX_ARM64__"
+    end
+  end
+
+  def install
+    if OS.mac?
+      # Keep the bundle whole (Info.plist, icon, LSUIElement) and link its
+      # CLI. Homebrew enters an archive's single top-level directory, so the
+      # working directory may already be Kongtrol.app itself.
+      src = File.directory?("Kongtrol.app") ? "Kongtrol.app" : "."
+      (prefix/"Kongtrol.app").install Dir["#{src}/*"]
+      bin.install_symlink prefix/"Kongtrol.app/Contents/MacOS/kongtrol"
+      bin.install_symlink prefix/"Kongtrol.app/Contents/MacOS/kongtrol-tray"
+    else
+      bin.install "kongtrol", "kongtrol-tray"
+      (share/"applications").install "kongtrol.desktop"
+      (share/"icons/hicolor/512x512/apps").install "kongtrol.png"
+    end
+  end
+
+  def caveats
+    s = <<~EOS
+      Open Kongtrol (tray icon + dashboard to create your first VPN):
+        kongtrol-tray &
+      After `brew upgrade kongtrol`, apply the new version keeping your tunnels:
+        kongtrol restart
+      Your settings in ~/.kongtrol are kept on upgrade and uninstall.
+    EOS
+    if OS.mac?
+      s += <<~EOS
+        To find it in Launchpad/Spotlight:
+          ln -sfn #{opt_prefix}/Kongtrol.app ~/Applications/Kongtrol.app
+      EOS
+    end
+    s
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/kongtrol version")
+  end
+end

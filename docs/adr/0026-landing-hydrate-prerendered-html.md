@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0025: Landing hydrates its prerendered HTML (hydrateRoot) with a hydration check in CI
+# ADR-0026: Landing hydrates its prerendered HTML (hydrateRoot) with a hydration check in CI
 
 Version 1.0.0 · 2026-11-18
 

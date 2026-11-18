@@ -63,7 +63,7 @@ jobs:
         run: pnpm run build
 
       # Every page × language hydrates its prerendered HTML without a mismatch
-      # (scripts/check-hydration.mjs, ADR-0025). Fails the job on any mismatch.
+      # (scripts/check-hydration.mjs, ADR-0026). Fails the job on any mismatch.
       - name: Hydration check
         run: pnpm run check:hydration
 

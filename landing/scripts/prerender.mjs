@@ -9,7 +9,7 @@
 // into the built page, so the shipped HTML contains the real content.
 //
 // The client hydrates this markup: each entry calls hydrateRoot(), which keeps
-// the prerendered DOM and attaches React to it (ADR-0025). Its first render must
+// the prerendered DOM and attaches React to it (ADR-0026). Its first render must
 // match this one exactly, so browser-only state (theme, OS, stored language,
 // clock) is read with useSyncExternalStore + a server snapshot or in an effect,
 // never during render. scripts/check-hydration.mjs (pnpm check:hydration) hydrates

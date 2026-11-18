@@ -73,45 +73,72 @@ Asegúrate de tener instalados los clientes VPN que vayas a usar:
 
 ## 2. Instalar Kongtrol
 
+<!-- feature:distribution -->
+Elige una opción; todas instalan el programa `kongtrol` y el ícono de bandeja, y se actualizan
+sin perder nada (tu configuración en `~/.kongtrol`, las contraseñas en el llavero del sistema y
+el ayudante de red se conservan; desinstalar tampoco borra tu configuración).
+
 ### Windows
 
-1. Descarga `kongtrol_windows_amd64.zip` de [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases)
-2. Extrae y mueve `kongtrol.exe` a una carpeta en tu PATH, por ejemplo:
-   ```
-   C:\Users\TuUsuario\bin\kongtrol.exe
-   ```
-3. Agrega esa carpeta a la variable de entorno `PATH` si no está
-4. Abre una terminal nueva y verifica:
-   ```
-   kongtrol --help
-   ```
+1. Descarga `Kongtrol-Setup-windows-amd64.exe` de
+   [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) y ábrelo. Se instala solo
+   para tu usuario, sin permisos de administrador.
+2. Deja marcadas las opciones recomendadas: abrir Kongtrol al iniciar sesión e instalar el
+   ayudante de red (Windows pide permiso **una sola vez**).
+3. Al terminar se abre Kongtrol: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
 
-> **Importante (Windows):** abre PowerShell o CMD como **Administrador** para usar `kongtrol init`, `kongtrol up`, `kongtrol down` y `kongtrol doctor` (requieren permisos elevados para rutas/firewall/DNS).
+Para actualizar, ejecuta el instalador nuevo encima: cierra Kongtrol (las VPN se desconectan
+un momento; tu internet normal sigue funcionando), actualiza y lo vuelve a abrir.
+
+Otras vías: `winget install Kongtrol.Kongtrol` (actualiza con `winget upgrade Kongtrol.Kongtrol`)
+o Scoop (`scoop bucket add kongtrol https://github.com/DerotLuna/scoop-bucket`,
+`scoop install kongtrol`, `scoop update kongtrol`). Con winget/Scoop cierra Kongtrol ("Salir y
+desconectar todo") antes de actualizar: Windows no deja reemplazar un programa en uso.
 
 ### macOS
 
 ```bash
-# Descarga y extrae
-curl -L https://github.com/yourorg/vpn-kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
-sudo mv kongtrol /usr/local/bin/
-
-# Verifica
-kongtrol --help
+curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 ```
+
+Instala `~/Applications/Kongtrol.app` y el comando `kongtrol`, y abre Kongtrol. Para actualizar,
+vuelve a ejecutarlo: reinicia Kongtrol en la versión nueva y reconecta tus VPN. Alternativa:
+`brew install DerotLuna/tap/kongtrol` (luego `brew upgrade kongtrol` y `kongtrol restart`).
+
+La app no está notarizada por Apple (cuesta 99 USD al año); el script, Homebrew y npm no marcan
+la descarga como "en cuarentena", así que abre sin aviso. Si descargas el `.zip` con el
+navegador, la primera vez haz clic derecho → **Abrir**, o ve a Ajustes del Sistema → Privacidad
+y seguridad → **Abrir igualmente**.
 
 ### Linux
 
-```bash
-curl -L https://github.com/yourorg/vpn-kongtrol/releases/latest/download/kongtrol_linux_amd64.tar.gz | tar xz
-sudo mv kongtrol /usr/local/bin/
+Descarga el `.deb` (Ubuntu, Debian) o el `.rpm` (Fedora) de
+[Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) y ábrelo con doble clic,
+o usa el mismo `install.sh` de macOS. Arch: `yay -S kongtrol-bin`. Se actualiza con tu gestor
+(`sudo apt upgrade`, `sudo dnf upgrade`) y luego `kongtrol restart` aplica la versión nueva.
 
-kongtrol --help
-```
+En GNOME el ícono de bandeja necesita la extensión AppIndicator (Ubuntu ya la trae; en otras
+distribuciones instala `gnome-shell-extension-appindicator`).
+
+### npm (solo el programa `kongtrol`)
+
+`npx kongtrol init`, o `npm i -g kongtrol` / `pnpm add -g kongtrol` / `bun add -g kongtrol`.
+
+<!-- feature:first_run -->
+### Primer uso sin terminal
+
+1. Abre Kongtrol (menú de inicio, Launchpad o el menú de aplicaciones). Aparece el ícono en la
+   bandeja y se abre el panel en tu navegador.
+2. En **Perfiles VPN**, elige el tipo, completa los datos y pulsa **Crear**.
+3. Kongtrol se reinicia solo y te lleva al resumen: ya puedes conectar desde el panel o el ícono.
+
+¿Cerraste el navegador? En el ícono, **Configurar ahora…** lo abre de nuevo. Si prefieres la
+terminal, `kongtrol init` hace lo mismo con un asistente (sección 4).
 
 ### Desde el código fuente (si tienes Go 1.27+)
 
 ```bash
-git clone https://github.com/yourorg/vpn-kongtrol
+git clone https://github.com/DerotLuna/vpn-kongtrol
 cd vpn-kongtrol
 make build
 # Binario en: build/dist/kongtrol (o kongtrol.exe en Windows)

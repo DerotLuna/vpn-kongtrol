@@ -36,8 +36,9 @@ decision live in [`docs/research/`](../research/README.md).
 | [0021](0021-renovate-for-dependency-updates.md) | Renovate for dependency updates; Dependabot only for alerts | Accepted | 2026-11-17 |
 | [0022](0022-landing-on-workers-static-assets.md) | Landing on Cloudflare Workers static assets (Workers Builds) | Accepted | 2026-11-17 |
 | [0023](0023-provider-logos-on-landing.md) | No third-party logos on the landing: our own monograms for every VPN | Accepted | 2026-11-18 |
-| [0024](0024-landing-motion-a11y-performance.md) | Landing polish: CSS-only motion without layout shift, WCAG 2.2 AA, Core Web Vitals | Accepted (boot resume superseded by 0025) | 2026-11-18 |
-| [0025](0025-landing-hydrate-prerendered-html.md) | Landing hydrates its prerendered HTML (hydrateRoot) with a hydration check in CI | Accepted | 2026-11-18 |
+| [0024](0024-landing-motion-a11y-performance.md) | Landing polish: CSS-only motion without layout shift, WCAG 2.2 AA, Core Web Vitals | Accepted (boot resume superseded by 0026) | 2026-11-18 |
+| [0025](0025-desktop-release-channels-first-run.md) | Desktop release, package managers, signing, safe upgrades and first run without a terminal | Accepted | 2026-11-18 |
+| [0026](0026-landing-hydrate-prerendered-html.md) | Landing hydrates its prerendered HTML (hydrateRoot) with a hydration check in CI | Accepted | 2026-11-18 |
 
 ## Statuses
 

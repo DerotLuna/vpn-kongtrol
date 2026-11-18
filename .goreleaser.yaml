@@ -1,10 +1,28 @@
 version: 2
 
+# Release layout and channels: docs/adr/0025-desktop-release-channels-first-run.md.
+#
+# GoReleaser OSS builds everything that cross-compiles from Linux: the CLI for
+# every platform and the tray for Linux and Windows (fyne.io/systray is pure Go
+# there: D-Bus StatusNotifierItem / Win32). The macOS app (tray needs cgo +
+# Cocoa) and the Windows installer (Inno Setup) are built natively by their own
+# jobs in release.yml, downloaded to dist-extra/ and attached + checksummed
+# here through extra_files (OSS; the "prebuilt" builder and split/merge are
+# Pro). The Homebrew formula and the npm packages are published by
+# release.yml scripts (packaging/homebrew, packaging/npm): GoReleaser's npm
+# publisher is Pro and its Homebrew publishers cannot use the macOS app.
+#
+# Every package-manager publisher skips itself when its secret is missing
+# (isEnvSet), and on prerelease tags (auto), so a release never fails for that.
+
 project_name: vpn-kongtrol
 
 before:
   hooks:
     - go mod tidy
+    # Windows exe icon for the tray (generated, gitignored).
+    - go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows_amd64.syso
+    - go run github.com/akavel/rsrc@v0.10.2 -arch arm64 -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows_arm64.syso
 
 builds:
   # CLI binary — CGO disabled, true cross-compilation.
@@ -19,32 +37,168 @@ builds:
       - -s -w
       - -X main.version={{.Version}}
 
+  # Tray — pure Go on Linux and Windows, so it cross-compiles here.
+  - id: kongtrol-tray
+    binary: kongtrol-tray
+    main: ./cmd/kongtrol-tray
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      # No console window on Windows.
+      - '{{ if eq .Os "windows" }}-H=windowsgui{{ end }}'
+
 archives:
+  # kongtrol_<os>_<arch>: CLI, plus the tray on Linux and Windows (macOS gets
+  # Kongtrol.app from the macos job). Used by Scoop, winget and AUR.
   - id: cli-archive
-    builds: [kongtrol-cli]
-    format: tar.gz
+    ids: [kongtrol-cli, kongtrol-tray]
+    allow_different_binary_count: true
+    formats: [tar.gz]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
     name_template: "kongtrol_{{ .Os }}_{{ .Arch }}"
     files:
       - configs/example.yaml
       - README.md
+      - LICENSE
+      - src: packaging/linux/kongtrol.desktop
+        dst: kongtrol.desktop
+      - src: assets/brand/logo-kong-512.png
+        dst: kongtrol.png
 
-  # Raw, uncompressed binary per platform — consumed directly by install.sh/install.ps1
-  # and by the landing page's per-OS download buttons (no unzip step for end users).
+  # Raw, uncompressed CLI binary per platform — consumed directly by
+  # install.ps1, the npm packages and the landing page's per-OS download
+  # buttons (no unzip step for end users).
   - id: cli-binary
-    builds: [kongtrol-cli]
-    format: binary
+    ids: [kongtrol-cli]
+    formats: [binary]
     name_template: "kongtrol-{{ .Os }}-{{ .Arch }}"
+
+# .deb / .rpm: double-click installs them from the distribution's software
+# app; `apt upgrade` / `dnf upgrade` update in place. Binaries go to /usr/bin;
+# menu entry, autostart entry and icon follow the freedesktop specs. Nothing
+# in the user's home (~/.kongtrol) is ever touched by the package.
+nfpms:
+  - id: linux-packages
+    ids: [kongtrol-cli, kongtrol-tray]
+    package_name: kongtrol
+    file_name_template: "kongtrol_{{ .Version }}_{{ .Arch }}"
+    formats: [deb, rpm]
+    vendor: VPN Kongtrol
+    homepage: https://kongtrol.app
+    maintainer: VPN Kongtrol <https://github.com/DerotLuna/vpn-kongtrol>
+    description: Kongtrol — connect and control several VPNs from one tray app.
+    license: Apache-2.0
+    bindir: /usr/bin
+    # GNOME shows tray (StatusNotifierItem) icons only with this extension;
+    # Ubuntu ships it, other GNOME distributions may not.
+    suggests:
+      - gnome-shell-extension-appindicator
+    contents:
+      - src: packaging/linux/kongtrol.desktop
+        dst: /usr/share/applications/kongtrol.desktop
+      - src: packaging/linux/kongtrol.desktop
+        dst: /etc/xdg/autostart/kongtrol.desktop
+        type: config
+      - src: assets/brand/logo-kong-512.png
+        dst: /usr/share/icons/hicolor/512x512/apps/kongtrol.png
+      - src: LICENSE
+        dst: /usr/share/doc/kongtrol/LICENSE
+
+# Scoop bucket (Windows): `scoop install kongtrol`, `scoop update kongtrol`.
+scoops:
+  - name: kongtrol
+    homepage: https://kongtrol.app
+    description: Connect and control several VPNs from one tray app.
+    license: Apache-2.0
+    shortcuts: [["kongtrol-tray.exe", "Kongtrol"]]
+    commit_msg_template: "kongtrol {{ .Tag }}"
+    skip_upload: '{{ if isEnvSet "SCOOP_BUCKET_TOKEN" }}auto{{ else }}true{{ end }}'
+    repository:
+      owner: DerotLuna
+      name: scoop-bucket
+      token: '{{ envOrDefault "SCOOP_BUCKET_TOKEN" "" }}'
+
+# winget: opens a PR to microsoft/winget-pkgs from the DerotLuna fork.
+winget:
+  - name: Kongtrol
+    publisher: Kongtrol
+    package_identifier: Kongtrol.Kongtrol
+    short_description: Connect and control several VPNs from one tray app.
+    license: Apache-2.0
+    publisher_url: https://kongtrol.app
+    homepage: https://kongtrol.app
+    license_url: https://github.com/DerotLuna/vpn-kongtrol/blob/main/LICENSE
+    release_notes_url: https://github.com/DerotLuna/vpn-kongtrol/releases/tag/{{ .Tag }}
+    tags: [vpn, wireguard, openvpn, tray]
+    ids: [cli-archive]
+    skip_upload: '{{ if isEnvSet "WINGET_GITHUB_TOKEN" }}auto{{ else }}true{{ end }}'
+    repository:
+      owner: DerotLuna
+      name: winget-pkgs
+      branch: "kongtrol-{{ .Version }}"
+      token: '{{ envOrDefault "WINGET_GITHUB_TOKEN" "" }}'
+      pull_request:
+        enabled: true
+        draft: false
+        base:
+          owner: microsoft
+          name: winget-pkgs
+          branch: master
+
+# AUR: kongtrol-bin (prebuilt binaries).
+aurs:
+  - name: kongtrol-bin
+    ids: [cli-archive]
+    homepage: https://kongtrol.app
+    description: Connect and control several VPNs from one tray app.
+    maintainers: ["DerotLuna <https://github.com/DerotLuna>"]
+    license: Apache-2.0
+    provides: [kongtrol]
+    conflicts: [kongtrol]
+    optdepends:
+      - "gnome-shell-extension-appindicator: tray icon on GNOME"
+    private_key: '{{ envOrDefault "AUR_KEY" "" }}'
+    git_url: "ssh://aur@aur.archlinux.org/kongtrol-bin.git"
+    skip_upload: '{{ if isEnvSet "AUR_KEY" }}auto{{ else }}true{{ end }}'
+    package: |-
+      install -Dm755 ./kongtrol "${pkgdir}/usr/bin/kongtrol"
+      install -Dm755 ./kongtrol-tray "${pkgdir}/usr/bin/kongtrol-tray"
+      install -Dm644 ./kongtrol.desktop "${pkgdir}/usr/share/applications/kongtrol.desktop"
+      install -Dm644 ./kongtrol.desktop "${pkgdir}/etc/xdg/autostart/kongtrol.desktop"
+      install -Dm644 ./kongtrol.png "${pkgdir}/usr/share/icons/hicolor/512x512/apps/kongtrol.png"
+      install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/kongtrol-bin/LICENSE"
+
+# SBOM (SPDX JSON, via syft) for every archive.
+sboms:
+  - artifacts: archive
 
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
+  # macOS app zip and Windows installer, built natively in release.yml.
+  extra_files:
+    - glob: ./dist-extra/*
+
+# Keyless Sigstore signature of checksums.txt (GitHub OIDC identity; no key
+# to keep). Verify: see docs/SECURITY.md.
+signs:
+  - cmd: cosign
+    artifacts: checksum
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--bundle=${signature}", "${artifact}", "--yes"]
 
 release:
-  draft: true
-  replace_existing_draft: true
+  # Published directly (package managers need public URLs); prerelease tags
+  # (v1.2.3-rc.1) are marked as such and skipped by every publisher.
+  draft: false
+  prerelease: auto
+  extra_files:
+    - glob: ./dist-extra/*
 
 changelog:
   sort: asc

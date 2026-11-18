@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.1 · 2026-11-17
+Version 1.2 · 2026-11-18
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -460,6 +460,20 @@ kongtrol reload [flags]
 kongtrol reload
 kongtrol reload --policy
 kongtrol reload --tunnel office
+```
+
+### `kongtrol restart`
+
+Stops Kongtrol and starts it again with kongtrol.yaml re-read; reconnects the VPNs that were connected. Same as the dashboard's Restart button. Next: kongtrol status.
+
+```text
+kongtrol restart [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol restart
 ```
 
 ### `kongtrol export`

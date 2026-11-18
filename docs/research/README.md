@@ -30,7 +30,8 @@ reasoned but unverified.
 | [2026-11-17-go-release-support](2026-11-17-go-release-support.md) | Go release support policy and the go.mod `toolchain` line | ADR-0019 |
 | [2026-11-17-provider-logo-guidelines](2026-11-17-provider-logo-guidelines.md) | Brand guidelines of the ten VPN brands for logos on the landing | ADR-0023 |
 | [2026-11-17-landing-ux-a11y-perf](2026-11-17-landing-ux-a11y-perf.md) | Motion without CLS, WCAG 2.2 AA gaps, fonts, JSON-LD; Lighthouse before/after | ADR-0024 |
-| [2026-11-18-react-hydration](2026-11-18-react-hydration.md) | hydrateRoot, useSyncExternalStore server snapshots, jsdom hydration check; Lighthouse before/after | ADR-0025 |
+| [2026-11-18-desktop-release-channels](2026-11-18-desktop-release-channels.md) | Tray build per OS, GoReleaser OSS vs Pro, Inno Setup, SignPath, macOS quarantine, npm layout, package managers | ADR-0025 |
+| [2026-11-18-react-hydration](2026-11-18-react-hydration.md) | hydrateRoot, useSyncExternalStore server snapshots, jsdom hydration check; Lighthouse before/after | ADR-0026 |
 
 ## Template
 

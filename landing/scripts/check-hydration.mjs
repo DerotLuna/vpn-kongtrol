@@ -1,7 +1,7 @@
 // Hydration check for the built landing — version 1.0.0 · 2026-11-18.
 //
 // Every entry hydrates the HTML that scripts/prerender.mjs wrote (hydrateRoot,
-// ADR-0025). React requires the first client render to match that HTML
+// ADR-0026). React requires the first client render to match that HTML
 // exactly; a mismatch is a bug: React logs it and, for text, throws away the
 // prerendered DOM and renders again on the client
 // (https://react.dev/reference/react-dom/client/hydrateRoot).
