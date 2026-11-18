@@ -109,3 +109,17 @@ func TestDoctorFix_InstallsMissingHelper(t *testing.T) {
 		t.Fatalf("installed a helper that already answers (%d)", *installs)
 	}
 }
+
+// Uninstall refuses sudo: HOME may be root's or the user's depending on the OS.
+func TestRunViaSudo(t *testing.T) {
+	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	if !runViaSudo(0, env(map[string]string{"SUDO_USER": "ana"})) {
+		t.Error("sudo from ana not detected")
+	}
+	if runViaSudo(0, env(nil)) || runViaSudo(0, env(map[string]string{"SUDO_USER": "root"})) {
+		t.Error("plain root must be allowed")
+	}
+	if runViaSudo(1000, env(map[string]string{"SUDO_USER": "ana"})) || runViaSudo(-1, env(map[string]string{"SUDO_USER": "ana"})) {
+		t.Error("non-root must be allowed")
+	}
+}

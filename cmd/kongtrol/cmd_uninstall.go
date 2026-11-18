@@ -73,6 +73,14 @@ func uninstallExtraFiles() []string {
 }
 
 func runUninstall(cmd *cobra.Command, _ []string) error {
+	if runViaSudo(os.Geteuid(), os.Getenv) {
+		// Under sudo, HOME may be root's or the user's depending on the OS
+		// and sudoers (env_keep): the data dir, keychain and manifest would
+		// be guessed. Refuse instead of acting on the wrong user.
+		say(tuiWarn(ct("cli.uninstall.no_sudo")))
+		say(tuiInfo(ct("cli.uninstall.no_sudo.fix")))
+		return alreadyReported(errors.New("uninstall run via sudo"))
+	}
 	plan := uninstall.Detect(uninstallEnv(), uninstallPurge, uninstallDataOnly)
 	extra := uninstallExtraFiles()
 	profiles := uninstall.ProfileNames(uninstall.ConfigFiles(plan.DataDir, extra...))
@@ -229,11 +237,29 @@ func removeScriptInstall(p uninstall.Plan) {
 	}
 }
 
+// runViaSudo reports a root process started by sudo for another user
+// (SUDO_USER set). euid is -1 on Windows.
+func runViaSudo(euid int, getenv func(string) string) bool {
+	return euid == 0 && getenv("SUDO_USER") != "" && getenv("SUDO_USER") != "root"
+}
+
+// removeListed deletes one manifest entry (already filtered to Kongtrol's
+// own names by uninstall.ReadManifest). Only Kongtrol.app is a folder and
+// removed recursively; anything else must be a file or link.
 func removeListed(path string) {
-	if _, err := os.Lstat(path); err != nil {
+	fi, err := os.Lstat(path)
+	if err != nil {
 		return
 	}
-	if err := os.RemoveAll(path); err != nil {
+	remove := os.Remove
+	if fi.IsDir() {
+		if filepath.Base(path) != uninstall.AppBundleName {
+			say(tuiWarn(cf("cli.uninstall.remove_failed", path)))
+			return
+		}
+		remove = os.RemoveAll
+	}
+	if err := remove(path); err != nil {
 		say(tuiWarn(cf("cli.uninstall.remove_failed", path)))
 		return
 	}
