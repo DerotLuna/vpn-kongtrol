@@ -300,21 +300,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 .nav-right { display: flex; align-items: center; justify-self: end; gap: 18px; }
 
-/* the header's one action: grab the binary */
-.nav-cta {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--signal); color: var(--on-signal);
-  font-family: var(--font-mono); font-weight: 600;
-  font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase;
-  padding: 8px 14px; border-radius: var(--radius);
-  transition: background 0.16s, transform 0.16s, box-shadow 0.16s;
-}
-.nav-cta svg { width: 14px; height: 14px; }
-.nav-cta:hover {
-  background: var(--signal-hi); text-decoration: none;
-  transform: translateY(-1px); box-shadow: 0 6px 20px var(--signal-glow);
-}
-
 .nav-lang-switcher, .nav-theme-switcher {
   display: flex; align-items: center; gap: 3px;
   background: var(--surface); border: 1px solid var(--border);
@@ -492,121 +477,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 /* ── Features / Control tower ───────────────────────────────────────────────── */
 .features-section { scroll-margin-top: calc(var(--nav-h) + 14px); container-type: inline-size; }
 
-/* ── SIGNATURE: routing switchboard ── */
-.switchboard {
-  margin-top: 40px; border: 1px solid var(--border); border-radius: var(--radius-lg);
-  background: var(--surface); padding: 22px 24px 20px; overflow: hidden;
-}
-.sb-legend {
-  display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center;
-  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.12em; text-transform: uppercase;
-  color: var(--text-dim); margin-bottom: 6px;
-}
-.sb-legend-item.in { text-align: left; }
-.sb-legend-item.core { color: var(--signal); text-align: center; white-space: nowrap; }
-.sb-legend-item.out { text-align: right; }
-
-.sb-svg { width: 100%; height: auto; display: block; }
-
-.sb-wire { fill: none; stroke: var(--border-2); stroke-width: 1.5; transition: stroke 0.2s; }
-.sb-wire-group.active .sb-wire {
-  stroke: var(--signal); stroke-width: 2.25; stroke-dasharray: 5 6;
-  animation: sbFlow 0.7s linear infinite;
-}
-.sb-wire-group.active.direct .sb-wire { stroke: var(--steel); }
-@keyframes sbFlow { to { stroke-dashoffset: -22; } }
-
-.sb-core { transform-box: fill-box; transform-origin: center; }
-.sb-core .sb-ring {
-  fill: none; stroke: var(--signal-line); stroke-width: 1.25;
-  transform-box: fill-box; transform-origin: center;
-  animation: sbRingBreathe 3.2s ease-in-out infinite;
-}
-@keyframes sbRingBreathe {
-  0%, 100% { opacity: 0.4; scale: 1; }
-  50% { opacity: 0.75; scale: 1.035; }
-}
-
-/* the engine is always alive — a slow ambient pulse under the logo,
-   independent of route resolution so it never looks idle/dead */
-.sb-core .sb-glow {
-  fill: var(--signal); opacity: 0;
-  transform-box: fill-box; transform-origin: center;
-  animation: sbGlowPulse 3.2s ease-in-out infinite;
-}
-@keyframes sbGlowPulse {
-  0%, 100% { opacity: 0.05; scale: 1; }
-  50% { opacity: 0.16; scale: 1.12; }
-}
-
-.sb-core .sb-logo { opacity: 0.9; }
-:root[data-theme='dark'] .sb-core .sb-logo { filter: invert(1); }
-
-.sb-node { cursor: pointer; }
-.sb-node.out { cursor: default; }
-.sb-node rect {
-  fill: var(--surface-2); stroke: var(--border-2); stroke-width: 1;
-  transform-box: fill-box; transform-origin: center;
-  transition: fill 0.3s ease, stroke 0.3s ease, scale 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.sb-node text { font-family: var(--font-mono); font-size: 13px; fill: var(--text-muted); transition: fill 0.3s ease; }
-.sb-node:hover rect { stroke: var(--border-2); }
-.sb-node.in:hover rect { stroke: var(--signal); }
-.sb-node.active rect { fill: var(--signal-soft); stroke: var(--signal); scale: 1.035; }
-.sb-node.active text { fill: var(--signal); }
-.sb-node.active.direct rect { fill: var(--steel-soft); stroke: var(--steel); }
-.sb-node.active.direct text, .sb-node.active.direct .sb-out-name { fill: var(--steel); }
-.sb-out-name { font-weight: 600; }
-.sb-out-sub { font-size: 10.5px !important; fill: var(--text-dim) !important; letter-spacing: 0.04em; }
-.sb-node:focus { outline: none; }
-.sb-node:focus-visible rect { stroke: var(--signal); stroke-width: 2; }
-
-.sb-readout {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
-  margin-top: 14px; padding: 12px 16px; border: 1px solid var(--border);
-  border-radius: var(--radius); background: var(--bg);
-  font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);
-  animation: sbReadoutIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes sbReadoutIn {
-  0% { opacity: 0; transform: translateY(3px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-.sb-readout-dest { color: var(--text); font-weight: 600; }
-.sb-readout-mid b { color: var(--signal); }
-.sb-readout-tunnel { color: var(--signal); font-weight: 600; }
-.sb-readout-tunnel.direct { color: var(--steel); }
-.sb-arrow { color: var(--text-dim); flex-shrink: 0; }
-.sb-hint { margin-top: 10px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
-
-/* ── Download ───────────────────────────────────────────────────────────────── */
-.download-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
-  margin-top: 48px; background: var(--border);
-  border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;
-}
-.download-card {
-  background: var(--surface); padding: 34px 30px;
-  display: flex; flex-direction: column; gap: 20px; transition: background 0.2s;
-}
-.download-card:hover { background: var(--surface-2); }
-.download-card.current { background: var(--surface-2); position: relative; box-shadow: inset 0 2px 0 var(--signal); }
-.download-card.current::after {
-  content: attr(data-current-label); position: absolute; top: 16px; right: 16px;
-  font-family: var(--font-mono); font-size: 0.58rem; letter-spacing: 0.12em;
-  color: var(--signal); background: var(--signal-soft); border: 1px solid var(--signal-line);
-  padding: 3px 8px; border-radius: 3px;
-}
-.download-os-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 600; letter-spacing: 0.01em; color: var(--text); }
-.download-filename {
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted);
-  padding: 9px 12px; background: var(--bg); border: 1px solid var(--border);
-  border-radius: var(--radius); word-break: break-all;
-}
-.download-arch-note { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.03em; }
-.download-card .btn-download { align-self: flex-start; }
-.download-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.download-item-info { min-width: 0; }
 
 .source-install {
   margin-top: 40px; padding: 26px 30px; border: 1px solid var(--border);
@@ -867,9 +737,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .footer-legal { display: flex; flex-wrap: wrap; gap: 0 20px; list-style: none; margin: 0; padding: 0; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
-@container (max-width: 720px) {
-  .sb-legend { font-size: 0.58rem; }
-}
 
 @media (max-width: 960px) {
   .terminal-body { min-height: 262px; }
@@ -897,7 +764,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .nav-links { display: none; }
   .nav-inner { grid-template-columns: auto auto; }
   .nav-utils { border-inline-start: none; padding-inline-start: 0; }
-  .download-grid { grid-template-columns: 1fr; }
 
   /* header wordmark drops on mobile/tablet — the hamburger below covers
      home/guide navigation, so the full logo lockup isn't needed — but the
@@ -961,17 +827,11 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .home-jump { display: none; }
 }
 
-/* header math doesn't fit under ~520px: hamburger + full download button +
-   theme/lang toggles need more room than phones give — collapse the
-   download button to icon-only (the wordmark is already gone by 960px) */
+/* header math doesn't fit under ~520px: the download button collapses to
+   icon-only there (src/components/ui/download-cta.css) */
 @media (max-width: 520px) {
   .nav-inner { gap: 10px; padding: 0 16px; }
   .nav-right { gap: 10px; }
-  /* 37×37 to match the theme/lang/hamburger buttons exactly, instead of
-     shrink-wrapping to icon+padding (which read visibly smaller) */
-  .nav-cta { width: 37px; height: 37px; padding: 0; justify-content: center; }
-  .nav-cta-label { display: none; }
-  .nav-cta svg { width: 16px; height: 16px; }
 }
 
 /* the homepage tmux bar hides under 720px — show the jump menu instead */
@@ -1027,18 +887,6 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .footer-meta { justify-content: flex-start; }
   .source-install { grid-template-columns: 1fr; gap: 12px; }
   .code-block pre { padding: 14px 16px; font-size: 0.76rem; }
-}
-
-@media (max-width: 480px) {
-  /* filename + download button no longer fit side by side without the
-     filename wrapping to 2-3 cramped lines — stack them instead */
-  .download-item { flex-direction: column; }
-  .download-item .btn-download { align-self: center; justify-content: center; }
-
-  /* the routing readout wraps its pieces independently at this width,
-     breaking mid-sentence with an orphaned arrow — stack each piece instead */
-  .sb-readout { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .sb-arrow { display: none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1371,142 +1219,6 @@ a { text-underline-offset: 3px; }
 .path-note { font-size: 0.84rem; color: var(--text-dim); }
 .path-devs .code-block pre { font-size: 0.78rem; }
 
-/* ── Attach-mode demo ──
-   The default styles ARE the final frame (app connected, tray green), so
-   reduced-motion visitors and no-animation renders get a complete picture.
-   The loop only runs under prefers-reduced-motion: no-preference. */
-.attach { margin-top: 48px; }
-.attach-stage {
-  position: relative; overflow: hidden;
-  display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr);
-  align-items: center; padding: 36px 32px;
-  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);
-}
-.attach-stage::before {
-  content: ''; position: absolute; inset: 0; pointer-events: none;
-  --cx: 50%; --cy: 50%; background: var(--contour); opacity: 0.6;
-  -webkit-mask: radial-gradient(closest-side, #000 30%, transparent);
-  mask: radial-gradient(closest-side, #000 30%, transparent);
-}
-.attach-panel { position: relative; z-index: 1; display: grid; justify-items: center; gap: 12px; min-width: 0; }
-
-/* 1 · provider app window (generic — no third-party marks) */
-.attach-app-bar, .attach-app-body {
-  width: min(100%, 230px); border: 1px solid var(--border-2); background: var(--bg);
-}
-.attach-app-bar {
-  display: flex; align-items: center; gap: 5px; padding: 7px 10px;
-  border-radius: var(--radius) var(--radius) 0 0; border-bottom: none;
-}
-.attach-app-bar span { width: 7px; height: 7px; border-radius: 50%; background: var(--border-2); }
-.attach-app-bar em {
-  margin-left: 6px; font-style: normal; font-family: var(--font-mono); font-size: 0.66rem;
-  color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.attach-app-body {
-  margin-top: -12px; border-radius: 0 0 var(--radius) var(--radius);
-  display: grid; justify-items: center; gap: 8px; padding: 18px 14px 16px;
-}
-.attach-shield { color: var(--live); }
-.attach-shield-check { stroke-dasharray: 14; stroke-dashoffset: 0; }
-.attach-app-state { display: grid; font-family: var(--font-display); font-size: 0.98rem; }
-.attach-app-state b { grid-area: 1 / 1; text-align: center; font-weight: 600; }
-.attach-app-state .st-off { opacity: 0; color: var(--text-muted); }
-.attach-app-state .st-on { color: var(--live); }
-.attach-app-btn {
-  font-family: var(--font-mono); font-size: 0.68rem; letter-spacing: 0.04em;
-  padding: 5px 14px; border-radius: 999px; border: 1px solid var(--border-2);
-  color: var(--text-muted); opacity: 0.45;
-}
-.attach-app-list { font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-dim); text-align: center; line-height: 1.5; }
-
-/* 2 · Kongtrol detects */
-.attach-radar { position: relative; width: 104px; height: 104px; display: grid; place-items: center; }
-.attach-radar::before {
-  content: ''; position: absolute; inset: 14px; border-radius: 50%;
-  border: 1px solid var(--signal-line); background: var(--surface-2);
-}
-.attach-radar img { position: relative; width: 44px; height: 44px; }
-:root[data-theme='dark'] .attach-radar img { filter: invert(1); }
-.attach-radar .ring {
-  position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--signal);
-  opacity: 0; transform: scale(0.6);
-}
-.attach-detect-line { display: grid; font-family: var(--font-mono); font-size: 0.7rem; text-align: center; }
-.attach-detect-line span { grid-area: 1 / 1; }
-.attach-detect-line .d-off { opacity: 0; color: var(--text-dim); }
-.attach-detect-line .d-on { color: var(--text); }
-
-/* links between beats */
-.attach-link { position: relative; z-index: 1; height: 2px; background: var(--border-2); border-radius: 2px; overflow: hidden; }
-.attach-link i { position: absolute; inset: 0; background: var(--live); transform-origin: left center; }
-
-/* 3 · tray — labels are the real tray menu strings */
-.attach-tray { gap: 8px; }
-.attach-menu {
-  width: min(100%, 236px); display: grid; padding: 6px;
-  background: var(--bg); border: 1px solid var(--border-2); border-radius: var(--radius);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.28);
-  font-size: 0.74rem; color: var(--text-muted);
-}
-:root[data-theme='light'] .attach-menu { box-shadow: 0 10px 24px rgba(60,50,25,0.14); }
-.attach-menu > span { padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.attach-menu .m-status { display: flex; align-items: center; gap: 7px; color: var(--text); font-weight: 600; }
-.attach-menu .m-dot, .attach-taskbar .tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live); flex-shrink: 0; }
-.attach-menu .m-sep { height: 1px; padding: 0; margin: 4px 6px; background: var(--border); }
-.attach-taskbar {
-  width: min(100%, 236px); display: flex; align-items: center; justify-content: flex-end; gap: 8px;
-  padding: 6px 10px; background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius);
-}
-.attach-taskbar .tb-icon { width: 14px; height: 14px; border-radius: 3px; background: var(--border-2); }
-.attach-taskbar .tb-kong { position: relative; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; background: var(--signal-soft); }
-.attach-taskbar .tb-kong img { width: 16px; height: 16px; }
-:root[data-theme='dark'] .attach-taskbar .tb-kong img { filter: invert(1); }
-.attach-taskbar .tb-dot { position: absolute; right: -2px; bottom: -2px; box-shadow: 0 0 0 2px var(--surface-3); }
-.attach-taskbar .tb-clock { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-
-/* captions — the accessible, always-visible version of the story */
-.attach-steps {
-  list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px;
-  margin-top: 18px; padding: 0 8px;
-}
-.attach-steps li { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: baseline; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; }
-.attach-step-n { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 600; color: var(--signal); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .attach-app-btn      { animation: atBtn 9s var(--expo-out) infinite; }
-  .attach-shield       { animation: atShield 9s ease infinite; }
-  .attach-shield-check { animation: atCheck 9s ease infinite; }
-  .attach-app-state .st-off { animation: atOff 9s ease infinite; }
-  .attach-app-state .st-on  { animation: atOn 9s ease infinite; }
-  .attach-link.l1 i    { animation: atLink1 9s var(--expo-out) infinite; }
-  .attach-radar .ring  { animation: atRing 9s ease-out infinite; }
-  .attach-radar .r2    { animation-delay: 0.25s; }
-  .attach-radar .r3    { animation-delay: 0.5s; }
-  .attach-detect-line .d-off { animation: atDOff 9s ease infinite; }
-  .attach-detect-line .d-on  { animation: atDOn 9s ease infinite; }
-  .attach-link.l2 i    { animation: atLink2 9s var(--expo-out) infinite; }
-  .attach-menu .m-dot, .attach-taskbar .tb-dot { animation: atDot 9s ease infinite; }
-  .attach-menu         { animation: atMenu 9s var(--expo-out) infinite; }
-}
-@keyframes atBtn {
-  0%, 8%    { opacity: 1; transform: scale(1); background: transparent; color: var(--text); border-color: var(--border-2); }
-  10%       { opacity: 1; transform: scale(0.92); background: var(--signal); color: var(--on-signal); border-color: var(--signal); }
-  16%, 92%  { opacity: 0.45; transform: scale(1); background: transparent; color: var(--text-muted); border-color: var(--border-2); }
-  98%, 100% { opacity: 1; }
-}
-@keyframes atShield { 0%, 12% { color: var(--text-dim); } 16%, 92% { color: var(--live); } 98%, 100% { color: var(--text-dim); } }
-@keyframes atCheck  { 0%, 13% { stroke-dashoffset: 14; } 20%, 92% { stroke-dashoffset: 0; } 98%, 100% { stroke-dashoffset: 14; } }
-@keyframes atOff    { 0%, 12% { opacity: 1; } 15%, 92% { opacity: 0; } 98%, 100% { opacity: 1; } }
-@keyframes atOn     { 0%, 12% { opacity: 0; } 15%, 92% { opacity: 1; } 98%, 100% { opacity: 0; } }
-@keyframes atLink1  { 0%, 16% { transform: scaleX(0); opacity: 1; } 30%, 92% { transform: scaleX(1); opacity: 1; } 98%, 100% { transform: scaleX(1); opacity: 0; } }
-@keyframes atRing   { 0%, 30% { transform: scale(0.6); opacity: 0; } 33% { opacity: 0.8; } 50%, 100% { transform: scale(1.2); opacity: 0; } }
-@keyframes atDOff   { 0%, 36% { opacity: 1; } 40%, 92% { opacity: 0; } 98%, 100% { opacity: 1; } }
-@keyframes atDOn    { 0%, 36% { opacity: 0; } 40%, 92% { opacity: 1; } 98%, 100% { opacity: 0; } }
-@keyframes atLink2  { 0%, 44% { transform: scaleX(0); opacity: 1; } 58%, 92% { transform: scaleX(1); opacity: 1; } 98%, 100% { transform: scaleX(1); opacity: 0; } }
-@keyframes atDot    { 0%, 58% { background: var(--text-dim); } 61%, 92% { background: var(--live); } 98%, 100% { background: var(--text-dim); } }
-@keyframes atMenu   { 0%, 60% { opacity: 0; transform: translateY(8px); } 67%, 90% { opacity: 1; transform: translateY(0); } 96%, 100% { opacity: 0; transform: translateY(8px); } }
-
 /* ── Cómo empezar ── */
 .how-steps { list-style: none; }
 .how-step .how-n {
@@ -1541,19 +1253,9 @@ a { text-underline-offset: 3px; }
 @media (max-width: 960px) {
   /* 8 tmux windows + status don't fit between 721–960px; keep the clock only */
   .tmux-right > :not(:last-child) { display: none; }
-  .attach-stage { grid-template-columns: 1fr; justify-items: center; padding: 28px 20px; }
-  .attach-link { width: 2px; height: 34px; margin: 12px 0; }
-  .attach-link i { transform-origin: center top; }
-  .attach-steps { grid-template-columns: 1fr; gap: 10px; }
   .paths { grid-template-columns: 1fr; }
   .promise-section { padding-top: 64px; }
 }
-@media (max-width: 960px) and (prefers-reduced-motion: no-preference) {
-  .attach-link.l1 i { animation-name: atLink1V; }
-  .attach-link.l2 i { animation-name: atLink2V; }
-}
-@keyframes atLink1V { 0%, 16% { transform: scaleY(0); opacity: 1; } 30%, 92% { transform: scaleY(1); opacity: 1; } 98%, 100% { transform: scaleY(1); opacity: 0; } }
-@keyframes atLink2V { 0%, 44% { transform: scaleY(0); opacity: 1; } 58%, 92% { transform: scaleY(1); opacity: 1; } 98%, 100% { transform: scaleY(1); opacity: 0; } }
 @media (max-width: 720px) {
   .hood-row { grid-template-columns: 1fr; gap: 6px; padding: 16px 0; }
   .hood-metric { justify-self: start; margin-top: 4px; }

@@ -1,0 +1,70 @@
+/* Download section (ADR-0027): the visitor's system as one featured card with
+   the page's only filled button there, every other system below as smaller
+   cards with outlined buttons. */
+
+.dl-featured {
+  margin-top: 40px; padding: clamp(24px, 4vw, 40px);
+  background: var(--surface-2); border: 1px solid var(--signal-line);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 2px 0 var(--signal), 0 18px 40px -24px var(--signal-glow);
+  display: grid; gap: 14px;
+}
+.dl-featured-tag {
+  margin: 0; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--signal);
+}
+.dl-featured-title {
+  margin: 0; font-family: var(--font-display); font-weight: 600;
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); line-height: 1.15;
+  letter-spacing: -0.01em; color: var(--text); text-wrap: balance;
+}
+.dl-featured-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 20px; margin-top: 6px; }
+.dl-featured-item { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
+.dl-btn-lg { min-height: 52px; padding: 14px 26px; font-size: 0.9rem; }
+.dl-btn-outline { min-height: 52px; }
+
+/* filename: one line, never broken mid-word; ellipsis when the card is narrow */
+.dl-file {
+  display: block; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);
+  background: none; padding: 0;
+}
+
+.dl-mac-which {
+  margin: 4px 0 0; max-width: var(--measure);
+  font-size: 0.9rem; line-height: 1.55; color: var(--text-muted); text-wrap: pretty;
+}
+
+.dl-others-title {
+  margin: 48px 0 16px; font-family: var(--font-display); font-weight: 600;
+  font-size: 1.15rem; color: var(--text);
+}
+.dl-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+}
+.dl-card {
+  padding: 22px 22px 20px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  display: flex; flex-direction: column; gap: 14px; min-width: 0;
+}
+.dl-card-os { margin: 0; font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; color: var(--text); }
+.dl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.dl-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.dl-row-info { display: grid; gap: 4px; min-width: 0; }
+.dl-row-name { font-size: 0.9rem; line-height: 1.4; color: var(--text-muted); }
+.dl-btn-sm { flex-shrink: 0; padding: 10px 14px; font-size: 0.74rem; gap: 8px; }
+.dl-card .dl-mac-which { font-size: 0.82rem; }
+
+.dl-all { margin: 16px 0 0; }
+.dl-all a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
+.dl-all a:hover { color: var(--signal); }
+
+.dl-mobile { margin-top: 32px; }
+
+@media (max-width: 480px) {
+  .dl-featured-item, .dl-featured-item > a { width: 100%; }
+  .dl-row { flex-direction: column; align-items: stretch; }
+  .dl-btn-sm { justify-content: center; }
+}

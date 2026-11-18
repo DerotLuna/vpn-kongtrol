@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Lang } from '../../i18n'
+import './routeboard.css'
 
 interface Props {
   lang: Lang
@@ -16,6 +17,11 @@ type Route = {
 
 // Fixed row centers inside the 640×360 SVG viewBox — no DOM measurement needed.
 const ROWS = [64, 141, 219, 296]
+// Core geometry: center (320,180), ring r 56. Ports sit on the ring at
+// x 264 (IN) and 376 (OUT); wires stop at each port's outer edge.
+const CORE_R = 56
+const PORT_L = 320 - CORE_R - 3
+const PORT_R = 320 + CORE_R + 3
 
 export default function Features({ lang }: Props) {
   const [active, setActive] = useState(0)
@@ -32,6 +38,8 @@ export default function Features({ lang }: Props) {
       boardIn: 'Destino',
       boardCore: 'Reglas de Kongtrol',
       boardOut: 'Sale por',
+      portIn: 'tus apps',
+      portOut: 'VPN o internet',
       readoutRule: 'regla',
       readoutNoRule: 'sin regla — sale directo, sin VPN',
       hint: 'Toca un destino para ver cómo se resuelve',
@@ -49,6 +57,8 @@ export default function Features({ lang }: Props) {
       boardIn: 'Destination',
       boardCore: 'Kongtrol rules',
       boardOut: 'Goes through',
+      portIn: 'your apps',
+      portOut: 'VPN or internet',
       readoutRule: 'rule',
       readoutNoRule: 'no rule — goes out directly, no VPN',
       hint: 'Tap a destination to see how it resolves',
@@ -92,23 +102,45 @@ export default function Features({ lang }: Props) {
           </div>
 
           <svg className="sb-svg" viewBox="0 0 640 360" role="group" aria-label={copy.boardCore}>
-            {/* wires — behind nodes */}
-            {routes.map((r, i) => {
-              const y = ROWS[i]
-              const on = i === active
-              return (
-                <g key={`w-${i}`} className={`sb-wire-group${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
-                  <path className="sb-wire" d={`M156 ${y} C 214 ${y}, 214 180, 270 180`} />
-                  <path className="sb-wire" d={`M370 180 C 426 180, 426 ${y}, 484 ${y}`} />
-                </g>
-              )
-            })}
+            {/* wires fade into the core ring as they reach its ports */}
+            <defs>
+              <linearGradient id="sb-fade-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="640" y2="0">
+                <stop offset="0" stopColor="#fff" />
+                <stop offset={220 / 640} stopColor="#fff" />
+                <stop offset={PORT_L / 640} stopColor="#fff" stopOpacity="0.25" />
+                <stop offset={PORT_R / 640} stopColor="#fff" stopOpacity="0.25" />
+                <stop offset={420 / 640} stopColor="#fff" />
+                <stop offset="1" stopColor="#fff" />
+              </linearGradient>
+              <mask id="sb-fade" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="360">
+                <rect width="640" height="360" fill="url(#sb-fade-g)" />
+              </mask>
+            </defs>
 
-            {/* core — the Kong mark has one continuous ambient pulse, unaffected by route changes */}
-            <g className="sb-core" transform="translate(320 180)">
-              <circle className="sb-glow" r="50" />
-              <circle className="sb-ring" r="56" />
-              <image className="sb-logo" href={`${import.meta.env.BASE_URL}logo-kong.svg`} x="-42" y="-42" width="84" height="84" />
+            {/* wires — behind nodes */}
+            <g mask="url(#sb-fade)">
+              {routes.map((r, i) => {
+                const y = ROWS[i]
+                const on = i === active
+                return (
+                  <g key={`w-${i}`} className={`sb-wire-group${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
+                    <path className="sb-wire" d={`M156 ${y} C 212 ${y}, 212 180, ${PORT_L} 180`} />
+                    <path className="sb-wire" d={`M${PORT_R} 180 C 428 180, 428 ${y}, 484 ${y}`} />
+                  </g>
+                )
+              })}
+            </g>
+
+            {/* core — ring, ports, pulse and logo share one center. The pulse is an
+                ambient ring inside the core ring, unaffected by route changes. */}
+            <g className={`sb-core${cur.direct ? ' direct' : ''}`} transform="translate(320 180)">
+              <circle className="sb-pulse" r="48" />
+              <circle className="sb-ring" r={CORE_R} />
+              <image className="sb-logo" href={`${import.meta.env.BASE_URL}logo-kong.svg`} x="-40" y="-40" width="80" height="80" />
+              <rect className="sb-port in" x={-CORE_R - 3} y="-8" width="6" height="16" rx="3" />
+              <rect className="sb-port out" x={CORE_R - 3} y="-8" width="6" height="16" rx="3" />
+              <text className="sb-port-label" x={-CORE_R} y={CORE_R + 26} textAnchor="middle">{copy.portIn}</text>
+              <text className="sb-port-label" x={CORE_R} y={CORE_R + 26} textAnchor="middle">{copy.portOut}</text>
             </g>
 
             {/* destination nodes (left) */}
