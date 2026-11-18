@@ -34,6 +34,7 @@ reasoned but unverified.
 | [2026-11-18-react-hydration](2026-11-18-react-hydration.md) | hydrateRoot, useSyncExternalStore server snapshots, jsdom hydration check; Lighthouse before/after | ADR-0026 |
 | [2026-11-18-landing-load-performance](2026-11-18-landing-load-performance.md) | Cloudflare `_headers` caching, render-blocking CSS options, forced reflow, compositor-only animations, React 18 selective hydration; Lighthouse before/after | ADR-0031 |
 | [2026-11-18-wireguard-liveness](2026-11-18-wireguard-liveness.md) | wg(8) dump, WireGuard timers, wireguard-windows access rights, Tailscale/NetBird handshake use; issue #33 root cause | ADR-0030 |
+| [2026-11-18-native-tray-menu](2026-11-18-native-tray-menu.md) | fyne.io/systray per-OS features, Windows taskbar theme, macOS template icons, SVG mark rasterizing, CLI copies in PATH | ADR-0036 |
 | [2026-11-18-landing-download-ctas](2026-11-18-landing-download-ctas.md) | HIG/Material 3 button hierarchy, phone/tablet detection, Web Share + clipboard, Apple Silicon vs Intel check | ADR-0027 |
 | [2026-11-18-landing-hig-material3-review](2026-11-18-landing-hig-material3-review.md) | Apple HIG (buttons, typography, accessibility, feedback, motion, layout) and M3 tokens applied to the landing; Lighthouse before/after | ADR-0028 |
 | [2026-11-18-cli-command-structure](2026-11-18-cli-command-structure.md) | clig.dev interactivity/deprecation/naming, cobra deprecation text, gh/tailscale/systemctl naming | ADR-0033 |
