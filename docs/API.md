@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.7 · 2026-11-18
+Version 1.8 · 2026-11-18
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -62,7 +62,9 @@ PUT/DELETE /api/v1/vpns/{name}              # PUT with a different "name" rename
 POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openvpn","content_base64","overwrite":false} → 201
                                              #   {"status":"imported","path","type","overwritten"}: stored 0600 as ~/.kongtrol/configs/<name>.conf|.ovpn;
                                              #   validated like the helper does (no PostUp/…; no up/down/plugin/script-security>1/log/config…;
-                                             #   an .ovpn must inline its certs/keys). 409 api.err.import_exists unless overwrite; 400 api.err.import_*PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
+                                             #   an .ovpn must inline its certs/keys). 409 api.err.import_exists unless overwrite; 400 api.err.import_* (hook, directive,
+                                             #   script_security, file_ref, not_wireguard, invalid…; same rules as `kongtrol profile import`)
+PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 
 # Groups
 GET/POST  /api/v1/groups

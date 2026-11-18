@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.5 · 2026-11-18
+Version 1.6 · 2026-11-18
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -392,6 +392,43 @@ kongtrol config update-check <on|off|status> [flags]
 kongtrol config update-check on
 kongtrol config update-check off
 kongtrol config update-check status
+```
+
+### `kongtrol profile`
+
+Tools for VPN profiles. To create or edit profiles: kongtrol init or the dashboard (kongtrol dashboard).
+
+```text
+kongtrol profile [command]
+```
+
+**Examples**
+
+```bash
+kongtrol profile import office.conf
+```
+
+### `kongtrol profile import`
+
+Checks the file with the same rules as the dashboard (no scripts or commands; an .ovpn with its certificates inside) and saves it in ~/.kongtrol/configs/ for your user only. It does not replace a file with the same name unless you pass --overwrite. Next: use it as a profile's config: (kongtrol init or the dashboard).
+
+```text
+kongtrol profile import <file.conf|file.ovpn> [flags]
+```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--name string` | name of the saved file, without extension (default: the file's own) |
+| `--overwrite` | replace a file imported earlier with the same name |
+
+**Examples**
+
+```bash
+kongtrol profile import ~/Downloads/office.conf
+kongtrol profile import provider.ovpn --name home
+kongtrol profile import office.conf --overwrite
 ```
 
 ### `kongtrol policy`

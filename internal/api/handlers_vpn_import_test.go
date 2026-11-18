@@ -74,13 +74,14 @@ func TestImportVPNFile_Refusals(t *testing.T) {
 		"reserved":          {importBody("NUL", "wireguard", wgConf, false), "api.err.import_name"},
 		"type":              {importBody("x", "ipsec", wgConf, false), "api.err.import_type"},
 		"base64":            {`{"name":"x","type":"wireguard","content_base64":"%%%"}`, "api.err.import_content"},
-		"wg postup":         {importBody("x", "wireguard", wgConf+"[Interface]\n", false), "api.err.import_invalid"},
-		"wg hook":           {importBody("x", "wireguard", "[Interface]\nPrivateKey = a\nPostUp = calc.exe\n", false), "api.err.import_invalid"},
-		"ovpn file ref":     {importBody("x", "openvpn", "client\nca /etc/passwd\n", false), "api.err.import_invalid"},
-		"ovpn script-sec 2": {importBody("x", "openvpn", "client\nscript-security 2\n", false), "api.err.import_invalid"},
+		"wg two interfaces": {importBody("x", "wireguard", wgConf+"[Interface]\n", false), "api.err.import_not_wireguard"},
+		"wg hook":           {importBody("x", "wireguard", "[Interface]\nPrivateKey = a\nPostUp = calc.exe\n", false), "api.err.import_hook"},
+		"wg unknown key":    {importBody("x", "wireguard", "[Interface]\nPrivateKey = a\nFoo = 1\n", false), "api.err.import_invalid"},
+		"ovpn file ref":     {importBody("x", "openvpn", "client\nca /etc/passwd\n", false), "api.err.import_file_ref"},
+		"ovpn script-sec 2": {importBody("x", "openvpn", "client\nscript-security 2\n", false), "api.err.import_script_security"},
 	}
 	for _, d := range []string{"up", "down", "route-up", "ipchange", "tls-verify", "auth-user-pass-verify", "client-connect", "plugin", "learn-address", "log", "config"} {
-		cases["ovpn "+d] = struct{ body, key string }{importBody("x", "openvpn", fmt.Sprintf("client\n%s /tmp/x\n", d), false), "api.err.import_invalid"}
+		cases["ovpn "+d] = struct{ body, key string }{importBody("x", "openvpn", fmt.Sprintf("client\n%s /tmp/x\n", d), false), "api.err.import_directive"}
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.15 · 2026-11-18
+Version 1.16 · 2026-11-18
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -331,9 +331,12 @@ VPN profiles, groups, scheduler rules, settings): `s.loadRuntimeConfig()` → mu
 `cmd/kongtrol/daemon_runtime.go` so the change takes effect immediately, not just on the next connect.
 
 Profile rename (PUT with another `name`) moves every reference + keychain entries and is refused
-while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`); `POST
-/api/v1/vpns/import` stores a `.conf`/`.ovpn` validated by the helper's own `privops` validators
-(ADR-0042). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
+while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
+<!-- feature:profile_import -->
+`POST /api/v1/vpns/import` and `kongtrol profile import` share `internal/profileimport`: a
+`.conf`/`.ovpn` validated by the helper's own `privops` validators, refusals mapped to specific
+`api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
+`~/.kongtrol/configs/` (ADR-0042). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
 the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
 
 VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the

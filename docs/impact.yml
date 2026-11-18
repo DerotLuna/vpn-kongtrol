@@ -1,4 +1,4 @@
-# Change-impact map — version 1.6 · 2026-11-18
+# Change-impact map — version 1.7 · 2026-11-18
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -232,6 +232,17 @@ features:
       - docs/SETUP.md#dashboard
       - landing/src/content/guide.es.tsx#dashboard
       - landing/src/content/guide.en.tsx#dashboard
+
+  profile_import:
+    code:
+      - internal/profileimport/**
+      - internal/api/handlers_vpn_import.go
+      - cmd/kongtrol/cmd_profile.go
+      - web/ui/src/components/profiles/ImportFile.tsx
+    surfaces:
+      - AGENTS.md#profile_import
+      - docs/SETUP.md#profile_import
+      - docs/API.md#api
 
   config:
     code:

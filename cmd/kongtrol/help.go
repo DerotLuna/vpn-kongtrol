@@ -35,7 +35,7 @@ var rootLayout = []struct {
 }{
 	{"up", groupConnect}, {"down", groupConnect}, {"status", groupConnect},
 	{"routes", groupConnect}, {"dashboard", groupConnect},
-	{"init", groupSetup}, {"config", groupSetup}, {"policy", groupSetup},
+	{"init", groupSetup}, {"config", groupSetup}, {"profile", groupSetup}, {"policy", groupSetup},
 	{"reload", groupSetup}, {"restart", groupSetup}, {"export", groupSetup},
 	{"doctor", groupDiagnostics}, {"ip", groupDiagnostics}, {"logs", groupDiagnostics},
 	{"service", groupSystem}, {"uninstall", groupSystem}, {"version", groupSystem}, {"help", groupSystem},

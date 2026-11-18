@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.4 · 2026-11-18
+Versión 1.5 · 2026-11-18
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -179,6 +179,21 @@ Solo necesitas hacer algo aquí si:
 | WireGuard / otros | Ruta al archivo de config | **No**, si ya tienes el archivo. Solo anotar su ruta. |
 
 > **Organización opcional:** si quieres centralizar, puedes crear `~/.kongtrol/certs/` y copiar los archivos ahí. Útil al incorporar un compañero nuevo o al recibir certs frescos. No es requerido si ya tienes todo en su lugar.
+
+<!-- feature:profile_import -->
+### Importar un `.conf` o `.ovpn`
+
+Si te enviaron el archivo (o lo bajaste de tu proveedor), Kongtrol puede guardarlo por ti en
+`~/.kongtrol/configs/`, solo para tu usuario:
+
+- **Panel:** Perfiles → Nueva VPN (o Editar) → WireGuard u OpenVPN → **Importar archivo**. El campo
+  de ruta se llena solo; también puedes escribir una ruta a mano.
+- **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`).
+
+Se revisa con las mismas reglas que usa el servicio de Kongtrol antes de conectar: se rechazan los
+archivos que ejecutan comandos (`PostUp`/`PreUp` en WireGuard; `up`, `down`, `plugin`,
+`script-security 2` en OpenVPN) y un `.ovpn` importado debe llevar sus certificados dentro
+(`<ca>…</ca>`). Nunca reemplaza un archivo con el mismo nombre sin confirmarlo.
 
 ---
 
