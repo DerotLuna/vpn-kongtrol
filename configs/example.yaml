@@ -265,7 +265,7 @@ monitor:
     interval: "60s"
 
   scheduler:
-    enabled: false
+    enabled: false   # rules, interval and on/off apply without restarting Kongtrol
     interval: "1m"
     rules:
       - name: "work-hours"
@@ -273,6 +273,7 @@ monitor:
         weekdays: ["mon", "tue", "wed", "thu", "fri"]
         start: "09:00"
         end: "18:00"
+        # enabled: false   # pause this rule without deleting it (default on)
 
   alerts:
     on_vpn_drop:

@@ -141,6 +141,8 @@ type scheduleRuleDTO struct {
 	Weekdays []string `json:"weekdays,omitempty"`
 	Start    string   `json:"start,omitempty"`
 	End      string   `json:"end,omitempty"`
+	// Enabled is false while the rule is paused (default true).
+	Enabled bool `json:"enabled"`
 }
 
 // settingsPatch is the PUT /api/v1/settings body: the editable subset of

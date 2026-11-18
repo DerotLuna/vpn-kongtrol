@@ -51,6 +51,15 @@ func logAudit(level, action, profile, message string) {
 	}
 }
 
+// applySchedulerConfig hands the running scheduler the new rules, interval
+// and on/off (saved from the dashboard or reloaded from kongtrol.yaml).
+func applySchedulerConfig(c *config.Config) {
+	if scheduler == nil || c == nil {
+		return
+	}
+	scheduler.Reconfigure(c, parseDuration(c.Monitor.Scheduler.Interval, time.Minute))
+}
+
 func buildProfileService() *app.ProfileService {
 	return app.NewProfileService(app.ProfileServiceDeps{
 		Cfg:            cfg,
@@ -134,8 +143,9 @@ func buildAPIServer(onShutdown func()) *api.Server {
 			profileSvc.Store(buildProfileService())
 			applyPublicIPConfig(cfg)
 			// Settings edits apply now: audit log (path, signing, size,
-			// retention).
+			// retention) and the scheduler (rules, interval, on/off).
 			applyAuditConfig(cfg)
+			applySchedulerConfig(cfg)
 			go func() { _ = applyKillSwitchState() }()
 		},
 		func(newCfg *config.Config) {

@@ -274,7 +274,13 @@ type ScheduleRule struct {
 	Weekdays []string `yaml:"weekdays,omitempty"` // mon,tue,wed,thu,fri,sat,sun (optional)
 	Start    string   `yaml:"start,omitempty"`    // HH:MM 24h (optional)
 	End      string   `yaml:"end,omitempty"`      // HH:MM 24h (optional)
+	// Enabled pauses a rule without deleting it: false = the scheduler
+	// ignores it. Unset (default) = on.
+	Enabled *bool `yaml:"enabled,omitempty"`
 }
+
+// IsEnabled reports whether the scheduler applies this rule (default on).
+func (r ScheduleRule) IsEnabled() bool { return r.Enabled == nil || *r.Enabled }
 
 // SplitDNSConfig enables transparent host-level split DNS injection.
 type SplitDNSConfig struct {

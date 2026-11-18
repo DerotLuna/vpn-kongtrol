@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -16,15 +17,21 @@ type ScheduleConnectFunc func(ctx context.Context, profile string) error
 type ScheduleDisconnectFunc func(ctx context.Context, profile string) error
 type ScheduleStatusFunc func(profile string) vpn.Status
 
-// Scheduler enforces profile schedules (time windows/weekdays).
+// Scheduler enforces profile schedules (time windows/weekdays). Its rules,
+// interval and on/off follow the config at runtime (Reconfigure): a
+// dashboard or CLI edit applies without restarting the daemon.
 type Scheduler struct {
-	cfg        *config.Config
-	interval   time.Duration
 	connect    ScheduleConnectFunc
 	disconnect ScheduleDisconnectFunc
 	status     ScheduleStatusFunc
 	log        *zap.Logger
-	cancel     context.CancelFunc
+
+	mu       sync.Mutex
+	rules    []config.ScheduleRule // enabled rules only
+	interval time.Duration
+	enabled  bool
+	base     context.Context // from Start; nil until started
+	cancel   context.CancelFunc
 }
 
 func NewScheduler(
@@ -35,34 +42,98 @@ func NewScheduler(
 	status ScheduleStatusFunc,
 	log *zap.Logger,
 ) *Scheduler {
-	return &Scheduler{
-		cfg:        cfg,
-		interval:   interval,
-		connect:    connect,
-		disconnect: disconnect,
-		status:     status,
-		log:        log,
+	s := &Scheduler{connect: connect, disconnect: disconnect, status: status, log: log}
+	s.set(cfg, interval)
+	return s
+}
+
+// set copies what the scheduler needs from cfg. Called with s.mu held or
+// before the scheduler is shared.
+func (s *Scheduler) set(cfg *config.Config, interval time.Duration) {
+	s.rules, s.enabled, s.interval = nil, false, interval
+	if cfg == nil {
+		return
+	}
+	s.enabled = cfg.Monitor.Scheduler.Enabled
+	for _, r := range cfg.Monitor.Scheduler.Rules {
+		if r.IsEnabled() {
+			r.Profiles = append([]string(nil), r.Profiles...)
+			r.Weekdays = append([]string(nil), r.Weekdays...)
+			s.rules = append(s.rules, r)
+		}
 	}
 }
 
+// Start runs the scheduler under ctx while it is enabled and has rules.
+// Safe to call when disabled: a later Reconfigure can turn it on.
 func (s *Scheduler) Start(ctx context.Context) {
-	if s == nil || s.cfg == nil || len(s.cfg.Monitor.Scheduler.Rules) == 0 || s.interval <= 0 {
+	if s == nil {
 		return
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	s.cancel = cancel
-	go s.loop(ctx)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.base = ctx
+	s.restartLocked()
+}
+
+// Reconfigure applies new rules, interval and on/off now: the running loop
+// stops and, when still enabled with rules, starts again with them (it
+// applies them at once, then every interval).
+func (s *Scheduler) Reconfigure(cfg *config.Config, interval time.Duration) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.set(cfg, interval)
+	if s.base != nil {
+		s.restartLocked()
+	}
+}
+
+// Running reports whether the loop is active (tests, status).
+func (s *Scheduler) Running() bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cancel != nil
 }
 
 func (s *Scheduler) Stop() {
-	if s != nil && s.cancel != nil {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopLocked()
+	s.base = nil
+}
+
+// stopLocked cancels the running loop without waiting for it: the loop
+// takes mu to read the rules, so waiting here could deadlock. A cancelled
+// loop does no further connect/disconnect (apply checks ctx).
+func (s *Scheduler) stopLocked() {
+	if s.cancel != nil {
 		s.cancel()
+		s.cancel = nil
 	}
 }
 
-func (s *Scheduler) loop(ctx context.Context) {
+func (s *Scheduler) restartLocked() {
+	s.stopLocked()
+	if !s.enabled || len(s.rules) == 0 || s.interval <= 0 || s.base == nil || s.base.Err() != nil {
+		return
+	}
+	ctx, cancel := context.WithCancel(s.base)
+	s.cancel = cancel
+	go s.loop(ctx, s.interval)
+}
+
+func (s *Scheduler) loop(ctx context.Context, interval time.Duration) {
 	s.apply(ctx, time.Now())
-	t := time.NewTicker(s.interval)
+	t := time.NewTicker(interval)
 	defer t.Stop()
 	for {
 		select {
@@ -74,10 +145,16 @@ func (s *Scheduler) loop(ctx context.Context) {
 	}
 }
 
+func (s *Scheduler) snapshot() []config.ScheduleRule {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.rules
+}
+
 func (s *Scheduler) apply(ctx context.Context, now time.Time) {
 	desired := map[string]bool{}
 	managed := map[string]bool{}
-	for _, r := range s.cfg.Monitor.Scheduler.Rules {
+	for _, r := range s.snapshot() {
 		for _, p := range r.Profiles {
 			if strings.TrimSpace(p) != "" {
 				managed[p] = true
@@ -95,6 +172,9 @@ func (s *Scheduler) apply(ctx context.Context, now time.Time) {
 	}
 
 	for profile := range desired {
+		if ctx.Err() != nil {
+			return // reconfigured or stopping
+		}
 		st := s.status(profile).Normalize()
 		if st == vpn.StatusConnected || st == vpn.StatusConnecting {
 			continue
@@ -110,6 +190,9 @@ func (s *Scheduler) apply(ctx context.Context, now time.Time) {
 	for profile := range managed {
 		if desired[profile] {
 			continue
+		}
+		if ctx.Err() != nil {
+			return // reconfigured or stopping
 		}
 		st := s.status(profile).Normalize()
 		if st != vpn.StatusConnected && st != vpn.StatusConnecting {

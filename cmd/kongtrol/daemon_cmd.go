@@ -161,7 +161,9 @@ func startDaemonServices(ctx context.Context) func() {
 		watchdog.Start(ctx)
 		stops = append(stops, watchdog.Stop)
 	}
-	if scheduler != nil && cfg.Monitor.Scheduler.Enabled {
+	// The scheduler follows scheduler.enabled itself, also when it changes
+	// later (applySchedulerConfig), so it is always started.
+	if scheduler != nil {
 		scheduler.Start(ctx)
 		stops = append(stops, scheduler.Stop)
 	}

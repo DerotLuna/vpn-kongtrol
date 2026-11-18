@@ -79,7 +79,7 @@ POST /api/v1/security/dnsguard               # {"enabled": true|false}
 # Settings & scheduler
 GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints, expected_ips {profile: ip} — replaced whole, empty value drops it, validated: existing profile + one IP), audit log (audit_log_path, audit_log_max_size_mb, audit_log_retention_days, audit_log_sign; applied live)
 GET/POST  /api/v1/scheduler/rules
-PUT/DELETE /api/v1/scheduler/rules/{name}
+PUT/DELETE /api/v1/scheduler/rules/{name}    # rule {name,profiles,weekdays,start,end,"enabled":bool (false = paused)}; changes apply live (no restart)
 
 # Audit log (every retained day; same reader as `kongtrol logs`)
 GET  /api/v1/audit?profile=&level=&limit=&from=&to=&before=

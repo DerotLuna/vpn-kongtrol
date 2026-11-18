@@ -23,6 +23,7 @@ func (s *Server) handleListScheduleRules(w http.ResponseWriter, r *http.Request)
 			Weekdays: rule.Weekdays,
 			Start:    rule.Start,
 			End:      rule.End,
+			Enabled:  rule.IsEnabled(),
 		})
 	}
 	writeJSON(w, http.StatusOK, out)
@@ -158,6 +159,7 @@ type scheduleRulePatch struct {
 	Weekdays *[]string `json:"weekdays"`
 	Start    *string   `json:"start"`
 	End      *string   `json:"end"`
+	Enabled  *bool     `json:"enabled"`
 }
 
 // applyTo overlays the fields present in p onto base (trimming strings).
@@ -165,6 +167,14 @@ func (p scheduleRulePatch) applyTo(base config.ScheduleRule) config.ScheduleRule
 	setTrimmed(&base.Name, p.Name)
 	setTrimmed(&base.Start, p.Start)
 	setTrimmed(&base.End, p.End)
+	if p.Enabled != nil {
+		if *p.Enabled {
+			base.Enabled = nil // on is the default: no key in the file
+		} else {
+			off := false
+			base.Enabled = &off
+		}
+	}
 	if p.Profiles != nil {
 		base.Profiles = filterNonEmpty(*p.Profiles)
 	}
