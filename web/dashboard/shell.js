@@ -33,6 +33,20 @@ const SHELL_SUN_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="c
 const SHELL_MOON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.2A9 9 0 1 1 9.8 3a7 7 0 1 0 11.2 11.2Z"/></svg>';
 const SHELL_GLOBE_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm7.9 9h-3.2a15.9 15.9 0 0 0-1.1-5.1A8.04 8.04 0 0 1 19.9 11ZM12 4.1A14 14 0 0 1 14.6 11H9.4A14 14 0 0 1 12 4.1ZM8.4 5.9A15.9 15.9 0 0 0 7.3 11H4.1a8.04 8.04 0 0 1 4.3-5.1ZM4.1 13h3.2a15.9 15.9 0 0 0 1.1 5.1A8.04 8.04 0 0 1 4.1 13Zm7.9 6.9A14 14 0 0 1 9.4 13h5.2A14 14 0 0 1 12 19.9Zm3.6-1.8a15.9 15.9 0 0 0 1.1-5.1h3.2a8.04 8.04 0 0 1-4.3 5.1Z"/></svg>';
 
+// shellLoadVersion shows "Kongtrol v0.6.0" at the bottom of the sidebar,
+// from the daemon (GET /api/v1/version: what `kongtrol version` prints).
+async function shellLoadVersion() {
+  try {
+    const res = await fetch('/api/v1/version');
+    if (!res.ok) return;
+    const { version } = await res.json();
+    const el = document.getElementById('shell-version');
+    if (!el || !version) return;
+    el.textContent = `Kongtrol ${/^\d/.test(version) ? 'v' + version : version}`;
+    el.hidden = false;
+  } catch (_) {}
+}
+
 function renderShell() {
   const page = document.body.dataset.page || '';
   const titleKey = document.body.dataset.i18nTitle || '';
@@ -50,7 +64,9 @@ function renderShell() {
             ${shellIconSvg(item.icon)}<span data-i18n="${item.i18n}"></span>
           </a>`).join('')}
       </nav>
+      <div id="shell-version" class="side-version" hidden></div>
     `;
+    shellLoadVersion();
   }
 
   // Rendered as a sibling of the sidebar (not nested inside it) so it can

@@ -95,11 +95,25 @@ describe('WelcomePage', () => {
     render(<App />)
 
     await userEvent.click(await screen.findByRole('button', { name: 'Install helper' }))
-    expect(await screen.findByText('Done: the helper is installed.')).toBeInTheDocument()
+    expect(await screen.findByText('Helper ready · no need to install it again.')).toBeInTheDocument()
     const install = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')
     expect(new Headers(install?.[1]?.headers).get('X-Kongtrol-Lang')).toBe('en')
     // No VPNs yet: "Add VPN" is the primary action.
     expect(screen.getByRole('link', { name: /Add VPN/ })).toHaveClass('primary')
+  })
+
+  it('offers to update an outdated helper instead of installing it', async () => {
+    stubApi({
+      'GET /api/v1/preferences': () => json({ language: '', theme: '' }),
+      'GET /api/v1/helper/status': () =>
+        json({ ...helperMissing, installed: true, running: true, helper_version: 'v0.5.0', outdated: true }),
+      'GET /api/v1/tunnels': () => json([]),
+    })
+    render(<App />)
+
+    expect(await screen.findByRole('button', { name: 'Actualizar ayudante' })).toBeEnabled()
+    expect(screen.getByText('Desactualizado')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Instalar ayudante' })).not.toBeInTheDocument()
   })
 
   // Issue #33: a WireGuard tunnel whose server stopped answering is not
