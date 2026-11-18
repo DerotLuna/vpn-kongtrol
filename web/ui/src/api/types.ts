@@ -1,4 +1,4 @@
-// Kongtrol UI — API types · v0.2.0 · 2026-11-18
+// Kongtrol UI — API types · v0.3.0 · 2026-11-18
 //
 // Hand-written mirrors of the Go structs this UI reads. Keep field names
 // identical to the JSON the daemon sends (source in the comment above each).
@@ -92,4 +92,23 @@ export interface PublicIPStatus {
   public_ip_check_enabled: boolean
   public_ip_check_host: string
   leak_check?: LeakCheck | null
+}
+
+/** internal/doctor `Check`: already translated by the daemon. */
+export interface DoctorCheck {
+  section: string
+  label: string
+  status: 'ok' | 'warn' | 'fail'
+  detail: string
+  /** One "what to do" line (warnings and failures). */
+  hint?: string
+  /** The only fix the GUI offers: install the helper. */
+  fix?: 'helper_install'
+}
+
+/** GET /api/v1/doctor — internal/doctor `Report`. */
+export interface DoctorReport {
+  checks: DoctorCheck[]
+  failures: number
+  warnings: number
 }
