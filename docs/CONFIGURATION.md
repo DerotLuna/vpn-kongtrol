@@ -256,3 +256,17 @@ vpns:
 ```
 
 Each entry must be an existing profile, not the profile itself, listed once, and the lists must not form a loop (`a → b → a`). When a backup takes over, Kongtrol stops retrying the original until you connect it again. Health-check failures only notify; they never start a failover.
+
+<!-- feature:wireguard feature:watchdog -->
+### WireGuard: does the server answer?
+
+WireGuard has no "connected" state: its interface stays up even when the server is gone. Kongtrol therefore reads each WireGuard tunnel's **latest handshake** every 10 s (through the helper, no admin terminal) and shows one of these under the tunnel in `kongtrol status`, the live view, the tray and the dashboard ([ADR-0030](adr/0030-wireguard-liveness-by-handshake.md)):
+
+| What you see | Meaning |
+|---|---|
+| nothing extra | The server answered in the last ~3 minutes. |
+| "No recent traffic · normal if you are not using it" | Nothing was sent, so nothing needed an answer. WireGuard only handshakes when there is traffic or `PersistentKeepalive`. |
+| status `error` + "No answer from the server · …" | Kongtrol kept sending (keepalive or traffic) and the server did not answer: no handshake for 200 s with `PersistentKeepalive`, traffic out with nothing back for 15 s, or no handshake 30 s after connecting. It is treated like a drop: reconnect, your declared `failover`, kill switch and `on_tunnel_down` apply. You get one notice per outage and another when it answers again. |
+| "Can't check whether the server answers · …" | The counters could not be read (e.g. the helper is missing or out of date: run `kongtrol service install`). The tunnel interface is up, but Kongtrol can't confirm it works. |
+
+Add `PersistentKeepalive = 25` to the `[Peer]` section if you want a dead server detected even while the tunnel is idle (it sends a small packet every 25 s).

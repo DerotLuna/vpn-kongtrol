@@ -1,4 +1,4 @@
-// Kongtrol UI strings · v0.2.0 · 2026-11-17
+// Kongtrol UI strings · v0.3.0 · 2026-11-18
 //
 // Spanish is the default and the source of the key set; English must have
 // exactly the same keys (enforced by the `Messages` type below and by
@@ -59,6 +59,13 @@ const es = {
   'tunnels.status.disconnected': 'Desconectada',
   'tunnels.status.error': 'Con error',
   'tunnels.live': 'Se actualiza solo.',
+  'tunnels.status.noResponse': 'Sin respuesta',
+  'tunnels.health.noResponse':
+    'Sin respuesta del servidor · Kongtrol reintenta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
+  'tunnels.health.unknown':
+    'No se puede comprobar si el servidor responde · si algo no carga, desconéctala y vuelve a conectarla',
+  'tunnels.health.outdated':
+    'No se puede comprobar si el servidor responde · el ayudante está desactualizado: pulsa «Instalar ayudante»',
 
   'error.offline': 'No se pudo hablar con Kongtrol.',
   'error.offline.fix': 'Qué hacer: abre Kongtrol desde el ícono de la bandeja o ejecuta kongtrol up.',
@@ -137,6 +144,13 @@ const en: Messages = {
   'tunnels.status.disconnected': 'Disconnected',
   'tunnels.status.error': 'Error',
   'tunnels.live': 'Updates on its own.',
+  'tunnels.status.noResponse': 'No answer',
+  'tunnels.health.noResponse':
+    'No answer from the server · Kongtrol keeps retrying; if it persists, check your internet or tell whoever runs that VPN',
+  'tunnels.health.unknown':
+    "Can't check whether the server answers · if something doesn't load, disconnect and connect it again",
+  'tunnels.health.outdated':
+    "Can't check whether the server answers · the helper is out of date: click “Install helper”",
 
   'error.offline': 'Could not reach Kongtrol.',
   'error.offline.fix': 'What to do: open Kongtrol from the tray icon or run kongtrol up.',

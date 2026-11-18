@@ -17,6 +17,8 @@ const NOTICE_I18N = {
     'watchdog.event.reconnect_failing': '{0} no se pudo reconectar · Kongtrol sigue intentando solo; revisa tu internet o el servidor de esa VPN',
     'watchdog.event.failover': '{0} no se pudo reconectar · se conectó su respaldo {1}. Para volver, conecta {0}',
     'watchdog.event.reconnected': '{0} se reconectó',
+    'watchdog.event.no_response': '{0} dejó de responder: su servidor no contesta · Kongtrol la reconecta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
+    'watchdog.event.responding': '{0} vuelve a responder',
   },
   en: {
     'policy.event.allow': '{0} is going over the normal internet · {1} is off',
@@ -29,6 +31,8 @@ const NOTICE_I18N = {
     'watchdog.event.reconnect_failing': "{0} could not reconnect · Kongtrol keeps retrying on its own; check your internet or that VPN's server",
     'watchdog.event.failover': '{0} could not reconnect · its backup {1} is now connected. To go back, connect {0}',
     'watchdog.event.reconnected': '{0} reconnected',
+    'watchdog.event.no_response': '{0} stopped responding: its server does not answer · Kongtrol reconnects it on its own; if it persists, check your internet or tell whoever runs that VPN',
+    'watchdog.event.responding': '{0} responds again',
   },
 };
 

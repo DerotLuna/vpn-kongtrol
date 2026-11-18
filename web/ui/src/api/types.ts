@@ -1,4 +1,4 @@
-// Kongtrol UI — API types · v0.1.0 · 2026-11-17
+// Kongtrol UI — API types · v0.2.0 · 2026-11-18
 //
 // Hand-written mirrors of the Go structs this UI reads. Keep field names
 // identical to the JSON the daemon sends (source in the comment above each).
@@ -15,6 +15,14 @@ interface AttachState {
   reason?: string
   timeout_s?: number
   since: string
+}
+
+/** internal/vpn/health.go `TunnelHealth` (json tags), ADR-0030. */
+export interface TunnelHealth {
+  state: 'ok' | 'idle' | 'no_response' | 'unknown'
+  last_handshake?: string
+  since?: string
+  reason_key?: string
 }
 
 /**
@@ -37,6 +45,7 @@ export interface TunnelMetrics {
   last_error_at?: string
   last_error_key?: string
   attach?: AttachState
+  health?: TunnelHealth
 }
 
 /** internal/api/handlers_helper.go `HelperStatus`. */

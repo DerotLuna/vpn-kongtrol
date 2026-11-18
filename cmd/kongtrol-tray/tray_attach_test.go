@@ -32,6 +32,16 @@ func TestTrayTunnelLabel(t *testing.T) {
 			Attach: &vpn.AttachState{Phase: vpn.PhaseAttached, App: "Surfshark"}},
 			"surf [connected]", "Surfshark already connected · kongtrol takes over"},
 		{"plain", monitor.TunnelMetrics{Status: vpn.StatusConnected}, "surf [connected]", ""},
+		{"no response", monitor.TunnelMetrics{Status: vpn.StatusError,
+			Health: &vpn.TunnelHealth{State: vpn.HealthNoResponse}},
+			"surf · no answer from the server",
+			"No answer from the server · Kongtrol keeps retrying; if it persists, check your internet or tell whoever runs that VPN"},
+		{"helper outdated", monitor.TunnelMetrics{Status: vpn.StatusConnected,
+			Health: &vpn.TunnelHealth{State: vpn.HealthUnknown, ReasonKey: "service.error.outdated"}},
+			"surf · answer not verified",
+			"Can't check whether the server answers · The helper is out of date. Update it: kongtrol service install"},
+		{"idle is not a problem", monitor.TunnelMetrics{Status: vpn.StatusConnected,
+			Health: &vpn.TunnelHealth{State: vpn.HealthIdle}}, "surf [connected]", ""},
 	}
 	for _, c := range cases {
 		title, tip := trayTunnelLabel("surf", c.m)

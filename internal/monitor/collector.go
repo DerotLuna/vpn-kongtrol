@@ -40,6 +40,10 @@ type TunnelMetrics struct {
 	// (waiting_user / waiting_disconnect / dropped). Clients render it with
 	// Attach.MessageKey() + i18n in their own language.
 	Attach *vpn.AttachState `json:"attach,omitempty"`
+	// Health says whether a connected tunnel's server answers (WireGuard:
+	// latest handshake, ADR-0030): ok / idle / no_response / unknown.
+	// Clients render Health.MessageKey() (+ ReasonKey) with i18n.
+	Health *vpn.TunnelHealth `json:"health,omitempty"`
 }
 
 // interfaceCounters is the OS byte-counter source; a variable so tests can
@@ -298,6 +302,9 @@ func (c *Collector) collect() {
 		if r, ok := adapter.(vpn.AttachReporter); ok {
 			m.Attach = r.AttachState()
 		}
+		if r, ok := adapter.(vpn.HealthReporter); ok {
+			m.Health = r.TunnelHealth()
+		}
 		// Latency comes from the watchdog health probe (RecordHealth), once
 		// per health interval; keep the last reading between probes instead of
 		// wiping it on every 5s collection pass.
@@ -312,7 +319,8 @@ func (c *Collector) collect() {
 			prev.InterfaceName != m.InterfaceName ||
 			prev.AssignedIP != m.AssignedIP ||
 			!prev.ConnectedAt.Equal(m.ConnectedAt) ||
-			attachKey(prev.Attach) != attachKey(m.Attach) {
+			attachKey(prev.Attach) != attachKey(m.Attach) ||
+			healthKey(prev.Health) != healthKey(m.Health) {
 			changed = true
 		}
 		// A tunnel that came up (e.g. a watchdog reconnect) no longer has
@@ -419,6 +427,14 @@ func attachKey(a *vpn.AttachState) string {
 		return ""
 	}
 	return string(a.Phase) + "|" + a.App + "|" + a.Reason
+}
+
+// healthKey identifies the health a client renders (state + reason).
+func healthKey(h *vpn.TunnelHealth) string {
+	if h == nil {
+		return ""
+	}
+	return string(h.State) + "|" + h.ReasonKey
 }
 
 // Refresh runs one collection pass now (e.g. when a provider adapter

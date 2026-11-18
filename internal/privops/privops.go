@@ -20,7 +20,8 @@ import (
 
 // ProtocolVersion is the IPC wire version. Bump it on any incompatible
 // change to the request/response shapes below.
-const ProtocolVersion = 3
+// 4: wg.stats (read-only WireGuard handshake/transfer counters, ADR-0030).
+const ProtocolVersion = 4
 
 // BuildVersion is the Kongtrol release this binary was built from. The CLI
 // sets it at startup; Ping reports the helper's value so `service status`
@@ -60,6 +61,10 @@ type Ops interface {
 	WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTunnel, error)
 	WGRemoveTunnel(ctx context.Context, req WGRemoveRequest) error
 	WGSetAllowedIPs(ctx context.Context, req WGAllowedIPsRequest) error
+	// WGStats reads one managed tunnel's per-peer latest handshake and
+	// transfer counters. Read-only: it never changes the tunnel and never
+	// returns keys other than peer public keys.
+	WGStats(ctx context.Context, req WGStatsRequest) (WGStats, error)
 
 	OpenVPNStart(ctx context.Context, req OpenVPNStartRequest) (OpenVPNSession, error)
 	OpenVPNStop(ctx context.Context, id string) error
@@ -145,6 +150,33 @@ type WGAllowedIPsRequest struct {
 	PeerPublicKey string         `json:"peer_public_key"`
 	AllowedIPs    []netip.Prefix `json:"allowed_ips"`
 	ConfigPath    string         `json:"config_path,omitempty"`
+}
+
+// WGStatsRequest asks for the runtime counters of one WireGuard tunnel.
+// ConfigPath (the caller's profile .conf) lets the helper accept a tunnel
+// it did not start, with the same checks as WGRemoveRequest, but nothing
+// is adopted or written: the request stays read-only.
+type WGStatsRequest struct {
+	Interface  string `json:"interface"`
+	ConfigPath string `json:"config_path,omitempty"`
+}
+
+// WGPeerStats is one peer of a tunnel as `wg show <iface> dump` reports
+// it, without the preshared key, endpoint or allowed IPs.
+type WGPeerStats struct {
+	PublicKey string `json:"public_key"`
+	// LatestHandshake is the Unix time (seconds) of the last completed
+	// handshake; 0 means never.
+	LatestHandshake int64  `json:"latest_handshake"`
+	RxBytes         uint64 `json:"rx_bytes"`
+	TxBytes         uint64 `json:"tx_bytes"`
+	// PersistentKeepalive in seconds; 0 means off.
+	PersistentKeepalive int `json:"persistent_keepalive"`
+}
+
+// WGStats is the runtime state of one WireGuard tunnel.
+type WGStats struct {
+	Peers []WGPeerStats `json:"peers"`
 }
 
 // OpenVPNStartRequest starts openvpn for a user .ovpn file. The binary is

@@ -24,6 +24,9 @@ func localTunnelState(name string) (monitor.TunnelMetrics, bool) {
 	if r, ok := a.(vpn.AttachReporter); ok {
 		m.Attach = r.AttachState()
 	}
+	if r, ok := a.(vpn.HealthReporter); ok {
+		m.Health = r.TunnelHealth()
+	}
 	return m, true
 }
 

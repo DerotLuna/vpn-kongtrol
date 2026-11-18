@@ -32,8 +32,10 @@ func withOps(fn func(ctx context.Context, ops privops.Ops) error) error {
 // wgUp brings the tunnel up through privops: the helper reads and checks
 // the user's .conf, keeps a private copy named <name>.conf and runs
 // wireguard.exe /installtunnelservice (Windows) or wg-quick up (Unix) on it.
-func wgUp(configPath, name string) error {
-	if alreadyUp := wgPreUp(name); alreadyUp {
+// restart skips reusing a tunnel that is already up: the helper replaces
+// it (used when the old one stopped responding).
+func wgUp(configPath, name string, restart bool) error {
+	if !restart && wgPreUp(name) {
 		return nil
 	}
 	abs, err := filepath.Abs(configPath)
@@ -56,6 +58,21 @@ func wgDown(name, profileConfig string) error {
 	return withOps(func(ctx context.Context, ops privops.Ops) error {
 		return ops.WGRemoveTunnel(ctx, privops.WGRemoveRequest{Name: name, ConfigPath: absOrEmpty(profileConfig)})
 	})
+}
+
+// statsTimeout bounds one counters read (polled every statsEvery).
+const statsTimeout = 10 * time.Second
+
+// wgStatsFunc reads a tunnel's per-peer handshake and counters through
+// privops (a variable so tests can stub it).
+var wgStatsFunc = func(name, profileConfig string) (privops.WGStats, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
+	defer cancel()
+	ops, err := opsFunc(ctx)
+	if err != nil {
+		return privops.WGStats{}, err
+	}
+	return ops.WGStats(ctx, privops.WGStatsRequest{Interface: name, ConfigPath: absOrEmpty(profileConfig)})
 }
 
 // WgSetAllowedIPs updates AllowedIPs for a peer on a live WireGuard tunnel.

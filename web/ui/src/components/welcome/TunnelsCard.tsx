@@ -1,5 +1,5 @@
 import type { TunnelsState } from '../../api/hooks'
-import type { TunnelStatus } from '../../api/types'
+import type { TunnelMetrics, TunnelStatus } from '../../api/types'
 import { usePreferences } from '../../app/preferences-context'
 import type { MessageKey } from '../../i18n/messages'
 import { guideLink } from '../../links'
@@ -12,6 +12,25 @@ const STATUS: Record<TunnelStatus, { key: MessageKey; tone: PillTone }> = {
   connecting: { key: 'tunnels.status.connecting', tone: 'warn' },
   disconnected: { key: 'tunnels.status.disconnected', tone: 'idle' },
   error: { key: 'tunnels.status.error', tone: 'bad' },
+}
+
+/**
+ * Whether a tunnel's server answers (WireGuard handshake, ADR-0030), as a
+ * one-line "what to do", or null when there is nothing to flag. Mirrors
+ * healthLine in cmd/kongtrol/attach_render.go.
+ */
+function healthNote(tn: TunnelMetrics): MessageKey | null {
+  switch (tn.health?.state) {
+    case 'no_response':
+      return 'tunnels.health.noResponse'
+    case 'unknown':
+      return tn.health.reason_key === 'service.error.outdated' ||
+        tn.health.reason_key === 'service.error.not_installed'
+        ? 'tunnels.health.outdated'
+        : 'tunnels.health.unknown'
+    default:
+      return null
+  }
 }
 
 /** Step 2: read-only summary of the configured tunnels and their state. */
@@ -45,10 +64,17 @@ export function TunnelsCard({ state }: { state: TunnelsState }) {
           {connected === 0 && <p className="muted small">{t('tunnels.allOff')}</p>}
           <ul className="tunnel-list">
             {sorted.map((tn) => {
-              const s = STATUS[tn.Status] ?? STATUS.disconnected
+              const noResponse = tn.health?.state === 'no_response'
+              const s = noResponse
+                ? { key: 'tunnels.status.noResponse' as MessageKey, tone: 'bad' as PillTone }
+                : (STATUS[tn.Status] ?? STATUS.disconnected)
+              const note = healthNote(tn)
               return (
                 <li key={tn.Name}>
-                  <span className="tunnel-name">{tn.Name}</span>
+                  <span>
+                    <span className="tunnel-name">{tn.Name}</span>
+                    {note && <span className="tunnel-note small">{t(note)}</span>}
+                  </span>
                   <StatusPill tone={s.tone}>{t(s.key)}</StatusPill>
                 </li>
               )

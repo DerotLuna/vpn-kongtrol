@@ -42,6 +42,12 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 		logAudit("ERROR", "vpn.failover_failed", profile, cf("cli.alert.failover_failed", profile, e.Target, err))
 	case "failover_activated":
 		watchdogNotice("WARN", "vpn.failover_activated", "watchdog.event.failover", profile, e.Target)
+	case "no_response":
+		// Once per outage: interface up, server silent (no WireGuard
+		// handshake). The watchdog reconnects it like a drop (ADR-0030).
+		watchdogNotice("WARN", "vpn.no_response", "watchdog.event.no_response", profile)
+	case "responding":
+		watchdogNotice("INFO", "vpn.responding", "watchdog.event.responding", profile)
 	case "manual_reconnect_required":
 		emitAlert("WARN", profile, cf("cli.alert.manual_reconnect_required", profile))
 		logAudit("WARN", "vpn.manual_reconnect_required", profile, cf("cli.alert.manual_reconnect_required", profile))

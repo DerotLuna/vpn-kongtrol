@@ -136,6 +136,7 @@ features:
       - internal/vpn/wireguard/**
     surfaces:
       - docs/CONFIGURATION.md#wireguard
+      - docs/SETUP.md#wireguard
       - landing/src/content/guide.es.tsx#providers
       - landing/src/content/guide.en.tsx#providers
 

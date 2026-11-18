@@ -301,9 +301,10 @@ var (
 // wireguard link; macOS: a wireguard-go tunnel), configPath must pass the
 // same checks as WGInstallTunnel, and its base name must equal name. The
 // validated config becomes the private copy, so the tunnel is managed from
-// then on. present is false when no such tunnel exists (nothing to manage).
+// then on (only with adopt; WGStats passes false and writes nothing).
+// present is false when no such tunnel exists (nothing to manage).
 // Call with l.mu held.
-func (l *Local) wgAuthorize(ctx context.Context, name, configPath string) (present bool, err error) {
+func (l *Local) wgAuthorize(ctx context.Context, name, configPath string, adopt bool) (present bool, err error) {
 	if l.wgManaged(name) {
 		return true, nil
 	}
@@ -331,6 +332,9 @@ func (l *Local) wgAuthorize(ctx context.Context, name, configPath string) (prese
 	if !ok {
 		return false, nil
 	}
+	if !adopt {
+		return true, nil // read-only caller (WGStats): accept, write nothing
+	}
 	if err := ensurePrivateDir(l.wgDir()); err != nil {
 		return false, failed("state dir", err)
 	}
@@ -346,7 +350,7 @@ func (l *Local) WGRemoveTunnel(ctx context.Context, req WGRemoveRequest) error {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	present, err := l.wgAuthorize(ctx, req.Name, req.ConfigPath)
+	present, err := l.wgAuthorize(ctx, req.Name, req.ConfigPath, true)
 	if err != nil {
 		return err
 	}
@@ -367,7 +371,7 @@ func (l *Local) WGSetAllowedIPs(ctx context.Context, req WGAllowedIPsRequest) er
 		return err
 	}
 	l.mu.Lock()
-	present, err := l.wgAuthorize(ctx, req.Interface, req.ConfigPath)
+	present, err := l.wgAuthorize(ctx, req.Interface, req.ConfigPath, true)
 	l.mu.Unlock()
 	if err != nil {
 		return err
@@ -376,6 +380,34 @@ func (l *Local) WGSetAllowedIPs(ctx context.Context, req WGAllowedIPsRequest) er
 		return fmt.Errorf("%w: WireGuard tunnel %q is not running", ErrNotFound, req.Interface)
 	}
 	return failed("set allowed IPs", wgSetFn(ctx, req))
+}
+
+// wgDumpFn reads `wg show <name> dump` (stubbed in tests).
+var wgDumpFn = sysWGDump
+
+// WGStats reads the per-peer handshake and transfer counters of a tunnel
+// Kongtrol manages (or the caller's own profile tunnel, without adopting
+// it). Only peer public keys leave the helper: the interface private key
+// and preshared keys in the dump are dropped by ParseWGDump.
+func (l *Local) WGStats(ctx context.Context, req WGStatsRequest) (WGStats, error) {
+	if err := ValidateWGName(req.Interface); err != nil {
+		return WGStats{}, err
+	}
+	l.mu.Lock()
+	present, err := l.wgAuthorize(ctx, req.Interface, req.ConfigPath, false)
+	l.mu.Unlock()
+	if err != nil {
+		return WGStats{}, err
+	}
+	if !present {
+		return WGStats{}, fmt.Errorf("%w: WireGuard tunnel %q is not running", ErrNotFound, req.Interface)
+	}
+	out, err := wgDumpFn(ctx, req.Interface)
+	if err != nil {
+		// The command's output may echo the dump: never return it.
+		return WGStats{}, fmt.Errorf("%w: read WireGuard tunnel state", ErrFailed)
+	}
+	return ParseWGDump(out)
 }
 
 // ── OpenVPN ─────────────────────────────────────────────────────────────

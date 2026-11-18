@@ -512,6 +512,18 @@ vpns:
 
 Cuando el respaldo entra, Kongtrol deja de reintentar `oficina` hasta que la conectes otra vez. También se edita en el dashboard (Perfiles → "Perfiles de respaldo").
 
+<!-- feature:wireguard feature:watchdog -->
+#### WireGuard: ¿el servidor responde?
+
+En WireGuard la interfaz sigue arriba aunque el servidor ya no conteste. Por eso Kongtrol mira cada 10 s el **último handshake** (el saludo cifrado con el servidor) y lo muestra bajo el túnel en `kongtrol status`, la vista en vivo, la bandeja y el dashboard:
+
+- **Nada extra:** el servidor respondió hace menos de ~3 minutos.
+- **"Sin tráfico reciente · normal si no la estás usando":** no se envió nada, así que no hacía falta respuesta.
+- **Estado `error` + "Sin respuesta del servidor · …":** Kongtrol siguió enviando y el servidor no contestó. Se trata como una caída: se reconecta sola, se usa tu `failover` y aplican kill switch y `on_tunnel_down`. Te avisa una vez y otra cuando vuelve a responder.
+- **"No se puede comprobar si el servidor responde · …":** no se pudieron leer los contadores (por ejemplo, el ayudante falta o está desactualizado: `kongtrol service install`).
+
+Si quieres que detecte un servidor caído aunque no uses la VPN, agrega `PersistentKeepalive = 25` en la sección `[Peer]` de tu `.conf`.
+
 ### Validar y aplicar
 
 ```bash

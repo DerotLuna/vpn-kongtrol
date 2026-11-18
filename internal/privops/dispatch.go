@@ -18,11 +18,17 @@ func OpTimeout(op string) time.Duration {
 	return 15 * time.Second
 }
 
+// ReadOnlyOp reports whether op only reads state. The helper audits these
+// only when they fail: the daemon polls them every few seconds.
+func ReadOnlyOp(op string) bool {
+	return op == OpWGStats
+}
+
 // KnownOp reports whether op is part of the contract.
 func KnownOp(op string) bool {
 	switch op {
 	case OpPing, OpRouteAdd, OpRouteDelete, OpRouteFlush, OpDNSSet, OpDNSRestore,
-		OpKillSwitchOn, OpKillSwitchOff, OpWGInstall, OpWGRemove, OpWGAllowedIPs,
+		OpKillSwitchOn, OpKillSwitchOff, OpWGInstall, OpWGRemove, OpWGAllowedIPs, OpWGStats,
 		OpOpenVPNStart, OpOpenVPNStop, OpOpenVPNStatus, OpHostsWrite, OpLeaseRenew, OpBlockSet:
 		return true
 	}
@@ -136,6 +142,12 @@ func dispatch(ctx context.Context, ops Ops, req Request) (any, error) {
 			return nil, err
 		}
 		return nil, ops.WGSetAllowedIPs(ctx, a)
+	case OpWGStats:
+		var a WGStatsRequest
+		if err := decodeArgs(req.Args, &a); err != nil {
+			return nil, err
+		}
+		return ops.WGStats(ctx, a)
 	case OpOpenVPNStart:
 		var a OpenVPNStartRequest
 		if err := decodeArgs(req.Args, &a); err != nil {

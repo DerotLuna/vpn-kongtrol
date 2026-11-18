@@ -99,6 +99,8 @@ type statusTunnelJSON struct {
 	// Attach is a provider adapter's attach phase (how it came up / what
 	// the user must do in the app); render with its MessageKey.
 	Attach *vpn.AttachState `json:"attach,omitempty"`
+	// Health: does the server answer (WireGuard handshake, ADR-0030).
+	Health *vpn.TunnelHealth `json:"health,omitempty"`
 }
 
 type statusSecurityJSON struct {
@@ -164,6 +166,7 @@ func collectStatusReport() (statusReportJSON, error) {
 				LastErrorAt:  t.LastErrorAt,
 				LastErrorKey: t.LastErrorKey,
 				Attach:       t.Attach,
+				Health:       t.Health,
 			}
 			if !t.ConnectedAt.IsZero() {
 				item.ConnectedAt = t.ConnectedAt
@@ -200,6 +203,9 @@ func collectStatusReport() (statusReportJSON, error) {
 		}
 		if r, ok := adapter.(vpn.AttachReporter); ok {
 			item.Attach = r.AttachState()
+		}
+		if r, ok := adapter.(vpn.HealthReporter); ok {
+			item.Health = r.TunnelHealth()
 		}
 		if info, err := adapter.TunnelInfo(); err == nil && info != nil {
 			if info.AssignedIP != nil {
@@ -438,12 +444,21 @@ func printStatus() {
 	}
 }
 
-// renderAttachLines lists, under the status table, each provider tunnel's
-// attach message ("NordVPN ya conectado · kongtrol lo toma", "Esperando
-// conexión en Surfshark…"), waiting phases highlighted.
+// renderAttachLines lists, under the status table, each tunnel's health
+// line ("Sin respuesta del servidor · …", ADR-0030) and each provider
+// tunnel's attach message ("NordVPN ya conectado · kongtrol lo toma",
+// "Esperando conexión en Surfshark…"), problems and waiting highlighted.
 func renderAttachLines(tunnels []monitor.TunnelMetrics) []string {
 	var lines []string
 	for _, t := range tunnels {
+		if line := healthLine(t.Health); line != "" {
+			label := paintBold(cBright, t.Name) + "  " + line
+			if t.Health.Problem() {
+				lines = append(lines, "  "+tuiWarn(label))
+			} else {
+				lines = append(lines, "  "+tuiInfo(paint(cDim, label)))
+			}
+		}
 		line := attachLine(t.Attach)
 		if line == "" {
 			continue
