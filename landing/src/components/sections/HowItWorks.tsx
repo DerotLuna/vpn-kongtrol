@@ -21,12 +21,12 @@ export default function HowItWorks({ lang }: Props) {
         {
           name: 'Agrega tus VPN',
           desc: 'La primera vez, con kongtrol init: detecta tus VPN instaladas y te guía. Las contraseñas se guardan en el llavero de tu sistema, nunca en archivos.',
-          alt: 'después, más VPN desde el panel (kongtrol dashboard); se activan al reiniciar Kongtrol',
+          alt: 'Después, más VPN desde el panel (kongtrol dashboard); se activan al reiniciar Kongtrol',
         },
         {
           name: 'Conéctate como siempre',
           desc: 'Usa tu app de VPN de siempre, o deja que Kongtrol la abra y conecte por ti donde el proveedor lo permite. Kongtrol se queda vigilando en segundo plano.',
-          alt: 'o en la terminal: kongtrol up',
+          alt: 'O en la terminal: kongtrol up',
         },
       ],
       ctaLead: '¿Primera vez? La guía cubre cada sistema, cada VPN y los errores comunes, paso a paso.',
@@ -45,12 +45,12 @@ export default function HowItWorks({ lang }: Props) {
         {
           name: 'Add your VPNs',
           desc: 'The first time, with kongtrol init: it detects your installed VPNs and guides you. Passwords are stored in your system keychain, never in files.',
-          alt: 'later, more VPNs from the panel (kongtrol dashboard); they start working after restarting Kongtrol',
+          alt: 'Later, more VPNs from the panel (kongtrol dashboard); they start working after restarting Kongtrol',
         },
         {
           name: 'Connect as usual',
           desc: 'Use your usual VPN app, or let Kongtrol open it and connect for you where the provider allows it. Kongtrol keeps watch in the background.',
-          alt: 'or in the terminal: kongtrol up',
+          alt: 'Or in the terminal: kongtrol up',
         },
       ],
       ctaLead: 'First time? The guide covers every OS, every VPN and the common errors, step by step.',
@@ -70,7 +70,7 @@ export default function HowItWorks({ lang }: Props) {
               <span className="how-n" aria-hidden="true">{i + 1}</span>
               <h3>{s.name}</h3>
               <p>{s.desc}</p>
-              {s.alt && <code className="how-alt">{s.alt}</code>}
+              {s.alt && <p className="how-alt">{s.alt}</p>}
             </li>
           ))}
         </ol>

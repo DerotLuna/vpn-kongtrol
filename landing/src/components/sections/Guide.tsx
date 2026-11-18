@@ -112,7 +112,7 @@ $ kongtrol dashboard`}</CodeBlock>
               <h2 className="guide-section-title">{t.prereqs1}</h2>
               <p>{t.prereqs2}</p>
               <div className="table-scroll">
-                <table className="data-table">
+                <table className="data-table stack">
                   <thead>
                     <tr>
                       <th>VPN</th>
@@ -123,28 +123,28 @@ $ kongtrol dashboard`}</CodeBlock>
                   <tbody>
                     <tr>
                       <td>FortiClient</td>
-                      <td>FortiClient 6.4.x</td>
-                      <td>{t.prereqs5}</td>
+                      <td data-label={t.prereqs3}>FortiClient 6.4.x</td>
+                      <td data-label={t.prereqs4}>{t.prereqs5}</td>
                     </tr>
                     <tr>
                       <td>OpenVPN</td>
-                      <td>OpenVPN Community</td>
-                      <td>{t.prereqs6}</td>
+                      <td data-label={t.prereqs3}>OpenVPN Community</td>
+                      <td data-label={t.prereqs4}>{t.prereqs6}</td>
                     </tr>
                     <tr>
                       <td>WireGuard</td>
-                      <td>wireguard-tools</td>
-                      <td><IC c="wg --version" /></td>
+                      <td data-label={t.prereqs3}>wireguard-tools</td>
+                      <td data-label={t.prereqs4}><IC c="wg --version" /></td>
                     </tr>
                     <tr>
                       <td>ProtonVPN</td>
-                      <td>{t.prereqs7}</td>
-                      <td>{t.prereqs8}</td>
+                      <td data-label={t.prereqs3}>{t.prereqs7}</td>
+                      <td data-label={t.prereqs4}>{t.prereqs8}</td>
                     </tr>
                     <tr>
                       <td>Cloudflare WARP</td>
-                      <td>warp-cli</td>
-                      <td><IC c="warp-cli --version" /></td>
+                      <td data-label={t.prereqs3}>warp-cli</td>
+                      <td data-label={t.prereqs4}><IC c="warp-cli --version" /></td>
                     </tr>
                   </tbody>
                 </table>
@@ -217,7 +217,7 @@ $ kongtrol dashboard`}</CodeBlock>
               <h3 style={{ marginBottom: 8, marginTop: 24 }}>{t.wizard4}</h3>
               <p>{t.wizard5}</p>
               <div className="table-scroll" style={{ marginTop: 12 }}>
-                <table className="data-table">
+                <table className="data-table stack">
                   <thead>
                     <tr>
                       <th>{t.wizard6}</th>
@@ -228,23 +228,23 @@ $ kongtrol dashboard`}</CodeBlock>
                   <tbody>
                     <tr>
                       <td>FortiClient</td>
-                      <td>{t.wizard9}</td>
-                      <td>{t.wizard10}</td>
+                      <td data-label={t.wizard7}>{t.wizard9}</td>
+                      <td data-label={t.wizard8}>{t.wizard10}</td>
                     </tr>
                     <tr>
                       <td>OpenVPN</td>
-                      <td>{t.wizard11}</td>
-                      <td>{t.wizard12}</td>
+                      <td data-label={t.wizard7}>{t.wizard11}</td>
+                      <td data-label={t.wizard8}>{t.wizard12}</td>
                     </tr>
                     <tr>
                       <td>ProtonVPN</td>
-                      <td>{t.wizard13}</td>
-                      <td>{t.wizard14}</td>
+                      <td data-label={t.wizard7}>{t.wizard13}</td>
+                      <td data-label={t.wizard8}>{t.wizard14}</td>
                     </tr>
                     <tr>
                       <td>{t.wizard15}</td>
-                      <td>{t.wizard16}</td>
-                      <td>{t.wizard17}</td>
+                      <td data-label={t.wizard7}>{t.wizard16}</td>
+                      <td data-label={t.wizard8}>{t.wizard17}</td>
                     </tr>
                   </tbody>
                 </table>

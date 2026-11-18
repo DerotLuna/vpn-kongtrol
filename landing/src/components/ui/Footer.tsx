@@ -31,7 +31,7 @@ export default function Footer({ lang }: Props) {
         <div className="footer-grid">
           <div className="footer-brand-col">
             <div className="footer-brand">
-              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Kongtrol" />
+              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Kongtrol" width={64} height={64} loading="lazy" decoding="async" />
             </div>
             <p className="footer-tagline">{copy.tagline}</p>
             <ul className="footer-facts">

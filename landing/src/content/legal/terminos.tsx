@@ -10,8 +10,8 @@ import type { LegalDocContent } from '../../components/sections/LegalDoc'
 import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 
-const VERSION = '1.3.0'
-const UPDATED = '2026-11-17'
+const VERSION = '1.3.1'
+const UPDATED = '2026-11-18'
 const issues = <a href={`${GITHUB_REPO}/issues`} target="_blank" rel="noreferrer">github.com/DerotLuna/vpn-kongtrol/issues</a>
 const license = <a href={`${GITHUB_REPO}/blob/main/LICENSE`} target="_blank" rel="noreferrer">Apache 2.0</a>
 
@@ -23,7 +23,7 @@ const es: LegalDocContent = {
   updated: UPDATED,
   session: 'kongtrol:terminos',
   summaryBadge: 'En resumen',
-  summary: <>VPN Kongtrol es código abierto ({license}), se entrega "tal cual" sin garantía, y está en beta activa —
+  summary: <>VPN Kongtrol es código abierto ({license}), se entrega “tal cual” sin garantía, y está en beta activa —
     úsalo con criterio en escenarios donde una fuga de red tenga consecuencias serias.</>,
   toc: 'Contenido',
   goto: 'Ir a',
@@ -41,9 +41,9 @@ const es: LegalDocContent = {
         persona, sin empresa detrás.</>],
     },
     {
-      id: 'garantia', num: '2', label: 'Sin garantía', tmux: 'garantia', title: 'Software "tal cual", sin garantía',
+      id: 'garantia', num: '2', label: 'Sin garantía', tmux: 'garantia', title: 'Software “tal cual”, sin garantía',
       callout: 'warn',
-      body: [<>Kongtrol se distribuye "AS IS" (tal cual), sin garantías de ningún tipo, expresas o implícitas,
+      body: [<>Kongtrol se distribuye “AS IS” (tal cual), sin garantías de ningún tipo, expresas o implícitas,
         incluyendo — sin limitarse a — garantías de comerciabilidad, idoneidad para un propósito particular, o no
         infracción. En ningún caso los mantenedores o colaboradores del proyecto serán responsables por reclamos,
         daños u otras responsabilidades derivadas del uso del software, según los términos de la licencia Apache 2.0
@@ -99,7 +99,7 @@ const en: LegalDocContent = {
   updated: UPDATED,
   session: 'kongtrol:terms',
   summaryBadge: 'TL;DR',
-  summary: <>VPN Kongtrol is open source ({license}), shipped "as is" with no warranty, and under active beta — use
+  summary: <>VPN Kongtrol is open source ({license}), shipped “as is” with no warranty, and under active beta — use
     good judgment in scenarios where a network leak would have serious consequences.</>,
   toc: 'Contents',
   goto: 'Jump to',
@@ -117,9 +117,9 @@ const en: LegalDocContent = {
         no company behind it.</>],
     },
     {
-      id: 'garantia', num: '2', label: 'No warranty', tmux: 'warranty', title: 'Software provided "as is"',
+      id: 'garantia', num: '2', label: 'No warranty', tmux: 'warranty', title: 'Software provided “as is”',
       callout: 'warn',
-      body: [<>Kongtrol is distributed "AS IS", without warranty of any kind, express or implied, including but
+      body: [<>Kongtrol is distributed “AS IS”, without warranty of any kind, express or implied, including but
         not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement. In no
         event shall the project maintainers or contributors be liable for any claim, damages, or other liability
         arising from the use of the software, as set out in the Apache 2.0 license terms (sections 7 and 8).</>],

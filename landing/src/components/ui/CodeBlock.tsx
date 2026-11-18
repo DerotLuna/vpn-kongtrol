@@ -8,17 +8,24 @@ interface Props {
 }
 
 export default function CodeBlock({ ui, lang = 'bash', children }: Props) {
-  const [copied, setCopied] = useState(false)
+  // idle → copied | failed → idle. A refused clipboard (no permission, plain
+  // http, old browser) says so instead of failing silently (Apple HIG Feedback).
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
   const isES = ui === 'es'
 
   const copy = () => {
     // Strip prompt symbols before copying
     const clean = children.replace(/^\$ /gm, '')
-    navigator.clipboard.writeText(clean).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1800)
-    })
+    const done = (s: 'copied' | 'failed') => {
+      setState(s)
+      setTimeout(() => setState('idle'), s === 'copied' ? 1800 : 3200)
+    }
+    if (!navigator.clipboard) { done('failed'); return }
+    navigator.clipboard.writeText(clean).then(() => done('copied'), () => done('failed'))
   }
+  const label = state === 'copied' ? (isES ? 'copiado ✓' : 'copied ✓')
+    : state === 'failed' ? (isES ? 'no se pudo: selecciónalo y copia' : "couldn't copy: select it and copy")
+    : (isES ? 'copiar' : 'copy')
 
   // Simple syntax highlight: lines starting with # are comments, $ is prompt
   const highlighted = children.split('\n').map((line, i) => {
@@ -43,8 +50,8 @@ export default function CodeBlock({ ui, lang = 'bash', children }: Props) {
     <div className="code-block">
       <div className="code-block-header">
         <span className="code-block-lang">{lang}</span>
-        <button type="button" className={`copy-btn${copied ? ' copied' : ''}`} onClick={copy} aria-live="polite">
-          {copied ? (isES ? 'copiado ✓' : 'copied ✓') : (isES ? 'copiar' : 'copy')}
+        <button type="button" className={`copy-btn${state === 'idle' ? '' : ` ${state}`}`} onClick={copy} aria-live="polite">
+          {label}
         </button>
       </div>
       <pre>{highlighted}</pre>

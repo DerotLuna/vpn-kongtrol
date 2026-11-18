@@ -37,8 +37,8 @@ export default function guideEN(os: OS): GuideContent {
     prereqs1: <>Prerequisites</>,
     prereqs2: <>Kongtrol <strong>orchestrates</strong> the VPN clients you already have — it doesn't
                 replace them. They need to be installed before you run <IC c="kongtrol init" />.</>,
-    prereqs3: <>Required client</>,
-    prereqs4: <>Check</>,
+    prereqs3: 'Required client',
+    prereqs4: 'Check',
     prereqs5: <>Open FortiClient — at least one saved connection should appear in the list.
                       If you can connect manually from the GUI, you're ready.</>,
     prereqs6: <>{os === 'windows'
@@ -114,9 +114,9 @@ $ kongtrol --help`,
                 simply type each file's current path. You only need to act if you receive new
                 files from a coworker or IT and have nowhere to put them, or if you want to
                 reorganize everything into a single directory.</>,
-    wizard6: <>Adapter</>,
-    wizard7: <>What the wizard needs</>,
-    wizard8: <>Anything to do?</>,
+    wizard6: 'Adapter',
+    wizard7: 'What the wizard needs',
+    wizard8: 'Anything to do?',
     wizard9: os === 'windows' ? 'Tunnel name + username/password' : 'Cert path, key path, credentials',
     wizard10: <>{os === 'windows'
                         ? <>No. The tunnel already lives in the FortiClient GUI — Kongtrol activates it by name. No certs.</>

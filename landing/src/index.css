@@ -1,12 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.3.0 · 2026-11-18
+   v2.4.0 · 2026-11-18
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
    scroll-driven reveals, CRT easter egg (↑↑↓↓←→←→BA).
    v2.3: CSS boot timeline (no layout shift), spacing/type scale, 44px CTAs,
    reveal fallback, theme wipe from the toggle, a11y fixes (ADR-0024).
+   v2.4: HIG + Material 3 pass — 11px text floor, M3 motion/state tokens,
+   hover only on what is interactive, underlined prose links, stacked
+   tables and 44px targets on phones (ADR-0028).
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
@@ -62,11 +65,22 @@
   --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.9rem);
   --step-0:  clamp(1rem, 0.96rem + 0.2vw, 1.08rem);
   --step-1:  clamp(1.15rem, 1.08rem + 0.35vw, 1.35rem);
+  --step-2:  clamp(1.5rem, 1.3rem + 1vw, 2.1rem);
   --step-3:  clamp(2rem, 1.5rem + 2.4vw, 3rem);
   --measure: 65ch;
+  /* smallest text anywhere: 11px = Apple HIG iOS minimum (11 pt) and
+     Material 3 label-small (0.6875rem) — v2.4, ADR-0028 */
+  --text-min: 0.6875rem;
 
-  /* touch target floor for primary actions (WCAG 2.5.8 asks 24px; 44px for comfort) */
+  /* touch target floor (WCAG 2.5.8 asks 24px; Apple HIG 44×44 pt) */
   --tap: 44px;
+
+  /* motion + state tokens from Material 3 (md.sys.motion / md.sys.state) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-short: 150ms;   /* short3: hover, color, small state changes */
+  --dur-medium: 250ms;  /* medium1: open/close, expand */
+  --state-hover: 8%;    /* hover-state-layer-opacity 0.08 */
+  --state-press: 10%;   /* pressed-state-layer-opacity 0.10 */
 
   /* the signature: a contour-ring paint reusable anywhere */
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
@@ -612,9 +626,15 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
    whole page — wider than the viewport */
 .code-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; min-width: 0; }
 .code-block-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
-.code-block-lang { font-family: var(--font-mono); font-size: 0.64rem; color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; }
-.copy-btn { display: inline-flex; align-items: center; min-height: 28px; margin-right: -8px; font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-muted); background: transparent; border: none; border-radius: 4px; cursor: pointer; letter-spacing: 0.06em; padding: 4px 8px; transition: color 0.15s, background-color 0.15s; }
-.copy-btn:hover, .copy-btn.copied { color: var(--signal); background: var(--signal-soft); }
+.code-block-lang { font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.12em; text-transform: uppercase; }
+/* copy: 28px visual, 44px hit area via ::after (Apple HIG 44×44 pt) without
+   making the header taller; success and failure both answer in words */
+.copy-btn { position: relative; display: inline-flex; align-items: center; min-height: 28px; margin-right: -8px; font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); background: transparent; border: none; border-radius: 4px; cursor: pointer; letter-spacing: 0.06em; padding: 4px 8px; transition: color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard); }
+.copy-btn::after { content: ''; position: absolute; inset: -8px -4px; }
+.copy-btn:hover { color: var(--text); background: color-mix(in srgb, var(--text) var(--state-hover), transparent); }
+.copy-btn:active { background: color-mix(in srgb, var(--text) var(--state-press), transparent); }
+.copy-btn.copied { color: var(--signal); background: var(--signal-soft); }
+.copy-btn.failed { color: var(--danger); background: color-mix(in srgb, var(--danger) var(--state-hover), transparent); }
 .code-block pre { padding: 18px 20px; overflow-x: auto; font-size: 0.82rem; line-height: 1.75; color: var(--text); }
 .code-block pre .comment { color: var(--text-dim); }
 .code-block pre .prompt { color: var(--signal); user-select: none; }
@@ -629,11 +649,11 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 /* architecture intro — full-width banner above the sidebar/content grid */
 .guide-intro { padding: 22px 0 0; }
 .guide-intro-badge {
-  display: inline-block; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em;
+  display: inline-block; font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--signal); border: 1px solid var(--signal-line);
   border-radius: 999px; padding: 4px 12px; margin-bottom: 14px;
 }
-.guide-intro p { color: var(--text-muted); max-width: none; margin: 0 0 18px; font-size: 0.96rem; line-height: 1.65; }
+.guide-intro p { color: var(--text-muted); max-width: var(--measure); margin: 0 0 18px; font-size: 1rem; line-height: 1.65; text-wrap: pretty; }
 
 /* full-width flow diagram — real layout instead of fixed-width ASCII art,
    so it scales to fill whatever horizontal space the container gives it */
@@ -666,13 +686,16 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 /* tables need their own horizontal-scroll container so a 3-4 column table
    never forces the whole page to scroll sideways on narrow screens */
 .table-scroll { overflow-x: auto; margin: 20px 0; -webkit-overflow-scrolling: touch; }
-.table-scroll .data-table { margin: 0; min-width: 480px; }
-.guide-nav-title { font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px; }
+/* only 3+ column tables need a floor; two columns fit a phone as they are */
+.table-scroll .data-table { margin: 0; }
+.table-scroll .data-table:has(th:nth-child(3)) { min-width: 480px; }
+.guide-nav-title { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 16px; }
 .guide-nav-list { list-style: none; display: flex; flex-direction: column; gap: 1px; }
 .guide-nav-list a {
   display: block; font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted);
   padding: 7px 12px; border-radius: var(--radius); border-left: 2px solid transparent;
-  letter-spacing: 0.02em; transition: all 0.15s;
+  letter-spacing: 0.02em;
+  transition: color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard), border-color var(--dur-short) var(--ease-standard);
 }
 .guide-nav-list a:hover { color: var(--text); text-decoration: none; border-left-color: var(--border-2); }
 .guide-nav-list a.active { color: var(--signal); border-left-color: var(--signal); background: var(--signal-soft); }
@@ -680,11 +703,27 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 .guide-content { display: flex; flex-direction: column; gap: 80px; min-width: 0; }
 .guide-section { scroll-margin-top: calc(var(--nav-h) + 24px); }
-.guide-section-num { font-family: var(--font-mono); font-size: 0.7rem; color: var(--signal); letter-spacing: 0.14em; margin-bottom: 8px; }
-.guide-section-title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2.1rem); color: var(--text); margin-bottom: 20px; letter-spacing: -0.01em; }
-.guide-section p { color: var(--text-muted); margin-bottom: 16px; max-width: 680px; font-size: 0.98rem; }
+/* step number: the same ring as the quick-start steps, so "1…10" reads as
+   one sequence instead of a stray 11px digit above the heading */
+.guide-section-num {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  font-family: var(--font-mono); font-size: 0.8rem; font-weight: 600; color: var(--signal);
+  border: 1.5px solid var(--signal-line); margin-bottom: 12px;
+}
+.guide-section-title { font-family: var(--font-display); font-size: var(--step-2); color: var(--text); margin-bottom: 20px; letter-spacing: -0.01em; text-wrap: balance; }
+.guide-section p { color: var(--text-muted); margin-bottom: 16px; max-width: var(--measure); font-size: 1rem; text-wrap: pretty; }
+.guide-section ul { color: var(--text-muted); padding-left: 1.25em; max-width: var(--measure); }
+.guide-section ul > li + li { margin-top: 6px; }
+/* links inside prose are underlined: color alone is not enough (WCAG 1.4.1,
+   Apple HIG "Convey information with more than color alone") */
+.guide-section p a, .guide-section li a, .guide-intro p a, .callout a, .data-table a {
+  text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+}
+.guide-section p a:hover, .guide-section li a:hover, .guide-intro p a:hover, .callout a:hover, .data-table a:hover {
+  text-decoration-color: currentColor;
+}
 .guide-section p strong { color: var(--text); font-style: normal; }
-.guide-section ul { color: var(--text-muted); }
 .guide-section .code-block { margin: 20px 0; }
 .guide-section h3 { font-family: var(--font-display); color: var(--text); font-size: 1.15rem; }
 
@@ -700,7 +739,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 }
 .guide-quickstart-head { position: relative; z-index: 1; }
 .guide-quickstart-badge {
-  display: inline-block; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.14em;
+  display: inline-block; font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.14em;
   text-transform: uppercase; color: var(--signal); border: 1px solid var(--signal-line);
   border-radius: 999px; padding: 4px 12px; margin-bottom: 14px;
 }
@@ -719,10 +758,12 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 /* collapsible detail — hides long terminal dumps by default */
 .guide-more { border: 1px solid var(--border); border-radius: var(--radius); margin: 20px 0; background: var(--surface); overflow: hidden; }
 .guide-more > summary {
-  cursor: pointer; padding: 12px 16px; list-style: none;
+  cursor: pointer; padding: 12px 16px; min-height: var(--tap);
+  transition: background-color var(--dur-short) var(--ease-standard); list-style: none;
   font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.03em; color: var(--signal);
   display: flex; align-items: center; gap: 9px; user-select: none;
 }
+.guide-more > summary:hover { background: color-mix(in srgb, var(--signal) var(--state-hover), transparent); }
 .guide-more > summary::-webkit-details-marker { display: none; }
 .guide-more > summary::before { content: '+'; font-weight: 700; font-size: 0.9rem; width: 12px; text-align: center; }
 .guide-more[open] > summary::before { content: '−'; }
@@ -731,7 +772,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* OS tabs */
 .os-tabs { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; width: fit-content; }
-.os-tab { min-height: 40px; font-family: var(--font-mono); font-size: 0.76rem; padding: 8px 18px; background: var(--surface); border: none; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; border-right: 1px solid var(--border); transition: all 0.15s; }
+.os-tab { min-height: var(--tap); font-family: var(--font-mono); font-size: 0.76rem; padding: 8px 18px; background: var(--surface); border: none; color: var(--text-muted); cursor: pointer; letter-spacing: 0.04em; border-right: 1px solid var(--border); transition: color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard); }
 .os-tab:last-child { border-right: none; }
 .os-tab:hover { color: var(--text); background: var(--surface-2); }
 .os-tab.active { background: var(--signal); color: var(--on-signal); font-weight: 600; }
@@ -739,22 +780,41 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 /* table */
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.87rem; margin: 20px 0; }
-.data-table th { font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border-2); }
+.data-table th { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim); text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border-2); }
 .data-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); color: var(--text-muted); vertical-align: top; }
 .data-table td:first-child { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text); }
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: var(--surface); }
+/* phones: 3-column tables become one block per row, each value under its
+   column name (data-label), instead of a sideways-scrolling grid */
+@media (max-width: 600px) {
+  .table-scroll:has(.data-table.stack) { overflow: visible; }
+  .table-scroll .data-table.stack { min-width: 0; }
+  .data-table.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .data-table.stack, .data-table.stack tbody, .data-table.stack tr, .data-table.stack td { display: block; }
+  .data-table.stack tr { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .data-table.stack tr:last-child { border-bottom: none; }
+  .data-table.stack td { padding: 2px 0; border: 0; }
+  .data-table.stack td:first-child { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+  .data-table.stack td[data-label]::before {
+    content: attr(data-label); display: block; margin-top: 6px;
+    font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+}
 
 /* callout */
+/* a tonal container (Material 3) with a hairline all round — no thick
+   coloured stripe on one side */
 .callout {
-  padding: 16px 20px; border-left: 3px solid var(--signal); background: var(--signal-soft);
-  border-radius: 0 var(--radius) var(--radius) 0; margin: 20px 0; font-size: 0.9rem; color: var(--text-muted);
+  padding: 16px 20px; border: 1px solid var(--signal-line); background: var(--signal-soft);
+  border-radius: var(--radius-lg); margin: 20px 0; font-size: 0.95rem; color: var(--text-muted);
+  max-width: calc(var(--measure) + 40px); text-wrap: pretty;
 }
 .callout strong { color: var(--text); }
-.callout.warn { border-left-color: var(--danger); background: rgba(255,90,82,0.08); }
+.callout.warn { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 8%, transparent); }
 
 /* inline code */
-.ic { font-family: var(--font-mono); font-size: 0.83em; color: var(--signal); background: var(--signal-soft); padding: 1px 6px; border-radius: 3px; }
+.ic { font-family: var(--font-mono); font-size: 0.83em; color: var(--signal); background: var(--signal-soft); padding: 1px 6px; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 
 /* ── Footer ─────────────────────────────────────────────────────────────────── */
 .footer { position: relative; border-top: 1px solid var(--border); padding: 60px 0 0; overflow: hidden; }
@@ -785,7 +845,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .footer-tagline { margin-top: 16px; color: var(--text-muted); font-size: 0.92rem; max-width: 44ch; text-wrap: pretty; }
 .footer-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin-top: 18px; }
 .footer-facts li {
-  font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.06em;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.06em;
   color: var(--signal); border: 1px solid var(--signal-line);
   border-radius: 999px; padding: 4px 10px;
 }
@@ -801,10 +861,10 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   display: flex; justify-content: flex-end; align-items: center; gap: 20px;
 }
 .footer-meta.has-legal { justify-content: space-between; }
-.footer-wink { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; }
-.footer-legal-link { display: inline-block; padding: 4px 0; font-size: 0.72rem; color: var(--text-dim); letter-spacing: 0.04em; transition: color 0.15s; }
+.footer-wink { font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
+.footer-legal-link { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 0.8rem; color: var(--text-dim); letter-spacing: 0.04em; transition: color 0.15s; }
 .footer-legal-link:hover { color: var(--signal); text-decoration: none; }
-.footer-legal { display: flex; flex-wrap: wrap; gap: 6px 18px; list-style: none; margin: 0; padding: 0; }
+.footer-legal { display: flex; flex-wrap: wrap; gap: 0 20px; list-style: none; margin: 0; padding: 0; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @container (max-width: 720px) {
@@ -815,12 +875,13 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   .terminal-body { min-height: 262px; }
   .guide-layout { grid-template-columns: 1fr; }
   .guide-sidebar { display: none; }
+  .guide-content { gap: 56px; }
   /* same translucent-blur treatment as the header once it's scrolled
      (.nav.is-sticky), so the two sticky bars read as one system */
   .guide-mobile-nav {
     display: flex; align-items: center; gap: 10px; min-width: 0;
     position: sticky; top: var(--nav-h); z-index: 20;
-    margin: -16px -24px 24px; padding: 12px 24px;
+    margin: -16px -24px 0; padding: 12px 24px;
     background: color-mix(in srgb, var(--bg) 82%, transparent);
     backdrop-filter: blur(14px) saturate(1.2);
     border-bottom: 1px solid var(--border);
@@ -830,7 +891,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
      the whole content column — and the page — wider than the viewport */
   .jump-select { position: relative; flex: 1; min-width: 0; }
   .guide-mobile-nav-label {
-    font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.1em;
+    font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--text-dim); white-space: nowrap;
   }
   .nav-links { display: none; }
@@ -1021,12 +1082,11 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   gap: 28px; margin-top: 44px; align-items: start;
 }
 .defense-list { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-.defense { background: var(--surface); padding: 18px 22px; transition: background 0.2s; }
-.defense:hover { background: var(--surface-2); }
+.defense { background: var(--surface); padding: 18px 22px; }
 .defense-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
 .defense h3 { font-family: var(--font-display); font-size: 1rem; color: var(--text); font-weight: 600; }
 .defense-spec {
-  font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--signal); border: 1px solid var(--signal-line); border-radius: 999px; padding: 3px 9px; white-space: nowrap;
 }
 .defense p { color: var(--text-muted); font-size: 0.86rem; line-height: 1.55; }
@@ -1036,9 +1096,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .how-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 44px; }
 .how-step {
   border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);
-  padding: 24px 22px; display: grid; gap: 10px; align-content: start; transition: border-color 0.2s, transform 0.2s;
+  padding: 24px 22px; display: grid; gap: 10px; align-content: start;
 }
-.how-step:hover { border-color: var(--signal-line); transform: translateY(-2px); }
 .how-n { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.16em; color: var(--signal); }
 .how-step h3 { font-family: var(--font-display); font-size: 1.1rem; color: var(--text); }
 .how-step p { color: var(--text-muted); font-size: 0.88rem; line-height: 1.55; }
@@ -1052,9 +1111,9 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   --cx: 50%; --cy: 50%; background: var(--contour); border-radius: 50%; opacity: 0.7; pointer-events: none;
 }
 .how-cta > * { position: relative; z-index: 1; }
-.how-cta p { color: var(--text-muted); max-width: 90ch; margin-bottom: 16px; }
+.how-cta p { color: var(--text-muted); max-width: var(--measure); margin-bottom: 16px; }
 .how-cta-actions { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
-.how-cta-meta { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.04em; }
+.how-cta-meta { font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
 
 /* ── /guia page header ── */
 .guide-hero { padding: 48px 0 8px; }
@@ -1455,9 +1514,9 @@ a { text-underline-offset: 3px; }
   letter-spacing: -0.02em; color: var(--signal);
 }
 .how-step p { font-size: 0.95rem; }
-.how-alt {
-  justify-self: start; margin-top: 4px; font-size: 0.74rem; color: var(--text-muted);
-  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 9px;
+.how-step .how-alt {
+  justify-self: start; margin-top: 4px; font-family: var(--font-body); font-size: 0.85rem; line-height: 1.5; color: var(--text-muted);
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px;
 }
 
 /* ── Providers: styles live in components/sections/providers.css ── */
@@ -1470,13 +1529,11 @@ a { text-underline-offset: 3px; }
 .hood-row {
   display: grid; grid-template-columns: minmax(170px, 0.85fr) minmax(0, 2.4fr) 170px;
   gap: 24px; align-items: baseline; padding: 18px 4px; border-bottom: 1px solid var(--border);
-  transition: background 0.2s;
 }
-.hood-row:hover { background: var(--surface); }
 .hood-row dt { font-family: var(--font-display); font-weight: 600; font-size: 1.02rem; color: var(--text); }
 .hood-desc { color: var(--text-muted); font-size: 0.92rem; line-height: 1.6; max-width: 70ch; }
 .hood-metric {
-  justify-self: end; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.05em;
+  justify-self: end; font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.05em;
   color: var(--signal); border: 1px solid var(--signal-line); border-radius: 999px; padding: 4px 10px; white-space: nowrap;
 }
 
@@ -1567,8 +1624,6 @@ html { accent-color: var(--signal); color-scheme: dark; }
 /* cards: hover lifts on transform only */
 .path { transition: background-color 0.25s; }
 .path:hover { background: var(--surface-2); }
-.how-step { transition: border-color 0.25s, transform 0.3s var(--quart-out); }
-.how-step:hover { transform: translateY(-3px); }
 
 /* tabular numerals wherever numbers tick */
 .boot-uptime, .tmux-right, .attach-taskbar .tb-clock, .footer-term-out { font-variant-numeric: tabular-nums; }

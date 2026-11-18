@@ -59,7 +59,7 @@
   color: var(--text); overflow-wrap: anywhere;
 }
 .provider-kind {
-  font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.06em; text-transform: uppercase;
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--text-dim);
 }
 
@@ -73,7 +73,7 @@
   font-size: 0.74rem; line-height: 1.2; color: var(--text-muted);
   border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; background: var(--bg);
 }
-.provider-os .os-state { font-family: var(--font-mono); font-size: 0.64rem; letter-spacing: 0.04em; }
+.provider-os .os-state { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.04em; }
 .provider-os .is-auto .os-state { color: var(--live); }
 .provider-os .is-auto { border-color: color-mix(in srgb, var(--live) 40%, var(--border)); }
 .provider-os .is-manual .os-state { color: var(--text-muted); }
