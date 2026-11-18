@@ -478,7 +478,10 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .hero-cmd-line { margin-bottom: 4px; }
 
 /* ── Section shells ─────────────────────────────────────────────────────────── */
-.section { padding: var(--section-y) 0; position: relative; scroll-margin-top: var(--nav-h); }
+.section { padding: var(--section-y) 0; position: relative; }
+/* Anchors land on the section CONTENT, not on its top padding: html already adds
+   scroll-padding-top (nav + 12px), so pull the target up by the section padding. */
+.section[id] { scroll-margin-top: calc(12px - var(--section-y)); }
 .section + .section { border-top: 1px solid var(--border); }
 
 .section-label {
@@ -496,7 +499,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .section-sub { font-size: var(--step-0); line-height: 1.6; color: var(--text-muted); max-width: var(--measure); text-wrap: pretty; }
 
 /* ── Features / Control tower ───────────────────────────────────────────────── */
-.features-section { scroll-margin-top: calc(var(--nav-h) + 14px); container-type: inline-size; }
+.features-section { container-type: inline-size; }
 
 
 .source-install {
