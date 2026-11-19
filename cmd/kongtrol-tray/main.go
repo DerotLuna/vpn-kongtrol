@@ -36,10 +36,17 @@ func trayF(key string, args ...any) string { return i18n.F(trayLang, key, args..
 
 func main() {
 	setupLogging()
+	open := parseOpenRequest(os.Args[1:])
 	if !acquireSingleInstance() {
+		if open != "" {
+			log.Printf("kongtrol-tray: another instance is already running; opening %s and exiting", open)
+			openFromSecondInstance(open)
+			return
+		}
 		log.Println("kongtrol-tray: another instance is already running, exiting")
 		return
 	}
+	setOpenRequest(open)
 	systray.Run(onReady, onExit)
 }
 

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.2.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md
+# Version 2.3.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -11,7 +11,7 @@
 #   (unless KONGTROL_NO_AUTOSTART=1) an autostart entry for your user.
 # Uninstall: ... | sh -s -- --uninstall   (add --purge to also delete your data)
 # Run it again to upgrade: your settings in ~/.kongtrol are never touched, and
-# a running Kongtrol is restarted on the new version keeping its tunnels.
+# a running Kongtrol is stopped and the VPNs that were connected reconnect on the new version.
 # An existing install is detected and the script says "Updating <old> → <new>"
 # (or "Reinstalling", or warns before an older version, asking only on a
 # terminal; --yes answers for scripts). It reuses the previous folders and
@@ -242,7 +242,7 @@ SUDO=""
 if [ "$goos" = "darwin" ]; then
   app_dir="${KONGTROL_APP_DIR:-${prev_app_dir:-${HOME}/Applications}}"
   mkdir -p "$app_dir"
-  # Quit the old tray (the daemon keeps running until the restart below).
+  # Quit the old tray (the daemon keeps running until the stop below).
   pkill -x kongtrol-tray 2>/dev/null || true
   rm -rf "${app_dir}/Kongtrol.app.old"
   [ -d "${app_dir}/Kongtrol.app" ] && mv "${app_dir}/Kongtrol.app" "${app_dir}/Kongtrol.app.old"
@@ -291,21 +291,33 @@ case ":$PATH:" in
   *) warn "${install_dir} is not on your PATH — add it to your shell profile." ;;
 esac
 
+# Update: stop the old Kongtrol and save which VPNs were connected, BEFORE
+# the helper update (a helper restart could drop a VPN and it would then be
+# forgotten); `resume` below reconnects exactly those on the new version
+# (docs/adr/0050-installer-resume-tunnels-and-open-request.md).
+if [ "$kind" != install ]; then
+  info "Stopping Kongtrol for the update (connected VPNs reconnect at the end)..."
+  "${install_dir}/kongtrol" down --all --quiet --remember >/dev/null 2>&1 || true
+fi
+
 # Update: the network helper is updated only when it speaks an older
 # protocol (`service install --if-outdated`: a missing or current helper is
 # left alone and nothing is asked). It needs the admin password, so only on
 # a terminal; otherwise the tray offers "Actualizar ayudante (una vez)".
-# Before the restart below, so the VPNs reconnect through a current helper.
+# Before the resume below, so the VPNs reconnect through a current helper.
 if [ "$kind" != install ] && has_tty; then
   info "Checking the network helper (asks for your admin password only if it is out of date)..."
   "${install_dir}/kongtrol" service install --if-outdated --quiet </dev/tty \
     || warn "the network helper was not updated: open Kongtrol and choose \"Actualizar ayudante (una vez)\", or run: kongtrol service install"
 fi
 
-# Upgrade: a running daemon (old version) is restarted on the new binary with
-# its connected VPNs; with no daemon running this does nothing.
-if "${install_dir}/kongtrol" restart --quiet >/dev/null 2>&1; then
-  info "Kongtrol restarted on the new version (your connected VPNs reconnected)."
+# Update: reconnect the VPNs saved above (nothing when none was connected).
+if [ "$kind" != install ]; then
+  if "${install_dir}/kongtrol" resume --quiet >/dev/null 2>&1; then
+    info "Kongtrol is reconnecting the VPNs you had connected (if any). Check with: kongtrol status"
+  else
+    warn "your VPNs were not reconnected: connect them from the Kongtrol icon, or run: kongtrol up"
+  fi
 fi
 
 if [ "${KONGTROL_NO_LAUNCH:-0}" != "1" ]; then

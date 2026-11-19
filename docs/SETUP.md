@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.6 · 2026-11-19
+Versión 1.7 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -90,12 +90,15 @@ el ayudante de red se conservan; desinstalar tampoco borra tu configuración).
 2. Deja marcadas las opciones recomendadas: abrir Kongtrol al iniciar sesión, instalar el
    ayudante de red (Windows pide permiso **una sola vez**) y agregar el comando `kongtrol` a la
    terminal (PATH de tu usuario; se quita al desinstalar).
-3. Al terminar se abre Kongtrol: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
+3. Al terminar, con "Abrir Kongtrol y crear mi primera VPN" marcado, se abre el panel en la
+   página Perfiles: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
 
 Para actualizar, ejecuta el instalador nuevo encima: si ya lo tienes, el instalador lo actualiza
 sin perder nada. Muestra "Actualizar Kongtrol <actual> → <nueva>" y no vuelve a preguntar la
 licencia, la carpeta ni las opciones (usa las de antes). Cierra Kongtrol (las VPN se desconectan
-un momento; tu internet normal sigue funcionando), actualiza y ofrece "Abrir Kongtrol". Si la
+un momento; tu internet normal sigue funcionando), actualiza, vuelve a conectar solas las VPN
+que tenías conectadas (también en una actualización silenciosa, por ejemplo con winget) y ofrece
+"Abrir Kongtrol". Si la
 versión nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la
 actualización. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
 pide confirmar (por defecto No).
