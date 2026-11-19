@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.8 · 2026-11-18
+Version 1.9 · 2026-11-19
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -46,7 +46,8 @@ GET  /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app
 
 # Policies
 GET/POST  /api/v1/policies                  # GET: each policy + `resolved` [{cidr, host, last_seen, expires_at}] (resolved IPs expire 6h unseen)
-PUT/DELETE /api/v1/policies/{name}
+PUT/DELETE /api/v1/policies/{name}          # refusals: {error,hint,error_key} in X-Kongtrol-Lang — 409 api.err.policy_exists,
+                                             #   404 api.err.policy_not_found, 400 api.err.policy_* | name_required (same check as `kongtrol policy add|remove`)
 POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
