@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.4.0 · 2026-11-19 · docs/adr/0056-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 1.4.0 · 2026-11-19 · docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
 #
@@ -144,7 +144,7 @@ try {
     Die "could not fetch checksums.txt"
   }
 
-  # Signature of checksums.txt (docs/adr/0056-installers-verify-release-signature.md):
+  # Signature of checksums.txt (docs/adr/0057-installers-verify-release-signature.md):
   # signed keyless by .github/workflows/release.yml on a v* tag.
   $cosignIdentity = '^https://github\.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v'
   $cosignIssuer = 'https://token.actions.githubusercontent.com'

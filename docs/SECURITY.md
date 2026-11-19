@@ -250,7 +250,7 @@ Every release (`.github/workflows/release.yml`) publishes, for every file:
 - An SBOM (SPDX JSON, `*.sbom.json`) for every archive.
 - npm packages are published with `--provenance`, shown on npmjs.com.
 
-**The install scripts do this for you** ([ADR-0056](adr/0056-installers-verify-release-signature.md)):
+**The install scripts do this for you** ([ADR-0057](adr/0057-installers-verify-release-signature.md)):
 `install.sh` and `install.ps1` always check the download against `checksums.txt`. When `cosign`
 2.4+ is installed they first verify `checksums.txt.sigstore.json` with the identity above; a bad
 or missing signature stops the install and nothing is installed (`KONGTROL_SKIP_SIGNATURE=1`
@@ -348,6 +348,6 @@ This is a self-assessment, not an audit or certification.
 | Security misconfiguration — A05, DA6 | Loopback-only bind (non-loopback refused); security headers on every response; update and public IP checks off by default; restrictive file modes for state. | — |
 | Sensitive data / crypto — A02, DA3, DA4 | Credentials only in the OS keychain; HMAC-signed audit log; TLS 1.2+ with default verification for the two opt-in outbound calls. | — |
 | Insecure communication — DA7 | Only the opt-in outbound calls listed above, https only, constrained redirects; everything else is loopback or local IPC. | — |
-| Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts verify the cosign signature of `checksums.txt` only when cosign is installed (ADR-0056); Windows binaries are unsigned until SignPath is configured. |
+| Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts verify the cosign signature of `checksums.txt` only when cosign is installed (ADR-0057); Windows binaries are unsigned until SignPath is configured. |
 | Logging — A09, DA10 | The helper audits every privileged request (read-only successes of managed tunnels excepted); HMAC-signed audit log in the daemon. | Browser session creation is not audited. |
 | Privileged helper / installer — Desktop Top 10 | Closed operation list, caller identified by the OS, lease-based fail-open cleanup, trusted-binary checks (Unix root-owned; Windows admin-owned and admin-writable only); uninstall deletes only Kongtrol's own files and refuses sudo. | Inno Setup uninstaller working directory not verified ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)). |

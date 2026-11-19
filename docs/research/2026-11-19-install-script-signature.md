@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-19
 
-Used by: [ADR-0056](../adr/0056-installers-verify-release-signature.md). All sources accessed
+Used by: [ADR-0057](../adr/0057-installers-verify-release-signature.md). All sources accessed
 2026-11-19.
 
 ## Findings

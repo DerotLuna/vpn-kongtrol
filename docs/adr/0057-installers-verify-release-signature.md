@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0056: Install scripts verify the Sigstore signature of `checksums.txt` when cosign is present
+# ADR-0057: Install scripts verify the Sigstore signature of `checksums.txt` when cosign is present
 
 Version 1.0.0 · 2026-11-19
 

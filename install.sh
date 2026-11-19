@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.4.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0056-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 2.4.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -83,7 +83,7 @@ bin_version() {
   case "$v" in [0-9]*) printf '%s' "$v" ;; esac
 }
 
-# Sigstore identity of a genuine release (docs/adr/0056-installers-verify-release-signature.md):
+# Sigstore identity of a genuine release (docs/adr/0057-installers-verify-release-signature.md):
 # checksums.txt is signed keyless by .github/workflows/release.yml on a v* tag.
 COSIGN_IDENTITY='^https://github\.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v'
 COSIGN_ISSUER='https://token.actions.githubusercontent.com'

@@ -53,7 +53,7 @@ reasoned but unverified.
 | [2026-11-19-add-flow-patterns](2026-11-19-add-flow-patterns.md) | Little Snitch alerts/connection list, Mullvad/NordVPN/Proton split tunneling, Tailscale app connectors, UniFi traffic routes (no verificado), Windows "Add VPN": one entry, few fields, rules from context | ADR-0055 |
 | [2026-11-19-product-name-and-logo-sizes](2026-11-19-product-name-and-logo-sizes.md) | Dropping "VPN" from the name (site name, alternateName, what must not be renamed), SVG favicon, logo sizes | ADR-0047 |
 | [2026-11-19-recent-connections](2026-11-19-recent-connections.md) | Per-connection data without admin (GetExtendedTcpTable, /proc/net/tcp, ss), privacy precedent (Little Snitch, GlassWire) | ADR-0054 |
-| [2026-11-19-install-script-signature](2026-11-19-install-script-signature.md) | cosign `verify-blob` with a Sigstore bundle (flags, 2.4/3.0 bundle format), GoReleaser signs output, `gh attestation verify`; runs against v0.6.0-rc.5 | ADR-0056 |
+| [2026-11-19-install-script-signature](2026-11-19-install-script-signature.md) | cosign `verify-blob` with a Sigstore bundle (flags, 2.4/3.0 bundle format), GoReleaser signs output, `gh attestation verify`; runs against v0.6.0-rc.5 | ADR-0057 |
 
 ## Template
 
