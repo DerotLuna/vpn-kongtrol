@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.23.0 · 2026-11-19
+Version 1.24.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -73,6 +73,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0058](0058-linux-dropped-tunnel-dns-and-root-only-configs.md) | Linux: a dropped tunnel releases its DNS (kept for a full tunnel the kill switch holds); systemd-resolved per-link DNS; one kill switch notice per outage; root-only profile files copied with one OS prompt (sudo/pkexec) to a validating root child, never through the helper | Accepted | 2026-11-19 |
 | [0059](0059-ci-parallel-jobs-and-superseded-runs.md) | CI: jobs wait only for output they use (UI build vs UI checks, release tests beside the macOS/Windows builds, Pages redirect without the landing build); superseded PR/branch runs cancelled, never tags/releases; `actions/*` pinned by SHA | Accepted | 2026-11-19 |
 | [0060](0060-landing-single-theme-bands-and-line-art-marks.md) | Landing in one designed theme: Bone page, Ink bands, one Signal-amber download band, no theme switch (dashboard keeps its themes); key sections fit one laptop screen; downloads listed once; round back-to-top button; ES ↔ EN keeps the section with cross-document View Transitions; line-art mark in the header (54 px) and the in-page illustrations, solid for favicon/tray/tray mock | Accepted | 2026-11-19 |
+| [0061](0061-landing-guide-gui-first-steps.md) | Setup guide rewritten GUI-first: panel place first, command second; numbered steps with a "you will see" line; problems as symptom → what to do → command per OS; installer/script per OS from links.ts; two Ink blocks (quickstart, how it works) on the Bone page | Accepted | 2026-11-19 |
 
 ## Statuses
 

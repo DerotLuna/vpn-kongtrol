@@ -25,7 +25,7 @@ administrator prompt at install time.
 ## Docs
 
 - [README](https://github.com/DerotLuna/vpn-kongtrol/blob/main/README.md): what Kongtrol is, features, supported adapters, quick start
-- [Setup guide](https://kongtrol.app/en/guide): end-to-end first-run walkthrough — install, wizard, profiles, policies, doctor (Spanish: https://kongtrol.app/guia)
+- [Setup guide](https://kongtrol.app/en/guide): install, first VPN, connect, rules per VPN, diagnostics, troubleshooting, update and uninstall (Spanish: https://kongtrol.app/guia)
 - [Privacy policy](https://kongtrol.app/en/privacy): what stays local, which connections Kongtrol makes on its own (public-IP check via api.ipify.org), no telemetry
 - [Security policy](https://kongtrol.app/en/security): private vulnerability reporting and disclosure timelines
 - [Terms](https://kongtrol.app/en/terms): Apache-2.0, no warranty, beta

@@ -1,3 +1,6 @@
+// Guide table of contents — version 2.0.0 · 2026-11-19.
+// Same ids in both languages: other pages link to #install, #update,
+// #uninstall, #quickstart and #commands.
 export interface GuideSection {
   id: string
   num: string
@@ -6,32 +9,34 @@ export interface GuideSection {
 
 export const GUIDE_SECTIONS_ES: GuideSection[] = [
   { id: 'quickstart', num: '0', label: 'Inicio rápido' },
-  { id: 'prereqs', num: '1', label: 'Prerequisitos' },
-  { id: 'install', num: '2', label: 'Instalación' },
-  { id: 'wizard', num: '3', label: 'kongtrol init' },
-  { id: 'groups', num: '4', label: 'Grupos' },
-  { id: 'policies', num: '5', label: 'Políticas de routing' },
-  { id: 'doctor', num: '6', label: 'Doctor check' },
-  { id: 'connect', num: '7', label: 'Primera conexión' },
-  { id: 'dashboard', num: '8', label: 'Dashboard web' },
-  { id: 'daily', num: '9', label: 'Uso diario' },
-  { id: 'trouble', num: '10', label: 'Solución de problemas' },
-  { id: 'update', num: '11', label: 'Actualizar' },
-  { id: 'uninstall', num: '12', label: 'Desinstalar' },
+  { id: 'how', num: '1', label: 'Cómo funciona' },
+  { id: 'prereqs', num: '2', label: 'Antes de empezar' },
+  { id: 'install', num: '3', label: 'Instalar' },
+  { id: 'wizard', num: '4', label: 'Tu primera VPN' },
+  { id: 'connect', num: '5', label: 'Conectar' },
+  { id: 'policies', num: '6', label: 'Reglas por VPN' },
+  { id: 'groups', num: '7', label: 'Grupos' },
+  { id: 'doctor', num: '8', label: 'Diagnóstico' },
+  { id: 'dashboard', num: '9', label: 'El panel' },
+  { id: 'daily', num: '10', label: 'Día a día' },
+  { id: 'trouble', num: '11', label: 'Si algo falla' },
+  { id: 'update', num: '12', label: 'Actualizar' },
+  { id: 'uninstall', num: '13', label: 'Desinstalar' },
 ]
 
 export const GUIDE_SECTIONS_EN: GuideSection[] = [
   { id: 'quickstart', num: '0', label: 'Quickstart' },
-  { id: 'prereqs', num: '1', label: 'Prerequisites' },
-  { id: 'install', num: '2', label: 'Installation' },
-  { id: 'wizard', num: '3', label: 'kongtrol init' },
-  { id: 'groups', num: '4', label: 'Groups' },
-  { id: 'policies', num: '5', label: 'Routing policies' },
-  { id: 'doctor', num: '6', label: 'Doctor check' },
-  { id: 'connect', num: '7', label: 'First connect' },
-  { id: 'dashboard', num: '8', label: 'Web dashboard' },
-  { id: 'daily', num: '9', label: 'Daily usage' },
-  { id: 'trouble', num: '10', label: 'Troubleshooting' },
-  { id: 'update', num: '11', label: 'Updating' },
-  { id: 'uninstall', num: '12', label: 'Uninstalling' },
+  { id: 'how', num: '1', label: 'How it works' },
+  { id: 'prereqs', num: '2', label: 'Before you start' },
+  { id: 'install', num: '3', label: 'Install' },
+  { id: 'wizard', num: '4', label: 'Your first VPN' },
+  { id: 'connect', num: '5', label: 'Connect' },
+  { id: 'policies', num: '6', label: 'Rules per VPN' },
+  { id: 'groups', num: '7', label: 'Groups' },
+  { id: 'doctor', num: '8', label: 'Diagnostics' },
+  { id: 'dashboard', num: '9', label: 'The panel' },
+  { id: 'daily', num: '10', label: 'Day to day' },
+  { id: 'trouble', num: '11', label: 'If something fails' },
+  { id: 'update', num: '12', label: 'Update' },
+  { id: 'uninstall', num: '13', label: 'Uninstall' },
 ]
