@@ -20,7 +20,7 @@ type NavigatorUAData = { mobile?: boolean }
 //      with more than one touch point is an iPad (no Mac has a touchscreen).
 // Misses: a phone in "desktop site" mode (Android Chrome then reports a Linux
 // desktop UA and mobile=false); it simply sees the desktop buttons.
-// THEME_BOOT in src/seo.ts repeats this test before first paint (data-device
+// DEVICE_BOOT in src/seo.ts repeats this test before first paint (data-device
 // on <html>, ADR-0029): change both together.
 export function detectMobile(): boolean {
   if (typeof navigator === 'undefined') return false

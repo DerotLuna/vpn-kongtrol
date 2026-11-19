@@ -8,7 +8,9 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="stylesheet" href="/fonts/fonts.css" />
 <style>
+  /* one designed tone: Ink, like the landing hero (ADR-0060) */
   :root {
+    color-scheme: dark;
     --bg: #0a0c10; --surface: #12151b; --surface-2: #171b23;
     --border: #232833; --border-2: #313847;
     --signal: #ffb020; --signal-hi: #ffc456; --signal-soft: rgba(255,176,32,0.12); --signal-glow: rgba(255,176,32,0.28);
@@ -16,13 +18,6 @@
     --text: #eef1f5; --text-muted: #99a3b3; --text-dim: #8e98a8; --danger: #ff5a52;
     --font-display: 'Space Grotesk', system-ui, sans-serif;
     --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  }
-  html[data-theme='light'] {
-    --bg: #f1ede4; --surface: #fbf9f4; --surface-2: #f4f0e6;
-    --border: #ddd5c4; --border-2: #c9bfa8;
-    --signal: #904f00; --signal-hi: #7a4300; --signal-soft: rgba(144,79,0,0.10); --signal-glow: rgba(144,79,0,0.20);
-    --steel: #2f6a8f;
-    --text: #2a2620; --text-muted: #6b6355; --text-dim: #635c4b;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -39,7 +34,6 @@
     background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.09) 0 1px, transparent 1px 3px);
     mix-blend-mode: overlay;
   }
-  html[data-theme='light'] .scanlines { opacity: 0.15; }
 
   /* same signature contour treatment as the home hero: concentric rings,
      masked to a soft radial fade, with a radar sweep + pulsing core.
@@ -65,9 +59,6 @@
     width: 9px; height: 9px; translate: -50% -50%; border-radius: 50%;
     background: var(--signal); box-shadow: 0 0 0 5px var(--signal-soft), 0 0 24px var(--signal-glow);
     animation: corePulse 3.4s ease-in-out infinite;
-  }
-  html[data-theme='light'] .contour::before {
-    background: conic-gradient(from 0deg, transparent 0 78%, rgba(255,176,32,0.55) 92%, transparent 100%);
   }
   @keyframes radarSweep { to { transform: rotate(360deg); } }
   @keyframes corePulse {
@@ -118,7 +109,6 @@
     box-shadow: 0 24px 60px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,176,32,0.04);
     overflow: hidden;
   }
-  html[data-theme='light'] .term { box-shadow: 0 18px 44px rgba(60,50,25,0.12); }
   .term-head {
     display: flex; align-items: center; gap: 8px; padding: 10px 14px;
     background: var(--surface-2); border-bottom: 1px solid var(--border);
@@ -181,12 +171,6 @@
 
 <script>
 (function () {
-  var storedTheme = localStorage.getItem('kgtheme');
-  var theme = storedTheme === 'light' || storedTheme === 'dark'
-    ? storedTheme
-    : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme', theme);
-
   var storedLang = localStorage.getItem('kglang');
   var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
   var lang = storedLang === 'es' || storedLang === 'en'

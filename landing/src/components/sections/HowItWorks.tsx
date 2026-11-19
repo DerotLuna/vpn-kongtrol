@@ -64,7 +64,7 @@ export default function HowItWorks({ lang }: Props) {
     }
 
   return (
-    <section id="steps" className="section how-section">
+    <section id="steps" className="section how-section tone-ink">
       <div className="container">
         <h2 className="section-title">{copy.title}</h2>
         <p className="section-sub">{copy.sub}</p>

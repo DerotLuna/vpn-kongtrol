@@ -1,6 +1,6 @@
 # Kongtrol Landing (`landing/`)
 
-Version 2.7.0 · 2026-11-19
+Version 2.8.0 · 2026-11-19
 
 Public marketing/docs site for **Kongtrol** (CLI binary `kongtrol`; formerly "VPN Kongtrol"),
 separate from the embedded dashboard (`web/ui`).
@@ -20,8 +20,14 @@ with 10 HTML entries:
 
 English twins (localized slugs): `/en/`, `/en/guide`, `/en/terms`, `/en/privacy`, `/en/security`.
 
-Language and theme follow the browser until the visitor picks one; an explicit pick is stored
-(`kglang`, `kgtheme`) and wins. There is no automatic language redirect on a guess (Google:
+The landing has one designed theme (Bone and Ink sections, one Signal-amber band; ADR-0060), so
+there is no theme switch. Language follows the browser until the visitor picks one; an explicit
+pick is stored (`kglang`) and wins; switching keeps the section being read and cross-fades
+(cross-document View Transitions where supported).
+
+The footer's `kongtrol version` line shows the latest stable release, resolved at build time
+(`vite.config.ts`: `KONGTROL_RELEASE`, else the GitHub Releases API, else the newest stable git
+tag); visitors never call GitHub. A new release shows up on the next landing build. There is no automatic language redirect on a guess (Google:
 https://developers.google.com/search/docs/specialty/international/managing-multi-regional-sites):
 a visitor whose browser language differs from the page gets a dismissible "View in English /
 Ver en español" bar; only a stored explicit pick switches URL client-side.

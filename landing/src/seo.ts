@@ -120,14 +120,13 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').repl
 const OG_LOCALE: Record<Lang, string> = { es: 'es_ES', en: 'en_US' }
 
 // Runs before first paint, outside the React tree (<html> attributes only):
-// 1. data-theme: the stored theme (explicit choice) or the system theme, so a
-//    dark-mode visitor never sees a light flash. Must mirror useTheme().
-// 2. data-device="mobile" on phones/tablets, so CSS can pick the hero's
+// data-device="mobile" on phones/tablets, so CSS can pick the hero's
 //    "send to my computer" block in the first paint — no swap, no layout
 //    shift after hydration (ADR-0029). Must mirror detectMobile() in
-//    hooks/useVisitor.ts.
+//    hooks/useVisitor.ts. The landing has one designed theme (ADR-0060), so
+//    nothing about colour is decided here.
 // Editing it changes its CSP hash: update public/_headers (the build says so).
-const THEME_BOOT = `(function(){var d=document.documentElement;try{var t=localStorage.getItem('kgtheme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}d.setAttribute('data-theme',t)}catch(e){}try{var n=navigator,u=n.userAgent,h=n.userAgentData;if((h&&h.mobile)||/Android|iPhone|iPad|iPod/i.test(u)||(/Macintosh/i.test(u)&&(n.maxTouchPoints||0)>1))d.setAttribute('data-device','mobile')}catch(e){}})();`
+const DEVICE_BOOT = `(function(){var d=document.documentElement;try{var n=navigator,u=n.userAgent,h=n.userAgentData;if((h&&h.mobile)||/Android|iPhone|iPad|iPod/i.test(u)||(/Macintosh/i.test(u)&&(n.maxTouchPoints||0)>1))d.setAttribute('data-device','mobile')}catch(e){}})();`
 
 export function headFor(page: PageId, lang: Lang): string {
   const m = META[page][lang]
@@ -151,8 +150,13 @@ export function headFor(page: PageId, lang: Lang): string {
     `<link type="text/plain" rel="author" href="/humans.txt" />`,
     // Fonts: bundled by src/index.css (@import '@brand/fonts/fonts.css') with
     // hashed names; vite.config.ts fontPreloads() adds their preloads (ADR-0031).
-    `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0c10" />`,
-    `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1ede4" />`,    `<meta property="og:type" content="${page === 'home' ? 'website' : 'article'}" />`,
+    // the header is always Ink (ADR-0060)
+    `<meta name="theme-color" content="#0a0c10" />`,
+    // keep the view-transition snapshot of a page change until the whole
+    // prerendered page is parsed, so the browser has already scrolled to the
+    // #section the language switch carries (Chrome: render-blocking link)
+    `<link rel="expect" href="#site-footer" blocking="render" />`,
+    `<meta property="og:type" content="${page === 'home' ? 'website' : 'article'}" />`,
     `<meta property="og:site_name" content="Kongtrol" />`,
     `<meta property="og:title" content="${esc(m.title)}" />`,
     `<meta property="og:description" content="${esc(og)}" />`,
@@ -167,7 +171,7 @@ export function headFor(page: PageId, lang: Lang): string {
     `<meta name="twitter:title" content="${esc(m.title)}" />`,
     `<meta name="twitter:description" content="${esc(og)}" />`,
     `<meta name="twitter:image" content="${OG_IMAGE}" />`,
-    `<script>${THEME_BOOT}</script>`,
+    `<script>${DEVICE_BOOT}</script>`,
     `<script type="application/ld+json">${JSON.stringify(jsonLd(page, lang))}</script>`,
   ]
   return lines.map(l => '    ' + l).join('\n')

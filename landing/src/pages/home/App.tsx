@@ -1,6 +1,6 @@
 import { Suspense, useMemo } from 'react'
 import { useOS } from '../../hooks/useOS'
-import { useLangRouting, useTheme } from '../../hooks/usePreferences'
+import { useLangRouting } from '../../hooks/usePreferences'
 import { Lang } from '../../i18n'
 import { pathFor } from '../../site'
 import LangSuggest from '../../components/ui/LangSuggest'
@@ -45,7 +45,6 @@ const HOME_WINDOWS_EN: TmuxWindow[] = [
 
 export default function App({ lang }: { lang: Lang }) {
   const [os] = useOS()
-  const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting('home', lang)
   useKonami()
   useReveal()
@@ -59,7 +58,7 @@ export default function App({ lang }: { lang: Lang }) {
   // hydrates the shell first, then each boundary in a later, lower-priority
   // task, so hydration is several short tasks instead of one long one, and a
   // click on a section hydrates it first. Nothing suspends, so the prerender
-  // is unchanged. Memoized: if this App re-renders (theme, OS, active section)
+  // is unchanged. Memoized: if this App re-renders (OS, active section)
   // before a boundary has hydrated, the same element reaches it and React
   // skips it, instead of discarding its server HTML (ADR-0031).
   const sections = useMemo(() => (
@@ -81,8 +80,6 @@ export default function App({ lang }: { lang: Lang }) {
       <Nav
         page="home"
         lang={lang}
-        theme={theme}
-        setTheme={setTheme}
       />
       <main id="main" tabIndex={-1}>
         <Hero os={os} lang={lang} />

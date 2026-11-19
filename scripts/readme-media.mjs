@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// README media generator — version 1.0.0 · 2026-11-18.
+// README media generator — version 1.0.1 · 2026-11-19.
 //
-// Records the README GIFs from the real landing page (English, dark theme), so
+// Records the README GIFs from the real landing page (English; the landing has
+// one designed theme with Bone and Ink sections, ADR-0060), so
 // they always show the current design:
 //   assets/readme/routing.gif  routing diagram cycling destinations (/en/#map)
 //   assets/readme/attach.gif   "your VPN app → Kongtrol → tray" demo (/en/#start)
@@ -136,7 +137,6 @@ async function record(browser, base, name, clip, work) {
   const context = await browser.newContext({
     viewport: VIEWPORT,
     deviceScaleFactor: 1,
-    colorScheme: 'dark',
     reducedMotion: 'no-preference',
     locale: 'en-US',
     recordVideo: { dir: work, size: VIEWPORT },

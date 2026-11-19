@@ -1,6 +1,6 @@
 import { Lang } from '../i18n'
 import { PageId } from '../site'
-import { useLangRouting, useTheme } from '../hooks/usePreferences'
+import { useLangRouting } from '../hooks/usePreferences'
 import Nav from '../components/ui/Nav'
 import SkipLink from '../components/ui/SkipLink'
 import Footer from '../components/ui/Footer'
@@ -13,14 +13,13 @@ interface Props { page: PageId; lang: Lang; doc: Record<Lang, LegalDocContent> }
 // Page shell shared by the legal documents: logo top-left (Nav), title,
 // version + date, the document, footer, tmux bar.
 export default function LegalApp({ page, lang, doc: docs }: Props) {
-  const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting(page, lang)
   const doc = docs[lang]
 
   return (
     <>
       <SkipLink lang={lang} />
-      <Nav page={page} lang={lang} theme={theme} setTheme={setTheme} />
+      <Nav page={page} lang={lang} />
       <main id="main" tabIndex={-1}>
         <header className="guide-hero">
           <div className="container">
