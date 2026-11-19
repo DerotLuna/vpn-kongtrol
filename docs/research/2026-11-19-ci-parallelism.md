@@ -87,7 +87,7 @@ inside `release` waited for the macOS/Windows builds although they use none of t
 | ci: `security` with `cache: false`, `race` with its own `actions/cache` key | `race` faster (not critical); Linux test jobs get a real build cache | Yes |
 | ci: six cross-compiles in background with `wait` per PID | packaging-only runs (est. 139 → ~80–100 s, **no verificado**) | Yes: any failed build fails the step |
 | ci: `timeout-minutes` (15–20) | a hung job fails in 20 min instead of 6 h | Yes |
-| ci/landing: concurrency per PR/branch, cancel superseded | frees runners, newest result sooner | ci: superseded commits on main show "cancelled" (see ADR risks); landing: cancel only on PRs |
+| ci/landing: concurrency per PR/branch, cancel superseded | frees runners, newest result sooner | ci: cancel only on PRs, one group per commit on main; landing: cancel only on PRs |
 | release: race tests in their own `test` job (needs `ui`, read-only token), `release` needs it | ~90 s (rc.5/rc.6: 358/403 → ~270/305 s est.) | Yes, and the tests no longer run in the job holding `contents: write` + `id-token: write` |
 | release: GoReleaser split/merge to start before macOS/Windows | more | **Not possible**: split/merge is GoReleaser Pro; ADR-0025 is OSS |
 | landing: `redirect` without `needs: build-landing`; Pages group on the job | ~45 s on main pushes; PRs no longer wait for deploys | Yes (stubs never read the build) |

@@ -36,7 +36,7 @@ Option 2:
   tests), in parallel; `test` waits only for `ui-build`; `ci-ok` requires both. `security` stops
   saving the shared setup-go cache; `race` gets its own cache key. The six packaging
   cross-compiles run at once. `timeout-minutes` on every job that runs code. Workflow
-  `concurrency` per PR number or ref with `cancel-in-progress: true`.
+  `concurrency` per PR (cancel superseded runs) and per commit on `main` (never cancelled), so every commit on `main` keeps its own result.
 - `release.yml`: the `go test -race` step moves to a `test` job (needs `ui`, read-only token) that
   runs beside `macos` and `windows`; `release` needs it, so nothing is published unless it passes.
   No concurrency group: a release is never cancelled.
@@ -54,9 +54,7 @@ Option 3 was rejected: the first loses a check, the second needs GoReleaser Pro.
 - Good: estimated critical paths ci ~185–199 s → ~160–170 s (UI changes), release ~358–403 s →
   ~270–305 s, landing on main ~60 s → ~45 s; release tests no longer share a job with
   `contents: write` / `id-token: write`.
-- Bad: on `main`, a push that lands while the previous commit's CI runs cancels that run, so that
-  commit shows "cancelled" instead of its own result (the newer commit tests a superset; re-run the
-  older one if needed). One more runner per UI change (`ui-check`) and per release (`test`).
+- Good: runs on `main` are never cancelled, so a failure always points at its own commit. One more runner per UI change (`ui-check`) and per release (`test`).
 - Not verified: the estimates come from past durations; the first runs after the merge measure
   the real numbers.
 

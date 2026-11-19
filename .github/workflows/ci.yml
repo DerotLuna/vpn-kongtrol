@@ -37,9 +37,11 @@ permissions:
 # has no concurrency group), so nothing that publishes is ever cancelled.
 # docs/adr/0059-ci-parallel-jobs-and-superseded-runs.md
 # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs
+# PRs: a newer push cancels the older run. Pushes to main get one group per
+# commit (never cancelled or queued away), so every commit keeps its own result.
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
