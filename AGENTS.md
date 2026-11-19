@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.20 · 2026-11-19
+Version 1.21 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -209,6 +209,14 @@ when its sources change. `web/**` and `assets/**` are part of the Go binary (emb
 do trigger the Go pipeline. Even when a resource is free or unlimited (CI minutes, API quotas,
 tokens, network calls, polling, binary size), use it with judgment — optimal, never at the cost
 of quality, correctness or coverage: cut waste, not checks.
+
+**Brand and icon standard (owner-approved, ADR-0047/0051/0052).** Every logo, icon and image
+follows DESIGN.md "Logo (name and sizes)": all bitmaps generated from the SVG masters by
+`assets/brand/generate.go` (never hand-made, never a PNG logo on a filled disc); solid mark up to
+~64 px (favicon, tray, panel marks, landing header), line art from ~128 px; the app icon (Ink
+squircle plate + Bone solid mark, plain mid-tone mark ≤ 24 px) is the only logo with a background;
+web logos are transparent and follow the theme. A new surface (store listing, social card, PWA,
+docs) reuses these assets; any deviation is proposed first and gets an ADR.
 
 **Product model.** One product, GUI-first, CLI-complete. Everyone (devs included) uses the
 app: installer, tray, dashboard to set up and connect. The CLI has full parity for
