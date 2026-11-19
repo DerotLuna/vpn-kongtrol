@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.18.0 · 2026-11-19
+Version 1.19.0 · 2026-11-19
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -57,6 +57,7 @@ reasoned but unverified.
 | [2026-11-19-tray-flyout-empty-window](2026-11-19-tray-flyout-empty-window.md) | Empty tray flyout (#40): WebView2 `IsVisible` on a window created hidden, fyne.io/systray click mapping and callback message, go-webview2 navigation callback | ADR-0056 |
 | [2026-11-19-install-script-signature](2026-11-19-install-script-signature.md) | cosign `verify-blob` with a Sigstore bundle (flags, 2.4/3.0 bundle format), GoReleaser signs output, `gh attestation verify`; runs against v0.6.0-rc.5 | ADR-0057 |
 | [2026-11-19-landing-single-theme-and-page-transitions](2026-11-19-landing-single-theme-and-page-transitions.md) | Cross-document View Transitions (`@view-transition`, Chrome 126, `rel=expect blocking=render`), keeping the section on a language switch, back-to-top pattern, WCAG AA of the Signal-amber band | ADR-0060 |
+| [2026-11-19-landing-gold-contrast](2026-11-19-landing-gold-contrast.md) | WCAG AA of one gold accent on Bone, Ink and a gold band; fixed-height terminal log (`role=log`, focusable scroller) | ADR-0066 |
 | [2026-11-19-landing-guide-accuracy](2026-11-19-landing-guide-accuracy.md) | Stale statements on the landing guide checked against the code (installers, wizard, labels, firewall names, `warp-cli registration new`) and the step-by-step instruction format (Microsoft Writing Style Guide) | ADR-0061 |
 | [2026-11-19-loopback-cookies-and-listener-owner](2026-11-19-loopback-cookies-and-listener-owner.md) | Cookies are not port-isolated (RFC 6265 §8.5), sessionStorage per origin, Secure cookies on loopback per browser, CSP `'self'` and `ws:`, owner of a loopback listener without admin (Windows, Linux, macOS) | ADR-0062 |
 | [2026-11-19-floating-layers-and-own-controls](2026-11-19-floating-layers-and-own-controls.md) | Floating UI vs. alternatives (license, size, maintenance), the Popover API top layer above a modal dialog, CSP `style-src` vs. CSSOM writes (measured in Chromium), WAI-ARIA APG patterns for tooltip, menu button, select-only and editable combobox, date grid; week start per language; the asynchronous connect in the daemon | ADR-0067 |

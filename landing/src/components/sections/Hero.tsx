@@ -96,13 +96,16 @@ export default function Hero({ os, lang }: Props) {
   const [shell, setShell] = useState<ShellEntry[]>([])
   const [input, setInput] = useState('')
   const [usContent, setUsContent] = useState(false)
-  const bodyRef = useRef<HTMLDivElement>(null)
+  const logRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // keep the newest line in view once the visitor starts interacting
+  // the log has a fixed height and scrolls inside (ADR-0066): after every
+  // command the newest line comes into view — instantly under reduced motion
   useEffect(() => {
-    const el = bodyRef.current
-    if (el && shell.length > 0) el.scrollTop = el.scrollHeight
+    const el = logRef.current
+    if (!el || shell.length === 0) return
+    const instant = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    el.scrollTo({ top: el.scrollHeight, behavior: instant ? 'auto' : 'smooth' })
   }, [shell])
 
   // The primary button (PRIMARY_COPY, shared with the download section and
@@ -262,7 +265,6 @@ export default function Hero({ os, lang }: Props) {
           </div>
           <div
             className="terminal-body th-body"
-            ref={bodyRef}
             onClick={focusInput}
           >
             {/* Reading order: banner (brand frame) → h1 → the plain sentence →
@@ -314,6 +316,15 @@ export default function Hero({ os, lang }: Props) {
             </div>
 
             <div className="th-side">
+            {/* fixed-height scrollback (ADR-0066): it scrolls inside, the prompt
+                below stays pinned; role=log announces only new output */}
+            <div
+              className="th-scroll"
+              ref={logRef}
+              role="log"
+              aria-label={es ? 'salida de la terminal' : 'terminal output'}
+              tabIndex={0}
+            >
             <div className="th-meta">
               <div className="boot-line boot-step t-dim" style={at(BOOT.tag1)}>{copy.tag1}</div>
               <div className="boot-line boot-step t-dim" style={at(BOOT.tag2)}>{copy.tag2}</div>
@@ -343,19 +354,18 @@ export default function Hero({ os, lang }: Props) {
             </div>
             </div>
 
-            {/* visitor shell history — announced to screen readers as it arrives */}
-            <div aria-live="polite">
+            {/* visitor shell history — the log region announces it as it arrives */}
+            <div className="th-history">
               {shell.map((entry, i) => (
                 entry.kind === 'cmd'
                   ? <div key={i} className="hero-cmd-line"><span className="t-prompt">$ </span><span className="t-cmd">{entry.text}</span></div>
                   : <div key={i}>{entry.lines.map((l, j) => <div key={j} className={`boot-line ${l.cls}`}>{l.text}</div>)}</div>
               ))}
             </div>
+            </div>
 
             <form className="th-prompt boot-step" style={at(BOOT.prompt)} onSubmit={onSubmit}>
               <span className="t-prompt" aria-hidden="true">$ </span>
-              {/* idle caret: blinks until the visitor focuses or types */}
-              <span className="th-caret" aria-hidden="true" />
               <input
                 ref={inputRef}
                 className="th-input"

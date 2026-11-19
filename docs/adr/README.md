@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.25.0 · 2026-11-19
+Version 1.26.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -78,6 +78,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0063](0063-kill-switch-lan-protected-read-and-release-hardening.md) | Review fixes: a full-tunnel kill-switch block covers the LAN unless `allow_lan` (no DNS fallback to the router); the root read releases only a WireGuard/OpenVPN client profile with one link and refuses with one generic message; release jobs without caches, in the `release` environment, exact GoReleaser/pnpm/govulncheck; install scripts never sudo into a manifest folder (reuse a default or user-writable one) and run from a function | Accepted | 2026-11-19 |
 | [0064](0064-audit-log-retention-and-coverage.md) | Audit log: retention_days unset/0 = 30, new max_total_mb (default 500, oldest first), cleanup at start, per new file and every midnight; every mutating API request audited at metadata level (who, what, result, no body), refused credentials throttled, daemon start/stop and kill switch state; `kongtrol config audit-log` | Accepted | 2026-11-19 |
 | [0065](0065-windows-provider-app-detection.md) | Proton VPN / NordVPN / Surfshark on Windows found by the uninstall entry and default folders, newest `v<version>` folder compared numerically; one lookup shared by detection and the adapters' launch | Accepted | 2026-11-19 |
+| [0066](0066-landing-gold-accent-footer-and-fixed-hero-terminal.md) | Landing accent is one gold `#ffb020` on every tone (fills with Ink text, Ink accent text with gold marks on Bone, a gold download band); footer GitHub once and facts above the wordmark; fixed-height hero terminal log | Accepted | 2026-11-19 |
 | [0067](0067-dashboard-floating-layers-own-controls-and-action-transitions.md) | Dashboard: Floating UI + Popover API for every floating layer (CSSOM positioning, CSP unchanged); own Tooltip, Menu (⋯), Select, Combobox and DateRangePicker in the kit (replaces ADR-0043's native select); one primary per row; tables to cards by container width; tunnel and group actions stay pending until the live state ends them, with a timeout and what to do | Accepted | 2026-11-19 |
 
 ## Statuses

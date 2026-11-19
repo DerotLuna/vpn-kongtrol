@@ -1,5 +1,5 @@
-/* Download section — version 2.0.0 · 2026-11-19 (ADR-0027, ADR-0060).
-   The one Signal-amber band of the page (.tone-signal, index.css). The
+/* Download section — version 2.1.0 · 2026-11-19 (ADR-0027, ADR-0060, ADR-0066).
+   The one gold Signal band of the page (.tone-signal, index.css). The
    visitor's best file in one compact featured card (the band's only filled
    button), then ONE "Otras formas de instalar" row: every other file once,
    grouped by system, plus the install script with a tab and its own copy
@@ -13,7 +13,7 @@
 .dl-lead-text .section-sub { max-width: 44ch; }
 
 /* the recommended file: no box — a terminal comment with the detected
-   system, the filled button, the file line; a Bone hairline sets it off from
+   system, the filled button, the file line; an Ink hairline sets it off from
    the heading (left on laptops, top when stacked) */
 .dl-featured {
   margin-top: 24px; padding: 20px 0 0;
@@ -136,6 +136,6 @@
   .dl-featured-item, .dl-featured-item > a { width: 100%; }
 }
 
-/* the beta notice inside the Signal band: Bone outline, no caution orange
-   (orange on amber would fail contrast; it is a notice, not an error) */
+/* the beta notice inside the gold Signal band: Ink outline, no caution orange
+   (orange on gold would fail contrast; it is a notice, not an error) */
 .tone-signal .callout.dl-beta { border-color: var(--signal-line); background: var(--signal-soft); }
