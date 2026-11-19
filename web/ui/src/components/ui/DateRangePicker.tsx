@@ -12,7 +12,7 @@
 // Monday in Spanish and on Sunday in English; names come from Intl in the
 // page's language. Days after `max` (default today: logs have no future)
 // cannot be picked. Values are local days "YYYY-MM-DD" ('' = open end).
-// The dialog floats in the top layer (floating.ts, ADR-0064).
+// The dialog floats in the top layer (floating.ts, ADR-0067).
 import { useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import type { Lang } from '../../i18n/messages'

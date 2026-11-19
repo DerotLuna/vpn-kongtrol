@@ -1,6 +1,6 @@
 /* KONGTROL UI — kit controls that float or replace a native control · v1.0.0 · 2026-11-19
    Tooltip, Menu (⋯), Select, Combobox, DateRangePicker, check boxes and
-   radios (src/components/ui, ADR-0064). Same rules as kit.css: amber is the
+   radios (src/components/ui, ADR-0067). Same rules as kit.css: amber is the
    selection and focus, Four States colors only for states, targets ≥ 36px
    (rows of a list 40px), text ≥ 11px, motion only as state feedback. */
 

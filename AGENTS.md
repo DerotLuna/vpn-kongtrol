@@ -339,7 +339,7 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
 - No native `<select>`, `<datalist>` or date input: the kit's `Select`, `Combobox`,
   `DateRangePicker`, `Menu` ("⋯") and `Tooltip` (every IconButton). Anything that floats goes
   through `components/ui/floating.ts` (Floating UI + Popover API top layer; positions are CSSOM
-  writes, allowed by the CSP, ADR-0064). One amber primary per row or step; tables switch to
+  writes, allowed by the CSP, ADR-0067). One amber primary per row or step; tables switch to
   cards by their container's width (container queries), never by window width.
 - A tunnel action stays pending until the live state ends it (`src/data/transition.ts`:
   connected / error / provider app waiting for the user / timeout with what to do), not just

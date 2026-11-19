@@ -229,7 +229,7 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 - **Hover / Focus:** amber deepens, lifts 1px, soft amber glow; press scales to 0.98; 2px amber focus ring.
 - **Secondary:** transparent with a `border-2` hairline and text color; on hover the border, text and a 12% amber wash turn amber. One primary per section.
 
-### Panel controls (dashboard `web/ui`, ADR-0064)
+### Panel controls (dashboard `web/ui`, ADR-0067)
 - **Button ladder:** filled amber = the one primary per row, card or step (Conectar, Guardar, Aplicar); tonal = secondary emphasis (Conectar todas); outlined = neutral (Desconectar, Cancelar, Probar); text = lowest (Volver, Agregar otro, Borrar fechas; "Volver" in muted text at the footer's start). Desconectar and Cancelar are never amber. Small buttons are 36px; icon buttons beside them are 36px too (44px in phone cards).
 - **Row actions:** main action first (fixed minimum width so "Conectando…" does not shift the row), then icon buttons with tooltips; when the list is narrow the icon actions fold into a "⋯" menu. A row never wraps its actions. An action in progress keeps its spinner until the live state ends it.
 - **Tooltip:** Ink-on-light inverse bubble (`text` on `bg`), 12px, ≤ 280px, 6px from the trigger; flips and shifts to stay 8px inside the viewport; shows after 350ms on hover, at once on keyboard focus, on long press on touch.
@@ -285,4 +285,4 @@ macOS-style title bar with three dots and a centered mono title (`kongtrol — t
 - **Don't** render text below 11px or targets below 24px.
 - **Don't** use third-party VPN logos or brand colors.
 - **Don't** add shadows to anything except the terminal window and the primary button hover (in the panel also the dialog, the toast and floating layers: menu, listbox, calendar).
-- **Don't** use native `<select>`, `<datalist>` or date inputs in the panel; use the kit controls (ADR-0064).
+- **Don't** use native `<select>`, `<datalist>` or date inputs in the panel; use the kit controls (ADR-0067).

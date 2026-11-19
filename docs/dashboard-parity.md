@@ -447,7 +447,7 @@ Table / states / notices
 
 #### `select.js`
 
-- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: done by the kit `Select` (components/ui/Select.tsx, APG select-only combobox; listeners only while open, so the legacy leak cannot return), used by `SelectField` and every former `<select>`; ADR-0043 first kept the native `<select>`, ADR-0064 replaced it at the owner's request (2026-11-19)
+- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: done by the kit `Select` (components/ui/Select.tsx, APG select-only combobox; listeners only while open, so the legacy leak cannot return), used by `SelectField` and every former `<select>`; ADR-0043 first kept the native `<select>`, ADR-0067 replaced it at the owner's request (2026-11-19)
 - [x] Keyboard: ArrowDown/Enter/Space opens, arrows move, Enter/Space selects, Escape closes, focus returns to trigger — legacy select.js:47-56, 69, 81-85 — target shared component — status: done by the kit `Select` (plus Home/End, PageUp/PageDown, type-ahead; tests in components/ui/kit.test.tsx)
 
 #### `i18n.js`

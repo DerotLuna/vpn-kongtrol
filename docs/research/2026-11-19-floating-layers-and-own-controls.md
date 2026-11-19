@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-19
 
-Investigation behind [ADR-0064](../adr/0064-dashboard-floating-layers-own-controls-and-action-transitions.md).
+Investigation behind [ADR-0067](../adr/0067-dashboard-floating-layers-own-controls-and-action-transitions.md).
 Sources accessed 2026-11-19.
 
 ## Positioning library

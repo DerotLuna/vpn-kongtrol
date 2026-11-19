@@ -14,7 +14,7 @@
 //   options as you type; ArrowDown opens, Enter chooses the active option,
 //   Esc closes (a second Esc restores the chosen value). With allowCustom,
 //   what was typed is the value when nothing matches.
-// The list floats with Floating UI in the top layer (floating.ts, ADR-0064),
+// The list floats with Floating UI in the top layer (floating.ts, ADR-0067),
 // at least as wide as the control and never taller than the space left.
 import { useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { useAnchored, useDismiss, useTopLayer, useTypeahead } from './floating'

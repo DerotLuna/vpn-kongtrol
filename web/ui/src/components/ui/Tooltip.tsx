@@ -7,7 +7,7 @@
 // trigger loses hover/focus (persistent). Touch has no hover: a long press
 // (500 ms) shows it for a moment and does not press the button (Material's
 // touch tooltip). Positioned with Floating UI (flip/shift inside the
-// viewport) in the top layer (floating.ts, ADR-0064), so it never clips at
+// viewport) in the top layer (floating.ts, ADR-0067), so it never clips at
 // a screen edge, inside a table or over a dialog. Screen readers get the
 // text through aria-describedby on a hidden node that is always there; the
 // floating bubble is visual only (aria-hidden), so nothing is read twice.

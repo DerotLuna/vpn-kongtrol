@@ -6,7 +6,7 @@
 // wrap, Home/End jump, letters jump by label (type-ahead), Enter/Space
 // choose, Esc closes and returns focus to the button, Tab closes. The list
 // floats next to the button with Floating UI in the top layer (floating.ts,
-// ADR-0064). Used where a row has more actions than fit (Inicio "Tus VPN").
+// ADR-0067). Used where a row has more actions than fit (Inicio "Tus VPN").
 import { useCallback, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import type { ButtonSize } from './Button'
 import { useAnchored, useDismiss, useTopLayer, useTypeahead } from './floating'

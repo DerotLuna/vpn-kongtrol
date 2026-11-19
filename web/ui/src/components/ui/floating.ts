@@ -1,6 +1,6 @@
 // Kongtrol UI kit — anchored layers (tooltip, menu, listbox, calendar) · v1.0.0 · 2026-11-19
 //
-// One way to float something next to its trigger (ADR-0064):
+// One way to float something next to its trigger (ADR-0067):
 // - Position: Floating UI (`@floating-ui/react-dom`, MIT) with flip + shift +
 //   size inside an 8px viewport margin, so a layer never leaves the screen
 //   (the clipped tooltip at the right edge, owner feedback 2026-11-19), and

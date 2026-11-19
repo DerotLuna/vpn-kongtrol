@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
-# ADR-0064: Dashboard: one positioning layer (Floating UI + Popover API), own Select / Combobox / DateRangePicker / Menu, and actions that wait for the live state
+# ADR-0067: Dashboard: one positioning layer (Floating UI + Popover API), own Select / Combobox / DateRangePicker / Menu, and actions that wait for the live state
 
 Version 1.0.0 · 2026-11-19
 
