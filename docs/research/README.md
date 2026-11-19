@@ -46,6 +46,7 @@ reasoned but unverified.
 | [2026-11-18-dashboard-api-gaps](2026-11-18-dashboard-api-gaps.md) | Size-based log rotation (logrotate, lumberjack), OpenVPN/WireGuard directives that run code, HTTP content coding (RFC 9110), stable sort | ADR-0042 |
 | [2026-11-18-panel-at-root](2026-11-18-panel-at-root.md) | Fragments across redirects (RFC 9110), 308, CSP without `unsafe-inline` (MDN, CSP3 hash-source), backslash open redirect (WHATWG URL) | ADR-0043 |
 | [2026-11-18-unsaved-changes-guard](2026-11-18-unsaved-changes-guard.md) | Leaving a form with unsaved edits: `beforeunload`, React Router `useBlocker` (data mode only), prompt wording | ADR-0041 |
+| [2026-11-19-app-icon](2026-11-19-app-icon.md) | App icon per platform (Fluent 48 px grid and 3:1 on both themes, Windows icon sizes per scale, Apple HIG masking, Big Sur grid), Inno Setup 6.6+ wizard image sizes, `AdjustLabelHeight`, `rsrc` vs `go-winres` | ADR-0052 |
 | [2026-11-19-explorer-double-click](2026-11-19-explorer-double-click.md) | Console program opened from Explorer: mousetrap `StartedByExplorer`, cobra v1.8.0 mousetrap hook (English-only wait line) | ADR-0045 |
 | [2026-11-19-installer-upgrade-detection](2026-11-19-installer-upgrade-detection.md) | Detecting an existing install: Inno Setup uninstall key, `UsePrevious*`, `ShouldSkipPage`, SemVer precedence | ADR-0046 |
 | [2026-11-19-installer-resume-and-postinstall](2026-11-19-installer-resume-and-postinstall.md) | Inno [Run] order and `postinstall` defaults, `ExtractTemporaryFile` before the copy; reconnect after update | ADR-0050 |

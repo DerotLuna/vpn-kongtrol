@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.18.0 · 2026-11-19
+Version 1.19.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -64,6 +64,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0049](0049-installer-language-from-system.md) | Windows installer `ShowLanguageDialog=auto`: system language for ES/EN, dialog only for other languages, also on updates | Accepted | 2026-11-19 |
 | [0050](0050-installer-resume-tunnels-and-open-request.md) | Updates reconnect the tunnels that were up (`down --all --remember` → `resume`, reusing `daemon --restart`); installer checkbox by profiles, "crear mi primera VPN" = `kongtrol-tray --open /profiles` (always opens) | Accepted | 2026-11-19 |
 | [0051](0051-logo-size-cutoff-solid-to-64px.md) | Logo cutoff: solid mark up to ~64 px (landing header 40/36 px), line art from ~128 px (footer ≥ 160 px); refines ADR-0047 points 4–5 | Accepted | 2026-11-19 |
+| [0052](0052-app-icon-and-installer-branding.md) | App icon: Ink squircle plate with the solid mark in Bone (the only logo with a background), plain mid-tone mark up to 24 px, per-platform geometry; icon in `kongtrol.exe` too (`rsrc`); Inno wizard images per DPI, tagline as translated text, cut-off Ready text fixed; refines ADR-0044 §2, ADR-0047 §4 | Accepted | 2026-11-19 |
 | [0053](0053-profiles-applied-live.md) | VPN profiles created, edited, renamed and deleted without restarting the daemon (`vpn.Set` copy-on-write + `app.AdapterSync`); a connected profile keeps its settings until reconnected (`reconnect_required`, `?reconnect=true`); detect says if an app's tunnel is up | Accepted | 2026-11-19 |
 | [0054](0054-recent-destinations-memory-only.md) | Recent destinations (`/api/v1/connections/recent`, `kongtrol traffic recent`): memory only, 500 entries, 1 h, on by default with a switch | Accepted | 2026-11-19 |
 

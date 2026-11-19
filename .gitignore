@@ -18,8 +18,10 @@ web/ui/dist/*
 *.dylib
 /kongtrol
 
-# Generated Windows exe-icon resources (make build-tray-native, release.yml,
-# .goreleaser.yaml) from assets/logo.ico via akavel/rsrc — not source, do not commit.
+# Generated Windows exe-icon resources (make build / build-tray-native,
+# release.yml, .goreleaser.yaml) from assets/logo.ico via akavel/rsrc — not
+# source, do not commit (ADR-0052).
+cmd/kongtrol/rsrc_windows*.syso
 cmd/kongtrol-tray/rsrc_windows*.syso
 
 # ── Go ────────────────────────────────────────────────────────────────────────

@@ -26,7 +26,8 @@ const FILES = {
   // solid silhouette for small marks (header, patch-panel badge; DESIGN.md Logo)
   'source/logo-kong-solid.svg': 'logo-kong-solid.svg',
   'logo-kong-32.png': 'logo-kong-32.png',
-  'logo-kong-192.png': 'logo-kong-192.png',
+  // App icon plate (ADR-0052): iOS home screen, no transparency.
+  'app-icon-180.png': 'apple-touch-icon.png',
   'og-1200x630.jpg': 'og-1200x630.jpg',
   // legacy URLs kept alive for old shares/hotlinks, now the optimized rasters
   'logo-kong-512.png': 'logo-kong.png',

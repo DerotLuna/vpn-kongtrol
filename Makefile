@@ -78,6 +78,10 @@ ui-if-available:
 .PHONY: build
 build: ui-if-available
 	@mkdir -p $(DIST)
+ifeq ($(OS),Windows_NT)
+	@echo "Embedding exe icon (assets/logo.ico)..."
+	go run github.com/akavel/rsrc@v0.10.2 -arch $$(go env GOARCH) -ico assets/logo.ico -o cmd/kongtrol/rsrc_windows_$$(go env GOARCH).syso
+endif
 	go build $(LDFLAGS) -o $(DIST)/kongtrol$(EXT) ./cmd/kongtrol
 	@echo "Built: $(DIST)/kongtrol$(EXT)  ($(VERSION))"
 

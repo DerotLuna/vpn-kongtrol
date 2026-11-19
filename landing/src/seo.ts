@@ -1,4 +1,4 @@
-// SEO head + sitemap, single source for every page and language — version 2.5.0 · 2026-11-18.
+// SEO head + sitemap, single source for every page and language — version 2.6.0 · 2026-11-19.
 //
 // Used at build time only (vite.config.ts injects headFor() into each HTML entry,
 // scripts/prerender.mjs writes sitemapXml()). Specs followed:
@@ -147,7 +147,7 @@ export function headFor(page: PageId, lang: Lang): string {
     `<link rel="alternate" hreflang="x-default" href="${urlFor(page, X_DEFAULT)}" />`,
     `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`,
     `<link rel="icon" type="image/png" sizes="32x32" href="/logo-kong-32.png" />`,
-    `<link rel="apple-touch-icon" href="/logo-kong-192.png" />`,
+    `<link rel="apple-touch-icon" href="/apple-touch-icon.png" />`,
     `<link type="text/plain" rel="author" href="/humans.txt" />`,
     // Fonts: bundled by src/index.css (@import '@brand/fonts/fonts.css') with
     // hashed names; vite.config.ts fontPreloads() adds their preloads (ADR-0031).

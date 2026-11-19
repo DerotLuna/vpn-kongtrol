@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds Kongtrol.app (universal: arm64 + x86_64) and zips it — version 1.0.0 · 2026-11-18
+# Builds Kongtrol.app (universal: arm64 + x86_64) and zips it — version 1.1.0 · 2026-11-19
 #
 # Runs on macOS only (the tray needs cgo + Cocoa; Apple's toolchain builds
 # both architectures from one machine). Used by .github/workflows/release.yml
@@ -34,14 +34,15 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 lipo -create -output "$app/Contents/MacOS/kongtrol" "$work/kongtrol-arm64" "$work/kongtrol-amd64"
 lipo -create -output "$app/Contents/MacOS/kongtrol-tray" "$work/kongtrol-tray-arm64" "$work/kongtrol-tray-amd64"
 
-# App icon from the single brand source (assets/brand).
+# App icon from the single brand source (assets/brand): the 1024 px plate on
+# Apple's icon grid, transparent margin included (generate.go, ADR-0052).
 iconset="$work/Kongtrol.iconset"
 mkdir -p "$iconset"
-src="assets/brand/logo-kong-512.png"
+src="assets/brand/app-icon-1024.png"
 for size in 16 32 128 256 512; do
   sips -z "$size" "$size" "$src" --out "$iconset/icon_${size}x${size}.png" >/dev/null
 done
-for size in 16 32 128 256; do
+for size in 16 32 128 256 512; do
   double=$((size * 2))
   sips -z "$double" "$double" "$src" --out "$iconset/icon_${size}x${size}@2x.png" >/dev/null
 done
