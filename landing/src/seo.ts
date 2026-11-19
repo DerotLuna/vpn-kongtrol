@@ -21,13 +21,13 @@ interface Meta { title: string; description: string; ogDescription?: string; ind
 export const META: Record<PageId, Record<Lang, Meta>> = {
   home: {
     es: {
-      title: 'Kongtrol · tus VPN bajo control',
+      title: 'Todas tus VPN bajo Kongtrol',
       description: 'Une todas tus VPN en un solo lugar: reconexión automática, kill switch y reglas por destino. Funciona con NordVPN, Proton, WireGuard y más. Gratis y libre.',
       ogDescription: 'Conecta como siempre; Kongtrol se encarga del resto. 10 VPN, reconexión automática, protección contra fugas de DNS, kill switch y reglas de enrutamiento. Gratis y de código abierto para Windows, macOS y Linux.',
       index: true,
     },
     en: {
-      title: 'Kongtrol · your VPNs under control',
+      title: 'All your VPNs under Kongtrol',
       description: 'All your VPNs in one place: auto-reconnect, kill switch and per-destination routing. Works with NordVPN, Proton, WireGuard and more. Free and open source.',
       ogDescription: 'Connect the way you always do; Kongtrol handles the rest. 10 VPNs, auto-reconnect, DNS leak protection, kill switch and routing rules. Free and open source for Windows, macOS and Linux.',
       index: true,

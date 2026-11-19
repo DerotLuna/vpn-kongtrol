@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.15.0 · 2026-11-19
+Version 1.16.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -60,6 +60,8 @@ decision live in [`docs/research/`](../research/README.md).
 | [0045](0045-explorer-double-click-notice.md) | Double click on `kongtrol.exe` (Explorer, no arguments) shows a translated notice pointing to the installer and waits for Enter; cobra mousetrap off; release body starts with the Windows installer line | Accepted | 2026-11-19 |
 | [0046](0046-installers-detect-existing-install.md) | Every installer (Inno Setup, `install.sh`, `install.ps1`) detects an existing install and says update / reinstall / older version, skips questions already answered; `service install` leaves a current helper alone; refines ADR-0037 §7 | Accepted | 2026-11-19 |
 | [0047](0047-product-name-kongtrol-and-logo-sizes.md) | The product name is "Kongtrol" ("VPN" only in the tagline; repo, module, keychain unchanged); solid mark up to 32 px (favicon), line art from 36 px | Accepted | 2026-11-19 |
+| [0048](0048-tagline-todas-tus-vpn-bajo-kongtrol.md) | Tagline "Todas tus VPN bajo Kongtrol" / "All your VPNs under Kongtrol" (play on "control"); refines ADR-0047 point 1 | Accepted | 2026-11-19 |
+| [0049](0049-installer-language-from-system.md) | Windows installer `ShowLanguageDialog=auto`: system language for ES/EN, dialog only for other languages, also on updates | Accepted | 2026-11-19 |
 
 ## Statuses
 

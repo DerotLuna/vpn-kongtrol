@@ -37,7 +37,7 @@ export const CTA_COPY: Record<Lang, {
     copy: 'Copiar enlace',
     copied: 'Enlace copiado. Ábrelo en tu computador.',
     copyFailed: 'No se pudo copiar. Copia la dirección de esta página.',
-    shareTitle: 'Kongtrol — todas tus VPN en un solo lugar',
+    shareTitle: 'Todas tus VPN bajo Kongtrol',
   },
   en: {
     generic: 'See downloads',
@@ -50,7 +50,7 @@ export const CTA_COPY: Record<Lang, {
     copy: 'Copy link',
     copied: 'Link copied. Open it on your computer.',
     copyFailed: "Couldn't copy. Copy this page's address.",
-    shareTitle: 'Kongtrol — all your VPNs in one place',
+    shareTitle: 'All your VPNs under Kongtrol',
   },
 }
 

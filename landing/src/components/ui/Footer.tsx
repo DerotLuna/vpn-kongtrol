@@ -11,14 +11,14 @@ interface Props {
 export default function Footer({ lang }: Props) {
   const copy = lang === 'es'
     ? {
-      tagline: 'Todas tus VPN en un solo lugar. Panel web y CLI completa.',
+      tagline: 'Todas tus VPN bajo Kongtrol. Panel web y CLI completa.',
       facts: ['beta', '10 VPN', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
       legal: [['privacidad', 'Privacidad'], ['seguridad', 'Seguridad'], ['terminos', 'Términos']] as [PageId, string][],
       license: 'Licencia (Apache-2.0)',
     }
     : {
-      tagline: 'All your VPNs in one place. Web panel and a full CLI.',
+      tagline: 'All your VPNs under Kongtrol. Web panel and a full CLI.',
       facts: ['beta', '10 VPNs', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
       legal: [['privacidad', 'Privacy'], ['seguridad', 'Security'], ['terminos', 'Terms']] as [PageId, string][],
