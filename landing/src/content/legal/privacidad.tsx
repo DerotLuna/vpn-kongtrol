@@ -1,4 +1,6 @@
-// Privacy policy — version 1.5.0 · 2026-11-19.
+// Privacy policy — version 1.6.0 · 2026-11-19.
+// 1.6.0: the dashboard tab also keeps a session key (sessionStorage kongtrol.session, sent only to
+//   the daemon on this computer; ADR-0062).
 // 1.5.0: plain-language summary in points and shorter sentences. Fixes: the dashboard keeps a
 //   session cookie `kongtrol_session` and never receives the token (ADR-0039; the old text named a
 //   `kongtrol_control` cookie carrying the token); dashboard browser storage is language + theme
@@ -32,7 +34,8 @@
 //   helper audit log (internal/privhelper/platform_*.go).
 // - dashboard: session cookie kongtrol_session (internal/api/session.go); localStorage
 //   kongtrol-dashboard-lang / kongtrol-dashboard-theme (web/ui/src/i18n/lang.ts, theme/theme.ts),
-//   sessionStorage kongtrol.noticeSeq (web/ui/src/data/home.ts).
+//   sessionStorage kongtrol.noticeSeq (web/ui/src/data/home.ts) and kongtrol.session, the page token sent as
+//   X-Kongtrol-Session to the local daemon only (web/ui/src/api/auth.ts, ADR-0062).
 // - website: only `kglang` (landing/src/hooks/usePreferences.ts); CSP connect-src 'self' (landing/public/_headers).
 // - no telemetry / analytics / crash reporting: repo-wide search, no such code.
 // Re-check these when the code changes (AGENTS.md "Docs stay in sync").
@@ -42,7 +45,7 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.5.0'
+const VERSION = '1.6.0'
 const UPDATED = '2026-11-19'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
@@ -132,10 +135,11 @@ const es: LegalDocContent = {
     {
       id: 'panel', num: '3', label: 'Panel web', tmux: 'panel', title: 'Panel web local',
       body: [<>El panel funciona solo en tu equipo (<IC c="127.0.0.1" />). Kongtrol lo abre con un código de un solo
-        uso y el navegador recibe una cookie de sesión local (<IC c="kongtrol_session" />, HttpOnly). La cookie no
-        contiene tu token ni sale de tu equipo; la sesión caduca sola.</>,
-      <>En el navegador, el panel solo guarda tu idioma y tu tema, y en la pestaña abierta el último aviso que
-        mostró. Sus tipografías y logotipos vienen dentro del programa: abrirlo no hace ninguna petición a Google
+        uso y el navegador recibe una cookie de sesión local (<IC c="kongtrol_session" />, HttpOnly) y una clave de
+        sesión que la pestaña guarda mientras está abierta. Ninguna contiene tu token ni sale de tu equipo; la sesión
+        caduca sola.</>,
+      <>En el navegador, el panel solo guarda tu idioma y tu tema, y en la pestaña abierta esa clave y el último
+        aviso que mostró. Sus tipografías y logotipos vienen dentro del programa: abrirlo no hace ninguna petición a Google
         ni a otro tercero.</>],
     },
     {
@@ -255,10 +259,10 @@ const en: LegalDocContent = {
     {
       id: 'panel', num: '3', label: 'Web dashboard', tmux: 'dashboard', title: 'Local web dashboard',
       body: [<>The dashboard runs only on your computer (<IC c="127.0.0.1" />). Kongtrol opens it with a one-time
-        code and the browser gets a local session cookie (<IC c="kongtrol_session" />, HttpOnly). The cookie does
-        not hold your token and never leaves your computer; the session expires on its own.</>,
-      <>In the browser, the dashboard only stores your language and theme, and, in the open tab, the last notice it
-        showed. Its fonts and logos are built into the program: opening it makes no request to Google or any other
+        code and the browser gets a local session cookie (<IC c="kongtrol_session" />, HttpOnly) and a session key the
+        tab keeps while it is open. Neither holds your token or leaves your computer; the session expires on its own.</>,
+      <>In the browser, the dashboard only stores your language and theme, and, in the open tab, that key and the
+        last notice it showed. Its fonts and logos are built into the program: opening it makes no request to Google or any other
         third party.</>],
     },
     {

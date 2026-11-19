@@ -1,7 +1,9 @@
-// Kongtrol UI — the daemon's live feed · v0.1.0 · 2026-11-18
+// Kongtrol UI — the daemon's live feed · v0.2.0 · 2026-11-19
 //
-// One WebSocket per page (GET /api/v1/ws/metrics, internal/api/ws.go): the
-// daemon pushes the whole tunnel map on every state change and on a 5s
+// One WebSocket per page (GET /api/v1/ws/metrics, internal/api/ws.go), each
+// open with a fresh one-time ticket from api/auth.ts (browsers cannot add
+// headers to a WebSocket; ADR-0062). The daemon pushes the whole tunnel map
+// on every state change and on a 5s
 // heartbeat. Each frame is written into the same cache entry the REST
 // snapshot uses (keys.tunnels); structural sharing keeps unchanged tunnels
 // identical, so only rows that changed re-render.
@@ -11,6 +13,7 @@
 // after an outage also refreshes every other resource (the daemon may have
 // restarted with a new config).
 import type { QueryClient } from '@tanstack/react-query'
+import { liveTicket } from '../api/auth'
 import { sortTunnels } from '../api/client'
 import type { TunnelMetrics } from '../api/types'
 import { backoffDelay } from './backoff'
@@ -22,11 +25,18 @@ export interface LiveFeedOptions {
   WebSocketImpl?: typeof WebSocket
   url?: string
   delay?: (attempt: number) => number
+  /** One-time WebSocket ticket (api/auth.ts); injected in tests. */
+  ticket?: () => Promise<string>
 }
 
 export function liveFeedURL(): string {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
   return `${scheme}://${location.host}/api/v1/ws/metrics`
+}
+
+/** The feed URL with its one-time ticket. */
+export function withTicket(url: string, ticket: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}ticket=${encodeURIComponent(ticket)}`
 }
 
 /** Parses one frame: a name-keyed map of TunnelMetrics. Null if malformed. */
@@ -43,6 +53,7 @@ export function parseFrame(data: string): TunnelMetrics[] | null {
 export function startLiveFeed(client: QueryClient, opts: LiveFeedOptions = {}): () => void {
   const WS = opts.WebSocketImpl ?? globalThis.WebSocket
   const delay = opts.delay ?? ((n: number) => backoffDelay(n))
+  const ticket = opts.ticket ?? (() => liveTicket())
   if (!WS) {
     liveState.set('down')
     return () => {}
@@ -53,9 +64,21 @@ export function startLiveFeed(client: QueryClient, opts: LiveFeedOptions = {}): 
   let hadOutage = false
   let timer: ReturnType<typeof setTimeout> | undefined
 
+  const retry = () => {
+    if (closed) return
+    hadOutage = true
+    liveState.set('down')
+    timer = setTimeout(open, delay(attempt++))
+  }
+
   const open = () => {
     liveState.set(attempt === 0 ? 'connecting' : 'down')
-    socket = new WS(opts.url ?? liveFeedURL())
+    ticket().then(connect, retry)
+  }
+
+  const connect = (t: string) => {
+    if (closed) return
+    socket = new WS(withTicket(opts.url ?? liveFeedURL(), t))
     socket.onopen = () => {
       attempt = 0
       liveState.set('live')
@@ -69,12 +92,7 @@ export function startLiveFeed(client: QueryClient, opts: LiveFeedOptions = {}): 
       const list = parseFrame(event.data)
       if (list) client.setQueryData(keys.tunnels, list)
     }
-    socket.onclose = () => {
-      if (closed) return
-      hadOutage = true
-      liveState.set('down')
-      timer = setTimeout(open, delay(attempt++))
-    }
+    socket.onclose = retry
   }
   open()
 

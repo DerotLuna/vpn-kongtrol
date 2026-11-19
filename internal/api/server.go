@@ -134,12 +134,7 @@ func NewServer(
 		onShutdown:        onShutdown,
 		connectCancel:     make(map[string]context.CancelFunc),
 	}
-	s.upgrader.CheckOrigin = func(r *http.Request) bool {
-		if r.Header.Get("Origin") == "" {
-			return s.validHost(r.Host) && s.authenticated(r)
-		}
-		return s.validBrowserOrigin(r)
-	}
+	s.upgrader.CheckOrigin = s.checkWSOrigin
 	s.policyEngine.Store(policyEngine)
 	s.killSwitchOn.Store(killSwitchEnabled)
 	s.dnsGuardOn.Store(dnsGuardEnabled)
@@ -157,10 +152,11 @@ func (s *Server) Start() error {
 
 	mux := http.NewServeMux()
 
-	// Browser session bootstrap (session.go, ADR-0039).
+	// Browser session bootstrap (session.go, ADR-0039, ADR-0062).
 	mux.HandleFunc("POST "+sessionNoncePath, s.handleSessionNonce)
 	mux.HandleFunc("POST "+sessionPath, s.handleSessionCreate)
 	mux.HandleFunc("DELETE "+sessionPath, s.handleSessionDelete)
+	mux.HandleFunc("POST "+wsTicketPath, s.handleWSTicket)
 
 	// REST API endpoints.
 	mux.HandleFunc("GET /api/v1/tunnels", s.handleListTunnels)
@@ -227,7 +223,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/data/purge", s.handlePurgeData)
 
 	// WebSocket live metrics feed.
-	mux.HandleFunc("/api/v1/ws/metrics", s.handleWebSocket)
+	mux.HandleFunc(wsPath, s.handleWebSocket)
 
 	// The dashboard (web/ui) at "/": every path no route above claimed
 	// (ADR-0043). Pages never carry credentials: a browser gets its session
@@ -259,7 +255,7 @@ func (s *Server) Start() error {
 
 func (s *Server) secureHandler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
+		w.Header().Set("Content-Security-Policy", s.contentSecurityPolicy(r.Host))
 		w.Header().Set("Referrer-Policy", "no-referrer")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
@@ -295,6 +291,18 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
+		case r.URL.Path == wsPath && !s.tokenAuthenticated(r):
+			// A browser cannot add headers to a WebSocket: this
+			// daemon's Origin, the cookie and a one-time ticket from
+			// POST /api/v1/ws-ticket (ADR-0062).
+			if !s.validBrowserOrigin(r) {
+				http.Error(w, "forbidden origin", http.StatusForbidden)
+				return
+			}
+			if !s.wsTicketAuthenticated(r) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
 		case !s.authenticated(r):
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -319,17 +327,36 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 	})
 }
 
+// checkWSOrigin is the WebSocket upgrader's origin check (secureHandler
+// already authenticated the request): a browser must come from this
+// daemon's origin; a native client sends no Origin and the file token.
+func (s *Server) checkWSOrigin(r *http.Request) bool {
+	if r.Header.Get("Origin") == "" {
+		return s.validHost(r.Host) && s.tokenAuthenticated(r)
+	}
+	return s.validBrowserOrigin(r)
+}
+
+// contentSecurityPolicy is the page CSP. connect-src names the WebSocket
+// origin explicitly: CSP3 lets 'self' match ws: on the same host, but not
+// every browser does (MDN; WebKit bug 201591). host is the request's Host,
+// already checked to be loopback on this port (any other gets 401/403).
+func (s *Server) contentSecurityPolicy(host string) string {
+	connect := "'self'"
+	if s.validHost(host) {
+		connect += " ws://" + host
+	}
+	return "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src " +
+		connect + "; frame-ancestors 'none'"
+}
+
 // authenticated accepts the file token in a header (CLI, tray) or a live
-// browser session cookie (dashboard pages). The file token is never
-// accepted from a cookie.
+// browser session: the cookie together with its page token in
+// X-Kongtrol-Session (ADR-0062). The cookie alone, which any server on
+// another port of 127.0.0.1 may have received, is not enough. The file
+// token is never accepted from a cookie.
 func (s *Server) authenticated(r *http.Request) bool {
-	if s.tokenAuthenticated(r) {
-		return true
-	}
-	if cookie, err := r.Cookie(sessionCookieName); err == nil {
-		return s.sessions.valid(cookie.Value)
-	}
-	return false
+	return s.tokenAuthenticated(r) || s.browserSession(r)
 }
 
 // tokenAuthenticated checks the file token in X-Kongtrol-Token or
@@ -393,10 +420,11 @@ func isMutation(method string) bool {
 
 func isConfigMutation(path string) bool {
 	// The helper install waits minutes on an OS prompt; it must not hold
-	// the config lock.
+	// the config lock. Neither may the import, which can wait on one
+	// (elevated read): it locks only to store the file.
 	if strings.HasPrefix(path, "/api/v1/tunnels/") || strings.HasPrefix(path, "/api/v1/helper/") ||
-		path == sessionPath || path == sessionNoncePath ||
-		path == "/api/v1/shutdown" {
+		path == sessionPath || path == sessionNoncePath || path == wsTicketPath ||
+		path == importPath || path == "/api/v1/shutdown" {
 		return false
 	}
 	if strings.HasPrefix(path, "/api/v1/groups/") &&

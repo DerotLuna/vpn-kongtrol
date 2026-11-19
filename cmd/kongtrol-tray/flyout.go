@@ -86,7 +86,7 @@ func flyoutLoadURL(pageURL string) (string, error) {
 var flyoutPanelURL = func(base, path string) (string, error) {
 	tok := ""
 	if client != nil {
-		tok = client.Token
+		tok = client.CurrentToken()
 	}
 	return daemonctl.New(base, tok).PanelURL(path)
 }
@@ -135,23 +135,38 @@ func flyoutInitScript(pageURL, nonce string) (string, error) {
 	if err != nil || u.Host == "" {
 		return "", errFlyoutURL
 	}
-	origin, _ := json.Marshal(u.Scheme + "://" + u.Host)
-	path, _ := json.Marshal(u.EscapedPath())
-	n, _ := json.Marshal(nonce)
-	return `(function () {
+	// Every value reaches the script as one JSON object (json.Marshal
+	// escapes quotes, <, >, & and U+2028/U+2029, so it is a valid JS
+	// literal); nothing else is concatenated into the source.
+	cfg, err := json.Marshal(struct {
+		Origin  string `json:"origin"`
+		Path    string `json:"path"`
+		Nonce   string `json:"nonce"`
+		OffPage string `json:"offPage"`
+	}{u.Scheme + "://" + u.Host, u.EscapedPath(), nonce, flyoutOffPage})
+	if err != nil {
+		return "", err
+	}
+	return flyoutScriptHead + string(cfg) + flyoutScriptBody, nil
+}
+
+// flyoutScriptHead + JSON config + flyoutScriptBody is flyoutInitScript.
+const (
+	flyoutScriptHead = "(function () {\n  var cfg = "
+	flyoutScriptBody = `;
   var w = window.chrome && window.chrome.webview;
   if (!w) return;
   window.open = function () { return null; };
-  if (location.origin !== ` + string(origin) + ` || location.pathname !== ` + string(path) + `) {
-    w.postMessage("` + flyoutOffPage + `");
+  if (location.origin !== cfg.origin || location.pathname !== cfg.path) {
+    w.postMessage(cfg.offPage);
     return;
   }
-  var nonce = ` + string(n) + `;
+  var nonce = cfg.nonce;
   Object.defineProperty(window, "kongtrolTray", {
     value: Object.freeze({ post: function (m) { w.postMessage(nonce + " " + String(m)); } }),
   });
-})();`, nil
-}
+})();`
+)
 
 // rect is a screen rectangle in pixels (right/bottom exclusive, as Win32 RECT).
 type rect struct{ Left, Top, Right, Bottom int }

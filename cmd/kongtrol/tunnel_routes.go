@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 )
 
 // apiTunnelRoute / apiTunnelRoutes / apiTunnelRoutesResponse mirror
@@ -51,7 +52,7 @@ func fetchTunnelRoutes(base, name string, timeout time.Duration) (apiTunnelRoute
 	if err != nil {
 		return out, err
 	}
-	resp, err := (&http.Client{Timeout: timeout}).Do(req)
+	resp, err := daemonctl.HTTPClient(timeout).Do(req)
 	if err != nil {
 		return out, err
 	}

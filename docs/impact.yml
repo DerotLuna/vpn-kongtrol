@@ -1,4 +1,4 @@
-# Change-impact map — version 1.10 · 2026-11-19
+# Change-impact map — version 1.11 · 2026-11-19
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -170,6 +170,7 @@ features:
   daemon_lifecycle:
     code:
       - internal/daemonctl/**
+      - internal/sockowner/**
       - internal/app/profile_service.go
       - internal/monitor/collector.go
       - internal/monitor/scheduler.go

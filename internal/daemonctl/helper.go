@@ -69,7 +69,7 @@ func (c *Client) InstallHelper(lang i18n.Lang) (HelperStatus, error) {
 		return st, err
 	}
 	req.Header.Set("X-Kongtrol-Lang", string(lang))
-	resp, err := (&http.Client{Timeout: helperInstallTimeout}).Do(req)
+	resp, err := HTTPClient(helperInstallTimeout).Do(req)
 	if err != nil {
 		return st, err
 	}

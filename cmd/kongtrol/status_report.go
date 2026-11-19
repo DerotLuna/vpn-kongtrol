@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
@@ -232,7 +233,7 @@ func collectStatusReport() (statusReportJSON, error) {
 }
 
 func fetchDaemonHistory() (map[string]monitor.ProfileHistory, error) {
-	client := &http.Client{Timeout: 1200 * time.Millisecond}
+	client := daemonctl.HTTPClient(1200 * time.Millisecond)
 	req, err := daemonRequest(http.MethodGet, dashboardURL()+"/api/v1/metrics/history", nil)
 	if err != nil {
 		return nil, err
@@ -258,7 +259,7 @@ func fetchDaemonSnapshot() ([]monitor.TunnelMetrics, *apiSecurityStatus, error) 
 
 // fetchDaemonSnapshotAt reads tunnels + security state from the daemon at base.
 func fetchDaemonSnapshotAt(base string) ([]monitor.TunnelMetrics, *apiSecurityStatus, error) {
-	client := &http.Client{Timeout: 1200 * time.Millisecond}
+	client := daemonctl.HTTPClient(1200 * time.Millisecond)
 
 	tReq, err := daemonRequest(http.MethodGet, base+"/api/v1/tunnels", nil)
 	if err != nil {

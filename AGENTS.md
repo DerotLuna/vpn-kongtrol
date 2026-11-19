@@ -84,8 +84,11 @@ When adding a new adapter:
   item (`ensureDaemon`), and it recovers by itself when any client starts the daemon again
   (it keeps polling; refused connection = stopped, timeout = "no responde"). ADR-0037.
 - There is exactly one daemon per user; CLI, tray and dashboard are clients of its local API
-  (127.0.0.1, token in `~/.kongtrol/api-token` for CLI/tray; browsers get a session cookie from a
-  one-time nonce, never the token: `daemonctl.(*Client).PanelURL`, ADR-0039). This local API is IPC on the same machine —
+  (127.0.0.1, token in `~/.kongtrol/api-token` for CLI/tray, rewritten on every daemon start and read
+  per request, sent only through `daemonctl.HTTPClient`/`DialContext`, which first checks that the
+  listener belongs to this user; browsers get a session from a one-time nonce, never the token:
+  `daemonctl.(*Client).PanelURL`, ADR-0039; the session is the cookie plus a per-page token in
+  `X-Kongtrol-Session`, the WebSocket a one-time ticket, ADR-0062). This local API is IPC on the same machine —
   nothing leaves the host.
 
 <!-- feature:first_run -->
@@ -270,7 +273,8 @@ ProfileService.Disconnect(name)
 | `internal/security` | Kill switch, DNS guard, blocked destinations (via privops), leak tester, HMAC-signed audit log |
 | `internal/privops` | Closed list of privileged operations: `Local` (elevated) or `Client` (to the helper); per-OS `sys_*.go` |
 | `internal/privhelper` | Privileged helper service (named pipe / unix socket, caller auth, lease, audit) |
-| `internal/daemonctl` | Shared daemon client + spawn logic used by CLI and tray |
+| `internal/daemonctl` | Shared daemon client + spawn logic used by CLI and tray; every token-carrying connection goes through `DialContext` (listener-owner check, `ForeignListenerError`, ADR-0062) |
+| `internal/sockowner` | Who owns the server end of a loopback TCP connection, no admin: Windows `GetExtendedTcpTable` + process token SID, Linux `/proc/net/tcp` uid, macOS unknown (ADR-0062) |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
 | `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
 | `internal/update` | Opt-in new version notice: GitHub Releases latest, ≤1 request/24 h, semver compare, never downloads (ADR-0034) |
@@ -326,7 +330,9 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   "what to do" line); errors render through `describeError` (on screen: kit `ErrorState`).
   Requests only through `http.get/post/put/delete` in `src/api/client.ts` (language header,
   auth, reachability, `ApiError`); data modules keep their endpoints next to their hooks.
-- Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
+- Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol"): it trades
+  `#k=` for the cookie + page token (kept in `sessionStorage`), gives `client.ts` the
+  `X-Kongtrol-Session` header and `data/live.ts` a one-time WebSocket ticket (ADR-0062).
 - Every "add" (profile, imported file, rule) opens the one shell-hosted "＋ Agregar" sheet
   (`src/components/add`, ADR-0055) through the deep link `?add=menu|vpn|file|rule[&via=&target=&app=]`
   (`src/app/addLink.ts` `useAddSheet`); never a page-local create form. New profiles always

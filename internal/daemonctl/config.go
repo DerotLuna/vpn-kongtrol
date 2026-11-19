@@ -36,7 +36,7 @@ func (c *Client) sendJSON(method, path string, body any) (*http.Response, error)
 	if err != nil {
 		return nil, err
 	}
-	return (&http.Client{Timeout: 15 * time.Second}).Do(req)
+	return HTTPClient(15 * time.Second).Do(req)
 }
 
 // CreatePolicy adds rule (POST /api/v1/policies). A refusal comes back as a

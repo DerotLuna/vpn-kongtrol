@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gorilla/websocket"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 )
 
@@ -43,8 +44,13 @@ func watchRemoteDaemon(ctx context.Context, p *tea.Program) {
 // forwards every snapshot into the TUI until the connection drops or ctx
 // is cancelled.
 func streamRemoteTunnels(ctx context.Context, p *tea.Program, base string) {
-	headers := http.Header{"X-Kongtrol-Token": []string{apiToken}}
-	conn, _, err := websocket.DefaultDialer.DialContext(ctx, daemonWSURL(base), headers)
+	// The token is read now (it rotates on every daemon start) and only
+	// sent once the listener passed the owner check (ADR-0062).
+	headers := http.Header{daemonctl.TokenHeader: []string{daemonClient(base).CurrentToken()}}
+	dialer := *websocket.DefaultDialer
+	dialer.NetDialContext = daemonctl.DialContext
+	dialer.Proxy = nil
+	conn, _, err := dialer.DialContext(ctx, daemonWSURL(base), headers)
 	if err != nil {
 		return
 	}
@@ -78,7 +84,7 @@ func streamRemoteTunnels(ctx context.Context, p *tea.Program, base string) {
 // step with the daemon (the WebSocket feed carries tunnels only), so it shows
 // the same state `kongtrol status` reports.
 func pollRemoteSecurity(ctx context.Context, p *tea.Program, base string, done <-chan struct{}) {
-	client := &http.Client{Timeout: 1200 * time.Millisecond}
+	client := daemonctl.HTTPClient(1200 * time.Millisecond)
 	t := time.NewTicker(2 * time.Second)
 	defer t.Stop()
 	var eventSeq int64

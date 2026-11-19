@@ -1,14 +1,14 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.7.0 · 2026-11-18
+// Kongtrol UI — typed client for the daemon's local API · v0.8.0 · 2026-11-19
 //
-// Same-origin only; requests carry no token in JS. Authentication (cookie,
-// session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
+// Same-origin only; never the file token. Authentication (cookie, the page's
+// session header, session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
 // translates errors when told the language (X-Kongtrol-Lang).
 //
 // Every request also reports reachability to data/connection.ts: a network
 // failure means the daemon that serves this page stopped answering.
 // Caching, de-dup, retries and the live feed live in src/data/ (ADR-0038).
 import { connection } from '../data/connection'
-import { authReady, noteAuthStatus } from './auth'
+import { authHeaders, authReady, noteAuthStatus } from './auth'
 import type { Lang } from '../i18n/messages'
 import type {
   ApiErrorBody,
@@ -59,6 +59,7 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   headers.set('X-Kongtrol-Lang', currentLang)
   headers.set('Accept', accept)
   await authReady()
+  for (const [name, value] of Object.entries(authHeaders())) headers.set(name, value)
   let res: Response
   try {
     res = await fetch(path, { ...init, headers, credentials: 'same-origin' })

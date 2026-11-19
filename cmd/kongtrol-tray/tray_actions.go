@@ -55,6 +55,9 @@ func initClient() error {
 		return err
 	}
 	client = daemonctl.New(daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port), token)
+	// The daemon writes a new token on every start (ADR-0062): read it per
+	// request, so the tray keeps working across down/up and restarts.
+	client.TokenSource = config.CurrentAPIToken
 	if firstRun {
 		return errNoConfig
 	}
@@ -82,6 +85,7 @@ func ensureDaemon() error {
 			return daemonctl.Spawn(kongtrolExe, []string{"daemon", "--plain"}, logPath, trayLang)
 		},
 		Lang: trayLang,
+		Base: client.Base,
 	}
 	started, err := sp.Ensure(context.Background())
 	if err != nil {

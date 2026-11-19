@@ -100,6 +100,7 @@ func resumeTargets(saved []string) []string {
 func ensureReplacementDaemon(ctx context.Context, base string, targets []string) error {
 	sp := daemonctl.Spawner{
 		Probe: func() bool { return daemonProbeFn(base) },
+		Base:  base,
 		Spawn: func(logPath string) (<-chan error, error) {
 			exe, err := currentExecutable()
 			if err != nil {

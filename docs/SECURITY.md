@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.9.0 · 2026-11-19
+Version 2.10.0 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -79,7 +79,7 @@ user, the tunnel or "direct" and the local interface, first/last seen and a coun
 |---|---|
 | Where | Only in the daemon's memory. Never written to disk, logs or the audit log; never sent anywhere. |
 | How much | At most 500 destinations; each forgotten 1 h after it was last seen. |
-| Who can read it | The authenticated loopback API (`GET /api/v1/connections/recent`: token or session cookie, like every route): the dashboard and `kongtrol traffic recent`. |
+| Who can read it | The authenticated loopback API (`GET /api/v1/connections/recent`: token or browser session, like every route): the dashboard and `kongtrol traffic recent`. |
 | Off | `monitor.recent_connections.enabled: false` (default on), `kongtrol config recent-connections off` or the dashboard settings: the list is emptied at once and nothing is read. It is also emptied when Kongtrol stops. |
 
 On by default because nothing leaves the machine and the same user can already read this table
@@ -96,25 +96,45 @@ The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refu
 `localhost` is pinned to `127.0.0.1`) has two kinds of callers
 ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)):
 
-- **Native clients** (CLI, tray) send the control token from `~/.kongtrol/api-token` (created
-  `0600` in a `0700` directory) in `X-Kongtrol-Token`. It is compared in constant time and is
-  never accepted from a cookie or sent to a browser.
-- **Browsers** get a session cookie, never the token. Kongtrol (tray "Abrir panel", the tray
-  flyout, `kongtrol dashboard`) asks the daemon for a one-time nonce (`POST
-  /api/v1/session/nonce`, token required; 256 bits, single use, valid 60 s) and opens
-  `http://127.0.0.1:9741/#k=<nonce>`. The page removes the nonce from the address bar and trades
-  it (`POST /api/v1/session`: loopback Host, the daemon's own `Origin`, JSON only, failures
-  rate-limited to 10 per minute) for `kongtrol_session`, a separate random 256-bit id in an
-  `HttpOnly; SameSite=Strict; Path=/` cookie. Sessions live only in the daemon's memory (a
-  restart ends them), expire after 12 h without use and after 7 days in any case, and only their
-  SHA-256 digests are stored. `DELETE /api/v1/session` signs out.
+- **Native clients** (CLI, tray) send the control token from `~/.kongtrol/api-token` (`0600` in
+  a `0700` directory) in `X-Kongtrol-Token`. It is compared in constant time and is never
+  accepted from a cookie or sent to a browser. The daemon writes a **new token on every start**,
+  before it listens (atomic temp file + rename); clients read the file on every request, so a
+  token caught earlier stops working once Kongtrol starts again
+  ([ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)).
+- **Listener-owner check.** Before the first byte of a request that carries the token, the CLI
+  and the tray check who owns the other end of the loopback connection: Windows reads the owning
+  process from `GetExtendedTcpTable` and compares its user SID with yours (a process you may not
+  inspect passes only if it is the daemon in your `~/.kongtrol/run/kongtrol.pid`); Linux compares
+  the uid in `/proc/net/tcp`. Another user's program gets nothing and you see "Otro usuario de
+  este equipo tiene un programa en la dirección de Kongtrol … Qué hacer: …". macOS has no
+  verified no-root check: the token is sent and relies on the rotation above. If the OS table
+  cannot be read, the request proceeds (logged at debug level).
+- **Browsers** get a session, never the token. Kongtrol (tray "Abrir panel", the tray flyout,
+  `kongtrol dashboard`) asks the daemon for a one-time nonce (`POST /api/v1/session/nonce`, token
+  required; 256 bits, single use, valid 60 s) and opens `http://127.0.0.1:9741/#k=<nonce>`. The
+  page removes the nonce from the address bar and trades it (`POST /api/v1/session`: loopback
+  Host, the daemon's own `Origin`, JSON only, failures rate-limited to 10 per minute) for two
+  things: `kongtrol_session`, a separate random 256-bit id in an `HttpOnly; SameSite=Strict;
+  Path=/` cookie, and a 256-bit **page token** in the answer, which the page keeps in
+  `sessionStorage` and sends as `X-Kongtrol-Session`. Every request needs both. Browsers send
+  cookies to every port of 127.0.0.1 (RFC 6265 §8.5), so a program of another local user on
+  another port could receive the cookie; it cannot read `sessionStorage`, which belongs to the
+  daemon's origin (scheme, host and port) only. The live feed's WebSocket uses a ticket from
+  `POST /api/v1/ws-ticket` (cookie + header; valid 30 s, single use, bound to the session) plus
+  the daemon's `Origin`. Sessions live only in the daemon's memory (a restart ends them), expire
+  after 12 h without use and after 7 days in any case, and only SHA-256 digests of ids, page
+  tokens, nonces and tickets are stored. A second tab or the tray flyout gets its own page token
+  on the same cookie (up to 16). `DELETE /api/v1/session` signs out.
 
 Pages (`/` and every dashboard route; `/app/*` only redirects there) never set credentials. Every route, pages included, checks that the Host
 header is a loopback name with the daemon's port (DNS rebinding); API requests with an `Origin`
 must come from the daemon's own origin, and mutations must be `application/json` (so a
-cross-site form or `text/plain` request cannot reach them). A page opened another way (a
-bookmark after the session ended, another program) gets 401 and shows: "Abre el panel desde
-Kongtrol: el ícono de la bandeja o `kongtrol dashboard`."
+cross-site form or `text/plain` request cannot reach them). The page CSP allows connections only
+to its own origin and its one WebSocket origin (`connect-src 'self' ws://<host>:<port>`). A page
+opened another way (a bookmark, a new tab without `#k=`, another program) gets 401 and shows:
+"Abre el panel desde Kongtrol: el ícono de la bandeja o `kongtrol dashboard`." Reloading the same
+tab keeps the session.
 
 ## Privileged helper
 
@@ -283,12 +303,15 @@ re-run of `KillSwitchService.Apply()` (`internal/app/killswitch_service.go`); fo
 `applyDNSGuardState()` (`cmd/kongtrol/main.go`), which mirrors the same enable gate `ProfileService.Connect`
 uses. Nothing here is exposed on the network by default — the dashboard only binds to
 loopback addresses. Non-loopback overrides are rejected. Native clients authenticate with the
-mode-`0600` capability in `~/.kongtrol/api-token`; the dashboard receives the same capability in
-an HttpOnly, SameSite=Strict cookie and state-changing cross-origin requests are rejected.
+mode-`0600` token in `~/.kongtrol/api-token` (new on every daemon start); the dashboard never
+receives it: it gets its own session, an HttpOnly, SameSite=Strict cookie that only works
+together with the page token in `X-Kongtrol-Session` (see "Local panel sign-in"), and
+state-changing cross-origin requests are rejected.
 The cookie is deliberately not `Secure`: the dashboard is plain HTTP on loopback only, and Safari
 has rejected Secure cookies over HTTP even on loopback (https://flaviocopes.com/cookie-not-being-set-in-safari/,
 https://bugs.webkit.org/show_bug.cgi?id=281149), which would lock Safari users out. The related
-CodeQL alert is dismissed with this justification.
+CodeQL alerts are dismissed with this justification; a captured cookie is useless without the
+page token.
 
 ## DNS guard recovery
 
@@ -369,8 +392,8 @@ This is a self-assessment, not an audit or certification.
 
 | Area | Covered | Known gaps |
 |---|---|---|
-| Access control — A01, DA5, ASVS V4 | Local API needs the file token (native) or a browser session; pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md), [ADR-0040](adr/0040-local-hardening-review-2026-11.md)). | Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
-| Session management — DA2, ASVS V3 | 256-bit random session ids distinct from the token, HttpOnly + SameSite=Strict, server-side idle (12 h) and absolute (7 d) timeouts, logout, single-use 60 s nonce, in-memory store. | No `Secure` flag (loopback HTTP by design); no per-session binding to the browser beyond the cookie. |
+| Access control — A01, DA5, ASVS V4 | Local API needs the file token (native, rotated on every daemon start, sent only after the listener-owner check) or a browser session (cookie + page token); pages give no credentials; Host checked on every route; the helper serves only the installing user or an admin, runs a closed list of operations, binds foreign WireGuard tunnels by key ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md), [ADR-0040](adr/0040-local-hardening-review-2026-11.md), [ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)). | macOS clients cannot check who owns the port (rotation only). Any process running as the same user can read `~/.kongtrol/api-token`; this is the OS user boundary, not defended against. |
+| Session management — DA2, ASVS V3 | 256-bit random session ids distinct from the token, HttpOnly + SameSite=Strict, bound to a per-page token the daemon's origin keeps in `sessionStorage` (`X-Kongtrol-Session`), one-time 30 s WebSocket tickets, server-side idle (12 h) and absolute (7 d) timeouts, logout, single-use 60 s nonce, in-memory store. | No `Secure` flag (loopback HTTP by design, Safari). |
 | CSRF — A01, ASVS V4.2/V13 | SameSite=Strict, `Origin` must be the daemon's own when present (required for the nonce exchange), mutations only as `application/json`. | — |
 | Injection / XSS — A03, DA1 | Names restricted to a safe charset; the dashboard is React (escaped by default); the page CSP allows scripts and styles only from the daemon, no `'unsafe-inline'` (ADR-0043). | — |
 | Security misconfiguration — A05, DA6 | Loopback-only bind (non-loopback refused); security headers on every response; update and public IP checks off by default; restrictive file modes for state. | — |

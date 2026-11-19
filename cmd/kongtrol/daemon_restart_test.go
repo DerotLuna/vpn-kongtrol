@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/pflag"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -14,9 +15,37 @@ func TestReplacementArgs(t *testing.T) {
 	activeCfgPath, alertBell = "", false
 
 	got := replacementArgs([]string{"office"})
-	want := []string{"daemon", "--plain", "--restart", "office"}
+	want := []string{"daemon", "--plain", "--restart", "--", "office"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("args=%v, want %v", got, want)
+	}
+}
+
+// A profile name that looks like a flag stays a name (after "--"); one the
+// config validator refuses never reaches the command line.
+func TestReplacementArgs_NamesAreNeverFlags(t *testing.T) {
+	oldPath, oldBell := activeCfgPath, alertBell
+	t.Cleanup(func() { activeCfgPath, alertBell = oldPath, oldBell })
+	activeCfgPath, alertBell = "", false
+
+	got := replacementArgs([]string{"--config=/tmp/evil.yaml", "bad\nname", "office"})
+	want := []string{"daemon", "--plain", "--restart", "--", "--config=/tmp/evil.yaml", "office"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("args=%v, want %v", got, want)
+	}
+	// The same flag parser cobra uses, with the daemon's flags.
+	fs := pflag.NewFlagSet("daemon", pflag.ContinueOnError)
+	fs.Bool("plain", false, "")
+	fs.Bool("restart", false, "")
+	cfgFlag := fs.String("config", "", "")
+	if err := fs.Parse(got[1:]); err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if pos := fs.Args(); !slices.Equal(pos, []string{"--config=/tmp/evil.yaml", "office"}) {
+		t.Fatalf("positional=%v", pos)
+	}
+	if *cfgFlag != "" {
+		t.Fatal("a profile name became the --config flag")
 	}
 }
 

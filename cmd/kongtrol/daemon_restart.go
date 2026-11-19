@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -55,11 +56,19 @@ func connectedProfiles() []string {
 	return names
 }
 
-// replacementArgs is the replacement daemon's command line.
+// replacementArgs is the replacement daemon's command line. Profile names
+// go after "--", so a name that starts with "-" is never read as a flag;
+// a name the config validator refuses is left out (the replacement loads
+// kongtrol.yaml, validates every name again and drops unknown ones).
 func replacementArgs(targets []string) []string {
 	args := daemonArgs()
-	args = append(args, "--restart")
-	return append(args, targets...)
+	args = append(args, "--restart", "--")
+	for _, name := range targets {
+		if config.ValidateName("vpn", name) == nil {
+			args = append(args, name)
+		}
+	}
+	return args
 }
 
 // restartDaemon starts the replacement daemon; the API server then stops
@@ -173,6 +182,7 @@ func restartRunningDaemon(base string) error {
 	}
 	sp := daemonctl.Spawner{
 		Probe:    func() bool { return daemonProbeFn(base) },
+		Base:     base,
 		Spawn:    spawn,
 		LogPath:  daemonLogPath(),
 		LockPath: spawnLockPath(),

@@ -46,6 +46,11 @@ func WSURL(base string) string {
 type Client struct {
 	Base  string
 	Token string
+	// TokenSource, when set, is read on every request and wins over Token:
+	// the daemon writes a new ~/.kongtrol/api-token on every start
+	// (ADR-0062), so a long-lived client (tray, live view) must not keep
+	// the one it read at launch. Token is the fallback when it fails.
+	TokenSource func() (string, error)
 	// Lang ("es", "en"; optional) asks the daemon to word its translated
 	// errors in the client's language (X-Kongtrol-Lang).
 	Lang string
@@ -54,13 +59,24 @@ type Client struct {
 // New returns a client for the daemon at base, authenticated with token.
 func New(base, token string) *Client { return &Client{Base: base, Token: token} }
 
-// NewRequest builds an authenticated request; url is absolute.
+// CurrentToken is the token to send now (TokenSource, else Token).
+func (c *Client) CurrentToken() string {
+	if c.TokenSource != nil {
+		if t, err := c.TokenSource(); err == nil && t != "" {
+			return t
+		}
+	}
+	return c.Token
+}
+
+// NewRequest builds an authenticated request; url is absolute. Send it
+// with HTTPClient, which checks who owns the listener first.
 func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set(TokenHeader, c.Token)
+	req.Header.Set(TokenHeader, c.CurrentToken())
 	if c.Lang != "" {
 		req.Header.Set("X-Kongtrol-Lang", c.Lang)
 	}
@@ -80,7 +96,7 @@ func (c *Client) do(method, path string, timeout time.Duration) (*http.Response,
 	if err != nil {
 		return nil, err
 	}
-	return (&http.Client{Timeout: timeout}).Do(req)
+	return HTTPClient(timeout).Do(req)
 }
 
 // post sends a body-less POST and discards a successful response.

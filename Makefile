@@ -54,8 +54,8 @@ ui-build: $(UI_DEPS) $(UI_INDEX)
 
 # Dev server at http://127.0.0.1:5173/ with hot reload; /api (REST +
 # WebSocket) is proxied to the running daemon (KONGTROL_DAEMON_URL, default
-# http://127.0.0.1:9741). Open the dashboard once at http://127.0.0.1:9741/
-# first so the browser holds its login cookie.
+# http://127.0.0.1:9741). Sign in with the address `kongtrol dashboard`
+# opens, changing its port to 5173 and keeping #k=<nonce> (ADR-0062).
 .PHONY: ui-dev
 ui-dev: $(UI_DEPS)
 	cd $(UI_DIR) && pnpm run dev

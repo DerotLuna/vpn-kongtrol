@@ -10,16 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
 // ── PID file helpers ──────────────────────────────────────────────────────────
 
 // pidFilePath returns ~/.kongtrol/run/kongtrol.pid.
-func pidFilePath() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".kongtrol", "run", "kongtrol.pid")
-}
+// Clients compare it with the owner of the API port (daemonctl, ADR-0062).
+func pidFilePath() string { return daemonctl.PIDPath() }
 
 // writePIDFile records the current process PID so that a concurrent
 // `kongtrol down` invocation can stop this daemon.

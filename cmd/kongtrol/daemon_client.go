@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
@@ -21,8 +22,14 @@ func daemonAPIBase() string {
 	return daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
 }
 
-// daemonClient returns an API client for base using this process's token.
-func daemonClient(base string) *daemonctl.Client { return daemonctl.New(base, apiToken) }
+// daemonClient returns an API client for base. It reads
+// ~/.kongtrol/api-token on every request (the daemon writes a new one on
+// each start, ADR-0062); apiToken is the fallback.
+func daemonClient(base string) *daemonctl.Client {
+	c := daemonctl.New(base, apiToken)
+	c.TokenSource = config.CurrentAPIToken
+	return c
+}
 
 // probeDaemonAPI reports whether a kongtrol daemon's API server is reachable
 // at base.

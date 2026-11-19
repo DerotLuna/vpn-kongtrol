@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -27,6 +28,9 @@ var daemonCmd = &cobra.Command{
 		return runDaemon(contextWithSignal(), args)
 	},
 }
+
+// rotateAPITokenFn is config.RotateAPIToken (a test seam).
+var rotateAPITokenFn = config.RotateAPIToken
 
 func init() {
 	daemonCmd.Short = ct("cli.daemon.short")
@@ -68,6 +72,15 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	defer cancel()
 
 	fmt.Println(tuiInfo(cf("cli.daemon.starting", os.Getpid(), time.Now().Format(time.RFC3339))))
+
+	// A new API token on every start, written before the API listens
+	// (ADR-0062): a token another user's program caught while Kongtrol was
+	// stopped is worthless now. Clients read the file per request.
+	tok, err := rotateAPITokenFn()
+	if err != nil {
+		return fmt.Errorf("%s", cf("cli.daemon.api_failed", base, err))
+	}
+	apiToken = tok
 
 	srv := buildAPIServer(cancel)
 	if err := srv.Start(); err != nil {

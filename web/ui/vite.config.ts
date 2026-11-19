@@ -54,10 +54,11 @@ export default defineConfig({
     sourcemap: false,
   },
   server: {
-    // 127.0.0.1, not localhost: the daemon's session cookie (kongtrol_session,
-    // ADR-0039) is host-only, and cookies ignore the port, so opening the
-    // dashboard from Kongtrol (`kongtrol dashboard`) once makes the browser
-    // send it here as well.
+    // Sign in like the real page (ADR-0039, ADR-0062): take the address
+    // `kongtrol dashboard` opens, keep its `#k=<nonce>` and change the port
+    // to this one. The exchange goes through the proxy, so the cookie and
+    // this origin's own page token (sessionStorage) both apply; the cookie
+    // alone is no longer accepted.
     // The token is never read or injected by this config.
     host: devHost,
     port: devPort,

@@ -47,6 +47,7 @@ func spawnLockPath() string { return daemonctl.LockPath() }
 func ensureDaemon(ctx context.Context, base string) (started bool, err error) {
 	sp := daemonctl.Spawner{
 		Probe:        func() bool { return daemonProbeFn(base) },
+		Base:         base,
 		Spawn:        spawnDaemonFn,
 		LogPath:      daemonLogPath(),
 		LockPath:     spawnLockPath(),
