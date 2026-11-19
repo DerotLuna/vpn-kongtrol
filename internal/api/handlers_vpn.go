@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
 )
 
 // GET /api/v1/vpns — list VPN profiles. Credentials are never returned, only
@@ -87,47 +88,8 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// vpnProfileReq is the create/update body. Every field is a pointer so a
-// field absent from the JSON (nil) is distinguishable from one sent empty:
-// on update only the fields present are applied on top of the existing
-// VPNConfig, so YAML-only fields the dashboard form does not expose
-// (binary_path, allow_insecure_cert, version, tunnel_name, ...) survive.
-type vpnProfileReq struct {
-	Name       *string `json:"name"`
-	Type       *string `json:"type"`
-	Host       *string `json:"host"`
-	Port       *int    `json:"port"`
-	Server     *string `json:"server"`
-	Protocol   *string `json:"protocol"`
-	ConfigFile *string `json:"config"`
-	Priority   *int    `json:"priority"`
-	// Failover: the backup profiles, in order; [] clears it.
-	Failover   *[]string `json:"failover"`
-	AuthMethod *string   `json:"auth_method"`
-	Cert       *string   `json:"cert"`
-	Key        *string   `json:"key"`
-	Username   *string   `json:"username"`
-	// Provider attach mode. AutoConnect true is the default and is stored
-	// as "unset" so the YAML stays minimal.
-	AutoConnect *bool   `json:"auto_connect"`
-	Country     *string `json:"country"`
-	City        *string `json:"city"`
-	Group       *string `json:"group"`
-	Interface   *string `json:"interface"`
-	WaitTimeout *string `json:"wait_timeout"`
-	AppPath     *string `json:"app_path"`
-	// Password is plaintext in the request only; it is written to the OS
-	// keychain and never persisted to the YAML config.
-	Password string `json:"password"`
-}
-
 // strVal returns the trimmed value of p, or "" when absent.
-func strVal(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return strings.TrimSpace(*p)
-}
+func strVal(p *string) string { return configedit.Str(p) }
 
 // setTrimmed overwrites *dst with the trimmed *src when src is present.
 func setTrimmed(dst, src *string) {
@@ -136,59 +98,17 @@ func setTrimmed(dst, src *string) {
 	}
 }
 
-// applyTo overlays the fields present in req onto vc.
-func (req vpnProfileReq) applyTo(vc *config.VPNConfig) {
-	setTrimmed(&vc.Type, req.Type)
-	setTrimmed(&vc.Host, req.Host)
-	setTrimmed(&vc.Server, req.Server)
-	setTrimmed(&vc.Protocol, req.Protocol)
-	setTrimmed(&vc.ConfigFile, req.ConfigFile)
-	setTrimmed(&vc.Auth.Method, req.AuthMethod)
-	setTrimmed(&vc.Auth.Cert, req.Cert)
-	setTrimmed(&vc.Auth.Key, req.Key)
-	setTrimmed(&vc.Auth.Username, req.Username)
-	setTrimmed(&vc.Country, req.Country)
-	setTrimmed(&vc.City, req.City)
-	setTrimmed(&vc.Group, req.Group)
-	setTrimmed(&vc.Interface, req.Interface)
-	setTrimmed(&vc.WaitTimeout, req.WaitTimeout)
-	setTrimmed(&vc.AppPath, req.AppPath)
-	if req.AutoConnect != nil {
-		if *req.AutoConnect {
-			vc.AutoConnect = nil
-		} else {
-			off := false
-			vc.AutoConnect = &off
-		}
-	}
-	if req.Port != nil {
-		vc.Port = *req.Port
-	}
-	if req.Priority != nil {
-		vc.Priority = *req.Priority
-	}
-	if req.Failover != nil {
-		vc.Failover = nil
-		for _, p := range *req.Failover {
-			if p = strings.TrimSpace(p); p != "" {
-				vc.Failover = append(vc.Failover, p)
-			}
-		}
-	}
-}
-
 // POST /api/v1/vpns — create a new VPN profile. Writes config + OS keychain
 // only; a newly created profile is not hot-registered with the running
 // daemon (the shared adapters map has no safe runtime-mutation path — see
 // cmd/kongtrol/main.go loadConfig), so the response flags restart_required.
 func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
-	var req vpnProfileReq
+	var req configedit.VPNProfile
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
 	}
-	name := strVal(req.Name)
-	if name == "" {
+	if strVal(req.Name) == "" {
 		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.name_required"})
 		return
 	}
@@ -197,12 +117,15 @@ func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if _, exists := cfg.VPNs[name]; exists {
-		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_exists", Args: []any{name}})
-		return
-	}
-	if err := s.saveVPNProfile(cfg, cfgPath, name, config.VPNConfig{}, req); err != nil {
-		writeLocalizedError(w, r, http.StatusBadRequest, err)
+	// Same path as `kongtrol profile add` with no daemon.
+	name, err := configedit.AddVPNProfile(cfg, req, s.saver(cfgPath))
+	if err != nil {
+		status := http.StatusBadRequest
+		var ve *config.ValidationError
+		if errors.As(err, &ve) && ve.Key == configedit.ErrKeyVPNExists {
+			status = http.StatusConflict
+		}
+		writeLocalizedError(w, r, status, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"status": "created", "profile": name, "restart_required": true})
@@ -217,7 +140,7 @@ func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.name_required"})
 		return
 	}
-	var req vpnProfileReq
+	var req configedit.VPNProfile
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
@@ -241,116 +164,17 @@ func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "renamed", "profile": newName, "previous": name, "restart_required": true})
 		return
 	}
-	if err := s.saveVPNProfile(cfg, cfgPath, name, existing, req); err != nil {
+	if err := configedit.SaveVPNProfile(cfg, name, existing, req, s.saver(cfgPath)); err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "profile": name, "restart_required": true})
 }
 
-// saveVPNProfile overlays req onto base (zero value on create, the stored
-// profile on update), validates the result against a trial copy of cfg
-// before writing anything, then stores any provided credentials in the OS
-// keychain and persists cfg via the existing saveRuntimeConfig pattern.
-func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, base config.VPNConfig, req vpnProfileReq) error {
-	for field, value := range map[string]*string{
-		"name": req.Name, "type": req.Type, "host": req.Host, "server": req.Server,
-		"protocol": req.Protocol, "config": req.ConfigFile, "auth_method": req.AuthMethod,
-		"cert": req.Cert, "key": req.Key, "username": req.Username,
-		"country": req.Country, "city": req.City, "group": req.Group, "interface": req.Interface,
-		"wait_timeout": req.WaitTimeout, "app_path": req.AppPath,
-	} {
-		if value != nil && containsEnvReference(*value) {
-			return fmt.Errorf("%s must not contain environment-variable references", field)
-		}
-	}
-
-	vc := base
-	req.applyTo(&vc)
-	vc = vc.WithDefaults()
-	username := strVal(req.Username)
-	if username != "" {
-		vc.Auth.UsernameKeychain = name + ".username"
-	}
-	if req.Password != "" {
-		vc.Auth.PasswordKeychain = name + ".password"
-	}
-
-	trial := *cfg
-	trialVPNs := make(map[string]config.VPNConfig, len(cfg.VPNs)+1)
-	for k, v := range cfg.VPNs {
-		trialVPNs[k] = v
-	}
-	trialVPNs[name] = vc
-	trial.VPNs = trialVPNs
-	if err := config.Validate(&trial); err != nil {
-		return err
-	}
-
-	cfg.VPNs[name] = vc
-	backups := make([]credentialBackup, 0, 2)
-	if username != "" {
-		backup := backupCredential(name, "username")
-		if err := config.SetCredential(name, "username", username); err != nil {
-			return fmt.Errorf("store username credential: %w", err)
-		}
-		backups = append(backups, backup)
-	}
-	if req.Password != "" {
-		backup := backupCredential(name, "password")
-		if err := config.SetCredential(name, "password", req.Password); err != nil {
-			return errors.Join(
-				fmt.Errorf("store password credential: %w", err),
-				restoreCredentials(name, backups),
-			)
-		}
-		backups = append(backups, backup)
-	}
-	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
-		return errors.Join(err, restoreCredentials(name, backups))
-	}
-	return nil
-}
-
-type credentialBackup struct {
-	key     string
-	value   string
-	existed bool
-}
-
-func backupCredential(profile, key string) credentialBackup {
-	value, err := config.GetCredential(profile, key)
-	return credentialBackup{key: key, value: value, existed: err == nil}
-}
-
-func restoreCredentials(profile string, backups []credentialBackup) error {
-	var errs []error
-	for i := len(backups) - 1; i >= 0; i-- {
-		backup := backups[i]
-		var err error
-		if backup.existed {
-			err = config.SetCredential(profile, backup.key, backup.value)
-		} else {
-			err = config.DeleteCredential(profile, backup.key)
-		}
-		if err != nil {
-			errs = append(errs, fmt.Errorf("restore %s credential: %w", backup.key, err))
-		}
-	}
-	return errors.Join(errs...)
-}
-
-func containsEnvReference(value string) bool {
-	for i := 0; i < len(value); i++ {
-		if value[i] != '$' || i+1 >= len(value) {
-			continue
-		}
-		next := value[i+1]
-		if next == '{' || next == '_' || next >= 'A' && next <= 'Z' || next >= 'a' && next <= 'z' {
-			return true
-		}
-	}
-	return false
+// saver persists a config with saveRuntimeConfig (write + hot swap), for
+// configedit's profile edits.
+func (s *Server) saver(cfgPath string) func(*config.Config) error {
+	return func(cfg *config.Config) error { return s.saveRuntimeConfig(cfgPath, cfg) }
 }
 
 // DELETE /api/v1/vpns/{name} — reject if the profile is still referenced by

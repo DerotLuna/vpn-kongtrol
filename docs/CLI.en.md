@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.6 · 2026-11-18
+Version 1.7 · 2026-11-19
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -396,7 +396,7 @@ kongtrol config update-check status
 
 ### `kongtrol profile`
 
-Tools for VPN profiles. To create or edit profiles: kongtrol init or the dashboard (kongtrol dashboard).
+Creates VPN profiles without questions (for scripts), imports WireGuard or OpenVPN files and finds the VPN apps on this computer. Step by step with questions: kongtrol init or the dashboard (kongtrol dashboard).
 
 ```text
 kongtrol profile [command]
@@ -405,12 +405,14 @@ kongtrol profile [command]
 **Examples**
 
 ```bash
-kongtrol profile import office.conf
+kongtrol profile detect
+kongtrol profile add nordvpn --name home --country Spain
+kongtrol profile import office.conf --create
 ```
 
 ### `kongtrol profile import`
 
-Checks the file with the same rules as the dashboard (no scripts or commands; an .ovpn with its certificates inside) and saves it in ~/.kongtrol/configs/ for your user only. It does not replace a file with the same name unless you pass --overwrite. Next: use it as a profile's config: (kongtrol init or the dashboard).
+Checks the file with the same rules as the dashboard (no scripts or commands; an .ovpn with its certificates inside) and saves it in ~/.kongtrol/configs/ for your user only. It does not replace a file with the same name unless you pass --overwrite. With --create it also creates the profile that uses it (name: the file's, or --name). Next: kongtrol up <name>.
 
 ```text
 kongtrol profile import <file.conf|file.ovpn> [flags]
@@ -420,20 +422,76 @@ kongtrol profile import <file.conf|file.ovpn> [flags]
 
 | Flags | Description |
 |---|---|
+| `--create` | also create the VPN profile that uses the file |
 | `--name string` | name of the saved file, without extension (default: the file's own) |
 | `--overwrite` | replace a file imported earlier with the same name |
+| `-y, --yes` | with --create, restart Kongtrol without asking to use the new profile |
 
 **Examples**
 
 ```bash
-kongtrol profile import ~/Downloads/office.conf
+kongtrol profile import ~/Downloads/office.conf --create
 kongtrol profile import provider.ovpn --name home
 kongtrol profile import office.conf --overwrite
 ```
 
+### `kongtrol profile add`
+
+Creates a profile like "＋ Add" in the dashboard, with the same rules. <type>: forticlient, openvpn, protonvpn, nordvpn, surfshark, ciscoanyconnect, wireguard, globalprotect, tailscale or cloudflarewarp. The password never goes on the command line: if the type uses one, it is asked without showing it in a terminal; otherwise add it in the dashboard. If Kongtrol is running, it offers to restart it to use the profile. Next: kongtrol up <name>.
+
+```text
+kongtrol profile add <type> [flags]
+```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--app-path string` | path of the official app, if it is not in its usual place |
+| `--auth-method string` | certificate, credentials or certificate+credentials (default: the usual one for the type) |
+| `--cert string` | client certificate file |
+| `--city string` | server city (NordVPN, Proton VPN) |
+| `--config-file string` | the profile's .conf (WireGuard) or .ovpn (OpenVPN) file |
+| `--country string` | server country (NordVPN, Proton VPN) |
+| `--group string` | NordVPN server group |
+| `--host string` | VPN server address (FortiClient, Cisco, GlobalProtect) or exit node (Tailscale) |
+| `--interface string` | the VPN's network interface name, if Kongtrol does not recognize it on its own |
+| `--key string` | the certificate's private key file |
+| `--name string` | profile name (required), for example office |
+| `--no-auto-connect` | do not connect the app automatically: Kongtrol opens it and waits for you to connect |
+| `--port int` | VPN server port |
+| `--protocol string` | protocol (Proton VPN) |
+| `--server string` | exact server (NordVPN, Proton VPN) |
+| `--username string` | VPN username (the password is asked separately, never here) |
+| `--wait-timeout string` | how long to wait for you to connect in the app (for example 5m) |
+| `-y, --yes` | restart Kongtrol without asking to use the new profile |
+
+**Examples**
+
+```bash
+kongtrol profile add nordvpn --name home --country Spain
+kongtrol profile add forticlient --name work --host vpn.mycompany.com --username ana
+kongtrol profile add wireguard --name office --config-file ~/.kongtrol/configs/office.conf
+```
+
+### `kongtrol profile detect`
+
+Lists the VPN apps it finds (the same as the dashboard and kongtrol init) and the profile type for each. It only looks for files: it opens no app and connects to nothing. Next: kongtrol profile add <type> --name <name>.
+
+```text
+kongtrol profile detect [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol profile detect
+kongtrol profile detect --json
+```
+
 ### `kongtrol policy`
 
-Shows your policies, which VPN each destination uses and why, and tests lists of destinations. Start with: kongtrol policy list.
+Adds or removes policies (which sites, IPs or apps go through which VPN), shows which VPN each destination uses and why, and tests lists of destinations. Start with: kongtrol policy list.
 
 ```text
 kongtrol policy [command]
@@ -442,9 +500,55 @@ kongtrol policy [command]
 **Examples**
 
 ```bash
-kongtrol policy list
+kongtrol policy add github.com --via office
 kongtrol policy show github.com
 kongtrol policy test targets.txt
+```
+
+### `kongtrol policy add`
+
+Creates a policy like "＋ Add" in the dashboard: a site or link (and its subdomains), an IP or a range (10.0.0.0/8) or an app (app:chrome.exe) go through the --via VPN. The name is generated (for example "github.com via office") unless you pass --name. With --block-when-down that traffic does not leave through the normal internet while the VPN is off. Next: kongtrol policy show <site>.
+
+```text
+kongtrol policy add <site|ip|range|app:<exe>>... [flags]
+```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--block-when-down` | if that VPN is off, block the traffic instead of using the normal internet |
+| `--name string` | policy name (default: "<first target> via <vpn>") |
+| `--no-subdomains` | only the exact site, without its subdomains (*.site) |
+| `--via string` | VPN profile the traffic goes through (required) |
+
+**Examples**
+
+```bash
+kongtrol policy add github.com --via office
+kongtrol policy add https://intranet.mycompany.com 10.20.0.0/16 --via work --block-when-down
+kongtrol policy add app:teams.exe --via work --name teams
+```
+
+### `kongtrol policy remove`
+
+Removes the policy with that name (kongtrol policy list shows them). It asks first; for scripts: --yes. That traffic goes back to the normal internet.
+
+```text
+kongtrol policy remove <name> [flags]
+```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `-y, --yes` | remove without asking (for scripts) |
+
+**Examples**
+
+```bash
+kongtrol policy remove "github.com via office"
+kongtrol policy remove teams --yes
 ```
 
 ### `kongtrol policy list`

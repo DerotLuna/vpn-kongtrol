@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 2.6.0 · 2026-11-18.
+// Version 2.6.1 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -415,7 +415,9 @@ $ kongtrol config validate
     policies15: <>Si Kongtrol todavía no está funcionando, las políticas se leen al ejecutar <IC c="kongtrol up" />.
                 Si ya está activo, aplica el cambio sin reiniciarlo con <IC c="kongtrol reload --policy" />:
                 recarga el motor de políticas desde el <IC c="kongtrol.yaml" /> editado, sin tocar túneles.
-                Para ver qué VPN usa un destino: <IC c="kongtrol policy show github.com" />.</>,
+                Para ver qué VPN usa un destino: <IC c="kongtrol policy show github.com" />.
+                Para crear una sin editar el YAML (como &quot;＋ Agregar&quot; en el panel):{' '}
+                <IC c="kongtrol policy add github.com --via oficina" />; para borrarla: <IC c="kongtrol policy remove <nombre>" />.</>,
     doctor1: <>Verificar con doctor</>,
     doctor2: <>Antes de conectar por primera vez, deja que Kongtrol valide que todo esté en orden:</>,
     doctor3: os === 'windows'

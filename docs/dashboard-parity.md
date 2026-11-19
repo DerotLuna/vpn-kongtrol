@@ -567,7 +567,7 @@ Used by no dashboard client: `GET /api/v1/dns/resolve` (no client at all), `GET 
 
 ### 5.4 CLI parity (AGENTS.md "CLI-complete")
 
-The CLI has `policy` (list/add/remove/show/test/reload), `routes [perfil]`, `config public-ip`, `config dashboard`, `config lang`, `update-check`, `doctor`, `export`, `service install`, and `reload [perfil]`. **No CLI equivalent was found for:** scheduler rule CRUD, settings tuning (health check, split DNS, kill switch mode/allow_lan, fallback DNS, endpoints, audit config), per-profile kill-switch override, group CRUD, and the audit log viewer (`logs` may cover it). All of these are `no verificado`. Check `docs/CLI.md` before deciding whether phase 2 or the CLI owns the gap.
+The CLI has `policy` (list/add/remove/show/test; reload is `kongtrol reload --policy`), `profile` (add/detect/import, `import --create`; the "＋ Agregar" flow), `routes [perfil]`, `config public-ip`, `config dashboard`, `config lang`, `update-check`, `doctor`, `export`, `service install`, and `reload [perfil]`. **No CLI equivalent was found for:** scheduler rule CRUD, settings tuning (health check, split DNS, kill switch mode/allow_lan, fallback DNS, endpoints, audit config), per-profile kill-switch override, group CRUD, and the audit log viewer (`logs` may cover it). All of these are `no verificado`. Check `docs/CLI.md` before deciding whether phase 2 or the CLI owns the gap.
 
 ## 6. Counts
 

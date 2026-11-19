@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -141,7 +142,7 @@ func (s *Server) profileBusy(name string) bool {
 // keychain entries move (copied first, old ones deleted only after the
 // config is written; any failure rolls back), and favorites follow.
 // Returns the HTTP status for the error.
-func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, req vpnProfileReq) (int, error) {
+func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, req configedit.VPNProfile) (int, error) {
 	if err := config.ValidateName("vpn", to); err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -155,7 +156,7 @@ func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, 
 	trial := *cfg
 	renameProfileRefs(&trial, from, to)
 	vc := trial.VPNs[to]
-	// Keychain item names follow the profile name (saveVPNProfile).
+	// Keychain item names follow the profile name (configedit.SaveVPNProfile).
 	moveUser := vc.Auth.UsernameKeychain == from+".username"
 	movePass := vc.Auth.PasswordKeychain == from+".password"
 	if moveUser {
@@ -165,7 +166,7 @@ func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, 
 		vc.Auth.PasswordKeychain = to + ".password"
 	}
 	trial.VPNs[to] = vc
-	// The body's other fields apply to the renamed profile; saveVPNProfile
+	// The body's other fields apply to the renamed profile; configedit.SaveVPNProfile
 	// validates the whole trial and stores new credentials under to.
 	req.Name = nil
 
@@ -196,7 +197,7 @@ func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, 
 		moved = append(moved, k.key)
 	}
 
-	if err := s.saveVPNProfile(&trial, cfgPath, to, trial.VPNs[to], req); err != nil {
+	if err := configedit.SaveVPNProfile(&trial, to, trial.VPNs[to], req, s.saver(cfgPath)); err != nil {
 		status := http.StatusBadRequest
 		var ve *config.ValidationError
 		if !errors.As(err, &ve) {

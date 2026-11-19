@@ -32,6 +32,9 @@ var profileImportCmd = &cobra.Command{
 	Args:        cobra.ExactArgs(1),
 	Annotations: map[string]string{annotationPrefsOnly: "true"},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if profileImportCreate {
+			return importAndCreate(args[0], profileImportName, profileImportOverwrite)
+		}
 		res, err := runProfileImport(args[0], profileImportName, profileImportOverwrite)
 		if err != nil {
 			return err
