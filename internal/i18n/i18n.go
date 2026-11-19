@@ -337,11 +337,11 @@ var messages = map[Lang]map[string]string{
 		"auth.hint.certificate": "solo certificado cliente",
 		"auth.hint.cert+creds":  "certificado + usuario y contraseña (más seguro)",
 
-		// FortiClient version select
-		"collect.forti_ver": "  Versión de FortiClient",
-		"forti.ver.hint.6":  "6.4.x — más común",
-		"forti.ver.hint.7":  "7.x",
-		"forti.ver.hint.5":  "5.x — legacy",
+		// FortiClient found by the wizard (no version question, #16; ADR-0020)
+		"wizard.forti.detected":        "FortiClient %[1]s detectado · conexión: %[2]s",
+		"wizard.forti.version_unknown": "No se pudo leer la versión de FortiClient · conexión: %[1]s; si falla, `kongtrol up` abre FortiClient y espera a que conectes",
+		"wizard.forti.plan":            "FortiClient · conexión: %[1]s",
+		"wizard.forti.not_found":       "No se encontró FortiClient en este equipo: instálalo antes de conectar, o indica dónde está en las opciones avanzadas (ruta de la app).",
 
 		// Profile collection — field hints (shown dim before the prompt)
 		"hint.host.forti":     "    Encuéntralo en FortiClient > Ajustes o pídelo a IT. Ej: vpn.empresa.com",
@@ -754,7 +754,8 @@ var messages = map[Lang]map[string]string{
 		"tray.tunnels":                               "Conexiones VPN",
 		"tray.tunnels_tip":                           "Conecta o desconecta una VPN",
 		"tray.status_loading":                        "Cargando…",
-		"tray.status_active":                         "%d VPN conectada(s)",
+		"tray.status_active.one":                     "%d VPN conectada",
+		"tray.status_active.other":                   "%d VPN conectadas",
 		"tray.quit":                                  "Cerrar ícono (las VPN siguen)",
 		"tray.exit":                                  "Cerrar",
 		"tray.quit_tip":                              "Cierra solo este ícono; tus VPN siguen conectadas",
@@ -1536,11 +1537,11 @@ var messages = map[Lang]map[string]string{
 		"auth.hint.certificate": "client certificate only",
 		"auth.hint.cert+creds":  "certificate + username and password (more secure)",
 
-		// FortiClient version select
-		"collect.forti_ver": "  FortiClient version",
-		"forti.ver.hint.6":  "6.4.x — most common",
-		"forti.ver.hint.7":  "7.x",
-		"forti.ver.hint.5":  "5.x — legacy",
+		// FortiClient found by the wizard (no version question, #16; ADR-0020)
+		"wizard.forti.detected":        "FortiClient %[1]s detected · connection: %[2]s",
+		"wizard.forti.version_unknown": "Could not read the FortiClient version · connection: %[1]s; if it fails, `kongtrol up` opens FortiClient and waits for you to connect",
+		"wizard.forti.plan":            "FortiClient · connection: %[1]s",
+		"wizard.forti.not_found":       "FortiClient was not found on this computer: install it before connecting, or say where it is in the advanced options (app path).",
 
 		// Profile collection — field hints (shown dim before the prompt)
 		"hint.host.forti":     "    Found in FortiClient Settings or ask IT. E.g. vpn.company.com",
@@ -1953,7 +1954,8 @@ var messages = map[Lang]map[string]string{
 		"tray.tunnels":                               "VPN connections",
 		"tray.tunnels_tip":                           "Connect or disconnect a VPN",
 		"tray.status_loading":                        "Loading…",
-		"tray.status_active":                         "%d VPN(s) connected",
+		"tray.status_active.one":                     "%d VPN connected",
+		"tray.status_active.other":                   "%d VPNs connected",
 		"tray.quit":                                  "Close icon (VPNs keep running)",
 		"tray.exit":                                  "Exit",
 		"tray.quit_tip":                              "Close only this icon; your VPNs stay connected",

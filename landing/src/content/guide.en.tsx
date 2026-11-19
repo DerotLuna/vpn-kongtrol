@@ -165,7 +165,9 @@ Add a new VPN profile? [y/N]: y`,
     wizard24: <>Every field comes with a hint for where to find the value:</>,
     wizard25: <>See the full field-by-field flow (FortiClient)</>,
     wizard26: os === 'windows'
-? `    Find it in FortiClient > Settings or ask IT. e.g. vpn.company.com
+? `> FortiClient 6.4.10.1821 detected · connection: automates the window (6.4 layout)
+
+    Find it in FortiClient > Settings or ask IT. e.g. vpn.company.com
   VPN host: vpn.yourcompany.com
 
     443 for SSL VPN (default). Only change if IT tells you otherwise.
@@ -173,17 +175,13 @@ Add a new VPN profile? [y/N]: y`,
 
     The exact connection name as it appears in the FortiClient GUI list.
   Tunnel name [Office]: Office
-
-  FortiClient version:
-    1) 6  6.4.x — most common
-    2) 7  7.x
-    3) 5  5.x — legacy
-  Choose [1]:
 
     On Windows FortiClient connects by tunnel name — no certificate. 'credentials' will be used.
   Username: your_username
   Password for office (stored in keychain): ****`
-: `    Find it in FortiClient > Settings or ask IT. e.g. vpn.company.com
+: `> FortiClient · connection: FortiClient CLI
+
+    Find it in FortiClient > Settings or ask IT. e.g. vpn.company.com
   VPN host: vpn.yourcompany.com
 
     443 for SSL VPN (default). Only change if IT tells you otherwise.
@@ -191,12 +189,6 @@ Add a new VPN profile? [y/N]: y`,
 
     The exact connection name as it appears in the FortiClient GUI list.
   Tunnel name [Office]: Office
-
-  FortiClient version:
-    1) 6  6.4.x — most common
-    2) 7  7.x
-    3) 5  5.x — legacy
-  Choose [1]:
 
   Auth method:
     1) credentials              username and password

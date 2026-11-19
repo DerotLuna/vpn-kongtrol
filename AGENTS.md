@@ -128,7 +128,9 @@ hidden `resume` reconnects them (`daemon --restart <profiles>`, or the running d
 Inno finished-page checkbox depends on profiles existing; "crear mi primera VPN" runs
 `kongtrol-tray --open /profiles`, which always opens it (also from a second tray instance).
 `install.sh`/`install.ps1` are
-release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035).
+release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035). They
+check `checksums.txt` and, only when `cosign` 2.4+ is installed, its Sigstore bundle first (bad or
+missing signature stops; never download cosign; ADR-0057).
 The release body starts with the Windows installer line (`.goreleaser.yaml` `release.header`); a
 double-clicked `kongtrol.exe` (Explorer, no arguments) prints `cli.explorer_notice` and waits for
 Enter — cobra's own mousetrap is off because it adds an English-only line (ADR-0045).
@@ -480,7 +482,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 
 <!-- feature:i18n -->
 <!-- feature:tray_flyout -->
-### Tray flyout (ADR-0036)
+### Tray flyout (ADR-0036, ADR-0056)
 
 - Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
   window next to the icon showing `web/ui` `/tray`; right click, macOS, Linux and a missing
@@ -493,6 +495,12 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
   (`web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
 - The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
   Escape) appear only when the bridge exists, so `/tray` also works in a browser tab.
+- ADR-0056: the WebView2 controller's `IsVisible` follows the window on every show/hide
+  (a window created hidden never paints otherwise: the empty flyout of #40). `ready` means
+  "on screen" (`announceReady`: visible + one painted frame), sent after load and after every
+  `kongtrol:shown`; a show without it in 3 s (`flyoutWatch`) closes the flyout, opens the
+  native menu, logs the cause in `tray.log`, and keeps the left click on the native menu
+  until the tray restarts.
 
 ## Internationalization (i18n)
 

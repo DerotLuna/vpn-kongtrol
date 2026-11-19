@@ -1,4 +1,4 @@
-// Kongtrol UI — tray flyout page (/tray) · v1.2.0 · 2026-11-19 (ADR-0036, ADR-0038, ADR-0047)
+// Kongtrol UI — tray flyout page (/tray) · v1.3.0 · 2026-11-19 (ADR-0036, ADR-0038, ADR-0047, ADR-0056)
 //
 // The compact window that opens next to the tray icon on a left click
 // (cmd/kongtrol-tray/flyout_windows.go). Same data as the dashboard, from the
@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { usePreferences } from '../app/preferences-context'
 import { keys } from '../data/keys'
 import { useAppVersion, useGroupsQuery, useSecurityQuery } from '../data/resources'
-import { SHOWN_EVENT, trayHost } from '../tray/bridge'
+import { SHOWN_EVENT, announceReady, trayHost } from '../tray/bridge'
 import {
   aggregate,
   dnsGuardWord,
@@ -86,17 +86,26 @@ export function TrayPage() {
     if (quitOpen) focusFirst()
   }, [quitOpen, focusFirst])
 
-  // Tell the tray we loaded; refresh and refocus each time it shows us again.
+  // Tell the tray we are on screen, after the first load and after every
+  // show (it falls back to its native menu otherwise, ADR-0056); refresh and
+  // refocus each time it shows us again.
   useEffect(() => {
-    host?.post('ready')
+    let cancel = host ? announceReady(host) : () => {}
     const onShown = () => {
+      if (host) {
+        cancel()
+        cancel = announceReady(host)
+      }
       setQuitOpen(false)
       reload()
       setShownTick((n) => n + 1)
       requestAnimationFrame(focusFirst)
     }
     window.addEventListener(SHOWN_EVENT, onShown)
-    return () => window.removeEventListener(SHOWN_EVENT, onShown)
+    return () => {
+      cancel()
+      window.removeEventListener(SHOWN_EVENT, onShown)
+    }
   }, [host, reload, focusFirst])
 
   useEffect(() => {

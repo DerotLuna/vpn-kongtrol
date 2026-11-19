@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.9 · 2026-11-19
+Versión 1.11 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -117,6 +117,12 @@ desconectar todo") antes de actualizar: Windows no deja reemplazar un programa e
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 ```
+
+El script comprueba la descarga con `checksums.txt` y, si tienes
+[cosign](https://github.com/sigstore/cosign) 2.4 o más nuevo, también la
+firma de ese archivo: si no coincide, se detiene sin instalar nada. Sin cosign lo dice en una línea
+y muestra el comando para verificar a mano (lo mismo hace `install.ps1` en Windows). Detalles en
+[SECURITY.md](SECURITY.md#verifying-releases).
 
 Instala `~/Applications/Kongtrol.app` y el comando `kongtrol`, y abre Kongtrol. Para actualizar,
 vuelve a ejecutarlo: dice "Updating Kongtrol <actual> → <nueva>", usa las mismas carpetas,
@@ -271,6 +277,8 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Tipos de adaptador: forticlient | openvpn | protonvpn | ciscoanyconnect |
                       wireguard | globalprotect | tailscale | cloudflarewarp
   Tipo [openvpn]: forticlient
+  >  FortiClient · conexión: CLI de FortiClient
+     (en Windows: «FortiClient 6.4.10.1821 detectado · conexión: …»)
 
   (Si el cliente no fue detectado automáticamente):
   !  Este cliente VPN no fue detectado automáticamente en tu sistema.
@@ -279,7 +287,6 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
   Host VPN (ej. vpn.empresa.com): vpn.tuempresa.com
   Puerto [443]:
   Nombre del túnel (como aparece en la UI de FortiClient) [Office]:
-  Versión mayor de FortiClient [6]:
   Método de autenticación (certificate | credentials | certificate+credentials) [certificate+credentials]:
   Ruta al certificado cliente (ej. ~/.kongtrol/certs/oficina.crt): ~/.kongtrol/certs/office.crt
   Ruta a la clave privada (ej. ~/.kongtrol/certs/oficina.key): ~/.kongtrol/certs/office.key

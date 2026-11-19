@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
@@ -145,7 +145,8 @@ describe('TrayPage (/tray)', () => {
     stubApi(baseRoutes([tunnel('oficina', 'connected')]))
     render(<App />)
     await screen.findByText('oficina')
-    expect(post).toHaveBeenCalledWith('ready')
+    // ready goes out on the next animation frame (announceReady): wait for it.
+    await waitFor(() => expect(post).toHaveBeenCalledWith('ready'))
 
     await userEvent.click(screen.getByRole('button', { name: 'Abrir panel' }))
     expect(post).toHaveBeenCalledWith('open-dashboard')

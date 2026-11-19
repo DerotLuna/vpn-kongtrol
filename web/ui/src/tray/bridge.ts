@@ -1,4 +1,4 @@
-// Kongtrol UI — tray flyout bridge · v1.0.0 · 2026-11-18 (ADR-0036)
+// Kongtrol UI — tray flyout bridge · v1.1.0 · 2026-11-19 (ADR-0036, ADR-0056)
 //
 // Inside the tray flyout (cmd/kongtrol-tray/flyout_windows.go) the tray
 // injects `window.kongtrolTray` before any page script, only on this exact
@@ -29,3 +29,30 @@ export function trayHost(): TrayHost | null {
 
 /** Sent by the tray every time the flyout is shown again (not the first time). */
 export const SHOWN_EVENT = 'kongtrol:shown'
+
+/**
+ * Posts 'ready' once the page is really on screen: visible and painting a
+ * frame. The tray waits for it after every show and, without it within a
+ * few seconds, closes the flyout and opens its native menu (ADR-0056), so
+ * 'ready' is never sent for a page nobody can see. Returns a cleanup that
+ * cancels a pending announcement.
+ */
+export function announceReady(
+  host: TrayHost,
+  doc: Document = document,
+  raf: (cb: () => void) => unknown = (cb) => requestAnimationFrame(cb),
+): () => void {
+  let done = false
+  const post = () => {
+    if (done || doc.visibilityState !== 'visible') return
+    done = true
+    doc.removeEventListener('visibilitychange', post)
+    raf(() => host.post('ready'))
+  }
+  doc.addEventListener('visibilitychange', post)
+  post()
+  return () => {
+    done = true
+    doc.removeEventListener('visibilitychange', post)
+  }
+}

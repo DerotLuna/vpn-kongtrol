@@ -1,4 +1,4 @@
-# Change-impact map — version 1.9 · 2026-11-19
+# Change-impact map — version 1.10 · 2026-11-19
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -234,6 +234,7 @@ features:
     surfaces:
       - AGENTS.md#tray_flyout
       - docs/adr/0036-tray-flyout-window.md
+      - docs/adr/0056-tray-flyout-ready-fallback.md
 
   i18n:
     code:
