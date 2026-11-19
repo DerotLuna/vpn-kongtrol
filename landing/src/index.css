@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.8.1 · 2026-11-19
+   v2.9.0 · 2026-11-19
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
@@ -18,6 +18,9 @@
    v2.8: full-height footer (header steps aside while it shows), code blocks
    without sideways scroll (comments drop under the command, one-liners
    wrap), hero → attach demo without a visible section cut.
+   v2.9: one designed theme (ADR-0060) — Bone page, .tone-ink bands, one
+   .tone-signal band; tighter rhythm; key sections fit a laptop screen;
+   back-to-top button; page changes cross-fade (@view-transition).
    v2.7: disclosures open/close with a height transition (::details-content),
    drawn +/− marker, tab panels and copy feedback fade in.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -28,6 +31,87 @@
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
 :root {
+  /* Bone Paper — the page base tone (one designed theme, ADR-0060). Ink
+     bands (.tone-ink) redefine every colour token below for their subtree. */
+  --bg:          #f1ede4;   /* bone paper — matches ink-on-paper line art */
+  --surface:     #fbf9f4;
+  --surface-2:   #f4f0e6;
+  --surface-3:   #ece6d8;
+  --border:      #ddd5c4;
+  --border-2:    #c9bfa8;
+
+  /* deep amber so small amber text clears 4.5:1 on bone paper;
+     solid amber fills switch to light text via --on-signal */
+  --signal:      #904f00;
+  --signal-hi:   #7a4300;
+  --signal-soft: rgba(144,79,0,0.10);
+  --signal-glow: rgba(144,79,0,0.20);
+  --signal-line: rgba(144,79,0,0.28);
+
+  --steel:       #2f6a8f;
+  --steel-soft:  rgba(47,106,143,0.12);
+
+  --text:        #1b1813;
+  --text-muted:  #4c4638;
+  --text-dim:    #635c4b;   /* ≥4.5:1 on every surface incl. --signal-soft (4.84) */
+  --danger:      #b3261e;
+  --live:        #126f39;
+  --live-soft:   rgba(18,111,57,0.14);
+  --caution:      #a54006;
+  --caution-soft: rgba(165,64,6,0.12);
+  --on-signal:   #fbf9f4;
+  --ok:          var(--live);
+
+  --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
+    transparent 0 15px, rgba(27,24,19,0.05) 15px 16px);
+  --contour-steel: repeating-radial-gradient(circle at 50% 50%,
+    transparent 0 15px, rgba(27,24,19,0.04) 15px 16px);
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body:    'Inter', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
+
+  --radius:   6px;
+  --radius-lg:12px;
+  --max-w:    1160px;
+  --nav-h:    66px;
+  --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --quart-out: cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* spacing scale (4px base) + fluid section rhythm — v2.3 */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
+  /* v2.9: tighter, so key sections fit one laptop screen (ADR-0060) */
+  --section-y: clamp(48px, 2.5vw + 32px, 88px);
+  --gutter: clamp(16px, 3vw, 24px);
+
+  /* fluid type scale (1.25 ratio, clamped; display ≤ 6rem) */
+  --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.9rem);
+  --step-0:  clamp(1rem, 0.96rem + 0.2vw, 1.08rem);
+  --step-1:  clamp(1.15rem, 1.08rem + 0.35vw, 1.35rem);
+  --step-2:  clamp(1.5rem, 1.3rem + 1vw, 2.1rem);
+  --step-3:  clamp(2rem, 1.5rem + 2.4vw, 3rem);
+  --measure: 65ch;
+  /* smallest text anywhere: 11px = Apple HIG iOS minimum (11 pt) and
+     Material 3 label-small (0.6875rem) — v2.4, ADR-0028 */
+  --text-min: 0.6875rem;
+
+  /* touch target floor (WCAG 2.5.8 asks 24px; Apple HIG 44×44 pt) */
+  --tap: 44px;
+
+  /* motion + state tokens from Material 3 (md.sys.motion / md.sys.state) */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-short: 150ms;   /* short3: hover, color, small state changes */
+  --dur-medium: 250ms;  /* medium1: open/close, expand */
+  --state-hover: 8%;    /* hover-state-layer-opacity 0.08 */
+  --state-press: 10%;   /* pressed-state-layer-opacity 0.10 */
+
+}
+
+/* Ink — the dark band tone: header, tmux bar and alternating sections
+   (ADR-0060). Every colour token is redefined here, so anything inside reads
+   the ink palette; the contrast pairs are the ones the old dark theme verified. */
+.tone-ink, .tone-signal .code-block {
   /* surfaces — cool ink so the one warm accent reads as "signal" */
   --bg:          #0a0c10;
   --surface:     #12151b;
@@ -63,91 +147,66 @@
   /* text placed on a solid --signal fill */
   --on-signal:   #0a0c10;
 
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-mono:    'IBM Plex Mono', ui-monospace, monospace;
-
-  --radius:   6px;
-  --radius-lg:12px;
-  --max-w:    1160px;
-  --nav-h:    66px;
-  --expo-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --quart-out: cubic-bezier(0.25, 1, 0.5, 1);
-
-  /* spacing scale (4px base) + fluid section rhythm — v2.3 */
-  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
-  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
-  --section-y: clamp(72px, 6vw + 40px, 120px);
-  --gutter: clamp(16px, 3vw, 24px);
-
-  /* fluid type scale (1.25 ratio, clamped; display ≤ 6rem) */
-  --step--1: clamp(0.84rem, 0.82rem + 0.1vw, 0.9rem);
-  --step-0:  clamp(1rem, 0.96rem + 0.2vw, 1.08rem);
-  --step-1:  clamp(1.15rem, 1.08rem + 0.35vw, 1.35rem);
-  --step-2:  clamp(1.5rem, 1.3rem + 1vw, 2.1rem);
-  --step-3:  clamp(2rem, 1.5rem + 2.4vw, 3rem);
-  --measure: 65ch;
-  /* smallest text anywhere: 11px = Apple HIG iOS minimum (11 pt) and
-     Material 3 label-small (0.6875rem) — v2.4, ADR-0028 */
-  --text-min: 0.6875rem;
-
-  /* touch target floor (WCAG 2.5.8 asks 24px; Apple HIG 44×44 pt) */
-  --tap: 44px;
-
-  /* motion + state tokens from Material 3 (md.sys.motion / md.sys.state) */
-  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
-  --dur-short: 150ms;   /* short3: hover, color, small state changes */
-  --dur-medium: 250ms;  /* medium1: open/close, expand */
-  --state-hover: 8%;    /* hover-state-layer-opacity 0.08 */
-  --state-press: 10%;   /* pressed-state-layer-opacity 0.10 */
-
   /* the signature: a contour-ring paint reusable anywhere */
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
     transparent 0 15px, rgba(255,176,32,0.05) 15px 16px);
   --contour-steel: repeating-radial-gradient(circle at 50% 50%,
     transparent 0 15px, rgba(110,168,201,0.045) 15px 16px);
+  color-scheme: dark;
+  background-color: var(--bg);
+  color: var(--text);
 }
 
-:root[data-theme='light'] {
-  --bg:          #f1ede4;   /* bone paper — matches ink-on-paper line art */
-  --surface:     #fbf9f4;
-  --surface-2:   #f4f0e6;
-  --surface-3:   #ece6d8;
-  --border:      #ddd5c4;
-  --border-2:    #c9bfa8;
-
-  /* deep amber so small amber text clears 4.5:1 on bone paper;
-     solid amber fills switch to light text via --on-signal */
-  --signal:      #904f00;
-  --signal-hi:   #7a4300;
-  --signal-soft: rgba(144,79,0,0.10);
-  --signal-glow: rgba(144,79,0,0.20);
-  --signal-line: rgba(144,79,0,0.28);
-
-  --steel:       #2f6a8f;
-  --steel-soft:  rgba(47,106,143,0.12);
-
-  --text:        #1b1813;
-  --text-muted:  #4c4638;
-  --text-dim:    #635c4b;   /* ≥4.5:1 on every surface incl. --signal-soft (4.84) */
-  --danger:      #b3261e;
-  --live:        #126f39;
-  --live-soft:   rgba(18,111,57,0.14);
-  --caution:      #a54006;
-  --caution-soft: rgba(165,64,6,0.12);
-  --on-signal:   #fbf9f4;
-
+/* Signal — ONE band only: the download section (ADR-0060). The deep amber of
+   the hero ASCII banner (Bone --signal #904f00) as the surface, Bone text,
+   an inverted primary button (Bone fill, dark amber text) and code blocks
+   inset in Ink (selector above). Contrast (WCAG 2.x, computed): text #fbf9f4
+   6.04:1, muted #f1ede4 5.44:1, dim #e6dccb 4.68:1 on #904f00; on the
+   #7a4300 cards 7.59 / 6.83 / 5.88; button text #6b3b00 on #fbf9f4 8.87:1;
+   outlines #e6dccb 4.68:1 (UI ≥ 3:1). Amber stays an accent everywhere else. */
+.tone-signal {
+  --bg:          #904f00;
+  --surface:     #7a4300;
+  --surface-2:   #6b3b00;
+  --surface-3:   #6b3b00;
+  --border:      rgba(251,249,244,0.28);
+  --border-2:    #e6dccb;
+  --signal:      #fbf9f4;
+  --signal-hi:   #ffffff;
+  --signal-soft: rgba(251,249,244,0.14);
+  --signal-glow: rgba(43,24,0,0.35);
+  --signal-line: rgba(251,249,244,0.55);
+  --steel:       #e6dccb;
+  --steel-soft:  rgba(251,249,244,0.10);
+  --text:        #fbf9f4;
+  --text-muted:  #f1ede4;
+  --text-dim:    #e6dccb;
+  --danger:      #fbf9f4;
+  --live:        #d6f5e0;
+  --live-soft:   rgba(214,245,224,0.16);
+  --ok:          var(--live);
+  --caution:      #fbf9f4;
+  --caution-soft: rgba(251,249,244,0.10);
+  --on-signal:   #6b3b00;
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
-    transparent 0 15px, rgba(27,24,19,0.05) 15px 16px);
-  --contour-steel: repeating-radial-gradient(circle at 50% 50%,
-    transparent 0 15px, rgba(27,24,19,0.04) 15px 16px);
+    transparent 0 15px, rgba(251,249,244,0.06) 15px 16px);
+  color-scheme: dark;
+  background-color: var(--bg);
+  color: var(--text);
 }
+/* every logo <img>/<image> is black line art or the black solid mark: on an
+   Ink or Signal band it turns Bone */
+.tone-ink .logo-mark, .tone-signal .logo-mark { filter: invert(1); }
+
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--nav-h) + 12px); }
+/* smooth in-page jumps once the page is running (Nav.tsx sets data-ready
+   after hydration); the load-time jump to a #section — e.g. after switching
+   language — stays instant, so the new page appears already in place */
 @media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
+  html[data-ready] { scroll-behavior: smooth; }
 }
 
 /* Reduced motion safety net: anything that still animates finishes at once.
@@ -160,23 +219,18 @@ html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--nav-h) + 1
   }
 }
 
-/* ── Theme toggle — View Transitions API ───────────────────────────────────────
-   The new theme wipes in as a circle growing from the toggle button
-   (--vt-x/--vt-y, set by Nav.tsx). Pattern from
-   https://developer.chrome.com/docs/web-platform/view-transitions/same-document
-   Browsers without the API, and reduced-motion visitors, switch instantly. */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
+/* ── Page changes — cross-document View Transitions (ADR-0060) ──────────────
+   Switching ES ↔ EN (or opening the guide) is a real navigation to another
+   prerendered page; where the browser supports it, the old and new pages
+   cross-fade while the header and the tmux bar stay put (named groups), so
+   nothing appears to reload. Spec: https://www.w3.org/TR/css-view-transitions-2/
+   Browsers without it simply navigate. Reduced motion: no transition. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
 }
-::view-transition-new(root) {
-  animation: themeWipe 0.7s var(--quart-out) both;
-}
-@keyframes themeWipe {
-  from { clip-path: circle(0 at var(--vt-x, 100%) var(--vt-y, 0)); }
-  to   { clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 100%) var(--vt-y, 0)); }
-}
+.nav { view-transition-name: site-nav; }
+.tmux-bar { view-transition-name: site-tmux; }
+::view-transition-group(root) { animation-duration: 0.28s; animation-timing-function: var(--ease-standard); }
 
 /* ── Scrollbar ──────────────────────────────────────────────────────────────── */
 * { scrollbar-width: thin; scrollbar-color: var(--border-2) transparent; }
@@ -253,15 +307,14 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   position: sticky; top: 0; z-index: 100;
   height: var(--nav-h);
   display: flex; align-items: center;
-  background: transparent;
-  border-bottom: 1px solid transparent;
-  transition: background 0.28s ease, backdrop-filter 0.28s ease, border-color 0.28s ease;
-}
-.nav.is-sticky {
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  /* always Ink (.tone-ink on the element): it reads the same over Bone and
+     Ink sections; over the Ink hero it simply blends in (ADR-0060) */
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(14px) saturate(1.2);
-  border-bottom-color: var(--border);
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.28s ease;
 }
+.nav.is-sticky { border-bottom-color: var(--border); }
 .nav-inner {
   display: grid; grid-template-columns: auto 1fr auto;
   align-items: center; gap: 24px;
@@ -270,13 +323,13 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 .nav-logo { display: flex; align-items: center; gap: 11px; text-decoration: none; }
 .nav-logo:hover { text-decoration: none; }
+/* the line-art original, large enough for its concentric lines to read
+   (ADR-0060 refines ADR-0051 for the header) */
 .nav-logo img {
-  width: 40px; height: 40px;
+  width: 54px; height: 54px;
   transition: transform 0.4s cubic-bezier(.2,.8,.2,1), filter 0.3s;
 }
 .nav-logo:hover img { transform: rotate(-8deg) scale(1.06); }
-/* logo is black line art → invert to bone on dark bg */
-:root[data-theme='dark'] .nav-logo img { filter: invert(1); }
 .nav-logo-name {
   display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--font-display); font-weight: 600;
@@ -325,7 +378,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 
 .nav-right { display: flex; align-items: center; justify-self: end; gap: 18px; }
 
-.nav-lang-switcher, .nav-theme-switcher {
+.nav-lang-switcher {
   display: flex; align-items: center; gap: 3px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 3px;
@@ -343,26 +396,14 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .nav-hamburger { display: none; }
 .nav-mobile-menu { display: none; }
 
-.nav-theme-toggle, .nav-lang-toggle {
+.nav-lang-toggle {
   display: inline-grid; place-items: center;
   width: 31px; height: 31px; border: none; background: transparent;
   color: var(--text-muted); border-radius: 3px; cursor: pointer;
   transition: all 0.15s; position: relative; overflow: hidden;
 }
 .nav-lang-toggle { text-decoration: none; }
-.nav-theme-toggle:hover, .nav-lang-toggle:hover { color: var(--signal); background: var(--signal-soft); }
-
-/* sun and moon crossfade with a quarter-turn rotation, timed to the same 0.7s as
-   the page-wide view transition so the button never looks frozen mid-swap */
-.theme-icon-stack { position: relative; display: inline-flex; width: 15px; height: 15px; }
-.theme-icon-stack svg {
-  position: absolute; inset: 0; width: 15px; height: 15px;
-  transition: opacity 0.7s var(--expo-out), transform 0.7s var(--expo-out);
-}
-.theme-icon-stack .theme-icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
-.theme-icon-stack .theme-icon-moon { opacity: 0; transform: rotate(-90deg) scale(.5); }
-:root[data-theme='dark'] .theme-icon-stack .theme-icon-sun  { opacity: 0; transform: rotate(90deg) scale(.5); }
-:root[data-theme='dark'] .theme-icon-stack .theme-icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+.nav-lang-toggle:hover { color: var(--signal); background: var(--signal-soft); }
 
 .lang-icon { display: inline-flex; opacity: 1; transform: scale(1); transition: opacity .18s, transform .18s; }
 .lang-icon.hide { opacity: 0; transform: scale(.75); }
@@ -407,8 +448,8 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   outline: 1px solid var(--signal-line); outline-offset: 4px;
   animation: corePulse 3.4s ease-in-out infinite;
 }
-/* light theme: dark ink on cream paper reads faint by default — push the sweep and core harder */
-:root[data-theme='light'] .hero-contour::before {
+/* on Bone the deep amber sweep reads faint at its glow alpha: push it */
+.hero-contour::before {
   background: conic-gradient(from 0deg, transparent 0 78%, color-mix(in srgb, var(--signal) 55%, transparent) 92%, transparent 100%);
 }
 @keyframes radarSweep { to { transform: rotate(360deg); } }
@@ -453,9 +494,9 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .terminal {
   position: relative; background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-lg); overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(255,176,32,0.05), 0 30px 70px rgba(0,0,0,0.45);
+  box-shadow: 0 18px 44px rgba(60,50,25,0.12);
 }
-:root[data-theme='light'] .terminal { box-shadow: 0 18px 44px rgba(60,50,25,0.12); }
+.tone-ink .terminal { box-shadow: 0 0 0 1px rgba(255,176,32,0.05), 0 30px 70px rgba(0,0,0,0.45); }
 .terminal-bar {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border);
@@ -485,7 +526,10 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 /* Anchors land on the section CONTENT, not on its top padding: html already adds
    scroll-padding-top (nav + 12px), so pull the target up by the section padding. */
 .section[id] { scroll-margin-top: calc(12px - var(--section-y)); }
-.section + .section { border-top: 1px solid var(--border); }
+/* Rhythm (ADR-0060): sections alternate Bone (the page) and Ink bands
+   (.tone-ink), so the change of tone is the divider — no hairlines. The hero
+   and the attach demo share one Ink band (the demo continues the hero). */
+.section.tone-ink { isolation: isolate; }
 
 .section-label {
   display: inline-flex; align-items: center;
@@ -769,31 +813,34 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
 .ic { font-family: var(--font-mono); font-size: 0.83em; color: var(--signal); background: var(--signal-soft); padding: 1px 6px; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 
 /* ── Footer ─────────────────────────────────────────────────────────────────── */
-/* v2.8: the footer fills the viewport once reached (the header steps aside
-   while it is on screen, Nav.tsx): large line-art mark + tagline, the primary
-   download, link columns, the version line, "↑ Inicio" and the giant
-   wordmark pinned to the bottom. --tmux-h keeps it clear of the tmux bar. */
+/* v2.9 (ADR-0060): exactly one screen above the tmux bar on laptops and up
+   (1366×768, 1440×900, 1920×1080), nothing cut: every vertical size is
+   clamped by svh, and the giant wordmark sits BEHIND the content (absolute),
+   so it never adds height. The header steps aside while the footer shows
+   (Nav.tsx). Phones and short windows keep the natural flow (min-height). */
 body:has(.tmux-bar) { --tmux-h: 34px; }
 .footer {
-  position: relative; border-top: 1px solid var(--border); overflow: hidden;
+  position: relative; overflow: hidden;
   min-height: calc(100vh - var(--tmux-h, 0px));
   min-height: calc(100svh - var(--tmux-h, 0px));
   display: flex; flex-direction: column;
-  padding: clamp(48px, 6vh + 16px, 96px) 0 0;
+  padding: clamp(24px, 6svh, 80px) 0 clamp(16px, 3svh, 32px);
 }
-.footer-inner { flex: 1; display: flex; flex-direction: column; }
+@media (min-width: 721px) and (min-height: 600px) {
+  .footer { height: calc(100svh - var(--tmux-h, 0px)); }
+}
+.footer-inner { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 .footer-hero { display: flex; align-items: center; gap: clamp(24px, 4vw, 56px); }
-.footer-mark { width: clamp(160px, 18vw, 208px); height: auto; flex-shrink: 0; opacity: 0.92; }
-/* black line art → bone on the dark theme (same as every logo <img>) */
-:root[data-theme='dark'] .footer-mark { filter: invert(1); }
-.footer-hero-text { display: grid; gap: 12px; min-width: 0; }
+/* the line-art original, never under 128 px (DESIGN.md Logo) */
+.footer-mark { width: clamp(128px, 22svh, 208px); height: auto; flex-shrink: 0; opacity: 0.92; }
+.footer-hero-text { display: grid; gap: clamp(6px, 1.2svh, 12px); min-width: 0; }
 .footer-claim {
-  font-family: var(--font-display); font-weight: 600; font-size: var(--step-3);
+  font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 1rem + 2.4vw, 3rem);
   line-height: 1.08; letter-spacing: -0.02em; color: var(--text); text-wrap: balance;
 }
 .footer-tagline { color: var(--text-muted); font-size: 0.95rem; max-width: 52ch; text-wrap: pretty; }
-.footer-cta { display: grid; justify-items: start; gap: 8px; margin-top: 10px; }
+.footer-cta { display: grid; justify-items: start; gap: 4px; margin-top: clamp(4px, 1svh, 10px); }
 .footer-guide-link {
   display: inline-flex; align-items: center; min-height: var(--tap);
   font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.04em; color: var(--text-muted);
@@ -802,9 +849,9 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .footer-guide-link:hover { color: var(--signal); }
 
 .footer-grid {
-  margin-top: clamp(40px, 6vh, 72px);
+  margin-top: clamp(16px, 4svh, 64px);
   display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.4fr);
-  gap: 32px 44px; align-items: start;
+  gap: 24px 44px; align-items: start;
 }
 .footer-col ul { list-style: none; margin: 0; padding: 0; display: grid; }
 .footer-col-title {
@@ -814,7 +861,7 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .footer-legal-link { display: inline-flex; align-items: center; min-height: 36px; font-size: 0.86rem; color: var(--text-muted); letter-spacing: 0.02em; transition: color 0.15s; }
 .footer-legal-link:hover { color: var(--signal); text-decoration: none; }
 
-.footer-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin-top: 32px; }
+.footer-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
 .footer-facts li {
   font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.06em;
   color: var(--signal); border: 1px solid var(--signal-line);
@@ -828,30 +875,46 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .footer-gh-link:hover { color: var(--signal); text-decoration: none; }
 .footer-version { color: var(--signal); }
 .footer-meta {
-  margin-top: auto; padding-top: 32px;
-  display: flex; justify-content: space-between; align-items: center; gap: 20px;
+  margin-top: auto; padding-top: clamp(16px, 3svh, 32px);
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 20px;
+  /* clear of the fixed back-to-top button */
+  padding-right: 64px;
 }
 .footer-wink { font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
-.footer-top {
-  display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 0 16px;
-  border: 1px solid var(--border-2); border-radius: var(--radius);
-  font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.04em; color: var(--text);
-  transition: color var(--dur-short) var(--ease-standard), border-color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard);
-}
-.footer-top:hover { color: var(--signal); border-color: var(--signal); background: var(--signal-soft); text-decoration: none; }
 
-/* giant cropped wordmark — a faint watermark the page signs off with, blended into the surface */
+/* giant cropped wordmark — a faint watermark behind the content, pinned to
+   the bottom; absolute, so it adds no height */
 .footer-giant {
-  position: relative; z-index: 1;
+  position: absolute; z-index: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none; user-select: none;
-  margin-top: 16px; height: 0.60em; overflow: hidden;
+  height: 0.62em; overflow: hidden;
   font-family: var(--font-display); font-weight: 700;
-  font-size: clamp(4rem, 16vw, 300px);
+  font-size: min(16vw, 30svh, 300px);
   line-height: 0.76; letter-spacing: -0.03em;
   text-align: center; white-space: nowrap;
   /* solid faint amber, no gradient text (One Accent Rule) */
   color: color-mix(in srgb, var(--signal) 7%, transparent);
 }
+
+/* back to top: round Ink icon button, fixed bottom-right above the tmux bar
+   (BackToTop.tsx); hidden until the visitor scrolls past about one screen */
+.to-top {
+  position: fixed; z-index: 95; right: clamp(16px, 2vw, 24px);
+  bottom: calc(var(--tmux-h, 0px) + 16px);
+  display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border-2);
+  cursor: pointer;
+  opacity: 0; visibility: hidden; transform: translateY(8px);
+  transition: opacity var(--dur-medium) var(--ease-standard), transform var(--dur-medium) var(--ease-standard),
+    visibility 0s linear var(--dur-medium), color var(--dur-short), border-color var(--dur-short), background-color var(--dur-short);
+}
+.to-top.is-shown {
+  opacity: 1; visibility: visible; transform: none;
+  transition: opacity var(--dur-medium) var(--ease-standard), transform var(--dur-medium) var(--ease-standard),
+    visibility 0s, color var(--dur-short), border-color var(--dur-short), background-color var(--dur-short);
+}
+.to-top:hover { color: var(--signal); border-color: var(--signal); }
+.to-top:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
 
 /* the header steps aside while the footer is on screen (Nav.tsx .is-away):
    slides up, then hides, so it is neither seen nor focusable */
@@ -893,9 +956,9 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   .nav-logo-name strong, .nav-logo-name small:not(.beta) { display: none; }
   .nav-logo-name { gap: 0; }
   /* a step smaller, next to the 37px hamburger and toggle boxes */
-  .nav-logo img { width: 36px; height: 36px; }
+  .nav-logo img { width: 44px; height: 44px; }
 
-  /* outline-button treatment, sized to match the theme/lang toggle boxes
+  /* outline-button treatment, sized to match the language toggle box
      (31px icon + 3px padding on each side = 37px) so it reads as one of
      the header's button group rather than a bare icon */
   .nav-hamburger {
@@ -992,14 +1055,13 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
   list-style: none; margin: 0; padding: 6px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  box-shadow: 0 14px 32px rgba(0,0,0,0.32);
+  box-shadow: 0 14px 34px rgba(60,50,25,0.16);
   max-height: 60vh; overflow-y: auto;
   opacity: 0; transform-origin: top center; transform: translateY(-6px) scale(0.98);
   pointer-events: none;
   transition: opacity 0.18s var(--expo-out), transform 0.18s var(--expo-out), visibility 0.18s;
   visibility: hidden;
 }
-:root[data-theme='light'] .jump-select-list { box-shadow: 0 14px 34px rgba(60,50,25,0.16); }
 .jump-select.open .jump-select-list {
   opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; visibility: visible;
 }
@@ -1049,7 +1111,6 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   background: repeating-linear-gradient(to bottom, transparent 0 2px, rgba(0,0,0,0.055) 2px 3px);
   mix-blend-mode: multiply;
 }
-:root[data-theme='light'] .terminal.crt::after { opacity: 0.35; }
 
 /* ── Security section ── */
 .security-grid {
@@ -1146,7 +1207,7 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .th-section {
   position: relative;
   margin-top: calc(-1 * var(--nav-h));
-  padding: calc(24px + var(--nav-h)) 0 40px;
+  padding: calc(16px + var(--nav-h)) 0 24px;
   overflow: hidden;
 }
 /* Anchored a fixed distance from the section's top, never a % of its height:
@@ -1167,37 +1228,50 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   pointer-events: none; background: linear-gradient(to bottom, transparent, var(--bg));
 }
 .th-terminal { position: relative; z-index: 1; max-width: 100%; min-width: 0; }
+/* v2.9 (ADR-0060): an Ink window on the Bone hero, sized to its content —
+   no inner scroll. 14 px mono, full-opacity text (every colour clears 4.5:1
+   on --surface). From 1024 px the body is two columns under the h1, so the
+   whole window fits a 1366×768 laptop screen; narrower, it stacks. */
 .th-body {
-  /* sized off the viewport so the whole hero — heading, terminal, CTAs —
-     is visible on first load without scrolling */
-  min-height: min(480px, 54vh);
-  max-height: calc(100vh - var(--nav-h) - 120px);
-  overflow-y: auto; overflow-x: hidden;
-  padding: 22px 26px 26px; font-size: 0.8rem; cursor: text;
+  padding: 20px 26px 22px; font-size: 0.875rem; cursor: text;
+  overflow-x: hidden;
 }
-/* the viewport-clamped internal scroll is a desktop nicety (keeps the hero
-   in one screen); on touch/mobile it traps the scroll gesture instead —
-   once the terminal's own scroll hits bottom, the page underneath doesn't
-   continue moving with the same swipe. Let it grow with its content there
-   so scrolling is handled entirely by the page. */
-@media (max-width: 720px) {
-  .th-body { max-height: none; overflow-y: visible; }
+.th-main, .th-side { display: contents; }
+@media (min-width: 1024px) {
+  .th-body {
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    column-gap: clamp(28px, 3vw, 48px); align-items: start;
+  }
+  .th-body > :not(.th-main, .th-side) { grid-column: 1 / -1; }
+  .th-main, .th-side { display: block; min-width: 0; }
+  .th-side { padding-top: 10px; }
+  .th-side .th-log { border-top: none; padding-top: 0; }
+  /* laptop height budget: the decorative extras stay on wider-than-tall
+     phones/tablets only — "Last login", and the resolving / watchdog /
+     binary lines (all aria-hidden decoration) */
+  .th-body > .th-log-line, .th-log > .boot-line:not(.boot-security) { display: none; }
+  .th-sub { font-size: 1.15rem; }
+  .th-body .boot-row { padding-block: 5px; }
 }
 .th-body .boot-line, .th-body .hero-cmd-line, .th-sub { overflow-wrap: anywhere; }
 .th-body .boot-profile { overflow: hidden; text-overflow: ellipsis; }
 
 .th-banner {
-  margin: 18px 0 6px; overflow: hidden;
-  font-family: var(--font-mono); font-size: clamp(5.5px, 1.35vw, 12.5px);
+  margin: 12px 0 4px; overflow: hidden;
+  font-family: var(--font-mono); font-size: clamp(5.5px, min(1.35vw, 1.45svh), 12.5px);
   line-height: 1.18; color: var(--signal);
 }
 
 /* the page h1, inside the terminal: the first thing a visitor reads. Display
    face, full contrast, not animated (it is the LCP element). */
 .th-title {
-  margin: 14px 0 0; max-width: 22ch;
+  margin: 12px 0 0; max-width: 22ch;
   font-family: var(--font-display); font-size: var(--step-3); font-weight: 600;
   line-height: 1.08; letter-spacing: -0.02em; color: var(--text); text-wrap: balance;
+}
+/* one line on laptops and up, in both languages (sized to fit at 1024 px) */
+@media (min-width: 1024px) {
+  .th-title { max-width: none; white-space: nowrap; text-wrap: nowrap; font-size: clamp(2.5rem, 1rem + 2.6vw, 3.4rem); }
 }
 /* the one plain-language sentence under it: body face, readable size */
 .th-sub {
@@ -1226,8 +1300,8 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 /* the boot log (Last login, typed command, keychain, tunnel rows, kill
    switch, watchdog, binary) is decoration: aria-hidden in Hero.tsx, smaller
    and dimmed here so it never competes with the h1, sentence and buttons */
-.th-log { padding-top: 14px; border-top: 1px dashed var(--border); font-size: 0.72rem; opacity: 0.72; }
-.th-log-line { color: var(--text-dim); font-size: 0.72rem; opacity: 0.72; }
+.th-log { padding-top: 14px; border-top: 1px dashed var(--border); font-size: 0.8125rem; }
+.th-log-line { color: var(--text-dim); font-size: 0.8125rem; }
 /* phones can't run the binary: point to "send to my computer" instead
    (chosen by <html data-device>, set before first paint — ADR-0029) */
 .th-bin-mobile { display: none; }
@@ -1278,6 +1352,13 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
    goes on the prompt line instead, so keyboard focus is always visible */
 .th-prompt:focus-within { outline: 2px solid var(--signal); outline-offset: 4px; }
 .th-prompt .t-prompt { white-space: pre; }
+/* idle block caret after the prompt; hidden once the visitor focuses or types.
+   Reduced motion: the safety net above ends the blink on its visible frame. */
+.th-caret {
+  flex-shrink: 0; width: 8px; height: 1.1em; margin-right: 6px; background: var(--signal);
+  animation: blink 1.1s step-end infinite;
+}
+.th-prompt:focus-within .th-caret, .th-prompt:has(.th-input:not(:placeholder-shown)) .th-caret { display: none; }
 .th-input {
   flex: 1; min-width: 0; background: transparent; border: none; outline: none;
   font-family: var(--font-mono); font-size: inherit; color: var(--text);
@@ -1453,8 +1534,7 @@ main:focus { outline: none; }
 
 /* browser surfaces carry the palette too: form controls, scrollbars and
    autofill follow the active theme, not the OS one */
-html { accent-color: var(--signal); color-scheme: dark; }
-:root[data-theme='light'] { color-scheme: light; }
+html { accent-color: var(--signal); color-scheme: light; }
 
 /* OS selector (radio group): selected state also readable without color */
 .os-tab[aria-checked='true'] { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--on-signal) 45%, transparent); }

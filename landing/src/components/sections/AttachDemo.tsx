@@ -101,7 +101,8 @@ export default function AttachDemo({ lang }: Props) {
           <div className="attach-radar">
             <span className="attach-contour" />
             <span className="ring r1" /><span className="ring r2" /><span className="ring r3" />
-            <img src={`${import.meta.env.BASE_URL}logo-kong.svg`} alt="" width="44" height="44" />
+            {/* the line-art original, large (DESIGN.md Logo, ADR-0060) */}
+            <img className="logo-mark" src={`${import.meta.env.BASE_URL}logo-kong.svg`} alt="" width="108" height="108" />
           </div>
           <code className="attach-detect-line">
             <span className="d-off">…</span>
@@ -123,8 +124,12 @@ export default function AttachDemo({ lang }: Props) {
           <div className="attach-taskbar">
             <span className="tb-icon" />
             <span className="tb-icon" />
+            {/* the real tray icon: the solid glyph with the status badge in
+                its corner (assets.BadgeGeometry: r = 15 % of the icon, a gap
+                ring of size/16); hollow grey while stopped, live green once
+                the tunnel is detected */}
             <span className="tb-kong">
-              <img src={`${import.meta.env.BASE_URL}logo-kong.svg`} alt="" width="16" height="16" />
+              <img className="logo-mark" src={`${import.meta.env.BASE_URL}logo-kong-solid.svg`} alt="" width="28" height="28" />
               <i className="tb-dot" />
             </span>
             <span className="tb-clock">09:41</span>

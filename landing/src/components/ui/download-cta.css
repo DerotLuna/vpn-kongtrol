@@ -129,4 +129,6 @@
 }
 /* hero: the note takes its own row under both buttons, in the terminal voice */
 .th-ctas .th-note { flex-basis: 100%; margin-top: -2px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.01em; }
-.dl-featured-note { margin-top: 16px; }
+.dl-featured-note { margin-top: 4px; }
+/* in the download section the "other ways" list is right below the card */
+.dl-featured-note a { display: none; }

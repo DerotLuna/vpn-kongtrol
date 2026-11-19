@@ -1,4 +1,8 @@
-/* Routing patch panel (#map) — version 2.0.0 · 2026-11-19.
+/* Routing patch panel (#map) — version 2.1.0 · 2026-11-19.
+   v2.1 (ADR-0060): in an Ink band; from 1200 px the section heading sits
+   beside the board, so heading + board fit one laptop screen (1366×768)
+   while the SVG never scales below 1:1 (its 11 px labels stay ≥ 11 px);
+   the badge is the line-art mark.
    Only .switchboard / .sb-* / .pp-* rules live here; tokens come from index.css.
    v2: the ring hub became a patch panel. Destinations (left) and exits
    (right) plug into sockets on the panel's edges; inside, one cable per
@@ -34,8 +38,7 @@
 /* the panel */
 .pp-body { fill: var(--bg); stroke: var(--border-2); stroke-width: 1; }
 .pp-screw { fill: none; stroke: var(--border-2); stroke-width: 1; }
-.pp-badge { opacity: 0.85; }
-:root[data-theme='dark'] .pp-badge { filter: invert(1); }
+.pp-badge { opacity: 0.9; }
 .pp-cable { fill: none; stroke: var(--border-2); stroke-width: 1.5; stroke-linecap: round; }
 
 /* the lit route (full path, card to card) and the packet riding it */
@@ -164,4 +167,25 @@
 }
 @media (max-width: 767px) and (hover: hover) {
   .sb-chip.in:hover { border-color: var(--signal); }
+}
+
+/* Laptops and up: heading left, board right (one screen, no scroll). The
+   board column stays ≥ 640 px wide inside its padding, so the SVG keeps a
+   scale ≥ 1 (labels never under the 11 px floor). Narrower: stacked. */
+@media (min-width: 1200px) {
+  .features-section > .container {
+    display: grid; grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr);
+    grid-template-rows: 1fr auto auto auto 1fr;
+    column-gap: 44px; align-items: start;
+  }
+  /* the heading block sits in the middle rows, centred against the board */
+  .features-section > .container > .section-label { grid-column: 1; grid-row: 2; }
+  .features-section > .container > .section-title { grid-column: 1; grid-row: 3; }
+  .features-section > .container > .section-sub { grid-column: 1; grid-row: 4; }
+  .features-section > .container > .switchboard { grid-column: 2; grid-row: 1 / -1; margin-top: 0; }
+  .features-section .section-title { font-size: clamp(2rem, 1rem + 1.6vw, 2.6rem); }
+  .features-section .section-sub { font-size: 1rem; }
+  .switchboard { padding: 16px 20px 14px; }
+  .pp-rule { margin-top: 6px; }
+  .sb-hint { margin-top: 4px; }
 }

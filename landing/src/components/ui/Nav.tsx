@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
+import { MouseEvent, useEffect, useRef, useState } from 'react'
 import { Lang } from '../../i18n'
-import { Theme } from '../../theme'
 import { GITHUB_REPO } from '../../links'
 import { PageId, pathFor } from '../../site'
 import { chooseLang } from '../../hooks/usePreferences'
@@ -12,17 +11,24 @@ import './download-cta.css'
 interface Props {
   page: PageId
   lang: Lang
-  theme: Theme
-  setTheme: (theme: Theme) => void
 }
 
-type DocumentWithViewTransition = Document & {
-  startViewTransition?: (callback: () => void) => { finished: Promise<void> }
+// The section the visitor is reading: the last page anchor (home sections,
+// guide and legal sections — the same ids in both languages) whose top is
+// above a reading line a third of the way down the screen. Null near the
+// top of the page.
+function currentAnchor(navH: number): string | null {
+  if (window.scrollY < 40) return null
+  let id: string | null = null
+  for (const el of document.querySelectorAll<HTMLElement>('main section.section[id], main .guide-section[id]')) {
+    if (el.getBoundingClientRect().top <= navH + (window.innerHeight - navH) / 3) id = el.id
+  }
+  return id
 }
 
-export default function Nav({ page, lang, theme, setTheme }: Props) {
-  // small mark = the solid silhouette (DESIGN.md "Logo", ADR-0051)
-  const logoSrc = `${import.meta.env.BASE_URL}logo-kong-solid.svg`
+export default function Nav({ page, lang }: Props) {
+  // the line-art original, ≥52 px (DESIGN.md "Logo", ADR-0060)
+  const logoSrc = `${import.meta.env.BASE_URL}logo-kong.svg`
   const [langPulse, setLangPulse] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -30,7 +36,6 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   // carries its own logo, download button and links) and comes back on leaving
   const [footerInView, setFooterInView] = useState(false)
   const langPulseTimer = useRef<number | null>(null)
-  const themeTransitioning = useRef(false)
   const navRef = useRef<HTMLElement>(null)
   const menuButton = useRef<HTMLButtonElement>(null)
   const mobile = useIsMobile()
@@ -43,29 +48,9 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   // prerender too.
   const [ownCtaInView, setOwnCtaInView] = useState(page === 'home')
 
-  const toggleTheme = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (themeTransitioning.current) return
-    const next = theme === 'dark' ? 'light' : 'dark'
-    const switchTheme = () => setTheme(next)
-    const doc = document as DocumentWithViewTransition
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (!doc.startViewTransition || reduced) { switchTheme(); return }
-    // the new theme grows as a circle from the button (index.css themeWipe)
-    const r = e.currentTarget.getBoundingClientRect()
-    const x = r.left + r.width / 2
-    const y = r.top + r.height / 2
-    const root = document.documentElement.style
-    root.setProperty('--vt-x', `${x}px`)
-    root.setProperty('--vt-y', `${y}px`)
-    root.setProperty('--vt-r', `${Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))}px`)
-    themeTransitioning.current = true
-    doc.startViewTransition(switchTheme).finished.finally(() => {
-      themeTransitioning.current = false
-    })
-  }
   const labels = lang === 'es'
-    ? { langTitle: 'Idioma', themeTitle: 'Tema', dark: 'Oscuro', light: 'Claro', toggleTheme: 'Cambiar tema', toggleLang: 'Cambiar idioma', menu: 'Menú' }
-    : { langTitle: 'Language', themeTitle: 'Theme', dark: 'Dark', light: 'Light', toggleTheme: 'Toggle theme', toggleLang: 'Toggle language', menu: 'Menu' }
+    ? { langTitle: 'Idioma', toggleLang: 'Cambiar idioma', menu: 'Menú' }
+    : { langTitle: 'Language', toggleLang: 'Toggle language', menu: 'Menu' }
 
   // Nav links styled as CLI flags. The top nav only navigates ACROSS pages —
   // in-page sections belong to the tmux bar at the bottom on both pages.
@@ -73,6 +58,9 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     { flag: lang === 'es' ? '--inicio' : '--home', href: pathFor('home', lang), current: page === 'home' },
     { flag: lang === 'es' ? '--guia' : '--guide', href: pathFor('guia', lang), current: page === 'guia' },
   ]
+
+  // smooth in-page scrolling only from here on (index.css html[data-ready])
+  useEffect(() => { document.documentElement.dataset.ready = '' }, [])
 
   useEffect(() => {
     // one read per frame, at its start (rAF), never in the middle of DOM writes
@@ -160,9 +148,15 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     }
   }, [menuOpen])
 
-  const handleLangToggle = () => {
+  // ES ↔ EN is a navigation to the other prerendered page (separate URLs and
+  // hreflang stay). It keeps the visitor where they were: the link gets the
+  // current section as its fragment just before the browser follows it, and
+  // the page change cross-fades (index.css @view-transition, ADR-0060).
+  const handleLangToggle = (e: MouseEvent<HTMLAnchorElement>) => {
     const next: Lang = lang === 'es' ? 'en' : 'es'
     chooseLang(next)
+    const anchor = currentAnchor(navRef.current?.getBoundingClientRect().height ?? 0)
+    e.currentTarget.href = pathFor(page, next) + (anchor ? '#' + anchor : '')
     setLangPulse(next.toUpperCase())
     if (langPulseTimer.current != null) {
       window.clearTimeout(langPulseTimer.current)
@@ -174,10 +168,10 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   }
 
   return (
-    <nav ref={navRef} className={`nav${scrolled ? ' is-sticky' : ''}${footerInView && !menuOpen ? ' is-away' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
+    <nav ref={navRef} className={`nav tone-ink${scrolled ? ' is-sticky' : ''}${footerInView && !menuOpen ? ' is-away' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
       <div className="nav-inner">
         <a href={page === 'home' ? '#motd' : pathFor('home', lang)} className="nav-logo">
-          <img src={logoSrc} alt="Kongtrol" width={40} height={40} />
+          <img className="logo-mark" src={logoSrc} alt="Kongtrol" width={54} height={54} />
           <span className="nav-logo-name">
             <strong aria-hidden="true">K O N G T R O L</strong>
             <small className="beta">BETA</small>
@@ -213,24 +207,6 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
           </a>
 
           <div className="nav-controls nav-utils">
-            <div className="nav-theme-switcher" title={labels.themeTitle}>
-              <button
-                className="nav-theme-toggle"
-                onClick={toggleTheme}
-                aria-label={`${labels.toggleTheme}: ${theme === 'dark' ? labels.dark : labels.light}`}
-                title={`${labels.themeTitle}: ${theme === 'dark' ? labels.dark : labels.light}`}
-              >
-                <span className="theme-icon-stack">
-                  <svg className="theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="currentColor" d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Zm0-16a1 1 0 0 1 1 1v2h-2V3a1 1 0 0 1 1-1Zm0 17a1 1 0 0 1 1 1v2h-2v-2a1 1 0 0 1 1-1Zm10-8v2h-2v-2h2ZM4 11v2H2v-2h2Zm14.95-6.54 1.41 1.41-1.42 1.42-1.41-1.42 1.42-1.41ZM6.47 16.95l1.41 1.41-1.41 1.42-1.42-1.42 1.42-1.41Zm12.48 2.83-1.41-1.42 1.41-1.41 1.42 1.41-1.42 1.42ZM6.47 7.05 5.05 5.63l1.42-1.41 1.41 1.41-1.41 1.42Z"/>
-                  </svg>
-                  <svg className="theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="currentColor" d="M21 14.2A9 9 0 1 1 9.8 3a7 7 0 1 0 11.2 11.2Z"/>
-                  </svg>
-                </span>
-              </button>
-            </div>
-
             <div className="nav-lang-switcher" title={labels.langTitle}>
               <a
                 className="nav-lang-toggle"

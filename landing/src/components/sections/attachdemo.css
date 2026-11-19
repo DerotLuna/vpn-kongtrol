@@ -1,4 +1,8 @@
-/* Attach-mode demo (AttachDemo.tsx) — version 1.2.0 · 2026-11-18.
+/* Attach-mode demo (AttachDemo.tsx) — version 1.3.0 · 2026-11-19.
+   v1.3: one designed theme (ADR-0060): the demo sits in an Ink band, marks
+   invert through .tone-ink .logo-mark; the hub shows the line-art original
+   at 108 px; the tray mock is the solid glyph with the real badge geometry
+   (hollow grey → live green).
    v1.1: every label ≥11px (--text-min); the idle "Conectar" button is
    --text-dim at full opacity (≥4.5:1) instead of a 45% fade (2.4:1).
    v1.2: only transform/opacity are animated (compositor): color and
@@ -8,7 +12,7 @@
    The default styles ARE the final frame (app connected, tray green), so
    reduced-motion visitors and no-animation renders get a complete picture.
    The loop only runs under prefers-reduced-motion: no-preference. */
-.attach { margin-top: 48px; }
+.attach { margin-top: 0; }
 .attach-stage {
   position: relative; overflow: hidden;
   display: grid; grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr);
@@ -62,19 +66,18 @@
 /* One coordinate system: every layer (contour, disc, rings, logo) is
    positioned against .attach-radar's box with symmetric insets, so they all
    share its exact center at any breakpoint. Rings scale from that center. */
-.attach-radar { position: relative; isolation: isolate; width: 104px; height: 104px; display: grid; place-items: center; }
+.attach-radar { position: relative; isolation: isolate; width: 156px; height: 156px; display: grid; place-items: center; }
 .attach-contour {
-  position: absolute; inset: -168px; z-index: -1; pointer-events: none; /* 440px square */
+  position: absolute; inset: -142px; z-index: -1; pointer-events: none; /* 440px square */
   --cx: 50%; --cy: 50%; background: var(--contour); opacity: 0.6;
   -webkit-mask: radial-gradient(circle closest-side, #000 30%, transparent);
   mask: radial-gradient(circle closest-side, #000 30%, transparent);
 }
 .attach-radar::before {
-  content: ''; position: absolute; inset: 14px; border-radius: 50%;
+  content: ''; position: absolute; inset: 6px; border-radius: 50%;
   border: 1px solid var(--signal-line); background: var(--surface-2);
 }
-.attach-radar img { position: relative; width: 44px; height: 44px; }
-:root[data-theme='dark'] .attach-radar img { filter: invert(1); }
+.attach-radar img { position: relative; width: 108px; height: 108px; }
 .attach-radar .ring {
   position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--signal);
   opacity: 0; transform: scale(0.6);
@@ -93,28 +96,33 @@
 .attach-menu {
   width: min(100%, 236px); display: grid; padding: 6px;
   background: var(--bg); border: 1px solid var(--border-2); border-radius: var(--radius);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.28);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.28); /* Ink band only */
   font-size: 0.74rem; color: var(--text-muted);
 }
-:root[data-theme='light'] .attach-menu { box-shadow: 0 10px 24px rgba(60,50,25,0.14); }
 .attach-menu > span { padding: 5px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .attach-menu .m-status { display: flex; align-items: center; gap: 7px; color: var(--text); font-weight: 600; }
-.attach-menu .m-dot, .attach-taskbar .tb-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
-.attach-menu .m-dot { position: relative; }
+.attach-menu .m-dot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
 /* the green "on" dot is a layer over the dim one, so the loop fades it */
 .attach-menu .m-dot::after, .attach-taskbar .tb-dot::after {
   content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--live);
 }
+.attach-taskbar .tb-dot::after { inset: -2px; }
 .attach-menu .m-sep { height: 1px; padding: 0; margin: 4px 6px; background: var(--border); }
 .attach-taskbar {
   width: min(100%, 236px); display: flex; align-items: center; justify-content: flex-end; gap: 8px;
   padding: 6px 10px; background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius);
 }
-.attach-taskbar .tb-icon { width: 14px; height: 14px; border-radius: 3px; background: var(--border-2); }
-.attach-taskbar .tb-kong { position: relative; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 4px; background: var(--signal-soft); }
-.attach-taskbar .tb-kong img { width: 16px; height: 16px; }
-:root[data-theme='dark'] .attach-taskbar .tb-kong img { filter: invert(1); }
-.attach-taskbar .tb-dot { position: absolute; right: -2px; bottom: -2px; box-shadow: 0 0 0 2px var(--surface-3); }
+.attach-taskbar .tb-icon { width: 18px; height: 18px; border-radius: 4px; background: var(--border-2); }
+/* 28 px icon, badge per assets.BadgeGeometry(28): r = 4.2, centre 0.5 px in
+   from the corner, gap ring 1.75 px (drawn in the taskbar colour, as the real
+   icon cuts a transparent gap); stopped = a 2 px dim ring, live = filled */
+.attach-taskbar .tb-kong { position: relative; display: grid; place-items: center; width: 28px; height: 28px; }
+.attach-taskbar .tb-kong img { width: 28px; height: 28px; }
+.attach-taskbar .tb-dot {
+  position: absolute; right: 0.5px; bottom: 0.5px; width: 8.4px; height: 8.4px; border-radius: 50%;
+  border: 2px solid var(--text-dim); background: var(--surface-3);
+  box-shadow: 0 0 0 1.75px var(--surface-3);
+}
 .attach-taskbar .tb-clock { font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 /* captions — the accessible, always-visible version of the story */
