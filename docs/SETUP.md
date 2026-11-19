@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.5 · 2026-11-18
+Versión 1.6 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -85,7 +85,8 @@ el ayudante de red se conservan; desinstalar tampoco borra tu configuración).
 
 1. Descarga `Kongtrol-Setup-windows-amd64.exe` de
    [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) y ábrelo. Se instala solo
-   para tu usuario, sin permisos de administrador.
+   para tu usuario, sin permisos de administrador. `kongtrol-windows-amd64.exe` es solo el
+   comando de terminal: si lo abres con doble clic, solo te indica que descargues el instalador.
 2. Deja marcadas las opciones recomendadas: abrir Kongtrol al iniciar sesión, instalar el
    ayudante de red (Windows pide permiso **una sola vez**) y agregar el comando `kongtrol` a la
    terminal (PATH de tu usuario; se quita al desinstalar).

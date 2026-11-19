@@ -1,4 +1,4 @@
-<!-- README version 2.1.0 · 2026-11-18.
+<!-- README version 2.1.1 · 2026-11-19.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -153,7 +153,7 @@ Or download the file for your system from [Releases](https://github.com/DerotLun
 
 | System | File |
 |---|---|
-| Windows | `Kongtrol-Setup-windows-amd64.exe` — per user, no admin; asks once to install the network helper |
+| Windows | `Kongtrol-Setup-windows-amd64.exe` — per user, no admin; asks once to install the network helper. `kongtrol-windows-amd64.exe` is only the terminal command (a double click shows where to get the installer) |
 | macOS | `Kongtrol-macos-universal.zip` — the app is not notarized (Apple charges $99/year): open it once with right-click › Open |
 | Linux | `.deb` / `.rpm` for amd64 and arm64 |
 

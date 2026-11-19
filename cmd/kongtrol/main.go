@@ -148,6 +148,10 @@ func sortedAdapterNames(m map[string]vpn.VPNAdapter) []string {
 }
 
 func main() {
+	if startedFromExplorer(os.Args) {
+		showExplorerNotice(os.Stdout, os.Stdin, cliLang())
+		return
+	}
 	setupHelp(rootCmd, cliLang())
 	if cmd, err := rootCmd.ExecuteC(); err != nil {
 		if !isReported(err) {

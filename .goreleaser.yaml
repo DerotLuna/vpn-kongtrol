@@ -203,6 +203,10 @@ release:
   # (v1.2.3-rc.1) are marked as such and skipped by every publisher.
   draft: false
   prerelease: auto
+  # First line of every release body: on Windows the installer is the app;
+  # the bare .exe is the terminal command (double click only shows a notice).
+  header: |
+    **Windows:** download `Kongtrol-Setup-windows-amd64.exe` (installer). `kongtrol-windows-amd64.exe` is the terminal command.
   extra_files:
     - glob: ./dist-extra/*
     # This tag's install scripts (ADR-0035): releases/latest/download/install.sh

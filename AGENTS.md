@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.17 · 2026-11-18
+Version 1.18 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -123,6 +123,9 @@ archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, H
 `optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
 Upgrades in place keep `~/.kongtrol`, keychain entries and the helper. `install.sh`/`install.ps1` are
 release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035).
+The release body starts with the Windows installer line (`.goreleaser.yaml` `release.header`); a
+double-clicked `kongtrol.exe` (Explorer, no arguments) prints `cli.explorer_notice` and waits for
+Enter — cobra's own mousetrap is off because it adds an English-only line (ADR-0045).
 
 <!-- feature:uninstall -->
 **Uninstall keeps data unless asked (ADR-0034).** `internal/uninstall`: `Detect` picks the channel
