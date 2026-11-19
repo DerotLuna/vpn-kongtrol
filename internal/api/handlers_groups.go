@@ -368,10 +368,13 @@ type settingsDTO struct {
 	ExpectedIPs map[string]string `json:"expected_ips"`
 
 	// Audit log, applied live: path, size of one file before the day goes
-	// on in .1, .2… (default 100), days kept (0 = today and yesterday).
+	// on in .1, .2… (default 100), days kept (default 30) and the space of
+	// all files together (default 500 MB), always the values in use
+	// (ADR-0064: a 0 in kongtrol.yaml means the default).
 	AuditLogPath          string `json:"audit_log_path"`
 	AuditLogMaxSizeMB     int    `json:"audit_log_max_size_mb"`
 	AuditLogRetentionDays int    `json:"audit_log_retention_days"`
+	AuditLogMaxTotalMB    int    `json:"audit_log_max_total_mb"`
 	AuditLogSign          bool   `json:"audit_log_sign"`
 
 	// RecentConnectionsEnabled: the in-memory list of recent destinations

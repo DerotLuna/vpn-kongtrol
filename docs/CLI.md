@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.9 · 2026-11-19
+Versión 2.10 · 2026-11-19
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -331,6 +331,30 @@ kongtrol config dashboard reset [opciones]
 
 ```bash
 kongtrol config dashboard reset
+```
+
+### `kongtrol config audit-log`
+
+Sin opciones muestra dónde está el registro, cuántos días se guardan, el tamaño de cada archivo, el espacio total y cuánto ocupa ahora. Los días más viejos se borran solos al iniciar, al llenarse un archivo y cada medianoche; si se pasa del espacio total se borran primero los más viejos. Con Kongtrol abierto el cambio se aplica al momento; si no, se guarda en kongtrol.yaml.
+
+```text
+kongtrol config audit-log [opciones]
+```
+
+**Opciones**
+
+| Opciones | Descripción |
+|---|---|
+| `--days int` | días que se guardan, hoy incluido (1 a 365; 0 = 30) |
+| `--max-size-mb int` | tamaño máximo de un archivo en MB (1 a 1024; 0 = 100) |
+| `--max-total-mb int` | espacio máximo de todos los archivos juntos en MB (1 a 10240; 0 = 500) |
+
+**Ejemplos**
+
+```bash
+kongtrol config audit-log
+kongtrol config audit-log --days 30
+kongtrol config audit-log --max-total-mb 500 --max-size-mb 100
 ```
 
 ### `kongtrol config public-ip`

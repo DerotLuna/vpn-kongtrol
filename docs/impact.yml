@@ -297,6 +297,21 @@ features:
       - docs/CONFIGURATION.md
       - docs/SETUP.md#wizard
 
+  audit_log:
+    code:
+      - internal/security/audit*.go
+      - internal/api/audit_requests.go
+      - internal/api/handlers_audit.go
+      - cmd/kongtrol/audit_*.go
+      - cmd/kongtrol/cmd_config_audit.go
+      - internal/daemonctl/auditlog.go
+      - web/ui/src/components/activity/AuditConfig.tsx
+    surfaces:
+      - docs/SECURITY.md#audit_log
+      - configs/example.yaml
+      - docs/CONFIGURATION.md
+      - landing/src/content/legal/privacidad.tsx
+
   wizard_doctor:
     code:
       - cmd/kongtrol/wizard*.go

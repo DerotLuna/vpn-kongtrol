@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 // serverNameRe matches NordVPN server host names such as "us3710" or
@@ -149,11 +150,13 @@ func isNotLoggedIn(out string) bool {
 }
 
 // app is the official NordVPN app per OS (Linux GUI launcher best effort).
+// On Windows the same lookup as the detect list (Program Files and the
+// registry install folder).
 var app = appattach.App{
-	DisplayName:  "NordVPN",
-	WindowsPaths: []string{`C:\Program Files\NordVPN\NordVPN.exe`},
-	MacApp:       "NordVPN",
-	LinuxCmds:    []string{"nordvpn-gui"},
+	DisplayName: "NordVPN",
+	WindowsFind: vpndetect.NordVPNAppPaths,
+	MacApp:      "NordVPN",
+	LinuxCmds:   []string{"nordvpn-gui"},
 }
 
 // appFor is the NordVPN app to open in attach-mode step 3; on Windows the

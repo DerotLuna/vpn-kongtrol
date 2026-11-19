@@ -16,7 +16,8 @@ var standards = map[string]standard{
 	"tailscale":       {locations: []string{`C:\Program Files\Tailscale\tailscale.exe`}, versionArgs: []string{"version"}},
 	"cloudflarewarp":  {locations: []string{"warp-cli", `C:\Program Files\Cloudflare\Cloudflare WARP\warp-cli.exe`}, versionArgs: []string{"--version"}},
 	"nordvpn":         {locations: []string{`C:\Program Files\NordVPN\NordVPN.exe`}},
-	// protonvpn: protonvpn-cli is Linux-only; the adapter refuses to connect here.
+	// protonvpn, surfshark: no CLI on Windows; the apps are found by
+	// ProtonVPNAppPaths / SurfsharkAppPaths (apps_windows.go).
 }
 
 var probes = []Probe{
@@ -40,16 +41,15 @@ var probes = []Probe{
 	},
 	{
 		Label: "ProtonVPN", AdapterType: "protonvpn",
-		PathNames:   []string{"protonvpn-cli", "protonvpn"},
-		SearchDirs:  []string{`C:\Program Files\Proton`, `C:\Program Files (x86)\Proton`, `C:\Program Files (x86)\Proton Technologies`},
-		SearchDepth: 3,
-		ExeNames:    []string{"ProtonVPN.Launcher.exe", "ProtonVPN.Client.exe", "ProtonVPN.exe"},
+		Candidates: ProtonVPNAppPaths,
 	},
 	{
 		Label: "NordVPN", AdapterType: "nordvpn",
-		SearchDirs:  []string{`C:\Program Files\NordVPN`, `C:\Program Files (x86)\NordVPN`},
-		SearchDepth: 1,
-		ExeNames:    []string{"NordVPN.exe"},
+		Candidates: NordVPNAppPaths,
+	},
+	{
+		Label: "Surfshark", AdapterType: "surfshark",
+		Candidates: SurfsharkAppPaths,
 	},
 	{
 		Label: "Cisco AnyConnect", AdapterType: "ciscoanyconnect",

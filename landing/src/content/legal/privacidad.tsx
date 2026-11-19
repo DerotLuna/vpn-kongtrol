@@ -1,6 +1,8 @@
-// Privacy policy — version 1.6.0 · 2026-11-19.
+// Privacy policy — version 1.6.1 · 2026-11-19.
 // 1.6.0: the dashboard tab also keeps a session key (sessionStorage kongtrol.session, sent only to
 //   the daemon on this computer; ADR-0062).
+// 1.6.1: the audit log keeps 30 days by default and at most 500 MB in total, oldest deleted first
+//   (ADR-0064).
 // 1.5.0: plain-language summary in points and shorter sentences. Fixes: the dashboard keeps a
 //   session cookie `kongtrol_session` and never receives the token (ADR-0039; the old text named a
 //   `kongtrol_control` cookie carrying the token); dashboard browser storage is language + theme
@@ -86,7 +88,7 @@ const es: LegalDocContent = {
           claves de tu VPN.</>,
         <><IC c="preferences.json" />: ajustes de este equipo (idioma, favoritos, puerto del panel).</>,
         <>Registro de auditoría (<IC c="audit-AAAA-MM-DD.log" />): qué se conectó y qué cambió en la seguridad. Un
-          archivo por día, firmado para notar si alguien lo cambia. Por defecto se guardan hoy y ayer.</>,
+          archivo por día, firmado para notar si alguien lo cambia. Por defecto se guardan 30 días y como máximo 500 MB; lo más viejo se borra solo.</>,
         <>Historial de métricas, registros del programa, el estado del aviso de versión y el token del panel
           (<IC c="api-token" />).</>,
         <>Contraseñas y la clave que firma el registro: en el almacén de credenciales del sistema (Administrador de
@@ -211,7 +213,7 @@ const en: LegalDocContent = {
           your VPN keys.</>,
         <><IC c="preferences.json" />: this computer's settings (language, favorites, dashboard port).</>,
         <>Audit log (<IC c="audit-YYYY-MM-DD.log" />): what connected and what changed in security. One file per
-          day, signed so tampering shows. By default, today and yesterday are kept.</>,
+          day, signed so tampering shows. By default 30 days are kept, at most 500 MB; the oldest is deleted on its own.</>,
         <>Metrics history, the program's logs, the new version notice state and the dashboard token
           (<IC c="api-token" />).</>,
         <>Passwords and the key that signs the log: in the operating system's credential store (Windows Credential

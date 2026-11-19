@@ -54,8 +54,9 @@ func applyAuditConfig(c *config.Config) {
 		a, err := security.NewAuditLogger(want.Path, security.AuditLoggerOptions{
 			Sign:          want.Sign,
 			Key:           key,
-			MaxSizeBytes:  int64(want.MaxSizeMB) << 20,
-			RetentionDays: want.RetentionDays,
+			MaxSizeBytes:  int64(want.EffectiveMaxSizeMB()) << 20,
+			MaxTotalBytes: int64(want.EffectiveMaxTotalMB()) << 20,
+			RetentionDays: want.EffectiveRetentionDays(),
 		})
 		if err != nil {
 			fmt.Fprintln(os.Stderr, tuiWarn(cf("cli.audit.init_warn", err)))

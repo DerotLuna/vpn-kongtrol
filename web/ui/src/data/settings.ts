@@ -28,8 +28,10 @@ export interface Settings {
   health_check_timeout: string
   audit_log_path: string
   audit_log_max_size_mb: number
-  /** Days kept, today included (0 = today and yesterday). */
+  /** Days kept, today included (the value in use: 30 when unset, ADR-0064). */
   audit_log_retention_days?: number
+  /** Space of all audit files together in MB (the value in use: 500 when unset). */
+  audit_log_max_total_mb?: number
   audit_log_sign: boolean
   /** In-memory list of recent destinations (Tráfico › Recientes); on by default (ADR-0054). */
   recent_connections_enabled?: boolean
@@ -120,13 +122,28 @@ export function validateMaxSize(value: string): Invalid | null {
   return null
 }
 
-export const RETENTION_DAYS = { min: 0, max: 365 } as const
+export const RETENTION_DAYS = { min: 1, max: 365 } as const
 
-/** Whole days 0–365 (0 = today and yesterday, the daemon default). Empty is an error. */
+/** Whole days 1–365 (1 = today only). Empty or 0 is an error: the daemon reads 0 as its default, never sent from here. */
 export function validateRetention(value: string): Invalid | null {
   const v = value.trim()
-  if (!/^\d+$/.test(v) || Number(v) > RETENTION_DAYS.max) {
+  if (!/^\d+$/.test(v) || Number(v) < RETENTION_DAYS.min || Number(v) > RETENTION_DAYS.max) {
     return { message: 'activity.config.retention.err', fix: 'activity.config.retention.err.fix' }
+  }
+  return null
+}
+
+export const MAX_TOTAL_MB = { min: 1, max: 10240 } as const
+
+/** Whole MB 1–10240, never below one file's size (the daemon refuses it: config.err.audit_total_small). */
+export function validateMaxTotal(value: string, sizePerFile: string): Invalid | null {
+  const v = value.trim()
+  if (!/^\d+$/.test(v) || Number(v) < MAX_TOTAL_MB.min || Number(v) > MAX_TOTAL_MB.max) {
+    return { message: 'activity.config.total.err', fix: 'activity.config.total.err.fix' }
+  }
+  const size = sizePerFile.trim()
+  if (/^\d+$/.test(size) && Number(v) < Number(size)) {
+    return { message: 'activity.config.total.small', fix: 'activity.config.total.small.fix' }
   }
   return null
 }

@@ -38,8 +38,9 @@ func settingsToDTO(cfg *config.Config) settingsDTO {
 		PublicIPEndpoints:        cfg.PublicIPEndpoints(),
 		ExpectedIPs:              expectedIPsDTO(cfg),
 		AuditLogPath:             cfg.Security.AuditLog.Path,
-		AuditLogMaxSizeMB:        cfg.Security.AuditLog.MaxSizeMB,
-		AuditLogRetentionDays:    cfg.Security.AuditLog.RetentionDays,
+		AuditLogMaxSizeMB:        cfg.Security.AuditLog.EffectiveMaxSizeMB(),
+		AuditLogRetentionDays:    cfg.Security.AuditLog.EffectiveRetentionDays(),
+		AuditLogMaxTotalMB:       cfg.Security.AuditLog.EffectiveMaxTotalMB(),
 		AuditLogSign:             cfg.Security.AuditLog.Sign,
 		RecentConnectionsEnabled: cfg.RecentConnectionsEnabled(),
 	}
@@ -166,6 +167,7 @@ type settingsPatch struct {
 	AuditLogPath          *string   `json:"audit_log_path"`
 	AuditLogMaxSizeMB     *int      `json:"audit_log_max_size_mb"`
 	AuditLogRetentionDays *int      `json:"audit_log_retention_days"`
+	AuditLogMaxTotalMB    *int      `json:"audit_log_max_total_mb"`
 	AuditLogSign          *bool     `json:"audit_log_sign"`
 	// RecentConnectionsEnabled: the in-memory recent destinations list.
 	RecentConnectionsEnabled *bool `json:"recent_connections_enabled"`
@@ -215,6 +217,9 @@ func (p settingsPatch) applyTo(cfg *config.Config) {
 	}
 	if p.AuditLogRetentionDays != nil {
 		cfg.Security.AuditLog.RetentionDays = *p.AuditLogRetentionDays
+	}
+	if p.AuditLogMaxTotalMB != nil {
+		cfg.Security.AuditLog.MaxTotalMB = *p.AuditLogMaxTotalMB
 	}
 	setBool(&cfg.Security.AuditLog.Sign, p.AuditLogSign)
 	if p.RecentConnectionsEnabled != nil {

@@ -19,6 +19,8 @@ const settings = {
   health_check_timeout: '10s',
   audit_log_path: '/home/ana/.kongtrol/audit.log',
   audit_log_max_size_mb: 100,
+  audit_log_retention_days: 30,
+  audit_log_max_total_mb: 500,
   audit_log_sign: true,
 }
 
@@ -216,8 +218,9 @@ describe('Actividad · registro de auditoría', () => {
     render(<App />)
     const size = await screen.findByLabelText('Tamaño máximo por archivo (MB)')
     const days = screen.getByLabelText('Días que se guardan')
-    expect(days).toHaveValue('0')
-    expect(screen.getByText('Se guardan hoy y ayer; los días más viejos se borran.')).toBeInTheDocument()
+    expect(days).toHaveValue('30')
+    expect(screen.getByLabelText('Espacio máximo en total (MB)')).toHaveValue('500')
+    expect(screen.getByText('Se guardan los últimos 30 días, contando hoy; los más viejos se borran solos cada medianoche.')).toBeInTheDocument()
     await userEvent.clear(size)
     await userEvent.clear(days)
     await userEvent.type(days, '400')
@@ -227,10 +230,28 @@ describe('Actividad · registro de auditoría', () => {
     expect(size).toHaveAttribute('aria-invalid', 'true')
     expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(false)
 
+    await userEvent.clear(days)
+    await userEvent.type(days, '0')
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByText('Esa cantidad de días no vale.')).toBeInTheDocument()
+
+    // The total can never be smaller than one file.
+    const total = screen.getByLabelText('Espacio máximo en total (MB)')
     await userEvent.type(size, '50')
+    await userEvent.clear(total)
+    await userEvent.type(total, '20')
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByText('El espacio total es menor que un solo archivo.')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(false)
+
+    await userEvent.clear(total)
+    await userEvent.type(total, '400')
+    await userEvent.clear(days)
+    await userEvent.type(days, '1')
+    expect(screen.getByText('Solo se guarda hoy; a medianoche se borra el día anterior.')).toBeInTheDocument()
     await userEvent.clear(days)
     await userEvent.type(days, '30')
-    expect(screen.getByText('Se guardan los últimos 30 días, contando hoy; los más viejos se borran.')).toBeInTheDocument()
+    expect(screen.getByText('Se guardan los últimos 30 días, contando hoy; los más viejos se borran solos cada medianoche.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Guardar' }))
     await waitFor(() => expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(true))
     const put = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')
@@ -238,6 +259,7 @@ describe('Actividad · registro de auditoría', () => {
       audit_log_path: settings.audit_log_path,
       audit_log_max_size_mb: 50,
       audit_log_retention_days: 30,
+      audit_log_max_total_mb: 400,
       audit_log_sign: true,
     })
   })

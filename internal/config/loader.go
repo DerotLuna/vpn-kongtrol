@@ -113,7 +113,15 @@ func applyDefaults(cfg *Config) {
 		cfg.Security.IntegrityCheck.Interval = "120s"
 	}
 	if cfg.Security.AuditLog.MaxSizeMB == 0 {
-		cfg.Security.AuditLog.MaxSizeMB = 100
+		cfg.Security.AuditLog.MaxSizeMB = DefaultAuditMaxSizeMB
+	}
+	// 0 (unset, or written by an older version) means the default
+	// (ADR-0064): shown and saved as the number really used.
+	if cfg.Security.AuditLog.RetentionDays == 0 {
+		cfg.Security.AuditLog.RetentionDays = DefaultAuditRetentionDays
+	}
+	if cfg.Security.AuditLog.MaxTotalMB == 0 {
+		cfg.Security.AuditLog.MaxTotalMB = cfg.Security.AuditLog.EffectiveMaxTotalMB()
 	}
 	if cfg.Security.KillSwitch.Mode == "" {
 		cfg.Security.KillSwitch.Mode = "strict"

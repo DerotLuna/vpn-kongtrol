@@ -113,6 +113,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 
 	stopServices := startDaemonServices(ctx)
 	defer stopServices()
+	auditDaemonStart()
 
 	fmt.Println(tuiInfo(cf("cli.daemon.listening", base)))
 
@@ -137,6 +138,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 
 	<-ctx.Done()
 	fmt.Println(tuiInfo(ct("cli.daemon.stopping")))
+	auditDaemonStop()
 
 	// Disconnect while kill switch, watchdog and API are still alive
 	// (their defers run after this), strictly before DNS restore and PID

@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.10.1 · 2026-11-19
+Version 2.11.0 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -16,8 +16,60 @@ from your prompt into the OS credential store (`internal/config`) and are never 
 plaintext or logged. The audit log (`internal/security`) is local, HMAC-signed for
 tamper-evidence, and never leaves the machine. Signatures are checked when you read it (`kongtrol logs`,
 the dashboard: `verified` per entry) with the key in the OS keychain; the key is never sent to any
-client. It keeps `retention_days` days (default today and yesterday), one file per day split at
-`max_size_mb`.
+client. It keeps `retention_days` days (default 30) in at most `max_total_mb` (default 500 MB), one
+file per day split at `max_size_mb`; see "Audit log" below for what it records and how old files go.
+
+<!-- feature:audit_log -->
+## Audit log
+
+**Files and limits** ([ADR-0064](adr/0064-audit-log-retention-and-coverage.md)). One file per local
+day, `<path>-YYYY-MM-DD.log`; past `max_size_mb` (default 100) the day goes on in `.1`, `.2`…
+Old files are deleted automatically when the daemon starts, when a file fills up and every local
+midnight (a timer, so it also happens on days nothing is logged):
+
+- files of days older than `retention_days` (1–365, today included; unset or `0` = 30, also for
+  configs written before this change, where `0` used to mean "today and yesterday");
+- then the oldest files until all of them, with room for the open file to reach `max_size_mb`, fit
+  in `max_total_mb` (1–10240; unset or `0` = 500, never less than one file). So the log can never
+  use more than `max_total_mb` of disk.
+
+The open file is never deleted. Set them in the dashboard (Actividad → Ajustes del registro),
+with `kongtrol config audit-log --days N --max-size-mb N --max-total-mb N`, or in `kongtrol.yaml`.
+
+**What is recorded.** Each entry has time, level, action, profile (when there is one) and a short
+message: who / what / when / result. Never request bodies, passwords, tokens, keys, nonces or file
+contents — API requests are logged at the equivalent of Kubernetes' `Metadata` audit level
+(metadata only, no body). The log belongs to the daemon: only what goes through it is recorded.
+
+| Action | Recorded | Entry (`action`) | Level |
+|---|---|---|---|
+| Connect / disconnect / connect failed / preflight failed | Yes | `vpn.connect`, `vpn.disconnect`, `vpn.connect_failed`, `vpn.preflight_failed` | INFO / ERROR |
+| Attach phases (provider apps), manual disconnect timeout, re-login needed | Yes | `vpn.attach.*`, `vpn.disconnect_timeout`, `vpn.reauth_required` | INFO / WARN |
+| Watchdog: reconnect attempt / reconnected / failed, no response, responding, manual reconnect, health degraded | Yes | `vpn.reconnect_*`, `vpn.reconnected`, `vpn.no_response`, `vpn.responding`, `vpn.manual_reconnect_required`, `vpn.health_degraded` | INFO / WARN / ERROR |
+| Watchdog failover to a declared backup (started / activated / failed) | Yes | `vpn.failover_started`, `vpn.failover_activated`, `vpn.failover_failed` | WARN / ERROR |
+| Policy `on_tunnel_down` taking effect | Yes | `policy.tunnel_down.*` | per rule |
+| Leak detected (public IP not the expected one) | Yes | `security.leak` | SECURITY |
+| Kill switch state change (off / armed / active and what it blocks) and failure to apply the block | **Added** | `security.killswitch.state`, `security.killswitch.error` | SECURITY when blocking, else INFO / ERROR |
+| Kill switch, DNS guard, public IP lookup, per-profile kill switch toggled | **Added** | `security.killswitch.set`, `security.dnsguard.set`, `security.publicip.set`, `security.profile_killswitch.set` | SECURITY |
+| Public IP checked on demand | **Added** | `security.publicip.check` | INFO |
+| Profile create / update (incl. rename) / delete / import of a `.conf`/`.ovpn` (incl. the elevated read of a root-only file) | **Added** (name and result; never the file or the password) | `config.profile.create`, `.update`, `.delete`, `.import` | SECURITY |
+| Policy, group and scheduler rule create / update / delete; policy reload | **Added** | `config.policy.*`, `config.group.*`, `config.schedule.*` | INFO |
+| Settings saved (incl. audit log, kill switch mode, public IP endpoints) | **Added** | `config.settings.update` | SECURITY |
+| Preferences, update notice on/off | **Added** | `config.preferences.update`, `config.update_check.set` | INFO |
+| Connect / disconnect / reload requested (tunnel or group), connect cancelled | **Added** (who asked; the result is the `vpn.*` entry) | `api.tunnel.*`, `api.group.*` | INFO |
+| Helper install / update from the tray or dashboard | **Added** | `helper.install` | SECURITY |
+| Restart / shutdown requested; daemon started / stopped | **Added** (`daemon.restart` already existed) | `daemon.restart_request`, `daemon.restart`, `daemon.shutdown`, `daemon.start`, `daemon.stop` | INFO |
+| Delete all my data | **Added**, written when the request arrives; the purge then deletes the log itself (by design), and the daemon log keeps the result | `data.purge` | SECURITY |
+| Dashboard sign-in: nonce issued (app), session created or refused (dashboard), sign-out | **Added** | `auth.nonce`, `auth.session_create`, `auth.session_end` | INFO / SECURITY; WARN if refused |
+| API request refused: no valid token or session, foreign origin, non-local host | **Added**, at most one entry per 10 s; the next says how many were skipped | `auth.denied` | SECURITY |
+| Any other change through the API (a route added later without its own action) | **Added** as a fallback | `api.request` | INFO |
+| Reads (status, lists, logs, doctor, export) | No: nothing changes | — | — |
+| Automatic public IP lookup after connect/disconnect, update check request | No: no state changes; a found leak is `security.leak`, a new version is a notice | — | — |
+| Token rotation | Not applicable: `~/.kongtrol/api-token` is created once (0600) and never rotated; deleting it makes a new one at the next start | — | — |
+| Edits made with the CLI while no daemon runs (`kongtrol config …`, `profile add`), `kongtrol service install` from a terminal, hand edits of `kongtrol.yaml` | No (no daemon to write it). The privileged helper keeps its own audit of every privileged operation (see "Privileged helper") | — | — |
+
+Code: `internal/api/audit_requests.go` (route → action, a test fails if a mutating route has none),
+`cmd/kongtrol/audit_events.go`, `internal/app/profile_service.go`, `cmd/kongtrol/daemon_watchdog.go`.
 
 ## Network connections Kongtrol makes
 

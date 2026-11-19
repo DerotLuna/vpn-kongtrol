@@ -226,9 +226,53 @@ type AuditLogConfig struct {
 	// same day continues in "<base>-YYYY-MM-DD.1<ext>", ".2"… (default 100).
 	MaxSizeMB int `yaml:"max_size_mb,omitempty"`
 	// RetentionDays keeps the files of the last N days, today included
-	// (0 = 2: today and yesterday; at most 365). Older days are deleted.
-	RetentionDays int  `yaml:"retention_days,omitempty"`
-	Sign          bool `yaml:"sign,omitempty"` // HMAC-SHA256 per entry
+	// (0 = DefaultAuditRetentionDays; at most 365). Older days are deleted
+	// at start, when a file fills up and every midnight (ADR-0064).
+	RetentionDays int `yaml:"retention_days,omitempty"`
+	// MaxTotalMB caps the space of all audit files together (MB): the
+	// oldest are deleted first (0 = DefaultAuditMaxTotalMB, never below
+	// MaxSizeMB; at most 10240).
+	MaxTotalMB int  `yaml:"max_total_mb,omitempty"`
+	Sign       bool `yaml:"sign,omitempty"` // HMAC-SHA256 per entry
+}
+
+// Audit log limits (ADR-0064). internal/security keeps the same defaults
+// for a logger opened without a config (a test checks they match).
+const (
+	DefaultAuditRetentionDays = 30
+	MaxAuditRetentionDays     = 365
+	DefaultAuditMaxSizeMB     = 100
+	MaxAuditMaxSizeMB         = 1024
+	DefaultAuditMaxTotalMB    = 500
+	MaxAuditMaxTotalMB        = 10240
+)
+
+// EffectiveRetentionDays is the number of days really kept: 0 (unset) is
+// DefaultAuditRetentionDays.
+func (a AuditLogConfig) EffectiveRetentionDays() int {
+	if a.RetentionDays <= 0 {
+		return DefaultAuditRetentionDays
+	}
+	return min(a.RetentionDays, MaxAuditRetentionDays)
+}
+
+// EffectiveMaxSizeMB is the largest size of one file: 0 (unset) is
+// DefaultAuditMaxSizeMB.
+func (a AuditLogConfig) EffectiveMaxSizeMB() int {
+	if a.MaxSizeMB <= 0 {
+		return DefaultAuditMaxSizeMB
+	}
+	return min(a.MaxSizeMB, MaxAuditMaxSizeMB)
+}
+
+// EffectiveMaxTotalMB is the space all files may use together: 0 (unset)
+// is DefaultAuditMaxTotalMB, raised to one file's size when that is larger
+// (so a config written before max_total_mb existed keeps working).
+func (a AuditLogConfig) EffectiveMaxTotalMB() int {
+	if a.MaxTotalMB <= 0 {
+		return max(DefaultAuditMaxTotalMB, a.EffectiveMaxSizeMB())
+	}
+	return min(a.MaxTotalMB, MaxAuditMaxTotalMB)
 }
 
 // MonitorConfig holds monitoring and dashboard settings.

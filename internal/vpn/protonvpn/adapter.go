@@ -23,6 +23,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 // ErrUnsupportedOS reports that Proton ships no CLI on this OS (Windows,
@@ -170,15 +171,14 @@ func (t target) label() string {
 }
 
 // app is the official Proton VPN app per OS (locations best effort;
-// `app_path:` overrides them).
+// `app_path:` overrides them). On Windows the same lookup as the detect
+// list: ProtonVPN.Launcher.exe, else the client in the newest v<version>
+// folder, in the default or registry install folder, else the legacy app.
 var app = appattach.App{
 	DisplayName: "Proton VPN",
-	WindowsPaths: []string{
-		`C:\Program Files\Proton\VPN\ProtonVPN.Launcher.exe`,
-		`C:\Program Files (x86)\Proton Technologies\ProtonVPN\ProtonVPN.exe`,
-	},
-	MacApp:    "Proton VPN",
-	LinuxCmds: []string{"protonvpn-app"},
+	WindowsFind: vpndetect.ProtonVPNAppPaths,
+	MacApp:      "Proton VPN",
+	LinuxCmds:   []string{"protonvpn-app"},
 }
 
 // matcher finds the Proton tunnel: Linux proton0 / pvpn* (excluding the

@@ -158,29 +158,36 @@ func TestAuditLogger_UniqueIDs(t *testing.T) {
 	}
 }
 
-func TestAuditLogger_PrunesToTodayAndYesterday(t *testing.T) {
+// retention_days 0 (unset, older configs) keeps the default 30 days,
+// today included (ADR-0064; it used to mean today and yesterday).
+func TestAuditLogger_ZeroRetentionKeepsDefaultDays(t *testing.T) {
 	dir := t.TempDir()
 	base := filepath.Join(dir, "audit.log")
 	now := time.Date(2026, 7, 15, 10, 0, 0, 0, time.Local)
-	older := DailyAuditLogPath(base, now.AddDate(0, 0, -2))
+	oldestKept := DailyAuditLogPath(base, now.AddDate(0, 0, -(DefaultAuditRetentionDays-1)))
+	tooOld := DailyAuditLogPath(base, now.AddDate(0, 0, -DefaultAuditRetentionDays))
 	yesterday := DailyAuditLogPath(base, now.AddDate(0, 0, -1))
-	today := DailyAuditLogPath(base, now)
-	for _, p := range []string{older, yesterday, today} {
+	for _, p := range []string{tooOld, oldestKept, yesterday} {
 		if err := os.WriteFile(p, []byte("{}\n"), 0o600); err != nil {
 			t.Fatalf("write %s: %v", p, err)
 		}
 	}
 
-	l := &AuditLogger{basePath: base}
-	l.pruneOldFiles(now)
+	l, err := NewAuditLogger(base, AuditLoggerOptions{RetentionDays: 0, Now: func() time.Time { return now }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.Close()
 
-	if _, err := os.Stat(today); err != nil {
-		t.Fatalf("today should be kept: %v", err)
+	for _, p := range []string{oldestKept, yesterday, DailyAuditLogPath(base, now)} {
+		if _, err := os.Stat(p); err != nil {
+			t.Fatalf("%s should be kept: %v", p, err)
+		}
 	}
-	if _, err := os.Stat(yesterday); err != nil {
-		t.Fatalf("yesterday should be kept: %v", err)
+	if _, err := os.Stat(tooOld); !os.IsNotExist(err) {
+		t.Fatalf("day 31 should be removed, err=%v", err)
 	}
-	if _, err := os.Stat(older); !os.IsNotExist(err) {
-		t.Fatalf("older file should be removed, err=%v", err)
+	if got := EffectiveAuditRetentionDays(0); got != 30 {
+		t.Fatalf("EffectiveAuditRetentionDays(0) = %d, want 30", got)
 	}
 }

@@ -83,7 +83,7 @@ func TestAuditLogger_RetentionDays(t *testing.T) {
 		}
 	}
 	l := &AuditLogger{basePath: base, retention: 4}
-	l.pruneOldFiles(now)
+	l.pruneLocked(now)
 	for _, p := range kept {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("%s should be kept: %v", p, err)

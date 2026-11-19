@@ -145,9 +145,13 @@ security:
     path: ~/.kongtrol/audit.log   # a file, never a folder; daily files audit-YYYY-MM-DD.log
     # max_size_mb: one file per day up to this size; past it the day goes on in
     # audit-YYYY-MM-DD.1.log, .2… (default 100). retention_days: days kept,
-    # today included (0 = today and yesterday, max 365). Both apply live.
+    # today included (1–365; unset or 0 = 30). max_total_mb: space of all
+    # files together, the oldest deleted first (1–10240; unset or 0 = 500,
+    # never less than one file). Old files go at start, when a file fills up
+    # and every midnight; all apply live (ADR-0064).
     max_size_mb: 10
     retention_days: 30
+    max_total_mb: 500
     sign: true          # HMAC-SHA256 per entry
 
 
