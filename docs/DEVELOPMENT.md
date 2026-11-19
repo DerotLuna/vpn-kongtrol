@@ -49,19 +49,13 @@ and `/install.ps1` redirect there (`landing/public/_redirects`,
 Release checklist:
 
 - [ ] Tag pushed, workflow green, assets and `checksums.txt` on the release page.
-- [ ] **TODO after v0.6.0 final:** switch `INSTALL_SCRIPT_BASE` and `UNINSTALL_SCRIPT_BASE` in
-  `landing/src/links.ts` to `https://kongtrol.app/` (redirect to latest), check
-  `curl -sI https://kongtrol.app/install.sh` answers 302 → the release asset, and replace the
-  `raw.githubusercontent.com/…/install.sh` commands in `README.md` (pinned to `v0.5.0`) and
-  `docs/SETUP.md` (`main`) with it. In `README.md` also drop the "since v0.6.0 (pre-release)"
-  marks, the v0.5.0 column of the commands table and the rc.3 links, and list the package managers
-  once they are published.
-  Until then the landing stays pinned to the v0.5.0 tag (the scripts on `main` need v0.6.0 assets).
-  Also remove the "desde v0.6.0" note (`sinceV060` in `landing/src/content/guide.*.tsx`, its two
-  uses in `Guide.tsx` and the `.guide-since` rule in `landing/src/index.css`).
-  And switch `WINDOWS_INSTALLER_URL` in `landing/src/links.ts` (pinned to the
-  `v0.6.0-rc.5` pre-release installer, the "Descargar para Windows" buttons of the hero,
-  download section and footer) to `releases/latest/download/Kongtrol-Setup-windows-amd64.exe`.
+- [ ] Final (non-prerelease) tags only: `curl -sI https://kongtrol.app/install.sh` and
+  `/install.ps1` answer 302 → the release asset, and the landing's "Descargar para Windows"
+  buttons (`WINDOWS_INSTALLER_URL` in `landing/src/links.ts`, `releases/latest/download/…`)
+  download the new installer.
+- [ ] A package manager whose secret was just added (table below) published the release; only
+  then list it in `README.md`, `docs/SETUP.md` and the landing guide (today `README.md` says
+  "not published yet", `docs/SETUP.md` "pendiente", and the landing does not mention them).
 
 Every channel is optional: its step skips itself while its secret is missing. To turn them on
 (all free; create once):

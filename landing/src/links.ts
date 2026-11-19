@@ -3,19 +3,13 @@ export const GITHUB_REPO = 'https://github.com/DerotLuna/vpn-kongtrol'
 export const GITHUB_RELEASES = `${GITHUB_REPO}/releases/latest`
 
 // Where the one-line install scripts are fetched from — the ONLY place this is
-// written (ADR-0035). Pinned to the published tag: the scripts on `main` expect
-// the next release's assets, so serving them while releases/latest is v0.5.0
-// breaks the install. The v0.5.0 scripts download releases/latest assets with
-// the names below (kongtrol-{os}-{arch}).
-// TODO(after v0.6.0 final, docs/DEVELOPMENT.md release checklist): switch to
-// 'https://kongtrol.app/' — landing/public/_redirects sends /install.sh and
-// /install.ps1 to releases/latest/download/, which ships them from v0.6.0 on.
-export const INSTALL_SCRIPT_BASE = 'https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/v0.5.0/'
+// written (ADR-0035). landing/public/_redirects sends /install.sh and
+// /install.ps1 to the copies attached to the latest GitHub release, so the
+// script always matches that release's asset names.
+export const INSTALL_SCRIPT_BASE = 'https://kongtrol.app/'
 
-// Uninstall through the script (--uninstall / -Uninstall) only exists in the
-// scripts on `main` (v0.6.0+); the v0.5.0 script ignores the flag and would
-// reinstall instead. Same TODO: becomes INSTALL_SCRIPT_BASE after v0.6.0.
-export const UNINSTALL_SCRIPT_BASE = 'https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/'
+// The same scripts uninstall (--uninstall / -Uninstall).
+export const UNINSTALL_SCRIPT_BASE = INSTALL_SCRIPT_BASE
 
 /** Shell one-liners that install (or, with run again, update) Kongtrol. */
 export const INSTALL_CMD = {
@@ -26,8 +20,7 @@ export const INSTALL_CMD = {
 // Release asset filenames — the ONLY place they are written. When a release
 // changes its names (e.g. the Windows installer, issue #32), edit the value
 // here and every button, hint and checksum example follows. Names match
-// `.goreleaser.yaml` (archives id `cli-binary`: kongtrol-{os}-{arch}) and the
-// published v0.5.0 assets.
+// `.goreleaser.yaml` (archives id `cli-binary`: kongtrol-{os}-{arch}).
 export const RELEASE_ASSETS = {
   'windows-amd64': 'kongtrol-windows-amd64.exe',
   'windows-arm64': 'kongtrol-windows-arm64.exe',
@@ -41,12 +34,9 @@ export type ReleaseAssetKey = keyof typeof RELEASE_ASSETS
 
 // The Windows installer (Inno Setup, per user; upgrades in place keep data,
 // ADR-0025) — the ONLY place its name and URL are written. Every "Descargar
-// para Windows" button downloads it. It ships from v0.6.0 on, so while
-// releases/latest is still v0.5.0 it is pinned to the newest pre-release.
-// TODO(after v0.6.0 final, docs/DEVELOPMENT.md release checklist): use
-// `${GITHUB_REPO}/releases/latest/download/${WINDOWS_INSTALLER_FILE}`.
+// para Windows" button downloads it from the latest release.
 export const WINDOWS_INSTALLER_FILE = 'Kongtrol-Setup-windows-amd64.exe'
-export const WINDOWS_INSTALLER_URL = `${GITHUB_REPO}/releases/download/v0.6.0-rc.5/${WINDOWS_INSTALLER_FILE}`
+export const WINDOWS_INSTALLER_URL = `${GITHUB_REPO}/releases/latest/download/${WINDOWS_INSTALLER_FILE}`
 
 // GitHub's "latest" alias resolves against the most recently published
 // (non-draft, non-prerelease) release, so this always serves the current build

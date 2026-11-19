@@ -1,4 +1,4 @@
-<!-- README version 2.2.2 · 2026-11-19.
+<!-- README version 2.3.0 · 2026-11-19.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -47,7 +47,7 @@ your data anywhere.
 
 ## What's new
 
-**v0.6.0 (pre-release, [v0.6.0-rc.3](https://github.com/DerotLuna/vpn-kongtrol/releases/tag/v0.6.0-rc.3)):**
+**v0.6.0:**
 
 - **Desktop app, no terminal needed:** Windows installer, macOS app, `.deb`/`.rpm` packages and a
   tray icon. On first run the browser panel opens to create your first VPN.
@@ -61,7 +61,7 @@ your data anywhere.
   `policy show`, `ip`, `routes --system`, `config default-group`, `config killswitch` and
   `config dns-guard`, `reload [profile]`; `kongtrol init` offers to install the network helper.
 
-**v0.5.0 (current release):** 10 VPNs (NordVPN and Surfshark joined), attach mode for VPN apps, and
+**v0.5.0:** 10 VPNs (NordVPN and Surfshark joined), attach mode for VPN apps, and
 Kongtrol keeps running in the background after you close the window.
 
 <!-- feature:killswitch feature:dns_guard feature:watchdog -->
@@ -83,13 +83,11 @@ Kongtrol keeps running in the background after you close the window.
   reconnect it there.
 - **Kill switch and DNS guard** at the system firewall and network level (`status` shows what is
   blocked and the DNS servers in use), with a signed local audit
-  log whose signatures are checked when you read it. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`
-  <sub>(command since v0.6.0, pre-release)</sub>. When a VPN drops on its own, only its destinations
+  log whose signatures are checked when you read it. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`. When a VPN drops on its own, only its destinations
   are blocked and its DNS goes back to the system, so other sites keep working; a VPN that carried
   all traffic stays blocked until it returns, and Kongtrol tells you what to do.
 - **Browser panel and tray icon.** One panel (the tray or `kongtrol dashboard` opens it) with seven sections: Home, Profiles (and groups), Rules (and schedules), Traffic, Security, Activity (audit log and notices), Settings
-  (diagnostics, export, updates); compiled into the program, no external server. Tray icon
-  <sub>since v0.6.0 (pre-release)</sub>.
+  (diagnostics, export, updates); compiled into the program, no external server. Tray icon.
 - **Setup wizard** (`kongtrol init`): finds the VPN clients you have and saves passwords in the
   system keychain.
 - **Diagnostics** (`kongtrol doctor`): checks programs, certificates, keychain and permissions
@@ -136,27 +134,7 @@ Proton VPN also works without its app as `type: wireguard` / `type: openvpn` wit
 <!-- feature:distribution -->
 ## Install
 
-**Current release (v0.5.0): the `kongtrol` program, one line.**
-
-```bash
-# macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/v0.5.0/install.sh | sh
-```
-
-```powershell
-# Windows (PowerShell)
-iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/v0.5.0/install.ps1 -useb | iex
-```
-
-The scripts check the download against `checksums.txt`. Since v0.6.0 they also verify the
-Sigstore signature of `checksums.txt` when [cosign](https://github.com/sigstore/cosign) 2.4+ is
-installed (a bad signature stops the install); without cosign they say so and print the command
-to verify by hand. See [Verifying releases](docs/SECURITY.md#verifying-releases).
-
-Or download the file for your system from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest).
-
-**Desktop app — since v0.6.0 (pre-release).** To try it before the final release, download from
-[v0.6.0-rc.3](https://github.com/DerotLuna/vpn-kongtrol/releases/tag/v0.6.0-rc.3):
+**Desktop app.** Download from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest):
 
 | System | File |
 |---|---|
@@ -164,11 +142,28 @@ Or download the file for your system from [Releases](https://github.com/DerotLun
 | macOS | `Kongtrol-macos-universal.zip` — the app is not notarized (Apple charges $99/year): open it once with right-click › Open |
 | Linux | `.deb` / `.rpm` for amd64 and arm64 |
 
+**Or one line** (macOS/Linux: the app and the `kongtrol` command; Windows: only the `kongtrol` command, the installer above adds the app; run it again to update):
+
+```bash
+# macOS / Linux
+curl -fsSL https://kongtrol.app/install.sh | sh
+```
+
+```powershell
+# Windows (PowerShell)
+iwr https://kongtrol.app/install.ps1 -useb | iex
+```
+
+The scripts check the download against `checksums.txt` and verify the
+Sigstore signature of `checksums.txt` when [cosign](https://github.com/sigstore/cosign) 2.4+ is
+installed (a bad signature stops the install); without cosign they say so and print the command
+to verify by hand. See [Verifying releases](docs/SECURITY.md#verifying-releases).
+
 Package managers (winget, Scoop, Homebrew, AUR, npm) are not published yet.
 
 > **No administrator terminal.** Routing, DNS and firewall changes go through a small network
 > helper (a system service) installed once: `kongtrol service install`. Your system asks for
-> permission that one time. Since v0.6.0 (pre-release) the Windows installer, `kongtrol init` and
+> permission that one time. The Windows installer, `kongtrol init` and
 > `kongtrol up` offer it for you.
 
 > **Antivirus or SmartScreen warning?** Windows files are not signed yet (the free SignPath
@@ -183,7 +178,7 @@ Build from source (Go 1.27+): `git clone https://github.com/DerotLuna/vpn-kongtr
 <!-- feature:first_run -->
 ## First run
 
-**With the app** <sub>since v0.6.0 (pre-release)</sub>: open Kongtrol. The panel opens in your
+**With the app**: open Kongtrol. The panel opens in your
 browser to create your first VPN ("Set up now…" in the tray icon opens it again). Kongtrol
 restarts on its own once the VPN is saved.
 
@@ -223,36 +218,34 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
 explains it with the next step and examples. Full reference: [docs/CLI.en.md](docs/CLI.en.md)
 (Español: [docs/CLI.md](docs/CLI.md)).
 
-| Command | What it does | In v0.5.0 |
-|---|---|---|
-| `kongtrol up [profile…]` | Connect profiles (`--group`, `--all`, `--fav`) and open the live view | same |
-| `kongtrol down [profile…]` | Disconnect profiles (`--group`, `--all`) | same |
-| `kongtrol status [-w]` | State, IP and traffic of each tunnel | same |
-| `kongtrol routes [profile] [--system]` | What goes through each tunnel; `--system`: routes Kongtrol added | `--system` was `routes list` |
-| `kongtrol dashboard` | Open the panel in your browser | same |
-| `kongtrol init` | Setup wizard | same |
-| `kongtrol policy list` | Which VPN each rule uses | `map` |
-| `kongtrol policy show <target\|app:<exe>>` | Which VPN a destination or app uses, and why | `policy explain` |
-| `kongtrol policy test <file>` | Test your rules against a list of destinations | same |
-| `kongtrol config validate` | Check `kongtrol.yaml` without connecting | same |
-| `kongtrol config default-group [group]` | Show or set the group `kongtrol up` connects | `config defaults set-group` |
-| `kongtrol config killswitch\|dns-guard <on\|off\|status>` | Kill switch and DNS guard | since v0.6.0 |
-| `kongtrol config public-ip <on\|off>` | Optional public IP lookup | same |
-| `kongtrol config update-check <on\|off\|status>` | Optional new version notice | since v0.6.0 |
-| `kongtrol config recent-connections <on\|off\|status>` | Recent destinations list (memory only) | new |
-| `kongtrol config lang <es\|en>` · `config favorites` · `config dashboard` | Language, favorites, panel address on this computer | same |
-| `kongtrol reload [profile]` | Apply `kongtrol.yaml` changes without disconnecting | without `[profile]` |
-| `kongtrol restart` | Restart Kongtrol and reconnect what was connected | since v0.6.0 |
-| `kongtrol export` | Print your config without passwords to share it | same |
-| `kongtrol doctor [--fix]` | Check your computer and say how to fix each problem | same |
-| `kongtrol traffic recent [--limit n]` | Destinations of the last hour: program, VPN or direct | new |
-| `kongtrol ip` | Look up your public IP now and check for leaks | `check` |
-| `kongtrol logs` | Show Kongtrol's events | same |
-| `kongtrol service install\|uninstall\|status` | Network helper (no admin terminal) | same |
-| `kongtrol uninstall [--purge\|--data-only]` | Uninstall Kongtrol (your data stays unless you ask) | since v0.6.0 |
-| `kongtrol version` | Show the version | same |
-
-"since v0.6.0" = available in the [pre-release](https://github.com/DerotLuna/vpn-kongtrol/releases/tag/v0.6.0-rc.3), not in v0.5.0.
+| Command | What it does |
+|---|---|
+| `kongtrol up [profile…]` | Connect profiles (`--group`, `--all`, `--fav`) and open the live view |
+| `kongtrol down [profile…]` | Disconnect profiles (`--group`, `--all`) |
+| `kongtrol status [-w]` | State, IP and traffic of each tunnel |
+| `kongtrol routes [profile] [--system]` | What goes through each tunnel; `--system`: routes Kongtrol added |
+| `kongtrol dashboard` | Open the panel in your browser |
+| `kongtrol init` | Setup wizard |
+| `kongtrol policy list` | Which VPN each rule uses |
+| `kongtrol policy show <target\|app:<exe>>` | Which VPN a destination or app uses, and why |
+| `kongtrol policy test <file>` | Test your rules against a list of destinations |
+| `kongtrol config validate` | Check `kongtrol.yaml` without connecting |
+| `kongtrol config default-group [group]` | Show or set the group `kongtrol up` connects |
+| `kongtrol config killswitch\|dns-guard <on\|off\|status>` | Kill switch and DNS guard |
+| `kongtrol config public-ip <on\|off>` | Optional public IP lookup |
+| `kongtrol config update-check <on\|off\|status>` | Optional new version notice |
+| `kongtrol config recent-connections <on\|off\|status>` | Recent destinations list (memory only) |
+| `kongtrol config lang <es\|en>` · `config favorites` · `config dashboard` | Language, favorites, panel address on this computer |
+| `kongtrol reload [profile]` | Apply `kongtrol.yaml` changes without disconnecting |
+| `kongtrol restart` | Restart Kongtrol and reconnect what was connected |
+| `kongtrol export` | Print your config without passwords to share it |
+| `kongtrol doctor [--fix]` | Check your computer and say how to fix each problem |
+| `kongtrol traffic recent [--limit n]` | Destinations of the last hour: program, VPN or direct |
+| `kongtrol ip` | Look up your public IP now and check for leaks |
+| `kongtrol logs` | Show Kongtrol's events |
+| `kongtrol service install\|uninstall\|status` | Network helper (no admin terminal) |
+| `kongtrol uninstall [--purge\|--data-only]` | Uninstall Kongtrol (your data stays unless you ask) |
+| `kongtrol version` | Show the version |
 
 ## Privacy: local only
 
@@ -263,7 +256,7 @@ keychain, never in files. Only two calls go outside, both **off by default**:
 - **Public IP check** (`kongtrol config public-ip on`): asks `api.ipify.org` (or the service you
   choose) for your public IP after a tunnel connects or disconnects, and when you ask. That service
   sees your IP.
-- **New version notice** <sub>since v0.6.0 (pre-release)</sub> (`kongtrol config update-check on`):
+- **New version notice** (`kongtrol config update-check on`):
   asks api.github.com at most once a day. GitHub sees your IP and `kongtrol/<version>`.
 
 Every connection Kongtrol makes: [docs/SECURITY.md](docs/SECURITY.md#network-connections-kongtrol-makes).
@@ -278,21 +271,20 @@ keychain and the network helper stay. If you already have it, the Windows instal
 scripts detect it and say "Update Kongtrol <old> → <new>" (or reinstall, or warn before an older
 version) without asking again what you already chose; the helper asks for permission only if it
 is out of date. The Windows installer and the scripts reconnect the VPNs you had connected by
-themselves; after a package manager update (`.deb`/`.rpm`, Homebrew, Scoop, npm) run
+themselves; after a package update (`.deb`/`.rpm`) run
 `kongtrol restart` (or Restart in the panel) to
 switch to the new version with your VPNs reconnected. The new version notice
-<sub>since v0.6.0 (pre-release)</sub> is off by default: turn it on in the panel (Settings) or with
+is off by default: turn it on in the panel (Settings) or with
 `kongtrol config update-check on`. It never downloads or installs anything.
 
 <!-- feature:uninstall -->
-## Uninstalling <sub>since v0.6.0 (pre-release)</sub>
+## Uninstalling
 
 Your settings and saved passwords **stay** unless you ask, so a reinstall brings everything back.
 Windows: Settings › Apps › Kongtrol › Uninstall (it asks whether to delete your data; default No).
 Elsewhere: `kongtrol uninstall` (`--purge` also deletes `~/.kongtrol` and the saved passwords,
 `--dry-run` shows the plan). To only wipe your data and keep the app: panel › Settings › "Delete all
-my data", or `kongtrol uninstall --data-only`. In v0.5.0, delete the `kongtrol` file and run
-`kongtrol service uninstall` first.
+my data", or `kongtrol uninstall --data-only`.
 
 ## Documentation
 

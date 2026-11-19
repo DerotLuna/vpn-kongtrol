@@ -1,7 +1,7 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.4.0 · 2026-11-19 · docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 1.4.1 · 2026-11-19 · docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
-#   iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
+#   iwr https://kongtrol.app/install.ps1 -useb | iex
 #
 # Run it again to update: an existing install is detected and the script says
 # "Updating <old> -> <new>" (or "Reinstalling", or warns before an older
@@ -10,7 +10,7 @@
 # updates the network helper only when it is outdated.
 #
 # Uninstall (your data stays unless you add -Purge):
-#   & ([scriptblock]::Create((iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb))) -Uninstall [-Purge]
+#   & ([scriptblock]::Create((iwr https://kongtrol.app/install.ps1 -useb))) -Uninstall [-Purge]
 #   or: $env:KONGTROL_UNINSTALL=1 (and $env:KONGTROL_PURGE=1) before the iwr | iex line
 #
 # Env overrides:

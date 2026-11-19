@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 2.8.0 · 2026-11-19.
+// Version 2.8.1 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -620,8 +620,6 @@ Passwords stored in:
   Linux   → libsecret / GNOME Keyring`,
     // feature:update_check
     update1: <>Updating</>,
-    // Remove when v0.6.0 final ships (checklist in docs/DEVELOPMENT.md).
-    sinceV060: <>Available from version 0.6.0, coming soon. The current 0.5.0 does not have these commands yet.</>,
     update2: <>Update the same way you installed. Your settings and passwords stay.</>,
     update3: <><strong>Windows installer:</strong> download the new one from{' '}
                 <a href="/en/#install">the downloads section</a> and open it.</>,
@@ -631,11 +629,8 @@ $ ${INSTALL_CMD.unix}
 # Script (Windows, PowerShell): run it again
 > ${INSTALL_CMD.windows}
 
-# Homebrew
-$ brew upgrade kongtrol
-
-# npm
-$ npm update -g kongtrol`,
+# .deb / .rpm (Linux): install the new package from Releases, then
+$ kongtrol restart`,
     update5: <><strong>New version notice (optional, off by default):</strong> if you turn it on, Kongtrol checks
                 at most once a day for a new version. It tells you once per version: in the tray, the dashboard,
                 {' '}<IC c="kongtrol up" />, <IC c="kongtrol version" /> and <IC c="kongtrol status" />.
@@ -655,8 +650,8 @@ $ kongtrol config update-check status  # see how it's set`,
                 to also delete your settings and passwords (default No). It always disconnects your VPNs, closes
                 Kongtrol and removes the network helper.</>,
     uninstall4: <><strong>From the terminal:</strong> it disconnects your VPNs, closes Kongtrol and removes the
-                network helper, autostart and the PATH entry. If you installed with Homebrew, npm or the Windows
-                installer, it tells you how to finish.</>,
+                network helper, autostart and the PATH entry. If you installed with a .deb/.rpm package or the
+                Windows installer, it tells you how to finish.</>,
     uninstall5: `$ kongtrol uninstall                    # removes the app; your data stays
 $ kongtrol uninstall --purge            # also deletes data and passwords (asks [y/N])
 $ kongtrol uninstall --data-only        # deletes only your data; the app stays
@@ -667,10 +662,10 @@ $ curl -fsSL ${UNINSTALL_SCRIPT_BASE}install.sh | sh -s -- --uninstall
 
 # Windows, PowerShell (add -Purge to also delete your data)
 > & ([scriptblock]::Create((iwr ${UNINSTALL_SCRIPT_BASE}install.ps1 -useb))) -Uninstall`,
-    uninstall8: <><strong>Homebrew or npm:</strong> they don't delete your data. To delete it, first run{' '}
+    uninstall8: <><strong>.deb / .rpm package:</strong> removing it doesn't delete your data. To delete it, first run{' '}
                 <IC c="kongtrol uninstall --purge" />, then uninstall:</>,
     uninstall9: `$ kongtrol uninstall --purge
-$ brew uninstall kongtrol     # or: npm uninstall -g kongtrol`,
+$ sudo apt remove kongtrol    # or: sudo dnf remove kongtrol`,
     uninstall10: <><strong>Only delete your data, keep the app:</strong> in the dashboard, Settings › "Delete all my
                 data". It shows what gets deleted and asks you to confirm. The app stays and goes back to first-time setup.</>,
     uninstall11: <>The tray has no uninstall item, on purpose: use your system's uninstaller

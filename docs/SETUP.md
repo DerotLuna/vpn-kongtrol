@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.11 · 2026-11-19
+Versión 1.12 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -97,7 +97,7 @@ Para actualizar, ejecuta el instalador nuevo encima: si ya lo tienes, el instala
 sin perder nada. Muestra "Actualizar Kongtrol <actual> → <nueva>" y no vuelve a preguntar la
 licencia, la carpeta ni las opciones (usa las de antes). Cierra Kongtrol (las VPN se desconectan
 un momento; tu internet normal sigue funcionando), actualiza, vuelve a conectar solas las VPN
-que tenías conectadas (también en una actualización silenciosa, por ejemplo con winget) y ofrece
+que tenías conectadas (también en una actualización silenciosa) y ofrece
 "Abrir Kongtrol". Si la
 versión nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la
 actualización. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
@@ -107,15 +107,18 @@ Si antes copiaste `kongtrol.exe` a mano en otra carpeta del PATH (por ejemplo `C
 terminal puede seguir usando esa copia vieja: `kongtrol doctor` lo avisa en «kongtrol en la
 terminal». Bórrala o quita esa carpeta del PATH y abre una terminal nueva.
 
-Otras vías: `winget install Kongtrol.Kongtrol` (actualiza con `winget upgrade Kongtrol.Kongtrol`)
-o Scoop (`scoop bucket add kongtrol https://github.com/DerotLuna/scoop-bucket`,
-`scoop install kongtrol`, `scoop update kongtrol`). Con winget/Scoop cierra Kongtrol ("Salir y
-desconectar todo") antes de actualizar: Windows no deja reemplazar un programa en uso.
+Solo el comando `kongtrol`, sin la app, en una línea de PowerShell:
+
+```powershell
+iwr https://kongtrol.app/install.ps1 -useb | iex
+```
+
+winget y Scoop: pendientes (todavía no publicados).
 
 ### macOS
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
+curl -fsSL https://kongtrol.app/install.sh | sh
 ```
 
 El script comprueba la descarga con `checksums.txt` y, si tienes
@@ -126,10 +129,10 @@ y muestra el comando para verificar a mano (lo mismo hace `install.ps1` en Windo
 
 Instala `~/Applications/Kongtrol.app` y el comando `kongtrol`, y abre Kongtrol. Para actualizar,
 vuelve a ejecutarlo: dice "Updating Kongtrol <actual> → <nueva>", usa las mismas carpetas,
-reinicia Kongtrol en la versión nueva y reconecta tus VPN. Alternativa:
-`brew install DerotLuna/tap/kongtrol` (luego `brew upgrade kongtrol` y `kongtrol restart`).
+reinicia Kongtrol en la versión nueva y reconecta tus VPN. Homebrew: pendiente (todavía no
+publicado).
 
-La app no está notarizada por Apple (cuesta 99 USD al año); el script, Homebrew y npm no marcan
+La app no está notarizada por Apple (cuesta 99 USD al año); el script no marca
 la descarga como "en cuarentena", así que abre sin aviso. Si descargas el `.zip` con el
 navegador, la primera vez haz clic derecho → **Abrir**, o ve a Ajustes del Sistema → Privacidad
 y seguridad → **Abrir igualmente**.
@@ -138,15 +141,15 @@ y seguridad → **Abrir igualmente**.
 
 Descarga el `.deb` (Ubuntu, Debian) o el `.rpm` (Fedora) de
 [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) y ábrelo con doble clic,
-o usa el mismo `install.sh` de macOS. Arch: `yay -S kongtrol-bin`. Se actualiza con tu gestor
-(`sudo apt upgrade`, `sudo dnf upgrade`) y luego `kongtrol restart` aplica la versión nueva.
+o usa el mismo `install.sh` de macOS. Para actualizar, instala el paquete nuevo igual y luego
+`kongtrol restart` aplica la versión nueva. AUR (Arch): pendiente (todavía no publicado).
 
 En GNOME el ícono de bandeja necesita la extensión AppIndicator (Ubuntu ya la trae; en otras
 distribuciones instala `gnome-shell-extension-appindicator`).
 
-### npm (solo el programa `kongtrol`)
+### npm
 
-`npx kongtrol init`, o `npm i -g kongtrol` / `pnpm add -g kongtrol` / `bun add -g kongtrol`.
+Pendiente (todavía no publicado).
 
 <!-- feature:first_run -->
 ### Primer uso sin terminal
@@ -1015,8 +1018,8 @@ Por defecto se guarda en `~/.kongtrol/history.json` y se actualiza en background
 ## 12. Actualizar y desinstalar
 
 **Actualizar:** usa lo mismo con lo que instalaste (vuelve a correr el instalador de Windows o
-`install.sh`, `brew upgrade kongtrol`, `npm update -g kongtrol`, `scoop update kongtrol`,
-`winget upgrade Kongtrol.Kongtrol` o tu gestor de paquetes). Tu configuración se queda. El
+`install.sh`/`install.ps1`, o instala el `.deb`/`.rpm` nuevo y corre `kongtrol restart`). Tu
+configuración se queda. El
 instalador de Windows y los scripts detectan la versión que tienes y dicen "Actualizar" (o
 "Reinstalar", o avisan si es una versión anterior) sin volver a preguntar lo que ya elegiste.
 `kongtrol service install` con el ayudante ya al día dice "nada que hacer" y no pide permiso.
@@ -1040,7 +1043,7 @@ kongtrol uninstall --data-only # solo borra tus datos; la app queda instalada
   modo silencioso nunca borra datos).
 - Instalado con `install.sh`/`install.ps1`: `… | sh -s -- --uninstall [--purge]`, o
   `kongtrol uninstall`.
-- Homebrew, npm, Scoop, winget, `.deb`/`.rpm`, AUR: Kongtrol no toca esos archivos. Si quieres
+- `.deb`/`.rpm`: Kongtrol no toca esos archivos. Si quieres
   borrar tus datos, corre `kongtrol uninstall --purge` **antes** de quitar el paquete.
 - Desde el panel: Ajustes › «Borrar todos mis datos» (la app queda instalada y empieza de cero).
 - La bandeja no tiene opción de desinstalar: lo hace el desinstalador de tu sistema.
