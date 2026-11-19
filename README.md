@@ -84,7 +84,9 @@ Kongtrol keeps running in the background after you close the window.
 - **Kill switch and DNS guard** at the system firewall and network level (`status` shows what is
   blocked and the DNS servers in use), with a signed local audit
   log whose signatures are checked when you read it. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`
-  <sub>(command since v0.6.0, pre-release)</sub>.
+  <sub>(command since v0.6.0, pre-release)</sub>. When a VPN drops on its own, only its destinations
+  are blocked and its DNS goes back to the system, so other sites keep working; a VPN that carried
+  all traffic stays blocked until it returns, and Kongtrol tells you what to do.
 - **Browser panel and tray icon.** One panel (the tray or `kongtrol dashboard` opens it) with seven sections: Home, Profiles (and groups), Rules (and schedules), Traffic, Security, Activity (audit log and notices), Settings
   (diagnostics, export, updates); compiled into the program, no external server. Tray icon
   <sub>since v0.6.0 (pre-release)</sub>.
