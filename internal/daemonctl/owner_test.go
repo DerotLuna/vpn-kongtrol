@@ -33,11 +33,16 @@ func tokenServer(t *testing.T, want *atomic.Value) (*httptest.Server, *atomic.In
 
 func fakeOwner(t *testing.T, res sockowner.Result, err error, pid uint32, pidOK bool) {
 	t.Helper()
-	oldC, oldP := checkOwner, daemonPID
+	oldC, oldP, oldKA := checkOwner, daemonPID, transport.DisableKeepAlives
 	t.Cleanup(func() {
 		checkOwner, daemonPID = oldC, oldP
+		transport.DisableKeepAlives = oldKA
 		transport.CloseIdleConnections()
 	})
+	// Every request must dial (and so run the owner check) anew: a kept-alive
+	// connection from the previous case can return to the pool after
+	// CloseIdleConnections and be reused without a new check (flaky on CI).
+	transport.DisableKeepAlives = true
 	checkOwner = func(netip.AddrPort, netip.AddrPort) (sockowner.Result, error) { return res, err }
 	daemonPID = func() (uint32, time.Time, bool) { return pid, pidWritten, pidOK }
 	transport.CloseIdleConnections() // every case dials anew
