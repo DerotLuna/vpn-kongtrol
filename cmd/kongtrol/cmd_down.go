@@ -7,9 +7,11 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -18,6 +20,11 @@ import (
 
 var downAll bool
 var downGroup string
+
+// downRemember is the hidden `down --all --remember` an installer runs
+// before it replaces the files: the profiles that are connected are saved
+// for `kongtrol resume` (ADR-0050).
+var downRemember bool
 
 var downCmd = &cobra.Command{
 	Use: "down [profile...]",
@@ -75,6 +82,9 @@ func runDown(ctx context.Context, args []string) error {
 	}
 
 	if downAll {
+		if downRemember {
+			rememberConnected(base, viaDaemon)
+		}
 		names := make([]string, 0, len(adapters))
 		for name := range adapters {
 			names = append(names, name)
@@ -117,6 +127,35 @@ func runDown(ctx context.Context, args []string) error {
 	return nil
 }
 
+// rememberConnected saves the profiles the daemon reports connected for
+// `kongtrol resume`. With no daemon (or no answer) nothing was up through
+// Kongtrol, so any previous file is removed instead. A failure only costs
+// the automatic reconnect, never the stop itself.
+func rememberConnected(base string, viaDaemon bool) {
+	var up []string
+	if viaDaemon {
+		if statuses, err := daemonTunnelStatusesFn(base); err == nil {
+			up = connectedNames(statuses)
+		}
+	}
+	_ = writeResumeFn(daemonctl.ResumePath(), up, time.Now())
+}
+
+// connectedNames lists the connected profiles in statuses, sorted.
+func connectedNames(statuses map[string]vpn.Status) []string {
+	var names []string
+	for name, st := range statuses {
+		if st.Normalize() == vpn.StatusConnected {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+// writeResumeFn is a test seam over daemonctl.WriteResume.
+var writeResumeFn = daemonctl.WriteResume
+
 // daemonRemainingAfter returns the profiles the daemon still reports active
 // once the just-disconnected ones are discounted (its snapshot can lag a
 // synchronous disconnect by one collector poll). If the daemon's state
@@ -144,6 +183,8 @@ func daemonRemainingAfter(base string, disconnected []string) []string {
 func init() {
 	downCmd.Flags().BoolVar(&downAll, "all", false, ct("cli.down.flag.all"))
 	downCmd.Flags().StringVar(&downGroup, "group", "", ct("cli.down.flag.group"))
+	downCmd.Flags().BoolVar(&downRemember, "remember", false, "")
+	_ = downCmd.Flags().MarkHidden("remember")
 }
 
 // disconnectAllConcurrently disconnects every named profile in parallel
