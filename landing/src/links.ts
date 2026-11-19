@@ -39,6 +39,15 @@ export const RELEASE_ASSETS = {
 
 export type ReleaseAssetKey = keyof typeof RELEASE_ASSETS
 
+// The Windows installer (Inno Setup, per user; upgrades in place keep data,
+// ADR-0025) — the ONLY place its name and URL are written. Every "Descargar
+// para Windows" button downloads it. It ships from v0.6.0 on, so while
+// releases/latest is still v0.5.0 it is pinned to the newest pre-release.
+// TODO(after v0.6.0 final, docs/DEVELOPMENT.md release checklist): use
+// `${GITHUB_REPO}/releases/latest/download/${WINDOWS_INSTALLER_FILE}`.
+export const WINDOWS_INSTALLER_FILE = 'Kongtrol-Setup-windows-amd64.exe'
+export const WINDOWS_INSTALLER_URL = `${GITHUB_REPO}/releases/download/v0.6.0-rc.5/${WINDOWS_INSTALLER_FILE}`
+
 // GitHub's "latest" alias resolves against the most recently published
 // (non-draft, non-prerelease) release, so this always serves the current build
 // without any API call or CORS issue.

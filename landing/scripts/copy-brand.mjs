@@ -1,5 +1,5 @@
 // Copy brand assets from the repo-wide single source (../assets/brand) into
-// public/ before dev/build — version 1.2.0 · 2026-11-18.
+// public/ before dev/build — version 1.3.0 · 2026-11-19.
 //
 // Why: the logo used to be committed three times (assets/, the old dashboard,
 // landing/public/). assets/brand/ is now the only committed copy; the landing
@@ -23,6 +23,8 @@ const FILES = {
   'favicon.svg': 'favicon.svg',
   'logo.svg': 'logo.svg',
   'logo-kong.svg': 'logo-kong.svg',
+  // solid silhouette for small marks (header, patch-panel badge; DESIGN.md Logo)
+  'source/logo-kong-solid.svg': 'logo-kong-solid.svg',
   'logo-kong-32.png': 'logo-kong-32.png',
   'logo-kong-192.png': 'logo-kong-192.png',
   'og-1200x630.jpg': 'og-1200x630.jpg',

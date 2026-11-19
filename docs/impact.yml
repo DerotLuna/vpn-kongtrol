@@ -312,6 +312,7 @@ features:
       - docs/SETUP.md#distribution
       - docs/DEVELOPMENT.md#distribution
       - docs/SECURITY.md#distribution
+      - landing/src/components/ui/downloadCta.tsx#distribution
 
   update_check:
     code:

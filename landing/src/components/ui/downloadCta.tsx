@@ -1,12 +1,13 @@
 import { OS } from '../../hooks/useOS'
 import { Lang } from '../../i18n'
+import { WINDOWS_INSTALLER_URL } from '../../links'
 import { PageId, pathFor } from '../../site'
 
 // Shared by every "download" entry point (hero, header, Para todos, the
-// download section). Until a release ships the Windows installer (issue #32)
-// these buttons scroll to the download section instead of starting a file,
-// so the visitor sees the recommended file, the other systems and the
-// unsigned-binary note before downloading (ADR-0027).
+// download section, footer). The header and "Para todos" buttons scroll to
+// the download section (ADR-0027); the primary buttons (hero, download
+// section, footer: PrimaryDownload below) download the Windows installer
+// directly and send macOS / Linux visitors to the section to pick their file.
 export const DOWNLOAD_SECTION_ID = 'install'
 
 export function downloadHref(page: PageId, lang: Lang): string {
@@ -57,6 +58,86 @@ export const CTA_COPY: Record<Lang, {
 /** "Ver descargas para Windows", or the generic label while the OS is unknown (prerender). */
 export const downloadLabel = (lang: Lang, os: OS | null) =>
   os ? CTA_COPY[lang].forOS[os] : CTA_COPY[lang].generic
+
+/** The footer's id: the header hides while it is on screen (Nav.tsx). */
+export const FOOTER_ID = 'site-footer'
+/** "Otras formas de instalar" in the download section: standalone command + script. */
+export const OTHER_WAYS_ID = 'install-other'
+
+// feature:distribution
+// The primary download (hero, download section, footer — one source). On
+// Windows it downloads the installer (links.ts WINDOWS_INSTALLER_URL). macOS
+// (Apple Silicon or Intel: the browser can't tell) and Linux keep what works
+// today: the download section, where the visitor picks the file. Before
+// hydration the OS is unknown, so it points at the download section too.
+export const PRIMARY_COPY: Record<Lang, {
+  download: string
+  forOS: Record<OS, string>
+  note: Record<OS, string>
+  noteGeneric: string
+  otherWays: string
+  guide: string
+}> = {
+  es: {
+    download: 'Descargar',
+    forOS: { windows: 'Descargar para Windows', macos: 'Descargar para Mac', linux: 'Descargar para Linux' },
+    note: {
+      windows: 'Instalador · se actualiza sin perder nada',
+      macos: 'Programa de terminal · un solo archivo',
+      linux: 'Programa de terminal · un solo archivo',
+    },
+    noteGeneric: 'Windows, macOS y Linux · gratis, sin cuenta',
+    otherWays: '¿Usas la terminal? Otras formas de instalar',
+    guide: 'Guía de instalación',
+  },
+  en: {
+    download: 'Download',
+    forOS: { windows: 'Download for Windows', macos: 'Download for Mac', linux: 'Download for Linux' },
+    note: {
+      windows: 'Installer · updates without losing anything',
+      macos: 'Terminal program · a single file',
+      linux: 'Terminal program · a single file',
+    },
+    noteGeneric: 'Windows, macOS and Linux · free, no account',
+    otherWays: 'Use the terminal? Other ways to install',
+    guide: 'Installation guide',
+  },
+}
+
+/** Where the primary button goes: the installer on Windows, else the download section. */
+export function primaryDownloadHref(os: OS | null, page: PageId, lang: Lang): string {
+  return os === 'windows' ? WINDOWS_INSTALLER_URL : downloadHref(page, lang)
+}
+
+export function otherWaysHref(page: PageId, lang: Lang): string {
+  return page === 'home' ? `#${OTHER_WAYS_ID}` : `${pathFor('home', lang)}#${OTHER_WAYS_ID}`
+}
+
+/** The small line under a primary download button: what it is + other ways. */
+export function DownloadNote({ lang, os, page, className = '' }: { lang: Lang; os: OS | null; page: PageId; className?: string }) {
+  const t = PRIMARY_COPY[lang]
+  return (
+    <p className={`pd-note ${className}`}>
+      <span>{os ? t.note[os] : t.noteGeneric}</span>
+      <a href={otherWaysHref(page, lang)}>{t.otherWays}</a>
+    </p>
+  )
+}
+
+/** Button + note: the footer's call to action (the hero styles its own button). */
+export function PrimaryDownload({ lang, os, page }: { lang: Lang; os: OS | null; page: PageId }) {
+  const t = PRIMARY_COPY[lang]
+  const direct = os === 'windows'
+  return (
+    <div className="pd">
+      <a href={primaryDownloadHref(os, page, lang)} className="btn-download pd-btn" download={direct ? '' : undefined}>
+        <DownloadIcon size={16} />
+        {os ? t.forOS[os] : t.download}
+      </a>
+      <DownloadNote lang={lang} os={os} page={page} />
+    </div>
+  )
+}
 
 export function DownloadIcon({ size = 16 }: { size?: number }) {
   return (

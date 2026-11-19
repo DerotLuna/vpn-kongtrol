@@ -1,9 +1,9 @@
 import { OS, OS_LABELS } from '../../hooks/useOS'
 import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_RELEASES, GITHUB_REPO, INSTALL_CMD, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset } from '../../links'
+import { GITHUB_RELEASES, GITHUB_REPO, INSTALL_CMD, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset, WINDOWS_INSTALLER_FILE, WINDOWS_INSTALLER_URL } from '../../links'
 import CodeBlock from '../ui/CodeBlock'
-import { DOWNLOAD_SECTION_ID, DownloadIcon } from '../ui/downloadCta'
+import { DOWNLOAD_SECTION_ID, DownloadIcon, DownloadNote, OTHER_WAYS_ID, PRIMARY_COPY } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
 import { pathFor } from '../../site'
 import './download.css'
@@ -11,28 +11,37 @@ import './download.css'
 const ORDER: OS[] = ['windows', 'macos', 'linux']
 
 interface Variant {
-  asset: ReleaseAssetKey
+  file: string
+  href: string
   /** friendly name: what the visitor recognises about their computer */
   name: Record<Lang, string>
   /** short tag for the button, when one OS has several files */
   tag: Record<Lang, string>
 }
 
+const asset = (key: ReleaseAssetKey) => ({ file: RELEASE_ASSETS[key], href: releaseAsset(key) })
+
 // One OS → its files, recommended first. Filenames come from links.ts.
+// Windows recommends the installer (feature:distribution); Windows on ARM has
+// no installer yet, so it keeps the standalone terminal program.
 const VARIANTS: Record<OS, Variant[]> = {
   windows: [
-    { asset: 'windows-amd64', name: { es: 'Windows 10/11 · 64-bit', en: 'Windows 10/11 · 64-bit' }, tag: { es: '64-bit', en: '64-bit' } },
-    { asset: 'windows-arm64', name: { es: 'Windows en ARM · 64-bit', en: 'Windows on ARM · 64-bit' }, tag: { es: 'Windows en ARM', en: 'Windows on ARM' } },
+    { file: WINDOWS_INSTALLER_FILE, href: WINDOWS_INSTALLER_URL, name: { es: 'Windows 10/11 · 64-bit · instalador', en: 'Windows 10/11 · 64-bit · installer' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('windows-arm64'), name: { es: 'Windows en ARM · 64-bit', en: 'Windows on ARM · 64-bit' }, tag: { es: 'Windows en ARM', en: 'Windows on ARM' } },
   ],
   macos: [
-    { asset: 'macos-arm64', name: { es: 'Mac con Apple Silicon (M1 o posterior)', en: 'Mac with Apple Silicon (M1 or later)' }, tag: { es: 'Apple Silicon', en: 'Apple Silicon' } },
-    { asset: 'macos-amd64', name: { es: 'Mac con procesador Intel', en: 'Mac with an Intel processor' }, tag: { es: 'Intel', en: 'Intel' } },
+    { ...asset('macos-arm64'), name: { es: 'Mac con Apple Silicon (M1 o posterior)', en: 'Mac with Apple Silicon (M1 or later)' }, tag: { es: 'Apple Silicon', en: 'Apple Silicon' } },
+    { ...asset('macos-amd64'), name: { es: 'Mac con procesador Intel', en: 'Mac with an Intel processor' }, tag: { es: 'Intel', en: 'Intel' } },
   ],
   linux: [
-    { asset: 'linux-amd64', name: { es: 'Linux · 64-bit (x86_64)', en: 'Linux · 64-bit (x86_64)' }, tag: { es: '64-bit', en: '64-bit' } },
-    { asset: 'linux-arm64', name: { es: 'Linux en ARM · 64-bit (p. ej. Raspberry Pi 4)', en: 'Linux on ARM · 64-bit (e.g. Raspberry Pi 4)' }, tag: { es: 'Linux en ARM', en: 'Linux on ARM' } },
+    { ...asset('linux-amd64'), name: { es: 'Linux · 64-bit (x86_64)', en: 'Linux · 64-bit (x86_64)' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('linux-arm64'), name: { es: 'Linux en ARM · 64-bit (p. ej. Raspberry Pi 4)', en: 'Linux on ARM · 64-bit (e.g. Raspberry Pi 4)' }, tag: { es: 'Linux en ARM', en: 'Linux on ARM' } },
   ],
 }
+
+// "Otras formas de instalar": the Windows terminal programs (one file, no
+// installer). macOS and Linux files above already are terminal programs.
+const WINDOWS_STANDALONE: ReleaseAssetKey[] = ['windows-amd64', 'windows-arm64']
 
 // Featured-card title per OS (macOS covers both chips: the browser can't tell them apart).
 const FEATURED_TITLE: Record<OS, Record<Lang, string>> = {
@@ -41,14 +50,19 @@ const FEATURED_TITLE: Record<OS, Record<Lang, string>> = {
   linux: { es: 'Linux · 64-bit', en: 'Linux · 64-bit' },
 }
 
+const INSTALL_SCRIPT_TITLE: Record<Lang, string> = {
+  es: 'Script de instalación · macOS, Linux y Windows',
+  en: 'Install script · macOS, Linux and Windows',
+}
+
 interface Props {
   lang: Lang
 }
 
 // The filename never wraps mid-word: one line, ellipsis if the card is too
 // narrow, full name in the tooltip.
-function FileName({ asset }: { asset: ReleaseAssetKey }) {
-  return <code className="dl-file" title={RELEASE_ASSETS[asset]}>{RELEASE_ASSETS[asset]}</code>
+function FileName({ file }: { file: string }) {
+  return <code className="dl-file" title={file}>{file}</code>
 }
 
 export default function Download({ lang }: Props) {
@@ -62,7 +76,6 @@ export default function Download({ lang }: Props) {
       title: 'Descárgalo gratis.',
       sub: 'Windows, macOS y Linux. Local, gratis y de código abierto. Sin cuenta.',
       download: 'Descargar',
-      downloadFor: { windows: 'Descargar para Windows', macos: 'Descargar para Mac', linux: 'Descargar para Linux' } as Record<OS, string>,
       recommended: 'Recomendado para tu equipo',
       others: 'Otros sistemas',
       choose: 'Elige tu sistema',
@@ -71,8 +84,10 @@ export default function Download({ lang }: Props) {
       keepNote: <>Si desinstalas, tus datos se quedan (salvo que pidas borrarlos). El aviso de versión nueva es
         opcional y viene apagado. Ver cómo <a href={`${pathFor('guia', 'es')}#update`}>actualizar</a> y{' '}
         <a href={`${pathFor('guia', 'es')}#uninstall`}>desinstalar</a>.</>,
-      terminalTitle: 'INSTALAR POR TERMINAL',
-      terminalText: 'También puedes instalar kongtrol directo desde la terminal: el script detecta tu sistema operativo y arquitectura, descarga el binario correcto de la última release, verifica su checksum SHA256, y lo deja listo en el PATH.',
+      otherTitle: 'Otras formas de instalar',
+      otherWinTitle: 'Windows · programa de terminal (un solo archivo, sin instalador)',
+      otherWinText: 'Lo usas desde PowerShell o el Símbolo del sistema. El instalador de arriba ya trae este mismo comando; baja este archivo solo si no quieres instalar nada.',
+      terminalText: 'Con una línea en la terminal: el script detecta tu sistema operativo y arquitectura, descarga el binario correcto de la última release, verifica su checksum SHA256, y lo deja listo en el PATH.',
       terminalScript: `# Linux / macOS
 $ ${INSTALL_CMD.unix}
 
@@ -127,7 +142,6 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       title: 'Download it free.',
       sub: 'Windows, macOS and Linux. Local, free and open source. No account.',
       download: 'Download',
-      downloadFor: { windows: 'Download for Windows', macos: 'Download for Mac', linux: 'Download for Linux' } as Record<OS, string>,
       recommended: 'Recommended for your computer',
       others: 'Other systems',
       choose: 'Choose your system',
@@ -136,8 +150,10 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       keepNote: <>If you uninstall, your data stays (unless you ask to delete it). The new version notice is
         optional and off by default. See how to <a href={`${pathFor('guia', 'en')}#update`}>update</a> and{' '}
         <a href={`${pathFor('guia', 'en')}#uninstall`}>uninstall</a>.</>,
-      terminalTitle: 'INSTALL FROM TERMINAL',
-      terminalText: 'You can also install kongtrol straight from the terminal: the script detects your OS and architecture, downloads the correct binary from the latest release, verifies its SHA256 checksum, and drops it on your PATH.',
+      otherTitle: 'Other ways to install',
+      otherWinTitle: 'Windows · terminal program (a single file, no installer)',
+      otherWinText: "You run it from PowerShell or the Command Prompt. The installer above already includes this same command; get this file only if you don't want to install anything.",
+      terminalText: 'With one line in the terminal: the script detects your OS and architecture, downloads the correct binary from the latest release, verifies its SHA256 checksum, and drops it on your PATH.',
       terminalScript: `# Linux / macOS
 $ ${INSTALL_CMD.unix}
 
@@ -203,20 +219,21 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
             <h3 className="dl-featured-title">{FEATURED_TITLE[featured][lang]}</h3>
             <div className="dl-featured-actions">
               {VARIANTS[featured].map((v, i) => (
-                <div key={v.asset} className="dl-featured-item">
+                <div key={v.file} className="dl-featured-item">
                   <a
-                    href={releaseAsset(v.asset)}
+                    href={v.href}
                     className={i === 0 ? 'btn-download dl-btn-lg' : 'btn-ghost dl-btn-outline'}
                     download
                   >
                     <DownloadIcon size={i === 0 ? 18 : 14} />
-                    {featured === 'macos' || i > 0 ? `${copy.download} · ${v.tag[lang]}` : copy.downloadFor[featured]}
+                    {featured === 'macos' || i > 0 ? `${copy.download} · ${v.tag[lang]}` : PRIMARY_COPY[lang].forOS[featured]}
                   </a>
-                  <FileName asset={v.asset} />
+                  <FileName file={v.file} />
                 </div>
               ))}
             </div>
             {featured === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
+            <DownloadNote lang={lang} os={featured} page="home" className="dl-featured-note" />
           </div>
         )}
 
@@ -227,13 +244,13 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
               <h4 className="dl-card-os">{OS_LABELS[o]}</h4>
               <ul className="dl-list">
                 {VARIANTS[o].map(v => (
-                  <li key={v.asset} className="dl-row">
+                  <li key={v.file} className="dl-row">
                     <div className="dl-row-info">
                       <span className="dl-row-name">{v.name[lang]}</span>
-                      <FileName asset={v.asset} />
+                      <FileName file={v.file} />
                     </div>
                     {!mobile && (
-                      <a href={releaseAsset(v.asset)} className="btn-ghost dl-btn-sm" download>
+                      <a href={v.href} className="btn-ghost dl-btn-sm" download>
                         <DownloadIcon size={14} />
                         {copy.download}
                         <span className="sr-only"> · {v.name[lang]}</span>
@@ -245,6 +262,37 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
               {o === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
             </div>
           ))}
+        </div>
+
+        {/* feature:distribution — the standalone command and the script */}
+        <div id={OTHER_WAYS_ID} className="dl-other">
+          <h3 className="dl-others-title">{copy.otherTitle}</h3>
+          <div className="dl-card">
+            <h4 className="dl-card-os">{copy.otherWinTitle}</h4>
+            <p className="dl-other-text">{copy.otherWinText}</p>
+            <ul className="dl-list">
+              {WINDOWS_STANDALONE.map(key => (
+                <li key={key} className="dl-row">
+                  <div className="dl-row-info">
+                    <span className="dl-row-name">{key === 'windows-amd64' ? 'Windows 10/11 · 64-bit' : VARIANTS.windows[1].name[lang]}</span>
+                    <FileName file={RELEASE_ASSETS[key]} />
+                  </div>
+                  {!mobile && (
+                    <a href={releaseAsset(key)} className="btn-ghost dl-btn-sm" download>
+                      <DownloadIcon size={14} />
+                      {copy.download}
+                      <span className="sr-only"> · {RELEASE_ASSETS[key]}</span>
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="dl-card">
+            <h4 className="dl-card-os">{INSTALL_SCRIPT_TITLE[lang]}</h4>
+            <p className="dl-other-text">{copy.terminalText}</p>
+            <CodeBlock ui={lang} lang="bash" wrap>{copy.terminalScript}</CodeBlock>
+          </div>
         </div>
 
         <p className="dl-all">
@@ -286,14 +334,6 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
         </div>
 
         <div className="source-install reveal" style={{ marginTop: 20 }}>
-          <div className="source-label">{copy.terminalTitle}</div>
-          <div>
-            <p className="source-desc" style={{ marginTop: 8, marginBottom: 12 }}>{copy.terminalText}</p>
-            <CodeBlock ui={lang} lang="bash">{copy.terminalScript}</CodeBlock>
-          </div>
-        </div>
-
-        <div className="source-install reveal">
           <div className="source-label">{copy.verifyTitle}</div>
           <div>
             <p className="source-desc" style={{ marginTop: 8, marginBottom: 12 }}>{copy.verifyText}</p>

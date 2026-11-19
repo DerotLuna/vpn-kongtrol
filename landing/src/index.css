@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.7.0 · 2026-11-18
+   v2.8.0 · 2026-11-19
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; amber = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
@@ -15,6 +15,9 @@
    screen and only transform/opacity (ADR-0031).
    v2.6: "Sesión en la Torre" palette (DESIGN.md) — green (--live) only for
    "connected / up", new --caution, deeper light amber/steel/green.
+   v2.8: full-height footer (header steps aside while it shows), code blocks
+   without sideways scroll (comments drop under the command, one-liners
+   wrap), hero → attach demo without a visible section cut.
    v2.7: disclosures open/close with a height transition (::details-content),
    drawn +/− marker, tab panels and copy feedback fade in.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -533,6 +536,23 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .code-block pre .comment { color: var(--text-dim); }
 .code-block pre .prompt { color: var(--signal); user-select: none; }
 .code-block pre .hi { color: var(--signal); }
+/* v2.8 — no sideways scroll for the common cases (CodeBlock.tsx):
+   1. "$ cmd   # note": on a narrow block the note drops to its own dimmed
+      line under the command (container query on the block's width);
+   2. one-liners (wrap): the line wraps with a hanging indent under the
+      command, after the "$ " prompt. Copy always gives the exact text; a
+      scrollbar only appears when a block still overflows. */
+.code-block { container-type: inline-size; }
+@container (max-width: 560px) {
+  .code-block pre .cmt-pad { display: none; }
+  .code-block pre .cmt-inline { display: block; padding-left: 2ch; white-space: pre-wrap; }
+}
+.code-block pre.is-wrapped { white-space: pre-wrap; overflow-wrap: anywhere; padding-left: calc(20px + 2ch); }
+.code-block pre.is-wrapped .ln { display: block; min-height: 1.75em; text-indent: -2ch; }
+.code-block pre.is-wrapped .cmt-inline { text-indent: 0; }
+@media (max-width: 640px) {
+  .code-block pre.is-wrapped { padding-left: calc(16px + 2ch); }
+}
 
 /* ── Guide ──────────────────────────────────────────────────────────────────── */
 .guide-layout { display: grid; grid-template-columns: 230px 1fr; gap: 64px; align-items: start; padding: 0 0 96px; }
@@ -749,29 +769,52 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
 .ic { font-family: var(--font-mono); font-size: 0.83em; color: var(--signal); background: var(--signal-soft); padding: 1px 6px; border-radius: 3px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 
 /* ── Footer ─────────────────────────────────────────────────────────────────── */
-.footer { position: relative; border-top: 1px solid var(--border); padding: 60px 0 0; overflow: hidden; }
+/* v2.8: the footer fills the viewport once reached (the header steps aside
+   while it is on screen, Nav.tsx): large line-art mark + tagline, the primary
+   download, link columns, the version line, "↑ Inicio" and the giant
+   wordmark pinned to the bottom. --tmux-h keeps it clear of the tmux bar. */
+body:has(.tmux-bar) { --tmux-h: 34px; }
+.footer {
+  position: relative; border-top: 1px solid var(--border); overflow: hidden;
+  min-height: calc(100vh - var(--tmux-h, 0px));
+  min-height: calc(100svh - var(--tmux-h, 0px));
+  display: flex; flex-direction: column;
+  padding: clamp(48px, 6vh + 16px, 96px) 0 0;
+}
+.footer-inner { flex: 1; display: flex; flex-direction: column; }
 
-/* giant cropped wordmark — a faint watermark the page signs off with, blended into the surface */
-.footer-giant {
-  position: relative; z-index: 1;
-  pointer-events: none; user-select: none;
-  margin-top: 10px; height: 0.60em; overflow: hidden;
-  font-family: var(--font-display); font-weight: 700;
-  font-size: clamp(4rem, 16vw, 300px);
-  line-height: 0.76; letter-spacing: -0.03em;
-  text-align: center; white-space: nowrap;
-  /* solid faint amber, no gradient text (One Accent Rule) */
-  color: color-mix(in srgb, var(--signal) 7%, transparent);
+.footer-hero { display: flex; align-items: center; gap: clamp(24px, 4vw, 56px); }
+.footer-mark { width: clamp(160px, 18vw, 208px); height: auto; flex-shrink: 0; opacity: 0.92; }
+/* black line art → bone on the dark theme (same as every logo <img>) */
+:root[data-theme='dark'] .footer-mark { filter: invert(1); }
+.footer-hero-text { display: grid; gap: 12px; min-width: 0; }
+.footer-claim {
+  font-family: var(--font-display); font-weight: 600; font-size: var(--step-3);
+  line-height: 1.08; letter-spacing: -0.02em; color: var(--text); text-wrap: balance;
 }
+.footer-tagline { color: var(--text-muted); font-size: 0.95rem; max-width: 52ch; text-wrap: pretty; }
+.footer-cta { display: grid; justify-items: start; gap: 8px; margin-top: 10px; }
+.footer-guide-link {
+  display: inline-flex; align-items: center; min-height: var(--tap);
+  font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.04em; color: var(--text-muted);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.footer-guide-link:hover { color: var(--signal); }
+
 .footer-grid {
-  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 44px; align-items: start;
+  margin-top: clamp(40px, 6vh, 72px);
+  display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.4fr);
+  gap: 32px 44px; align-items: start;
 }
-.footer-brand { display: flex; align-items: center; }
-.footer-brand img { width: auto; height: 96px; opacity: 0.92; }
-:root[data-theme='dark'] .footer-brand img { filter: invert(1); }
-.footer-tagline { margin-top: 16px; color: var(--text-muted); font-size: 0.92rem; max-width: 44ch; text-wrap: pretty; }
-.footer-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin-top: 18px; }
+.footer-col ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.footer-col-title {
+  font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 2px;
+}
+.footer-legal-link { display: inline-flex; align-items: center; min-height: 36px; font-size: 0.86rem; color: var(--text-muted); letter-spacing: 0.02em; transition: color 0.15s; }
+.footer-legal-link:hover { color: var(--signal); text-decoration: none; }
+
+.footer-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin-top: 32px; }
 .footer-facts li {
   font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.06em;
   color: var(--signal); border: 1px solid var(--signal-line);
@@ -779,20 +822,41 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
 }
 .footer-term { font-size: 0.78rem; }
 .footer-term .t-cmd { color: var(--text); }
-.footer-term-out { color: var(--text-muted); margin-top: 4px; letter-spacing: 0.02em; }
+.footer-term-out { color: var(--text-muted); margin-top: 4px; letter-spacing: 0.02em; overflow-wrap: anywhere; }
 .footer-term-cmd { margin-top: 14px; }
 .footer-gh-link { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); transition: color 0.15s; }
 .footer-gh-link:hover { color: var(--signal); text-decoration: none; }
 .footer-version { color: var(--signal); }
 .footer-meta {
-  margin-top: 40px; padding-top: 14px;
-  display: flex; justify-content: flex-end; align-items: center; gap: 20px;
+  margin-top: auto; padding-top: 32px;
+  display: flex; justify-content: space-between; align-items: center; gap: 20px;
 }
-.footer-meta.has-legal { justify-content: space-between; }
 .footer-wink { font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
-.footer-legal-link { display: inline-flex; align-items: center; min-height: var(--tap); font-size: 0.8rem; color: var(--text-dim); letter-spacing: 0.04em; transition: color 0.15s; }
-.footer-legal-link:hover { color: var(--signal); text-decoration: none; }
-.footer-legal { display: flex; flex-wrap: wrap; gap: 0 20px; list-style: none; margin: 0; padding: 0; }
+.footer-top {
+  display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); padding: 0 16px;
+  border: 1px solid var(--border-2); border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.04em; color: var(--text);
+  transition: color var(--dur-short) var(--ease-standard), border-color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard);
+}
+.footer-top:hover { color: var(--signal); border-color: var(--signal); background: var(--signal-soft); text-decoration: none; }
+
+/* giant cropped wordmark — a faint watermark the page signs off with, blended into the surface */
+.footer-giant {
+  position: relative; z-index: 1;
+  pointer-events: none; user-select: none;
+  margin-top: 16px; height: 0.60em; overflow: hidden;
+  font-family: var(--font-display); font-weight: 700;
+  font-size: clamp(4rem, 16vw, 300px);
+  line-height: 0.76; letter-spacing: -0.03em;
+  text-align: center; white-space: nowrap;
+  /* solid faint amber, no gradient text (One Accent Rule) */
+  color: color-mix(in srgb, var(--signal) 7%, transparent);
+}
+
+/* the header steps aside while the footer is on screen (Nav.tsx .is-away):
+   slides up, then hides, so it is neither seen nor focusable */
+.nav { transition: background 0.28s ease, backdrop-filter 0.28s ease, border-color 0.28s ease, transform 0.28s var(--ease-standard), visibility 0s; }
+.nav.is-away { transform: translateY(-100%); visibility: hidden; transition: transform 0.28s var(--ease-standard), visibility 0s linear 0.28s; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 
@@ -943,8 +1007,11 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
 .jump-select-list .guide-num { color: var(--text-dim); margin-right: 2px; }
 
 @media (max-width: 640px) {
-  .footer-grid { grid-template-columns: 1fr; gap: 28px; }
-  .footer-meta { justify-content: flex-start; }
+  .footer-hero { flex-direction: column; align-items: flex-start; }
+  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 20px; }
+  .footer-term { grid-column: 1 / -1; }
+  .footer-cta, .footer-cta .pd { justify-items: stretch; width: 100%; }
+  .footer-cta .pd-btn { justify-content: center; }
   .source-install { grid-template-columns: 1fr; gap: 12px; }
   .code-block pre { padding: 14px 16px; font-size: 0.76rem; }
 }
@@ -1092,6 +1159,12 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
 }
 @media (max-width: 720px) {
   .th-contour { top: calc(var(--nav-h) + 440px); }
+}
+/* the contour field fades out before the section's bottom edge, so the
+   overflow clip never shows as a cut above the attach demo (v2.8) */
+.th-section::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 200px;
+  pointer-events: none; background: linear-gradient(to bottom, transparent, var(--bg));
 }
 .th-terminal { position: relative; z-index: 1; max-width: 100%; min-width: 0; }
 .th-body {

@@ -44,8 +44,8 @@ const VIEWPORT = { width: 1280, height: 1000 } // tall enough for the whole hero
 // cycle, so the GIF loops without a jump), whether to scroll to it, and the
 // GIF width / palette size that keep it under ~2 MB.
 const CLIPS = {
-  // Features.tsx cycles 4 destinations every 2.6 s.
-  routing: { path: '/en/', selector: '#map .switchboard', seconds: 10.4, scroll: true, width: 640, colors: 48 },
+  // Features.tsx plays 4 examples, one every 3.4 s (CYCLE).
+  routing: { path: '/en/', selector: '#map .switchboard', seconds: 13.6, scroll: true, width: 640, colors: 48 },
   // attachdemo.css: one 9 s cycle.
   attach: { path: '/en/', selector: '#start .attach', seconds: 9, scroll: true, width: MAX_WIDTH, colors: 96 },
   // Hero.tsx boot sequence ends at ~3.7 s; keep the live rows on screen a while.
