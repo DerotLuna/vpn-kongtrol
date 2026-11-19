@@ -46,6 +46,9 @@ func WSURL(base string) string {
 type Client struct {
 	Base  string
 	Token string
+	// Lang ("es", "en"; optional) asks the daemon to word its translated
+	// errors in the client's language (X-Kongtrol-Lang).
+	Lang string
 }
 
 // New returns a client for the daemon at base, authenticated with token.
@@ -58,6 +61,9 @@ func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, 
 		return nil, err
 	}
 	req.Header.Set(TokenHeader, c.Token)
+	if c.Lang != "" {
+		req.Header.Set("X-Kongtrol-Lang", c.Lang)
+	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -269,6 +275,18 @@ type RemoteError struct {
 	Status  string
 	Message string
 	Key     string
+	// Hint is the "what to do" line of a translated validation error
+	// (body "hint"), already in the language the request asked for.
+	Hint string
+}
+
+// UserText is the message plus its "what to do" line for a translated
+// validation error (Hint set); ok is false for any other answer.
+func (e *RemoteError) UserText() (text string, ok bool) {
+	if e.Hint == "" || e.Message == "" {
+		return "", false
+	}
+	return e.Message + "\n    " + e.Hint, true
 }
 
 func (e *RemoteError) Error() string {
@@ -289,10 +307,12 @@ func APIError(resp *http.Response) error {
 		Error    string `json:"error"`
 		ErrorKey string `json:"error_key"`
 		Detail   string `json:"detail"`
+		Hint     string `json:"hint"`
 	}
 	if json.Unmarshal(body, &j) == nil && j.ErrorKey != "" {
 		e.Key = j.ErrorKey
 		e.Message = j.Error
+		e.Hint = j.Hint
 		if j.Detail != "" {
 			e.Message = j.Detail
 		}

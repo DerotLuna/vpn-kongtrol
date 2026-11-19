@@ -1,4 +1,4 @@
-# Change-impact map — version 1.7 · 2026-11-18
+# Change-impact map — version 1.8 · 2026-11-19
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -74,6 +74,7 @@ features:
       - internal/monitor/policywatch.go
       - internal/api/handlers_policy.go
       - cmd/kongtrol/policy_cmd.go
+      - cmd/kongtrol/cmd_policy_edit.go
       - cmd/kongtrol/wizard_policies.go
       - cmd/kongtrol-tray/tray_policy.go
       - web/ui/src/components/rules/**
@@ -235,6 +236,7 @@ features:
       - internal/profileimport/**
       - internal/api/handlers_vpn_import.go
       - cmd/kongtrol/cmd_profile.go
+      - cmd/kongtrol/cmd_profile_add.go
       - web/ui/src/components/profiles/ImportFile.tsx
       - web/ui/src/components/profiles/importModel.ts
     surfaces:
@@ -250,6 +252,7 @@ features:
       - cmd/kongtrol/preferences.go
       - cmd/kongtrol/cmd_export.go
       - internal/configexport/**
+      - internal/configedit/**
     surfaces:
       - configs/example.yaml
       - docs/CONFIGURATION.md

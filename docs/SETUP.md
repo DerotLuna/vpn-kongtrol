@@ -197,7 +197,14 @@ Si te enviaron el archivo (o lo bajaste de tu proveedor), Kongtrol puede guardar
 
 - **Panel:** Perfiles → Nueva VPN (o Editar) → WireGuard u OpenVPN → **Importar archivo**. El campo
   de ruta se llena solo; también puedes escribir una ruta a mano.
-- **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`).
+- **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`). Con
+  `--create` también crea el perfil que lo usa, con el nombre del archivo (o `--name`).
+
+Sin preguntas, para scripts: `kongtrol profile detect` lista las apps de VPN instaladas y
+`kongtrol profile add <tipo> --name <nombre> [--host …] [--country …]` crea el perfil con las mismas
+reglas que el panel. La contraseña nunca va en la línea de comandos: se pide sin mostrarla en una
+terminal o se agrega en el panel. Si Kongtrol está en marcha, te ofrece reiniciarlo (`--yes` para
+scripts) para usar el perfil nuevo.
 
 Se revisa con las mismas reglas que usa el servicio de Kongtrol antes de conectar: se rechazan los
 archivos que ejecutan comandos (`PostUp`/`PreUp` en WireGuard; `up`, `down`, `plugin`,
@@ -399,6 +406,22 @@ Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a
 - `10.10.0.0/16` (red interna) → van por `office` (FortiClient)
 - `*.tuempresa.com` → van por `office`
 - Todo lo demás → conexión directa, sin VPN
+
+### La forma rápida: panel o una línea en la terminal
+
+En el panel: **＋ Agregar** → escribe sitios, enlaces, IP, rangos o apps y elige la VPN. En la
+terminal hace lo mismo, con las mismas reglas:
+
+```bash
+kongtrol policy add claude.ai --via us-content            # claude.ai y *.claude.ai
+kongtrol policy add 10.10.0.0/16 intranet.tuempresa.com --via office --block-when-down
+kongtrol policy add app:teams.exe --via office --name teams
+kongtrol policy remove teams                              # pregunta antes; --yes para scripts
+```
+
+Un enlace (`https://…/x`) se guarda como su sitio; `--no-subdomains` deja solo el sitio exacto. Si
+no pones `--name`, el nombre sale solo ("claude.ai por us-content"). Con Kongtrol en marcha se aplica
+al momento; si no, se guarda en `kongtrol.yaml`.
 
 ### Opción A: desde el wizard
 

@@ -78,6 +78,35 @@ func TypeForFile(path string) string {
 	return ""
 }
 
+// CleanName turns a file path into a name Import accepts (and a valid
+// profile name): the file name without extension, every character outside
+// A-Z a-z 0-9 . _ - replaced by "-", leading characters that are not a
+// letter or digit dropped, at most 64 characters. "" when nothing is left.
+func CleanName(path string) string {
+	base := filepath.Base(strings.ReplaceAll(path, `\`, "/"))
+	base = strings.TrimSuffix(base, filepath.Ext(base))
+	var b strings.Builder
+	for _, r := range base {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '.', r == '_', r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('-')
+		}
+	}
+	s := strings.TrimLeftFunc(b.String(), func(r rune) bool {
+		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+	})
+	for strings.Contains(s, "--") {
+		s = strings.ReplaceAll(s, "--", "-")
+	}
+	s = strings.ReplaceAll(s, "..", ".")
+	if len(s) > 64 {
+		s = s[:64]
+	}
+	return strings.TrimRight(s, "-.")
+}
+
 // Import validates req and stores it in dir. A refusal is a
 // *config.ValidationError (api.err.import_*: translated message + what to
 // do); a write failure wraps ErrStore.

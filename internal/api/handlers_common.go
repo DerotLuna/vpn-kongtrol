@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
-	"gopkg.in/yaml.v3"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -74,20 +74,12 @@ func (s *Server) loadRuntimeConfig() (*config.Config, string, error) {
 	return cfg, cfgPath, nil
 }
 
+// saveRuntimeConfig validates and writes cfg (configedit.Save, the same path
+// the CLI uses with no daemon) and hot-swaps the policy engine.
 func (s *Server) saveRuntimeConfig(cfgPath string, cfg *config.Config) error {
-	if err := config.Validate(cfg); err != nil {
+	newEngine, err := configedit.Save(cfgPath, cfg)
+	if err != nil {
 		return err
-	}
-	newEngine, err := policy.New(cfg)
-	if err != nil {
-		return fmt.Errorf("policy engine validation failed: %w", err)
-	}
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
-	}
-	if err := config.WriteFileAtomic(cfgPath, data, 0o600); err != nil {
-		return fmt.Errorf("write config: %w", err)
 	}
 	s.policyEngine.Store(newEngine)
 	if s.onPolicyUpdate != nil {

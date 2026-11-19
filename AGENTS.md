@@ -355,6 +355,13 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 `api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
 `~/.kongtrol/configs/` (ADR-0042). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
 the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
+<!-- feature:policies -->
+Policy create/delete and profile create live in `internal/configedit` (`AddPolicy`, `RemovePolicy`,
+`AddVPNProfile`/`SaveVPNProfile`, `Save` = Validate + policy engine + atomic write), shared by the
+API handlers and the CLI with no daemon (`kongtrol policy add|remove`, `kongtrol profile add`,
+`profile import --create`); with a daemon the CLI calls the same endpoints. `policy.ClassifyTargets`
+is the "＋ Agregar" input classifier (URL → host, `*.host` unless `--no-subdomains`, IP/CIDR,
+`app:`); web/ui mirrors it. `kongtrol profile detect` = `GET /api/v1/vpns/detect` (vpndetect).
 
 VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
 adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,
