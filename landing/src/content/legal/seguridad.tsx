@@ -1,4 +1,6 @@
 // Security policy & responsible disclosure — version 1.2.0 · 2026-11-19.
+// 1.3.0: scope adds another user account on the same computer (port squatting, cookies sent to
+//   every loopback port; ADR-0062).
 // 1.2.0: plain-language summary in points; scope says "without signing in" (control token for
 // CLI/tray, one-time code + session cookie for browsers, ADR-0039) and adds the install scripts'
 // checksum/signature check (ADR-0057); new section linking the technical security doc.
@@ -13,7 +15,7 @@ import type { LegalDocContent } from '../../components/sections/LegalDoc'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.2.0'
+const VERSION = '1.3.0'
 const UPDATED = '2026-11-19'
 export const SECURITY_REPORT_URL = `${GITHUB_REPO}/security/advisories/new`
 const report = <a href={SECURITY_REPORT_URL} target="_blank" rel="noreferrer">github.com/DerotLuna/vpn-kongtrol/security/advisories/new</a>
@@ -62,7 +64,7 @@ const es: LegalDocContent = {
       list: [
         'Fugas de tráfico o DNS que el kill switch, el DNS guard o las reglas deberían impedir.',
         'Escalada de privilegios a través del ayudante del sistema o del servicio en segundo plano.',
-        'Entrar al panel local o a su API sin iniciar sesión, o desde otro equipo.',
+        'Entrar al panel local o a su API sin iniciar sesión, desde otro equipo o desde otra cuenta de usuario de este equipo (por ejemplo, ocupando el puerto de Kongtrol).',
         'Exposición de credenciales fuera del almacén de credenciales del sistema.',
         'Manipulación del registro de auditoría sin que se detecte.',
         'Saltarse la comprobación de suma o de firma de los scripts de instalación.',
@@ -139,7 +141,7 @@ const en: LegalDocContent = {
       list: [
         'Traffic or DNS leaks that the kill switch, DNS guard or rules should prevent.',
         'Privilege escalation through the system helper or the background service.',
-        'Access to the local dashboard or its API without signing in, or from another machine.',
+        'Access to the local dashboard or its API without signing in, from another machine, or from another user account on this computer (for example, by taking the port Kongtrol uses).',
         'Credentials exposed outside the operating system credential store.',
         'Undetected tampering with the audit log.',
         "Getting past the install scripts' checksum or signature check.",

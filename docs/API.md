@@ -2,30 +2,42 @@
 
 # Local API reference
 
-Version 1.11 · 2026-11-19
+Version 1.12 · 2026-11-19
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
 the dashboard (`web/ui/`, served at `/`) are clients of it — everything they can do is
 reachable directly too. All endpoints are under `http://127.0.0.1:9741` by default and require
-the local capability stored in `~/.kongtrol/api-token`:
+the local capability stored in `~/.kongtrol/api-token`. The daemon writes a new one every time it
+starts, so read the file for each request rather than once
+([ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)):
 
 ```bash
 curl -H "X-Kongtrol-Token: $(cat ~/.kongtrol/api-token)" \
   http://127.0.0.1:9741/api/v1/tunnels
 ```
 
-Browsers never get that token ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)):
+Kongtrol's own clients (`internal/daemonctl`) also check that the program listening on that
+address belongs to you before sending the token; `curl` does not.
+
+Browsers never get that token ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md),
+[ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)):
 
 ```bash
 POST   /api/v1/session/nonce   # token header only → {"nonce","expires_in":60}; single use
 POST   /api/v1/session         # {"nonce"} from the page; Origin required → kongtrol_session cookie
-DELETE /api/v1/session         # sign the browser out
+                               #   + {"session_token"}: send it as X-Kongtrol-Session on every request
+DELETE /api/v1/session         # sign the browser out (every page of that cookie)
+POST   /api/v1/ws-ticket       # cookie + X-Kongtrol-Session → {"ticket","expires_in":30}; single use
+GET    /api/v1/ws/metrics?ticket=<ticket>   # browser WebSocket: daemon Origin + cookie + ticket
+                               #   (native clients: X-Kongtrol-Token header instead)
 ```
 
 Clients open pages with `daemonctl.(*Client).PanelURL(path)`, which returns
 `<base><path>#k=<nonce>` (`/`, `/tray`, `/profiles`…); the page (`web/ui/src/api/auth.ts`) trades
-the nonce for the cookie. Pages never set credentials; a 401 means "open it from Kongtrol".
+the nonce for the cookie and its page token (kept in `sessionStorage`). The cookie alone gets
+401: browsers send it to every port of 127.0.0.1. Pages never set credentials; a 401 means "open
+it from Kongtrol".
 
 Commands: [CLI.en.md](CLI.en.md) (Español: [CLI.md](CLI.md)).
 
@@ -76,6 +88,9 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   Or {"path":"/abs/file.conf","elevate":false} instead of content: a file only root can read
                                              #   answers 403 config.err.file_root_only; "elevate":true reads it after the OS permission
                                              #   window (pkexec, Linux) → 201, or 403 api.err.import_elevated_failed (ADR-0058)
+                                             #   The path must be absolute (Windows: drive letter only, no \\.\, \??\ or UNC share), without "..", a regular file (no link, folder, device);
+                                             #   else 400 api.err.import_protected_path. The read (and the permission window, up to 3 min) runs
+                                             #   without the config lock; only storing the file takes it (ADR-0062)
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 
 # Groups
@@ -130,8 +145,8 @@ POST /api/v1/data/purge                      # {"confirm": true} (required, else
 **Update notice and purge.** Reading `/api/v1/updates` never makes a request; with
 `check_enabled` the daemon asks GitHub at most once per 24 h and emits one `update_available`
 event (`update.event.available`, args latest, current, release page) per new version on
-`/api/v1/events`. `/api/v1/data/purge` uses the same auth as every route (token or session
-cookie, same origin, `application/json`) plus the explicit `confirm`; the running daemon keeps
+`/api/v1/events`. `/api/v1/data/purge` uses the same auth as every route (token or browser session:
+cookie + X-Kongtrol-Session, same origin, `application/json`) plus the explicit `confirm`; the running daemon keeps
 `api-token`, `run/` and its logs until it restarts.
 
 <!-- feature:first_run -->

@@ -96,8 +96,11 @@ function stubApi(routes: Routes, socket: unknown = SilentSocket) {
   return fetchMock
 }
 
+/** User actions posted (the live feed's ticket request is not one). */
 function posts(fetchMock: ReturnType<typeof stubFetch>): string[] {
-  return fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST').map(([url]) => String(url))
+  return fetchMock.mock.calls
+    .filter(([url, init]) => init?.method === 'POST' && String(url) !== '/api/v1/ws-ticket')
+    .map(([url]) => String(url))
 }
 
 async function rowOf(name: string): Promise<HTMLElement> {

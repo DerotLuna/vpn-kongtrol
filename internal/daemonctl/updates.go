@@ -26,7 +26,7 @@ func (c *Client) SetUpdateCheck(enabled bool) (UpdateState, error) {
 	if err != nil {
 		return st, err
 	}
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	resp, err := HTTPClient(10 * time.Second).Do(req)
 	if err != nil {
 		return st, err
 	}

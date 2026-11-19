@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -11,22 +12,38 @@ import (
 	"time"
 )
 
-// Browser sessions (ADR-0039). The control token in ~/.kongtrol/api-token
-// is for native clients (CLI, tray) only and never reaches a browser. A
-// native client asks for a one-time nonce (POST /api/v1/session/nonce,
-// token header), opens the page with it in the URL fragment (#k=…), and
-// the page trades it for an HttpOnly session cookie (POST
-// /api/v1/session). Sessions live in memory: a daemon restart ends them.
+// Browser sessions (ADR-0039, bound to the page's origin by ADR-0062). The
+// control token in ~/.kongtrol/api-token is for native clients (CLI, tray)
+// only and never reaches a browser. A native client asks for a one-time
+// nonce (POST /api/v1/session/nonce, token header), opens the page with it
+// in the URL fragment (#k=…), and the page trades it (POST /api/v1/session)
+// for an HttpOnly session cookie plus a per-page session token in the JSON
+// body. Every request needs both: the cookie alone is not enough, because
+// browsers send cookies to every port of 127.0.0.1 (RFC 6265 §8.5), so
+// another local user's server on another port could capture it. The token
+// lives in the page's sessionStorage, which only this origin (scheme, host
+// and port) can read, and travels in X-Kongtrol-Session. The WebSocket (no
+// custom headers in browsers) uses a one-time ticket from POST
+// /api/v1/ws-ticket. Sessions live in memory: a daemon restart ends them.
 const (
 	sessionCookieName = "kongtrol_session"
+	sessionHeader     = "X-Kongtrol-Session"
 	sessionNoncePath  = "/api/v1/session/nonce"
 	sessionPath       = "/api/v1/session"
+	wsTicketPath      = "/api/v1/ws-ticket"
+	wsPath            = "/api/v1/ws/metrics"
+	wsTicketParam     = "ticket"
 
 	nonceTTL           = 60 * time.Second
+	ticketTTL          = 30 * time.Second
 	sessionIdleTimeout = 12 * time.Hour
 	sessionMaxLifetime = 7 * 24 * time.Hour
 	maxPendingNonces   = 32
+	maxPendingTickets  = 64
 	maxSessions        = 64
+	// maxPageTokens: pages (tabs, the tray flyout) sharing one cookie, each
+	// with its own token; the oldest page signs out past it.
+	maxPageTokens = 16
 
 	// sessionFailLimit failed exchanges per sessionFailWindow (all
 	// callers together) lock the exchange until the window ends. Nonces
@@ -40,15 +57,23 @@ const (
 type sessionEntry struct {
 	created  time.Time
 	lastSeen time.Time
+	tokens   [][32]byte // digests of the page tokens of this cookie
 }
 
-// sessionAuth stores only SHA-256 digests of nonces and session ids: the
-// map lookup then compares digests, so its timing says nothing useful
-// about the secret (same idea as comparing in constant time).
+type ticketEntry struct {
+	session [32]byte
+	expires time.Time
+}
+
+// sessionAuth stores only SHA-256 digests of nonces, session ids, page
+// tokens and tickets: map lookups then compare digests, so their timing
+// says nothing useful about the secret; page tokens are compared in
+// constant time too.
 type sessionAuth struct {
 	mu        sync.Mutex
 	nonces    map[[32]byte]time.Time // digest -> expiry
 	sessions  map[[32]byte]sessionEntry
+	tickets   map[[32]byte]ticketEntry
 	failCount int
 	failStart time.Time
 	now       func() time.Time // test seam; nil = time.Now
@@ -83,23 +108,30 @@ func (a *sessionAuth) issueNonce() (string, error) {
 	if a.nonces == nil {
 		a.nonces = make(map[[32]byte]time.Time)
 	}
-	for k, exp := range a.nonces {
-		if !now.Before(exp) {
-			delete(a.nonces, k)
-		}
-	}
-	if len(a.nonces) >= maxPendingNonces {
-		var oldest [32]byte
-		var oldestExp time.Time
-		for k, exp := range a.nonces {
-			if oldestExp.IsZero() || exp.Before(oldestExp) {
-				oldest, oldestExp = k, exp
-			}
-		}
-		delete(a.nonces, oldest)
-	}
+	pruneExpiring(a.nonces, now, func(exp time.Time) time.Time { return exp }, maxPendingNonces)
 	a.nonces[digest(nonce)] = now.Add(nonceTTL)
 	return nonce, nil
+}
+
+// pruneExpiring drops expired entries and, when the map is full, the one
+// that expires first.
+func pruneExpiring[V any](m map[[32]byte]V, now time.Time, exp func(V) time.Time, limit int) {
+	for k, v := range m {
+		if !now.Before(exp(v)) {
+			delete(m, k)
+		}
+	}
+	if len(m) < limit {
+		return
+	}
+	var oldest [32]byte
+	var oldestExp time.Time
+	for k, v := range m {
+		if e := exp(v); oldestExp.IsZero() || e.Before(oldestExp) {
+			oldest, oldestExp = k, e
+		}
+	}
+	delete(m, oldest)
 }
 
 // exchangeResult is the outcome of exchange.
@@ -111,8 +143,13 @@ const (
 	exchangeRateLimited
 )
 
-// exchange consumes nonce (once) and returns a new session id.
-func (a *sessionAuth) exchange(nonce string) (string, exchangeResult) {
+// exchange consumes nonce (once) and returns the session id for the cookie
+// and a new page token. A browser that already holds a live session cookie
+// keeps it and gets one more page token, so a second tab (or the tray
+// flyout) does not sign out the first one. cookies are every
+// kongtrol_session value the browser sent (another port may have planted
+// more); the first live one is kept.
+func (a *sessionAuth) exchange(nonce string, cookies ...string) (id, token string, res exchangeResult) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	now := a.clock()
@@ -120,7 +157,7 @@ func (a *sessionAuth) exchange(nonce string) (string, exchangeResult) {
 		a.failStart, a.failCount = now, 0
 	}
 	if a.failCount >= sessionFailLimit {
-		return "", exchangeRateLimited
+		return "", "", exchangeRateLimited
 	}
 	key := digest(nonce)
 	exp, ok := a.nonces[key]
@@ -129,16 +166,31 @@ func (a *sessionAuth) exchange(nonce string) (string, exchangeResult) {
 	}
 	if !ok || nonce == "" || !now.Before(exp) {
 		a.failCount++
-		return "", exchangeInvalid
+		return "", "", exchangeInvalid
 	}
-	id, err := newSecret()
+	token, err := newSecret()
 	if err != nil {
-		return "", exchangeInvalid
+		return "", "", exchangeInvalid
 	}
 	if a.sessions == nil {
 		a.sessions = make(map[[32]byte]sessionEntry)
 	}
 	a.pruneSessionsLocked(now)
+	for _, cookie := range cookies {
+		if e, ok := a.sessions[digest(cookie)]; ok && cookie != "" {
+			e.tokens = append(e.tokens, digest(token))
+			if len(e.tokens) > maxPageTokens {
+				e.tokens = e.tokens[len(e.tokens)-maxPageTokens:]
+			}
+			e.lastSeen = now
+			a.sessions[digest(cookie)] = e
+			return cookie, token, exchangeOK
+		}
+	}
+	id, err = newSecret()
+	if err != nil {
+		return "", "", exchangeInvalid
+	}
 	if len(a.sessions) >= maxSessions {
 		var oldest [32]byte
 		var oldestSeen time.Time
@@ -149,8 +201,8 @@ func (a *sessionAuth) exchange(nonce string) (string, exchangeResult) {
 		}
 		delete(a.sessions, oldest)
 	}
-	a.sessions[digest(id)] = sessionEntry{created: now, lastSeen: now}
-	return id, exchangeOK
+	a.sessions[digest(id)] = sessionEntry{created: now, lastSeen: now, tokens: [][32]byte{digest(token)}}
+	return id, token, exchangeOK
 }
 
 func (a *sessionAuth) pruneSessionsLocked(now time.Time) {
@@ -165,25 +217,47 @@ func (a *sessionAuth) expired(e sessionEntry, now time.Time) bool {
 	return now.Sub(e.lastSeen) >= sessionIdleTimeout || now.Sub(e.created) >= sessionMaxLifetime
 }
 
-// valid reports whether id is a live session and slides its idle timeout.
-func (a *sessionAuth) valid(id string) bool {
+// liveLocked returns the live session of cookie id (expired ones are
+// dropped).
+func (a *sessionAuth) liveLocked(id string, now time.Time) (sessionEntry, bool) {
 	if id == "" {
+		return sessionEntry{}, false
+	}
+	key := digest(id)
+	e, ok := a.sessions[key]
+	if !ok {
+		return sessionEntry{}, false
+	}
+	if a.expired(e, now) {
+		delete(a.sessions, key)
+		return sessionEntry{}, false
+	}
+	return e, true
+}
+
+// valid reports whether cookie id is a live session and token one of its
+// page tokens, and slides its idle timeout.
+func (a *sessionAuth) valid(id, token string) bool {
+	if token == "" {
 		return false
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	key := digest(id)
-	e, ok := a.sessions[key]
+	now := a.clock()
+	e, ok := a.liveLocked(id, now)
 	if !ok {
 		return false
 	}
-	now := a.clock()
-	if a.expired(e, now) {
-		delete(a.sessions, key)
+	want := digest(token)
+	match := 0
+	for _, t := range e.tokens {
+		match |= subtle.ConstantTimeCompare(t[:], want[:])
+	}
+	if match != 1 {
 		return false
 	}
 	e.lastSeen = now
-	a.sessions[key] = e
+	a.sessions[digest(id)] = e
 	return true
 }
 
@@ -193,15 +267,93 @@ func (a *sessionAuth) revoke(id string) {
 	delete(a.sessions, digest(id))
 }
 
+// issueTicket returns a one-time WebSocket ticket (ticketTTL) bound to the
+// live session of cookie id.
+func (a *sessionAuth) issueTicket(id string) (string, bool) {
+	ticket, err := newSecret()
+	if err != nil {
+		return "", false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	now := a.clock()
+	if _, ok := a.liveLocked(id, now); !ok {
+		return "", false
+	}
+	if a.tickets == nil {
+		a.tickets = make(map[[32]byte]ticketEntry)
+	}
+	pruneExpiring(a.tickets, now, func(t ticketEntry) time.Time { return t.expires }, maxPendingTickets)
+	a.tickets[digest(ticket)] = ticketEntry{session: digest(id), expires: now.Add(ticketTTL)}
+	return ticket, true
+}
+
+// consumeTicket uses ticket up (valid or not, once) and reports whether it
+// was live and issued to the session of one of the cookie ids sent, which
+// must still be live.
+func (a *sessionAuth) consumeTicket(ticket string, ids ...string) bool {
+	if ticket == "" || len(ids) == 0 {
+		return false
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	now := a.clock()
+	key := digest(ticket)
+	t, ok := a.tickets[key]
+	if !ok {
+		return false
+	}
+	delete(a.tickets, key)
+	if !now.Before(t.expires) {
+		return false
+	}
+	for _, id := range ids {
+		sess := digest(id)
+		if id == "" || subtle.ConstantTimeCompare(t.session[:], sess[:]) != 1 {
+			continue
+		}
+		if _, live := a.liveLocked(id, now); live {
+			return true
+		}
+	}
+	return false
+}
+
+// sessionCookies returns every kongtrol_session value of r. A program on
+// another port of 127.0.0.1 can plant extra ones (e.g. Path=/api), which
+// are sent first; any of them may be the real session (ADR-0062).
+func sessionCookies(r *http.Request) []string {
+	var out []string
+	for _, c := range r.CookiesNamed(sessionCookieName) {
+		if c.Value != "" {
+			out = append(out, c.Value)
+		}
+	}
+	return out
+}
+
+// validSessionCookie returns the cookie id of r that is a live session
+// with the page token of X-Kongtrol-Session.
+func (s *Server) validSessionCookie(r *http.Request) (string, bool) {
+	token := strings.TrimSpace(r.Header.Get(sessionHeader))
+	for _, id := range sessionCookies(r) {
+		if s.sessions.valid(id, token) {
+			return id, true
+		}
+	}
+	return "", false
+}
+
 // handleSessionNonce answers POST /api/v1/session/nonce. secureHandler
 // only lets it through with the file token in a header, never with a
-// session cookie, so a browser page cannot mint more sessions.
+// session, so a browser page cannot mint more sessions.
 func (s *Server) handleSessionNonce(w http.ResponseWriter, _ *http.Request) {
 	nonce, err := s.sessions.issueNonce()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not create nonce")
 		return
 	}
+	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"nonce":      nonce,
 		"expires_in": int(nonceTTL / time.Second),
@@ -210,7 +362,8 @@ func (s *Server) handleSessionNonce(w http.ResponseWriter, _ *http.Request) {
 
 // handleSessionCreate answers POST /api/v1/session {"nonce": "..."}: the
 // only /api route reachable without credentials (Host, Origin and
-// Content-Type are still checked by secureHandler).
+// Content-Type are still checked by secureHandler). Answers
+// {"session_token": "..."} and sets the cookie.
 func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Nonce string `json:"nonce"`
@@ -219,7 +372,7 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
-	id, res := s.sessions.exchange(strings.TrimSpace(body.Nonce))
+	id, token, res := s.sessions.exchange(strings.TrimSpace(body.Nonce), sessionCookies(r)...)
 	switch res {
 	case exchangeRateLimited:
 		w.Header().Set("Retry-After", "60")
@@ -229,6 +382,9 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "invalid or expired nonce")
 		return
 	}
+	// No Secure attribute: the page is plain http on loopback and Safari
+	// still drops Secure cookies there (WebKit bug 281149, ADR-0062).
+	// Without the page token in sessionStorage the cookie is worthless.
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
 		Value:    id,
@@ -236,18 +392,56 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		SameSite: http.SameSiteStrictMode,
 	})
-	w.WriteHeader(http.StatusNoContent)
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, map[string]any{"session_token": token})
 }
 
 // handleSessionDelete answers DELETE /api/v1/session: ends the browser
-// session of the cookie sent (logout).
+// session of the cookie sent (logout, every page of that browser).
 func (s *Server) handleSessionDelete(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(sessionCookieName); err == nil {
-		s.sessions.revoke(c.Value)
+	// Only the session the page proved (cookie + its page token, checked
+	// by secureHandler) ends; a planted cookie value is not trusted.
+	if id, ok := s.validSessionCookie(r); ok {
+		s.sessions.revoke(id)
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookieName, Value: "", Path: "/", MaxAge: -1,
 		HttpOnly: true, SameSite: http.SameSiteStrictMode,
 	})
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleWSTicket answers POST /api/v1/ws-ticket for a browser session
+// (cookie + X-Kongtrol-Session, checked by secureHandler): a one-time
+// ticket for GET /api/v1/ws/metrics?ticket=… within ticketTTL. Native
+// clients send the file token on the WebSocket itself.
+func (s *Server) handleWSTicket(w http.ResponseWriter, r *http.Request) {
+	id, ok := s.validSessionCookie(r)
+	if !ok {
+		writeError(w, http.StatusBadRequest, "browser sessions only")
+		return
+	}
+	ticket, ok := s.sessions.issueTicket(id)
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ticket":     ticket,
+		"expires_in": int(ticketTTL / time.Second),
+	})
+}
+
+// browserSession reports whether r carries a live session cookie plus one
+// of its page tokens in X-Kongtrol-Session.
+func (s *Server) browserSession(r *http.Request) bool {
+	_, ok := s.validSessionCookie(r)
+	return ok
+}
+
+// wsTicketAuthenticated checks a browser WebSocket upgrade: the Origin of
+// this daemon, the session cookie and a one-time ticket issued to it.
+func (s *Server) wsTicketAuthenticated(r *http.Request) bool {
+	return s.sessions.consumeTicket(r.URL.Query().Get(wsTicketParam), sessionCookies(r)...)
 }

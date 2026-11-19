@@ -90,9 +90,51 @@ describe('live feed', () => {
     expect(parseFrame('42')).toBeNull()
   })
 
-  it('writes frames into the cache and keeps unchanged tunnels identical', () => {
+  it('opens each socket with a fresh one-time ticket', async () => {
     const client = createQueryClient()
-    const stop = startLiveFeed(client, { WebSocketImpl: FakeSocket as unknown as typeof WebSocket, url: 'ws://x' })
+    let n = 0
+    const ticket = vi.fn(() => Promise.resolve(`t${++n}`))
+    const stop = startLiveFeed(client, {
+      WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
+      url: 'ws://x/api/v1/ws/metrics',
+      ticket,
+      delay: () => 0,
+    })
+    await vi.waitFor(() => expect(FakeSocket.instances).toHaveLength(1))
+    expect(FakeSocket.last().url).toBe('ws://x/api/v1/ws/metrics?ticket=t1')
+    FakeSocket.last().drop()
+    await vi.waitFor(() => expect(FakeSocket.instances).toHaveLength(2))
+    expect(FakeSocket.last().url).toBe('ws://x/api/v1/ws/metrics?ticket=t2')
+    stop()
+  })
+
+  it('retries with backoff when no ticket is given (no socket without one)', async () => {
+    vi.useFakeTimers()
+    const client = createQueryClient()
+    const ticket = vi.fn().mockRejectedValueOnce(new Error('unauthorized')).mockResolvedValue('ok')
+    const stop = startLiveFeed(client, {
+      WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
+      url: 'ws://x',
+      ticket,
+      delay: () => 100,
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(FakeSocket.instances).toHaveLength(0)
+    expect(liveState.get()).toBe('down')
+    await vi.advanceTimersByTimeAsync(100)
+    expect(FakeSocket.instances).toHaveLength(1)
+    expect(FakeSocket.last().url).toBe('ws://x?ticket=ok')
+    stop()
+  })
+
+  it('writes frames into the cache and keeps unchanged tunnels identical', async () => {
+    const client = createQueryClient()
+    const stop = startLiveFeed(client, {
+      WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
+      url: 'ws://x',
+      ticket: () => Promise.resolve('t'),
+    })
+    await vi.waitFor(() => expect(FakeSocket.instances).toHaveLength(1))
     const ws = FakeSocket.last()
     act(() => ws.open())
     expect(liveState.get()).toBe('live')
@@ -111,7 +153,7 @@ describe('live feed', () => {
     expect(ws.closed).toBe(true)
   })
 
-  it('reconnects with backoff, then refreshes every resource after the outage', () => {
+  it('reconnects with backoff, then refreshes every resource after the outage', async () => {
     vi.useFakeTimers()
     const client = createQueryClient()
     const invalidate = vi.spyOn(client, 'invalidateQueries')
@@ -119,17 +161,19 @@ describe('live feed', () => {
       WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
       url: 'ws://x',
       delay: (n) => 100 * 2 ** n,
+      ticket: () => Promise.resolve('t'),
     })
+    await vi.advanceTimersByTimeAsync(0)
     FakeSocket.last().open()
     FakeSocket.last().drop()
     expect(liveState.get()).toBe('down')
     expect(FakeSocket.instances).toHaveLength(1)
-    vi.advanceTimersByTime(100)
+    await vi.advanceTimersByTimeAsync(100)
     expect(FakeSocket.instances).toHaveLength(2)
     FakeSocket.last().drop()
-    vi.advanceTimersByTime(199)
+    await vi.advanceTimersByTimeAsync(199)
     expect(FakeSocket.instances).toHaveLength(2) // second delay is 200ms
-    vi.advanceTimersByTime(1)
+    await vi.advanceTimersByTimeAsync(1)
     FakeSocket.last().open()
     expect(liveState.get()).toBe('live')
     expect(invalidate).toHaveBeenCalledOnce()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/url"
 	"strings"
 	"testing"
@@ -100,23 +101,52 @@ func TestFlyoutInitScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		`location.origin !== "http://127.0.0.1:9741"`,
-		`location.pathname !== "/tray"`,
-		`w.postMessage("kongtrol:off-page")`,
-		`var nonce = "n0nce"`,
+		`"origin":"http://127.0.0.1:9741"`,
+		`"path":"/tray"`,
+		`"offPage":"kongtrol:off-page"`,
+		`"nonce":"n0nce"`,
+		`location.origin !== cfg.origin || location.pathname !== cfg.path`,
+		`w.postMessage(cfg.offPage)`,
 		`window.open = function () { return null; }`,
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("init script lacks %q:\n%s", want, s)
 		}
 	}
-	// The nonce must only be reachable on the flyout page: it appears after
-	// the off-page early return.
-	if strings.Index(s, "n0nce") < strings.Index(s, "return;") {
-		t.Error("nonce defined before the off-page check")
+	// The nonce is only handed to the page (kongtrolTray.post) after the
+	// off-page early return; before it, it is a closure local only.
+	if strings.Index(s, "var nonce = cfg.nonce") < strings.Index(s, "return;") {
+		t.Error("nonce used before the off-page check")
 	}
 	if _, err := flyoutInitScript("::bad", "n"); err == nil {
 		t.Error("bad URL accepted")
+	}
+}
+
+// CodeQL go/unsafe-quoting: hostile values stay data. The script is the
+// fixed code around exactly one JSON object holding them.
+func TestFlyoutInitScriptQuoting(t *testing.T) {
+	nonce := "a\"b'c</script><script>alert(1)</script>\u2028\u2029\\`${x}"
+	page := "http://127.0.0.1:9741/tr%22ay%3C/script%3E"
+	s, err := flyoutInitScript(page, nonce)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(s, flyoutScriptHead) || !strings.HasSuffix(s, flyoutScriptBody) {
+		t.Fatalf("script is not head + JSON + body:\n%s", s)
+	}
+	raw := strings.TrimSuffix(strings.TrimPrefix(s, flyoutScriptHead), flyoutScriptBody)
+	var cfg struct{ Origin, Path, Nonce, OffPage string }
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		t.Fatalf("config is not one JSON value: %v\n%s", err, raw)
+	}
+	if cfg.Nonce != nonce || cfg.Path != "/tr%22ay%3C/script%3E" || cfg.Origin != "http://127.0.0.1:9741" {
+		t.Fatalf("round trip: %+v", cfg)
+	}
+	for _, bad := range []string{"</script>", "\u2028", "\u2029", `a"b`} {
+		if strings.Contains(raw, bad) {
+			t.Errorf("unescaped %q in the embedded JSON", bad)
+		}
 	}
 }
 

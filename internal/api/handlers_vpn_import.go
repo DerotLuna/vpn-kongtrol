@@ -5,10 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/profileimport"
@@ -33,9 +35,90 @@ type importReq struct {
 // elevated read failed (the "what to do" line offers the manual copy).
 const ErrKeyElevatedReadFailed = "api.err.import_elevated_failed"
 
+// importPath is the route; secureHandler does not hold the config lock for
+// it (the handler locks only to store the file).
+const importPath = "/api/v1/vpns/import"
+
+// elevatedImportDeadline outlives the elevated read's own 3 min bound
+// (cmd/kongtrol/protected_read.go) so its answer still reaches the page.
+const elevatedImportDeadline = 4 * time.Minute
+
 // importReadFile reads a "path" import (a variable so tests can answer
 // "permission denied" on any OS).
-var importReadFile = os.ReadFile
+var importReadFile = readRegularFile
+
+// errNotRegular: the path is not (or stopped being) a plain file.
+var errNotRegular = errors.New("not a regular file")
+
+// readRegularFile reads path only if it is a regular file, not a link,
+// and the file opened is the one checked (no swap in between), up to
+// profileimport.MaxSize, through the opened descriptor.
+func readRegularFile(path string) ([]byte, error) {
+	before, err := os.Lstat(path)
+	if err != nil {
+		return nil, err
+	}
+	if !before.Mode().IsRegular() {
+		return nil, errNotRegular
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|openNoFollow, 0)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	after, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !after.Mode().IsRegular() || !os.SameFile(before, after) {
+		return nil, errNotRegular
+	}
+	if after.Size() > profileimport.MaxSize {
+		return nil, profileimport.TooBig()
+	}
+	b, err := io.ReadAll(io.LimitReader(f, profileimport.MaxSize+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(b)) > profileimport.MaxSize {
+		return nil, profileimport.TooBig()
+	}
+	return b, nil
+}
+
+// cleanImportPath accepts an absolute path to a file the user picked and
+// returns it cleaned. Refused: relative paths, any ".." element, NUL, and
+// device or network namespaces (\\.\, \\?\, UNC shares, /dev, /proc,
+// /sys), which are never a profile file and a UNC path would make Windows
+// contact another machine.
+func cleanImportPath(raw string) (string, bool) {
+	p := strings.TrimSpace(raw)
+	if p == "" || strings.ContainsRune(p, 0) || !filepath.IsAbs(p) {
+		return "", false
+	}
+	for _, el := range strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == '\\' }) {
+		if el == ".." {
+			return "", false
+		}
+	}
+	// NT object paths (\??\UNC\…, \??\GLOBALROOT\…) reach SMB or devices
+	// too, and Windows treats them as absolute.
+	for _, prefix := range []string{`\\`, "//", `/\`, `\/`, `\??\`, `/??/`} {
+		if strings.HasPrefix(p, prefix) {
+			return "", false
+		}
+	}
+	if !plainLocalVolume(p) {
+		return "", false
+	}
+	p = filepath.Clean(p)
+	for _, dir := range []string{"/dev", "/proc", "/sys"} {
+		if p == dir || strings.HasPrefix(p, dir+"/") {
+			return "", false
+		}
+	}
+	return p, true
+}
 
 // SetImportDir sets where imported files go (default ~/.kongtrol/configs).
 func (s *Server) SetImportDir(dir string) { s.importDir = dir }
@@ -71,6 +154,14 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 	var content []byte
 	var err error
 	if strings.TrimSpace(req.Path) != "" {
+		if req.Elevate {
+			// The OS permission prompt may stay open for minutes: this
+			// answer alone may outlive the server's 30 s WriteTimeout.
+			_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(elevatedImportDeadline))
+		}
+		// Read without the config lock (secureHandler does not take it
+		// for this route): a pending prompt must not block every other
+		// change.
 		if content, err = s.readImportPath(r.Context(), &req); err != nil {
 			writeLocalizedError(w, r, importStatus(err), err)
 			return
@@ -84,9 +175,11 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	s.configMu.Lock() // only to store the file (name taken / overwrite)
 	res, err := profileimport.Import(dir, profileimport.Request{
 		Name: req.Name, Type: req.Type, Content: content, Overwrite: req.Overwrite,
 	})
+	s.configMu.Unlock()
 	if err != nil {
 		writeLocalizedError(w, r, importStatus(err), err)
 		return
@@ -96,13 +189,20 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// readImportPath reads req.Path (absolute, .conf / .ovpn) and fills Type
-// and Name from it when empty. A root-only file needs Elevate.
+// readImportPath reads req.Path and fills Type and Name from it when empty.
+// The caller is the signed-in user of this machine (secureHandler) picking
+// one of their own files, so any readable path is theirs to choose; still
+// only an absolute, clean path (cleanImportPath) to a regular file (no
+// link, directory or device) with a .conf / .ovpn name, read through the
+// descriptor checked (readRegularFile). A root-only file needs Elevate.
 func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, error) {
-	path := strings.TrimSpace(req.Path)
-	refuse := &config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{path}}
+	refuse := &config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{strings.TrimSpace(req.Path)}}
+	path, ok := cleanImportPath(req.Path)
+	if !ok {
+		return nil, refuse
+	}
 	typ := profileimport.TypeForFile(path)
-	if !filepath.IsAbs(path) || typ == "" {
+	if typ == "" {
 		return nil, refuse
 	}
 	if req.Type == "" {
@@ -111,7 +211,7 @@ func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, er
 	if strings.TrimSpace(req.Name) == "" {
 		req.Name = profileimport.CleanName(path)
 	}
-	fi, err := os.Stat(path)
+	fi, err := os.Lstat(path)
 	if err == nil {
 		if !fi.Mode().IsRegular() {
 			return nil, refuse
@@ -122,6 +222,10 @@ func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, er
 		var b []byte
 		if b, err = importReadFile(path); err == nil {
 			return b, nil
+		}
+		var ve *config.ValidationError
+		if errors.As(err, &ve) {
+			return nil, err
 		}
 	}
 	if !config.IsPermission(err) {

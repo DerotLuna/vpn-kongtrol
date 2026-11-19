@@ -67,7 +67,7 @@ type profileAddResult struct {
 	Type            string `json:"type"`
 	ViaDaemon       bool   `json:"via_daemon"`
 	RestartRequired bool   `json:"restart_required"`
-	PasswordStored  bool   `json:"password_stored"`
+	CredentialSaved bool   `json:"credential_saved"`
 	ConfigPath      string `json:"config,omitempty"`
 }
 
@@ -123,7 +123,7 @@ func createProfile(p configedit.VPNProfile, yes bool) error {
 		}
 		p.Password = pwd
 	}
-	res := profileAddResult{Name: name, Type: typ, PasswordStored: p.Password != "", ConfigPath: configedit.Str(p.ConfigFile)}
+	res := profileAddResult{Name: name, Type: typ, CredentialSaved: p.Password != "", ConfigPath: configedit.Str(p.ConfigFile)}
 	var err error
 	res.ViaDaemon, res.RestartRequired, err = saveProfile(p)
 	p.Password = ""
@@ -135,7 +135,7 @@ func createProfile(p configedit.VPNProfile, yes bool) error {
 	}
 	if !outputQuiet {
 		fmt.Println(tuiOK(cf("cli.profile.add.done", name, typ)))
-		if configedit.NeedsPassword(typ, method) && !res.PasswordStored {
+		if configedit.NeedsPassword(typ, method) && !res.CredentialSaved {
 			fmt.Println(tuiWarn(cf("cli.profile.add.password_hint", name)))
 		}
 	}

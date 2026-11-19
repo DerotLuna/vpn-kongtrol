@@ -67,14 +67,22 @@ type Spawner struct {
 	StartTimeout, ProbeTick time.Duration
 	// Lang selects the language of returned errors.
 	Lang i18n.Lang
+	// Base (the daemon's API base URL, optional) lets Ensure explain a port
+	// held by another user's program (*ForeignListenerError, ADR-0062)
+	// instead of starting a daemon that cannot bind it.
+	Base string
 }
 
 // Ensure makes sure a daemon answers, spawning a detached one when none
 // does. started reports whether this call spawned it. A daemon that dies
-// or never answers yields a *StartError.
+// or never answers yields a *StartError; a port another user holds yields
+// a *ForeignListenerError.
 func (s *Spawner) Ensure(ctx context.Context) (started bool, err error) {
 	if s.Probe() {
 		return false, nil
+	}
+	if err := s.checkListener(); err != nil {
+		return false, err
 	}
 	logPath, lockPath := s.LogPath, s.LockPath
 	if logPath == "" {
@@ -117,6 +125,20 @@ func (s *Spawner) Ensure(ctx context.Context) (started bool, err error) {
 	}
 	return true, nil
 }
+
+func (s *Spawner) checkListener() error {
+	if s.Base == "" {
+		return nil
+	}
+	var fe *ForeignListenerError
+	if errors.As(checkListenerFn(s.Base), &fe) {
+		return &ForeignListenerError{Addr: fe.Addr, Lang: s.Lang}
+	}
+	return nil
+}
+
+// checkListenerFn is CheckListener (a test seam).
+var checkListenerFn = CheckListener
 
 // waitForAPI polls until the daemon answers, the spawned process exits
 // (exited, nil when not ours), ctx ends or the start timeout passes.

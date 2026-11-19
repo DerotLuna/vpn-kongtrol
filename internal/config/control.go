@@ -84,6 +84,10 @@ func readAPIToken(path string) (string, error) {
 	if err := os.Chmod(path, 0o600); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", fmt.Errorf("api token: secure permissions: %w", err)
 	}
+	return parseAPIToken(path)
+}
+
+func parseAPIToken(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -99,9 +103,55 @@ func readAPIToken(path string) (string, error) {
 // ReadAPIToken returns the existing per-user API token without creating one,
 // for read-only callers (doctor) that only talk to an already-running daemon.
 func ReadAPIToken() (string, error) {
+	path, err := apiTokenPath()
+	if err != nil {
+		return "", err
+	}
+	return readAPIToken(path)
+}
+
+// RotateAPIToken writes a fresh per-user API token to ~/.kongtrol/api-token
+// (0600, atomically: temp file + rename) and returns it. The daemon calls it
+// on every start, before it listens, so a token sent to the wrong listener
+// earlier stops working once Kongtrol starts again (ADR-0062). Clients
+// re-read the file per request (CurrentAPIToken).
+func RotateAPIToken() (string, error) {
+	path, err := apiTokenPath()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", fmt.Errorf("api token: create directory: %w", err)
+	}
+	raw := make([]byte, apiTokenBytes)
+	if _, err := rand.Read(raw); err != nil {
+		return "", fmt.Errorf("api token: generate: %w", err)
+	}
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	// Temp file + rename (MoveFileEx with retries on Windows, where a
+	// client may be reading the old file at this very moment).
+	if err := WriteFileAtomic(path, []byte(token), 0o600); err != nil {
+		return "", fmt.Errorf("api token: %w", err)
+	}
+	return token, nil
+}
+
+// CurrentAPIToken reads ~/.kongtrol/api-token as it is now, for clients of a
+// daemon that rotates it on every start. Unlike ReadAPIToken it never
+// touches the file's permissions (it runs on every request).
+func CurrentAPIToken() (string, error) {
+	path, err := apiTokenPath()
+	if err != nil {
+		return "", err
+	}
+	return parseAPIToken(path)
+}
+
+func apiTokenPath() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("api token: home directory: %w", err)
 	}
-	return readAPIToken(filepath.Join(home, ".kongtrol", "api-token"))
+	return filepath.Join(home, ".kongtrol", "api-token"), nil
 }

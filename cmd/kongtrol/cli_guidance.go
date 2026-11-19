@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -173,6 +174,12 @@ func flagError(cmd *cobra.Command, err error) error {
 // userFacingError renders the error main prints, translating cobra's
 // common English usage errors.
 func userFacingError(cmd *cobra.Command, err error) string {
+	// Another user's program on the daemon's port: the token was not sent
+	// (ADR-0062); say so with the way out.
+	var fe *daemonctl.ForeignListenerError
+	if errors.As(err, &fe) {
+		return fe.Localized(cliLang())
+	}
 	msg := err.Error()
 	if m := reUnknownCommand.FindStringSubmatch(msg); m != nil {
 		if s := reDidYouMean.FindStringSubmatch(msg); s != nil {

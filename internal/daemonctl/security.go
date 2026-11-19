@@ -81,7 +81,7 @@ func (c *Client) postEnabled(path string, enabled bool) error {
 	if err != nil {
 		return err
 	}
-	resp, err := (&http.Client{Timeout: 10 * time.Second}).Do(req)
+	resp, err := HTTPClient(10 * time.Second).Do(req)
 	if err != nil {
 		return err
 	}

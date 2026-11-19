@@ -755,8 +755,12 @@ kongtrol dashboard
 ```
 
 `kongtrol dashboard` (o "Abrir panel" en el ícono de la bandeja) abre el panel en tu navegador
-ya autorizado, con un código de un solo uso. Escribir `http://127.0.0.1:9741` a mano no basta:
-la página te pedirá abrirla desde Kongtrol ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)).
+ya autorizado, con un código de un solo uso. Escribir `http://127.0.0.1:9741` a mano, o abrir el
+panel en otra pestaña nueva, no basta: la página te pedirá abrirla desde Kongtrol; recargar la misma
+pestaña sí mantiene la sesión ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md),
+[ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)). Si otro usuario de
+este equipo ocupa el puerto de Kongtrol, la bandeja y la terminal no le envían tu clave y te dicen
+qué hacer (cambiar el puerto con `kongtrol config dashboard set-port <puerto>`).
 Es una consola de gestión completa, no solo
 monitoreo. Arriba, «＋ Agregar» abre una sola hoja para conectar una VPN que ya usas, importar un
 `.conf`/`.ovpn` (también soltándolo sobre el panel) o hacer que un sitio salga por una VPN en una
