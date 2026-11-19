@@ -213,24 +213,32 @@ describe('ProfilesPage', () => {
   })
 
   it('deletes optimistically; a refusal puts the row back and lists every place that uses it', async () => {
+    // The refusal arrives only after the row left the list (as with a real
+    // daemon): the dialog must not depend on the list still having it.
+    let answer = () => {}
+    const answered = new Promise<void>((r) => (answer = r))
     stubFetch(
       base({
         'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
-        'DELETE /api/v1/vpns/home': () =>
-          json(
+        'DELETE /api/v1/vpns/home': async () => {
+          await answered
+          return json(
             {
               error: 'profile "home" is in use · policies: intranet, git · groups: — · failover backup of: — · schedules: office',
               hint: 'Remove it from those places (or switch them to another profile) and delete it again.',
               error_key: 'api.err.vpn_in_use',
             },
             409,
-          ),
+          )
+        },
       }),
     )
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Delete home' }))
     const confirm = await screen.findByRole('alertdialog', { name: 'Delete the VPN “home”?' })
     await userEvent.click(within(confirm).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Delete home' })).not.toBeInTheDocument())
+    answer()
     const refused = await screen.findByRole('alertdialog', { name: 'Delete the VPN “home”?' })
     expect(await within(refused).findByText('profile "home" is in use')).toBeInTheDocument()
     const where = within(refused).getByLabelText('Where it is used')

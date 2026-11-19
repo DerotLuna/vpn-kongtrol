@@ -68,13 +68,16 @@ export function ProfilesPage() {
 
   // The daemon's own refusal (every reference at once, or the last profile)
   // reopens the dialog with the list instead of a toast.
+  // The profile being deleted is kept here: the optimistic delete already took
+  // it out of `list` when the refusal arrives.
   const [refused, setRefused] = useState<{ profile: VPNProfile; refusal: DeleteRefusal } | null>(null)
+  const deleting$ = useRef<VPNProfile | null>(null)
   const remove = useDeleteProfile(
     (name) => t('profiles.toast.deleted', { name }),
     (err) => localizeError(err, t),
     (err, name) => {
       const refusal = deleteRefusal(err)
-      const profile = list.find((p) => p.name === name)
+      const profile = deleting$.current?.name === name ? deleting$.current : null
       if (!refusal || !profile) return false
       setRefused({ profile, refusal })
       return true
@@ -232,6 +235,7 @@ export function ProfilesPage() {
           setRefused(null)
         }}
         onConfirm={() => {
+          deleting$.current = toDelete
           if (toDelete) remove.mutate(toDelete.name)
           setToDelete(null)
         }}
