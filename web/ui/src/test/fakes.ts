@@ -1,6 +1,19 @@
 // Shared test fakes: daemon API routes and a controllable WebSocket.
+import type { QueryClient } from '@tanstack/react-query'
 import { vi } from 'vitest'
 import type { HelperStatus, TunnelMetrics } from '../api/types'
+import { createQueryClient } from '../data/queryClient'
+
+/**
+ * The app's cache without automatic retries, for tests that answer a read
+ * with a 5xx: the real client retries with a random backoff (up to seconds),
+ * which made "shows the error" race the findBy timeout.
+ */
+export function noRetryClient(): QueryClient {
+  const client = createQueryClient()
+  client.setDefaultOptions({ ...client.getDefaultOptions(), queries: { ...client.getDefaultOptions().queries, retry: false } })
+  return client
+}
 
 export function json(body: unknown, status = 200): Promise<Response> {
   return Promise.resolve(new Response(JSON.stringify(body), { status }))

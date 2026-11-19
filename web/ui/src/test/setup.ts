@@ -1,9 +1,26 @@
 import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
 import { authState } from '../api/auth'
 import { connection, liveState } from '../data/connection'
 import { toasts } from '../data/toast'
+
+// Pages load on demand (route `lazy`, ADR-0041). In a test, the first visit
+// to a page used to transform and import its module inside the test, after
+// the clock of findBy*/waitFor (1 s) had started: under CPU load that cold
+// import alone could take longer, so each file's first test failed at random
+// (seen on Actividad, Perfiles, Grupos, Ajustes, Seguridad). Importing every
+// page module here, before any test runs, takes that cost out of the timed
+// part; the route's lazy() then resolves from the module cache at once.
+await Promise.all(Object.values(import.meta.glob('../pages/*Page.tsx')).map((load) => load()))
+
+// Last resort, measured: with the cold imports gone, 1 of 10 full runs still
+// failed while `go build -a` kept every core busy — always a file's first
+// test, which also pays the first React/jsdom render of the whole App shell
+// in that worker. findBy*/waitFor wait for a condition and return as soon
+// as it holds, so a higher ceiling (3 s instead of 1 s) slows only a test
+// that is failing anyway; it never hides a wrong result.
+configure({ asyncUtilTimeout: 3_000 })
 
 // Start every test on Inicio. BASE_URL is "/" in tests and builds alike;
 // the router's basename follows it.

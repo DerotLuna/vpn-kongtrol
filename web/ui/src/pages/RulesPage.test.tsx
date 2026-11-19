@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
-import { FakeSocket, helperReady, json, stubFetch, tunnel, type Routes } from '../test/fakes'
+import { FakeSocket, helperReady, json, noRetryClient, stubFetch, tunnel, type Routes } from '../test/fakes'
 
 beforeEach(() => {
   Object.defineProperty(navigator, 'languages', { value: ['en-US'], configurable: true })
@@ -181,8 +181,8 @@ describe('Rules page', () => {
 
   it('a failed load says what to do and offers Retry', async () => {
     stubFetch(routes({ 'GET /api/v1/policies': () => json({ error: 'boom' }, 500) }))
-    render(<App />)
-    expect(await screen.findByText('boom', {}, { timeout: 4000 })).toBeInTheDocument()
+    render(<App client={noRetryClient()} />)
+    expect(await screen.findByText('boom')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Retry' }).length).toBeGreaterThan(0)
   })
 })
