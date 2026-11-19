@@ -2,7 +2,7 @@
 
 # Security Policy
 
-Version 1.1.0 · 2026-11-17
+Version 1.2.0 · 2026-11-19
 
 The full policy (Spanish and English) lives at **https://kongtrol.app/seguridad**
 (English: https://kongtrol.app/en/security). Machine-readable contact:
@@ -48,8 +48,9 @@ Kongtrol is in beta: only the latest release receives security fixes.
 
 In scope: this repository and the latest release binaries — traffic/DNS leaks the kill switch,
 DNS guard or rules should prevent; privilege escalation via the helper or background service;
-access to the local dashboard/API without the token or from another machine; credentials
-exposed outside the OS credential store; undetected audit-log tampering; vulnerabilities in
+access to the local dashboard/API without signing in (control token or browser session) or from
+another machine; credentials exposed outside the OS credential store; undetected audit-log
+tampering; getting past the install scripts' checksum or signature check; vulnerabilities in
 kongtrol.app.
 
 Out of scope: VPN providers' own clients and services, attacks that already require

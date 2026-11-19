@@ -22,34 +22,44 @@ export interface LegalDocContent {
   updated: string // ISO date
   session: string // tmux session name
   summaryBadge: string
-  summary: ReactNode
+  summary: ReactNode[] // short plain-language points, read before anything else
   toc: string
   goto: string
   versionLabel: string
+  updatedLabel: string // "actualizada el" / "updated"
   contactTitle: string
   contact: ReactNode
   sections: LegalSection[]
 }
 
-// Shared body for /terminos, /privacidad and /seguridad (and their /en/ twins).
+// Version line shown under the page title (pages/legal.tsx).
+export function LegalMeta({ doc }: { doc: LegalDocContent }) {
+  return (
+    <p className="legal-meta mono">
+      {doc.versionLabel} {doc.version} · {doc.updatedLabel} <time dateTime={doc.updated}>{doc.updated}</time>
+    </p>
+  )
+}
+
+// Shared body for /terminos, /privacidad and /seguridad (and their /en/ twins):
+// the summary as the page's one Ink block (ADR-0060), then the sections on Bone.
 export default function LegalDoc({ doc }: { doc: LegalDocContent }) {
   const { sections } = doc
   const [activeSection, setActiveSection] = useActiveSection(sections.map(s => s.id), '-20% 0px -70% 0px', sections[0].id)
   const contentRef = useRef<HTMLDivElement>(null)
 
   return (
-    <section id="doc" style={{ borderTop: '1px solid var(--border)' }}>
+    <section id="doc" className="legal-doc">
       <div className="container">
-        <div className="guide-intro">
-          <span className="guide-intro-badge">{doc.summaryBadge}</span>
-          <p style={{ marginBottom: 6 }}>{doc.summary}</p>
-          <p className="section-sub mono" style={{ fontSize: '0.76rem' }}>
-            {doc.versionLabel} {doc.version} · <time dateTime={doc.updated}>{doc.updated}</time>
-          </p>
-        </div>
+        <aside className="legal-summary tone-ink" aria-labelledby="legal-summary-title">
+          <h2 id="legal-summary-title" className="legal-summary-title">{doc.summaryBadge}</h2>
+          <ul className="legal-summary-list">
+            {doc.summary.map((p, i) => <li key={i}>{p}</li>)}
+          </ul>
+        </aside>
 
-        <div className="guide-layout">
-          <aside className="guide-sidebar">
+        <div className="guide-layout legal-layout">
+          <nav className="guide-sidebar" aria-label={doc.toc}>
             <div className="guide-nav-title">{doc.toc}</div>
             <ul className="guide-nav-list">
               {sections.map(s => (
@@ -60,9 +70,9 @@ export default function LegalDoc({ doc }: { doc: LegalDocContent }) {
                 </li>
               ))}
             </ul>
-          </aside>
+          </nav>
 
-          <div className="guide-content" ref={contentRef}>
+          <div className="guide-content legal-content" ref={contentRef}>
             <SectionJumpMenu
               label={doc.goto}
               value={activeSection}
@@ -74,7 +84,7 @@ export default function LegalDoc({ doc }: { doc: LegalDocContent }) {
             />
 
             {sections.map(s => (
-              <div key={s.id} id={s.id} className="guide-section">
+              <div key={s.id} id={s.id} className="guide-section legal-section">
                 <div className="guide-section-num">{s.num}</div>
                 <h2 className="guide-section-title">{s.title}</h2>
 
@@ -90,7 +100,7 @@ export default function LegalDoc({ doc }: { doc: LegalDocContent }) {
               </div>
             ))}
 
-            <div className="callout" style={{ marginTop: 8 }}>
+            <div className="callout legal-contact">
               <strong>{doc.contactTitle}:</strong> {doc.contact}
             </div>
           </div>

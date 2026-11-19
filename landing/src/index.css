@@ -685,6 +685,35 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .guide-section .code-block { margin: 20px 0; }
 .guide-section h3 { font-family: var(--font-display); color: var(--text); font-size: 1.15rem; }
 
+/* ── Legal (/privacidad, /seguridad, /terminos) ─────────────────────────────
+   Bone page; the plain-language summary is the page's one Ink block
+   (ADR-0060). No hairline under the title: the Ink block divides. */
+.legal-meta { margin-top: 14px; font-size: 0.78rem; color: var(--text-dim); letter-spacing: 0.02em; }
+.legal-summary {
+  border-radius: var(--radius-lg); padding: clamp(20px, 3vw, 32px);
+  margin: 28px 0 0; max-width: calc(var(--measure) + 64px);
+}
+.legal-summary-title {
+  font-family: var(--font-mono); font-size: 0.76rem; font-weight: 600; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--signal); margin-bottom: 14px;
+}
+.legal-summary-list { list-style: none; display: grid; gap: 10px; }
+.legal-summary-list li {
+  position: relative; padding-left: 22px; color: var(--text); font-size: 1rem; line-height: 1.55; text-wrap: pretty;
+}
+.legal-summary-list li::before {
+  content: ""; position: absolute; left: 2px; top: 0.55em; width: 8px; height: 8px;
+  border: 1.5px solid var(--signal); border-radius: 50%;
+}
+.legal-summary a { color: var(--signal); text-decoration: underline; text-underline-offset: 0.2em; }
+.legal-summary .ic { color: var(--signal); }
+.legal-hero ~ .legal-doc .legal-layout { padding-top: 56px; }
+.legal-section p, .legal-section li { line-height: 1.65; }
+.legal-section ul { margin-bottom: 16px; }
+/* long commands and URLs wrap instead of pushing the page sideways at 390px */
+.legal-doc .ic, .legal-doc a { overflow-wrap: anywhere; }
+.legal-contact { margin-top: 0; }
+
 /* quickstart — the 90% path, front-loaded. Flat band between two amber
    hairlines (not a card), so its code blocks are not cards inside a card */
 .guide-quickstart {

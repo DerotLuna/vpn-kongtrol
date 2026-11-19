@@ -1,4 +1,10 @@
-// Privacy policy — version 1.4.1 · 2026-11-19.
+// Privacy policy — version 1.5.0 · 2026-11-19.
+// 1.5.0: plain-language summary in points and shorter sentences. Fixes: the dashboard keeps a
+//   session cookie `kongtrol_session` and never receives the token (ADR-0039; the old text named a
+//   `kongtrol_control` cookie carrying the token); dashboard browser storage is language + theme
+//   (+ the last notice number for the tab), no sidebar state; the audit log is one file per day,
+//   kept today and yesterday by default; imported .conf/.ovpn files in ~/.kongtrol/configs/; the
+//   helper's own local log; tunnel health checks and the VPN server lookup for the kill switch.
 // 1.4.1: the site no longer stores a theme choice (one designed theme, ADR-0060); only `kglang`.
 // 1.4.0: recent destinations list (ADR-0054): memory only, 500 entries, 1 h, on by default, switch
 //   `kongtrol config recent-connections off` (internal/monitor/recent.go).
@@ -10,27 +16,37 @@
 // 1.1.0: one-person project, author receives no user data; dashboard control cookie disclosed;
 //   the dashboard now self-hosts its fonts and logos (served from the binary at /brand/).
 //
-// Every statement about the app was checked against the code on this date:
+// Every statement about the app was checked against the code on this date (source of truth for
+// connections: docs/SECURITY.md "Network connections Kongtrol makes"):
 // - public-IP check: internal/security/leaktest.go (DefaultPublicIPEndpoint), opt-in via
 //   Config.PublicIPCheckEnabled (internal/config/publicip.go); triggered in cmd/kongtrol/daemon_runtime.go
 //   (connect/disconnect) and on demand (cmd_check.go, POST /api/v1/security/publicip/check).
-// - pre-connect reachability check: internal/app/profile_service.go (net.Dialer to host:port).
+// - pre-connect reachability + health checks: internal/app/profile_service.go, cmd/kongtrol/daemon_runtime.go
+//   (TCP to host:port; DNS query for connectivitycheck.gstatic.com sent only to the tunnel's DNS).
+// - VPN server lookup for the kill switch allow-list: internal/app/killswitch_service.go.
 // - DNS lookups of policy domains: internal/app/profile_service.go, internal/monitor/policyresolver.go.
 // - new version notice: opt-in `updates.check_enabled` (default false), GET api.github.com/repos/DerotLuna/
 //   vpn-kongtrol/releases/latest at most every 24h, headers User-Agent "kongtrol/<version>" + Accept only (ADR-0034).
+// - local files: audit-YYYY-MM-DD.log (internal/security/audit.go, retention_days 0 = today and
+//   yesterday), history.json, daemon.log, update-check.json, configs/ (internal/profileimport, 0600),
+//   helper audit log (internal/privhelper/platform_*.go).
+// - dashboard: session cookie kongtrol_session (internal/api/session.go); localStorage
+//   kongtrol-dashboard-lang / kongtrol-dashboard-theme (web/ui/src/i18n/lang.ts, theme/theme.ts),
+//   sessionStorage kongtrol.noticeSeq (web/ui/src/data/home.ts).
+// - website: only `kglang` (landing/src/hooks/usePreferences.ts); CSP connect-src 'self' (landing/public/_headers).
 // - no telemetry / analytics / crash reporting: repo-wide search, no such code.
-// - dashboard fonts/logos self-hosted: bundled by Vite into web/ui/dist (embedded, web/ui_embed.go); dashboard localStorage: web/ui/src/lib/storage.ts.
-// Re-check these when the code changes (CLAUDE.md "Docs stay in sync").
+// Re-check these when the code changes (AGENTS.md "Docs stay in sync").
 import type { Lang } from '../../i18n'
 import type { LegalDocContent } from '../../components/sections/LegalDoc'
 import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.4.1'
+const VERSION = '1.5.0'
 const UPDATED = '2026-11-19'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
+const GITHUB_PRIVACY = 'https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement'
 
 const es: LegalDocContent = {
   label: '$ cat PRIVACY.md',
@@ -40,105 +56,118 @@ const es: LegalDocContent = {
   updated: UPDATED,
   session: 'kongtrol:privacidad',
   summaryBadge: 'En resumen',
-  summary: <>Kongtrol es una herramienta gratuita y de código abierto, hecha por una persona (no hay empresa detrás),
-    que funciona en tu equipo. El autor no recibe ni procesa ningún dato tuyo: cada usuario controla los suyos. No hay
-    cuentas, servidores propios, telemetría ni analíticas. Tu configuración y tus contraseñas se quedan en tu equipo. Las únicas conexiones que hace por su cuenta son: comprobar que tu servidor VPN responde antes de conectar
-    y resolver los dominios de tus reglas. Consultar tu IP pública y el aviso de versión nueva son opcionales y
-    vienen apagados. Este sitio no usa cookies ni analíticas.</>,
+  summary: [
+    <>Kongtrol es gratis y de código abierto. Lo hace una persona; no hay empresa detrás.</>,
+    <>Funciona en tu equipo. No hay cuentas ni servidores de Kongtrol. El autor no recibe ningún dato tuyo.</>,
+    <>Tu configuración y tus contraseñas se quedan en tu equipo.</>,
+    <>No hay telemetría, analíticas ni informes de errores.</>,
+    <>Por su cuenta, Kongtrol solo habla con tu servidor VPN y con el DNS. Consultar tu IP pública y el aviso de
+      versión nueva son opcionales y vienen apagados.</>,
+    <>Este sitio no usa cookies ni analíticas.</>,
+  ],
   toc: 'Contenido',
   goto: 'Ir a',
   versionLabel: 'Versión',
+  updatedLabel: 'actualizada el',
   contactTitle: 'Contacto',
   contact: <>para preguntas sobre privacidad, abre un issue en {issues}. Para reportar una vulnerabilidad, usa la{' '}
     <a href={pathFor('seguridad', 'es')}>política de seguridad</a>.</>,
   sections: [
     {
       id: 'local', num: '1', label: 'Datos en tu equipo', tmux: 'local', title: 'Lo que se queda en tu equipo',
-      body: [<>Kongtrol guarda todo localmente, en tu carpeta de usuario. Nada de esto se envía a nadie:</>],
+      body: [<>Kongtrol guarda sus datos en tu carpeta de usuario (<IC c="~/.kongtrol/" />). Nada de esto se envía a
+        nadie:</>],
       list: [
-        <><IC c="~/.kongtrol/kongtrol.yaml" />: tus perfiles VPN, grupos, reglas y ajustes. Nunca contiene contraseñas.</>,
-        <><IC c="~/.kongtrol/preferences.json" />: preferencias de esta máquina (idioma, favoritos, puerto del panel).</>,
-        <><IC c="~/.kongtrol/audit.log" />: registro de eventos (conexiones, cambios de seguridad), firmado con HMAC.</>,
-        <>Historial de métricas, registros del servicio en segundo plano y el token del panel local (<IC c="~/.kongtrol/api-token" />).</>,
-        <>Contraseñas y la clave de firma del registro: en el almacén de credenciales del sistema (Windows Credential
-          Manager, Llavero de macOS, Secret Service/GNOME Keyring en Linux).</>,
+        <><IC c="kongtrol.yaml" />: tus perfiles VPN, grupos, reglas y ajustes. Nunca guarda contraseñas.</>,
+        <><IC c="configs/" />: los archivos <IC c=".conf" /> y <IC c=".ovpn" /> que importas. Pueden contener
+          claves de tu VPN.</>,
+        <><IC c="preferences.json" />: ajustes de este equipo (idioma, favoritos, puerto del panel).</>,
+        <>Registro de auditoría (<IC c="audit-AAAA-MM-DD.log" />): qué se conectó y qué cambió en la seguridad. Un
+          archivo por día, firmado para notar si alguien lo cambia. Por defecto se guardan hoy y ayer.</>,
+        <>Historial de métricas, registros del programa, el estado del aviso de versión y el token del panel
+          (<IC c="api-token" />).</>,
+        <>Contraseñas y la clave que firma el registro: en el almacén de credenciales del sistema (Administrador de
+          credenciales de Windows, Llavero de macOS, Secret Service o GNOME Keyring en Linux).</>,
+        <>Si instalas el ayudante del sistema, este guarda su propio registro local de lo que se le pide.</>,
         // feature:recent_connections
-        <>Destinos recientes (Windows y Linux): a qué direcciones se conectó este equipo en la última hora, por qué VPN salió cada una
-          y qué programa la abrió (<IC c="kongtrol traffic recent" />). Vive solo en la memoria de Kongtrol: nunca se
-          guarda en disco ni en los registros, no sale del equipo, guarda como mucho 500 destinos y olvida cada uno una
-          hora después de verlo por última vez. Se borra al apagarlo o al cerrar Kongtrol. Viene encendido porque es lo
-          mismo que ya muestra <IC c="netstat" /> en tu equipo.</>,
+        <>Destinos recientes (Windows y Linux): a qué direcciones se conectó este equipo en la última hora, por qué
+          VPN salió cada una y qué programa la abrió (<IC c="kongtrol traffic recent" />). Solo vive en la memoria de
+          Kongtrol: nunca se escribe en disco ni en los registros y no sale del equipo. Guarda como mucho 500
+          destinos y olvida cada uno una hora después de verlo. Se borra al apagarlo o al cerrar Kongtrol. Viene
+          encendido porque muestra lo mismo que <IC c="netstat" /> en tu equipo.</>,
       ],
       after: [<>Al desinstalar, estos datos se quedan, salvo que pidas borrarlos. Para borrar todo: en el panel,
         Ajustes › «Borrar todos mis datos», o <IC c="kongtrol uninstall --data-only" />. Para desinstalar y
-        borrarlos a la vez: <IC c="kongtrol uninstall --purge" />. Ver la{' '}
+        borrarlos a la vez: <IC c="kongtrol uninstall --purge" />. Más en la{' '}
         <a href={`${pathFor('guia', 'es')}#uninstall`}>guía</a>.</>],
     },
     {
       id: 'conexiones', num: '2', label: 'Conexiones propias', tmux: 'conexiones', title: 'Conexiones que Kongtrol hace por su cuenta',
-      body: ['Además del tráfico de tus propias VPN, Kongtrol hace estas conexiones:'],
+      body: ['Además del tráfico de tus propias VPN, Kongtrol hace solo estas conexiones. Ninguna lleva tu configuración, tus contraseñas ni datos de uso.'],
       list: [
-        <><strong>Comprobación de IP pública (opcional, apagada por defecto)</strong> — solo si la activas, una petición
-          HTTPS a <IC c="api.ipify.org" /> (servicio de terceros) u otro servicio que tú elijas, para mostrar tu IP
-          pública y detectar fugas. Cuando la activas, tu IP es visible para ese servicio, como en cualquier sitio que
-          visitas. Solo se hace al conectar o desconectar un túnel (como mucho una vez cada 30 segundos) y cuando lo
-          pides (<IC c="kongtrol ip" />, «Revisar» en el panel o en la bandeja); nunca de forma periódica. El kill
-          switch y el DNS guard no la necesitan. La petición sale por la ruta activa (tu VPN, si la hay).</>,
-        <><strong>Comprobación previa al conectar</strong> — una conexión TCP breve al servidor y puerto de tu
-          perfil VPN, para avisarte si no responde. Solo va al servidor que tú configuraste.</>,
-        <><strong>Resolución DNS de tus reglas</strong> — Kongtrol resuelve los dominios de tus políticas con el DNS
-          del sistema o el del túnel, para saber por qué túnel enviarlos.</>,
-        <><strong>Aviso de versión nueva (opcional, apagado por defecto)</strong> — solo si lo activas, como mucho
-          una vez cada 24 horas, una petición HTTPS a GitHub:{' '}
-          <IC c="GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest" />. Solo lleva las
-          cabeceras <IC c="User-Agent: kongtrol/<versión>" /> y <IC c="Accept" />. No envía cuenta, token, cookies,
-          perfiles, las IP de tus VPN ni otros datos. GitHub ve tu IP pública, la hora y ese User-Agent (aplica la{' '}
-          {ext('https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement', 'declaración de privacidad de GitHub')}).
-          Espera como mucho 5 segundos e ignora las versiones de prueba. Si hay versión nueva, te avisa una vez;
-          nunca descarga ni instala nada. Apagado, no hace ninguna petición.</>,
+        <><strong>Comprobar tu servidor VPN.</strong> Antes de conectar, y mientras el túnel está activo, abre y
+          cierra una conexión breve con el servidor y el puerto de tu perfil. Así te avisa si no responde. Solo va al
+          servidor que tú configuraste.</>,
+        <><strong>DNS.</strong> Busca los dominios de tus reglas, para saber por qué túnel enviarlos, y el nombre de
+          tu servidor VPN cuando aplica el kill switch. Para comprobar el DNS dentro del túnel, pregunta por{' '}
+          <IC c="connectivitycheck.gstatic.com" /> solo al DNS de tu VPN; nada se envía a Google.</>,
+        <><strong>Tu IP pública (opcional, apagada por defecto).</strong> Solo si la activas: una petición HTTPS a{' '}
+          <IC c="api.ipify.org" /> (un servicio de terceros) u otro servicio que elijas. Sirve para mostrar tu IP
+          pública y detectar fugas. Ese servicio ve tu IP, como cualquier sitio que visitas. Se hace al conectar o
+          desconectar un túnel (como mucho una vez cada 30 segundos) y cuando lo pides (<IC c="kongtrol ip" />,
+          «Revisar» en el panel o la bandeja). Nunca de forma periódica. El kill switch y el DNS guard no la
+          necesitan.</>,
+        <><strong>Aviso de versión nueva (opcional, apagado por defecto).</strong> Solo si lo activas: como mucho una
+          vez cada 24 horas, una petición HTTPS a GitHub{' '}
+          (<IC c="api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest" />). Solo lleva las cabeceras{' '}
+          <IC c="User-Agent: kongtrol/<versión>" /> y <IC c="Accept" />: sin cuenta, token, cookies, perfiles ni
+          las IP de tus VPN. GitHub ve tu IP pública, la hora y esa versión (aplica su{' '}
+          {ext(GITHUB_PRIVACY, 'declaración de privacidad')}). Te avisa una vez por versión; nunca descarga ni
+          instala nada.</>,
       ],
       after: [<>Kongtrol <strong>no</strong> envía telemetría, analíticas ni informes de errores (revisado en el
-        código fuente el {UPDATED}). Tus clientes VPN (NordVPN, FortiClient, etc.)
-        pueden hacer sus propias conexiones; eso depende de cada proveedor y de su política.</>],
+        código fuente el {UPDATED}). Tus clientes VPN (NordVPN, FortiClient, etc.) hacen sus propias conexiones;
+        eso depende de cada proveedor y de su política.</>],
     },
     {
       id: 'panel', num: '3', label: 'Panel web', tmux: 'panel', title: 'Panel web local',
-      body: [<>El panel funciona en tu equipo (<IC c="127.0.0.1" />) y pide un token local para cada petición. Ese
-        token viaja en una única cookie local (<IC c="kongtrol_control" />, HttpOnly) que nunca sale de tu equipo.
-        Guarda en el almacenamiento local del navegador solo tu idioma, tema y el estado de la barra lateral.</>,
-      <>El panel sirve sus tipografías y logotipos desde el propio binario: abrirlo no hace ninguna petición a
-        Google ni a otro tercero.</>],
+      body: [<>El panel funciona solo en tu equipo (<IC c="127.0.0.1" />). Kongtrol lo abre con un código de un solo
+        uso y el navegador recibe una cookie de sesión local (<IC c="kongtrol_session" />, HttpOnly). La cookie no
+        contiene tu token ni sale de tu equipo; la sesión caduca sola.</>,
+      <>En el navegador, el panel solo guarda tu idioma y tu tema, y en la pestaña abierta el último aviso que
+        mostró. Sus tipografías y logotipos vienen dentro del programa: abrirlo no hace ninguna petición a Google
+        ni a otro tercero.</>],
     },
     {
       id: 'sitio', num: '4', label: 'Este sitio web', tmux: 'sitio', title: 'Este sitio web (kongtrol.app)',
-      body: [<>Este sitio no usa cookies, analíticas ni píxeles de seguimiento, y sirve sus propias tipografías (no
-        carga nada de Google). Solo guarda en tu navegador el idioma que elijas explícitamente
+      body: [<>Este sitio no usa cookies, analíticas ni píxeles de seguimiento. Sirve sus propias tipografías y tu
+        navegador no pide nada a terceros mientras lo visitas. Solo guarda el idioma que elijas
         (<IC c="kglang" />).</>,
-      <>El sitio está alojado en Cloudflare (Workers): Cloudflare procesa los datos técnicos de cada visita (como la IP y
-        el navegador) para servir y proteger el sitio, según su{' '}
+      <>El sitio está alojado en Cloudflare. Cloudflare procesa los datos técnicos de cada visita (como tu IP y tu
+        navegador) para servir y proteger el sitio, según su{' '}
         {ext('https://www.cloudflare.com/privacypolicy/', 'política de privacidad')}.</>,
-      <>Las descargas y el código están en GitHub; al usarlos aplica la{' '}
-        {ext('https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement', 'declaración de privacidad de GitHub')}.</>],
+      <>Las descargas y el código están en GitHub. Al usarlos aplica la{' '}
+        {ext(GITHUB_PRIVACY, 'declaración de privacidad de GitHub')}.</>],
     },
     {
       id: 'control', num: '5', label: 'Tu control', tmux: 'control', title: 'Cómo controlarlo',
-      body: ['Qué puedes ajustar:'],
+      body: ['Qué puedes cambiar:'],
       list: [
-        <>La comprobación de IP pública viene apagada. Actívala o apágala en el panel (Seguridad), en el asistente
-          o con <IC c="kongtrol config public-ip on|off" /> (<IC c="security.public_ip_check.enabled" />). Elige
-          otro servicio con <IC c="security.public_ip_check.endpoints" /> (solo https).</>,
-        <>El aviso de versión nueva viene apagado. Actívalo o apágalo en el panel (Ajustes › «Aviso de versión
-          nueva»), en <IC c="kongtrol init" /> o con <IC c="kongtrol config update-check on|off" />{' '}
-          (<IC c="updates.check_enabled" />).</>,
-        <>La lista de destinos recientes viene encendida y solo vive en memoria. Apágala con{' '}
-          <IC c="kongtrol config recent-connections off" /> (<IC c="monitor.recent_connections.enabled" />): se borra al momento.</>,
-        <>La comprobación previa al conectar solo se hace en perfiles que tienen un host configurado.</>,
+        <><strong>IP pública:</strong> apagada por defecto. Actívala o apágala en el panel (Seguridad), en el
+          asistente o con <IC c="kongtrol config public-ip on|off" />. Elige otro servicio con{' '}
+          <IC c="security.public_ip_check.endpoints" /> (solo https).</>,
+        <><strong>Aviso de versión nueva:</strong> apagado por defecto. Actívalo o apágalo en el panel (Ajustes),
+          en <IC c="kongtrol init" /> o con <IC c="kongtrol config update-check on|off" />.</>,
+        <><strong>Destinos recientes:</strong> encendido por defecto, solo en memoria. Apágalo con{' '}
+          <IC c="kongtrol config recent-connections off" />: la lista se borra al momento.</>,
+        <><strong>Comprobar tu servidor VPN:</strong> solo se hace en perfiles con un servidor configurado.</>,
+        <><strong>Tus datos:</strong> bórralos cuando quieras (sección 1).</>,
       ],
     },
     {
       id: 'cambios', num: '6', label: 'Cambios', tmux: 'cambios', title: 'Cambios a esta política',
-      body: [<>Esta política cambia cuando cambia lo que hace el código. Cada versión lleva su número y fecha arriba
-        y su historial queda en el repositorio de GitHub.</>],
+      body: [<>Esta política cambia cuando cambia lo que hace el programa. Cada versión lleva su número y fecha
+        arriba, y su historial queda en el repositorio de GitHub.</>],
     },
   ],
 }
@@ -146,109 +175,122 @@ const es: LegalDocContent = {
 const en: LegalDocContent = {
   label: '$ cat PRIVACY.md',
   title: 'Privacy policy',
-  sub: 'What stays on your machine, what leaves it, and to whom.',
+  sub: 'What stays on your computer, what leaves it, and to whom.',
   version: VERSION,
   updated: UPDATED,
   session: 'kongtrol:privacy',
-  summaryBadge: 'TL;DR',
-  summary: <>Kongtrol is a free, open-source tool made by one person (there is no company behind it) that runs on
-    your machine. The author receives and processes none of your data: each user controls their own. There are no
-    accounts, no servers of its own, no telemetry and no analytics. Your configuration and passwords stay on your machine. The only connections it
-    makes on its own are checking that your VPN server answers before connecting and resolving the domains in your
-    rules. Looking up your public IP and the new version notice are optional and off by default. This website uses no cookies and no analytics.</>,
+  summaryBadge: 'In short',
+  summary: [
+    <>Kongtrol is free and open source. One person makes it; there is no company behind it.</>,
+    <>It runs on your computer. There are no accounts and no Kongtrol servers. The author receives none of your data.</>,
+    <>Your configuration and passwords stay on your computer.</>,
+    <>There is no telemetry, no analytics and no crash reporting.</>,
+    <>On its own, Kongtrol only talks to your VPN server and to DNS. Looking up your public IP and the new version
+      notice are optional and off by default.</>,
+    <>This website uses no cookies and no analytics.</>,
+  ],
   toc: 'Contents',
   goto: 'Jump to',
   versionLabel: 'Version',
+  updatedLabel: 'updated',
   contactTitle: 'Contact',
   contact: <>for privacy questions, open an issue at {issues}. To report a vulnerability, use the{' '}
     <a href={pathFor('seguridad', 'en')}>security policy</a>.</>,
   sections: [
     {
-      id: 'local', num: '1', label: 'Data on your machine', tmux: 'local', title: 'What stays on your machine',
-      body: [<>Kongtrol keeps everything locally, in your user folder. None of it is sent to anyone:</>],
+      id: 'local', num: '1', label: 'Data on your computer', tmux: 'local', title: 'What stays on your computer',
+      body: [<>Kongtrol keeps its data in your user folder (<IC c="~/.kongtrol/" />). None of it is sent to
+        anyone:</>],
       list: [
-        <><IC c="~/.kongtrol/kongtrol.yaml" />: your VPN profiles, groups, rules and settings. It never contains passwords.</>,
-        <><IC c="~/.kongtrol/preferences.json" />: this machine's preferences (language, favorites, dashboard port).</>,
-        <><IC c="~/.kongtrol/audit.log" />: event log (connections, security changes), HMAC-signed.</>,
-        <>Metrics history, background-service logs and the local dashboard token (<IC c="~/.kongtrol/api-token" />).</>,
-        <>Passwords and the log signing key: in the operating system's credential store (Windows Credential Manager,
-          macOS Keychain, Secret Service/GNOME Keyring on Linux).</>,
+        <><IC c="kongtrol.yaml" />: your VPN profiles, groups, rules and settings. It never holds passwords.</>,
+        <><IC c="configs/" />: the <IC c=".conf" /> and <IC c=".ovpn" /> files you import. They can contain
+          your VPN keys.</>,
+        <><IC c="preferences.json" />: this computer's settings (language, favorites, dashboard port).</>,
+        <>Audit log (<IC c="audit-YYYY-MM-DD.log" />): what connected and what changed in security. One file per
+          day, signed so tampering shows. By default, today and yesterday are kept.</>,
+        <>Metrics history, the program's logs, the new version notice state and the dashboard token
+          (<IC c="api-token" />).</>,
+        <>Passwords and the key that signs the log: in the operating system's credential store (Windows Credential
+          Manager, macOS Keychain, Secret Service or GNOME Keyring on Linux).</>,
+        <>If you install the system helper, it keeps its own local log of what it is asked to do.</>,
         // feature:recent_connections
-        <>Recent destinations (Windows and Linux): which addresses this computer connected to in the last hour, which VPN each one went
-          through and which program opened it (<IC c="kongtrol traffic recent" />). It lives only in Kongtrol's memory:
-          never saved to disk or logs, never leaves this computer, holds at most 500 destinations and forgets each one an
-          hour after it was last seen. It is erased when you turn it off or close Kongtrol. On by default because it is
-          the same thing <IC c="netstat" /> already shows on your computer.</>,
+        <>Recent destinations (Windows and Linux): which addresses this computer connected to in the last hour,
+          which VPN each one went through and which program opened it (<IC c="kongtrol traffic recent" />). It lives
+          only in Kongtrol's memory: never written to disk or logs, and it never leaves the computer. It holds at most
+          500 destinations and forgets each one an hour after it was last seen. It is erased when you turn it off or
+          close Kongtrol. On by default because it shows the same thing as <IC c="netstat" /> on your computer.</>,
       ],
       after: [<>When you uninstall, this data stays unless you ask to delete it. To erase everything: in the
         dashboard, Settings › "Delete all my data", or <IC c="kongtrol uninstall --data-only" />. To uninstall and
-        delete it at once: <IC c="kongtrol uninstall --purge" />. See the{' '}
+        delete it at once: <IC c="kongtrol uninstall --purge" />. More in the{' '}
         <a href={`${pathFor('guia', 'en')}#uninstall`}>guide</a>.</>],
     },
     {
       id: 'conexiones', num: '2', label: 'Its own connections', tmux: 'connections', title: 'Connections Kongtrol makes on its own',
-      body: ['Besides the traffic of your own VPNs, Kongtrol makes these connections:'],
+      body: ['Besides the traffic of your own VPNs, Kongtrol makes only these connections. None of them carries your configuration, passwords or usage data.'],
       list: [
-        <><strong>Public IP check (optional, off by default)</strong> — only if you turn it on, an HTTPS request to
-          <IC c="api.ipify.org" /> (a third-party service) or another service you choose, to show your public IP and
-          detect leaks. When you enable it, your IP is visible to that service, like any site you visit. It runs only
-          when a tunnel connects or disconnects (at most once every 30 seconds) and when you ask
-          (<IC c="kongtrol ip" />, "Check" in the dashboard or the tray); never periodically. The kill switch and
-          DNS guard do not need it. The request leaves through the active route (your VPN, if there is one).</>,
-        <><strong>Pre-connect check</strong> — a short TCP connection to your VPN profile's server and port, to warn
-          you if it doesn't answer. It only goes to the server you configured.</>,
-        <><strong>DNS resolution for your rules</strong> — Kongtrol resolves your policy domains with the system's
-          or the tunnel's DNS, to know which tunnel to send them through.</>,
-        <><strong>New version notice (optional, off by default)</strong> — only if you turn it on, at most once every
-          24 hours, one HTTPS request to GitHub:{' '}
-          <IC c="GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest" />. It only carries the
-          headers <IC c="User-Agent: kongtrol/<version>" /> and <IC c="Accept" />. No account, token, cookies,
-          profiles, the IPs of your VPNs or any other data. GitHub sees your public IP, the time and that User-Agent
-          (the {ext('https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement', 'GitHub General Privacy Statement')} applies).
-          It waits at most 5 seconds and ignores pre-releases. If there is a new version, it tells you once; it never
-          downloads or installs anything. When off, it makes no request at all.</>,
+        <><strong>Checking your VPN server.</strong> Before connecting, and while the tunnel is up, it opens and
+          closes a short connection to your profile's server and port. That way it warns you if the server does
+          not answer. It only goes to the server you configured.</>,
+        <><strong>DNS.</strong> It looks up the domains in your rules, to know which tunnel to send them through, and
+          your VPN server's name when the kill switch is applied. To check DNS inside the tunnel, it asks for{' '}
+          <IC c="connectivitycheck.gstatic.com" /> only from your VPN's DNS server; nothing is sent to Google.</>,
+        <><strong>Your public IP (optional, off by default).</strong> Only if you turn it on: one HTTPS request to{' '}
+          <IC c="api.ipify.org" /> (a third-party service) or another service you choose. It shows your public IP and
+          detects leaks. That service sees your IP, like any site you visit. It runs when a tunnel connects or
+          disconnects (at most once every 30 seconds) and when you ask (<IC c="kongtrol ip" />, "Check" in the
+          dashboard or the tray). Never periodically. The kill switch and DNS guard do not need it.</>,
+        <><strong>New version notice (optional, off by default).</strong> Only if you turn it on: at most once every
+          24 hours, one HTTPS request to GitHub{' '}
+          (<IC c="api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest" />). It only carries the headers{' '}
+          <IC c="User-Agent: kongtrol/<version>" /> and <IC c="Accept" />: no account, token, cookies, profiles or
+          the IPs of your VPNs. GitHub sees your public IP, the time and that version (its{' '}
+          {ext(GITHUB_PRIVACY, 'privacy statement')} applies). It tells you once per version; it never downloads or
+          installs anything.</>,
       ],
       after: [<>Kongtrol does <strong>not</strong> send telemetry, analytics or crash reports (checked in the
-        source code on {UPDATED}). Your VPN clients (NordVPN, FortiClient, etc.) may make their own
-        connections; that depends on each provider and its policy.</>],
+        source code on {UPDATED}). Your VPN clients (NordVPN, FortiClient, etc.) make their own connections; that
+        depends on each provider and its policy.</>],
     },
     {
       id: 'panel', num: '3', label: 'Web dashboard', tmux: 'dashboard', title: 'Local web dashboard',
-      body: [<>The dashboard runs on your machine (<IC c="127.0.0.1" />) and requires a local token on every request.
-        That token travels in a single local cookie (<IC c="kongtrol_control" />, HttpOnly) that never leaves your
-        machine. It keeps only your language, theme and sidebar state in the browser's local storage.</>,
-      <>The dashboard serves its fonts and logos from the binary itself: opening it makes no request to Google or
-        any other third party.</>],
+      body: [<>The dashboard runs only on your computer (<IC c="127.0.0.1" />). Kongtrol opens it with a one-time
+        code and the browser gets a local session cookie (<IC c="kongtrol_session" />, HttpOnly). The cookie does
+        not hold your token and never leaves your computer; the session expires on its own.</>,
+      <>In the browser, the dashboard only stores your language and theme, and, in the open tab, the last notice it
+        showed. Its fonts and logos are built into the program: opening it makes no request to Google or any other
+        third party.</>],
     },
     {
       id: 'sitio', num: '4', label: 'This website', tmux: 'website', title: 'This website (kongtrol.app)',
-      body: [<>This site uses no cookies, analytics or tracking pixels, and serves its own fonts (nothing is loaded
-        from Google). It only stores in your browser the language you explicitly pick (<IC c="kglang" />).</>,
-      <>The site is hosted on Cloudflare (Workers): Cloudflare processes the technical data of each visit (such as IP
+      body: [<>This site uses no cookies, analytics or tracking pixels. It serves its own fonts, and your browser
+        asks no third party for anything while you visit. It only stores the language you pick
+        (<IC c="kglang" />).</>,
+      <>The site is hosted on Cloudflare. Cloudflare processes the technical data of each visit (such as your IP
         address and browser) to serve and protect the site, under its{' '}
         {ext('https://www.cloudflare.com/privacypolicy/', 'privacy policy')}.</>,
-      <>Downloads and source code live on GitHub; using them is covered by the{' '}
-        {ext('https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement', 'GitHub General Privacy Statement')}.</>],
+      <>Downloads and source code live on GitHub. Using them is covered by the{' '}
+        {ext(GITHUB_PRIVACY, 'GitHub General Privacy Statement')}.</>],
     },
     {
       id: 'control', num: '5', label: 'Your control', tmux: 'control', title: 'How to control it',
-      body: ['What you can adjust:'],
+      body: ['What you can change:'],
       list: [
-        <>The public IP check is off by default. Turn it on or off in the dashboard (Security), in the setup wizard or
-          with <IC c="kongtrol config public-ip on|off" /> (<IC c="security.public_ip_check.enabled" />). Pick another
-          service with <IC c="security.public_ip_check.endpoints" /> (https only).</>,
-        <>The new version notice is off by default. Turn it on or off in the dashboard (Settings › "New version
-          notice"), in <IC c="kongtrol init" /> or with <IC c="kongtrol config update-check on|off" />{' '}
-          (<IC c="updates.check_enabled" />).</>,
-        <>The recent destinations list is on by default and lives only in memory. Turn it off with{' '}
-          <IC c="kongtrol config recent-connections off" /> (<IC c="monitor.recent_connections.enabled" />): it is erased at once.</>,
-        <>The pre-connect check only runs for profiles that have a host set.</>,
+        <><strong>Public IP:</strong> off by default. Turn it on or off in the dashboard (Security), in the setup
+          wizard or with <IC c="kongtrol config public-ip on|off" />. Pick another service with{' '}
+          <IC c="security.public_ip_check.endpoints" /> (https only).</>,
+        <><strong>New version notice:</strong> off by default. Turn it on or off in the dashboard (Settings), in{' '}
+          <IC c="kongtrol init" /> or with <IC c="kongtrol config update-check on|off" />.</>,
+        <><strong>Recent destinations:</strong> on by default, memory only. Turn it off with{' '}
+          <IC c="kongtrol config recent-connections off" />: the list is erased at once.</>,
+        <><strong>Checking your VPN server:</strong> only runs for profiles with a server set.</>,
+        <><strong>Your data:</strong> delete it whenever you want (section 1).</>,
       ],
     },
     {
       id: 'cambios', num: '6', label: 'Changes', tmux: 'changes', title: 'Changes to this policy',
-      body: [<>This policy changes when what the code does changes. Each version carries its number and date at the
-        top, and its history stays in the GitHub repository.</>],
+      body: [<>This policy changes when what the program does changes. Each version carries its number and date at
+        the top, and its history stays in the GitHub repository.</>],
     },
   ],
 }
