@@ -1,6 +1,6 @@
-# VPN Kongtrol
+# Kongtrol
 
-> VPN Kongtrol (short name: **Kongtrol**; CLI binary: `kongtrol`) is an open-source
+> Kongtrol (formerly VPN Kongtrol; CLI binary: `kongtrol`) is an open-source
 > multi-VPN orchestrator for Windows, Linux and macOS. It runs several VPN tunnels at the
 > same time and decides, per destination, which tunnel each connection leaves through.
 
@@ -24,7 +24,7 @@ administrator prompt at install time.
 
 ## Docs
 
-- [README](https://github.com/DerotLuna/vpn-kongtrol/blob/main/README.md): what VPN Kongtrol is, features, supported adapters, quick start
+- [README](https://github.com/DerotLuna/vpn-kongtrol/blob/main/README.md): what Kongtrol is, features, supported adapters, quick start
 - [Setup guide](https://kongtrol.app/en/guide): end-to-end first-run walkthrough — install, wizard, profiles, policies, doctor (Spanish: https://kongtrol.app/guia)
 - [Privacy policy](https://kongtrol.app/en/privacy): what stays local, which connections Kongtrol makes on its own (public-IP check via api.ipify.org), no telemetry
 - [Security policy](https://kongtrol.app/en/security): private vulnerability reporting and disclosure timelines

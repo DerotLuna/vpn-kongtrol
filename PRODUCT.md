@@ -1,8 +1,8 @@
-<img src="assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Product
 
-Versión 1.0.2 · 2026-11-18
+Versión 1.1.0 · 2026-11-19
 
 <!-- impeccable:product-schema 1 -->
 
@@ -41,7 +41,7 @@ Kongtrol puts all your VPNs in one place. You connect the way you always do (in 
 - Supported VPNs and per-OS support differ; the site states only what works today (see `docs/` and the landing VPN matrix). The site never advertises a feature before it ships.
 - Languages: Spanish and English with equal weight and full parity; market is global, no priority region.
 - Product status: **public beta**.
-- **Undecided — name:** "VPN Kongtrol" vs. just "Kongtrol". The name comes from "VPN control"; today both are used (full name in titles and legal pages, short name in UI and the binary `kongtrol`). Do not settle this in design work; ask.
+- **Name (decided 2026-11-19, ADR-0047):** the product is just **Kongtrol**. "VPN" lives only in the tagline ("Kongtrol · tus VPN bajo control" / "Kongtrol · your VPNs under control"); "VPN Kongtrol" is only a former name (search alias). Technical identifiers keep `vpn-kongtrol` (GitHub repo, Go module path, keychain service, package names).
 - **Undecided — terminal/hacker voice:** the current site speaks in terminal idiom (tmux bar, `$ make install`, `man kongtrol`). The owner and developer friends like it; whether non-technical visitors understand or like it is unvalidated. Treat it as an open question to test, not a fixed rule nor something to remove silently.
 
 ## Brand Commitments

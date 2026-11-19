@@ -19,7 +19,7 @@ import (
 
 func onReady() {
 	refreshTrayLanguage()
-	systray.SetTitle("VPN Kongtrol")
+	systray.SetTitle("Kongtrol")
 	systray.SetTooltip(trayT("tray.tooltip"))
 
 	// fyne.io/systray races NIM_ADD (inside its own Windows init) against the

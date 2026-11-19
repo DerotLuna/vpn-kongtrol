@@ -1,4 +1,4 @@
-<img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Panel at the site root: redirects, fragments and CSP
 

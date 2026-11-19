@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # kongtrol (npm)
 

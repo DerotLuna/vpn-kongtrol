@@ -163,7 +163,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
     <nav ref={navRef} className={`nav${scrolled ? ' is-sticky' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
       <div className="nav-inner">
         <a href={page === 'home' ? '#motd' : pathFor('home', lang)} className="nav-logo">
-          <img src={logoSrc} alt="Kongtrol" />
+          <img src={logoSrc} alt="Kongtrol" width={40} height={40} />
           <span className="nav-logo-name">
             <strong aria-hidden="true">K O N G T R O L</strong>
             <small className="beta">BETA</small>

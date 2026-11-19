@@ -1,4 +1,5 @@
-// Terms & conditions — version 1.3.0 · 2026-11-17.
+// Terms & conditions — version 1.4.0 · 2026-11-19.
+// 1.4.0: the product name is just Kongtrol (formerly VPN Kongtrol, ADR-0047).
 // 1.3.0: the public IP check is optional and off by default.
 // 1.2.0: states it is a free tool by one individual (no company); liability rests on
 // Apache-2.0 sections 7-8; contact is GitHub only, no governing-law clause.
@@ -10,8 +11,8 @@ import type { LegalDocContent } from '../../components/sections/LegalDoc'
 import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 
-const VERSION = '1.3.1'
-const UPDATED = '2026-11-18'
+const VERSION = '1.4.0'
+const UPDATED = '2026-11-19'
 const issues = <a href={`${GITHUB_REPO}/issues`} target="_blank" rel="noreferrer">github.com/DerotLuna/vpn-kongtrol/issues</a>
 const license = <a href={`${GITHUB_REPO}/blob/main/LICENSE`} target="_blank" rel="noreferrer">Apache 2.0</a>
 
@@ -23,7 +24,7 @@ const es: LegalDocContent = {
   updated: UPDATED,
   session: 'kongtrol:terminos',
   summaryBadge: 'En resumen',
-  summary: <>VPN Kongtrol es código abierto ({license}), se entrega “tal cual” sin garantía, y está en beta activa —
+  summary: <>Kongtrol es código abierto ({license}), se entrega “tal cual” sin garantía, y está en beta activa —
     úsalo con criterio en escenarios donde una fuga de red tenga consecuencias serias.</>,
   toc: 'Contenido',
   goto: 'Ir a',
@@ -33,8 +34,8 @@ const es: LegalDocContent = {
     <a href={pathFor('seguridad', 'es')}>política de seguridad</a> (no abras un issue público).</>,
   sections: [
     {
-      id: 'que-es', num: '1', label: 'Qué es VPN Kongtrol', tmux: 'que-es', title: 'Qué es VPN Kongtrol',
-      body: [<>VPN Kongtrol (nombre corto: Kongtrol) es software de código abierto, publicado bajo la licencia {license},
+      id: 'que-es', num: '1', label: 'Qué es Kongtrol', tmux: 'que-es', title: 'Qué es Kongtrol',
+      body: [<>Kongtrol (antes llamado “VPN Kongtrol”) es software de código abierto, publicado bajo la licencia {license},
         que actúa como una capa de orquestación sobre clientes VPN que ya tienes instalados en tu equipo (OpenVPN,
         WireGuard, ProtonVPN, etc.). No es un proveedor de VPN, no opera servidores, y no tiene acceso a tu tráfico
         salvo el que corre localmente en tu propia máquina. Es una herramienta gratuita mantenida por una
@@ -99,7 +100,7 @@ const en: LegalDocContent = {
   updated: UPDATED,
   session: 'kongtrol:terms',
   summaryBadge: 'TL;DR',
-  summary: <>VPN Kongtrol is open source ({license}), shipped “as is” with no warranty, and under active beta — use
+  summary: <>Kongtrol is open source ({license}), shipped “as is” with no warranty, and under active beta — use
     good judgment in scenarios where a network leak would have serious consequences.</>,
   toc: 'Contents',
   goto: 'Jump to',
@@ -109,8 +110,8 @@ const en: LegalDocContent = {
     <a href={pathFor('seguridad', 'en')}>security policy</a> (do not open a public issue).</>,
   sections: [
     {
-      id: 'que-es', num: '1', label: 'What VPN Kongtrol is', tmux: 'what-is', title: 'What VPN Kongtrol is',
-      body: [<>VPN Kongtrol (short name: Kongtrol) is open-source software, released under the {license} license,
+      id: 'que-es', num: '1', label: 'What Kongtrol is', tmux: 'what-is', title: 'What Kongtrol is',
+      body: [<>Kongtrol (formerly “VPN Kongtrol”) is open-source software, released under the {license} license,
         that acts as an orchestration layer on top of VPN clients already installed on your machine (OpenVPN,
         WireGuard, ProtonVPN, etc.). It is not a VPN provider, does not operate any servers, and has no access to
         your traffic beyond what runs locally on your own machine. It is a free tool maintained by one person, with

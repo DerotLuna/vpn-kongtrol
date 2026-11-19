@@ -2,7 +2,7 @@ package config
 
 import "strconv"
 
-// Config is the root configuration structure for VPN Kongtrol.
+// Config is the root configuration structure for Kongtrol.
 type Config struct {
 	VPNs     map[string]VPNConfig   `yaml:"vpns"     validate:"required,min=1,dive"`
 	Groups   map[string]GroupConfig `yaml:"groups,omitempty"`

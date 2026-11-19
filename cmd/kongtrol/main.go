@@ -1,4 +1,4 @@
-// Command kongtrol is the VPN Kongtrol CLI.
+// Command kongtrol is the Kongtrol CLI.
 // It orchestrates multiple VPN connections, controls traffic routing,
 // enforces security policies, and exposes a monitoring dashboard.
 package main

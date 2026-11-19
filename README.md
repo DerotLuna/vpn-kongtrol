@@ -7,12 +7,12 @@
   <img src="assets/brand/logo-kong.svg" alt="Kongtrol logo: a monkey face drawn in concentric lines" width="96" align="left" />
 </picture>
 
-# VPN Kongtrol
+# Kongtrol
 
-**All your VPNs in one place.** Connect your VPNs the way you always do. Kongtrol watches them,
+**Your VPNs under control.** Connect your VPNs the way you always do. Kongtrol watches them,
 reconnects them if they drop, and sends each site through the right one.
 
-<sub>Kongtrol is the short name; the program you install is <code>kongtrol</code>. Public beta · README v2.0.0 · 2026-11-18.</sub>
+<sub>The program you install is <code>kongtrol</code> (formerly "VPN Kongtrol"). Public beta · README v2.2.0 · 2026-11-19.</sub>
 
 <br clear="left" />
 

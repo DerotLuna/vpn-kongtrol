@@ -67,7 +67,7 @@ func pollPolicyEvents(states map[string]monitor.TunnelMetrics) {
 		}
 		msg := trayF(e.Key, args...)
 		notifyError(msg, nil)
-		desktopNotify("VPN Kongtrol", msg)
+		desktopNotify("Kongtrol", msg)
 		if e.CanConnect && e.Profile != "" {
 			policyMu.Lock()
 			policyProfile = e.Profile

@@ -133,4 +133,4 @@ func firstDiffLine(a, b []byte) int {
 }
 
 // logoLine puts the logo top left, like the hand-written docs.
-const logoLine = "<img src=\"../assets/brand/logo-kong-64.png\" alt=\"VPN Kongtrol\" width=\"48\" align=\"left\" />\n\n"
+const logoLine = "<img src=\"../assets/brand/logo-kong-64.png\" alt=\"Kongtrol\" width=\"48\" align=\"left\" />\n\n"

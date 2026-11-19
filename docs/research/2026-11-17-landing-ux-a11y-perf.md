@@ -1,4 +1,4 @@
-<img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Research: landing polish — motion without layout shift, WCAG 2.2 AA, Core Web Vitals
 

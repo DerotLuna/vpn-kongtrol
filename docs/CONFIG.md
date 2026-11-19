@@ -1,6 +1,6 @@
 <!-- Generado por `go generate ./cmd/kongtrol` (make docs) desde internal/config/schema.go e internal/docgen/text.go. NO EDITAR A MANO. -->
 
-<img src="../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Referencia de configuración (kongtrol.yaml)
 
