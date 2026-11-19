@@ -126,6 +126,12 @@ release assets too; the landing pins its one-liner base in `landing/src/links.ts
 The release body starts with the Windows installer line (`.goreleaser.yaml` `release.header`); a
 double-clicked `kongtrol.exe` (Explorer, no arguments) prints `cli.explorer_notice` and waits for
 Enter — cobra's own mousetrap is off because it adds an English-only line (ADR-0045).
+Every installer detects an existing install (Inno: HKCU `{AppId}_is1` `DisplayVersion` in
+`InitializeSetup`; scripts: `install.manifest` + `kongtrol version`) and presents itself as
+update / reinstall / older version (SemVer precedence, same table in all three), skipping
+license/folder/tasks and reusing previous folders and choices; an older version is confirmed
+only interactively (ADR-0046). Plain `kongtrol service install` leaves a current helper alone
+(no UAC/sudo) and says "Actualizando" for another version.
 
 <!-- feature:uninstall -->
 **Uninstall keeps data unless asked (ADR-0034).** `internal/uninstall`: `Detect` picks the channel

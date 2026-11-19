@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.1.0 · 2026-11-18 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md
+# Version 2.2.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -12,6 +12,10 @@
 # Uninstall: ... | sh -s -- --uninstall   (add --purge to also delete your data)
 # Run it again to upgrade: your settings in ~/.kongtrol are never touched, and
 # a running Kongtrol is restarted on the new version keeping its tunnels.
+# An existing install is detected and the script says "Updating <old> → <new>"
+# (or "Reinstalling", or warns before an older version, asking only on a
+# terminal; --yes answers for scripts). It reuses the previous folders and
+# autostart choice and updates the network helper only when it is outdated.
 #
 # Env overrides:
 #   KONGTROL_INSTALL_DIR   CLI directory (default: /usr/local/bin, falls back to ~/.local/bin)
@@ -19,6 +23,7 @@
 #   KONGTROL_VERSION       release tag to install, e.g. v1.2.3 (default: latest)
 #   KONGTROL_NO_AUTOSTART  1 = no autostart entry (Linux)
 #   KONGTROL_NO_LAUNCH     1 = don't open Kongtrol at the end
+#   KONGTROL_YES           1 = same as --yes
 set -eu
 (set -o pipefail) 2>/dev/null && set -o pipefail
 
@@ -29,16 +34,64 @@ info() { printf '\033[1;34m==>\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$1"; }
 die()  { printf '\033[1;31merror:\033[0m %s\n' "$1" >&2; exit 1; }
 
+# ver_cmp A B prints -1, 0 or 1 (A < B, equal, A > B) with SemVer 2.0.0
+# precedence (https://semver.org §11), the same rules as the Windows
+# installer: leading "v" and "+build" ignored, X.Y.Z numeric (missing = 0),
+# a pre-release is lower than its release, pre-release identifiers dot by
+# dot (numbers numerically and below text), fewer identifiers lower.
+# 0.6.0-rc.3 < 0.6.0-rc.4 < 0.6.0 < 0.10.0.
+ver_cmp() {
+  awk -v a="$1" -v b="$2" '
+    function isnum(s) { return s ~ /^[0-9]+$/ }
+    function cmpid(x, y) {
+      if (isnum(x) && isnum(y)) { x += 0; y += 0; return x < y ? -1 : (x > y ? 1 : 0) }
+      if (isnum(x)) return -1
+      if (isnum(y)) return 1
+      return ("" x) < ("" y) ? -1 : (("" x) > ("" y) ? 1 : 0)
+    }
+    function norm(s) { sub(/^[vV]/, "", s); sub(/\+.*/, "", s); return s }
+    BEGIN {
+      a = norm(a); b = norm(b); pa = ""; pb = ""
+      i = index(a, "-"); if (i) { pa = substr(a, i + 1); a = substr(a, 1, i - 1) }
+      i = index(b, "-"); if (i) { pb = substr(b, i + 1); b = substr(b, 1, i - 1) }
+      na = split(a, ca, "."); nb = split(b, cb, ".")
+      n = na > nb ? na : nb
+      for (k = 1; k <= n; k++) {
+        x = ca[k] + 0; y = cb[k] + 0
+        if (x != y) { print (x < y ? -1 : 1); exit }
+      }
+      if (pa == "" && pb == "") { print 0; exit }
+      if (pa == "") { print 1; exit }
+      if (pb == "") { print -1; exit }
+      na = split(pa, xa, "."); nb = split(pb, xb, ".")
+      for (k = 1; k <= na && k <= nb; k++) { c = cmpid(xa[k], xb[k]); if (c != 0) { print c; exit } }
+      print (na < nb ? -1 : (na > nb ? 1 : 0))
+    }'
+}
+
+# bin_version BIN prints the version BIN reports (`kongtrol version` prints
+# only the version when its output is not a terminal), or nothing.
+bin_version() {
+  v="$("$1" version 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^[vV]//')" || v=""
+  case "$v" in [0-9]*) printf '%s' "$v" ;; esac
+}
+
+# has_tty: a terminal to ask on, even when the script is piped from curl.
+has_tty() { (: </dev/tty) 2>/dev/null; }
+
 # --uninstall [--purge]: delegate to `kongtrol uninstall`, the same logic the
 # app uses (docs/adr/0034-uninstall-and-update-notice.md). Your data stays
 # unless you add --purge.
 do_uninstall=0
 do_purge=0
+assume_yes=0
+[ "${KONGTROL_YES:-0}" = "1" ] && assume_yes=1
 for arg in "$@"; do
   case "$arg" in
     --uninstall) do_uninstall=1 ;;
     --purge) do_purge=1 ;;
-    *) die "unknown option: $arg (use --uninstall, optionally with --purge)" ;;
+    --yes|-y) assume_yes=1 ;;
+    *) die "unknown option: $arg (use --yes, or --uninstall optionally with --purge)" ;;
   esac
 done
 if [ "$do_purge" = 1 ] && [ "$do_uninstall" = 0 ]; then
@@ -79,6 +132,34 @@ else
   asset="kongtrol_linux_${goarch}.tar.gz"
 fi
 
+# Existing install (docs/adr/0046-installers-detect-existing-install.md): the
+# manifest an earlier run wrote says where it put things, so an update reuses
+# those folders and the autostart choice instead of asking again or leaving
+# a second copy behind. Without a manifest, a kongtrol in the default
+# folders counts too.
+manifest="${HOME}/.kongtrol/install.manifest"
+prev_bin=""
+prev_dir=""
+prev_app_dir=""
+prev_no_autostart=""
+if [ -f "$manifest" ]; then
+  prev_bin="$(sed -n 's|^file=\(.*\)/kongtrol$|\1/kongtrol|p' "$manifest" | head -n 1)"
+  [ -n "$prev_bin" ] && prev_dir="$(dirname "$prev_bin")"
+  prev_app_dir="$(sed -n 's|^file=\(.*\)/Kongtrol\.app$|\1|p' "$manifest" | head -n 1)"
+  if grep -q '/kongtrol-tray$' "$manifest" && ! grep -q '^autostart=' "$manifest"; then
+    prev_no_autostart=1
+  fi
+fi
+if [ -z "$prev_bin" ] || [ ! -x "$prev_bin" ]; then
+  prev_bin=""
+  for d in "${KONGTROL_INSTALL_DIR:-}" /usr/local/bin "${HOME}/.local/bin"; do
+    if [ -n "$d" ] && [ -x "$d/kongtrol" ]; then prev_bin="$d/kongtrol"; break; fi
+  done
+fi
+prev_ver=""
+[ -n "$prev_bin" ] && prev_ver="$(bin_version "$prev_bin")"
+no_autostart="${KONGTROL_NO_AUTOSTART:-${prev_no_autostart:-0}}"
+
 if [ "$VERSION" = "latest" ]; then
   base_url="https://github.com/${REPO}/releases/latest/download"
 else
@@ -104,23 +185,63 @@ else
 fi
 [ "$expected" = "$actual" ] || die "checksum mismatch: expected ${expected}, got ${actual}"
 
-install_dir="${KONGTROL_INSTALL_DIR:-/usr/local/bin}"
+# Unpack first: the new binary says which version this is, so an update can
+# be told apart from a reinstall or an older version before anything changes.
+if [ "$goos" = "darwin" ]; then
+  ditto -x -k "${tmp_dir}/${asset}" "${tmp_dir}/app"
+  new_bin="${tmp_dir}/app/Kongtrol.app/Contents/MacOS/kongtrol"
+else
+  mkdir -p "${tmp_dir}/x"
+  tar -xzf "${tmp_dir}/${asset}" -C "${tmp_dir}/x"
+  new_bin="${tmp_dir}/x/kongtrol"
+  chmod +x "$new_bin"
+fi
+new_ver="$(bin_version "$new_bin")"
+
+kind=install
+if [ -n "$prev_bin" ]; then
+  kind=update
+  if [ -n "$prev_ver" ] && [ -n "$new_ver" ]; then
+    case "$(ver_cmp "$prev_ver" "$new_ver")" in
+      0) kind=repair ;;
+      1) kind=downgrade ;;
+    esac
+  fi
+fi
+case "$kind" in
+  update) info "Updating Kongtrol ${prev_ver:-} → ${new_ver:-${VERSION}} (your VPNs and settings are kept)..." ;;
+  repair) info "Reinstalling Kongtrol ${new_ver} (repair: your VPNs and settings are kept)..." ;;
+  downgrade)
+    warn "This installs an OLDER version (${prev_ver} → ${new_ver}). Your VPNs and settings are kept."
+    if [ "$assume_yes" != 1 ] && has_tty; then
+      printf 'Install the older version? [y/N] ' >/dev/tty
+      answer=""
+      read -r answer </dev/tty || answer=""
+      case "$answer" in
+        y|Y|yes|YES|s|S|si|SI) ;;
+        *) info "Nothing changed. To install it anyway, run the same command with: sh -s -- --yes"; exit 0 ;;
+      esac
+    fi
+    ;;
+esac
+
+install_dir="${KONGTROL_INSTALL_DIR:-${prev_dir:-/usr/local/bin}}"
 if [ ! -w "$install_dir" ] 2>/dev/null; then
-  if [ -z "${KONGTROL_INSTALL_DIR:-}" ]; then
+  if [ -z "${KONGTROL_INSTALL_DIR:-}" ] && [ -z "$prev_dir" ]; then
     install_dir="${HOME}/.local/bin"
     mkdir -p "$install_dir"
-  else
+  elif [ -n "${KONGTROL_INSTALL_DIR:-}" ]; then
     die "no write permission to ${install_dir}"
   fi
+  # The previous install's folder: sudo below, so no second copy is left.
 fi
 SUDO=""
 [ -w "$install_dir" ] || { info "sudo required to write to ${install_dir}"; SUDO="sudo"; }
 
 
 if [ "$goos" = "darwin" ]; then
-  app_dir="${KONGTROL_APP_DIR:-${HOME}/Applications}"
+  app_dir="${KONGTROL_APP_DIR:-${prev_app_dir:-${HOME}/Applications}}"
   mkdir -p "$app_dir"
-  ditto -x -k "${tmp_dir}/${asset}" "${tmp_dir}/app"
   # Quit the old tray (the daemon keeps running until the restart below).
   pkill -x kongtrol-tray 2>/dev/null || true
   rm -rf "${app_dir}/Kongtrol.app.old"
@@ -130,8 +251,6 @@ if [ "$goos" = "darwin" ]; then
   $SUDO ln -sfn "${app_dir}/Kongtrol.app/Contents/MacOS/kongtrol" "${install_dir}/kongtrol"
   info "Installed ${app_dir}/Kongtrol.app and ${install_dir}/kongtrol"
 else
-  mkdir -p "${tmp_dir}/x"
-  tar -xzf "${tmp_dir}/${asset}" -C "${tmp_dir}/x"
   pkill -x kongtrol-tray 2>/dev/null || true
   for b in kongtrol kongtrol-tray; do
     chmod +x "${tmp_dir}/x/${b}"
@@ -143,7 +262,7 @@ else
   cp "${tmp_dir}/x/kongtrol.png" "${apps}/icons/hicolor/512x512/apps/kongtrol.png"
   sed "s|^Exec=kongtrol-tray|Exec=${install_dir}/kongtrol-tray|" "${tmp_dir}/x/kongtrol.desktop" \
     > "${apps}/applications/kongtrol.desktop"
-  if [ "${KONGTROL_NO_AUTOSTART:-0}" != "1" ]; then
+  if [ "$no_autostart" != "1" ]; then
     autostart="${XDG_CONFIG_HOME:-${HOME}/.config}/autostart"
     mkdir -p "$autostart"
     cp "${apps}/applications/kongtrol.desktop" "${autostart}/kongtrol.desktop"
@@ -163,7 +282,7 @@ mkdir -p "${HOME}/.kongtrol"
     echo "file=${install_dir}/kongtrol-tray"
     echo "file=${apps}/applications/kongtrol.desktop"
     echo "file=${apps}/icons/hicolor/512x512/apps/kongtrol.png"
-    if [ "${KONGTROL_NO_AUTOSTART:-0}" != "1" ]; then echo "autostart=${autostart}/kongtrol.desktop"; fi
+    if [ "$no_autostart" != "1" ]; then echo "autostart=${autostart}/kongtrol.desktop"; fi
   fi
 } > "${HOME}/.kongtrol/install.manifest"
 
@@ -171,6 +290,17 @@ case ":$PATH:" in
   *":${install_dir}:"*) ;;
   *) warn "${install_dir} is not on your PATH — add it to your shell profile." ;;
 esac
+
+# Update: the network helper is updated only when it speaks an older
+# protocol (`service install --if-outdated`: a missing or current helper is
+# left alone and nothing is asked). It needs the admin password, so only on
+# a terminal; otherwise the tray offers "Actualizar ayudante (una vez)".
+# Before the restart below, so the VPNs reconnect through a current helper.
+if [ "$kind" != install ] && has_tty; then
+  info "Checking the network helper (asks for your admin password only if it is out of date)..."
+  "${install_dir}/kongtrol" service install --if-outdated --quiet </dev/tty \
+    || warn "the network helper was not updated: open Kongtrol and choose \"Actualizar ayudante (una vez)\", or run: kongtrol service install"
+fi
 
 # Upgrade: a running daemon (old version) is restarted on the new binary with
 # its connected VPNs; with no daemon running this does nothing.
@@ -186,4 +316,9 @@ if [ "${KONGTROL_NO_LAUNCH:-0}" != "1" ]; then
   fi
   info "Kongtrol is open: look for its icon in the menu bar / system tray."
 fi
+case "$kind" in
+  downgrade) info "Kongtrol ${new_ver} installed: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
+  update) info "Kongtrol updated to ${new_ver:-the new version}: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
+  repair) info "Kongtrol ${new_ver} reinstalled: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
+esac
 "${install_dir}/kongtrol" version 2>/dev/null || true

@@ -29,7 +29,7 @@ func (n helperNeed) guidanceKey() string {
 // Test seams.
 var (
 	helperStateFn   = helperState
-	installHelperFn = func() error { _, err := installHelper(); return err }
+	installHelperFn = func(update bool) error { _, err := installHelper(update); return err }
 )
 
 // helperState pings the helper the same way the daemon decides
@@ -72,11 +72,15 @@ func offerHelperInstall(need helperNeed, yes bool) bool {
 		fmt.Println(tuiInfo(ct(need.guidanceKey())))
 		return false
 	}
-	if err := installHelperFn(); err != nil {
+	if err := installHelperFn(need == helperOutdated); err != nil {
 		fmt.Println(tuiWarn(err.Error()))
 		return false
 	}
-	fmt.Println(tuiOK(ct("service.install.ok")))
+	if need == helperOutdated {
+		fmt.Println(tuiOK(ct("service.install.updated")))
+	} else {
+		fmt.Println(tuiOK(ct("service.install.ok")))
+	}
 	return true
 }
 

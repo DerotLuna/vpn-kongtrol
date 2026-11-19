@@ -47,6 +47,7 @@ reasoned but unverified.
 | [2026-11-18-panel-at-root](2026-11-18-panel-at-root.md) | Fragments across redirects (RFC 9110), 308, CSP without `unsafe-inline` (MDN, CSP3 hash-source), backslash open redirect (WHATWG URL) | ADR-0043 |
 | [2026-11-18-unsaved-changes-guard](2026-11-18-unsaved-changes-guard.md) | Leaving a form with unsaved edits: `beforeunload`, React Router `useBlocker` (data mode only), prompt wording | ADR-0041 |
 | [2026-11-19-explorer-double-click](2026-11-19-explorer-double-click.md) | Console program opened from Explorer: mousetrap `StartedByExplorer`, cobra v1.8.0 mousetrap hook (English-only wait line) | ADR-0045 |
+| [2026-11-19-installer-upgrade-detection](2026-11-19-installer-upgrade-detection.md) | Detecting an existing install: Inno Setup uninstall key, `UsePrevious*`, `ShouldSkipPage`, SemVer precedence | ADR-0046 |
 
 ## Template
 

@@ -13,7 +13,7 @@ func stubHelper(t *testing.T, need helperNeed, installErr error) *int {
 	t.Cleanup(func() { helperStateFn, installHelperFn = oldState, oldInstall })
 	installs := 0
 	helperStateFn = func() helperNeed { return need }
-	installHelperFn = func() error { installs++; return installErr }
+	installHelperFn = func(bool) error { installs++; return installErr }
 	return &installs
 }
 

@@ -92,9 +92,13 @@ el ayudante de red se conservan; desinstalar tampoco borra tu configuración).
    terminal (PATH de tu usuario; se quita al desinstalar).
 3. Al terminar se abre Kongtrol: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
 
-Para actualizar, ejecuta el instalador nuevo encima: cierra Kongtrol (las VPN se desconectan
-un momento; tu internet normal sigue funcionando), actualiza y lo vuelve a abrir. Si la versión
-nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la actualización.
+Para actualizar, ejecuta el instalador nuevo encima: si ya lo tienes, el instalador lo actualiza
+sin perder nada. Muestra "Actualizar Kongtrol <actual> → <nueva>" y no vuelve a preguntar la
+licencia, la carpeta ni las opciones (usa las de antes). Cierra Kongtrol (las VPN se desconectan
+un momento; tu internet normal sigue funcionando), actualiza y ofrece "Abrir Kongtrol". Si la
+versión nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la
+actualización. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
+pide confirmar (por defecto No).
 
 Si antes copiaste `kongtrol.exe` a mano en otra carpeta del PATH (por ejemplo `C:\tools`), la
 terminal puede seguir usando esa copia vieja: `kongtrol doctor` lo avisa en «kongtrol en la
@@ -112,7 +116,8 @@ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install
 ```
 
 Instala `~/Applications/Kongtrol.app` y el comando `kongtrol`, y abre Kongtrol. Para actualizar,
-vuelve a ejecutarlo: reinicia Kongtrol en la versión nueva y reconecta tus VPN. Alternativa:
+vuelve a ejecutarlo: dice "Updating Kongtrol <actual> → <nueva>", usa las mismas carpetas,
+reinicia Kongtrol en la versión nueva y reconecta tus VPN. Alternativa:
 `brew install DerotLuna/tap/kongtrol` (luego `brew upgrade kongtrol` y `kongtrol restart`).
 
 La app no está notarizada por Apple (cuesta 99 USD al año); el script, Homebrew y npm no marcan
@@ -938,7 +943,10 @@ Por defecto se guarda en `~/.kongtrol/history.json` y se actualiza en background
 
 **Actualizar:** usa lo mismo con lo que instalaste (vuelve a correr el instalador de Windows o
 `install.sh`, `brew upgrade kongtrol`, `npm update -g kongtrol`, `scoop update kongtrol`,
-`winget upgrade Kongtrol.Kongtrol` o tu gestor de paquetes). Tu configuración se queda.
+`winget upgrade Kongtrol.Kongtrol` o tu gestor de paquetes). Tu configuración se queda. El
+instalador de Windows y los scripts detectan la versión que tienes y dicen "Actualizar" (o
+"Reinstalar", o avisan si es una versión anterior) sin volver a preguntar lo que ya elegiste.
+`kongtrol service install` con el ayudante ya al día dice "nada que hacer" y no pide permiso.
 
 **Aviso de versión nueva (opcional, apagado):** `kongtrol config update-check on` o el panel
 (Ajustes). Consulta api.github.com una vez al día como máximo; GitHub ve tu IP y
