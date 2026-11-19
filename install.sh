@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.3.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 2.4.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0056-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -24,6 +24,13 @@
 #   KONGTROL_NO_AUTOSTART  1 = no autostart entry (Linux)
 #   KONGTROL_NO_LAUNCH     1 = don't open Kongtrol at the end
 #   KONGTROL_YES           1 = same as --yes
+#   KONGTROL_SKIP_SIGNATURE 1 = don't check the cosign signature of checksums.txt
+#                          (only for releases before v0.6.0, which were not signed)
+#
+# Integrity: the download is checked against checksums.txt. When cosign 2.4+
+# is installed, the Sigstore signature of checksums.txt is checked first (it
+# must come from this repo's release workflow) and a bad signature stops the
+# install. Without cosign the script says so and how to verify by hand.
 set -eu
 (set -o pipefail) 2>/dev/null && set -o pipefail
 
@@ -74,6 +81,21 @@ ver_cmp() {
 bin_version() {
   v="$("$1" version 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^[vV]//')" || v=""
   case "$v" in [0-9]*) printf '%s' "$v" ;; esac
+}
+
+# Sigstore identity of a genuine release (docs/adr/0056-installers-verify-release-signature.md):
+# checksums.txt is signed keyless by .github/workflows/release.yml on a v* tag.
+COSIGN_IDENTITY='^https://github\.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v'
+COSIGN_ISSUER='https://token.actions.githubusercontent.com'
+
+# cosign_bundle_flag prints the flag `cosign verify-blob` needs to read a
+# Sigstore bundle (.sigstore.json): none on cosign 3+, --new-bundle-format on
+# 2.4-2.x. Fails when this cosign is older than 2.4 (no bundle support).
+cosign_bundle_flag() {
+  cv="$(cosign version 2>/dev/null | awk '/GitVersion:/ {print $2; exit}')"
+  case "$cv" in v[0-9]*|[0-9]*) ;; *) return 1 ;; esac
+  [ "$(ver_cmp "$cv" 2.4.0)" -ge 0 ] || return 1
+  [ "$(ver_cmp "$cv" 3.0.0)" -ge 0 ] || printf '%s' "--new-bundle-format"
 }
 
 # has_tty: a terminal to ask on, even when the script is piped from curl.
@@ -176,6 +198,28 @@ curl -fsSL "${base_url}/${asset}" -o "${tmp_dir}/${asset}" \
 info "Verifying checksum..."
 curl -fsSL "${base_url}/checksums.txt" -o "${tmp_dir}/checksums.txt" \
   || die "could not fetch checksums.txt"
+verify_hint="cosign verify-blob --bundle checksums.txt.sigstore.json --certificate-identity-regexp '${COSIGN_IDENTITY}' --certificate-oidc-issuer ${COSIGN_ISSUER} checksums.txt (or: gh attestation verify checksums.txt --repo ${REPO})"
+if [ "${KONGTROL_SKIP_SIGNATURE:-0}" = "1" ]; then
+  warn "signature check skipped (KONGTROL_SKIP_SIGNATURE=1): checked with checksums.txt only."
+elif ! command -v cosign >/dev/null 2>&1; then
+  info "Signature not checked (cosign is not installed): checked with checksums.txt only. To verify by hand: ${verify_hint}"
+elif ! bundle_flag="$(cosign_bundle_flag)"; then
+  warn "cosign is too old to check the release signature (needs 2.4 or newer): checked with checksums.txt only. Update cosign, or verify by hand: ${verify_hint}"
+else
+  info "Verifying the signature of checksums.txt (cosign)..."
+  curl -fsSL "${base_url}/checksums.txt.sigstore.json" -o "${tmp_dir}/checksums.txt.sigstore.json" \
+    || die "this release has no signature (checksums.txt.sigstore.json), so nothing was installed. Releases before v0.6.0 were not signed: to install one anyway, run again with KONGTROL_SKIP_SIGNATURE=1. Otherwise report it: https://github.com/${REPO}/issues"
+  # $bundle_flag is empty or one word, so it stays unquoted on purpose.
+  # shellcheck disable=SC2086
+  if ! cosign verify-blob $bundle_flag \
+      --bundle "${tmp_dir}/checksums.txt.sigstore.json" \
+      --certificate-identity-regexp "$COSIGN_IDENTITY" \
+      --certificate-oidc-issuer "$COSIGN_ISSUER" \
+      "${tmp_dir}/checksums.txt" >"${tmp_dir}/cosign.log" 2>&1; then
+    die "the signature of checksums.txt could not be verified, so nothing was installed (cosign: $(grep -v '^error during' "${tmp_dir}/cosign.log" | tail -n 1)). If you are offline, connect and try again; otherwise do not use this download and report it: https://github.com/${REPO}/security"
+  fi
+  info "Signature OK: checksums.txt comes from the Kongtrol release workflow."
+fi
 expected="$(grep " ${asset}\$" "${tmp_dir}/checksums.txt" | awk '{print $1}')"
 [ -n "$expected" ] || die "no checksum entry found for ${asset}"
 if command -v sha256sum >/dev/null 2>&1; then

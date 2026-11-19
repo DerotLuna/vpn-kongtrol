@@ -146,6 +146,11 @@ curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/v0.5.0/insta
 iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/v0.5.0/install.ps1 -useb | iex
 ```
 
+The scripts check the download against `checksums.txt`. Since v0.6.0 they also verify the
+Sigstore signature of `checksums.txt` when [cosign](https://github.com/sigstore/cosign) 2.4+ is
+installed (a bad signature stops the install); without cosign they say so and print the command
+to verify by hand. See [Verifying releases](docs/SECURITY.md#verifying-releases).
+
 Or download the file for your system from [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest).
 
 **Desktop app — since v0.6.0 (pre-release).** To try it before the final release, download from

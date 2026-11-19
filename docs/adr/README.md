@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.19.0 · 2026-11-19
+Version 1.20.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -68,6 +68,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0053](0053-profiles-applied-live.md) | VPN profiles created, edited, renamed and deleted without restarting the daemon (`vpn.Set` copy-on-write + `app.AdapterSync`); a connected profile keeps its settings until reconnected (`reconnect_required`, `?reconnect=true`); detect says if an app's tunnel is up | Accepted | 2026-11-19 |
 | [0054](0054-recent-destinations-memory-only.md) | Recent destinations (`/api/v1/connections/recent`, `kongtrol traffic recent`): memory only, 500 entries, 1 h, on by default with a switch | Accepted | 2026-11-19 |
 | [0055](0055-add-sheet-one-entry-point.md) | One "＋ Agregar" sheet hosted by the dashboard shell for every add (VPN I use, file import, site through a VPN), deep link `?add=…`; "Guardar y activar" restarts only when the daemon cannot apply it live; connected edits "Guardar y reconectar"; input read like `policy.ClassifyTargets` (shared test table) | Accepted | 2026-11-19 |
+| [0056](0056-installers-verify-release-signature.md) | Install scripts verify the Sigstore signature of `checksums.txt` with cosign 2.4+ when it is installed (bad or missing signature stops; `KONGTROL_SKIP_SIGNATURE=1` for pre-v0.6.0 releases); otherwise checksum only plus a one-line manual hint; cosign never downloaded | Accepted | 2026-11-19 |
 
 ## Statuses
 

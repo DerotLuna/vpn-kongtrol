@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.8 · 2026-11-19
+Versión 1.9 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -117,6 +117,12 @@ desconectar todo") antes de actualizar: Windows no deja reemplazar un programa e
 ```bash
 curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 ```
+
+El script comprueba la descarga con `checksums.txt` y, si tienes
+[cosign](https://github.com/sigstore/cosign) 2.4 o más nuevo, también la
+firma de ese archivo: si no coincide, se detiene sin instalar nada. Sin cosign lo dice en una línea
+y muestra el comando para verificar a mano (lo mismo hace `install.ps1` en Windows). Detalles en
+[SECURITY.md](SECURITY.md#verifying-releases).
 
 Instala `~/Applications/Kongtrol.app` y el comando `kongtrol`, y abre Kongtrol. Para actualizar,
 vuelve a ejecutarlo: dice "Updating Kongtrol <actual> → <nueva>", usa las mismas carpetas,
