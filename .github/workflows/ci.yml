@@ -55,6 +55,8 @@ jobs:
       packaging: ${{ steps.filter.outputs.packaging }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false # public repo: paths-filter's git fetch needs no token
       - id: filter
         uses: dorny/paths-filter@0e4a8c6effa4802afeda77dc8d303f8176d7dfad # v3.0.4
         with:
@@ -77,6 +79,7 @@ jobs:
               - ".goreleaser.yaml"
               - "packaging/**"
               - "install.sh"
+              - "install.ps1"
               - ".github/workflows/release.yml"
               - ".github/workflows/ci.yml"
 
@@ -90,6 +93,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: "1.27"
@@ -98,13 +103,15 @@ jobs:
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
-          version: "~> v2"
+          version: "v2.20.2" # exact, same as release.yml; Renovate bumps it
           args: check
       - name: Shell scripts parse
         run: |
           bash -n packaging/macos/build-app.sh
           bash -n packaging/homebrew/publish.sh
           sh -n install.sh
+      - name: Install scripts (offline checks)
+        run: bash packaging/tests/install-scripts.sh
       - name: npm packages build
         run: |
           mkdir -p /tmp/kt-dist
@@ -137,6 +144,8 @@ jobs:
         working-directory: web/ui
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with:
@@ -207,6 +216,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Use the UI built in this run
         if: needs.ui-build.result == 'success'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
@@ -247,6 +258,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version: "1.27"
@@ -278,6 +291,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       # No cache: this job finishes first, so with `cache: true` it saved the
       # shared Linux setup-go key (run 44435646995) with almost no build
       # output in it, and test/race/packaging restored that thin cache until
@@ -288,7 +303,7 @@ jobs:
           cache: false
       - name: Vulnerability scan
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.10.0 # exact; bump by hand (advisories come from the online DB)
           govulncheck ./cmd/... ./internal/...
 
   # Single required check for branch rulesets ("ci-ok"). It always runs and
