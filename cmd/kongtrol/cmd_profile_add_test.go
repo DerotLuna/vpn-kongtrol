@@ -158,6 +158,9 @@ func TestProfileImportCreate(t *testing.T) {
 	if !strings.Contains(out, "kongtrol up Mi-Oficina-2") {
 		t.Fatalf("output:\n%s", out)
 	}
+	// runFlags resets every flag after a run, the inherited --config too
+	// (cfgPath): point it at the test config again, never at the real one.
+	cfgPath = path
 	// The profile name is taken: refused before storing anything.
 	if _, err := runFlags(t, profileImportCmd, map[string]string{"create": "true", "name": "oficina"}, src); err == nil || !strings.Contains(err.Error(), "Ya hay un perfil") {
 		t.Fatalf("taken name: %v", err)

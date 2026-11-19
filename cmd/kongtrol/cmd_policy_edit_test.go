@@ -22,6 +22,11 @@ const editTestYAML = "vpns:\n  oficina:\n    type: wireguard\n    config: /etc/w
 // returns its path. cfg is what loadConfig would have loaded.
 func withEditConfig(t *testing.T) string {
 	t.Helper()
+	// Hermetic: default config paths, api-token and preferences resolve under
+	// a temp home, never the developer's real ~/.kongtrol.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	stubUp(t)
 	t.Setenv("KONGTROL_LANG", "es")
 	daemonProbeFn = func(string) bool { return false }
