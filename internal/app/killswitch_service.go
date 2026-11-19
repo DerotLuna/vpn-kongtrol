@@ -235,8 +235,13 @@ func (s *KillSwitchService) Apply() error {
 	}
 
 	// 2. Destinations that must keep working: connected tunnels' routes
-	// and policies, every known VPN endpoint, never-block ranges.
-	keep := append(slices.Clone(neverBlock), localSubnets()...)
+	// and policies, every known VPN endpoint, never-block ranges. The
+	// directly connected subnets (local) stay reachable around a split
+	// tunnel's block; a full-tunnel block exempts them only with
+	// allow_lan, because the LAN router is usually also the resolver the
+	// system falls back to once the tunnel's DNS is gone (a DNS leak).
+	local := localSubnets()
+	keep := slices.Clone(neverBlock)
 	var allEndpoints []netip.Addr
 	for name, st := range s.state {
 		allEndpoints = append(allEndpoints, st.endpoints...)
@@ -253,7 +258,7 @@ func (s *KillSwitchService) Apply() error {
 
 	// 3. What to block.
 	status := security.KillSwitchStatus{State: security.KillSwitchOff}
-	var block []netip.Prefix
+	var block, fullBlock []netip.Prefix
 	names := s.adapters.Names()
 	for _, name := range names {
 		if !s.profileKillSwitchEnabled(name) {
@@ -272,9 +277,9 @@ func (s *KillSwitchService) Apply() error {
 			status.FullTunnel = append(status.FullTunnel, name)
 			excl := slices.Clone(keep)
 			if s.cfg.Security.KillSwitch.LANAllowed() {
-				excl = append(excl, lanRanges...)
+				excl = append(append(excl, lanRanges...), local...)
 			}
-			block = append(block, subtractAll([]netip.Prefix{allIPv4, allIPv6}, excl)...)
+			fullBlock = append(fullBlock, subtractAll([]netip.Prefix{allIPv4, allIPv6}, excl)...)
 			continue
 		}
 		block = append(block, st.captured...)
@@ -291,7 +296,8 @@ func (s *KillSwitchService) Apply() error {
 			block = append(block, d...)
 		}
 	}
-	block = dedupePrefixes(subtractAll(dedupePrefixes(block), keep))
+	block = subtractAll(dedupePrefixes(block), append(slices.Clone(keep), local...))
+	block = dedupePrefixes(append(block, fullBlock...))
 	if len(block) > privops.MaxBlockPrefixes {
 		block = block[:privops.MaxBlockPrefixes]
 	}
@@ -337,11 +343,24 @@ func (s *KillSwitchService) Apply() error {
 }
 
 // SetOnBlock sets the callback run once when a dropped tunnel starts being
-// blocked (fullTunnel: everything but the VPN servers and the LAN).
+// blocked (fullTunnel: everything but the VPN servers, plus the LAN when
+// LANAllowed).
 func (s *KillSwitchService) SetOnBlock(fn func(name string, fullTunnel bool)) {
 	s.mu.Lock()
 	s.onBlock = fn
 	s.mu.Unlock()
+}
+
+// LANAllowed reports whether a full-tunnel block leaves the local network
+// reachable (allow_lan, or the legacy mode: loose). When false, a dropped
+// full tunnel also cuts printers, NAS and the router itself.
+func (s *KillSwitchService) LANAllowed() bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cfg != nil && s.cfg.Security.KillSwitch.LANAllowed()
 }
 
 // HoldsAllTraffic reports, for a tunnel that just dropped, whether the

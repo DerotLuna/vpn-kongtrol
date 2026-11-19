@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.0.0 · 2026-11-19.
+// Version 3.1.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -245,6 +245,8 @@ $ kongtrol doctor --fix    # and repairs what it can`,
       ],
       ks: <><strong>Kill switch:</strong> if a VPN drops on its own, it blocks only that VPN's destinations; everything else keeps working.
         If that VPN carried all your traffic, internet stays blocked until it returns, and Kongtrol tells you.
+        With <strong>Allow the local network</strong> off (<IC c="allow_lan: false" />) your printer, NAS and other
+        devices on your network are cut too; turn it on to keep them.
         Turn it on in <strong>Security</strong> or with <IC c="kongtrol config killswitch on" />; per VPN, in the file:</>,
       ksYaml: `vpns:
   office:
@@ -289,7 +291,8 @@ $ sudo iptables -F KONGTROL`,
         {
           q: <>A VPN dropped and nothing loads</>,
           fix: <>That VPN carried all your traffic and the kill switch protects it. Disconnect it to browse now, or create rules
-            so only some sites depend on it.</>,
+            so only some sites depend on it. If your printer or NAS is unreachable too, turn on
+            "Allow the local network" in Security.</>,
           code: `$ kongtrol down <profile>`,
         },
         {

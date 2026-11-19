@@ -4,7 +4,7 @@
 
 # Configuration reference (kongtrol.yaml)
 
-Version 1.5 · 2026-11-19
+Version 1.6 · 2026-11-19
 
 Every key of `~/.kongtrol/kongtrol.yaml`, read from the schema (`internal/config/schema.go`). Defaults are the ones the code applies. Guide with examples: [CONFIGURATION.md](CONFIGURATION.md) · full example: [configs/example.yaml](../configs/example.yaml) · Español: [CONFIG.md](CONFIG.md).
 
@@ -70,7 +70,7 @@ Protections: kill switch, DNS guard, checks and audit log.
 |---|---|---|---|
 | `security.kill_switch.enabled` | bool | — | Blocks a protected tunnel's destinations if it drops without you turning it off. |
 | `security.kill_switch.mode` | string | `strict` | Compatibility: `loose` means `allow_lan: true`. Values: `strict`, `loose`. |
-| `security.kill_switch.allow_lan` | bool | — | Keeps the local network reachable while a full tunnel is down. |
+| `security.kill_switch.allow_lan` | bool | — | Keeps the local network (printers, NAS, router) reachable while a full tunnel is down; DNS lookups may then leave through your network's DNS. When `false`, a drop also cuts the local network until the VPN returns. |
 | `security.dns_guard.enabled` | bool | — | Forces the VPN's DNS while tunnels are connected (prevents DNS leaks). |
 | `security.dns_guard.fallback_dns` | string | — | Fallback DNS when the VPN pushes none. |
 | `security.integrity_check.enabled` | bool | — | Periodically checks that every tunnel is still healthy. |

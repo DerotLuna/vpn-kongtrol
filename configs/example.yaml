@@ -210,7 +210,10 @@ security:
     # `kongtrol down`. A full-tunnel profile (default route through the
     # tunnel) blocks all but the VPN endpoints while dropped.
     mode: strict    # legacy; "loose" now means the same as allow_lan: true
-    allow_lan: true # keep the LAN reachable while a full tunnel is dropped
+    # allow_lan: true keeps the LAN (printers, NAS, router) reachable while a
+    # full tunnel is dropped; lookups may then leave through the LAN's DNS.
+    # false: a drop also blocks the LAN until the VPN returns.
+    allow_lan: true
 
   dns_guard:
     enabled: true

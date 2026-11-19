@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.4.1 · 2026-11-19 · docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 1.5.0 · 2026-11-19 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://kongtrol.app/install.ps1 -useb | iex
 #
@@ -82,6 +82,11 @@ function Get-KongtrolVersion([string]$Exe) {
   return $null
 }
 
+# Everything below runs from Invoke-KongtrolInstall, called on the last line:
+# a download cut short is a parse error that runs nothing, never half a
+# script (ADR-0063). The body of the function is not indented.
+function Invoke-KongtrolInstall {
+
 # Uninstall delegates to `kongtrol uninstall`, the same logic the app uses.
 if ($Uninstall -or $env:KONGTROL_UNINSTALL -eq "1") {
   $cmd = Get-Command kongtrol -ErrorAction SilentlyContinue
@@ -111,12 +116,24 @@ $baseUrl = if ($Version -eq "latest") {
 
 # Existing install (docs/adr/0046-installers-detect-existing-install.md): the
 # manifest an earlier run wrote says where kongtrol.exe went, so an update
-# reuses that folder instead of leaving a second copy behind.
+# reuses that folder instead of leaving a second copy behind. Only the
+# default folder is reused from it: the manifest is a file any program of
+# this user can rewrite, and the update runs the exe it finds there with a
+# permission prompt (service install); KONGTROL_INSTALL_DIR chooses another.
 $dataDir = Join-Path $HOME ".kongtrol"
 $manifest = Join-Path $dataDir "install.manifest"
 $previous = if (Test-Path $manifest) { @(Get-Content $manifest) } else { @() }
 $prevExe = $previous | Where-Object { $_ -like "file=*kongtrol.exe" } | ForEach-Object { $_.Substring(5) } | Select-Object -First 1
 $defaultDir = Join-Path $env:LOCALAPPDATA "kongtrol\bin"
+if ($prevExe) {
+  $prevDir = try { [IO.Path]::GetFullPath((Split-Path -Parent $prevExe)).TrimEnd('\') } catch { "" }
+  if ($prevDir -ine [IO.Path]::GetFullPath($defaultDir).TrimEnd('\')) {
+    if (-not $env:KONGTROL_INSTALL_DIR) {
+      Write-Warn "the last install was in $prevDir, which is not the default folder, so it is not reused. To install there again, set `$env:KONGTROL_INSTALL_DIR=`"$prevDir`" first"
+    }
+    $prevExe = $null
+  }
+}
 if (-not $prevExe -or -not (Test-Path $prevExe)) {
   $prevExe = $null
   foreach ($d in @($env:KONGTROL_INSTALL_DIR, $defaultDir)) {
@@ -291,3 +308,6 @@ try {
 } finally {
   Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
 }
+}
+
+Invoke-KongtrolInstall

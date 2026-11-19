@@ -144,6 +144,64 @@ func TestKillSwitch_FullTunnelBlocksAllButEndpointAndLAN(t *testing.T) {
 	}
 }
 
+// A full-tunnel drop with allow_lan off blocks the directly connected
+// subnets too: the router there is usually the resolver the system falls
+// back to once the tunnel's DNS is gone (systemd-resolved forgets a link's
+// DNS when it disappears), so exempting it leaked lookups. Link-local,
+// broadcast/multicast (DHCP, NDP) and the VPN endpoints stay reachable.
+// With allow_lan on, the local subnets stay reachable. A split tunnel's
+// block keeps exempting them either way.
+func TestKillSwitch_FullTunnelLocalSubnetsFollowAllowLAN(t *testing.T) {
+	for _, allowLAN := range []bool{false, true} {
+		cfg := ksCfg()
+		cfg.Security.KillSwitch.AllowLAN = allowLAN
+		full := &fakeAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "tun1"}}
+		bb := &fakeAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "tun0"}}
+		s, b := newKS(t, cfg, map[string]vpn.VPNAdapter{"full": full, "brainbox": bb},
+			[]routing.Route{rt("0.0.0.0/1", "tun1"), rt("128.0.0.0/1", "tun1"), rt("192.168.0.0/16", "tun0")},
+			fakeDests{})
+		localSubnets = func() []netip.Prefix { return pfx("192.168.1.0/24", "2001:db8:1::/64") }
+		t.Cleanup(func() { localSubnets = func() []netip.Prefix { return nil } })
+		blocked := func(ip string) bool {
+			a := netip.MustParseAddr(ip)
+			for _, p := range b.set {
+				if p.Contains(a) {
+					return true
+				}
+			}
+			return false
+		}
+		_ = s.Apply() // both up: routes captured
+
+		// Only the split tunnel drops: its captured 192.168/16 is blocked
+		// except the directly connected subnet, whatever allow_lan says.
+		bb.status = vpn.StatusError
+		_ = s.Apply()
+		if blocked("192.168.1.1") || !blocked("192.168.2.1") || blocked("8.8.8.8") {
+			t.Errorf("allow_lan=%v split drop: blocked = %v", allowLAN, b.set)
+		}
+
+		// The user turns the split tunnel off; then the full tunnel drops.
+		s.NoteIntent("brainbox", true)
+		bb.status = vpn.StatusDisconnected
+		full.status = vpn.StatusError
+		_ = s.Apply()
+		lanBlocked := !allowLAN
+		for ip, want := range map[string]bool{
+			"192.168.1.1": lanBlocked, "192.168.1.255": lanBlocked, "2001:db8:1::1": lanBlocked,
+			"8.8.8.8": true, "198.51.100.9": false, "255.255.255.255": false, "0.0.0.0": false,
+			"169.254.10.1": false, "fe80::1": false, "ff02::1:2": false, "224.0.0.251": false,
+		} {
+			if blocked(ip) != want {
+				t.Errorf("allow_lan=%v: %s blocked=%v, want %v", allowLAN, ip, !want, want)
+			}
+		}
+		if rest := subtractAll(pfx("192.168.1.0/24", "2001:db8:1::/64"), b.set); !allowLAN && len(rest) != 0 {
+			t.Errorf("local subnets not fully blocked, still open: %v", rest)
+		}
+	}
+}
+
 // A drop is announced once per outage, saying whether everything is cut
 // (full tunnel) or only the tunnel's destinations; HoldsAllTraffic is what
 // keeps the DNS guard of a full tunnel (#37, ADR-0058).

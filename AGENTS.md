@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.23 · 2026-11-19
+Version 1.24 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -375,7 +375,7 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 through the helper: `config.CheckFileReadable` → `config.err.file_root_only` (profile save, preflight,
 doctor), and the user copies it with one OS prompt — CLI/wizard `sudo`, dashboard `{"path","elevate":true}`
 → `pkexec` — to the hidden `kongtrol profile read-protected`, which releases it only after
-`profileimport.ReadProtected` (absolute, .conf/.ovpn, no link, size cap, helper validators) (ADR-0058). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
+`profileimport.ReadProtected` (absolute, .conf/.ovpn, no symlink, link count 1, size cap, helper validators, `.ovpn` needs `remote` + `client`/`tls-client`; every refusal is the generic `api.err.import_protected_path`, never a file detail) (ADR-0058, ADR-0063). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
 the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
 <!-- feature:policies -->
 Policy create/delete and profile create live in `internal/configedit` (`AddPolicy`, `RemovePolicy`,
@@ -460,7 +460,7 @@ changing the port from the page serving that request would cut the connection mi
 
 The user decides which tunnels are up; a policy whose tunnel is off uses the normal internet unless `on_tunnel_down` says otherwise.
 - `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Overlaps follow the policy engine order. Resolved IPs expire after 6h unseen.
-- `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints (+ LAN with `allow_lan` / legacy `mode: loose`). Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far. When a dropped tunnel starts being blocked, `SetOnBlock` emits one notice per outage (`killswitch.event.blocking` / `blocking_full`, kind `tunnel_watchdog`) with what to do (ADR-0058).
+- `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints and `neverBlock` (broadcast/multicast/link-local); the directly connected subnets and private ranges stay open only with `allow_lan` / legacy `mode: loose` (otherwise the LAN router, the usual DNS fallback, would leak lookups, ADR-0063). Split-tunnel blocks always exempt the directly connected subnets. Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far. When a dropped tunnel starts being blocked, `SetOnBlock` emits one notice per outage (`killswitch.event.blocking` / `blocking_full` / `blocking_full_lan` when the LAN is blocked too, kind `tunnel_watchdog`) with what to do (ADR-0058).
 - `monitor.PolicyWatch` checks open TCP connections (Windows GetExtendedTcpTable, Linux /proc/net/tcp; macOS unsupported) every 15s and emits `monitor.Event`s (i18n key + args, throttled 30 min per policy; `connect` rate-limited 3 min) served by `GET /api/v1/events?after=<seq>` to tray, dashboard (toasts + Actividad, `web/ui/src/data/home.ts`) and the live view.
 
 ### Public IP lookup (opt-in)

@@ -47,7 +47,9 @@ var profileReadProtectedCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		data, err := profileimport.ReadProtected(args[0])
 		if err != nil {
-			return localizeConfigErr(err)
+			// Running as root: print only the generic refusal (path the
+			// caller typed + what to do), never a detail of the file.
+			return localizeConfigErr(&config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{args[0]}})
 		}
 		_, err = os.Stdout.Write(data)
 		return err

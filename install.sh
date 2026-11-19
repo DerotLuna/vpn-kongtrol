@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.4.1 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 2.5.0 · 2026-11-19 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://kongtrol.app/install.sh | sh
 #
@@ -101,6 +101,22 @@ cosign_bundle_flag() {
 # has_tty: a terminal to ask on, even when the script is piped from curl.
 has_tty() { (: </dev/tty) 2>/dev/null; }
 
+# allowed_dir DIR succeeds when DIR is one of the default CLI folders. A
+# folder read back from install.manifest (a file any program of this user
+# can rewrite) is reused only then: the install may sudo into it, so a
+# rewritten manifest must not choose where root writes (ADR-0063).
+allowed_dir() {
+  case "$1" in
+    /usr/local/bin|"${HOME}/.local/bin") return 0 ;;
+  esac
+  return 1
+}
+
+# Everything below runs from main, called on the last line: a download cut
+# short by `curl | sh` is a syntax error that runs nothing, never half a
+# script. The body of main is not indented.
+main() {
+
 # --uninstall [--purge]: delegate to `kongtrol uninstall`, the same logic the
 # app uses (docs/adr/0034-uninstall-and-update-notice.md). Your data stays
 # unless you add --purge.
@@ -158,7 +174,8 @@ fi
 # manifest an earlier run wrote says where it put things, so an update reuses
 # those folders and the autostart choice instead of asking again or leaving
 # a second copy behind. Without a manifest, a kongtrol in the default
-# folders counts too.
+# folders counts too. A manifest folder other than the defaults is ignored
+# (the install may use sudo there): KONGTROL_INSTALL_DIR chooses another.
 manifest="${HOME}/.kongtrol/install.manifest"
 prev_bin=""
 prev_dir=""
@@ -167,7 +184,17 @@ prev_no_autostart=""
 if [ -f "$manifest" ]; then
   prev_bin="$(sed -n 's|^file=\(.*\)/kongtrol$|\1/kongtrol|p' "$manifest" | head -n 1)"
   [ -n "$prev_bin" ] && prev_dir="$(dirname "$prev_bin")"
+  if [ -n "$prev_dir" ] && ! allowed_dir "$prev_dir"; then
+    [ -n "${KONGTROL_INSTALL_DIR:-}" ] \
+      || warn "the last install was in ${prev_dir}, which is not a default folder, so it is not reused. To install there again, run with KONGTROL_INSTALL_DIR=${prev_dir}"
+    prev_bin=""
+    prev_dir=""
+  fi
   prev_app_dir="$(sed -n 's|^file=\(.*\)/Kongtrol\.app$|\1|p' "$manifest" | head -n 1)"
+  case "$prev_app_dir" in
+    "${HOME}/Applications"|/Applications) ;;
+    *) prev_app_dir="" ;;
+  esac
   if grep -q '/kongtrol-tray$' "$manifest" && ! grep -q '^autostart=' "$manifest"; then
     prev_no_autostart=1
   fi
@@ -378,3 +405,6 @@ case "$kind" in
   repair) info "Kongtrol ${new_ver} reinstalled: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
 esac
 "${install_dir}/kongtrol" version 2>/dev/null || true
+}
+
+main "$@"

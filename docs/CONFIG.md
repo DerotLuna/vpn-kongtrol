@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.5 · 2026-11-19
+Versión 1.6 · 2026-11-19
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -70,7 +70,7 @@ Protecciones: kill switch, DNS guard, chequeos y registro de auditoría.
 |---|---|---|---|
 | `security.kill_switch.enabled` | booleano | — | Bloquea los destinos de un túnel protegido si se cae sin que lo apagues. |
 | `security.kill_switch.mode` | texto | `strict` | Compatibilidad: `loose` equivale a `allow_lan: true`. Valores: `strict`, `loose`. |
-| `security.kill_switch.allow_lan` | booleano | — | Deja la red local accesible mientras un túnel completo está caído. |
+| `security.kill_switch.allow_lan` | booleano | — | Deja la red local (impresoras, NAS, router) accesible mientras un túnel completo está caído; las búsquedas DNS pueden salir entonces por el DNS de tu red. Si es `false`, una caída también corta la red local hasta que vuelva la VPN. |
 | `security.dns_guard.enabled` | booleano | — | Fuerza el DNS de la VPN mientras hay túneles conectados (evita fugas de DNS). |
 | `security.dns_guard.fallback_dns` | texto | — | DNS de respaldo si la VPN no envía ninguno. |
 | `security.integrity_check.enabled` | booleano | — | Comprueba periódicamente que cada túnel sigue sano. |

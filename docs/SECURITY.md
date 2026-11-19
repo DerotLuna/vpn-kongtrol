@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.9.0 · 2026-11-19
+Version 2.10.0 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -255,7 +255,17 @@ Every release (`.github/workflows/release.yml`) publishes, for every file:
 2.4+ is installed they first verify `checksums.txt.sigstore.json` with the identity above; a bad
 or missing signature stops the install and nothing is installed (`KONGTROL_SKIP_SIGNATURE=1`
 only for releases before v0.6.0). Without cosign they print one line saying the signature was not
-checked and the command to verify by hand. They never download cosign.
+checked and the command to verify by hand. They never download cosign. They run from a function
+called on their last line, so a download cut short runs nothing. On an update they reuse the
+folder recorded in `~/.kongtrol/install.manifest` only when it is a default one (`/usr/local/bin`,
+`~/.local/bin`, `%LOCALAPPDATA%\kongtrol\bin`): that file is writable by any program of the user,
+and the install may use `sudo` (or run the new exe with a permission prompt) in that folder.
+Another folder needs `KONGTROL_INSTALL_DIR` ([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
+
+The release jobs restore no build cache (a cache written by a `main` run never feeds a signed
+build), use exact tool versions, keep no git credentials after checkout, and the jobs that hold
+signing or publishing secrets run in the protected GitHub environment `release`
+([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
 
 Package managers (winget, Scoop, Homebrew, AUR, apt/dnf) check the SHA-256 written in their
 manifest. None of these steps sends anything from the user's machine (cosign, when you run it,
@@ -313,15 +323,29 @@ A tunnel that drops on its own gives its DNS servers back at once (they are only
 through it), unless the kill switch holds all traffic for that full-tunnel profile: then lookups
 stay on the tunnel's servers so none leaks outside it ([ADR-0058](adr/0058-linux-dropped-tunnel-dns-and-root-only-configs.md)).
 
+With systemd-resolved the tunnel's DNS lives on the tunnel link, and resolved forgets it when the
+interface disappears: lookups then go to the physical link's resolver, usually the router in your
+local network. So, while a full-tunnel profile is dropped, the kill switch blocks the directly
+connected subnets too unless `allow_lan: true` ("Allow the local network"): the lookup to the router
+fails instead of leaving outside the tunnel. With `allow_lan: false` a drop therefore also cuts
+printers, NAS and other LAN devices until the VPN returns; with `allow_lan: true` they stay
+reachable, and so does a LAN resolver (lookups can leave through it during the outage). Always
+open: broadcast and multicast (DHCP, mDNS), link-local (IPv6 neighbor discovery) and the VPN
+servers. Known limit: a resolver announced at an IPv6 link-local address (RFC 8106 RDNSS) stays
+reachable ([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
+
 ## Root-only profile files
 
 A profile file only root can read (`/etc/wireguard/wg0.conf`) is never read through the helper:
 that would hand root-only keys to any process of the user without asking. Instead the user gives
 one OS permission prompt (`sudo` in a terminal, `pkexec` from the dashboard) to a short-lived
 `kongtrol profile read-protected <path>` that runs as root and prints the file only if it is an
-absolute `.conf`/`.ovpn`, a regular file (not a link), at most 512 KiB and passes the helper's own
-WireGuard/OpenVPN checks; a refusal never echoes the content. The copy is stored 0600 in
-`~/.kongtrol/configs/` ([ADR-0058](adr/0058-linux-dropped-tunnel-dns-and-root-only-configs.md)).
+absolute `.conf`/`.ovpn`, a regular file with a single link (not a symlink or a hard link), at
+most 512 KiB, passes the helper's own WireGuard/OpenVPN checks and has a profile's shape (an
+`.ovpn` needs a `remote` and `client` or `tls-client`). Every refusal is the same generic message
+with the path you typed: it never says which check failed nor quotes a section, key or line. The
+copy is stored 0600 in `~/.kongtrol/configs/` ([ADR-0058](adr/0058-linux-dropped-tunnel-dns-and-root-only-configs.md),
+[ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
 
 ## Kill switch recovery
 

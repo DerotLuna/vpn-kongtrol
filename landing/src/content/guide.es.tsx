@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 3.0.0 · 2026-11-19.
+// Version 3.1.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -251,6 +251,8 @@ $ kongtrol doctor --fix    # y repara lo que se puede`,
       ],
       ks: <><strong>Kill switch:</strong> si una VPN se cae sola, bloquea solo sus destinos; lo demás sigue funcionando.
         Si esa VPN llevaba todo tu tráfico, internet queda bloqueado hasta que vuelva, y Kongtrol te lo avisa.
+        Con <strong>Permitir la red local</strong> apagado (<IC c="allow_lan: false" />) también se cortan tu impresora,
+        tu NAS y los demás equipos de tu red; enciéndelo para mantenerlos.
         Actívalo en <strong>Seguridad</strong> o con <IC c="kongtrol config killswitch on" />; por VPN, en el archivo:</>,
       ksYaml: `vpns:
   oficina:
@@ -295,7 +297,8 @@ $ sudo iptables -F KONGTROL`,
         {
           q: <>Se cayó una VPN y no carga nada</>,
           fix: <>Esa VPN llevaba todo tu tráfico y el kill switch la protege. Desconéctala para navegar ya, o crea reglas
-            para que solo algunos sitios dependan de ella.</>,
+            para que solo algunos sitios dependan de ella. Si tampoco llegas a la impresora o al NAS, enciende
+            «Permitir la red local» en Seguridad.</>,
           code: `$ kongtrol down <perfil>`,
         },
         {

@@ -536,6 +536,7 @@ const NOTICE_TEXT: Record<string, MessageKey> = {
   'watchdog.event.manual_reconnect': 'home.notice.watchdog.manualReconnect',
   'killswitch.event.blocking': 'home.notice.killswitch.blocking',
   'killswitch.event.blocking_full': 'home.notice.killswitch.blockingFull',
+  'killswitch.event.blocking_full_lan': 'home.notice.killswitch.blockingFullLan',
   'update.event.available': 'home.notice.update.available',
 }
 

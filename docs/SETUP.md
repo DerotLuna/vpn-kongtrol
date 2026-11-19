@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.13 · 2026-11-19
+Versión 1.14 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -229,8 +229,11 @@ Kongtrol corre con tu usuario y no puede leerlos ahí. No hace falta moverlos a 
   administrador puede leerlo y ofrece **Copiar con permiso de administrador** (la ventana de
   contraseña del sistema, `pkexec`).
 
-Solo se copia si es un `.conf`/`.ovpn` válido (mismas reglas de arriba); queda en
-`~/.kongtrol/configs/` con permiso solo para ti. Sin terminal en macOS:
+Solo se copia si es un `.conf`/`.ovpn` válido (mismas reglas de arriba; un `.ovpn` necesita
+`remote` y `client` o `tls-client`), un archivo normal y no un enlace (ni simbólico ni duro); queda
+en `~/.kongtrol/configs/` con permiso solo para ti. Si no se acepta, el aviso es siempre el mismo y
+no dice qué línea falla (corre como administrador y no muestra nada del archivo): guarda una copia
+sin las líneas dudosas en tu carpeta e impórtala para ver el detalle. (ADR-0063) Sin terminal en macOS:
 `sudo install -m 600 -o $USER /ruta/al/archivo ~/` y luego impórtalo. (ADR-0058)
 
 ---
@@ -959,6 +962,12 @@ servidores DNS solo se alcanzan por el túnel caído) y avisa qué bloquea el ki
   `kongtrol down <perfil>`). Si solo necesitas algunos sitios por esa VPN, agrega reglas
   (Agregar → «Hacer que un sitio salga por una VPN»): con reglas, Kongtrol lleva por el túnel solo
   esos destinos y lo demás no depende de él.
+- **«…bloquea internet y tu red local (impresoras, NAS)»**: igual que el anterior, con
+  `allow_lan` apagado. Mientras el túnel completo está caído también se cortan los equipos de tu
+  red (impresora, NAS, el router), porque el router suele ser el DNS al que el sistema vuelve y
+  por ahí saldrían tus búsquedas fuera de la VPN. Para seguir usándolos: panel → Seguridad →
+  «Permitir la red local», o `allow_lan: true` en `security.kill_switch` (entonces las búsquedas
+  pueden salir por el DNS de tu red mientras la VPN no vuelve).
 
 WireGuard con línea `DNS =`: `wg-quick` manda **todas** las búsquedas al DNS del túnel mientras la
 interfaz exista (en systemd-resolved, `resolvconf -x` equivale a `~.`). Si el servidor deja de

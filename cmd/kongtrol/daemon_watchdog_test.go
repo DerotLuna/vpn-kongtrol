@@ -5,8 +5,32 @@ import (
 	"testing"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 )
+
+// A full-tunnel drop with allow_lan off also cuts the local network, so the
+// notice says so and names the switch that keeps it (ADR-0063).
+func TestKillSwitchBlockKey(t *testing.T) {
+	for _, c := range []struct {
+		full, lan bool
+		want      string
+	}{
+		{false, false, "killswitch.event.blocking"},
+		{false, true, "killswitch.event.blocking"},
+		{true, true, "killswitch.event.blocking_full"},
+		{true, false, "killswitch.event.blocking_full_lan"},
+	} {
+		if got := killSwitchBlockKey(c.full, c.lan); got != c.want {
+			t.Errorf("killSwitchBlockKey(%v, %v) = %q, want %q", c.full, c.lan, got, c.want)
+		}
+		for _, lang := range []i18n.Lang{i18n.ES, i18n.EN} {
+			if i18n.T(lang, c.want) == c.want {
+				t.Errorf("%v: missing %s", lang, c.want)
+			}
+		}
+	}
+}
 
 // The user's real config: similar names and priorities, no failover
 // declared. Priority must never become failover (ADR-0018).

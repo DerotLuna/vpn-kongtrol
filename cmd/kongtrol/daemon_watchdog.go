@@ -86,11 +86,20 @@ func releaseDroppedDNS(profile string) {
 
 // onKillSwitchBlock tells every client, once per outage, that the kill
 // switch started blocking for a dropped tunnel and what that means: only
-// its destinations, or everything (a full tunnel) with what to do.
+// its destinations, or everything (a full tunnel) with what to do; with
+// allow_lan off a full tunnel also cuts the local network, and says so.
 func onKillSwitchBlock(profile string, fullTunnel bool) {
-	key := "killswitch.event.blocking"
-	if fullTunnel {
-		key = "killswitch.event.blocking_full"
+	watchdogNotice("WARN", "killswitch.blocking", killSwitchBlockKey(fullTunnel, killSwitchSvc.LANAllowed()), profile)
+}
+
+// killSwitchBlockKey picks the notice for onKillSwitchBlock.
+func killSwitchBlockKey(fullTunnel, lanAllowed bool) string {
+	switch {
+	case !fullTunnel:
+		return "killswitch.event.blocking"
+	case lanAllowed:
+		return "killswitch.event.blocking_full"
+	default:
+		return "killswitch.event.blocking_full_lan"
 	}
-	watchdogNotice("WARN", "killswitch.blocking", key, profile)
 }

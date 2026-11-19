@@ -427,8 +427,8 @@ var messages = map[Lang]map[string]string{
 		// Root-only profile files and the kill switch notice (ADR-0058).
 		"config.err.file_root_only":              "Solo el administrador puede leer %[1]q, así que Kongtrol no puede usarlo ahí.",
 		"config.err.file_root_only.fix":          "Cópialo a Kongtrol con tu permiso: en el panel, «Copiar con permiso de administrador»; en una terminal, kongtrol profile import %[1]s (pide tu contraseña una vez).",
-		"api.err.import_protected_path":          "Kongtrol no abre %[1]q: tiene que ser la ruta completa de un archivo .conf u .ovpn (no un enlace ni una carpeta).",
-		"api.err.import_protected_path.fix":      "Escribe la ruta completa del archivo, por ejemplo /etc/wireguard/wg0.conf.",
+		"api.err.import_protected_path":          "Kongtrol no copia %[1]q como administrador: solo acepta la ruta completa de un perfil WireGuard (.conf) u OpenVPN (.ovpn) válido, completo y sin órdenes que ejecuten programas, que sea un archivo normal (no un enlace ni una carpeta).",
+		"api.err.import_protected_path.fix":      "Revisa la ruta (por ejemplo /etc/wireguard/wg0.conf) y que sea un perfil completo. Si tiene órdenes que ejecutan programas, guarda una copia sin esas líneas en tu carpeta e impórtala: así Kongtrol te dice qué línea falla.",
 		"api.err.import_elevated_failed":         "No se pudo leer %[1]q con permiso de administrador (se canceló la ventana o falló).",
 		"api.err.import_elevated_failed.fix":     "Inténtalo otra vez y acepta la ventana de permiso, o cópialo tú en una terminal: sudo install -m 600 -o $USER %[1]s ~/ y elige esa copia.",
 		"cli.profile.import.root_only_ask":       "Solo el administrador puede leer %s. ¿Copiarlo a Kongtrol con tu permiso? (pide tu contraseña una vez)",
@@ -440,6 +440,7 @@ var messages = map[Lang]map[string]string{
 		"wizard.config_root_only":                "Solo el administrador puede leer %s: Kongtrol puede copiarlo a su carpeta con tu permiso.",
 		"killswitch.event.blocking":              "%s se cayó · el kill switch bloquea solo sus destinos; el resto de internet sigue normal. Kongtrol la reconecta solo",
 		"killswitch.event.blocking_full":         "%s se cayó y llevaba todo tu tráfico · el kill switch bloquea internet hasta que vuelva. Para navegar ya, desconéctala; si solo necesitas algunos sitios por ella, agrega reglas para que lo demás no dependa de esa VPN",
+		"killswitch.event.blocking_full_lan":     "%s se cayó y llevaba todo tu tráfico · el kill switch bloquea internet y tu red local (impresoras, NAS) hasta que vuelva. Para navegar ya, desconéctala; para usar tu red local mientras tanto, activa «Permitir la red local» en Seguridad (allow_lan: true)",
 
 		"config.err.group_nord":                 "Perfil %[1]q: group solo sirve para nordvpn.",
 		"config.err.group_nord.fix":             "Quita group de este perfil.",
@@ -1627,8 +1628,8 @@ var messages = map[Lang]map[string]string{
 		// Root-only profile files and the kill switch notice (ADR-0058).
 		"config.err.file_root_only":              "Only the administrator can read %[1]q, so Kongtrol can't use it there.",
 		"config.err.file_root_only.fix":          "Copy it into Kongtrol with your permission: in the dashboard, “Copy with administrator permission”; in a terminal, kongtrol profile import %[1]s (asks for your password once).",
-		"api.err.import_protected_path":          "Kongtrol does not open %[1]q: it must be the full path of a .conf or .ovpn file (not a link or a folder).",
-		"api.err.import_protected_path.fix":      "Type the file’s full path, for example /etc/wireguard/wg0.conf.",
+		"api.err.import_protected_path":          "Kongtrol does not copy %[1]q as administrator: it only accepts the full path of a valid, complete WireGuard (.conf) or OpenVPN (.ovpn) profile with no commands that run programs, as a regular file (not a link or a folder).",
+		"api.err.import_protected_path.fix":      "Check the path (for example /etc/wireguard/wg0.conf) and that it is a complete profile. If it has commands that run programs, save a copy without those lines in your folder and import that: then Kongtrol tells you which line fails.",
 		"api.err.import_elevated_failed":         "Could not read %[1]q with administrator permission (the window was cancelled or it failed).",
 		"api.err.import_elevated_failed.fix":     "Try again and accept the permission window, or copy it yourself in a terminal: sudo install -m 600 -o $USER %[1]s ~/ and pick that copy.",
 		"cli.profile.import.root_only_ask":       "Only the administrator can read %s. Copy it into Kongtrol with your permission? (asks for your password once)",
@@ -1640,6 +1641,7 @@ var messages = map[Lang]map[string]string{
 		"wizard.config_root_only":                "Only the administrator can read %s: Kongtrol can copy it into its folder with your permission.",
 		"killswitch.event.blocking":              "%s dropped · the kill switch blocks only its destinations; the rest of the internet works as usual. Kongtrol reconnects it on its own",
 		"killswitch.event.blocking_full":         "%s dropped and carried all your traffic · the kill switch blocks the internet until it is back. To browse now, disconnect it; if you only need some sites through it, add rules so the rest does not depend on that VPN",
+		"killswitch.event.blocking_full_lan":     "%s dropped and carried all your traffic · the kill switch blocks the internet and your local network (printers, NAS) until it is back. To browse now, disconnect it; to use your local network meanwhile, turn on \"Allow the local network\" in Security (allow_lan: true)",
 
 		"config.err.group_nord":                 "profile %[1]q: group is only supported by nordvpn",
 		"config.err.group_nord.fix":             "Remove group from this profile.",
