@@ -93,12 +93,19 @@ from prior reading, to re-open before the final ADR):
   (https://developer.apple.com/design/human-interface-guidelines/the-menu-bar): use a template
   image (black + alpha) so the system tints it; keep it simple, about 16 pt tall.
 
-Three candidates in `assets/brand/tray-candidates/` (24-unit grid SVG, nonzero winding, single
-source; `generate.go` renders 16/20/24/32/40/48 px with an edge-contrast "hint" at ≤32 px —
-an approximation, not true grid-fitting): **A · silueta** (solid head and ears, face cut out),
-**B · anillo** (one bold ring + solid face, echoes the contour rings), **C · cara** (the face
-plate alone). Previews on dark/light taskbar strips at 16 and 24 px were made for the choice;
-the full line-art logo stays for large sizes (installer, about, dashboard).
+A first round of three redrawn glyphs (silhouette, ring, face) was rejected: they did not look
+like the real logo. The current candidate is `assets/brand/source/logo-kong-solid.svg`, the
+same head **derived** from `logo-kong.svg` by `generate.go` (rasterize at 2048 px,
+morphological closing with a 30 px disc on exact distance transforms — Felzenszwalb &
+Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing 8, 2012 —, flood
+fill from outside, face plate kept as a hole, marching-squares tracing, Douglas–Peucker, cubic
+Béziers). Checked at 512 px: its outer edge lies on average 0.36 px (max 5 px, where the
+closing bridges notches between line ends) from the original ink, and 0.15 % of the original
+ink falls outside it (anti-aliased edge pixels), so the silhouette is the original's. Masks at 16/20/24/32/40/48 px are in `assets/brand/tray-candidates/`
+(`solid-<px>.png`, and `solid-badge-<px>.png` with a gap for a smaller status dot, radius
+17 % instead of 20 %, which covers no face pixel at any size), with the same edge-contrast
+"hint" at ≤32 px (an approximation, not true grid-fitting). Not wired into the tray yet; the
+full line-art logo stays for large sizes (installer, about, dashboard).
 
 ### Another copy of the CLI earlier in PATH
 

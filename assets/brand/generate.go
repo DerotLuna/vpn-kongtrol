@@ -1,6 +1,6 @@
-//go:build ignore
+//go:build brandgen
 
-// Brand asset generator — version 1.1.0 · 2026-11-18.
+// Brand asset generator — version 1.2.0 · 2026-11-18.
 //
 // Regenerates the raster fallbacks in assets/brand/ from the masters in
 // assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg, plus
@@ -9,8 +9,9 @@
 // for consumers that cannot (OS tray icons, Open Graph cards, app manifests,
 // README images).
 //
-// Uses only the standard library plus golang.org/x/image (already in go.mod),
-// so it needs no extra install. Run from the repo root:
+// Uses only the standard library plus golang.org/x/image (in go.mod; the
+// build tag is "brandgen", not "ignore", because go mod tidy skips files
+// tagged ignore and would drop the dependency). Run from the repo root:
 //
 //	go run assets/brand/generate.go
 //
@@ -27,6 +28,9 @@
 //     tints them for the taskbar theme (Windows, Linux) or hands them to
 //     macOS as a template image, and draws state badges on top at run time.
 //     One file per tray size, so small sizes are rendered, not downscaled.
+//   - source/logo-kong-solid.svg (the same head, solid instead of lines) is
+//     derived from source/logo-kong.svg here, and tray-candidates/ holds its
+//     tray masks for review; see deriveSolid.
 package main
 
 import (
@@ -41,6 +45,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -119,7 +124,10 @@ func main() {
 		}
 		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", out, px, px, buf.Len())
 	}
-	if err := renderCandidates(); err != nil {
+	if err := deriveSolid(); err != nil {
+		log.Fatal(err)
+	}
+	if err := renderSolidCandidates(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -129,38 +137,513 @@ func main() {
 // bar (16 pt @1x/@2x) and Linux panels.
 var candidateSizes = []int{16, 20, 24, 32, 40, 48}
 
-// renderCandidates rasterizes every simplified tray glyph in
-// tray-candidates/*.svg (24-unit grid, placed by its viewBox, not cropped)
-// to <name>-<px>.png, black + alpha on transparent.
-func renderCandidates() error {
-	svgs, err := filepath.Glob(filepath.Join(dir, "tray-candidates", "*.svg"))
+// ── Solid mark: derived from the line-art master ────────────────────────────
+//
+// source/logo-kong-solid.svg is the same head as source/logo-kong.svg with
+// the concentric contour lines merged into one solid shape and the face plate
+// (with eyes, nose and mouth) kept as negative space, for sizes where the
+// lines blur into grey (tray, menu bar). It is derived, not redrawn:
+//
+//  1. rasterize the master at solidRes px (golang.org/x/image/vector);
+//  2. morphological closing (dilate, then erode, by solidClose px) on exact
+//     Euclidean distance transforms merges the lines across the gaps
+//     (Gonzalez & Woods, Digital Image Processing, ch. 9; distance transform:
+//     Felzenszwalb & Huttenlocher, "Distance Transforms of Sampled
+//     Functions", Theory of Computing 8, 2012);
+//  3. flood fill from the canvas edge: everything not reached is the head;
+//  4. white regions of the master enclosed by ink whose inscribed circle is
+//     wider than solidHole px (only the face plate; the gaps between lines
+//     are much thinner) are cut back out, so the face keeps its features;
+//  5. blur slightly, trace the 50 % iso-contour (marching squares), simplify
+//     (Douglas–Peucker) and fit smooth cubic Béziers, corners kept.
+//
+// Every outline keeps the ink on the same side, so outer edges and holes
+// alternate winding and the SVG renders the same with nonzero or evenodd.
+const (
+	solidSrc   = "source/logo-kong.svg"
+	solidOut   = "source/logo-kong-solid.svg"
+	solidRes   = 2048 // px across the master's viewBox
+	solidPad   = 96   // px of empty margin so the dilation never hits the canvas edge
+	solidClose = 30.0 // closing radius, px (> half the widest gap between lines)
+	solidSeal  = 10.0 // light closing radius, px, that seals slits in the face plate rim
+	solidHole  = 40.0 // min inscribed radius, px, of a white region kept as a hole
+	solidBlur  = 1.5  // Gaussian sigma, px, before tracing (removes the pixel staircase)
+	solidTol   = 0.8  // Douglas–Peucker tolerance, px
+	solidAngle = 50.0 // degrees of turn at a vertex above which it stays a corner
+)
+
+func deriveSolid() error {
+	src := filepath.Join(dir, solidSrc)
+	paths, err := loadSVGPaths(src)
 	if err != nil {
 		return err
 	}
-	for _, src := range svgs {
-		paths, err := loadSVGPaths(src)
-		if err != nil {
-			return err
+	vb, err := svgViewBox(src)
+	if err != nil {
+		return err
+	}
+	k := solidRes / math.Max(vb[2], vb[3])
+	n := solidRes + 2*solidPad
+	img := fill(paths, n, func(p pt) (float32, float32) {
+		return float32(solidPad + (p.x-vb[0])*k), float32(solidPad + (p.y-vb[1])*k)
+	})
+	ink := make([]bool, n*n)
+	for i := range ink {
+		ink[i] = img.Pix[i*4+3] >= 128
+	}
+	solid, st := solidify(ink, n)
+	g := make([]float64, n*n)
+	for i, on := range solid {
+		if on {
+			g[i] = 1
 		}
-		vb, err := svgViewBox(src)
-		if err != nil {
-			return err
+	}
+	g = blur(g, n, solidBlur)
+	var d strings.Builder
+	points := 0
+	for _, loop := range traceContours(g, n, 0.5) {
+		poly := simplifyClosed(loop, solidTol)
+		if len(poly) < 3 {
+			continue
 		}
-		base := strings.TrimSuffix(src, ".svg")
-		for _, px := range candidateSizes {
-			img := hint(rasterBox(paths, px, vb), px)
+		points += len(poly)
+		d.WriteString(bezierPath(poly, func(p pt) pt {
+			return pt{vb[0] + (p.x-solidPad)/k, vb[1] + (p.y-solidPad)/k}
+		}))
+	}
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s %s %s %s">`+
+		`<!-- Derived from logo-kong.svg by assets/brand/generate.go; do not edit. -->`+
+		`<path fill="#000000" fill-rule="evenodd" d="%s"/></svg>`+"\n",
+		num(vb[0]), num(vb[1]), num(vb[2]), num(vb[3]), strings.TrimSpace(d.String()))
+	out := filepath.Join(dir, solidOut)
+	if err := os.WriteFile(out, []byte(svg), 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%-20s %9s %7d bytes (%d points; closing %gpx, holes kept %v px inscribed, gaps up to %.1f px filled, outline within %.1f px of the master's ink)\n",
+		filepath.Base(out), "vector", len(svg), points, solidClose, st.holes, st.filled, st.outline)
+	return nil
+}
+
+type solidStats struct {
+	holes   []string // inscribed radius, px, of each white region kept as a hole
+	filled  float64  // widest gap filled in: max distance, px, from a filled pixel to the master's ink
+	outline float64  // max distance, px, from the solid's outer edge to the master's ink
+}
+
+// closing returns the morphological closing of set by a disc of radius r
+// (dilate, then erode), using exact distance transforms.
+func closing(dSet []float64, n int, r float64) []bool {
+	notDil := make([]bool, n*n)
+	for i, d := range dSet {
+		notDil[i] = d > r*r
+	}
+	out := make([]bool, n*n)
+	for i, d := range edt(notDil, n) {
+		out[i] = d > r*r
+	}
+	return out
+}
+
+// solidify returns the closed, flood-filled head minus the face plate.
+func solidify(ink []bool, n int) ([]bool, solidStats) {
+	var st solidStats
+	dInk := edt(ink, n)
+	closed := closing(dInk, n, solidClose)
+	outside := floodFrom(0, n, func(i int) bool { return !closed[i] })
+	head := make([]bool, n*n)
+	for i := range head {
+		head[i] = !outside[i]
+	}
+	// Face plate: an enclosed white region much wider than any gap. Found on
+	// a light closing (solidSeal) that only seals slits in its rim, then
+	// grown back over the master's own white within solidSeal px, so eyes,
+	// nose and mouth keep the master's exact shapes.
+	sealed := closing(dInk, n, solidSeal)
+	dSealed := edt(sealed, n)
+	seen := make([]bool, n*n)
+	flood(0, n, func(i int) bool { return !sealed[i] }, seen)
+	for i := range sealed {
+		if sealed[i] || seen[i] {
+			continue
+		}
+		region := flood(i, n, func(j int) bool { return !sealed[j] }, seen)
+		inscribed := 0.0
+		for _, j := range region {
+			inscribed = math.Max(inscribed, math.Sqrt(dSealed[j]))
+		}
+		if inscribed <= solidHole {
+			continue
+		}
+		st.holes = append(st.holes, fmt.Sprintf("%.0f", inscribed))
+		core := make([]bool, n*n)
+		for _, j := range region {
+			core[j] = true
+		}
+		dCore := edt(core, n)
+		grown := make([]bool, n*n)
+		for _, j := range flood(region[0], n, func(j int) bool {
+			return !ink[j] && dCore[j] <= solidSeal*solidSeal
+		}, grown) {
+			head[j] = false
+		}
+	}
+	for i, on := range head {
+		if on && !ink[i] {
+			st.filled = math.Max(st.filled, math.Sqrt(dInk[i]))
+		}
+	}
+	// Outline fidelity: how far the solid's outer edge lies from real ink.
+	for y := 1; y < n-1; y++ {
+		for x := 1; x < n-1; x++ {
+			i := y*n + x
+			if head[i] && (outside[i-1] || outside[i+1] || outside[i-n] || outside[i+n]) {
+				st.outline = math.Max(st.outline, math.Sqrt(dInk[i]))
+			}
+		}
+	}
+	return head, st
+}
+
+// floodFrom returns the 4-connected region around seed where pass is true.
+func floodFrom(seed, n int, pass func(int) bool) []bool {
+	seen := make([]bool, n*n)
+	flood(seed, n, pass, seen)
+	return seen
+}
+
+// flood marks in seen, and returns, the 4-connected pixels around seed where
+// pass is true and seen is still false.
+func flood(seed, n int, pass func(int) bool, seen []bool) []int {
+	if seen[seed] || !pass(seed) {
+		return nil
+	}
+	seen[seed] = true
+	stack, region := []int{seed}, []int{seed}
+	for len(stack) > 0 {
+		i := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		x, y := i%n, i/n
+		for _, j := range [4]int{i - 1, i + 1, i - n, i + n} {
+			if (j == i-1 && x == 0) || (j == i+1 && x == n-1) || (j == i-n && y == 0) || (j == i+n && y == n-1) {
+				continue
+			}
+			if !seen[j] && pass(j) {
+				seen[j] = true
+				stack = append(stack, j)
+				region = append(region, j)
+			}
+		}
+	}
+	return region
+}
+
+// edt returns, per pixel, the squared Euclidean distance to the nearest
+// pixel of set (Felzenszwalb & Huttenlocher 2012, two 1-D lower-envelope
+// passes; exact, O(pixels)).
+func edt(set []bool, n int) []float64 {
+	const far = 1e20
+	d := make([]float64, n*n)
+	for i, on := range set {
+		if !on {
+			d[i] = far
+		}
+	}
+	f, out := make([]float64, n), make([]float64, n)
+	v, z := make([]int, n), make([]float64, n+1)
+	pass := func(base, step int) {
+		for q := 0; q < n; q++ {
+			f[q] = d[base+q*step]
+		}
+		k := 0
+		v[0], z[0], z[1] = 0, math.Inf(-1), math.Inf(1)
+		for q := 1; q < n; q++ {
+			s := ((f[q] + float64(q*q)) - (f[v[k]] + float64(v[k]*v[k]))) / float64(2*(q-v[k]))
+			for s <= z[k] {
+				k--
+				s = ((f[q] + float64(q*q)) - (f[v[k]] + float64(v[k]*v[k]))) / float64(2*(q-v[k]))
+			}
+			k++
+			v[k], z[k], z[k+1] = q, s, math.Inf(1)
+		}
+		k = 0
+		for q := 0; q < n; q++ {
+			for z[k+1] < float64(q) {
+				k++
+			}
+			dq := float64(q - v[k])
+			out[q] = dq*dq + f[v[k]]
+		}
+		for q := 0; q < n; q++ {
+			d[base+q*step] = out[q]
+		}
+	}
+	for x := 0; x < n; x++ {
+		pass(x, n)
+	}
+	for y := 0; y < n; y++ {
+		pass(y*n, 1)
+	}
+	return d
+}
+
+// blur is a separable Gaussian blur (sigma in px) of an n×n field.
+func blur(g []float64, n int, sigma float64) []float64 {
+	rad := int(math.Ceil(3 * sigma))
+	w := make([]float64, 2*rad+1)
+	sum := 0.0
+	for i := range w {
+		x := float64(i - rad)
+		w[i] = math.Exp(-x * x / (2 * sigma * sigma))
+		sum += w[i]
+	}
+	for i := range w {
+		w[i] /= sum
+	}
+	tmp, out := make([]float64, n*n), make([]float64, n*n)
+	for y := 0; y < n; y++ {
+		for x := 0; x < n; x++ {
+			a := 0.0
+			for i, wi := range w {
+				if xx := x + i - rad; xx >= 0 && xx < n {
+					a += wi * g[y*n+xx]
+				}
+			}
+			tmp[y*n+x] = a
+		}
+	}
+	for y := 0; y < n; y++ {
+		for x := 0; x < n; x++ {
+			a := 0.0
+			for i, wi := range w {
+				if yy := y + i - rad; yy >= 0 && yy < n {
+					a += wi * tmp[yy*n+x]
+				}
+			}
+			out[y*n+x] = a
+		}
+	}
+	return out
+}
+
+// traceContours returns the closed iso-lines of g at thr (marching squares
+// with linear interpolation; saddles resolved by the cell's mean). Each
+// segment runs from the edge where the walk enters the ink to the edge where
+// it leaves, so every loop keeps the ink on the same side. g must be below
+// thr along the canvas border.
+func traceContours(g []float64, n int, thr float64) [][]pt {
+	in := func(x, y int) bool { return g[y*n+x] > thr }
+	next := map[int]int{}
+	at := map[int]pt{}
+	for y := 0; y < n-1; y++ {
+		for x := 0; x < n-1; x++ {
+			c := [4][2]int{{x, y}, {x + 1, y}, {x + 1, y + 1}, {x, y + 1}} // clockwise
+			keys := [4]int{2 * (y*n + x), 2*(y*n+x+1) + 1, 2 * ((y+1)*n + x), 2*(y*n+x) + 1}
+			type cross struct {
+				key   int
+				enter bool
+			}
+			var cs []cross
+			for e := 0; e < 4; e++ {
+				a, b := c[e], c[(e+1)%4]
+				ia, ib := in(a[0], a[1]), in(b[0], b[1])
+				if ia == ib {
+					continue
+				}
+				if _, ok := at[keys[e]]; !ok {
+					ga, gb := g[a[1]*n+a[0]], g[b[1]*n+b[0]]
+					t := (thr - ga) / (gb - ga)
+					at[keys[e]] = pt{float64(a[0]) + t*float64(b[0]-a[0]), float64(a[1]) + t*float64(b[1]-a[1])}
+				}
+				cs = append(cs, cross{keys[e], ib})
+			}
+			if len(cs) == 0 {
+				continue
+			}
+			for !cs[0].enter {
+				cs = append(cs[1:], cs[0])
+			}
+			if len(cs) == 2 {
+				next[cs[0].key] = cs[1].key
+				continue
+			}
+			mean := (g[y*n+x] + g[y*n+x+1] + g[(y+1)*n+x] + g[(y+1)*n+x+1]) / 4
+			if mean > thr { // ink joins across the cell
+				next[cs[0].key], next[cs[2].key] = cs[3].key, cs[1].key
+			} else {
+				next[cs[0].key], next[cs[2].key] = cs[1].key, cs[3].key
+			}
+		}
+	}
+	starts := make([]int, 0, len(next))
+	for k := range next {
+		starts = append(starts, k)
+	}
+	sort.Ints(starts) // deterministic output
+	var loops [][]pt
+	for _, s := range starts {
+		if _, ok := next[s]; !ok {
+			continue
+		}
+		var loop []pt
+		for k := s; ; {
+			loop = append(loop, at[k])
+			nk := next[k]
+			delete(next, k)
+			k = nk
+			if k == s {
+				break
+			}
+		}
+		loops = append(loops, loop)
+	}
+	return loops
+}
+
+// simplifyClosed runs Douglas–Peucker on a closed polyline, split at its
+// first point and the point farthest from it.
+func simplifyClosed(p []pt, tol float64) []pt {
+	far, best := 0, -1.0
+	for i, q := range p {
+		if d := math.Hypot(q.x-p[0].x, q.y-p[0].y); d > best {
+			far, best = i, d
+		}
+	}
+	a := dp(p[:far+1], tol)
+	b := dp(append(append([]pt{}, p[far:]...), p[0]), tol)
+	return append(a[:len(a)-1], b[:len(b)-1]...)
+}
+
+func dp(p []pt, tol float64) []pt {
+	if len(p) < 3 {
+		return p
+	}
+	a, b := p[0], p[len(p)-1]
+	dx, dy := b.x-a.x, b.y-a.y
+	l := math.Hypot(dx, dy)
+	idx, worst := 0, -1.0
+	for i := 1; i < len(p)-1; i++ {
+		var d float64
+		if l == 0 {
+			d = math.Hypot(p[i].x-a.x, p[i].y-a.y)
+		} else {
+			d = math.Abs(dy*(p[i].x-a.x)-dx*(p[i].y-a.y)) / l
+		}
+		if d > worst {
+			idx, worst = i, d
+		}
+	}
+	if worst <= tol {
+		return []pt{a, b}
+	}
+	left := dp(p[:idx+1], tol)
+	return append(left[:len(left)-1], dp(p[idx:], tol)...)
+}
+
+// bezierPath turns a closed polygon into a smooth closed cubic path through
+// its vertices (tangent along the neighbours' chord, handles a third of the
+// segment), except at vertices that turn more than solidAngle, which stay
+// corners. xf maps tracing px to viewBox units.
+func bezierPath(p []pt, xf func(pt) pt) string {
+	m := len(p)
+	unit := func(dx, dy float64) pt {
+		l := math.Hypot(dx, dy)
+		if l == 0 {
+			return pt{}
+		}
+		return pt{dx / l, dy / l}
+	}
+	in := make([]pt, m)  // tangent arriving at vertex i
+	out := make([]pt, m) // tangent leaving vertex i
+	for i := range p {
+		prev, cur, nxt := p[(i+m-1)%m], p[i], p[(i+1)%m]
+		a := unit(cur.x-prev.x, cur.y-prev.y)
+		b := unit(nxt.x-cur.x, nxt.y-cur.y)
+		turn := math.Acos(math.Max(-1, math.Min(1, a.x*b.x+a.y*b.y))) * 180 / math.Pi
+		if turn > solidAngle {
+			in[i], out[i] = a, b
+			continue
+		}
+		t := unit(nxt.x-prev.x, nxt.y-prev.y)
+		in[i], out[i] = t, t
+	}
+	var s strings.Builder
+	q := xf(p[0])
+	fmt.Fprintf(&s, "M%s %s", num(q.x), num(q.y))
+	for i := 0; i < m; i++ {
+		a, b := p[i], p[(i+1)%m]
+		h := math.Hypot(b.x-a.x, b.y-a.y) / 3
+		c1 := xf(pt{a.x + out[i].x*h, a.y + out[i].y*h})
+		c2 := xf(pt{b.x - in[(i+1)%m].x*h, b.y - in[(i+1)%m].y*h})
+		e := xf(b)
+		fmt.Fprintf(&s, "C%s %s %s %s %s %s", num(c1.x), num(c1.y), num(c2.x), num(c2.y), num(e.x), num(e.y))
+	}
+	s.WriteString("Z")
+	return s.String()
+}
+
+// num formats a viewBox coordinate with one decimal (0.1 unit is about
+// 1/5000 of the mark), dropping a trailing ".0".
+func num(v float64) string {
+	return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64)
+}
+
+// renderSolidCandidates rasterizes source/logo-kong-solid.svg to the tray
+// candidate masks tray-candidates/solid-<px>.png (black + alpha, cropped to
+// the mark like tray-<px>.png) and solid-badge-<px>.png, the same with a
+// transparent gap cut bottom-right for a smaller status dot (radius 17 % of
+// the icon instead of the 20 % assets/state_icons.go draws today), so the
+// dot stays off the face. Not wired into the tray yet.
+func renderSolidCandidates() error {
+	paths, err := loadSVGPaths(filepath.Join(dir, solidOut))
+	if err != nil {
+		return err
+	}
+	outDir := filepath.Join(dir, "tray-candidates")
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return err
+	}
+	for _, px := range candidateSizes {
+		for _, badge := range []bool{false, true} {
+			img := hint(rasterMask(paths, px), px)
+			name := fmt.Sprintf("solid-%d.png", px)
+			if badge {
+				cutBadgeGap(img, px)
+				name = fmt.Sprintf("solid-badge-%d.png", px)
+			}
 			var buf bytes.Buffer
 			if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, img); err != nil {
 				return err
 			}
-			out := fmt.Sprintf("%s-%d.png", base, px)
-			if err := os.WriteFile(out, buf.Bytes(), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(outDir, name), buf.Bytes(), 0o644); err != nil {
 				return err
 			}
-			fmt.Printf("%-34s %4dx%-4d %7d bytes\n", filepath.Base(out), px, px, buf.Len())
+			fmt.Printf("%-34s %4dx%-4d %7d bytes\n", "tray-candidates/"+name, px, px, buf.Len())
 		}
 	}
 	return nil
+}
+
+// badgeGeometry is the smaller status dot: radius 17 % of the icon (at
+// least 2.5 px), a transparent gap of size/16 (at least 1 px) around it,
+// tucked into the bottom-right corner.
+func badgeGeometry(px int) (cx, cy, r, gap float64) {
+	size := float64(px)
+	r = math.Max(2.5, size*0.17)
+	gap = math.Max(1, size/16)
+	return size - r - 0.5, size - r - 0.5, r, gap
+}
+
+// cutBadgeGap clears the glyph where the dot and its gap go.
+func cutBadgeGap(img *image.NRGBA, px int) {
+	cx, cy, r, gap := badgeGeometry(px)
+	for y := 0; y < px; y++ {
+		for x := 0; x < px; x++ {
+			d := math.Hypot(float64(x)+0.5-cx, float64(y)+0.5-cy)
+			cut := math.Max(0, math.Min(1, r+gap-d+0.5))
+			i := img.PixOffset(x, y) + 3
+			img.Pix[i] = uint8(math.Round(float64(img.Pix[i]) * (1 - cut)))
+		}
+	}
 }
 
 var svgViewBoxRe = regexp.MustCompile(`viewBox="([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)"`)
@@ -176,15 +659,6 @@ func svgViewBox(path string) ([4]float64, error) {
 		return [4]float64{}, fmt.Errorf("%s: no viewBox", path)
 	}
 	return [4]float64{atof(m[1]), atof(m[2]), atof(m[3]), atof(m[4])}, nil
-}
-
-// rasterBox fills the outlines at px×px mapping the viewBox onto the
-// square (the glyph's own margins and optical balance are kept).
-func rasterBox(paths []seg, px int, vb [4]float64) *image.NRGBA {
-	k := float64(px) / math.Max(vb[2], vb[3])
-	return fill(paths, px, func(p pt) (float32, float32) {
-		return float32((p.x - vb[0]) * k), float32((p.y - vb[1]) * k)
-	})
 }
 
 // hint sharpens anti-aliased edges at small sizes (a contrast curve on the
