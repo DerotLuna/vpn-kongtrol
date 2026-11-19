@@ -1,4 +1,7 @@
-// Security policy & responsible disclosure — version 1.1.0 · 2026-11-17.
+// Security policy & responsible disclosure — version 1.2.0 · 2026-11-19.
+// 1.2.0: plain-language summary in points; scope says "without signing in" (control token for
+// CLI/tray, one-time code + session cookie for browsers, ADR-0039) and adds the install scripts'
+// checksum/signature check (ADR-0057); new section linking the technical security doc.
 // 1.1.0: best-effort response (no fixed 7/30/90-day targets): free, open-source
 // project maintained by one person; first person singular throughout.
 //
@@ -10,10 +13,11 @@ import type { LegalDocContent } from '../../components/sections/LegalDoc'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.1.0'
-const UPDATED = '2026-11-17'
+const VERSION = '1.2.0'
+const UPDATED = '2026-11-19'
 export const SECURITY_REPORT_URL = `${GITHUB_REPO}/security/advisories/new`
 const report = <a href={SECURITY_REPORT_URL} target="_blank" rel="noreferrer">github.com/DerotLuna/vpn-kongtrol/security/advisories/new</a>
+const techDoc = <a href={`${GITHUB_REPO}/blob/main/docs/SECURITY.md`} target="_blank" rel="noreferrer">docs/SECURITY.md</a>
 const releases = <a href={`${GITHUB_REPO}/releases/latest`} target="_blank" rel="noreferrer">GitHub Releases</a>
 
 const es: LegalDocContent = {
@@ -24,11 +28,17 @@ const es: LegalDocContent = {
   updated: UPDATED,
   session: 'kongtrol:seguridad',
   summaryBadge: 'En resumen',
-  summary: <>¿Encontraste una vulnerabilidad? Repórtala en privado desde {report} — no abras un issue público.
-    Intentaré responder lo antes posible y coordinar contigo la publicación.</>,
+  summary: [
+    <>¿Encontraste una vulnerabilidad? Repórtala en privado en GitHub: {report}.</>,
+    <>No abras un issue público ni publiques detalles hasta que haya una corrección.</>,
+    <>Lo mantiene una persona: respondo lo antes posible, sin plazos garantizados.</>,
+    <>Solo la última versión recibe correcciones de seguridad.</>,
+    <>Si investigas de buena fe, no tomaré acciones contra ti.</>,
+  ],
   toc: 'Contenido',
   goto: 'Ir a',
   versionLabel: 'Versión',
+  updatedLabel: 'actualizada el',
   contactTitle: 'Reportar',
   contact: <>{report} (reporte privado de vulnerabilidades de GitHub). También publicado en{' '}
     <a href="/.well-known/security.txt">/.well-known/security.txt</a>.</>,
@@ -52,9 +62,10 @@ const es: LegalDocContent = {
       list: [
         'Fugas de tráfico o DNS que el kill switch, el DNS guard o las reglas deberían impedir.',
         'Escalada de privilegios a través del ayudante del sistema o del servicio en segundo plano.',
-        'Acceso al panel local o a su API sin el token, o desde otro equipo.',
+        'Entrar al panel local o a su API sin iniciar sesión, o desde otro equipo.',
         'Exposición de credenciales fuera del almacén de credenciales del sistema.',
         'Manipulación del registro de auditoría sin que se detecte.',
+        'Saltarse la comprobación de suma o de firma de los scripts de instalación.',
         'Vulnerabilidades en kongtrol.app (por ejemplo, XSS).',
       ],
       after: ['Fuera de alcance: los clientes y servicios de los proveedores VPN, ataques que ya requieren control de administrador del equipo, denegación de servicio por volumen, ingeniería social y cabeceras faltantes sin impacto demostrable.'],
@@ -78,6 +89,11 @@ const es: LegalDocContent = {
       body: [<>Si investigas de buena fe, en tus propios equipos, sin acceder a datos de otras personas y siguiendo
         esta política, no tomaré acciones contra ti y trabajaré contigo para entender y corregir el problema.</>],
     },
+    {
+      id: 'detalles', num: '6', label: 'Detalles técnicos', tmux: 'detalles', title: 'Cómo se protege Kongtrol',
+      body: [<>Qué conexiones hace, cómo funcionan el ayudante del sistema, el kill switch y el DNS guard, y cómo
+        verificar una descarga: {techDoc} (en inglés).</>],
+    },
   ],
 }
 
@@ -88,12 +104,18 @@ const en: LegalDocContent = {
   version: VERSION,
   updated: UPDATED,
   session: 'kongtrol:security',
-  summaryBadge: 'TL;DR',
-  summary: <>Found a vulnerability? Report it privately at {report} — do not open a public issue. I will try to answer as
-    soon as possible and coordinate disclosure with you.</>,
+  summaryBadge: 'In short',
+  summary: [
+    <>Found a vulnerability? Report it privately on GitHub: {report}.</>,
+    <>Do not open a public issue or post details until a fix is out.</>,
+    <>One person maintains it: I answer as soon as I can, with no guaranteed timelines.</>,
+    <>Only the latest release gets security fixes.</>,
+    <>If you research in good faith, I will not take action against you.</>,
+  ],
   toc: 'Contents',
   goto: 'Jump to',
   versionLabel: 'Version',
+  updatedLabel: 'updated',
   contactTitle: 'Report',
   contact: <>{report} (GitHub private vulnerability reporting). Also published at{' '}
     <a href="/.well-known/security.txt">/.well-known/security.txt</a>.</>,
@@ -117,9 +139,10 @@ const en: LegalDocContent = {
       list: [
         'Traffic or DNS leaks that the kill switch, DNS guard or rules should prevent.',
         'Privilege escalation through the system helper or the background service.',
-        'Access to the local dashboard or its API without the token, or from another machine.',
+        'Access to the local dashboard or its API without signing in, or from another machine.',
         'Credentials exposed outside the operating system credential store.',
         'Undetected tampering with the audit log.',
+        "Getting past the install scripts' checksum or signature check.",
         'Vulnerabilities in kongtrol.app (for example, XSS).',
       ],
       after: ['Out of scope: VPN providers\' own clients and services, attacks that already require administrator control of the machine, volumetric denial of service, social engineering, and missing headers with no demonstrable impact.'],
@@ -143,6 +166,11 @@ const en: LegalDocContent = {
       body: [<>If you research in good faith, on your own machines, without accessing other people's data and
         following this policy, I will not take action against you and will work with you to understand and fix
         the issue.</>],
+    },
+    {
+      id: 'detalles', num: '6', label: 'Technical details', tmux: 'details', title: 'How Kongtrol is secured',
+      body: [<>Which connections it makes, how the system helper, the kill switch and the DNS guard work, and how to
+        verify a download: {techDoc}.</>],
     },
   ],
 }
