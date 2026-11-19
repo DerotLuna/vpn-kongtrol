@@ -2,7 +2,7 @@
 //
 // The brand mark (single source assets/brand, ADR-0013) used as a CSS mask
 // filled with currentColor: light on dark, dark on light, no background disc,
-// vector-crisp at any size. Size rule (DESIGN.md, ADR-0045): up to 32 px the
+// vector-crisp at any size. Size rule (DESIGN.md, ADR-0047): up to 32 px the
 // solid silhouette (the concentric lines blur into grey that small), from
 // 36 px up the line-art original.
 import lineUrl from '@brand/logo-kong.svg'

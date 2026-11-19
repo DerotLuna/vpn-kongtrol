@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
-# ADR-0045: The product name is "Kongtrol"; solid mark for small sizes, line art for large
+# ADR-0047: The product name is "Kongtrol"; solid mark for small sizes, line art for large
 
 Version 1.0.0 · 2026-11-19
 

@@ -6,7 +6,7 @@ Version 1.0.0 · 2026-11-19
 
 ## Question
 
-For ADR-0045: how to drop "VPN" from the product name without losing search continuity or
+For ADR-0047: how to drop "VPN" from the product name without losing search continuity or
 breaking installs, and which logo shape to use at which size (favicon, header, footer).
 
 ## Sources
@@ -45,4 +45,4 @@ breaking installs, and which logo shape to use at which size (favicon, header, f
 ## Conclusion
 
 Rename the visible product to "Kongtrol" (tagline carries "VPN"), keep every technical
-identifier, solid silhouette up to 32 px, line art from 36 px up. Decision: ADR-0045.
+identifier, solid silhouette up to 32 px, line art from 36 px up. Decision: ADR-0047.

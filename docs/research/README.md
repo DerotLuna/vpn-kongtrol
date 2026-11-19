@@ -46,7 +46,7 @@ reasoned but unverified.
 | [2026-11-18-dashboard-api-gaps](2026-11-18-dashboard-api-gaps.md) | Size-based log rotation (logrotate, lumberjack), OpenVPN/WireGuard directives that run code, HTTP content coding (RFC 9110), stable sort | ADR-0042 |
 | [2026-11-18-panel-at-root](2026-11-18-panel-at-root.md) | Fragments across redirects (RFC 9110), 308, CSP without `unsafe-inline` (MDN, CSP3 hash-source), backslash open redirect (WHATWG URL) | ADR-0043 |
 | [2026-11-18-unsaved-changes-guard](2026-11-18-unsaved-changes-guard.md) | Leaving a form with unsaved edits: `beforeunload`, React Router `useBlocker` (data mode only), prompt wording | ADR-0041 |
-| [2026-11-19-product-name-and-logo-sizes](2026-11-19-product-name-and-logo-sizes.md) | Dropping "VPN" from the name (site name, alternateName, what must not be renamed), SVG favicon, logo sizes | ADR-0045 |
+| [2026-11-19-product-name-and-logo-sizes](2026-11-19-product-name-and-logo-sizes.md) | Dropping "VPN" from the name (site name, alternateName, what must not be renamed), SVG favicon, logo sizes | ADR-0047 |
 
 ## Template
 

@@ -9,11 +9,11 @@
 // for consumers that cannot (OS tray icons, Open Graph cards, app manifests,
 // README images).
 //
-// Size rule (DESIGN.md, ADR-0045): below ~32 px the solid mark is used
+// Size rule (DESIGN.md, ADR-0047): below ~32 px the solid mark is used
 // (favicon.svg, logo-kong-32.png, tray-<px>.png, all derived from
 // source/logo-kong-solid.svg below); visible logos from ~40 px up use the
 // line-art original. logo.svg is the "Kongtrol" lockup (the name is just
-// Kongtrol, ADR-0045); logo-512.png is rasterized from that vector.
+// Kongtrol, ADR-0047); logo-512.png is rasterized from that vector.
 //
 // Uses only the standard library plus golang.org/x/image (in go.mod; the
 // build tag is "brandgen", not "ignore", because go mod tidy skips files

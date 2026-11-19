@@ -1,5 +1,5 @@
 // Terms & conditions — version 1.4.0 · 2026-11-19.
-// 1.4.0: the product name is just Kongtrol (formerly VPN Kongtrol, ADR-0045).
+// 1.4.0: the product name is just Kongtrol (formerly VPN Kongtrol, ADR-0047).
 // 1.3.0: the public IP check is optional and off by default.
 // 1.2.0: states it is a free tool by one individual (no company); liability rests on
 // Apache-2.0 sections 7-8; contact is GitHub only, no governing-law clause.
