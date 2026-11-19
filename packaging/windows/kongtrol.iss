@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.3.0 · 2026-11-19
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.4.0 · 2026-11-19
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
@@ -48,6 +48,9 @@ LicenseFile=..\..\LICENSE
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+; Language: the system one when it is Spanish or English (no question, also on
+; updates); the dialog appears only for other system languages (ADR-0049).
+ShowLanguageDialog=auto
 ; The user PATH changes: tell running programs (Explorer) to re-read it.
 ChangesEnvironment=yes
 ; Upgrades: close a running tray through the Restart Manager.
