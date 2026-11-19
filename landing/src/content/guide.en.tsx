@@ -1,674 +1,382 @@
 // Setup guide content — English.
-// Version 2.8.1 · 2026-11-19.
+// Version 3.0.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
-// (enforced by the GuideContent type), so both languages always carry the
-// same content.
+// (enforced by the GuideContent type and scripts/check-i18n.mjs). Every fact
+// is checked against the code and docs/SETUP.md (research note
+// docs/research/2026-11-19-landing-guide-accuracy.md). File names come only
+// from links.ts.
 import type { OS } from '../hooks/useOS'
 import IC from '../components/ui/InlineCode'
 import { pathFor } from '../site'
-import { INSTALL_CMD, UNINSTALL_SCRIPT_BASE } from '../links'
-import type { GuideContent } from './guide.es'
+import { INSTALL_CMD, UNINSTALL_SCRIPT_BASE, WINDOWS_INSTALLER_FILE } from '../links'
+import type { GuideContent, GuideFix, GuideStep } from './guide.es'
+
+const tray = (os: OS) => os === 'windows'
+  ? 'in the tray, next to the clock (if you don\'t see it, open the ^ arrow)'
+  : os === 'macos'
+    ? 'in the menu bar, top right'
+    : 'in your desktop\'s system tray'
 
 export default function guideEN(os: OS): GuideContent {
   return {
-    intro1: <><span className="guide-intro-badge">How it works</span></>,
-    intro2: <>Kongtrol isn't a VPN client: it's the layer that sits between your apps and the
-            VPN clients you already have installed (FortiClient, OpenVPN, ProtonVPN, etc.).
-            The <strong>policy engine</strong> looks at every outbound connection (domain, IP or
-            app) and decides which tunnel it should go through; the rest of the commands
-            (<IC c="up" />, <IC c="doctor" />, <IC c="status" />) just control that routing and
-            the tunnels' lifecycle.</>,
-    intro3: <>your apps</>,
-    intro4: <>Chrome, Slack, terminal, code…</>,
-    intro5: <>policy engine: domains · IPs · apps</>,
-    intro6: <>your VPNs</>,
-    intro7: <>kill switch · dns guard · signed audit log</>,
-    intro8: <>Contents</>,
-    intro9: "Jump to",
-    quickstart1: <><span className="guide-quickstart-badge">Quickstart</span></>,
+    labels: {
+      toc: 'Contents',
+      jump: 'Go to',
+      see: 'You\'ll see',
+      fix: 'What to do',
+      cmd: 'Command',
+      does: 'What it does',
+    },
     // feature:first_run
-    quickstart2: <>Kongtrol works with the VPNs you already have. Everything is done from the app (tray and dashboard); the terminal is optional and does the same. The sections below are reference: come back to them only if something doesn't fit.</>,
-    quickstart3: <><strong>Install the app and open the dashboard</strong></>,
-    quickstart4: <>Use the installer from <a href="/en/#install">downloads</a>. When it opens, the Kongtrol icon shows up in the tray and the dashboard opens in your browser to create your first VPN. The first time, your system asks for permission once to install the helper (a service that changes routes and DNS for you); when you update Kongtrol with the installer, it asks again only if the helper is out of date.</>,
-    quickstart5: <><strong>Connect from the tray or the dashboard</strong></>,
-    quickstart6: <>The "daemon" you'll see in the terminal is the Kongtrol process that keeps working in the background: you can close the dashboard or the terminal and your VPNs stay connected. Only "Quit and disconnect all" in the tray, or <IC c="kongtrol down" />, disconnects them. After <IC c="kongtrol down" /> the icon stays in the tray and says "Kongtrol stopped": choose "Start Kongtrol" to use it again.</>,
-    quickstart7: <><strong>From the terminal (optional)</strong></>,
-    quickstart8: <><IC c="kongtrol init" /> guides you, checks the helper (offers to install it) and at the end asks whether to connect now. Then: live status and the dashboard.</>,
+    qs: {
+      badge: 'Quickstart',
+      lead: <>Four steps, no terminal. Kongtrol works with the VPNs you already use: it doesn't replace them.</>,
+      steps: [
+        {
+          t: <>Install Kongtrol</>,
+          d: os === 'windows'
+            ? <>Download the installer from <a href="/en/#install">downloads</a> and open it. It installs for your user only.</>
+            : <>Paste the line from <a href="#install">Install</a> into Terminal, or download from <a href="/en/#install">downloads</a>.</>,
+          see: <>The Kongtrol icon {tray(os)}.</>,
+        },
+        {
+          t: <>Give permission once</>,
+          d: <>Kongtrol installs a <strong>helper</strong>: a small service that changes routes and DNS for you.
+            {os === 'windows'
+              ? <> The installer asks: click <strong>Yes</strong> on the Windows prompt.</>
+              : <> In the icon's menu choose <strong>Install helper (once)</strong> and type your password.</>}</>,
+          see: <>"Helper ready". It never asks again.</>,
+        },
+        {
+          t: <>Create your first VPN</>,
+          d: <>The panel opens in your browser, on <strong>Profiles</strong>. Pick your VPN, fill in the details and click <strong>Save</strong>.</>,
+          see: <>Your VPN in the list. Kongtrol restarts by itself to use it.</>,
+        },
+        {
+          t: <>Connect</>,
+          d: <>From the icon or from <strong>Home</strong> in the panel. If you use your VPN's app, connect there as usual: Kongtrol detects it.</>,
+          see: <>"your-vpn · connected" with a green dot, and the icon turns green.</>,
+        },
+      ] as GuideStep[],
+      cli: <>Prefer the terminal? <IC c="kongtrol init" /> does the same with step-by-step questions.</>,
+    },
+    how: {
+      title: <>How it works</>,
+      lead: <>Kongtrol is not a VPN. It sits between your apps and the VPNs you already have, and decides which one each destination uses.
+        Anything without a rule uses your normal internet.</>,
+      apps: <>your apps</>,
+      appsSub: <>browser, Slack, terminal…</>,
+      engine: <>rules: sites · networks</>,
+      vpns: <>your VPNs</>,
+      foot: <>kill switch · DNS protection · signed log · all local</>,
+    },
     // feature:providers
-    prereqs1: <>Prerequisites</>,
-    prereqs2: <>Kongtrol <strong>orchestrates</strong> the VPN clients you already have; it doesn't
-                replace them. They need to be installed before you run <IC c="kongtrol init" />.</>,
-    prereqs3: 'Required client',
-    prereqs4: 'Check',
-    prereqs5: <>Open FortiClient: at least one saved connection should appear in the list.
-                      If you can connect manually from the GUI, you're ready.</>,
-    prereqs6: <>{os === 'windows'
-                        ? <>CLI or GUI depending on the installer. Community: <IC c="openvpn --version" /> in a terminal (add it to PATH). OpenVPN Connect: GUI-only. Kongtrol detects it automatically.</>
-                        : <IC c="openvpn --version" />}</>,
-    prereqs7: 'Official ProtonVPN app (or WireGuard with its .conf)',
-    prereqs8: <>{os === 'linux'
-                        ? <>Sign in to the app. On Linux Kongtrol can connect for you; if not, you connect and it detects it.</>
-                        : <>Sign in to the app. You connect and Kongtrol detects the tunnel on its own.</>}
-                      {' '}No app: a <IC c="wireguard" /> profile with Proton's <IC c=".conf" />.</>,
-    prereqs9: <><strong>Note:</strong> if the wizard shows ✓ for a client, it's detected and ready: no need to check manually in a terminal.</>,
-    prereqs10: <><strong>Keep your VPN app:</strong> Kongtrol works with it.
-                If the tunnel is already up, it attaches to it. If not, it opens the app and connects
-                for you where it can; if it can't, it tells you what to do and waits for you to connect.</>,
-    prereqs11: <>Command</>,
-    prereqs12: <>Required client state</>,
-    prereqs13: <>Any: only reads files and the keychain</>,
-    prereqs14: <>Any: only validates, doesn't connect</>,
-    prereqs15: <>kongtrol up &lt;profile&gt;</>,
-    prereqs16: <>App installed; open or closed, either works (Kongtrol opens it if needed)</>,
+    prereqs: {
+      title: <>Before you start</>,
+      lead: <>Have your VPN working as usual. Kongtrol uses it; it doesn't set it up for you.</>,
+      col1: 'Your VPN',
+      col2: 'What you need',
+      rows: [
+        { vpn: <>NordVPN, Proton VPN, Surfshark, FortiClient</>, need: <>Its official app installed and signed in. Don't close it: Kongtrol works with it.</> },
+        { vpn: <>WireGuard, OpenVPN</>, need: <>The <IC c=".conf" /> or <IC c=".ovpn" /> file from your provider or your IT team, and the{' '}
+          {os === 'windows' ? 'WireGuard or OpenVPN for Windows' : os === 'macos' ? 'wireguard-tools or OpenVPN' : 'wireguard-tools or openvpn'} program.</> },
+        { vpn: <>Tailscale, Cloudflare WARP, Cisco Secure Client, GlobalProtect</>, need: <>Its official program installed and signed in.</> },
+      ],
+      note: <>Full list and what Kongtrol does with each: <a href="/en/#vpns">supported VPNs</a>. Proton VPN also works without its app,
+        as a <IC c="wireguard" /> profile with the file you download from your account.</>,
+    },
     // feature:helper
-    install1: <>Installation</>,
-    install2: <>1. Download <IC c="kongtrol_windows_amd64.zip" /> from{' '}
-                    <a href="/en/#install">the downloads section</a>.</>,
-    install3: <>2. Extract the ZIP. You'll get a <IC c="kongtrol.exe" /> file.
-                    Move it to a fixed folder; for example, create{' '}
-                    <IC c="C:\tools\" /> if you don't have one:</>,
-    install4: `# Create the folder (if missing) and move the binary
-New-Item -ItemType Directory -Force "C:\\tools"
-Move-Item kongtrol.exe C:\\tools\\kongtrol.exe`,
-    install5: <>3. Add <IC c="C:\tools" /> to your user PATH (no administrator needed) so you can
-                    run <IC c="kongtrol" /> from any terminal:</>,
-    install6: `# In a normal PowerShell, once:
-[Environment]::SetEnvironmentVariable(
-  "Path",
-  [Environment]::GetEnvironmentVariable("Path", "User") + ";C:\\tools",
-  "User"
-)`,
-    install7: <>4. Open a <strong>new</strong> terminal and verify:</>,
-    install8: <><strong>Why a new terminal?</strong> PATH changes only apply to
-                    terminals opened after the change; ones already open won't see it. If you later use the installer, delete this copy (or remove <IC c="C:\tools" /> from PATH): the terminal runs the first copy it finds in PATH, and <IC c="kongtrol doctor" /> warns you when there is another.</>,
-    install9: `# Apple Silicon (M1+)
-$ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_arm64.tar.gz | tar xz
-$ sudo mv kongtrol /usr/local/bin/
-
-# Intel
-$ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_darwin_amd64.tar.gz | tar xz
-$ sudo mv kongtrol /usr/local/bin/
-
-# Verify
-$ kongtrol --help`,
-    install10: <>macOS may ask for confirmation the first time you run the binary.
-                    Go to <strong>System Settings → Privacy &amp; Security</strong> and click "Allow".</>,
-    install11: `$ curl -L https://github.com/DerotLuna/vpn-kongtrol/releases/latest/download/kongtrol_linux_amd64.tar.gz | tar xz
-$ sudo mv kongtrol /usr/local/bin/
-
-# Verify
-$ kongtrol --help`,
-    install12: <><strong>One permission, once:</strong> the installer (or <IC c="kongtrol init" />, or{' '}
-                    <IC c="kongtrol service install" />) installs a helper that makes the network changes (routes, DNS, kill switch)
-                    and your system asks for permission once. After that no command needs an administrator terminal or <IC c="sudo" />.</>,
+    install: {
+      title: <>Install</>,
+      steps: (os === 'windows'
+        ? [
+          { t: <>Download the installer</>, d: <>In <a href="/en/#install">downloads</a>, the Windows button gets <IC c={WINDOWS_INSTALLER_FILE} />.</>, see: <>The file in your Downloads folder.</> },
+          { t: <>Open it</>, d: <>If a blue Windows warning (SmartScreen) shows up, click <strong>More info</strong>, then <strong>Run anyway</strong>. It shows because the file isn't signed yet.</>, see: <>The Kongtrol setup wizard.</> },
+          { t: <>Keep the recommended options</>, d: <>Open at sign-in, install the network helper and add the <IC c="kongtrol" /> command. No administrator needed, except for the helper (once).</>, see: <>A Windows prompt for the helper: click <strong>Yes</strong>.</> },
+          { t: <>Finish</>, d: <>With "Open Kongtrol and create my first VPN" checked, go on to <a href="#wizard">Your first VPN</a>.</>, see: <>The icon in the tray and the panel in your browser.</> },
+        ]
+        : [
+          { t: <>Open Terminal</>, d: os === 'macos' ? <>Search with <strong>Cmd + Space</strong> → "Terminal".</> : <>From your desktop's applications menu.</>, see: <>A window with a line to type in.</> },
+          { t: <>Paste this line and press Enter</>, code: `$ ${INSTALL_CMD.unix}`, d: <>It downloads the latest version, checks it wasn't tampered with and installs it.</>, see: os === 'macos' ? <><IC c="~/Applications/Kongtrol.app" /> installed, and Kongtrol opens.</> : <>The <IC c="kongtrol" /> command, the icon and a menu entry; Kongtrol opens.</> },
+          { t: <>Install the helper</>, d: <>In the icon's menu, <strong>Install helper (once)</strong>.</>, see: <>It asks for your password once; then "Helper ready".</> },
+        ]) as GuideStep[],
+      scriptNote: os === 'macos'
+        ? <>Installed this way, macOS shows no unverified-app warning. If you download from the browser, the first time:
+          right-click → <strong>Open</strong>, or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.</>
+        : os === 'linux'
+          ? <>Another option: the <IC c=".deb" /> (Ubuntu, Debian) or <IC c=".rpm" /> (Fedora) package from{' '}
+            <a href="/en/#install">downloads</a>, with a double click. On GNOME the icon needs the AppIndicator extension (Ubuntu ships it).</>
+          : <>Only the <IC c="kongtrol" /> command, without the app? This line in PowerShell (no administrator):</>,
+      winScript: INSTALL_CMD.windows,
+      helper: <><strong>One permission, once.</strong> After that no step needs an administrator terminal or{' '}
+        <IC c="sudo" />. If the helper is missing, the panel says so with a <strong>Fix</strong> button; in the terminal:{' '}
+        <IC c="kongtrol service install" />.</>,
+    },
     // feature:wizard
-    wizard1: <>Registering your VPNs: kongtrol init</>,
-    wizard2: <><IC c="kongtrol init" /> <strong>doesn't configure your VPNs</strong>: that's
-                already done. What it does is tell Kongtrol where they are and how to talk to them:
-                which client to use, what tunnel name it has, where the <IC c=".ovpn" /> lives,
-                and it stores credentials in the <strong>OS keychain</strong> (never in the YAML).</>,
-    wizard3: <>If you already have FortiClient with a working tunnel and OpenVPN with its{' '}
-                <IC c=".ovpn" />, this step just collects that information.</>,
-    wizard4: <>Connection files</>,
-    wizard5: <><strong>If your VPNs are already configured, you don't need to do anything special here.</strong>{' '}
-                Kongtrol just points to the files where they already live. In the wizard you
-                simply type each file's current path. You only need to act if you receive new
-                files from a coworker or IT and have nowhere to put them, or if you want to
-                reorganize everything into a single directory.</>,
-    wizard6: 'Adapter',
-    wizard7: 'What the wizard needs',
-    wizard8: 'Anything to do?',
-    wizard9: os === 'windows' ? 'Tunnel name + username/password' : 'Cert path, key path, credentials',
-    wizard10: <>{os === 'windows'
-                        ? <>No. The tunnel already lives in the FortiClient GUI. Kongtrol activates it by name. No certs.</>
-                        : <>Have the <IC c=".crt" /> and <IC c=".key" /> in some accessible path and note it down.</>}</>,
-    wizard11: <>Path to the <IC c=".ovpn" /></>,
-    wizard12: <>{os === 'windows'
-                        ? <>No. Use the <IC c=".ovpn" /> wherever it already is (e.g. <IC c="C:\Users\YOU\OpenVPN\config\" />).</>
-                        : <>No, if you already have the <IC c=".ovpn" />. Just note its current path.</>}</>,
-    wizard13: <>GUI mode: Proton credentials. Automatic mode: WireGuard <IC c=".conf" /> file.</>,
-    wizard14: <>GUI: no files. WireGuard: export the config from Proton and save the path.</>,
-    wizard15: <>WireGuard / others</>,
-    wizard16: <>Path to the config file</>,
-    wizard17: <>No, if you already have the file. Just note its path.</>,
-    wizard18: <><strong>Optional organization:</strong> if you want to centralize things, you can create{' '}
-                <IC c={os === 'windows' ? '%USERPROFILE%\\.kongtrol\\certs\\' : '~/.kongtrol/certs/'} />{' '}
-                and copy the files there. Useful when onboarding a new teammate or receiving
-                fresh certs. Not required if everything's already in place.</>,
-    wizard19: <>Running the wizard</>,
-    wizard20: <>You first pick a language, then the wizard shows the detected clients
-                and asks whether you want to add a profile:</>,
-    wizard21: `▸  VPN clients detected on this system:
-    ✓  FortiClient             6.4.10.1821
-    ✓  OpenVPN                 2.6.8
-    ✓  ProtonVPN               4.3.14
-
-Add a new VPN profile? [y/N]: y`,
-    wizard22: <>The wizard uses <strong>numbered menus</strong> where it makes sense, so you don't
-                have to memorize valid values:</>,
-    wizard23: `  Profile name: office
-
-  Adapter type:
-    1) forticlient         ✓ detected  FortiClient SSL VPN
-    2) openvpn             ✓ detected  OpenVPN (.ovpn file)
-    3) protonvpn           ✓ detected  ProtonVPN (Proton account)
-    ───────────────────────────────
-    4) ciscoanyconnect                  Cisco AnyConnect
-    5) wireguard                        WireGuard (.conf file)
-    6) globalprotect                    Palo Alto GlobalProtect
-    7) tailscale                        Tailscale mesh / exit node
-    8) cloudflarewarp                   Cloudflare WARP
-
-  Choose [1]: 1`,
-    wizard24: <>Every field comes with a hint for where to find the value:</>,
-    wizard25: <>See the full field-by-field flow (FortiClient)</>,
-    wizard26: os === 'windows'
-? `> FortiClient 6.4.10.1821 detected · connection: automates the window (6.4 layout)
-
-    Find it in FortiClient > Settings or ask IT. e.g. vpn.company.com
-  VPN host: vpn.yourcompany.com
-
-    443 for SSL VPN (default). Only change if IT tells you otherwise.
-  Port [443]:
-
-    The exact connection name as it appears in the FortiClient GUI list.
-  Tunnel name [Office]: Office
-
-    On Windows FortiClient connects by tunnel name — no certificate. 'credentials' will be used.
-  Username: your_username
-  Password for office (stored in keychain): ****`
-: `> FortiClient · connection: FortiClient CLI
-
-    Find it in FortiClient > Settings or ask IT. e.g. vpn.company.com
-  VPN host: vpn.yourcompany.com
-
-    443 for SSL VPN (default). Only change if IT tells you otherwise.
-  Port [443]:
-
-    The exact connection name as it appears in the FortiClient GUI list.
-  Tunnel name [Office]: Office
-
-  Auth method:
-    1) credentials              username and password
-    2) certificate              client certificate only
-    3) certificate+credentials  certificate + username and password (more secure)
-  Choose [3]:
-
-  Client certificate path: ~/.kongtrol/certs/office.crt
-  Private key path: ~/.kongtrol/certs/office.key
-  Username: your_username
-  Password for office (stored in keychain): ****`,
-    wizard27: <>For OpenVPN, the wizard just points to your existing <IC c=".ovpn" /> file:</>,
-    wizard28: <>See the full field-by-field flow (OpenVPN)</>,
-    wizard29: os === 'windows'
-? `  Profile name: dev-server
-
-  Adapter type:
-    ...
-  Choose [2]: 2   ← openvpn
-
-    Full path to the .ovpn. Use its current location, no need to copy it.
-  Path to .ovpn file: C:\\Users\\YOU\\OpenVPN\\config\\server.ovpn
-
-    If the .ovpn has <cert> and <key> embedded, choose 'certificate' and leave the paths blank.
-  Auth method:
-    1) credentials              username and password
-    2) certificate              client certificate only
-    3) certificate+credentials  certificate + username and password (more secure)
-  Choose [2]:
-
-  Client certificate path (blank if embedded in the .ovpn):
-  Private key path (blank if embedded in the .ovpn):`
-: `  Profile name: dev-server
-
-  Adapter type:
-    ...
-  Choose [2]: 2   ← openvpn
-
-    Full path to the .ovpn. Use its current location, no need to copy it.
-  Path to .ovpn file: ~/.config/openvpn/server.ovpn
-
-    If the .ovpn has <cert> and <key> embedded, choose 'certificate' and leave the paths blank.
-  Auth method:
-    1) credentials              username and password
-    2) certificate              client certificate only
-    3) certificate+credentials  certificate + username and password (more secure)
-  Choose [2]:
-
-  Client certificate path (blank if embedded in the .ovpn):
-  Private key path (blank if embedded in the .ovpn):`,
-    wizard30: <>ProtonVPN: manual GUI vs automatic WireGuard</>,
-    wizard31: <>There are two valid paths with ProtonVPN depending on how much you want to automate.</>,
-    wizard32: <><strong>Manual GUI (fast):</strong> you operate Proton from its app and Kongtrol
-                  routes policies over that profile.</>,
-    wizard33: <><strong>Automatic WireGuard (recommended):</strong> export a <IC c=".conf" /> file from Proton,
-                  create a <IC c="type: wireguard" /> profile and Kongtrol can bring the connection up/down by command.</>,
-    wizard34: <><strong>ProtonVPN alongside other adapters (Forti/OpenVPN/etc.):</strong> use it in a
-                separate profile and only route target domains/IPs (e.g. streaming). Keep
-                corporate traffic in its dedicated profiles to avoid route conflicts.</>,
-    wizard35: <><strong>Where do I find FortiClient's Host and Tunnel Name?</strong><br />
-                Open FortiClient → <strong>Remote Access</strong> tab. You'll see a list of saved connections.
-                The <strong>connection name</strong> (e.g. "Office VPN") is the <em>tunnel name</em>.
-                Click the pencil (edit) icon next to that connection; there you'll see the{' '}
-                <strong>Remote Gateway</strong> or <strong>Server</strong> field: that's the <em>host</em>.</>,
-    wizard36: <>If a client isn't auto-detected, the wizard tells you and asks for the
-                binary path. You can also set it later in the YAML with <IC c="binary_path" />.</>,
-    wizard37: <>At the end: security options, routing policies and confirmation:</>,
-    wizard38: <>See the security and policy flow</>,
-    wizard39: `Enable kill switch? [Y/n]:
-Enable DNS guard? [Y/n]:
-Enable signed audit log? [Y/n]:
-Enable web dashboard? (http://127.0.0.1:9741) [Y/n]:
-Show your public IP? (asks an external service) [y/N]:
-  Uses an external service (api.ipify.org) that sees your public IP
-
-── Routing policies ──────────────────────────────────────────────
-
-Add a routing policy? [Y/n]: y
-
-  Policy name (e.g. work, streaming): Claude AI
-  VPN profile for this policy:
-    1) office
-    2) us-content
-  Choose [1]: 2
-
-    Domain or suffix (e.g. company.com, .internal) — leave blank to finish
-  Domain: claude.ai
-  Domain: *.anthropic.com
-  Domain:
-
-    IP range or single IP (e.g. 10.0.0.0/8) — leave blank to finish
-  IP / range:
-
-Add a routing policy? [Y/n]: y
-
-  Policy name (e.g. work, streaming): Internal network
-  VPN profile for this policy:
-    1) office
-    2) us-content
-  Choose [1]: 1
-
-  Domain:
-
-  IP / range: 10.10.0.0/16
-  IP / range: 192.168.50.0/24
-  IP / range:
-
-Add a routing policy? [Y/n]:
-
-    You can also edit policies directly in kongtrol.yaml → 'policies' section.
-
-Write configuration to ~/.kongtrol/kongtrol.yaml? [Y/n]: y
-
-[✓] Configuration written to ~/.kongtrol/kongtrol.yaml
-[✓] Configuration is valid.`,
-    wizard40: <><strong>You can type several domains separated by commas</strong> in a single prompt:
-                the wizard splits them automatically. <IC c="claude.ai, *.anthropic.com" /> → two entries.</>,
-    wizard41: <>At the end, the wizard checks the helper (if it's missing, it offers to install it) and asks{' '}
-                "Connect now?": Enter connects what you just created. To add another profile or policy later:
-                run <IC c="kongtrol init" /> again. The wizard detects the existing config and won't overwrite anything without confirmation.</>,
-    groups1: <>Groups</>,
-    groups2: <>Groups bundle profiles so you can bring them up together with a single command.
-                Edit <IC c={os === 'windows' ? 'C:\\Users\\YOU\\.kongtrol\\kongtrol.yaml' : '~/.kongtrol/kongtrol.yaml'} /> and append:</>,
-    groups3: `kongtrol up --group work     # brings up office + dev-server + aws in parallel
-kongtrol down --group work`,
-    groups4: <>A profile can belong to several groups at once: <IC c="office" /> can be
-                in <IC c="work" /> and also in <IC c="full" /> without any conflict.</>,
-    groups5: <>If Kongtrol is already working in the background and you hand-edit the group, you don't need
-                to restart it: <IC c="kongtrol reload --group work" /> re-reads <IC c="kongtrol.yaml" /> from disk and
-                reconnects only that group's active tunnels. For a single tunnel, <IC c="kongtrol reload office" />;
-                with no arguments, <IC c="kongtrol reload" /> applies everything without a restart: new profiles can connect right
-                away and, if you changed a VPN that is connected, it asks whether to reconnect it (the others are not touched).</>,
+    wizard: {
+      title: <>Your first VPN</>,
+      lead: <>In the panel, <strong>Profiles</strong> (or the <strong>＋ Add</strong> button at the top). Pick one of these:</>,
+      ways: [
+        <><strong>A VPN you already use</strong> (NordVPN, Proton, FortiClient…): pick the app and give it a name, for example <IC c="office" />.</>,
+        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it, or drop it on the panel. Kongtrol checks it and keeps a protected copy.</>,
+        <><strong>Username and password</strong>: they go to the system keychain, never to a text file.</>,
+      ],
+      attach: <><strong>If you use your VPN's app:</strong> when you connect, if the tunnel is already up, Kongtrol attaches to it.
+        If not, it opens the app and connects for you when it can. If it can't, it tells you what to do and waits for you to connect.</>,
+      cliTitle: <>From the terminal</>,
+      cli: <><IC c="kongtrol init" /> asks, in this order:</>,
+      cliSteps: [
+        <>Your VPNs: it finds the installed apps (✓) and asks for each profile's name and details.</>,
+        <>Rules: which sites or networks use each VPN (you can leave it for later).</>,
+        <>Security: kill switch, DNS protection, signed log, panel and the optional public IP check.</>,
+        <>Review and save to <IC c="~/.kongtrol/kongtrol.yaml" />. Then it offers the helper and "Connect now?".</>,
+      ],
+      cliMore: <>If you already have profiles, <IC c="kongtrol init" /> shows a menu: add a profile, update credentials,
+        rules, security or save. For scripts: <IC c="kongtrol profile add" /> and <IC c="kongtrol profile import" />.
+        The language follows your system; change it with <IC c="kongtrol config lang es" />.</>,
+      code: `$ kongtrol init
+$ kongtrol profile import ~/Downloads/proton-us.conf`,
+      forti: <><strong>FortiClient: host and tunnel name?</strong> In FortiClient, <strong>Remote Access</strong> tab:
+        the connection name is the tunnel; the pencil (edit) shows <strong>Remote Gateway</strong>, which is the host.</>,
+    },
+    // feature:daemon_lifecycle
+    connect: {
+      title: <>Connect and disconnect</>,
+      lead: <>From the icon: click the VPN. From the panel: <strong>Home</strong> → <strong>Connect</strong>.</>,
+      bg: <>Kongtrol keeps working in the background. Closing the panel, the terminal or the icon disconnects nothing.</>,
+      stop: <>To disconnect everything: <strong>Quit and disconnect all</strong> in the icon, or <IC c="kongtrol down --all" />.
+        The icon stays with "Kongtrol stopped"; <strong>Start Kongtrol</strong> starts it again.</>,
+      code: `$ kongtrol up office           # connect one VPN
+$ kongtrol up office aws       # several at once
+$ kongtrol status --watch      # live status · q closes the view, VPNs stay up
+$ kongtrol down office         # disconnect one
+$ kongtrol down --all          # disconnect all`,
+      waiting: <><strong>"Waiting for connection in …"</strong> means Kongtrol opened your VPN's app and waits for you to connect there.
+        Connect in the app; Kongtrol detects it.</>,
+      drop: <><strong>If a VPN drops,</strong> Kongtrol reconnects it with growing waits, and tells you if it can't.
+        It only tries another VPN if you declared it as a backup (<IC c="failover" />).</>,
+    },
     // feature:policies feature:routes
-    policies1: <>Routing policies</>,
-    policies2: <>When you have several tunnels active at once, how does your machine know
-                which traffic goes over which VPN? That's what <strong>policies</strong> define.</>,
-    policies3: `  request                     policy                            tunnel
-  ──────────────────────────────────────────────────────────────────────────
-  claude.ai            ──▶   domains: claude.ai            ──▶  us-content (ProtonVPN)
-  10.10.4.12           ──▶   ip_ranges: 10.10.0.0/16        ──▶  office     (FortiClient)
-  api.yourcompany.com  ──▶   no match                       ──▶  direct connection (no VPN)`,
-    policies4: <>Without policies, each VPN installs its own routes on connect, and the last
-                one to connect usually wins general traffic, and you can't control what goes
-                where. With policies, Kongtrol routes precisely:</>,
-    policies5: <><IC c="claude.ai" /> and <IC c="*.anthropic.com" /> → go through <IC c="us-content" /> (ProtonVPN)</>,
-    policies6: <><IC c="10.10.0.0/16" /> (office network) → goes through <IC c="office" /> (FortiClient)</>,
-    policies7: <><IC c="*.yourcompany.com" /> → goes through <IC c="office" /></>,
-    policies8: <>Everything else → direct connection, no VPN</>,
-    policies9: <>The wizard (<IC c="kongtrol init" />) lets you create policies at the end of the flow.
-                You can also add or edit them directly in the YAML under the <IC c="policies:" /> section:</>,
-    policies10: `policies:
-
-  # ── US content / Claude AI ──────────────────────────────────────────────
+    policies: {
+      title: <>What goes through each VPN</>,
+      lead: <>With several VPNs at once, <strong>rules</strong> decide which destination uses which. Without a rule, it uses your normal internet.</>,
+      diagram: `  destination          rule                         goes through
+  ─────────────────────────────────────────────────────────────────
+  claude.ai        ──▶  domains: claude.ai      ──▶  us-content
+  10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  office
+  example.com      ──▶  no rule                 ──▶  normal internet`,
+      panel: <>In the panel: <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the VPN and test before saving.
+        In the terminal:</>,
+      code: `$ kongtrol policy add github.com --via office
+$ kongtrol policy show github.com     # which VPN it uses and why
+$ kongtrol policy list
+$ kongtrol policy remove <name>`,
+      down: <><strong>If a rule's VPN is off,</strong> that destination uses your normal internet. To block it instead:{' '}
+        <IC c="--block-when-down" /> (in the file, <IC c="on_tunnel_down: block" />).</>,
+      yamlLead: <>You can also write them in <IC c="kongtrol.yaml" />, under <IC c="policies:" />:</>,
+      yaml: `policies:
   - name: Claude AI
     match:
-      domains:
-        - claude.ai
-        - "*.anthropic.com"
+      domains: [claude.ai, "*.anthropic.com"]
     via: us-content
 
-  - name: Geo-restricted content
+  - name: Office network
     match:
-      domains:
-        - "*.netflix.com"
-        - "*.hulu.com"
-        - "*.disneyplus.com"
-    via: us-content
-
-  # ── Office ─────────────────────────────────────────────────────────────
-  - name: Office internal network
-    match:
-      ip_ranges:
-        - 10.10.0.0/16          # internal network — adjust to yours
-        - 192.168.50.0/24
+      ip_ranges: [10.10.0.0/16]
+      domains: ["*.yourcompany.com"]
     via: office
-
-  - name: Internal domains
-    match:
-      domains:
-        - "*.yourcompany.com"   # change to your company's domain
-        - intranet.local
-    via: office
-
-  # ── Dev server ─────────────────────────────────────────────────────────
-  - name: Dev server
-    match:
-      ip_ranges:
-        - 185.0.0.0/32          # replace with your server's real IP
-    via: dev-server
-
-  # ── AWS ────────────────────────────────────────────────────────────────
-  - name: AWS workloads
-    match:
-      ip_ranges:
-        - 172.31.0.0/16         # AWS default VPC — adjust to your CIDRs
-      domains:
-        - "*.amazonaws.com"
-    via: aws
-
-  # Traffic that doesn't match any rule goes through your normal
-  # connection (no VPN). To force EVERYTHING through one VPN:
-  # - name: Default
-  #   match:
-  #     ip_ranges: [0.0.0.0/0]
-  #   via: office`,
-    policies11: <><strong>How does matching work?</strong><br />
-                Domains: exact glob or with a <IC c="*." /> prefix. <IC c="*.company.com" /> covers all subdomains but not <IC c="company.com" /> alone (add both if you need them).<br />
-                IPs: longest-prefix match: the most specific rule wins. <IC c="10.10.1.0/24" /> takes priority over <IC c="10.0.0.0/8" />.</>,
-    policies12: <><strong>App rules (experimental):</strong> you can write <IC c="apps" /> in a rule,
-                but today it does not change routing: only <IC c="domains" /> and <IC c="ip_ranges" /> count.
-                For now <IC c="apps" /> only shows up in <IC c="kongtrol policy show app:<exe>" />.</>,
-    policies13: <><strong>Transparent split-DNS:</strong> with <IC c="monitor.split_dns.enabled: true" />,
-                Kongtrol injects policy domains into system resolution (hosts) so regular apps
-                resolve through the right tunnel without calling the API.</>,
-    policies14: `# Validate after editing
-$ kongtrol config validate
-# [OK] Config is valid.`,
-    policies15: <>If Kongtrol isn't working yet, policies are read when you run <IC c="kongtrol up" />.
-                If it's already active, apply the change without restarting it via{' '}
-                <IC c="kongtrol reload --policy" />: it reloads the policy engine from the edited{' '}
-                <IC c="kongtrol.yaml" />, without touching any tunnels. To see which VPN a destination uses:{' '}
-                <IC c="kongtrol policy show github.com" />. To create one without editing the YAML (like
-                &quot;＋ Add&quot; in the dashboard): <IC c="kongtrol policy add github.com --via office" />; to remove
-                it: <IC c="kongtrol policy remove <name>" />.</>,
-    doctor1: <>Verify with doctor</>,
-    doctor2: <>Before connecting for the first time, let Kongtrol validate everything's in order:</>,
-    doctor3: os === 'windows'
-? `Kongtrol Doctor
-────────────────────────────────────────────────────
-
-  Configuration
-  ✓  config file         C:\\Users\\you\\.kongtrol\\kongtrol.yaml
-  ✓  config valid        4 profile(s) defined
-
-  VPN Binaries
-  ✓  forticlient         FortiClient 6.4.10.1821
-  ✓  openvpn             OpenVPN 2.6.8
-  ✓  protonvpn           ProtonVPN 4.3.14
-
-  Certificates & Keys
-  ✓  office: cert        C:\\Users\\you\\.kongtrol\\certs\\office.crt
-  ✓  office: key         C:\\Users\\you\\.kongtrol\\certs\\office.key
-  ✓  dev-server: config  C:\\Users\\you\\.kongtrol\\configs\\server.ovpn
-
-  Keychain Credentials
-  ✓  office: password    found in OS keychain (Credential Manager)
-  ✓  us-content: password  found in OS keychain (Credential Manager)
-
-  Permissions
-  ✓  kill switch         platform implementation available
-  ✓  dns guard           platform implementation available
-
-All checks passed. You're good to go.`
-: `Kongtrol Doctor
-────────────────────────────────────────────────────
-
-  Configuration
-  ✓  config file         ~/.kongtrol/kongtrol.yaml
-  ✓  config valid        4 profile(s) defined
-
-  VPN Binaries
-  ✓  forticlient         FortiClient 6.4.10.1821
-  ✓  openvpn             OpenVPN 2.6.8
-  ✓  protonvpn           protonvpn-cli 4.3.14
-
-  Certificates & Keys
-  ✓  office: cert        ~/.kongtrol/certs/office.crt
-  ✓  office: key         ~/.kongtrol/certs/office.key
-  ✓  dev-server: config  ~/.kongtrol/configs/server.ovpn
-
-  Keychain Credentials
-  ✓  office: password    found in OS keychain
-  ✓  us-content: password  found in OS keychain
-
-  Permissions
-  ✓  kill switch         platform implementation available
-  ✓  dns guard           platform implementation available
-
-All checks passed. You're good to go.`,
-    doctor4: <>If any line shows ✗ or !, the line below says what to do. No terminal: in the dashboard, the <strong>Diagnostics</strong> card shows the same, offers <strong>Fix</strong> when the helper is missing, and <strong>Export configuration</strong> (no passwords).</>,
-    // feature:daemon_lifecycle
-    connect1: <>First connection</>,
-    connect2: <><strong>A whole group:</strong></>,
-    connect3: `$ kongtrol up --group work
-[+] office      connected
-[+] dev-server  connected
-[+] aws         connected`,
-    connect4: <><strong>Several profiles without a group:</strong></>,
-    connect5: <>All three tunnels come up in parallel. The routing policy decides which traffic goes through which.</>,
-    connect6: <><strong>A single profile:</strong></>,
-    connect7: <>Kongtrol keeps running in the background: closing the view disconnects nothing. When you're done:</>,
-    connect8: `# q or Ctrl+C  →  closes the view; the VPNs stay connected
-
-# To disconnect (from any terminal):
-$ kongtrol down --group work
-$ kongtrol down --all`,
-    connect9: <><strong>Check status:</strong></>,
-    connect10: `$ kongtrol status
-
-PROFILE      STATUS        IP           UPTIME
-office       connected     10.10.0.5    1h 23m
-dev-server   connected     185.x.x.x    1h 23m
-aws          connected     172.31.4.7   1h 23m
-us-content   disconnected  —            —
-
-Kill switch: ARMED (protecting 3 tunnel(s))
-
-# Live view (refreshes every 2s):
-$ kongtrol status --watch`,
+    on_tunnel_down: block   # optional: if office is off, block`,
+      match: <><strong>How the choice is made:</strong> <IC c="*.company.com" /> covers subdomains, not <IC c="company.com" /> itself (add both).
+        For networks the most specific wins: <IC c="10.10.1.0/24" /> before <IC c="10.0.0.0/8" />.
+        App rules (<IC c="apps" />) only explain for now; they don't route.</>,
+      apply: <>After editing the file: <IC c="kongtrol config validate" /> and <IC c="kongtrol reload --policy" /> (applies without touching the tunnels).
+        Changes in the panel apply by themselves.</>,
+    },
+    groups: {
+      title: <>Groups</>,
+      lead: <>A group connects several VPNs with one click. Create it in the panel: <strong>Profiles</strong> → <strong>Groups</strong> tab. Or in the file:</>,
+      yaml: `groups:
+  work:
+    profiles: [office, dev-server, aws]`,
+      code: `$ kongtrol up --group work
+$ kongtrol down --group work`,
+      note: <>A VPN can be in several groups. If you edit the file while Kongtrol runs:{' '}
+        <IC c="kongtrol reload" /> applies the changes without a restart.</>,
+    },
+    doctor: {
+      title: <>Check that all is well</>,
+      lead: <>In the panel: <strong>Settings</strong> → <strong>Diagnostics</strong>. It checks your VPNs, files, saved passwords and the helper.
+        Each problem says what to do; if the helper is missing, the <strong>Fix</strong> button installs it.</>,
+      code: `$ kongtrol doctor          # the same in the terminal
+$ kongtrol doctor --fix    # and repairs what it can`,
+      export: <><strong>Export configuration</strong> (in Diagnostics, or <IC c="kongtrol export" />) gives you a file without passwords,
+        useful to ask for help or to set up a teammate's computer.</>,
+    },
     // feature:dashboard
-    dashboard1: <>Web dashboard</>,
-    dashboard2: <>Open it from the tray icon ("Open dashboard") or with <IC c="kongtrol dashboard" />: it opens in
-                your browser already authorized. Typing the address by hand is not enough, for security. At the top, the “＋ Add” button connects a VPN you already use, imports a .conf or .ovpn file (you can also drop it on the dashboard) or sends a site through a VPN, in one sentence. It's a full management console, with seven sections:</>,
-    dashboard3: <>Page</>,
-    dashboard4: <>What it does</>,
-    dashName1: <>Home</>,
-    dashDesc1: <>Your VPNs live (state, IP, time, traffic, latency) with connect / cancel / disconnect / reload, notices, protection summary, internet egress and group quick-launch</>,
-    dashName2: <>Profiles</>,
-    dashDesc2: <>Create, edit, rename and delete VPN profiles (the password goes to the system keychain), backup (failover) and the first-run guide; Groups tab to connect several VPNs at once</>,
-    dashName3: <>Rules</>,
-    dashDesc3: <>Which sites, networks and apps go through each VPN, tested before saving, and what happens when their VPN is off; Schedule tab to connect or disconnect at set times</>,
-    dashName4: <>Traffic</>,
-    dashDesc4: <>Traffic per VPN over time, where a site or IP goes out, each tunnel's routes, the computer's route table and recent connections (memory only; turn them off in Settings) with “Send this through…”</>,
-    dashName5: <>Security</>,
-    dashDesc5: <>Live Kill Switch and DNS Guard with their settings, per-profile switch, split DNS and the optional public IP lookup (off by default) with a Check button</>,
-    dashName6: <>Activity</>,
-    dashDesc6: <>Audit log with filters (date, profile, level) and checked HMAC signatures, plus Kongtrol's notices</>,
-    dashName7: <>Settings</>,
-    dashDesc7: <>Language, theme, diagnostics (with Repair and Export configuration), health check, new version notice, restart or stop Kongtrol and delete your data</>,
-    dashboard10: `# Useful endpoints
-GET  /api/v1/metrics/history
-GET  /api/v1/dns/resolve?domain=claude.ai&via=us-content
-GET  /api/v1/resolve?target=portal.company.com&app=chrome.exe
-POST /api/v1/security/killswitch   {"enabled": true}
-POST /api/v1/security/dnsguard     {"enabled": true}
-POST /api/v1/security/publicip     {"enabled": true}   # optional: look up your public IP
-POST /api/v1/security/publicip/check                    # Check now
-GET  /api/v1/vpns                  # profiles · POST/PUT/DELETE for CRUD
-GET  /api/v1/groups                # groups · POST/PUT/DELETE + /connect /disconnect
-GET  /api/v1/settings              # PUT to save
-GET  /api/v1/audit                 # ?profile=&level=&limit=`,
-    dashboard11: <>The dashboard is compiled into the binary: nothing extra to install.
-                It's full management now (create/edit profiles, policies, groups, toggle the
-                kill switch live), not just read-only monitoring. The dashboard's own port/bind
-                is still CLI-only (<code>kongtrol config dashboard set-port &lt;port&gt;</code>)
-                because changing it from the page serving the request would break the connection.</>,
-    // feature:i18n
-    daily1: <>Daily usage</>,
-    daily2: <>Command</>,
-    daily3: <>What it does</>,
-    daily4: <>Start the day (office + dev-server + aws)</>,
-    daily5: <>End the day</>,
-    daily6: <>Shut everything down</>,
-    daily7: <>See what's connected</>,
-    daily8: <>Live monitoring (2s)</>,
-    daily9: <>See which VPN a destination uses and why</>,
-    daily10: <>Look up your public IP and test for leaks now (if you turned the lookup on)</>,
-    daily11: <>Open the web UI</>,
-    daily12: <>Full diagnostics</>,
-    daily13: <>Export config without passwords (to share)</>,
-    daily14: <><strong>Optional time-based scheduler:</strong></>,
-    daily15: <><strong>Per-profile kill switch override:</strong></>,
-    daily16: <><strong>Update a password:</strong></>,
-    daily17: `$ kongtrol init
-# → pick the profile → "Update credentials?" → enter the new one`,
-    // Command reference: same list and order as `kongtrol --help`
-    // The rows come from docs/cli.json (generated from the CLI: go generate ./cmd/kongtrol).
-    cmdref1: <>Command reference</>,
-    cmdref2: <>The same groups as <IC c="kongtrol --help" />. Every command has its own help with examples: <IC c="kongtrol <command> --help" />.</>,
+    dashboard: {
+      title: <>The panel</>,
+      lead: <>Open it from the icon (<strong>Open panel</strong>) or with <IC c="kongtrol dashboard" />. It opens already signed in:
+        typing the address by hand is not enough, for security. It runs inside your computer; nothing leaves it.</>,
+      rows: [
+        { name: <>Home</>, desc: <>Your VPNs live (status, IP, time, traffic), connect and disconnect, notices and quick-access groups.</> },
+        { name: <>Profiles</>, desc: <>Create, edit, rename and delete VPNs; backup (failover); Groups tab.</> },
+        { name: <>Rules</>, desc: <>Which sites and networks use each VPN, with a test before saving; Schedules tab.</> },
+        { name: <>Traffic</>, desc: <>Traffic per VPN, where a site goes out, routes and recent connections (in memory only).</> },
+        { name: <>Security</>, desc: <>Kill switch and DNS protection, per VPN, and the optional public IP check.</> },
+        { name: <>Activity</>, desc: <>Signed log with filters, and Kongtrol's notices.</> },
+        { name: <>Settings</>, desc: <>Language, theme, diagnostics, new version notice, restart or stop, and delete your data.</> },
+      ],
+      port: <>The panel's port changes only from the terminal (<IC c="kongtrol config dashboard set-port <port>" />):
+        changing it from the panel itself would cut the connection.</>,
+    },
+    // feature:i18n feature:killswitch feature:dns_guard
+    daily: {
+      title: <>Day to day</>,
+      rows: [
+        { cmd: 'kongtrol up --group work', desc: <>Start the day</> },
+        { cmd: 'kongtrol down --all', desc: <>Disconnect everything</> },
+        { cmd: 'kongtrol status', desc: <>What's connected, kill switch and DNS</> },
+        { cmd: 'kongtrol policy show github.com', desc: <>Which VPN a destination uses and why</> },
+        { cmd: 'kongtrol ip', desc: <>Your public IP now (if you turned the check on)</> },
+        { cmd: 'kongtrol logs', desc: <>Log of connections and notices</> },
+        { cmd: 'kongtrol restart', desc: <>Restart Kongtrol; reconnects the VPNs that were up</> },
+      ],
+      ks: <><strong>Kill switch:</strong> if a VPN drops on its own, it blocks only that VPN's destinations; everything else keeps working.
+        If that VPN carried all your traffic, internet stays blocked until it returns, and Kongtrol tells you.
+        Turn it on in <strong>Security</strong> or with <IC c="kongtrol config killswitch on" />; per VPN, in the file:</>,
+      ksYaml: `vpns:
+  office:
+    kill_switch: true
+  us-content:
+    kill_switch: false`,
+      sched: <><strong>Schedules</strong> (panel: Rules → Schedules) connect and disconnect by themselves:</>,
+      schedYaml: `monitor:
+  scheduler:
+    enabled: true
+    rules:
+      - name: office-hours
+        profiles: [office]
+        weekdays: [mon, tue, wed, thu, fri]
+        start: "09:00"
+        end: "18:00"`,
+      pass: <><strong>Changed your password?</strong> In the panel, edit the profile. In the terminal:{' '}
+        <IC c="kongtrol init" /> → "Update credentials for a profile".</>,
+      refTitle: <>All commands</>,
+      ref: <>The same groups as <IC c="kongtrol --help" />. Each command has examples: <IC c="kongtrol <command> --help" />.</>,
+    },
     // feature:killswitch feature:dns_guard
-    trouble1: <>Troubleshooting</>,
-    trouble2: <><strong>DNS not restored after a crash:</strong></>,
-    trouble3: <><strong>Kill switch still active with no internet after disconnecting:</strong></>,
-    trouble4: `$ kongtrol down --all    # disables the kill switch automatically`,
-    trouble5: <>If Kongtrol closed abruptly: with the helper installed, its blocks lift on their own in about
-                20 seconds (the network stays open, never cut). If they're still there, remove <strong>only</strong> Kongtrol's rules.
-                Don't use <IC c="netsh advfirewall reset" />: it deletes all your firewall rules.
-                If a VPN that carried all your traffic (full tunnel) drops, the kill switch blocks the internet on purpose
-                until it is back, and Kongtrol tells you so: disconnect it to browse now, or add rules so only those sites
-                depend on it.</>,
-    trouble6: os === 'windows'
-? `# PowerShell as Administrator:
+    trouble: {
+      title: <>If something fails</>,
+      lead: <>First, <strong>Diagnostics</strong> in the panel or <IC c="kongtrol doctor" />: it almost always says what to do.</>,
+      items: [
+        {
+          q: <>No site opens after Kongtrol closed abruptly</>,
+          fix: <>Wait about 20 seconds: the helper removes Kongtrol's blocks by itself. If they stay, run{' '}
+            <IC c="kongtrol down --all" />. Last resort, remove only Kongtrol's rules
+            {os === 'windows' ? <> (never <IC c="netsh advfirewall reset" />: it deletes all your rules)</> : null}:</>,
+          code: os === 'windows'
+            ? `# PowerShell as administrator
 > netsh advfirewall firewall delete rule name=KongtrolBlock
 > netsh advfirewall firewall delete rule name=KongtrolKillSwitchBlock`
-: os === 'macos'
-? `$ sudo pfctl -a com.kongtrol -F all`
-: `$ sudo iptables -F KONGTROL_BLOCK
+            : os === 'macos'
+              ? `$ sudo pfctl -a com.kongtrol -F all`
+              : `$ sudo iptables -F KONGTROL_BLOCK
 $ sudo ip6tables -F KONGTROL_BLOCK
 $ sudo iptables -F KONGTROL`,
-    trouble7: <><strong>The VPN client isn't showing up in auto-detection:</strong></>,
-    trouble8: os === 'windows'
-? `# The wizard asks for the binary path if it can't detect it:
-> kongtrol init
-#   !  This VPN client wasn't auto-detected.
-#   Binary path (blank = auto-detect): C:\\custom\\path\\FortiClient.exe
-
-# Or add it manually in %USERPROFILE%\\.kongtrol\\kongtrol.yaml:
-# office:
-#   type: forticlient
-#   app_path: "C:\\\\custom\\\\path\\\\FortiClient.exe"`
-: `# The wizard asks for the binary path if it can't detect it:
-$ kongtrol init
-#   !  This VPN client wasn't auto-detected.
-#   Binary path (blank = auto-detect): /path/to/binary
-
-# Or add it manually in ~/.kongtrol/kongtrol.yaml:
-# office:
-#   type: forticlient
-#   app_path: "/custom/path/FortiClient"`,
-    trouble9: <><strong>Wrong or expired password:</strong></>,
-    trouble10: `$ kongtrol init
-# Select the profile → "Refresh credentials" → enter the new one`,
-    trouble11: <>If a session/token/credential failure is detected during connect/reconnect,
-                Kongtrol raises a <strong>re-auth required</strong> alert with an adapter-specific hint.</>,
-    trouble12: <><strong>File layout:</strong></>,
-    trouble13: `~/.kongtrol/
-├── kongtrol.yaml     ← main config (no passwords)
-├── certs/
-│   ├── office.crt
-│   └── office.key
-├── configs/
-│   ├── server.ovpn
-│   └── aws.ovpn
-└── audit.log         ← signed log of every event
-
-Passwords stored in:
-  Windows → Windows Credential Manager
-  macOS   → Keychain
-  Linux   → libsecret / GNOME Keyring`,
+        },
+        {
+          q: <>A VPN dropped and nothing loads</>,
+          fix: <>That VPN carried all your traffic and the kill switch protects it. Disconnect it to browse now, or create rules
+            so only some sites depend on it.</>,
+          code: `$ kongtrol down <profile>`,
+        },
+        {
+          q: <>Site names don't resolve after an unexpected shutdown</>,
+          fix: <>Put your system's DNS back as it was:</>,
+          code: os === 'windows'
+            ? `> netsh interface ip set dns "Ethernet" dhcp     # or "Wi-Fi"`
+            : os === 'macos'
+              ? `$ networksetup -setdnsservers Wi-Fi empty`
+              : `# with systemd-resolved (Ubuntu, Fedora): the tunnel's name
+$ resolvectl revert tun0
+# without systemd-resolved
+$ sudo cp /etc/resolv.conf.kongtrol.bak /etc/resolv.conf`,
+        },
+        {
+          q: <>Kongtrol can't find my VPN's app</>,
+          fix: <>Say where it is: in the panel, edit the profile → advanced options (app path). In the file:</>,
+          code: os === 'windows'
+            ? `vpns:
+  office:
+    type: forticlient
+    app_path: "C:\\\\Path\\\\FortiClient\\\\FortiClient.exe"`
+            : `vpns:
+  office:
+    type: forticlient
+    app_path: "/path/to/FortiClient"`,
+        },
+        {
+          q: <>Wrong or expired password</>,
+          fix: <>Save the new one: edit the profile in the panel, or <IC c="kongtrol init" /> → "Update credentials for a profile".</>,
+        },
+        {
+          q: <>"Helper missing" or "helper out of date"</>,
+          fix: <><strong>Fix</strong> button in Diagnostics, or <IC c="kongtrol service install" />. It asks for permission once.</>,
+        },
+        {
+          q: <>Cloudflare WARP: "not registered"</>,
+          fix: <>Register the device once in the WARP app, or in the terminal:</>,
+          code: `$ warp-cli registration new`,
+        },
+        {
+          q: <><IC c="kongtrol" /> is not recognized in the terminal</>,
+          fix: <>Open a new terminal. If it persists, <IC c="kongtrol doctor" /> says which copy the terminal uses and whether an old one is in PATH.
+            The icon and the panel don't need it.</>,
+        },
+      ] as GuideFix[],
+      files: <><strong>Where your things live:</strong> the configuration in{' '}
+        <IC c={os === 'windows' ? '%USERPROFILE%\\.kongtrol\\' : '~/.kongtrol/'} /> (no passwords). Passwords in{' '}
+        {os === 'windows' ? 'Windows Credential Manager' : os === 'macos' ? 'the macOS Keychain' : 'the system keyring (libsecret / GNOME Keyring)'}.</>,
+    },
     // feature:update_check
-    update1: <>Updating</>,
-    update2: <>Update the same way you installed. Your settings and passwords stay.</>,
-    update3: <><strong>Windows installer:</strong> download the new one from{' '}
-                <a href="/en/#install">the downloads section</a> and open it.</>,
-    update4: `# Script (Linux / macOS): run it again
-$ ${INSTALL_CMD.unix}
-
-# Script (Windows, PowerShell): run it again
-> ${INSTALL_CMD.windows}
-
-# .deb / .rpm (Linux): install the new package from Releases, then
-$ kongtrol restart`,
-    update5: <><strong>New version notice (optional, off by default):</strong> if you turn it on, Kongtrol checks
-                at most once a day for a new version. It tells you once per version: in the tray, the dashboard,
-                {' '}<IC c="kongtrol up" />, <IC c="kongtrol version" /> and <IC c="kongtrol status" />.
-                It never downloads or installs anything.</>,
-    update6: `$ kongtrol config update-check on      # turn on
-$ kongtrol config update-check off     # turn off (no request at all)
-$ kongtrol config update-check status  # see how it's set`,
-    update7: <>Also in the dashboard: Settings › "New version notice". <IC c="kongtrol init" /> asks you once
-                (default No). What is sent and to whom: see the{' '}
-                <a href={`${pathFor('privacidad', 'en')}#conexiones`}>privacy policy</a>.</>,
+    update: {
+      title: <>Update</>,
+      lead: <>Update the same way you installed. Your configuration, passwords and the helper stay,
+        and the VPNs you had connected reconnect.</>,
+      how: os === 'windows'
+        ? <>Download the new installer and open it: it says "Update Kongtrol" and uses your previous options.</>
+        : os === 'macos'
+          ? <>Paste the install line again: it says "Updating Kongtrol" and restarts on the new version.</>
+          : <>Paste the install line again. With <IC c=".deb" /> or <IC c=".rpm" />: install the new package and run{' '}
+            <IC c="kongtrol restart" />.</>,
+      notice: <><strong>New version notice (optional, off):</strong> if you turn it on, Kongtrol checks at most once a day
+        for a new version and tells you once per version. It never downloads or installs anything. Turn it on in <strong>Settings</strong> or:</>,
+      code: `$ kongtrol config update-check on       # turn on
+$ kongtrol config update-check off      # turn off: no request at all
+$ kongtrol config update-check status`,
+      privacy: <>What is asked and to whom: <a href={`${pathFor('privacidad', 'en')}#conexiones`}>privacy policy</a>.</>,
+    },
     // feature:uninstall
-    uninstall1: <>Uninstalling</>,
-    uninstall2: <>When you uninstall, <strong>your data stays</strong>: your settings (<IC c="~/.kongtrol" />)
-                and the passwords saved in your system. If you reinstall, everything is still there. It's only
-                deleted if you ask.</>,
-    uninstall3: <><strong>Windows installer:</strong> Settings › Apps › Kongtrol › Uninstall. It asks once whether
-                to also delete your settings and passwords (default No). It always disconnects your VPNs, closes
-                Kongtrol and removes the network helper.</>,
-    uninstall4: <><strong>From the terminal:</strong> it disconnects your VPNs, closes Kongtrol and removes the
-                network helper, autostart and the PATH entry. If you installed with a .deb/.rpm package or the
-                Windows installer, it tells you how to finish.</>,
-    uninstall5: `$ kongtrol uninstall                    # removes the app; your data stays
-$ kongtrol uninstall --purge            # also deletes data and passwords (asks [y/N])
-$ kongtrol uninstall --data-only        # deletes only your data; the app stays
-$ kongtrol uninstall --purge --dry-run  # shows what it would do, changes nothing`,
-    uninstall6: <><strong>With the install script:</strong></>,
-    uninstall7: `# Linux / macOS (add --purge to also delete your data)
-$ curl -fsSL ${UNINSTALL_SCRIPT_BASE}install.sh | sh -s -- --uninstall
-
-# Windows, PowerShell (add -Purge to also delete your data)
-> & ([scriptblock]::Create((iwr ${UNINSTALL_SCRIPT_BASE}install.ps1 -useb))) -Uninstall`,
-    uninstall8: <><strong>.deb / .rpm package:</strong> removing it doesn't delete your data. To delete it, first run{' '}
-                <IC c="kongtrol uninstall --purge" />, then uninstall:</>,
-    uninstall9: `$ kongtrol uninstall --purge
-$ sudo apt remove kongtrol    # or: sudo dnf remove kongtrol`,
-    uninstall10: <><strong>Only delete your data, keep the app:</strong> in the dashboard, Settings › "Delete all my
-                data". It shows what gets deleted and asks you to confirm. The app stays and goes back to first-time setup.</>,
-    uninstall11: <>The tray has no uninstall item, on purpose: use your system's uninstaller
-                or <IC c="kongtrol uninstall" />.</>,
+    uninstall: {
+      title: <>Uninstall</>,
+      keep: <><strong>Your data stays:</strong> the configuration and saved passwords. If you reinstall, everything is still there.
+        It's deleted only if you ask.</>,
+      how: os === 'windows'
+        ? <>Settings → Apps → Kongtrol → <strong>Uninstall</strong>. It asks whether to delete your data too (default No).
+          It disconnects your VPNs, closes Kongtrol and removes the helper.</>
+        : <>In the terminal. It disconnects your VPNs, closes Kongtrol and removes the helper. With a <IC c=".deb" />/<IC c=".rpm" /> package,
+          it tells you how to finish (<IC c="sudo apt remove kongtrol" /> or <IC c="sudo dnf remove kongtrol" />).</>,
+      code: `$ kongtrol uninstall                    # removes the app; your data stays
+$ kongtrol uninstall --purge            # also deletes data and passwords (asks)
+$ kongtrol uninstall --purge --dry-run  # shows what it would do, touches nothing`,
+      scriptLead: <>With the install script (add <IC c={os === 'windows' ? '-Purge' : '--purge'} /> to delete your data too):</>,
+      script: os === 'windows'
+        ? `> & ([scriptblock]::Create((iwr ${UNINSTALL_SCRIPT_BASE}install.ps1 -useb))) -Uninstall`
+        : `$ curl -fsSL ${UNINSTALL_SCRIPT_BASE}install.sh | sh -s -- --uninstall`,
+      data: <><strong>Only delete your data:</strong> panel → Settings → "Delete all my data", or{' '}
+        <IC c="kongtrol uninstall --data-only" />. The app stays and goes back to first run. The icon has no uninstall item, on purpose.</>,
+    },
   }
 }

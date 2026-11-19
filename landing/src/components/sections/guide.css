@@ -1,0 +1,107 @@
+/* Setup guide — version 1.0.0 · 2026-11-19 (ADR-0061).
+   Guide-only rules; the shared layout (sidebar, sections, tables, callouts)
+   stays in index.css because the legal pages use it too. One theme (ADR-0060):
+   Bone page, two Ink blocks (.tone-ink: the quickstart and the flow diagram),
+   no new colours; 11px floor; 44px targets come from the shared controls. */
+
+.guide-body { padding-top: 8px; }
+.guide-body .guide-content { gap: 64px; }
+
+/* ── Quickstart: Ink emphasis block ── */
+.g-qs {
+  position: relative; overflow: hidden; isolation: isolate;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: clamp(20px, 3vw, 32px);
+}
+.g-qs::before {
+  content: ''; position: absolute; z-index: -1; top: -90px; right: -90px; width: 240px; height: 240px;
+  --cx: 50%; --cy: 50%; background: var(--contour); border-radius: 50%; opacity: 0.6; pointer-events: none;
+}
+.g-badge {
+  display: inline-block; margin: 0 0 14px; padding: 4px 12px;
+  font-family: var(--font-mono); font-size: 0.76rem; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--signal); border: 1px solid var(--signal-line); border-radius: 999px;
+}
+.guide-section .g-qs-lead { color: var(--text); font-size: 1.05rem; margin: 0; }
+.guide-section .g-qs-cli { margin: 24px 0 0; padding-top: 16px; border-top: 1px solid var(--border); font-size: 0.95rem; max-width: none; }
+
+/* ── Numbered steps: do this → you'll see ── */
+.g-steps { list-style: none; padding: 0; margin: 20px 0 8px; display: grid; gap: 22px; }
+.g-steps > li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: start; }
+.g-n {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; color: var(--signal);
+  border: 1.5px solid var(--signal);
+}
+.g-step { min-width: 0; }
+.g-step-t { font-family: var(--font-display); font-size: 1.08rem; font-weight: 600; color: var(--text); margin: 4px 0; }
+.guide-section .g-step p { margin: 0 0 6px; }
+.guide-section .g-step .code-block { margin: 10px 0; }
+.guide-section .g-see { color: var(--text); font-size: 0.95rem; }
+.g-see-k {
+  display: inline-block; margin-right: 8px;
+  font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--signal);
+}
+.g-see-k::after { content: ' →'; }
+
+/* ── Lists, sub-headings, asides ── */
+.guide-section .g-list { margin: 0 0 16px; }
+.g-ol { list-style: decimal; }
+.g-h3 { margin: 32px 0 8px; }
+.g-anchor { scroll-margin-top: calc(var(--nav-h) + 24px); }
+.guide-section .g-aside { font-size: 0.92rem; }
+
+/* ── Panel pages: name + what it does (a list, not a table: reads on phones) ── */
+.g-pages { margin: 8px 0 20px; max-width: calc(var(--measure) + 10rem); }
+.g-pages > div {
+  display: grid; grid-template-columns: 8.5rem minmax(0, 1fr); gap: 16px;
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+.g-pages > div:last-child { border-bottom: 0; }
+.g-pages dt { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.g-pages dd { margin: 0; color: var(--text-muted); font-size: 0.95rem; }
+
+/* ── Problems: symptom → one "what to do" line → optional command ── */
+.g-fixes { display: grid; gap: 12px; margin: 20px 0; }
+.g-fix { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; }
+.g-fix-q { font-family: var(--font-display); font-size: 1.02rem; font-weight: 600; color: var(--text); margin: 0 0 6px; }
+.guide-section .g-fix p { margin: 0; max-width: none; }
+.guide-section .g-fix .code-block { margin: 12px 0 0; }
+
+@media (max-width: 520px) {
+  .g-pages > div { grid-template-columns: 1fr; gap: 2px; }
+  .g-steps > li { gap: 12px; }
+  .g-fix { padding: 14px 16px; }
+}
+
+/* ── How it works: flow diagram (Ink emphasis block) ──
+   real layout instead of fixed-width ASCII art, so it fills the column */
+.guide-flow {
+  display: grid; grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center; gap: 20px 28px;
+  width: 100%; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface); color: var(--text); padding: 28px 32px; margin: 4px 0 0;
+}
+.guide-flow-col .guide-flow-h { font-family: var(--font-mono); font-size: 0.92rem; color: var(--text); font-weight: 600; margin-bottom: 8px; }
+.guide-section .guide-flow-col p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; max-width: none; margin: 0; }
+.guide-section .guide-flow-col .guide-flow-h { color: var(--text); font-size: 0.92rem; margin-bottom: 8px; }
+.guide-flow-arrow { color: var(--signal); font-family: var(--font-mono); font-size: 1.3rem; text-align: center; }
+.guide-flow-vpns { display: grid; gap: 8px; }
+.guide-flow-vpn {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-family: var(--font-mono); font-size: 0.86rem; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.guide-flow-vpn:last-child { border-bottom: none; padding-bottom: 0; }
+.guide-flow-vpn strong { color: var(--text); font-weight: 600; }
+.guide-flow-vpn span { color: var(--text-dim); }
+.guide-flow-footer {
+  grid-column: 1 / -1; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--border);
+  text-align: center; font-family: var(--font-mono); font-size: 0.76rem; letter-spacing: 0.04em; color: var(--text-dim);
+}
+
+@media (max-width: 720px) {
+  .guide-flow { grid-template-columns: 1fr; text-align: left; padding: 22px 20px; }
+  .guide-flow-arrow { transform: rotate(90deg); padding: 4px 0; }
+}

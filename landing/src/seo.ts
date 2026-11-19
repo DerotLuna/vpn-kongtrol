@@ -1,4 +1,4 @@
-// SEO head + sitemap, single source for every page and language — version 2.6.0 · 2026-11-19.
+// SEO head + sitemap, single source for every page and language — version 2.6.1 · 2026-11-19.
 //
 // Used at build time only (vite.config.ts injects headFor() into each HTML entry,
 // scripts/prerender.mjs writes sitemapXml()). Specs followed:
@@ -35,15 +35,15 @@ export const META: Record<PageId, Record<Lang, Meta>> = {
   },
   guia: {
     es: {
-      title: 'Guía de configuración de Kongtrol — instalar, configurar y enrutar',
-      description: 'Guía paso a paso de Kongtrol: instala, agrega tus VPN, crea reglas de enrutamiento y verifica todo con kongtrol doctor. Windows, macOS y Linux.',
-      ogDescription: 'Instala el CLI, ejecuta el asistente, agrega tus perfiles VPN, escribe políticas de enrutamiento y verifica todo con kongtrol doctor. Paso a paso para cada sistema operativo.',
+      title: 'Guía de Kongtrol — instalar, conectar y enrutar',
+      description: 'Guía paso a paso de Kongtrol: instala, crea tu primera VPN, conecta y elige qué sale por cada VPN. Sin terminal, con el comando de cada paso. Windows, macOS y Linux.',
+      ogDescription: 'Instala Kongtrol, da permiso una vez, crea tu primera VPN en el panel y conecta. Cada paso dice qué hacer y qué vas a ver, para Windows, macOS y Linux.',
       index: true,
     },
     en: {
-      title: 'Kongtrol setup guide — install, configure and route',
-      description: 'Step-by-step Kongtrol guide: install, add your VPNs, write routing rules and check everything with kongtrol doctor. Windows, macOS and Linux.',
-      ogDescription: 'Install the CLI, run the wizard, add your VPN profiles, write routing policies, and verify the whole stack with kongtrol doctor. Step by step for every OS.',
+      title: 'Kongtrol guide — install, connect and route',
+      description: 'Step-by-step Kongtrol guide: install, create your first VPN, connect and choose what goes through each VPN. No terminal needed, with the command for each step. Windows, macOS and Linux.',
+      ogDescription: 'Install Kongtrol, give permission once, create your first VPN in the panel and connect. Each step says what to do and what you will see, for Windows, macOS and Linux.',
       index: true,
     },
   },
