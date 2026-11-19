@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.5.0 · 2026-11-19
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.5.1 · 2026-11-19
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
@@ -146,8 +146,9 @@ Filename: "{app}\kongtrol.exe"; Parameters: "resume --quiet"; StatusMsg: "{cm:Ru
 ; passes --open, so the tray opens the Perfiles page every time it is
 ; checked, also when a tray is already running (ADR-0050).
 Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /profiles"; Description: "{cm:LaunchTray}"; Check: NoProfiles; Flags: postinstall nowait skipifsilent
-; Profiles exist: only "open" (the tray; ADR-0046).
-Filename: "{app}\kongtrol-tray.exe"; Description: "{cm:LaunchTrayOpen}"; Check: HasProfiles; Flags: postinstall nowait skipifsilent
+; Profiles exist: "open" = the tray plus the panel's Inicio, so the user sees
+; their VPNs come back (the tray icon alone can sit hidden behind ^).
+Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /"; Description: "{cm:LaunchTrayOpen}"; Check: HasProfiles; Flags: postinstall nowait skipifsilent
 ; Silent upgrade: bring the tray back (it was closed above).
 Filename: "{app}\kongtrol-tray.exe"; Check: SilentUpgrade; Flags: nowait
 
