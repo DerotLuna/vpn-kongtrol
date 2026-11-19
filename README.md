@@ -1,4 +1,4 @@
-<!-- README version 2.1.0 · 2026-11-18.
+<!-- README version 2.2.0 · 2026-11-19.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -7,12 +7,12 @@
   <img src="assets/brand/logo-kong.svg" alt="Kongtrol logo: a monkey face drawn in concentric lines" width="96" align="left" />
 </picture>
 
-# VPN Kongtrol
+# Kongtrol
 
-**All your VPNs in one place.** Connect your VPNs the way you always do. Kongtrol watches them,
+**Your VPNs under control.** Connect your VPNs the way you always do. Kongtrol watches them,
 reconnects them if they drop, and sends each site through the right one.
 
-<sub>Kongtrol is the short name; the program you install is <code>kongtrol</code>. Public beta · README v2.0.0 · 2026-11-18.</sub>
+<sub>The program you install is <code>kongtrol</code> (formerly "VPN Kongtrol"). Public beta · README v2.2.0 · 2026-11-19.</sub>
 
 <br clear="left" />
 

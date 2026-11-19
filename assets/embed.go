@@ -8,7 +8,7 @@ import (
 	_ "embed"
 )
 
-// LogoPNG is the full logo with "VPN Kongtrol" wordmark (512×512) — use for
+// LogoPNG is the full logo with the "Kongtrol" wordmark (512×512) — use for
 // splash screens, about dialogs, and other contexts where the lockup fits.
 //
 //go:embed brand/logo-512.png

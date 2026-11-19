@@ -1,6 +1,6 @@
 <!-- Generado por `go generate ./cmd/kongtrol` (make docs) desde el árbol de comandos y internal/i18n. NO EDITAR A MANO. -->
 
-<img src="../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Referencia de la CLI
 

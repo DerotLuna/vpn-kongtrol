@@ -268,7 +268,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .nav-logo { display: flex; align-items: center; gap: 11px; text-decoration: none; }
 .nav-logo:hover { text-decoration: none; }
 .nav-logo img {
-  width: 30px; height: 30px;
+  width: 40px; height: 40px;
   transition: transform 0.4s cubic-bezier(.2,.8,.2,1), filter 0.3s;
 }
 .nav-logo:hover img { transform: rotate(-8deg) scale(1.06); }
@@ -768,7 +768,7 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
   gap: 44px; align-items: start;
 }
 .footer-brand { display: flex; align-items: center; }
-.footer-brand img { width: auto; height: 64px; opacity: 0.92; }
+.footer-brand img { width: auto; height: 96px; opacity: 0.92; }
 :root[data-theme='dark'] .footer-brand img { filter: invert(1); }
 .footer-tagline { margin-top: 16px; color: var(--text-muted); font-size: 0.92rem; max-width: 44ch; text-wrap: pretty; }
 .footer-facts { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin-top: 18px; }
@@ -828,6 +828,8 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
      BETA badge stays, it's a status signal, not branding */
   .nav-logo-name strong, .nav-logo-name small:not(.beta) { display: none; }
   .nav-logo-name { gap: 0; }
+  /* a step smaller, next to the 37px hamburger and toggle boxes */
+  .nav-logo img { width: 36px; height: 36px; }
 
   /* outline-button treatment, sized to match the theme/lang toggle boxes
      (31px icon + 3px padding on each side = 37px) so it reads as one of

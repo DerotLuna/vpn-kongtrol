@@ -1,8 +1,8 @@
-<img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Research notes
 
-Version 1.11.0 · 2026-11-18
+Version 1.12.0 · 2026-11-19
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -46,13 +46,14 @@ reasoned but unverified.
 | [2026-11-18-dashboard-api-gaps](2026-11-18-dashboard-api-gaps.md) | Size-based log rotation (logrotate, lumberjack), OpenVPN/WireGuard directives that run code, HTTP content coding (RFC 9110), stable sort | ADR-0042 |
 | [2026-11-18-panel-at-root](2026-11-18-panel-at-root.md) | Fragments across redirects (RFC 9110), 308, CSP without `unsafe-inline` (MDN, CSP3 hash-source), backslash open redirect (WHATWG URL) | ADR-0043 |
 | [2026-11-18-unsaved-changes-guard](2026-11-18-unsaved-changes-guard.md) | Leaving a form with unsaved edits: `beforeunload`, React Router `useBlocker` (data mode only), prompt wording | ADR-0041 |
+| [2026-11-19-product-name-and-logo-sizes](2026-11-19-product-name-and-logo-sizes.md) | Dropping "VPN" from the name (site name, alternateName, what must not be renamed), SVG favicon, logo sizes | ADR-0045 |
 
 ## Template
 
 Name: `YYYY-MM-DD-topic-with-dashes.md` (date the research was done). Copy this:
 
 ```markdown
-<img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
 # Research: <topic>
 

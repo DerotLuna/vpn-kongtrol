@@ -14,7 +14,7 @@ func desktopNotify(title, body string) {
 	if err != nil {
 		return
 	}
-	cmd := exec.Command(p, "--app-name=VPN Kongtrol", title, body)
+	cmd := exec.Command(p, "--app-name=Kongtrol", title, body)
 	go func() {
 		if err := cmd.Run(); err != nil {
 			log.Printf("kongtrol-tray: notification: %v", err)

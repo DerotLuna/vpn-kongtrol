@@ -1,4 +1,4 @@
-// Command kongtrol-tray is the system tray frontend for VPN Kongtrol.
+// Command kongtrol-tray is the system tray frontend for Kongtrol.
 // It is a client of the kongtrol daemon (`kongtrol daemon`), exactly like
 // `kongtrol up`: on start it probes the daemon's local API and, when none
 // answers, spawns a detached daemon with the kongtrol CLI found next to the

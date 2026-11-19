@@ -90,9 +90,9 @@ nfpms:
     package_name: kongtrol
     file_name_template: "kongtrol_{{ .Version }}_{{ .Arch }}"
     formats: [deb, rpm]
-    vendor: VPN Kongtrol
+    vendor: Kongtrol
     homepage: https://kongtrol.app
-    maintainer: VPN Kongtrol <https://github.com/DerotLuna/vpn-kongtrol>
+    maintainer: Kongtrol <https://github.com/DerotLuna/vpn-kongtrol>
     description: Kongtrol — connect and control several VPNs from one tray app.
     license: Apache-2.0
     bindir: /usr/bin

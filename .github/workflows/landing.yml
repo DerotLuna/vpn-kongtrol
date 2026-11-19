@@ -88,12 +88,12 @@ jobs:
           <html lang="en">
           <head>
           <meta charset="utf-8">
-          <title>VPN Kongtrol has moved to kongtrol.app</title>
+          <title>Kongtrol has moved to kongtrol.app</title>
           <link rel="canonical" href="$2">
           <meta http-equiv="refresh" content="0; url=$2">
           </head>
           <body>
-          <p>VPN Kongtrol now lives at <a href="$2">$2</a>.</p>
+          <p>Kongtrol now lives at <a href="$2">$2</a>.</p>
           </body>
           </html>
           HTML

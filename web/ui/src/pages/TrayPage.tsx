@@ -1,13 +1,13 @@
-// Kongtrol UI — tray flyout page (/tray) · v1.1.0 · 2026-11-18 (ADR-0036, ADR-0038)
+// Kongtrol UI — tray flyout page (/tray) · v1.2.0 · 2026-11-19 (ADR-0036, ADR-0038, ADR-0045)
 //
 // The compact window that opens next to the tray icon on a left click
 // (cmd/kongtrol-tray/flyout_windows.go). Same data as the dashboard, from the
 // same daemon API and cookie. Window-only controls (Salir, Escape to close)
 // appear only when the tray's bridge is present; in a normal tab the page is
 // a compact status view whose "Abrir panel" is a plain link.
-// The SVG mark is transparent (the PNGs have a white square), so the
-// dark theme's invert filter leaves only the line art.
-import logoUrl from '@brand/logo-kong.svg'
+// The solid mark (28 px is below the line art's minimum size, ADR-0045) is a
+// transparent SVG, so the dark theme's invert filter leaves only the head.
+import logoUrl from '@brand/source/logo-kong-solid.svg'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import { useTunnels } from '../api/hooks'

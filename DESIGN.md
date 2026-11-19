@@ -1,5 +1,5 @@
 ---
-name: VPN Kongtrol
+name: Kongtrol
 description: "Sesión en la Torre" — the site is a guest terminal session inside Kongtrol's control tower.
 colors:
   bg: "#0a0c10"
@@ -131,11 +131,11 @@ components:
     rounded: "{rounded.pill}"
 ---
 
-<img src="assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
+<img src="assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
-# Design System: VPN Kongtrol
+# Design System: Kongtrol
 
-Versión 1.0.4 · 2026-11-18
+Versión 1.1.0 · 2026-11-19
 
 ## Overview
 
@@ -243,6 +243,11 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 ### Navigation
 - **Header:** logo + letter-spaced "KONGTROL" + BETA badge; links written as CLI flags in mono (`--inicio`, `--guia`) whose dashes stay dim until hover; icon buttons for GitHub, theme and language. The download CTA hides while the hero CTA or the download section is on screen.
 - **tmux bar:** fixed bottom bar, `[kongtrol]` session in amber, numbered windows mapped to sections with the active one in solid amber, right side shows kill-switch state and clock. Between 721 and 960px the right side keeps only the clock; under 720px the bar is hidden and a "Ir a" jump menu replaces it.
+
+### Logo (name and sizes)
+- **Name:** the product is just **Kongtrol** (ADR-0045). "VPN" lives only in the tagline ("Kongtrol · tus VPN bajo control" / "Kongtrol · your VPNs under control"), never in the name or the lockup.
+- **Solid silhouette up to 32 px** (`assets/brand/source/logo-kong-solid.svg`, derived by `assets/brand/generate.go`): favicon (`favicon.svg`, transparent, black or white by `prefers-color-scheme`; `logo-kong-32.png` fallback), tray / menu bar, the panel's 32 px header mark and the 28 px tray flyout mark. At that size the concentric lines blur into grey.
+- **Line-art original from 36 px up** (`logo-kong.svg`, lockup `logo.svg`): landing header 40 px (36 px under 960 px, next to the 37 px header buttons), footer lockup 96 px, README, app icons ≥ 180 px. Always give `<img>` its width and height (no layout shift).
 
 ### Terminal Window (signature)
 macOS-style title bar with three dots and a centered mono title (`ssh guest@kongtrol.tower`), body in `surface`, 12px corners, the only floating element. Content boots on a CSS timeline already present in the prerendered HTML (no layout shift); visitors can type `help`.

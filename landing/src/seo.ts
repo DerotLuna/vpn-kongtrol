@@ -21,13 +21,13 @@ interface Meta { title: string; description: string; ogDescription?: string; ind
 export const META: Record<PageId, Record<Lang, Meta>> = {
   home: {
     es: {
-      title: 'VPN Kongtrol — todas tus VPN en un solo lugar',
+      title: 'Kongtrol · tus VPN bajo control',
       description: 'Une todas tus VPN en un solo lugar: reconexión automática, kill switch y reglas por destino. Funciona con NordVPN, Proton, WireGuard y más. Gratis y libre.',
       ogDescription: 'Conecta como siempre; Kongtrol se encarga del resto. 10 VPN, reconexión automática, protección contra fugas de DNS, kill switch y reglas de enrutamiento. Gratis y de código abierto para Windows, macOS y Linux.',
       index: true,
     },
     en: {
-      title: 'VPN Kongtrol — all your VPNs in one place',
+      title: 'Kongtrol · your VPNs under control',
       description: 'All your VPNs in one place: auto-reconnect, kill switch and per-destination routing. Works with NordVPN, Proton, WireGuard and more. Free and open source.',
       ogDescription: 'Connect the way you always do; Kongtrol handles the rest. 10 VPNs, auto-reconnect, DNS leak protection, kill switch and routing rules. Free and open source for Windows, macOS and Linux.',
       index: true,
@@ -35,29 +35,29 @@ export const META: Record<PageId, Record<Lang, Meta>> = {
   },
   guia: {
     es: {
-      title: 'Guía de configuración de VPN Kongtrol — instalar, configurar y enrutar',
-      description: 'Guía paso a paso de VPN Kongtrol: instala, agrega tus VPN, crea reglas de enrutamiento y verifica todo con kongtrol doctor. Windows, macOS y Linux.',
+      title: 'Guía de configuración de Kongtrol — instalar, configurar y enrutar',
+      description: 'Guía paso a paso de Kongtrol: instala, agrega tus VPN, crea reglas de enrutamiento y verifica todo con kongtrol doctor. Windows, macOS y Linux.',
       ogDescription: 'Instala el CLI, ejecuta el asistente, agrega tus perfiles VPN, escribe políticas de enrutamiento y verifica todo con kongtrol doctor. Paso a paso para cada sistema operativo.',
       index: true,
     },
     en: {
-      title: 'VPN Kongtrol setup guide — install, configure and route',
-      description: 'Step-by-step VPN Kongtrol guide: install, add your VPNs, write routing rules and check everything with kongtrol doctor. Windows, macOS and Linux.',
+      title: 'Kongtrol setup guide — install, configure and route',
+      description: 'Step-by-step Kongtrol guide: install, add your VPNs, write routing rules and check everything with kongtrol doctor. Windows, macOS and Linux.',
       ogDescription: 'Install the CLI, run the wizard, add your VPN profiles, write routing policies, and verify the whole stack with kongtrol doctor. Step by step for every OS.',
       index: true,
     },
   },
   terminos: {
-    es: { title: 'Términos y condiciones — VPN Kongtrol', description: 'Términos y condiciones de VPN Kongtrol (Kongtrol): software de código abierto bajo licencia Apache 2.0, sin garantía, en beta activa.', index: true },
-    en: { title: 'Terms & Conditions — VPN Kongtrol', description: 'VPN Kongtrol (Kongtrol) terms and conditions: open-source software under the Apache 2.0 license, no warranty, active beta.', index: true },
+    es: { title: 'Términos y condiciones — Kongtrol', description: 'Términos y condiciones de Kongtrol: software de código abierto bajo licencia Apache 2.0, sin garantía, en beta activa.', index: true },
+    en: { title: 'Terms & Conditions — Kongtrol', description: 'Kongtrol terms and conditions: open-source software under the Apache 2.0 license, no warranty, active beta.', index: true },
   },
   privacidad: {
-    es: { title: 'Política de privacidad — VPN Kongtrol', description: 'Qué datos se quedan en tu equipo, qué conexiones hace Kongtrol por su cuenta y a quién, y qué ve este sitio web. Sin telemetría ni analíticas.', index: true },
-    en: { title: 'Privacy Policy — VPN Kongtrol', description: 'What data stays on your machine, which connections Kongtrol makes on its own and to whom, and what this website sees. No telemetry, no analytics.', index: true },
+    es: { title: 'Política de privacidad — Kongtrol', description: 'Qué datos se quedan en tu equipo, qué conexiones hace Kongtrol por su cuenta y a quién, y qué ve este sitio web. Sin telemetría ni analíticas.', index: true },
+    en: { title: 'Privacy Policy — Kongtrol', description: 'What data stays on your machine, which connections Kongtrol makes on its own and to whom, and what this website sees. No telemetry, no analytics.', index: true },
   },
   seguridad: {
-    es: { title: 'Política de seguridad y divulgación responsable — VPN Kongtrol', description: 'Cómo reportar una vulnerabilidad en VPN Kongtrol de forma privada, qué está en alcance y qué tiempos de respuesta esperar.', index: true },
-    en: { title: 'Security Policy & Responsible Disclosure — VPN Kongtrol', description: 'How to privately report a vulnerability in VPN Kongtrol, what is in scope and what response times to expect.', index: true },
+    es: { title: 'Política de seguridad y divulgación responsable — Kongtrol', description: 'Cómo reportar una vulnerabilidad en Kongtrol de forma privada, qué está en alcance y qué tiempos de respuesta esperar.', index: true },
+    en: { title: 'Security Policy & Responsible Disclosure — Kongtrol', description: 'How to privately report a vulnerability in Kongtrol, what is in scope and what response times to expect.', index: true },
   },
 }
 
@@ -66,13 +66,13 @@ const AUTHOR = { '@type': 'Person', name: 'DerotLuna', url: 'https://github.com/
 function jsonLd(page: PageId, lang: Lang): object {
   const m = META[page][lang]
   const url = urlFor(page, lang)
-  const site = { '@type': 'WebSite', name: 'VPN Kongtrol', url: urlFor('home', lang) }
+  const site = { '@type': 'WebSite', name: 'Kongtrol', url: urlFor('home', lang) }
   if (page === 'home') {
     return {
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
-      name: 'VPN Kongtrol',
-      alternateName: ['Kongtrol', 'Kongtrol CLI', 'vpn-kongtrol'],
+      name: 'Kongtrol',
+      alternateName: ['VPN Kongtrol', 'Kongtrol CLI', 'vpn-kongtrol'],
       applicationCategory: 'SecurityApplication',
       applicationSubCategory: 'VPN manager',
       operatingSystem: 'Windows, Linux, macOS',
@@ -99,7 +99,7 @@ function jsonLd(page: PageId, lang: Lang): object {
       inLanguage: lang,
       dateModified: SITE_UPDATED,
       author: AUTHOR,
-      about: { '@type': 'SoftwareApplication', name: 'VPN Kongtrol', applicationCategory: 'SecurityApplication', operatingSystem: 'Windows, Linux, macOS', sameAs: [REPO] },
+      about: { '@type': 'SoftwareApplication', name: 'Kongtrol', applicationCategory: 'SecurityApplication', operatingSystem: 'Windows, Linux, macOS', sameAs: [REPO] },
       isPartOf: site,
     }
   }
@@ -153,14 +153,14 @@ export function headFor(page: PageId, lang: Lang): string {
     // hashed names; vite.config.ts fontPreloads() adds their preloads (ADR-0031).
     `<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0c10" />`,
     `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1ede4" />`,    `<meta property="og:type" content="${page === 'home' ? 'website' : 'article'}" />`,
-    `<meta property="og:site_name" content="VPN Kongtrol" />`,
+    `<meta property="og:site_name" content="Kongtrol" />`,
     `<meta property="og:title" content="${esc(m.title)}" />`,
     `<meta property="og:description" content="${esc(og)}" />`,
     `<meta property="og:url" content="${url}" />`,
     `<meta property="og:image" content="${OG_IMAGE}" />`,
     `<meta property="og:image:width" content="1200" />`,
     `<meta property="og:image:height" content="630" />`,
-    `<meta property="og:image:alt" content="VPN Kongtrol" />`,
+    `<meta property="og:image:alt" content="Kongtrol" />`,
     `<meta property="og:locale" content="${OG_LOCALE[lang]}" />`,
     `<meta property="og:locale:alternate" content="${OG_LOCALE[other]}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,

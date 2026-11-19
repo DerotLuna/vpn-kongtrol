@@ -254,7 +254,7 @@ func refreshHelperItem() {
 	if need == helperMissing && claimOnce(helperNoticeMarker()) {
 		msg := trayT("tray.helper_first_run")
 		notifyError(msg, nil)
-		desktopNotify("VPN Kongtrol", msg)
+		desktopNotify("Kongtrol", msg)
 	}
 }
 
@@ -376,7 +376,7 @@ func installHelper() {
 	default:
 		msg := trayT("tray.helper_installed")
 		notifyError(msg, nil)
-		desktopNotify("VPN Kongtrol", msg)
+		desktopNotify("Kongtrol", msg)
 	}
 	refreshHelperItem()
 	requestRefresh()

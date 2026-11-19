@@ -1,6 +1,6 @@
 //go:build brandgen
 
-// Brand asset generator — version 1.3.0 · 2026-11-18.
+// Brand asset generator — version 1.4.0 · 2026-11-19.
 //
 // Regenerates the raster fallbacks in assets/brand/ from the masters in
 // assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg, plus
@@ -8,6 +8,12 @@
 // theme) are the masters for anything that can render vectors; the rasters exist only
 // for consumers that cannot (OS tray icons, Open Graph cards, app manifests,
 // README images).
+//
+// Size rule (DESIGN.md, ADR-0045): below ~32 px the solid mark is used
+// (favicon.svg, logo-kong-32.png, tray-<px>.png, all derived from
+// source/logo-kong-solid.svg below); visible logos from ~40 px up use the
+// line-art original. logo.svg is the "Kongtrol" lockup (the name is just
+// Kongtrol, ADR-0045); logo-512.png is rasterized from that vector.
 //
 // Uses only the standard library plus golang.org/x/image (in go.mod; the
 // build tag is "brandgen", not "ignore", because go mod tidy skips files
@@ -78,14 +84,12 @@ type job struct {
 
 func main() {
 	jobs := []job{
-		{"source/logo-kong.png", "logo-kong-32.png", 32, 32, lineArtPNG},
 		{"source/logo-kong.png", "logo-kong-64.png", 64, 64, lineArtPNG},
 		{"source/logo-kong.png", "logo-kong-192.png", 192, 192, lineArtPNG},
 		{"source/logo-kong.png", "logo-kong-512.png", 512, 512, lineArtPNG},
-		{"source/logo.png", "logo-512.png", 512, 512, lineArtPNG},
 		{"source/social-preview.png", "og-1200x630.jpg", 1200, 630, photoJPEG},
 	}
-	for _, name := range []string{"logo.svg", "logo-kong.svg", "favicon.svg"} {
+	for _, name := range []string{"logo.svg", "logo-kong.svg"} {
 		n, err := minifySVG(filepath.Join(dir, "source", name), filepath.Join(dir, name), false)
 		if err != nil {
 			log.Fatal(err)
@@ -111,12 +115,100 @@ func main() {
 		}
 		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", j.out, j.w, j.h, n)
 	}
+	if err := renderLockup(); err != nil {
+		log.Fatal(err)
+	}
 	if err := deriveSolid(); err != nil {
+		log.Fatal(err)
+	}
+	if err := renderFavicons(); err != nil {
 		log.Fatal(err)
 	}
 	if err := renderTrayMasks(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// renderLockup rasterizes the vector lockup source/logo.svg to logo-512.png
+// (black on white, 16-level gray), so the raster never drifts from the vector.
+func renderLockup() error {
+	src := filepath.Join(dir, "source", "logo.svg")
+	paths, err := loadSVGPaths(src)
+	if err != nil {
+		return err
+	}
+	vb, err := svgViewBox(src)
+	if err != nil {
+		return err
+	}
+	const px = 512
+	k := px / math.Max(vb[2], vb[3])
+	img := fill(paths, px, func(p pt) (float32, float32) {
+		return float32((p.x - vb[0]) * k), float32((p.y - vb[1]) * k)
+	})
+	n, err := save(filepath.Join(dir, "logo-512.png"), onWhite(img), lineArtPNG)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%-20s %4dx%-4d %7d bytes\n", "logo-512.png", px, px, n)
+	return nil
+}
+
+// renderFavicons writes the favicons from the solid mark (line art blurs
+// into grey at tab size): favicon.svg, cropped to the mark, transparent,
+// black ink that turns white under prefers-color-scheme: dark (it follows the
+// browser chrome, not the page theme); and logo-kong-32.png, the PNG
+// fallback for browsers without SVG favicons, black on white like before
+// (a PNG cannot switch with the theme; the name stays for old links).
+func renderFavicons() error {
+	src := filepath.Join(dir, solidOut)
+	b, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	m := svgPathD.FindStringSubmatch(string(b))
+	if m == nil {
+		return fmt.Errorf("%s: no path", src)
+	}
+	paths, err := loadSVGPaths(src)
+	if err != nil {
+		return err
+	}
+	minX, minY, maxX, maxY := math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
+	for _, s := range paths {
+		for _, p := range s.p {
+			minX, minY = math.Min(minX, p.x), math.Min(minY, p.y)
+			maxX, maxY = math.Max(maxX, p.x), math.Max(maxY, p.y)
+		}
+	}
+	// Square viewBox around the mark with a 2 % margin, rounded outward.
+	side := math.Max(maxX-minX, maxY-minY) * 1.02
+	x0 := math.Floor((minX + maxX - side) / 2)
+	y0 := math.Floor((minY + maxY - side) / 2)
+	side = math.Ceil(side) + 1
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s %s %s %s">`+
+		`<style>@media (prefers-color-scheme: dark){path{fill:#ffffff}}</style>`+
+		`<path fill="#000000" fill-rule="evenodd" d="%s"/></svg>`+"\n",
+		num(x0), num(y0), num(side), num(side), m[1])
+	if err := os.WriteFile(filepath.Join(dir, "favicon.svg"), []byte(svg), 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%-20s %9s %7d bytes\n", "favicon.svg", "vector", len(svg))
+	n, err := save(filepath.Join(dir, "logo-kong-32.png"), onWhite(hint(rasterMask(paths, 32), 32)), lineArtPNG)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%-20s %4dx%-4d %7d bytes\n", "logo-kong-32.png", 32, 32, n)
+	return nil
+}
+
+// onWhite composites black ink with alpha coverage onto white.
+func onWhite(img *image.NRGBA) *image.Gray {
+	out := image.NewGray(img.Bounds())
+	for i := range out.Pix {
+		out.Pix[i] = 255 - img.Pix[i*4+3]
+	}
+	return out
 }
 
 // renderTrayMasks rasterizes source/logo-kong-solid.svg to tray-<px>.png for
