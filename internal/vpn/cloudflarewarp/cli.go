@@ -21,13 +21,24 @@ func warpConnect() error {
 	}
 	out, err := runCmd(binary, "connect")
 	if err != nil {
-		if strings.Contains(strings.ToLower(out), "registration missing") ||
-			strings.Contains(strings.ToLower(out), "not registered") {
-			return fmt.Errorf("cloudflarewarp: not registered — run 'warp-cli register' first")
-		}
-		return fmt.Errorf("warp-cli connect: %w\n%s", err, out)
+		return connectError(out, err)
 	}
 	return nil
+}
+
+// registerHint is the one-time registration command. Current WARP clients
+// only accept `warp-cli registration new`; the old `warp-cli register` verb
+// was deprecated and then removed from the CLI in the 2024 releases.
+const registerHint = "warp-cli registration new"
+
+// connectError turns a failed `warp-cli connect` into an error; a missing
+// registration says which command to run once.
+func connectError(out string, err error) error {
+	lower := strings.ToLower(out)
+	if strings.Contains(lower, "registration missing") || strings.Contains(lower, "not registered") {
+		return fmt.Errorf("cloudflarewarp: not registered — run '%s' once (WARP clients before 2024: 'warp-cli register')", registerHint)
+	}
+	return fmt.Errorf("warp-cli connect: %w\n%s", err, out)
 }
 
 func warpDisconnect() error {

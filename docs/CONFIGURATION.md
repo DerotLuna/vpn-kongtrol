@@ -78,7 +78,7 @@ vpns:
   #
   # warp:
   #   type: cloudflarewarp
-  #   auth: { method: credentials }       # run 'warp-cli register' once first
+  #   auth: { method: credentials }       # run 'warp-cli registration new' once first
 
 
 policies:

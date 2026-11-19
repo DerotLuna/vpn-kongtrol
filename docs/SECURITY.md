@@ -329,17 +329,27 @@ WireGuard/OpenVPN checks; a refusal never echoes the content. The copy is stored
 kongtrol down --all    # disables the kill switch automatically
 ```
 
-If Kongtrol closed abruptly and traffic is still blocked:
+If Kongtrol closed abruptly, the helper's lease lifts its blocks within about 20 seconds
+(fail-open), and the helper also clears them every time it starts (for example after a reboot).
+If traffic is still blocked, remove **only** Kongtrol's rules. Never use `netsh advfirewall reset`,
+`pfctl -d` or a chain-less `iptables -F`: they wipe or disable the whole machine's firewall.
 
 ```bash
-# Windows (as Administrator)
-netsh advfirewall reset
+# Windows (PowerShell as Administrator): only the rules named Kongtrol*
+netsh advfirewall firewall delete rule name=KongtrolBlock
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchBlock
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchAllow
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchEndpoint
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchLAN
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchLoopback
 
-# Linux (only Kongtrol's chain, never your other rules; same with ip6tables)
+# Linux: only Kongtrol's chains (if -X fails, repeat the -D: another jump is left)
 sudo iptables -D OUTPUT -j KONGTROL_BLOCK; sudo iptables -F KONGTROL_BLOCK; sudo iptables -X KONGTROL_BLOCK
+sudo ip6tables -D OUTPUT -j KONGTROL_BLOCK; sudo ip6tables -F KONGTROL_BLOCK; sudo ip6tables -X KONGTROL_BLOCK
+sudo iptables -D OUTPUT -j KONGTROL; sudo iptables -F KONGTROL; sudo iptables -X KONGTROL
 
-# macOS
-sudo pfctl -d
+# macOS: flush only Kongtrol's anchor; pf stays on for everything else
+sudo pfctl -a com.kongtrol -F all
 ```
 
 ## Auto-reconnect watchdog

@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.12 · 2026-11-19
+Versión 1.13 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -917,13 +917,15 @@ El wizard busca en rutas estándar e instalaciones en subcarpetas. Si aun así n
    where openvpn        # Windows
    ```
 
-### "not registered — run 'warp-cli register' first"
+### "not registered — run 'warp-cli registration new' once"
 
 Para Cloudflare WARP, debes registrar el dispositivo una vez:
 
 ```bash
-warp-cli register
+warp-cli registration new
 ```
+
+Los clientes WARP anteriores a 2024 usaban `warp-cli register`; los actuales ya no lo aceptan.
 
 ### DNS no restaurado después de un crash
 
@@ -977,18 +979,28 @@ kongtrol config validate
 kongtrol down --all    # desactiva kill switch automáticamente
 ```
 
-Si Kongtrol se cerró abruptamente:
+Si Kongtrol se cerró abruptamente: con el ayudante instalado, sus bloqueos se quitan solos en unos
+20 segundos (la red queda abierta, nunca cortada), y el ayudante también los borra cada vez que
+arranca (por ejemplo, al reiniciar el equipo). Si siguen ahí, quita **solo** las reglas de Kongtrol.
+No uses `netsh advfirewall reset`, `pfctl -d` ni `iptables -F` sin cadena: borran o apagan las
+reglas de todo el equipo, no solo las de Kongtrol.
 
 ```bash
-# Windows (como Administrador)
-netsh advfirewall reset
+# Windows (PowerShell como Administrador): solo las reglas con nombre Kongtrol*
+netsh advfirewall firewall delete rule name=KongtrolBlock
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchBlock
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchAllow
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchEndpoint
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchLAN
+netsh advfirewall firewall delete rule name=KongtrolKillSwitchLoopback
 
-# Linux (solo las cadenas de Kongtrol, nunca tus otras reglas)
+# Linux: solo las cadenas de Kongtrol (si -X falla, repite el -D: queda otro salto)
 sudo iptables -D OUTPUT -j KONGTROL_BLOCK; sudo iptables -F KONGTROL_BLOCK; sudo iptables -X KONGTROL_BLOCK
 sudo ip6tables -D OUTPUT -j KONGTROL_BLOCK; sudo ip6tables -F KONGTROL_BLOCK; sudo ip6tables -X KONGTROL_BLOCK
+sudo iptables -D OUTPUT -j KONGTROL; sudo iptables -F KONGTROL; sudo iptables -X KONGTROL
 
-# macOS
-sudo pfctl -d
+# macOS: vacía solo el anchor de Kongtrol; pf sigue activo para lo demás
+sudo pfctl -a com.kongtrol -F all
 ```
 
 ### Contraseña incorrecta / expirada
