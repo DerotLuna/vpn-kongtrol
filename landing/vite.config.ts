@@ -1,4 +1,6 @@
-import { basename, relative, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { defineConfig, HtmlTagDescriptor, Plugin, Rollup } from 'vite'
 import react from '@vitejs/plugin-react'
 import { ENTRIES, entryFile, entryFor, headFor } from './src/seo'
@@ -53,8 +55,51 @@ function fontPreloads(): Plugin {
   }
 }
 
-export default defineConfig({
+// The latest stable Kongtrol release (the footer's `kongtrol version` line),
+// resolved at BUILD time so visitors never call a third party (CSP
+// connect-src 'self', /privacidad): 1) KONGTROL_RELEASE, 2) the GitHub
+// Releases API ("latest" skips drafts and pre-releases;
+// https://docs.github.com/en/rest/releases/releases#get-the-latest-release),
+// 5 s timeout, 3) the newest stable git tag, 4) none (the line is left out).
+// Cached for an hour in node_modules/.cache so build, prerender and the
+// hydration check (three processes) bake the same value. A new release shows
+// up on the next landing build.
+const RELEASE_CACHE = resolve(__dirname, 'node_modules', '.cache', 'kongtrol-latest-release.json')
+const STABLE_TAG = /^v\d+\.\d+\.\d+$/
+async function latestRelease(): Promise<string | null> {
+  const env = process.env.KONGTROL_RELEASE
+  if (env && STABLE_TAG.test(env)) return env
+  try {
+    const c = JSON.parse(readFileSync(RELEASE_CACHE, 'utf8')) as { tag: string | null; at: number }
+    if (Date.now() - c.at < 3_600_000) return c.tag
+  } catch { /* no cache yet */ }
+  let tag: string | null = null
+  try {
+    const res = await fetch('https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'kongtrol-landing-build' },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (res.ok) {
+      const t = ((await res.json()) as { tag_name?: string }).tag_name
+      if (t && STABLE_TAG.test(t)) tag = t
+    }
+  } catch { /* offline or rate limited: fall back to git */ }
+  if (!tag) {
+    try {
+      const t = execFileSync('git', ['describe', '--tags', '--abbrev=0', '--exclude', '*-*'], { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+      if (STABLE_TAG.test(t)) tag = t
+    } catch { /* shallow clone without tags */ }
+  }
+  try {
+    mkdirSync(dirname(RELEASE_CACHE), { recursive: true })
+    writeFileSync(RELEASE_CACHE, JSON.stringify({ tag, at: Date.now() }))
+  } catch { /* read-only node_modules: no cache */ }
+  return tag
+}
+
+export default defineConfig(async () => ({
   base: '/',
+  define: { __LATEST_RELEASE__: JSON.stringify(await latestRelease()) },
   plugins: [react(), seoHead(), fontPreloads()],
   resolve: {
     // single source of brand assets (assets/brand), shared with web/ui and the dashboard
@@ -65,4 +110,4 @@ export default defineConfig({
       input: Object.fromEntries(ENTRIES.map(({ page, lang }) => [`${lang}-${page}`, resolve(__dirname, entryFile(page, lang))])),
     },
   },
-})
+}))

@@ -34,7 +34,7 @@ export default function TmuxBar({ lang, session = 'kongtrol', windows, showStatu
   }, [])
 
   return (
-    <div className="tmux-bar" role="navigation" aria-label={lang === 'es' ? 'secciones' : 'sections'}>
+    <div className="tmux-bar tone-ink" role="navigation" aria-label={lang === 'es' ? 'secciones' : 'sections'}>
       <span className="tmux-session">[{session}]</span>
       <ul className="tmux-windows">
         {windows.map(w => (

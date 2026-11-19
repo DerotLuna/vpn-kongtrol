@@ -135,26 +135,26 @@ components:
 
 # Design System: Kongtrol
 
-Versión 1.2.0 · 2026-11-19
+Versión 1.3.0 · 2026-11-19
 
 ## Overview
 
 **Creative North Star: "Sesión en la Torre"**
 
-The site is not a page about Kongtrol; it is a guest session inside Kongtrol's control tower (`ssh guest@kongtrol.tower`). Everything a visitor reads arrives as terminal output: a "Last login" line, a block-letter ASCII banner, `#` comments, commands with `$`, tunnel rows with `✔`, navigation written as CLI flags (`--inicio`, `--guia`) and a tmux status bar pinned to the bottom with numbered windows (`0:motd`, `1:empezar`…), the kill-switch state (`armed`) and a clock. Plain-language sentences (Inter) sit inside that session so non-technical visitors are never left decoding jargon; the terminal is the frame, not a test.
+The site is not a page about Kongtrol; it is a guest session inside Kongtrol's control tower (window title `kongtrol — terminal`). Everything a visitor reads arrives as terminal output: a "Last login" line, a block-letter ASCII banner, `#` comments, commands with `$`, tunnel rows with `✔`, navigation written as CLI flags (`--inicio`, `--guia`) and a tmux status bar pinned to the bottom with numbered windows (`0:motd`, `1:empezar`…), the kill-switch state (`armed`) and a clock. Plain-language sentences (Inter) sit inside that session so non-technical visitors are never left decoding jargon; the terminal is the frame, not a test.
 
-The material is amber phosphor on near-black in the dark theme and ink on bone paper in the light theme, with a faint field of concentric contour rings echoing the monkey mark's line art. Density is calm: one terminal window per screen, generous section rhythm, no decorative imagery. Motion is reserved for things that explain: the boot timeline, the routing diagram, the attach demo, the theme wipe. Components themselves stay precise and quiet.
+The landing has **one designed theme** (ADR-0060): bone paper for the page, Tower Night (Ink) bands that alternate with it section by section, and one Signal-amber band for the download section; terminal windows are always Ink. A faint field of concentric contour rings echoes the monkey mark's line art. Density is calm: one terminal window per screen, each key section fits one laptop screen, no decorative imagery. Motion is reserved for things that explain: the boot timeline, the routing diagram, the attach demo, and the cross-fade of a page change. Components themselves stay precise and quiet.
 
 **Key Characteristics:**
 - Terminal session as the page frame (window chrome, ASCII banner, tmux bar, CLI-flag navigation).
 - One brand accent (amber signal); every other color is a state.
 - Three type voices: Space Grotesk headings, Inter prose, IBM Plex Mono for everything machine-like.
 - Precise components, expressive demos.
-- Two complete themes (follows the OS preference until the visitor picks one; light on bone paper) plus a hidden green-phosphor CRT mode (↑↑↓↓←→←→BA).
+- Landing: one theme, sections in bands (Bone, Ink, one Signal band), no theme switch; plus a hidden green-phosphor CRT mode (↑↑↓↓←→←→BA). The dashboard (`web/ui`) keeps two complete themes that follow the OS until the user picks one.
 
 ## Colors
 
-One warm accent against cool neutrals in the dark theme and warm neutrals in the light theme; color carries meaning, never decoration.
+One warm accent against warm Bone neutrals and cool Ink neutrals; color carries meaning, never decoration. On the landing the `-light` values are the Bone tone (`:root`) and the plain values the Ink tone (`.tone-ink`), set per section; one `.tone-signal` band (the download section) uses the deep amber `signal-light` `#904f00` as its surface with Bone text, an inverted Bone primary button and Ink-inset code blocks (AA computed in ADR-0060).
 
 ### Primary
 - **Phosphor Amber** (`signal`; light `signal-light`): the single brand accent. Primary actions, links, focus rings, the active tmux window, the ASCII banner, the `$` prompt, the "se adjunta" provider group and "auto" OS chips. Hover deepens to `signal-hi`.
@@ -169,7 +169,7 @@ One warm accent against cool neutrals in the dark theme and warm neutrals in the
 
 ### Neutral
 - **Tower Night** (`bg`, `surface`, `surface-2`, `surface-3`): page, terminal body, title bars and raised rows, stepped by tonal lightness.
-- **Bone Paper** (`bg-light`, `surface-light`, `surface-2-light`): the light theme, matched to the ink-on-paper line art of the logo.
+- **Bone Paper** (`bg-light`, `surface-light`, `surface-2-light`): the landing's base tone and the dashboard's light theme, matched to the ink-on-paper line art of the logo.
 - **Hairlines** (`border`, `border-2` and light pairs): 1px dividers and outlines; `border-2` for interactive outlines.
 - **Ink** (`text`, `text-muted`, `text-dim` and light pairs): primary, secondary and tertiary text. `text-dim` keeps ≥ 4.5:1 on every surface.
 
@@ -204,7 +204,7 @@ One warm accent against cool neutrals in the dark theme and warm neutrals in the
 
 ## Layout
 
-Single column, max width 1160px, fluid gutter `clamp(16px, 3vw, 24px)`, section rhythm `clamp(72px, 6vw + 40px, 120px)`. Spacing follows a 4px base scale (4 → 64). A fixed 66px header and a fixed 32px tmux bar frame the scroll; anchored sections offset for both. Main breakpoints: 1080, 960, 720, 640, 520 and 420px. Grids collapse 4 → 3 → 2 → 1; the routing patch panel stacks under 768px (destinations, a text-free panel strip, exits) so text never scales below the floor. Interactive targets are 44px (24px minimum for dense inline controls).
+Single column, max width 1160px, fluid gutter `clamp(16px, 3vw, 24px)`, section rhythm `clamp(48px, 2.5vw + 32px, 88px)`; sections alternate Bone and Ink bands with no hairline between them (the tone change divides; ADR-0060). On laptops (1366×768, 1440×900, 1920×1080) each key section fits one screen under the header and above the tmux bar: the hero terminal (two columns from 1024px, no inner scroll), the attach demo, the routing map (heading beside the board from 1200px) and the download section (heading beside the recommended file from 1080px); phones keep the natural flow. Spacing follows a 4px base scale (4 → 64). A fixed 66px header and a fixed 32px tmux bar frame the scroll; anchored sections offset for both. Main breakpoints: 1080, 960, 720, 640, 520 and 420px. Grids collapse 4 → 3 → 2 → 1; the routing patch panel stacks under 768px (destinations, a text-free panel strip, exits) so text never scales below the floor. Interactive targets are 44px (24px minimum for dense inline controls).
 
 ## Elevation & Depth
 
@@ -241,18 +241,20 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 - **Internal Padding:** 14–24px.
 
 ### Navigation
-- **Header:** logo + letter-spaced "KONGTROL" + BETA badge; links written as CLI flags in mono (`--inicio`, `--guia`) whose dashes stay dim until hover; icon buttons for GitHub, theme and language. The download CTA hides while the hero CTA or the download section is on screen; the whole header slides away while the footer is on screen and returns on leaving it.
-- **tmux bar:** fixed bottom bar, `[kongtrol]` session in amber, numbered windows mapped to sections with the active one in solid amber, right side shows kill-switch state and clock. Between 721 and 960px the right side keeps only the clock; under 720px the bar is hidden and a "Ir a" jump menu replaces it. On the home page a last window `8:guía` (EN `8:guide`) opens the guide.
-- **Footer:** fills the viewport once reached: the large line-art mark (≥ 160 px) with the tagline, one primary "Descargar para <sistema>" (the same component as the hero and the download section) with its note and "Otras formas de instalar" link, a "Guía de instalación" link, link columns, the `kongtrol version` lines, an "↑ Inicio" link that scrolls to the top and focuses `<main>`, and the giant faint wordmark.
+- **Header:** logo + letter-spaced "KONGTROL" + BETA badge; links written as CLI flags in mono (`--inicio`, `--guia`) whose dashes stay dim until hover; icon buttons for GitHub and language (the landing has no theme switch). Always Ink, over Bone and Ink sections alike. The language switch keeps the section being read (`#fragment`) and cross-fades the page change (cross-document View Transitions, header and tmux bar held in place; reduced motion: none). The download CTA hides while the hero CTA or the download section is on screen; the whole header slides away while the footer is on screen and returns on leaving it.
+- **tmux bar:** fixed bottom bar, always Ink, `[kongtrol]` session in amber, numbered windows mapped to sections with the active one in solid amber, right side shows kill-switch state and clock. Between 721 and 960px the right side keeps only the clock; under 720px the bar is hidden and a "Ir a" jump menu replaces it. On the home page a last window `8:guía` (EN `8:guide`) opens the guide.
+- **Footer:** exactly one screen above the tmux bar on laptops (sizes clamped by `svh`, nothing cut): the large line-art mark (≥ 128 px) with the tagline, one primary "Descargar para <sistema>" (the same component as the hero and the download section) with its note and "Otras formas de instalar" link, a "Guía de instalación" link, link columns, the `kongtrol version` lines, the facts, and the giant faint wordmark behind the content (absolute, no extra height).
+- **Back to top:** a round 48px Ink icon button (up arrow), fixed bottom-right above the tmux bar on every page, shown after about one screen of scrolling; accessible name and tooltip "Volver al inicio" / "Back to top", 2px amber focus ring; it scrolls to the top (instantly under reduced motion) and focuses `<main>`.
+- **Download section:** the one Signal band. The recommended file is not a boxed card: a terminal comment `# Tu equipo: <sistema>`, the filled button and the file line, set off by a Bone hairline. Then one "Otras formas de instalar" row: every other file exactly once, grouped by system, and the install script with a tab and a copy button per shell.
 
 ### Logo (name and sizes)
 - **Name:** the product is just **Kongtrol** (ADR-0047). "VPN" lives only in the tagline ("Todas tus VPN bajo Kongtrol" / "All your VPNs under Kongtrol", a play on "control", ADR-0048), never in the name or the lockup.
-- **Solid silhouette up to ~64 px** (`assets/brand/source/logo-kong-solid.svg`, derived by `assets/brand/generate.go`; ADR-0051 refines the cutoff of ADR-0047): favicon (`favicon.svg`, transparent, black or white by `prefers-color-scheme`; `logo-kong-32.png` fallback), tray / menu bar, the panel's 32 px header mark, the 28 px tray flyout mark, the landing header 40 px (36 px under 960 px, next to the 37 px header buttons) and the routing patch panel's badge. At these sizes the concentric lines blur into grey.
-- **Line-art original from ~128 px up** (`logo-kong.svg`, lockup `logo.svg`): landing footer mark ≥ 160 px, README, the installer's side panel. Sizes between ~64 and ~128 px are avoided. Always give `<img>` its width and height (no layout shift).
+- **Solid silhouette up to ~64 px** (`assets/brand/source/logo-kong-solid.svg`, derived by `assets/brand/generate.go`; ADR-0051 refines the cutoff of ADR-0047): favicon (`favicon.svg`, transparent, black or white by `prefers-color-scheme`; `logo-kong-32.png` fallback), tray / menu bar, the panel's 32 px header mark, the 28 px tray flyout mark, and the landing attach demo's tray mock (28 px, with the real badge geometry: r = 15 %, gap size/16; hollow grey → live green). At these sizes the concentric lines blur into grey.
+- **Line-art original from ~128 px up** (`logo-kong.svg`, lockup `logo.svg`): landing footer mark ≥ 128 px, README, the installer's side panel. ADR-0060 adds, by owner decision, the landing header (54 px, 44 px under 960 px), the attach demo hub (108 px) and the routing patch panel's badge (40 SVG units; 28 in the phone strip). Other sizes between ~64 and ~128 px are avoided. On Ink and Signal bands every mark inverts to Bone (`.logo-mark`). Always give `<img>` its width and height (no layout shift).
 - **App icon: the only logo with a background** (ADR-0052). A squircle plate in Ink (`text-light` `#1b1813`) with the solid mark in Bone Paper (`bg-light` `#f1ede4`), generated by `assets/brand/generate.go` (`source/app-icon.svg`, `assets/logo.ico`, `app-icon-*.png`): Windows binaries and installer, macOS `.icns`, Linux menus, the landing's touch icon. On macOS the plate keeps Apple's grid margin (824 of 1024 px); on Windows and Linux it fills 44 of 48 px. Up to 24 px (title bar, context menu, a 100 % taskbar) the `.ico` shows the plain solid mark in mid-tone `#857c6b`, which keeps 3:1 on light and dark taskbars. Every other logo stays background-free. The installer's side panel (`assets/brand/installer/`) is the lockup in Bone on Ink with no words; the tagline is installer text, so it follows the installer's language.
 
 ### Terminal Window (signature)
-macOS-style title bar with three dots and a centered mono title (`ssh guest@kongtrol.tower`), body in `surface`, 12px corners, the only floating element. Content boots on a CSS timeline already present in the prerendered HTML (no layout shift); visitors can type `help`.
+macOS-style title bar with three dots and a centered mono title (`kongtrol — terminal`), always Ink (also on Bone sections), body in `surface`, 14px mono text at full opacity (every line ≥ 4.5:1), a blinking idle caret at the prompt, 12px corners, the only floating element. Content boots on a CSS timeline already present in the prerendered HTML (no layout shift); visitors can type `help`.
 
 ### Provider Monogram (signature)
 44×44 tile, 11px corners, two letters in Space Grotesk, subtle gradient and a 5px corner dot in the group color. Our own marks only — never a third-party logo or brand color (ADR-0023).

@@ -129,12 +129,13 @@ export default function Features({ lang }: Props) {
   const cur = routes[active]
   // the visitor picked a destination (click, tap, Enter or Space)
   const pick = (i: number) => { setActive(i); setRun(n => n + 1); setTouched(true) }
-  const solid = `${import.meta.env.BASE_URL}logo-kong-solid.svg`
+  // the line-art original as the panel badge (DESIGN.md Logo, ADR-0060)
+  const mark = `${import.meta.env.BASE_URL}logo-kong.svg`
   const cls = (i: number, extra = '') =>
     `${extra}${i === active ? ' active' : ''}${routes[i].direct ? ' direct' : ''}`
 
   return (
-    <section id="map" className="section features-section">
+    <section id="map" className="section features-section tone-ink">
       <div className="container">
         <div className="section-label cmd-label">{copy.label}</div>
         <h2 className="section-title">{copy.title}</h2>
@@ -164,13 +165,15 @@ export default function Features({ lang }: Props) {
               </g>
             ))}
 
-            {/* the panel: body, corner screws, the solid mark as device badge */}
+            {/* the panel: body, four corner screws, the line-art mark as its
+                badge, centred above the cables (they cross lower down) */}
             <g className="pp-panel">
               <rect className="pp-body" x={PANEL_L} y="22" width={PANEL_R - PANEL_L} height="316" rx="10" />
+              <circle className="pp-screw" cx={PANEL_L + 12} cy="34" r="2.5" />
               <circle className="pp-screw" cx={PANEL_R - 12} cy="34" r="2.5" />
               <circle className="pp-screw" cx={PANEL_L + 12} cy="326" r="2.5" />
               <circle className="pp-screw" cx={PANEL_R - 12} cy="326" r="2.5" />
-              <image className="pp-badge" href={solid} x={PANEL_L + 10} y="30" width="20" height="20" />
+              <image className="pp-badge logo-mark" href={mark} x={(PANEL_L + PANEL_R) / 2 - 20} y="24" width="40" height="40" />
               {routes.map((_, i) => (
                 <path key={`c-${i}`} className={cls(i, 'pp-cable')} d={cable(i)} />
               ))}
@@ -260,7 +263,7 @@ export default function Features({ lang }: Props) {
             </div>
             <svg className="sb-strip" viewBox="0 0 300 120" aria-hidden="true">
               <rect className="pp-body" x="4" y={STRIP_T} width="292" height={STRIP_B - STRIP_T} rx="10" />
-              <image className="pp-badge" href={solid} x="12" y={STRIP_T + 30} width="16" height="16" />
+              <image className="pp-badge logo-mark" href={mark} x="9" y={STRIP_T + 30} width="28" height="28" />
               {routes.map((_, i) => (
                 <path key={`sc-${i}`} className={cls(i, 'pp-cable')} d={stripCable(i)} />
               ))}

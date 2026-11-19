@@ -1,6 +1,6 @@
 import { Suspense, useMemo } from 'react'
 import { useOS } from '../../hooks/useOS'
-import { useLangRouting, useTheme } from '../../hooks/usePreferences'
+import { useLangRouting } from '../../hooks/usePreferences'
 import { Lang } from '../../i18n'
 import LangSuggest from '../../components/ui/LangSuggest'
 import { useKonami } from '../../hooks/useKonami'
@@ -42,7 +42,6 @@ const GUIDE_WINDOWS_EN: TmuxWindow[] = [
 
 export default function GuideApp({ lang }: { lang: Lang }) {
   const [os, setOS] = useOS()
-  const { theme, setTheme } = useTheme()
   const { suggest, dismiss } = useLangRouting('guia', lang)
   useKonami()
   // footer hydrates in its own later task; memoized so a re-render before
@@ -59,8 +58,6 @@ export default function GuideApp({ lang }: { lang: Lang }) {
       <Nav
         page="guia"
         lang={lang}
-        theme={theme}
-        setTheme={setTheme}
       />
       <main id="main" tabIndex={-1}>
         <header className="guide-hero">
