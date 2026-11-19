@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.6.0 · 2026-11-19
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.6.1 · 2026-11-19
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
@@ -112,12 +112,14 @@ es.ReadyKeep=Tus VPN, ajustes, contraseñas y opciones elegidas se conservan.
 en.ReadyKeep=Your VPNs, settings, passwords and chosen options are kept.
 es.ReadyDown=Las VPN conectadas se desconectan un momento y se vuelven a conectar solas al terminar. El ayudante de red solo se actualiza si hace falta (entonces Windows pide permiso una vez).
 en.ReadyDown=Connected VPNs disconnect for a moment and reconnect by themselves at the end. The network helper is only updated if needed (then Windows asks for permission once).
+; Button captions stay one word: the Next button has a fixed width and a
+; longer caption was cut ("ar versión ant"); the page title says the rest.
 es.BtnUpdate=Actualizar
 en.BtnUpdate=Update
 es.BtnRepair=Reinstalar
 en.BtnRepair=Reinstall
-es.BtnDowngrade=Instalar versión anterior
-en.BtnDowngrade=Install older version
+es.BtnDowngrade=Instalar
+en.BtnDowngrade=Install
 es.DowngradeAsk=Vas a instalar una versión anterior (%1 → %2).%n%nTus VPN y ajustes se conservan. Hazlo solo si la versión nueva te da problemas.%n%n¿Continuar?
 en.DowngradeAsk=You are about to install an older version (%1 → %2).%n%nYour VPNs and settings are kept. Only do this if the new version gives you trouble.%n%nContinue?
 es.FinishedUpdate=Kongtrol se actualizó a %2. Tus VPN y ajustes siguen ahí; las que tenías conectadas vuelven a conectarse solas.%n%nSiguiente: abre Kongtrol para ver su estado.
