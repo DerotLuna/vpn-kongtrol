@@ -1,4 +1,4 @@
-// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0052) · v1.0.0 · 2026-11-19
+// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.0.0 · 2026-11-19
 //
 // The one place every "add" entry in the panel opens: connect a VPN the
 // user already has, import a .conf / .ovpn, or send a site through a VPN.

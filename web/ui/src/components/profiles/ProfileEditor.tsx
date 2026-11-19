@@ -2,14 +2,14 @@
 //
 // A sheet (bottom on phones, centered on wide screens) with the full guided
 // form. Creating a profile moved to the shell's "＋ Agregar" sheet
-// (components/add, ADR-0052); this one only edits. Checks run on "Guardar"
+// (components/add, ADR-0055); this one only edits. Checks run on "Guardar"
 // and then on every change; the daemon's own validation error lands on its
 // field when we know which one, otherwise above the form — always with what
 // to do. Nothing is saved until the daemon accepts.
 //
 // A connected profile saves with "Guardar y reconectar": PUT
 // /api/v1/vpns/{name}?reconnect=true, so only this VPN cuts for a few
-// seconds and comes back with the new settings (owner decision, ADR-0052).
+// seconds and comes back with the new settings (owner decision, ADR-0055).
 // An older daemon answers `reconnect_required` instead: the toast then
 // offers "Reconectar" (the tunnel reload Inicio uses).
 import { useRef, useState, type FormEvent } from 'react'

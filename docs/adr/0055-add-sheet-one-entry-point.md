@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
-# ADR-0052: "＋ Agregar": one sheet for every add in the dashboard
+# ADR-0055: "＋ Agregar": one sheet for every add in the dashboard
 
 Version 1.0.0 · 2026-11-19
 

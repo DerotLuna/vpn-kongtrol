@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { addSearch, parseAddParams, withoutAdd } from '../../app/addLink'
 // The same table internal/policy/classify_test.go runs against Go's
-// ClassifyTargets / AutoName (`kongtrol policy add`), ADR-0052.
+// ClassifyTargets / AutoName (`kongtrol policy add`), ADR-0055.
 import shared from '../../../../../internal/policy/testdata/classify_targets.json?raw'
 import {
   autoName,

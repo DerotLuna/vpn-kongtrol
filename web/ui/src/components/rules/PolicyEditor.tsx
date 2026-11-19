@@ -3,7 +3,7 @@
 // Plain fields first (name, VPN, sites, networks, what happens when the
 // VPN is off), apps behind a disclosure because the daemon only uses them
 // to test and diagnose today; raw one-per-line editing. New rules start in
-// the shell's "＋ Agregar" sheet (ADR-0052). Validation
+// the shell's "＋ Agregar" sheet (ADR-0055). Validation
 // on submit, then live; focus goes to the first problem. A refusal from
 // the daemon stays next to the form (and as a toast).
 import { useId, useRef, useState, type FormEvent } from 'react'
@@ -32,7 +32,7 @@ import {
 import { policyErrorText } from './preview'
 
 interface Props {
-  /** The saved name (renames supported). New rules start in the "＋ Agregar" sheet (ADR-0052). */
+  /** The saved name (renames supported). New rules start in the "＋ Agregar" sheet (ADR-0055). */
   original: string
   initial: PolicyDraft
   policies: readonly Policy[]

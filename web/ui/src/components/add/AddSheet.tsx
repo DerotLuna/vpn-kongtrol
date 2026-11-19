@@ -1,6 +1,6 @@
 // Kongtrol UI — "＋ Agregar": the shell's host for the add sheet · v1.0.0 · 2026-11-19
 //
-// Mounted once by AppShell (ADR-0052). It reads the deep link
+// Mounted once by AppShell (ADR-0055). It reads the deep link
 // (?add=menu|vpn|file|rule…, app/addLink.ts) and loads the sheet's code
 // only when it opens, so the main bundle stays lean. It also turns the
 // whole window into a drop target for .conf / .ovpn files while no other

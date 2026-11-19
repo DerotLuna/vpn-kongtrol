@@ -91,7 +91,7 @@ export function ProfilesPage() {
   }, [list, tunnels.data, pending])
   const shown = useMemo(() => rows.filter((r) => matchesFilter(r.profile, filter)), [rows, filter])
 
-  // Creating opens the shell's "＋ Agregar" sheet (ADR-0052).
+  // Creating opens the shell's "＋ Agregar" sheet (ADR-0055).
   const { open: openAdd } = useAddSheet()
   const openCreate = useCallback((type?: AdapterType) => openAdd({ mode: 'vpn', ...(type ? { type } : {}) }), [openAdd])
   const onEdit = useCallback((profile: VPNProfile) => setEditor({ mode: 'edit', profile, seq: ++seq.current }), [])

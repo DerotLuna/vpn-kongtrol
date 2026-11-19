@@ -4,7 +4,7 @@
 // the tunnel it left through or the normal connection, when) from the
 // daemon's in-memory list (data/recent.ts, ADR-0054). Each row offers
 // "Hacer que esto salga por…": the "＋ Agregar" sheet on the rule step
-// with that destination prefilled (ADR-0052). On by default (ADR-0054); when turned off the card says
+// with that destination prefilled (ADR-0055). On by default (ADR-0054); when turned off the card says
 // where to turn it on; where the OS does not allow it without admin rights,
 // it says so. Hidden on a daemon without the endpoint.
 import { useMemo } from 'react'

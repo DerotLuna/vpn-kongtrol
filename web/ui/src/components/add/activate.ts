@@ -4,7 +4,7 @@
 // applied the new profile live (ADR-0053); then it is usable at once. Only
 // `restart_required: true` (e.g. setup mode, an older daemon) runs the
 // shared restart (toasts, phases), which the sheet does by itself every
-// time it is needed (owner decision, ADR-0052). A restart that fails or
+// time it is needed (owner decision, ADR-0055). A restart that fails or
 // times out leaves the profile saved and offers to retry only the restart.
 import { useState } from 'react'
 import { useSaveProfile, type ProfileRequest } from '../../data/profiles'

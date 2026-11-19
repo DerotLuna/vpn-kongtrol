@@ -1,6 +1,6 @@
 // Kongtrol UI — "＋ Agregar" sheet: the little it adds to the data layer · v1.0.0 · 2026-11-19
 //
-// The sheet (components/add, ADR-0052) creates profiles and rules through
+// The sheet (components/add, ADR-0055) creates profiles and rules through
 // the same hooks as Perfiles and Reglas (data/profiles.ts, data/rules.ts),
 // so caches, toasts and rollbacks stay one. This module only holds:
 // - the live "Después" preview: POST /api/v1/policies/test as a query keyed

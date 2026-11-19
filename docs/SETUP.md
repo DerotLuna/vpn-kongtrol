@@ -735,7 +735,7 @@ Es una consola de gestión completa, no solo
 monitoreo. Arriba, «＋ Agregar» abre una sola hoja para conectar una VPN que ya usas, importar un
 `.conf`/`.ovpn` (también soltándolo sobre el panel) o hacer que un sitio salga por una VPN en una
 frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&target=<sitio>`,
-[ADR-0052](adr/0052-add-sheet-one-entry-point.md)). Las páginas:
+[ADR-0055](adr/0055-add-sheet-one-entry-point.md)). Las páginas:
 
 - **Inicio** — tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos
 - **Perfiles** — crear, editar, renombrar y borrar perfiles VPN (la contraseña va al llavero del sistema), respaldo (`failover`) y la guía del primer uso; pestaña **Grupos** (crear, editar, conectar o desconectar varias VPN a la vez)

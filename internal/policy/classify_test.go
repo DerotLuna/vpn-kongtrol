@@ -9,7 +9,7 @@ import (
 
 // classifyTable is testdata/classify_targets.json, shared with the
 // dashboard's "＋ Agregar" sheet (web/ui/src/components/add/model.test.ts):
-// both must read the same entries the same way (ADR-0052).
+// both must read the same entries the same way (ADR-0055).
 type classifyTable struct {
 	Cases []struct {
 		Name       string   `json:"name"`

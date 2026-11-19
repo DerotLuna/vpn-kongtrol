@@ -49,7 +49,7 @@ reasoned but unverified.
 | [2026-11-19-explorer-double-click](2026-11-19-explorer-double-click.md) | Console program opened from Explorer: mousetrap `StartedByExplorer`, cobra v1.8.0 mousetrap hook (English-only wait line) | ADR-0045 |
 | [2026-11-19-installer-upgrade-detection](2026-11-19-installer-upgrade-detection.md) | Detecting an existing install: Inno Setup uninstall key, `UsePrevious*`, `ShouldSkipPage`, SemVer precedence | ADR-0046 |
 | [2026-11-19-installer-resume-and-postinstall](2026-11-19-installer-resume-and-postinstall.md) | Inno [Run] order and `postinstall` defaults, `ExtractTemporaryFile` before the copy; reconnect after update | ADR-0050 |
-| [2026-11-19-add-flow-patterns](2026-11-19-add-flow-patterns.md) | Little Snitch alerts/connection list, Mullvad/NordVPN/Proton split tunneling, Tailscale app connectors, UniFi traffic routes (no verificado), Windows "Add VPN": one entry, few fields, rules from context | ADR-0052 |
+| [2026-11-19-add-flow-patterns](2026-11-19-add-flow-patterns.md) | Little Snitch alerts/connection list, Mullvad/NordVPN/Proton split tunneling, Tailscale app connectors, UniFi traffic routes (no verificado), Windows "Add VPN": one entry, few fields, rules from context | ADR-0055 |
 | [2026-11-19-product-name-and-logo-sizes](2026-11-19-product-name-and-logo-sizes.md) | Dropping "VPN" from the name (site name, alternateName, what must not be renamed), SVG favicon, logo sizes | ADR-0047 |
 | [2026-11-19-recent-connections](2026-11-19-recent-connections.md) | Per-connection data without admin (GetExtendedTcpTable, /proc/net/tcp, ss), privacy precedent (Little Snitch, GlassWire) | ADR-0054 |
 

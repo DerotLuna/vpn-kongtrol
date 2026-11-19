@@ -12,7 +12,7 @@ import { defineConfig, type Plugin } from 'vite'
 
 const brandDir = fileURLToPath(new URL('../../assets/brand', import.meta.url))
 const outDir = fileURLToPath(new URL('./dist', import.meta.url))
-// Test table shared with the Go policy tests (classify_targets.json, ADR-0052);
+// Test table shared with the Go policy tests (classify_targets.json, ADR-0055);
 // tests read it, the build never does.
 const sharedTestData = fileURLToPath(new URL('../../internal/policy/testdata', import.meta.url))
 

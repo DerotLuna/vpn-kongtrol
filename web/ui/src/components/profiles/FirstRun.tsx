@@ -3,7 +3,7 @@
 // The empty state teaches the next step (NN/g; DESIGN.md Operate): three
 // short steps, then the VPN apps found on this computer as one-click
 // starting points, then "another VPN". Each opens the shell's "＋ Agregar"
-// sheet (ADR-0052), which saves and then restarts Kongtrol on its own.
+// sheet (ADR-0055), which saves and then restarts Kongtrol on its own.
 import type { AdapterType, DetectedClient } from '../../data/profiles'
 import { usePreferences } from '../../app/preferences-context'
 import { guideLink } from '../../links'

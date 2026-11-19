@@ -2,7 +2,7 @@
 //
 // Layout route for every page (ADR-0038):
 // - Header: logo top-left, aggregate VPN status, "＋ Agregar" (the add
-//   sheet, ADR-0052), help (same place on every
+//   sheet, ADR-0055), help (same place on every
 //   page, WCAG 3.2.6), language, theme, version.
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent
 //   NavigationView): sidebar with labels ≥ 840px, rail 600–839px, bottom

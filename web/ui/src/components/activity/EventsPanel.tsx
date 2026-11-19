@@ -5,7 +5,7 @@
 // day, each in plain language from its i18n key (never pre-rendered by the
 // daemon). A notice about traffic for a tunnel that is off offers "Conectar"
 // in place, through the same optimistic tunnel action as Inicio; every
-// notice about a profile offers "＋" (send a site through it, ADR-0052).
+// notice about a profile offers "＋" (send a site through it, ADR-0055).
 import { memo, useMemo } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { eventText, useEventsHistory, type DaemonEvent } from '../../data/activity'

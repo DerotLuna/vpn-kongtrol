@@ -6,7 +6,7 @@
 //   SuggestName (internal/policy/classify.go), the same code behind
 //   `kongtrol policy add`. Both read internal/policy/testdata/
 //   classify_targets.json in their tests, so the sheet and the CLI read
-//   the same entries the same way (ADR-0052);
+//   the same entries the same way (ADR-0055);
 // - names: config.ValidateName (internal/config/semantics.go): not blank,
 //   ≤ 64 characters, none of < > " ' ` & \, no control characters or
 //   line/paragraph separators;

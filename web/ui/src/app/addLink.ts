@@ -1,6 +1,6 @@
 // Kongtrol UI — "＋ Agregar" deep link · v1.0.0 · 2026-11-19
 //
-// One sheet hosted by the shell (components/add/AddSheet.tsx, ADR-0052)
+// One sheet hosted by the shell (components/add/AddSheet.tsx, ADR-0055)
 // answers every "add" entry in the panel. It opens from the URL, so any
 // page, the tray or a doc can link to it:
 //   ?add=menu|vpn|file|rule[&via=<perfil>&target=<sitio>&app=<exe>&type=<tipo>]

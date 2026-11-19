@@ -105,7 +105,7 @@ describe('ProfilesPage', () => {
     expect(await screen.findByRole('heading', { name: 'Welcome to Kongtrol: create your first VPN' })).toBeInTheDocument()
     await userEvent.click(await screen.findByRole('button', { name: /Use NordVPN/ }))
 
-    // The tile opens the shell's add sheet on its short form (ADR-0052).
+    // The tile opens the shell's add sheet on its short form (ADR-0055).
     const dialog = await screen.findByRole('dialog', { name: 'Connect a VPN I already use' })
     expect(new URLSearchParams(window.location.search).get('add')).toBe('vpn')
     // NordVPN asks for no password: its app holds the session.

@@ -2,7 +2,7 @@
 
 # "＋ Agregar": how others add a VPN and send a site through it
 
-Version 1.0.0 · 2026-11-19 · Backs [ADR-0052](../adr/0052-add-sheet-one-entry-point.md)
+Version 1.0.0 · 2026-11-19 · Backs [ADR-0055](../adr/0055-add-sheet-one-entry-point.md)
 
 Access date for every source: 2026-11-19 (fetched with a plain HTTP client; the text quoted is
 short and paraphrased where possible).

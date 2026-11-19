@@ -1,6 +1,6 @@
 // Kongtrol UI — "＋ Agregar" entry points used across pages · v1.0.0 · 2026-11-19
 //
-// Every page that offers "add" opens the shell's one sheet (ADR-0052)
+// Every page that offers "add" opens the shell's one sheet (ADR-0055)
 // through the deep link (app/addLink.ts), prefilled from where it was
 // pressed: a tunnel row (via=<perfil>), a lookup result (target / app),
 // an Actividad notice (via=<perfil>).

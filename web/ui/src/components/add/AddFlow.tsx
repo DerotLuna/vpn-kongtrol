@@ -1,6 +1,6 @@
 // Kongtrol UI — "＋ Agregar" sheet · v1.0.0 · 2026-11-19
 //
-// One sheet for every "add" in the panel (ADR-0052): a menu with three
+// One sheet for every "add" in the panel (ADR-0055): a menu with three
 // plain-language choices, then
 //   A "Conectar una VPN que ya uso"  (VpnStep: found apps first, "Usar")
 //   B "Importar un archivo de VPN"   (FileStep: .conf / .ovpn, drop)

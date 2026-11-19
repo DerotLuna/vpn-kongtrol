@@ -39,7 +39,7 @@ export function RulesPage() {
   const profiles = useMemo(() => meta.data?.profiles ?? [], [meta.data])
   const list = policies.data ?? []
 
-  // New rules open the shell's "＋ Agregar" sheet (ADR-0052).
+  // New rules open the shell's "＋ Agregar" sheet (ADR-0055).
   const { open: openAdd } = useAddSheet()
   const openNew = useCallback(() => openAdd({ mode: 'rule' }), [openAdd])
   const openEdit = useCallback(

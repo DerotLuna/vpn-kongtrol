@@ -317,7 +317,7 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   auth, reachability, `ApiError`); data modules keep their endpoints next to their hooks.
 - Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
 - Every "add" (profile, imported file, rule) opens the one shell-hosted "＋ Agregar" sheet
-  (`src/components/add`, ADR-0052) through the deep link `?add=menu|vpn|file|rule[&via=&target=&app=]`
+  (`src/components/add`, ADR-0055) through the deep link `?add=menu|vpn|file|rule[&via=&target=&app=]`
   (`src/app/addLink.ts` `useAddSheet`); never a page-local create form. New profiles always
   "Guardar y activar" (create; the sheet restarts itself only on `restart_required: true`);
   editing a connected profile saves with

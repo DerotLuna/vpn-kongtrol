@@ -3,7 +3,7 @@
 // Runs data/profiles.ts runRestart and reports the result as one toast
 // (running, done, timeout, or the daemon's refusal with what to do). It
 // also returns the outcome, so a flow can go on only once Kongtrol is back
-// ("Guardar y activar" in the add sheet, ADR-0052).
+// ("Guardar y activar" in the add sheet, ADR-0055).
 import { useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
