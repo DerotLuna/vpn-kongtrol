@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { OS, OS_LABELS } from '../../hooks/useOS'
 import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
@@ -62,10 +63,15 @@ interface Props {
   lang: Lang
 }
 
-// The filename never wraps mid-word: one line, ellipsis if the card is too
-// narrow, full name in the tooltip.
+// The filename is always shown whole; when the card is narrow it may wrap
+// only after a "-" (a <wbr> after each one), never inside a word.
 function FileName({ file }: { file: string }) {
-  return <code className="dl-file" title={file}>{file}</code>
+  const parts = file.split('-')
+  return (
+    <code className="dl-file">
+      {parts.map((p, i) => <Fragment key={i}>{p}{i < parts.length - 1 && <>-<wbr /></>}</Fragment>)}
+    </code>
+  )
 }
 
 export default function Download({ lang }: Props) {
@@ -85,7 +91,7 @@ export default function Download({ lang }: Props) {
       sub: 'Windows, macOS y Linux. Local, gratis y de código abierto. Sin cuenta.',
       download: 'Descargar',
       recommended: 'Tu equipo',
-      macWhichShort: 'Menú Apple → Acerca de este Mac: «Chip» es Apple Silicon.',
+      macWhichShort: '¿Cuál? Menú Apple → Acerca de este Mac.',
       macWhich: '¿Apple Silicon o Intel? Tu navegador no puede saberlo. En tu Mac abre el menú Apple → Acerca de este Mac: si dice «Chip», es Apple Silicon; si dice «Procesador» Intel, es Intel.',
       allReleases: 'Ver todos los releases en GitHub',
       keepNote: <>Si desinstalas, tus datos se quedan (salvo que pidas borrarlos). El aviso de versión nueva es
@@ -93,7 +99,6 @@ export default function Download({ lang }: Props) {
         <a href={`${pathFor('guia', 'es')}#uninstall`}>desinstalar</a>.</>,
       otherTitle: 'Otras formas de instalar',
       allTitle: 'Todas las descargas',
-      standaloneNote: 'Sin instalador: un archivo para la terminal.',
       scriptTitle: 'Script de instalación',
       terminalText: 'Una línea en la terminal: detecta tu sistema, verifica el SHA256 y lo deja en el PATH.',
       beta: 'Beta pública.',
@@ -146,7 +151,7 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       sub: 'Windows, macOS and Linux. Local, free and open source. No account.',
       download: 'Download',
       recommended: 'Your computer',
-      macWhichShort: 'Apple menu → About This Mac: "Chip" means Apple Silicon.',
+      macWhichShort: 'Which one? Apple menu → About This Mac.',
       macWhich: "Apple Silicon or Intel? Your browser can't tell. On your Mac open the Apple menu → About This Mac: if it says \"Chip\", it's Apple Silicon; if it says \"Processor\" with Intel, it's Intel.",
       allReleases: 'View all releases on GitHub',
       keepNote: <>If you uninstall, your data stays (unless you ask to delete it). The new version notice is
@@ -154,7 +159,6 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
         <a href={`${pathFor('guia', 'en')}#uninstall`}>uninstall</a>.</>,
       otherTitle: 'Other ways to install',
       allTitle: 'All downloads',
-      standaloneNote: 'No installer: one file for the terminal.',
       scriptTitle: 'Install script',
       terminalText: 'One line in the terminal: it detects your system, verifies the SHA256 and puts it on your PATH.',
       beta: 'Public beta.',
@@ -270,7 +274,6 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
                     </li>
                   ))}
                 </ul>
-                {o === 'windows' && <p className="dl-card-note">{copy.standaloneNote}</p>}
                 {o === 'macos' && <p className="dl-card-note">{copy.macWhichShort}</p>}
               </div>
             ))}

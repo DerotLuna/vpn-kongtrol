@@ -8,7 +8,11 @@
 /* heading + recommended file: one row from 1080 px, stacked below */
 @media (min-width: 1080px) {
   .dl-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
-  .dl-lead /* the recommended file: no box — a terminal comment with the detected
+  .dl-lead .dl-featured { margin-top: 0; }
+}
+.dl-lead-text .section-sub { max-width: 44ch; }
+
+/* the recommended file: no box — a terminal comment with the detected
    system, the filled button, the file line; a Bone hairline sets it off from
    the heading (left on laptops, top when stacked) */
 .dl-featured {
@@ -30,11 +34,10 @@
 .dl-featured-item { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
 .dl-btn-lg { min-height: 52px; padding: 14px 26px; font-size: 0.9rem; }
 
-/* filename: one line, never broken mid-word; ellipsis when the card is narrow */
+/* filename: always whole; it may wrap only after a "-" (<wbr> in FileName) */
 .dl-file {
   display: block; max-width: 100%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim);
+  font-family: var(--font-mono); font-size: 0.6875rem; line-height: 1.4; color: var(--text-dim);
   background: none; padding: 0;
 }
 
@@ -44,17 +47,29 @@
 }
 
 .dl-others-title {
-  margin: 20px 0 10px; font-family: var(--font-display); font-weight: 600;
+  margin: 16px 0 10px; font-family: var(--font-display); font-weight: 600;
   font-size: 1.15rem; color: var(--text);
 }
 /* one row: a card per system with files left, then the script (wider) */
-.dl-ways { display: flex; flex-wrap: wrap; gap: 14px; }
+.dl-ways { display: flex; flex-wrap: wrap; gap: 12px; }
 .dl-card {
   flex: 1 1 220px; padding: 14px 14px 12px; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius-lg);
   display: flex; flex-direction: column; gap: 8px; min-width: 0;
 }
-.dl-card.dl-script { flex: 1.5 1 300px; }
+/* the script gets its own full-width row under the systems, so each one-line
+   command fits on one line from 1024 px; narrower, it wraps only at spaces
+   (never inside the URL) */
+.dl-card.dl-script { flex: 1 1 100%; }
+.dl-script .code-block pre.is-wrapped { overflow-wrap: normal; word-break: normal; }
+@media (min-width: 1024px) {
+  .dl-card.dl-script {
+    display: grid; grid-template-columns: minmax(0, 0.42fr) minmax(0, 1fr); column-gap: 24px; align-items: center;
+  }
+  .dl-script .dl-card-os, .dl-script .dl-card-note { grid-column: 1; }
+  .dl-script .code-block { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; }
+  .dl-script .code-block pre { padding-block: 10px; }
+}
 .dl-card-os { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; color: var(--text); }
 .dl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .dl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
