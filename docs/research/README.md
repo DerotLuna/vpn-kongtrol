@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.15.0 · 2026-11-19
+Version 1.15.1 · 2026-11-19
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -15,7 +15,7 @@ reasoned but unverified.
 |---|---|---|
 | [2026-11-17-adr-templates](2026-11-17-adr-templates.md) | ADR formats: Nygard vs MADR | ADR-0001 |
 | [2026-11-17-kill-switch-mechanisms](2026-11-17-kill-switch-mechanisms.md) | VPN kill switch mechanisms and semantics | ADR-0005, ADR-0009 |
-| [2026-11-17-provider-clis](2026-11-17-provider-clis.md) | NordVPN, Proton and Surfshark CLIs and manual configs | ADR-0006 |
+| [2026-11-17-provider-clis](2026-11-17-provider-clis.md) | NordVPN, Proton, Surfshark and Cloudflare WARP CLIs and manual configs | ADR-0006 |
 | [2026-11-17-multilingual-seo](2026-11-17-multilingual-seo.md) | hreflang, localized URLs, no auto-redirect | ADR-0012 |
 | [2026-11-17-go-embedded-spa](2026-11-17-go-embedded-spa.md) | SPAs embedded in Go binaries | ADR-0011 |
 | [2026-11-17-openvpn-non-admin](2026-11-17-openvpn-non-admin.md) | OpenVPN interactive service, non-admin options | ADR-0005, ADR-0007 |

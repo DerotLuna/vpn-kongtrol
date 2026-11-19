@@ -563,7 +563,7 @@ GET  /api/v1/audit                 # ?profile=&level=&limit=`,
     trouble4: `$ kongtrol down --all    # desactiva kill switch automáticamente`,
     trouble5: <>Si Kongtrol se cerró de golpe: con el ayudante instalado, sus bloqueos se quitan solos en unos
                 20 segundos (la red queda abierta, nunca cortada). Si siguen ahí, quita <strong>solo</strong> las reglas de Kongtrol.
-                No uses <IC c="netsh advfirewall reset" />: borra todas tus reglas de firewall.
+                No uses <IC c="netsh advfirewall reset" />, <IC c="pfctl -d" /> ni <IC c="iptables -F OUTPUT" />: borran o apagan el firewall de todo el equipo.
                 Si se cae una VPN que llevaba todo tu tráfico (túnel completo), el kill switch bloquea internet a propósito
                 hasta que vuelva, y Kongtrol te lo avisa: desconéctala para navegar ya, o agrega reglas para que solo esos
                 sitios dependan de ella.</>,

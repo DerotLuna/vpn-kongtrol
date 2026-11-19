@@ -533,19 +533,11 @@ $ kongtrol up us-content`}</CodeBlock>
               <CodeBlock ui={lang} lang="bash">{t.trouble4}</CodeBlock>
               <p>{t.trouble5}</p>
               <OsTabs os={os} setOS={setOS} lang={lang} />
-              {os === 'windows' && (
-                <CodeBlock ui={lang} lang="bash">{t.trouble6}</CodeBlock>
-              )}
-              {os === 'macos' && (
-                <CodeBlock ui={lang} lang="bash">{`$ sudo pfctl -d`}</CodeBlock>
-              )}
-              {os === 'linux' && (
-                <CodeBlock ui={lang} lang="bash">{`$ sudo iptables -F OUTPUT`}</CodeBlock>
-              )}
+              <CodeBlock ui={lang} lang="bash">{t.trouble6}</CodeBlock>
               <p style={{ marginTop: 32 }}>{t.trouble7}</p>
               <CodeBlock ui={lang} lang="bash">{t.trouble8}</CodeBlock>
               <p style={{ marginTop: 32 }}><strong>Cloudflare WARP — "not registered":</strong></p>
-              <CodeBlock ui={lang} lang="bash">{`$ warp-cli register`}</CodeBlock>
+              <CodeBlock ui={lang} lang="bash">{`$ warp-cli registration new`}</CodeBlock>
               <p style={{ marginTop: 32 }}>{t.trouble9}</p>
               <CodeBlock ui={lang} lang="bash">{t.trouble10}</CodeBlock>
               <div className="callout" style={{ marginTop: 12 }}>{t.trouble11}</div>

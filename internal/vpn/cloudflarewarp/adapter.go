@@ -1,6 +1,7 @@
 // Package cloudflarewarp implements the VPNAdapter interface for Cloudflare WARP.
 // Requires the Cloudflare WARP client to be installed and registered.
-// Run `warp-cli register` once before first use.
+// Run `warp-cli registration new` once before first use (WARP clients
+// before 2024 used `warp-cli register`).
 //
 // DNS note: WARP hardcodes 1.1.1.1 / 1.0.0.1 as DNS servers; the adapter
 // surfaces these in TunnelInfo so the DNS guard can validate them.

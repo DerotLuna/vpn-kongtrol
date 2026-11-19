@@ -369,7 +369,7 @@ var messages = map[Lang]map[string]string{
 		"collect.ts_usekey":   "  ¿Usar una auth key? (vacío para reutilizar sesión 'tailscale login' existente)",
 		"collect.ts_key":      "  Auth key de Tailscale (vacío para omitir)",
 		"collect.warp_info1":  "  [i] WARP no requiere credenciales por perfil.",
-		"collect.warp_info2":  "      Ejecuta 'warp-cli register' una vez si aún no lo has hecho.",
+		"collect.warp_info2":  "      Ejecuta 'warp-cli registration new' una vez si aún no lo has hecho (clientes WARP anteriores a 2024: 'warp-cli register').",
 
 		// Binary path
 		"collect.not_detected": "  [!] Este cliente VPN no fue detectado automáticamente en tu sistema.",
@@ -1569,7 +1569,7 @@ var messages = map[Lang]map[string]string{
 		"collect.ts_usekey":   "  Use an auth key? (leave blank to reuse existing 'tailscale login' session)",
 		"collect.ts_key":      "  Tailscale auth key (leave blank to skip)",
 		"collect.warp_info1":  "  [i] WARP uses no per-profile credentials.",
-		"collect.warp_info2":  "      Run 'warp-cli register' once if not already registered.",
+		"collect.warp_info2":  "      Run 'warp-cli registration new' once if not already registered (WARP clients before 2024: 'warp-cli register').",
 
 		// Binary path
 		"collect.not_detected": "  [!] This VPN client was not auto-detected on your system.",

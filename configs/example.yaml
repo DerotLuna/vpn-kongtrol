@@ -140,7 +140,7 @@ vpns:
 
   warp:
     type: cloudflarewarp
-    # No credentials needed — device must be registered via 'warp-cli register'
+    # No credentials needed — register the device once with 'warp-cli registration new'
     auth:
       method: credentials
     priority: 1
