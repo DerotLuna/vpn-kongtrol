@@ -105,34 +105,43 @@ describe('ProfilesPage', () => {
     expect(await screen.findByRole('heading', { name: 'Welcome to Kongtrol: create your first VPN' })).toBeInTheDocument()
     await userEvent.click(await screen.findByRole('button', { name: /Use NordVPN/ }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'Your first VPN' })
+    // The tile opens the shell's add sheet on its short form (ADR-0055).
+    const dialog = await screen.findByRole('dialog', { name: 'Connect a VPN I already use' })
+    expect(new URLSearchParams(window.location.search).get('add')).toBe('vpn')
     // NordVPN asks for no password: its app holds the session.
     expect(within(dialog).queryByLabelText('Password')).not.toBeInTheDocument()
-    await userEvent.type(within(dialog).getByLabelText(/^Name/), 'nord')
+    const name = within(dialog).getByLabelText(/^Name/)
+    expect(name).toHaveValue('NordVPN')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'nord')
+    await userEvent.click(within(dialog).getByText('More options'))
     await userEvent.type(within(dialog).getByLabelText('Country (optional)'), 'CH')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create and turn on' }))
+    expect(within(dialog).getByText(/If Kongtrol has to restart for that, it does so on its own/)).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and activate' }))
 
     await waitFor(() => expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toBeDefined())
     expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toEqual({ name: 'nord', type: 'nordvpn', priority: 10, auto_connect: true, country: 'CH' })
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/restart' && i?.method === 'POST')).toBe(true))
     expect(await screen.findByText('Kongtrol restarted · you can connect your VPNs now')).toBeInTheDocument()
+    expect(await screen.findByText('“nord” is ready.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'See it on Home' }))
     await waitFor(() => expect(window.location.pathname).toBe('/'))
   })
 
   it('checks the form inline before sending and focuses the first problem', async () => {
-    const fetchMock = stubFetch(base({ 'GET /api/v1/vpns': () => json([profile('work')]) }))
+    const fetchMock = stubFetch(base({ 'GET /api/v1/vpns': () => json([profile('work'), profile('home')]) }))
     render(<App />)
-    await userEvent.click(await screen.findByRole('button', { name: 'New VPN' }))
-    const dialog = await screen.findByRole('dialog', { name: 'New VPN' })
-    expect(within(dialog).getByText('Step 1 of 2', { exact: false })).toBeInTheDocument()
-    await userEvent.click(within(dialog).getByRole('button', { name: /OpenVPN/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit home' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit home' })
+    await userEvent.clear(within(dialog).getByLabelText(/^Name/))
     await userEvent.type(within(dialog).getByLabelText(/^Name/), 'work')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create VPN' }))
+    await userEvent.clear(within(dialog).getByLabelText(/\.ovpn file/))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     expect(await within(dialog).findByText('You already have a VPN called “work”.')).toBeInTheDocument()
     expect(within(dialog).getByText('The .ovpn file is missing.')).toBeInTheDocument()
     await waitFor(() => expect(within(dialog).getByLabelText(/^Name/)).toHaveFocus())
-    expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'POST')).toBe(false)
+    expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(false)
 
     // Fixing a field clears its error on the next check.
     await userEvent.clear(within(dialog).getByLabelText(/^Name/))
@@ -140,11 +149,62 @@ describe('ProfilesPage', () => {
     expect(within(dialog).queryByText('You already have a VPN called “work”.')).not.toBeInTheDocument()
   })
 
+  it('editing: a connected VPN saves with "Save and reconnect" (PUT ?reconnect=true); a disconnected one with "Save"', async () => {
+    const fetchMock = stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
+        'PUT /api/v1/vpns/work?reconnect=true': () => json({ status: 'updated', profile: 'work', restart_required: false, reconnected: true }),
+        'PUT /api/v1/vpns/home': () => json({ status: 'updated', profile: 'home', restart_required: true }),
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit work' }))
+    let dialog = await screen.findByRole('dialog', { name: 'Edit work' })
+    expect(within(dialog).getByText('Only this VPN cuts for a few seconds.')).toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
+    expect(await screen.findByText('VPN “work” saved and reconnected.')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/vpns/work?reconnect=true' && i?.method === 'PUT')).toBe(true)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit home' }))
+    dialog = await screen.findByRole('dialog', { name: 'Edit home' })
+    expect(within(dialog).queryByText('Only this VPN cuts for a few seconds.')).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'Save and reconnect' })).not.toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/vpns/home' && i?.method === 'PUT')).toBe(true))
+  })
+
+  it('editing a connected VPN on an older daemon: "Reconnecting…" while saving, then the toast offers Reconnect', async () => {
+    let release = () => {}
+    const held = new Promise<void>((r) => (release = r))
+    const fetchMock = stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work')]),
+        'PUT /api/v1/vpns/work?reconnect=true': async () => {
+          await held
+          return json({ status: 'updated', profile: 'work', restart_required: true, reconnect_required: true })
+        },
+        'POST /api/v1/tunnels/work/reload': () => json({ status: 'restarting', tunnel: 'work' }, 202),
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit work' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit work' })
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
+    expect(await within(dialog).findByRole('button', { name: 'Reconnecting…' })).toHaveAttribute('aria-busy', 'true')
+    release()
+    expect(await screen.findByText('Reconnect it to use the changes: only this VPN cuts for a few seconds.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Reconnect' }))
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/tunnels/work/reload' && i?.method === 'POST')).toBe(true),
+    )
+  })
+
   it('puts a daemon validation error on its field, with what to do', async () => {
     stubFetch(
       base({
         'GET /api/v1/vpns': () => json([profile('work'), profile('home', { failover: ['work'] })]),
-        'PUT /api/v1/vpns/work': () =>
+        'PUT /api/v1/vpns/work?reconnect=true': () =>
           json(
             { error: 'The backups form a loop: work → home → work.', hint: 'Remove one of those failover entries.', error_key: 'config.err.failover_cycle' },
             400,
@@ -156,7 +216,7 @@ describe('ProfilesPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Edit work' })
     expect(within(dialog).getByLabelText(/^Name/)).not.toHaveAttribute('readonly')
     // Pass the local check (daemon has the final say): no backup added, just save.
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
     expect(await within(dialog).findByText('The backups form a loop: work → home → work.')).toBeInTheDocument()
     expect(within(dialog).getByText('Remove one of those failover entries.')).toBeInTheDocument()
   })
@@ -165,7 +225,7 @@ describe('ProfilesPage', () => {
     const fetchMock = stubFetch(
       base({
         'GET /api/v1/vpns': () => json([profile('work'), profile('home', { failover: ['work'] }), profile('spare')]),
-        'PUT /api/v1/vpns/work': () => json({ status: 'updated', profile: 'work', restart_required: true }),
+        'PUT /api/v1/vpns/work?reconnect=true': () => json({ status: 'updated', profile: 'work', restart_required: true }),
       }),
     )
     render(<App />)
@@ -174,14 +234,14 @@ describe('ProfilesPage', () => {
     const add = within(dialog).getByRole('combobox', { name: 'Backup VPN to add' })
     await userEvent.selectOptions(add, 'home')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add backup' }))
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
     expect(await within(dialog).findByText('The backups form a loop: work → home → work.')).toBeInTheDocument()
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove home' }))
     await userEvent.selectOptions(within(dialog).getByRole('combobox', { name: 'Backup VPN to add' }), 'spare')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add backup' }))
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/work')).toMatchObject({ failover: ['spare'] }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
+    await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/work?reconnect=true')).toMatchObject({ failover: ['spare'] }))
     // Saved: the restart banner appears with its action.
     expect(await screen.findByText('Restart Kongtrol to use the changes')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Restart now' })).toBeEnabled()
@@ -267,7 +327,7 @@ describe('ProfilesPage', () => {
     const name = within(dialog).getByLabelText(/^Name/)
     await userEvent.clear(name)
     await userEvent.type(name, 'casa')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
     expect(await screen.findByText('VPN “home” is now called “casa”.')).toBeInTheDocument()
     expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/home')).toMatchObject({ name: 'casa' })
     expect(await screen.findByRole('button', { name: 'Restart now' })).toBeInTheDocument()
@@ -277,7 +337,7 @@ describe('ProfilesPage', () => {
     stubFetch(
       base({
         'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
-        'PUT /api/v1/vpns/work': () =>
+        'PUT /api/v1/vpns/work?reconnect=true': () =>
           json(
             {
               error: '"work" is connected or connecting: it cannot be renamed now',
@@ -294,7 +354,7 @@ describe('ProfilesPage', () => {
     const name = within(dialog).getByLabelText(/^Name/)
     await userEvent.type(name, '2')
     expect(within(dialog).getByText('“work” is connected: disconnect it to rename it.')).toBeInTheDocument()
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
     expect(await within(dialog).findByText('Disconnect it and save the new name again.')).toBeInTheDocument()
     await waitFor(() => expect(name).toHaveAttribute('aria-invalid', 'true'))
   })
@@ -303,7 +363,7 @@ describe('ProfilesPage', () => {
     let calls = 0
     const fetchMock = stubFetch(
       base({
-        'GET /api/v1/vpns': () => json([profile('work')]),
+        'GET /api/v1/vpns': () => json([profile('work'), profile('casa', { type: 'wireguard', config: '~/.kongtrol/configs/old.conf' })]),
         'POST /api/v1/vpns/import': (init) => {
           calls++
           const body = JSON.parse(String(init?.body)) as { name: string; overwrite?: boolean; content_base64: string }
@@ -325,10 +385,9 @@ describe('ProfilesPage', () => {
       }),
     )
     render(<App />)
-    await userEvent.click(await screen.findByRole('button', { name: /New VPN/ }))
-    await userEvent.click(await screen.findByRole('button', { name: /WireGuard/ }))
+    // Editing a WireGuard profile keeps the in-form import (new profiles use the add sheet).
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit casa' }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.type(within(dialog).getByLabelText(/^Name/), 'casa')
     const input = dialog.querySelector<HTMLInputElement>('input[type="file"]')!
     expect(input).toHaveAttribute('accept', '.conf')
 
@@ -385,5 +444,42 @@ describe('ProfilesPage', () => {
     render(<App />)
     expect(await screen.findByText('config file is broken')).toBeInTheDocument()
     expect(screen.getByText('Fix kongtrol.yaml line 3.')).toBeInTheDocument()
+  })
+})
+
+describe('ProfilesPage: profiles applied live (ADR-0053)', () => {
+  it('deleting a connected profile: the refusal says to disconnect it first, in the same dialog', async () => {
+    stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work'), profile('home')]),
+        'DELETE /api/v1/vpns/work': () =>
+          json(
+            { error: '"work" is connected or connecting: it cannot be deleted now', hint: 'Disconnect it and delete it again.', error_key: 'api.err.vpn_delete_busy' },
+            409,
+          ),
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Delete work' }))
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Delete' }))
+    const refused = await screen.findByRole('alertdialog', { name: 'Delete the VPN “work”?' })
+    expect(await within(refused).findByText('"work" is connected or connecting: it cannot be deleted now')).toBeInTheDocument()
+    expect(within(refused).getByText('Disconnect it and delete it again.')).toBeInTheDocument()
+  })
+
+  it('a reconnect that fails says so, keeps the settings and offers Reconnect', async () => {
+    stubFetch(
+      base({
+        'GET /api/v1/vpns': () => json([profile('work')]),
+        'PUT /api/v1/vpns/work?reconnect=true': () =>
+          json({ status: 'updated', profile: 'work', restart_required: false, reconnect_required: true, reconnect_error: 'work: tunnel did not come up' }),
+      }),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit work' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Edit work' })).getByRole('button', { name: 'Save and reconnect' }))
+    expect(await screen.findByText('VPN “work” saved, but it could not reconnect.')).toBeInTheDocument()
+    expect(screen.getByText(/work: tunnel did not come up · Press “Reconnect”/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-// Reglas (/rules) — which sites and networks go through each VPN · v1.0.0 · 2026-11-18
+// Reglas (/rules) — which sites and networks go through each VPN · v1.1.0 · 2026-11-19
 //
 // Parity with the classic Studio "Policies" tab (docs/dashboard-parity.md),
 // plus: success toasts, on_tunnel_down per row, overlaps explained, a
@@ -6,13 +6,14 @@
 // points for people who don't write globs or CIDRs. The editor opens
 // inline above the list (not a modal); delete asks first.
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAddSheet } from '../app/addLink'
 import { usePreferences } from '../app/preferences-context'
 import { PolicyEditor } from '../components/rules/PolicyEditor'
 import { Overlaps, PolicyList } from '../components/rules/PolicyList'
 import { ConfirmDelete, RulesHeader } from '../components/rules/shared'
 import { TestDestination } from '../components/rules/TestDestination'
 import { FileIcon, RouteIcon } from '../components/rules/icons'
-import { draftFromPolicy, emptyDraft, type Policy, type PolicyDraft } from '../components/rules/model'
+import { draftFromPolicy, type Policy, type PolicyDraft } from '../components/rules/model'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
@@ -22,7 +23,7 @@ import '../components/rules/rules.css'
 
 interface EditorState {
   key: number
-  original?: string | undefined
+  original: string
   initial: PolicyDraft
 }
 
@@ -38,10 +39,9 @@ export function RulesPage() {
   const profiles = useMemo(() => meta.data?.profiles ?? [], [meta.data])
   const list = policies.data ?? []
 
-  const openNew = useCallback(
-    () => setEditor((e) => ({ key: (e?.key ?? 0) + 1, initial: emptyDraft(profiles.length === 1 ? profiles[0] : '') })),
-    [profiles],
-  )
+  // New rules open the shell's "＋ Agregar" sheet (ADR-0055).
+  const { open: openAdd } = useAddSheet()
+  const openNew = useCallback(() => openAdd({ mode: 'rule' }), [openAdd])
   const openEdit = useCallback(
     (p: Policy) => setEditor((e) => ({ key: (e?.key ?? 0) + 1, original: p.name, initial: draftFromPolicy(p) })),
     [],
@@ -80,7 +80,7 @@ export function RulesPage() {
         busy={policies.isFetching}
         aside={
           list.length > 0 && (
-            <Button icon={<PlusIcon />} onClick={openNew} data-new="">
+            <Button icon={<PlusIcon />} onClick={openNew} aria-haspopup="dialog" data-new="">
               {t('rules.action.new')}
             </Button>
           )
@@ -96,7 +96,7 @@ export function RulesPage() {
             title={t('rules.empty.title')}
             body={t('rules.empty.body')}
             action={
-              <Button icon={<PlusIcon />} onClick={openNew} data-new="">
+              <Button icon={<PlusIcon />} onClick={openNew} aria-haspopup="dialog" data-new="">
                 {t('rules.empty.action')}
               </Button>
             }

@@ -1,4 +1,4 @@
-// Kongtrol UI — Ajustes data: settings, setup, restart, shutdown · v1.1.0 · 2026-11-18
+// Kongtrol UI — Ajustes data: settings, setup, restart, shutdown · v1.2.0 · 2026-11-19
 //
 // GET/PUT /api/v1/settings (internal/api/handlers_settings.go). The PUT is a
 // patch: every section sends only its own fields, so saving one section never
@@ -31,6 +31,8 @@ export interface Settings {
   /** Days kept, today included (0 = today and yesterday). */
   audit_log_retention_days?: number
   audit_log_sign: boolean
+  /** In-memory list of recent destinations (Tráfico › Recientes); on by default (ADR-0054). */
+  recent_connections_enabled?: boolean
 }
 
 export type SettingsPatch = Partial<Omit<Settings, 'dashboard_bind' | 'dashboard_port'>>

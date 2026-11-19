@@ -37,7 +37,8 @@ export interface DeleteRefusal {
  */
 export function deleteRefusal(err: unknown): DeleteRefusal | null {
   if (!(err instanceof ApiError) || err.status !== 409) return null
-  if (err.key === 'api.err.vpn_last') return { message: err.message, fix: err.hint, refs: [] }
+  // The last profile, or one that is connected right now (ADR-0053): no list, just what to do.
+  if (err.key === 'api.err.vpn_last' || err.key === 'api.err.vpn_delete_busy') return { message: err.message, fix: err.hint, refs: [] }
   if (err.key !== 'api.err.vpn_in_use') return null
   const [head = err.message, ...parts] = err.message.split(' · ')
   const refs: DeleteRefusal['refs'] = []

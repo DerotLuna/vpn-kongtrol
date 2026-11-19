@@ -67,3 +67,4 @@
 .k-sig[data-state='ok'] { color: var(--live); }
 .k-sig[data-state='bad'] { color: var(--danger); }
 .k-sig[data-state='none'] { color: var(--text-dim); }
+.k-ev__actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }

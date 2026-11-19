@@ -1,0 +1,37 @@
+{
+  "_comment": "Shared by internal/policy/classify_test.go (ClassifyTargets) and web/ui/src/components/add/model.test.ts (classifyTargets): the dashboard's \"+ Agregar\" sheet and `kongtrol policy add` must read the same entries the same way (ADR-0055).",
+  "cases": [
+    { "name": "domain with subdomains", "in": ["github.com"], "subdomains": true,
+      "domains": ["github.com", "*.github.com"], "ip_ranges": [], "apps": [], "first": "github.com", "invalid": [] },
+    { "name": "domain without subdomains", "in": ["GitHub.com."], "subdomains": false,
+      "domains": ["github.com"], "ip_ranges": [], "apps": [], "first": "github.com", "invalid": [] },
+    { "name": "url becomes its host", "in": ["https://Intranet.Example.com:8443/a?b#c"], "subdomains": true,
+      "domains": ["intranet.example.com", "*.intranet.example.com"], "ip_ranges": [], "apps": [], "first": "intranet.example.com", "invalid": [] },
+    { "name": "host with port and path", "in": ["example.com:443/x"], "subdomains": false,
+      "domains": ["example.com"], "ip_ranges": [], "apps": [], "first": "example.com", "invalid": [] },
+    { "name": "wildcard kept as written", "in": ["*.corp.example"], "subdomains": true,
+      "domains": ["*.corp.example"], "ip_ranges": [], "apps": [], "first": "*.corp.example", "invalid": [] },
+    { "name": "single label host", "in": ["intranet"], "subdomains": false,
+      "domains": ["intranet"], "ip_ranges": [], "apps": [], "first": "intranet", "invalid": [] },
+    { "name": "ip and cidr", "in": ["10.0.0.5", "10.0.0.0/8", "2001:db8::/32", "::1"], "subdomains": true,
+      "domains": [], "ip_ranges": ["10.0.0.5", "10.0.0.0/8", "2001:db8::/32", "::1"], "apps": [], "first": "10.0.0.5", "invalid": [] },
+    { "name": "ip inside a url", "in": ["http://192.168.1.10:8080/"], "subdomains": true,
+      "domains": [], "ip_ranges": ["192.168.1.10"], "apps": [], "first": "192.168.1.10", "invalid": [] },
+    { "name": "bracketed ipv6 with port", "in": ["[2001:db8::1]:443"], "subdomains": true,
+      "domains": [], "ip_ranges": ["2001:db8::1"], "apps": [], "first": "2001:db8::1", "invalid": [] },
+    { "name": "apps", "in": ["app:chrome.exe", "APP: C:\\Program Files\\x.exe "], "subdomains": true,
+      "domains": [], "ip_ranges": [], "apps": ["chrome.exe", "C:\\Program Files\\x.exe"], "first": "chrome.exe", "invalid": [] },
+    { "name": "mixed and deduplicated", "in": ["a.com", "a.com", "10.1.0.0/16", "app:x"], "subdomains": true,
+      "domains": ["a.com", "*.a.com"], "ip_ranges": ["10.1.0.0/16"], "apps": ["x"], "first": "a.com", "invalid": [] },
+    { "name": "invalid entries", "in": ["not a host", "app:", "10.0.0.0/99", "", "ok.com"], "subdomains": false,
+      "domains": ["ok.com"], "ip_ranges": [], "apps": [], "first": "ok.com", "invalid": ["not a host", "app:", "10.0.0.0/99"] },
+    { "name": "bad prefix on an ip is not a path", "in": ["10.0.0.0/40", "abc/12"], "subdomains": false,
+      "domains": ["abc"], "ip_ranges": [], "apps": [], "first": "abc", "invalid": ["10.0.0.0/40"] }
+  ],
+  "auto_name": [
+    { "first": "github.com", "via": "oficina", "want": "github.com por oficina" },
+    { "first": "C:\\Program Files\\App\\x.exe", "via": "casa", "want": "x.exe por casa" },
+    { "first": "/usr/bin/curl", "via": "casa", "want": "curl por casa" },
+    { "first": "a\"b<c>", "via": "v", "want": "abc por v" }
+  ]
+}

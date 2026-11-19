@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.1.1 · 2026-11-19
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.2.0 · 2026-11-19
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -92,10 +92,12 @@ export interface ProfileChangeResult {
   /** The old name, when status is "renamed". */
   previous?: string
   restart_required?: boolean
-  /** A connected VPN keeps its old settings until reconnected (ADR-0053). */
-  reconnect_required?: boolean
-  /** PUT ?reconnect=true: the tunnel was disconnected and is reconnecting. */
+  /** PUT ?reconnect=true: the daemon reconnected the tunnel with the new settings. */
   reconnected?: boolean
+  /** An older daemon saved but did not reconnect: offer "Reconectar". */
+  reconnect_required?: boolean
+  /** The reconnect was tried and failed (the settings are saved). */
+  reconnect_error?: string
 }
 
 /** POST /api/v1/vpns/import body (handlers_vpn_import.go importReq). */
@@ -127,6 +129,10 @@ export interface DetectedClient {
   label: string
   adapter_type: string
   path: string
+  /** Its tunnel is up right now; null = Kongtrol cannot tell for this client (ADR-0053). */
+  active?: boolean | null
+  /** The tunnel interface while active. */
+  interface?: string
 }
 
 /** POST /api/v1/groups/{name}/connect (handlers_groups.go). */
@@ -153,8 +159,9 @@ const enc = encodeURIComponent
 export const profilesApi = {
   list: () => http.get<VPNProfile[] | null>('/api/v1/vpns').then((l) => l ?? []),
   create: (body: ProfileRequest) => http.post<ProfileChangeResult>('/api/v1/vpns', body),
-  update: (name: string, body: ProfileRequest) =>
-    http.put<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`, body),
+  /** reconnect: a connected tunnel is reconnected with the new settings (only that VPN cuts briefly). */
+  update: (name: string, body: ProfileRequest, reconnect = false) =>
+    http.put<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}${reconnect ? '?reconnect=true' : ''}`, body),
   remove: (name: string) => http.delete<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`),
   /** Validated like the privileged helper does; 409 api.err.import_exists unless overwrite. */
   importFile: (body: ImportRequest) => http.post<ImportResult>('/api/v1/vpns/import', body),
@@ -242,13 +249,15 @@ export interface SaveProfileVars {
   /** Profile being edited; undefined = create. */
   original?: string | undefined
   body: ProfileRequest
+  /** Editing a connected profile: reconnect it with the new settings. */
+  reconnect?: boolean
 }
 
 export function useSaveProfile() {
   const client = useQueryClient()
   return useMutation<ProfileChangeResult, unknown, SaveProfileVars>({
-    mutationFn: ({ original, body }) =>
-      original ? profilesApi.update(original, body) : profilesApi.create(body),
+    mutationFn: ({ original, body, reconnect }) =>
+      original ? profilesApi.update(original, body, reconnect) : profilesApi.create(body),
     onSuccess: (res) => {
       if (res?.restart_required !== false) markRestartPending()
       // A rename also rewrote policies, groups, schedules, expected IPs and

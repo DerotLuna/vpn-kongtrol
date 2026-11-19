@@ -13,6 +13,7 @@
 // refer to.
 import common from './common'
 import activity from './pages/activity'
+import add from './pages/add'
 import home from './pages/home'
 import profiles from './pages/profiles'
 import rules from './pages/rules'
@@ -24,10 +25,11 @@ import tray from './pages/tray'
 export type Lang = 'es' | 'en'
 
 /** Every module, for the duplicate-key test. Order does not matter. */
-export const MODULES = { common, home, profiles, rules, traffic, security, activity, settings, tray } as const
+export const MODULES = { common, add, home, profiles, rules, traffic, security, activity, settings, tray } as const
 
 const es = {
   ...common.es,
+  ...add.es,
   ...home.es,
   ...profiles.es,
   ...rules.es,
@@ -43,6 +45,7 @@ export type Messages = Record<MessageKey, string>
 
 const en: Messages = {
   ...common.en,
+  ...add.en,
   ...home.en,
   ...profiles.en,
   ...rules.en,

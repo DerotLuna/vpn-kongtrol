@@ -34,6 +34,7 @@ import { TextField } from '../ui/Field'
 import { CheckIcon, AlertIcon, InfoIcon, RefreshIcon } from '../ui/icons'
 import { EmptyState, Skeleton } from '../ui/States'
 import { SectionError } from './SectionError'
+import { AddButton } from '../add/entries'
 
 interface Props {
   tunnels: readonly TunnelMetrics[]
@@ -150,6 +151,13 @@ function LookupResult({ result, input, verdict }: { result: ResolveResult; input
             <span className="k-btn__label">{t('traffic.lookup.goHome')}</span>
           </Link>
         )}
+        <AddButton
+          req={result.app ? { mode: 'rule', app: result.app } : { mode: 'rule', target: result.target || input }}
+          variant="text"
+          className="tr-result__action"
+        >
+          {t('add.thisVia')}
+        </AddButton>
         {showDns && 'via' in verdict && <DnsDetail key={`${result.target}|${verdict.via}`} domain={result.target} via={verdict.via} />}
       </div>
     </div>

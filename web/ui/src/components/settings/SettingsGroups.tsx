@@ -1,18 +1,22 @@
-// Kongtrol UI — Ajustes: appearance, privacy, help links · v1.0.0 · 2026-11-18
+// Kongtrol UI — Ajustes: appearance, privacy, help links · v1.1.0 · 2026-11-19
 //
 // Language and theme go through PreferencesProvider (the same
 // ~/.kongtrol/preferences.json the tray and CLI read). Privacy only links the
 // public IP lookup to Seguridad, where its single switch and "uses an external
-// service" notice live (legacy had a second, notice-less switch here).
+// service" notice live (legacy had a second, notice-less switch here); the
+// recent connections switch (memory only) lives here.
 import { useId } from 'react'
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSecurityQuery } from '../../data/resources'
+import { useSaveSettings, useSettingsQuery } from '../../data/settings'
 import type { Lang } from '../../i18n/messages'
 import { guideLink, siteLink } from '../../links'
 import type { Theme } from '../../theme/theme'
 import { ExternalLink } from '../ui/ExternalLink'
 import { StatusPill } from '../ui/StatusPill'
+import { Switch } from '../ui/Switch'
 import { SettingRow, SettingsSection } from './SettingsSection'
 
 interface Option<V extends string> {
@@ -111,11 +115,39 @@ export function PublicIPRow() {
   )
 }
 
+/**
+ * Tráfico › Recientes (ADR-0054): the daemon keeps the list in memory only
+ * while this is on (settings `recent_connections_enabled`, on by default).
+ * An older daemon that does not send the field shows no switch.
+ */
+export function RecentConnectionsRow() {
+  const { t } = usePreferences()
+  const settings = useSettingsQuery()
+  const save = useSaveSettings()
+  const client = useQueryClient()
+  const value = settings.data?.recent_connections_enabled
+  if (typeof value !== 'boolean') return null
+  return (
+    <Switch
+      checked={value}
+      onChange={(next) =>
+        save.mutate({ recent_connections_enabled: next }, { onSettled: () => void client.invalidateQueries({ queryKey: ['connections'] }) })
+      }
+      label={t('settings.recent')}
+      description={t('settings.recent.what')}
+      onText={t('settings.publicip.on')}
+      offText={t('settings.publicip.off')}
+      pending={save.isPending}
+    />
+  )
+}
+
 export function PrivacySection() {
   const { t } = usePreferences()
   return (
     <SettingsSection id="privacy" title={t('settings.privacy.title')} what={t('settings.privacy.what')}>
       <PublicIPRow />
+      <RecentConnectionsRow />
     </SettingsSection>
   )
 }

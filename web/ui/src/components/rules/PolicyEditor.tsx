@@ -1,9 +1,9 @@
-// Reglas — create / edit one rule, inline (not a modal) · v1.0.0 · 2026-11-18
+// Reglas — edit one rule, inline (not a modal) · v1.1.0 · 2026-11-19
 //
 // Plain fields first (name, VPN, sites, networks, what happens when the
 // VPN is off), apps behind a disclosure because the daemon only uses them
-// to test and diagnose today. Starting points for people who do not write
-// globs or CIDRs; raw one-per-line editing for everyone else. Validation
+// to test and diagnose today; raw one-per-line editing. New rules start in
+// the shell's "＋ Agregar" sheet (ADR-0055). Validation
 // on submit, then live; focus goes to the first problem. A refusal from
 // the daemon stays next to the form (and as a toast).
 import { useId, useRef, useState, type FormEvent } from 'react'
@@ -23,26 +23,22 @@ import {
   ON_TUNNEL_DOWN,
   POLICY_FIELDS,
   splitTestInput,
-  templateDraft,
   toPayload,
   validatePolicy,
   type Policy,
   type PolicyDraft,
   type PolicyErrors,
-  type TemplateId,
 } from './model'
 import { policyErrorText } from './preview'
 
 interface Props {
-  /** Undefined = new rule. */
-  original?: string | undefined
+  /** The saved name (renames supported). New rules start in the "＋ Agregar" sheet (ADR-0055). */
+  original: string
   initial: PolicyDraft
   policies: readonly Policy[]
   profiles: readonly string[]
   onClose: () => void
 }
-
-const TEMPLATE_IDS: readonly TemplateId[] = ['company', 'network', 'site']
 
 export function PolicyEditor({ original, initial, policies, profiles, onClose }: Props) {
   const { t } = usePreferences()
@@ -52,7 +48,6 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
   useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(initial))
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState<unknown>(null)
-  const [template, setTemplate] = useState<TemplateId | null>(null)
   const titleId = useId()
 
   const ctx = { names: policies.map((p) => p.name), editing: original, profiles }
@@ -60,16 +55,6 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
   const err = (f: keyof PolicyErrors) => (errors[f] ? policyErrorText(f, errors[f], t) : null)
 
   const set = <K extends keyof PolicyDraft>(k: K, v: PolicyDraft[K]) => setDraft((d) => ({ ...d, [k]: v }))
-
-  const applyTemplate = (id: TemplateId) => {
-    setTemplate(id)
-    const names = { company: t('rules.template.domain'), site: t('rules.template.siteDomain') }
-    setDraft((d) => ({
-      ...d,
-      ...templateDraft(id, names),
-      name: d.name || t(`rules.template.${id}.name` as MessageKey),
-    }))
-  }
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -98,36 +83,10 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
       className="r-editor"
       title={
         <span id={titleId} tabIndex={-1} data-autofocus>
-          {original ? t('rules.editor.editTitle', { name: original }) : t('rules.editor.newTitle')}
+          {t('rules.editor.editTitle', { name: original })}
         </span>
       }
     >
-      {!original && (
-        <div className="r-templates">
-          <p className="r-templates__lead">{t('rules.template.lead')}</p>
-          <div className="r-templates__list">
-            {TEMPLATE_IDS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                className="r-template"
-                aria-pressed={template === id}
-                onClick={() => applyTemplate(id)}
-              >
-                <strong>{t(`rules.template.${id}` as MessageKey)}</strong>
-                <span>{t(`rules.template.${id}.what` as MessageKey)}</span>
-              </button>
-            ))}
-          </div>
-          {template && (
-            <p className="r-callout" role="status">
-              <InfoIcon />
-              <span>{t(`rules.template.${template}.edit` as MessageKey)}</span>
-            </p>
-          )}
-        </div>
-      )}
-
       <form ref={formRef} className="r-form" noValidate onSubmit={onSubmit} aria-labelledby={titleId}>
         <div className="r-form__grid">
           <TextField
@@ -245,7 +204,7 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
 
         <div className="r-form__actions">
           <Button type="submit" loading={save.isPending}>
-            {original ? t('rules.action.saveChanges') : t('rules.action.create')}
+            {t('rules.action.saveChanges')}
           </Button>
           <Button variant="text" onClick={onClose}>
             {t('rules.action.cancel')}

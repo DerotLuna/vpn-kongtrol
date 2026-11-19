@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Reglas (/rules) and Horarios (/rules/schedule) · v1.2.0 · 2026-11-18
+// Kongtrol UI strings — Reglas (/rules) and Horarios (/rules/schedule) · v1.3.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -15,7 +15,6 @@ const es = {
   'rules.vpn.unknown': 'Sin estado',
   'rules.action.cancel': 'Cancelar',
   'rules.action.saveChanges': 'Guardar cambios',
-  'rules.action.create': 'Crear regla',
   'rules.action.new': 'Nueva regla',
   'rules.action.editNamed': 'Editar «{name}»',
   'rules.action.deleteNamed': 'Borrar «{name}»',
@@ -41,28 +40,12 @@ const es = {
   'rules.reload.what': '¿Editaste el archivo de configuración a mano? Kongtrol puede volver a leerlo sin reiniciar:',
   'rules.reload.action': 'Volver a leer el archivo',
 
-  'rules.editor.newTitle': 'Nueva regla',
   'rules.editor.editTitle': 'Editar «{name}»',
   'rules.editor.priority':
     'Si dos reglas con VPN distintas cubren el mismo sitio, gana la de la VPN con más prioridad (el número mayor).',
   'rules.editor.priority.link': 'Cambiar la prioridad en Perfiles',
 
   'rules.template.domain': 'miempresa.com',
-  'rules.template.siteDomain': 'ejemplo.com',
-  'rules.template.lead': 'Empieza con un ejemplo o rellena los campos:',
-  'rules.template.company': 'Las webs de mi empresa',
-  'rules.template.company.what': 'Todo miempresa.com por la VPN del trabajo',
-  'rules.template.company.name': 'Webs de la empresa',
-  'rules.template.company.edit': 'Cambia miempresa.com por el dominio de tu empresa y elige la VPN del trabajo.',
-  'rules.template.network': 'Una red del trabajo',
-  'rules.template.network.what': 'Servidores internos (10.x.x.x) por la VPN',
-  'rules.template.network.name': 'Red interna',
-  'rules.template.network.edit':
-    '10.0.0.0/8 es un ejemplo habitual: pregunta a tu equipo de IT qué red usa tu empresa y elige la VPN del trabajo.',
-  'rules.template.site': 'Un sitio por otra VPN',
-  'rules.template.site.what': 'Por ejemplo, un servicio de otro país',
-  'rules.template.site.name': 'Sitio por VPN',
-  'rules.template.site.edit': 'Cambia ejemplo.com por el sitio que quieras y elige la VPN por la que debe salir.',
 
   'rules.field.name': 'Nombre',
   'rules.field.name.placeholder': 'Webs del trabajo',
@@ -298,7 +281,6 @@ const en: Strings<typeof es> = {
   'rules.vpn.unknown': 'No status',
   'rules.action.cancel': 'Cancel',
   'rules.action.saveChanges': 'Save changes',
-  'rules.action.create': 'Create rule',
   'rules.action.new': 'New rule',
   'rules.action.editNamed': 'Edit “{name}”',
   'rules.action.deleteNamed': 'Delete “{name}”',
@@ -324,28 +306,12 @@ const en: Strings<typeof es> = {
   'rules.reload.what': 'Edited the configuration file by hand? Kongtrol can read it again without restarting:',
   'rules.reload.action': 'Read the file again',
 
-  'rules.editor.newTitle': 'New rule',
   'rules.editor.editTitle': 'Edit “{name}”',
   'rules.editor.priority':
     'If two rules with different VPNs cover the same site, the one whose VPN has the higher priority (the larger number) wins.',
   'rules.editor.priority.link': 'Change priority in Profiles',
 
   'rules.template.domain': 'mycompany.com',
-  'rules.template.siteDomain': 'example.com',
-  'rules.template.lead': 'Start from an example or fill in the fields:',
-  'rules.template.company': 'My company’s sites',
-  'rules.template.company.what': 'All of mycompany.com through the work VPN',
-  'rules.template.company.name': 'Company sites',
-  'rules.template.company.edit': 'Replace mycompany.com with your company’s domain and pick the work VPN.',
-  'rules.template.network': 'A work network',
-  'rules.template.network.what': 'Internal servers (10.x.x.x) through the VPN',
-  'rules.template.network.name': 'Internal network',
-  'rules.template.network.edit':
-    '10.0.0.0/8 is a common example: ask your IT team which network your company uses, and pick the work VPN.',
-  'rules.template.site': 'One site through another VPN',
-  'rules.template.site.what': 'For example, a service from another country',
-  'rules.template.site.name': 'Site through VPN',
-  'rules.template.site.edit': 'Replace example.com with the site you want and pick the VPN it should go through.',
 
   'rules.field.name': 'Name',
   'rules.field.name.placeholder': 'Work sites',

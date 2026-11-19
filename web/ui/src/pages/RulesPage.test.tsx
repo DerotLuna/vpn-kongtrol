@@ -48,11 +48,12 @@ describe('Rules page', () => {
     expect(screen.getByText('/home/u/.kongtrol/kongtrol.yaml')).toBeInTheDocument()
   })
 
-  it('teaches with an empty state and creates a rule from a template, validating inline first', async () => {
+  it('teaches with an empty state; "Create the first rule" opens the add sheet and saves one sentence as a rule', async () => {
     let body: unknown = null
     stubFetch(
       routes(
         {
+          'GET /api/v1/vpns': () => json([{ name: 'home', type: 'nordvpn' }, { name: 'office', type: 'forticlient' }]),
           'POST /api/v1/policies': (init) => {
             body = JSON.parse(String(init?.body))
             return json({ status: 'created' }, 201)
@@ -65,29 +66,25 @@ describe('Rules page', () => {
     expect(await screen.findByText('No rules yet')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Create the first rule' }))
 
-    // Nothing filled: errors name the problem and say what to do; focus goes to the first one.
-    await userEvent.click(screen.getByRole('button', { name: 'Create rule' }))
-    expect(screen.getByText('The name is missing.')).toBeInTheDocument()
-    expect(screen.getByText('Add at least one website, IP or network.')).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: /Name/ })).toHaveFocus()
+    const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
+    expect(new URLSearchParams(window.location.search).get('add')).toBe('rule')
+    // Nothing typed: the error names the problem and says what to do.
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save rule' }))
+    expect(within(sheet).getByText('Type a site, an IP or a program.')).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole('button', { name: /My company’s sites/ }))
-    expect(screen.getByText(/Replace mycompany.com with your company’s domain/)).toBeInTheDocument()
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: /Goes through VPN/ }), 'office')
-    const sites = screen.getByRole('textbox', { name: 'Websites' })
-    await userEvent.clear(sites)
-    await userEvent.type(sites, 'https://git.acme.test/x{enter}*.acme.test')
-    expect(screen.getByRole('radio', { name: /Block this traffic/ })).toBeChecked()
-    await userEvent.click(screen.getByRole('button', { name: 'Create rule' }))
+    await userEvent.type(within(sheet).getByRole('textbox', { name: /Site, IP or program/ }), 'https://git.acme.test/x')
+    // "Goes through" starts on the connected profile.
+    expect(within(sheet).getByRole('combobox', { name: /Goes through/ })).toHaveValue('office')
+    await userEvent.click(within(sheet).getByRole('radio', { name: 'Block it' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save rule' }))
 
-    expect(await screen.findByText('Rule “Company sites” created. It applies now.')).toBeInTheDocument()
+    expect(await within(sheet).findByText('The rule “git.acme.test via office” is saved.')).toBeInTheDocument()
     expect(body).toEqual({
-      name: 'Company sites',
+      name: 'git.acme.test via office',
       via: 'office',
       on_tunnel_down: 'block',
-      match: { domains: ['git.acme.test', '*.acme.test'], ip_ranges: [], apps: [] },
+      match: { domains: ['git.acme.test', '*.git.acme.test'], ip_ranges: [], apps: [] },
     })
-    expect(screen.queryByRole('button', { name: 'Create rule' })).toBeNull()
   })
 
   it('keeps the form and shows the daemon’s refusal next to it', async () => {

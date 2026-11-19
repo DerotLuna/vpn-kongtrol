@@ -4,6 +4,7 @@
 // groups with counts and chips, "all your traffic", "nothing yet" and the
 // "everything else →" line.
 import { usePreferences } from '../../app/preferences-context'
+import { AddButton } from '../add/entries'
 import { groupTunnelRoutes, type TunnelRoutes, type TunnelRoutesResponse } from '../../data/traffic'
 
 function restLine(t: ReturnType<typeof usePreferences>['t'], tr: TunnelRoutesResponse | undefined): string {
@@ -44,6 +45,9 @@ export function TunnelRoutesPanel({ routes, all, id }: { routes: TunnelRoutes; a
         )
       })}
       <p className="tr-routes__rest">{restLine(t, all)}</p>
+      <AddButton req={{ mode: 'rule', via: routes.name }} variant="text">
+        {t('add.siteVia', { vpn: routes.name })}
+      </AddButton>
     </div>
   )
 }

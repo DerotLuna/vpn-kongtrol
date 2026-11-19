@@ -316,6 +316,13 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   Requests only through `http.get/post/put/delete` in `src/api/client.ts` (language header,
   auth, reachability, `ApiError`); data modules keep their endpoints next to their hooks.
 - Auth only in `src/api/auth.ts` (no token handling anywhere else; 401 → "open from Kongtrol").
+- Every "add" (profile, imported file, rule) opens the one shell-hosted "＋ Agregar" sheet
+  (`src/components/add`, ADR-0055) through the deep link `?add=menu|vpn|file|rule[&via=&target=&app=]`
+  (`src/app/addLink.ts` `useAddSheet`); never a page-local create form. New profiles always
+  "Guardar y activar" (create; the sheet restarts itself only on `restart_required: true`);
+  editing a connected profile saves with
+  "Guardar y reconectar" (`PUT ?reconnect=true`). The sheet reads "Sitio, IP o programa" like
+  `policy.ClassifyTargets` (shared table `internal/policy/testdata/classify_targets.json`).
 - UI kit in `src/components/ui` (review at `/_kit`, dev builds only); shell in
   `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.
 - Strings: `src/i18n/common.ts` (shared) + `src/i18n/pages/<page>.ts`, composed in

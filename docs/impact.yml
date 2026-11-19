@@ -78,6 +78,7 @@ features:
       - cmd/kongtrol/wizard_policies.go
       - cmd/kongtrol-tray/tray_policy.go
       - web/ui/src/components/rules/**
+      - web/ui/src/components/add/**
       - web/ui/src/components/home/NoticesCard.tsx
     surfaces:
       - AGENTS.md#policies
@@ -271,6 +272,7 @@ features:
       - cmd/kongtrol/cmd_profile_add.go
       - web/ui/src/components/profiles/ImportFile.tsx
       - web/ui/src/components/profiles/importModel.ts
+      - web/ui/src/components/add/FileStep.tsx
     surfaces:
       - AGENTS.md#profile_import
       - docs/SETUP.md#profile_import

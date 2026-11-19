@@ -1,14 +1,16 @@
-// Kongtrol UI — Actividad: daemon notices timeline · v1.0.0 · 2026-11-18
+// Kongtrol UI — Actividad: daemon notices timeline · v1.1.0 · 2026-11-19
 //
 // The notices the tray and the classic panel show as toasts (GET
 // /api/v1/events), kept as a readable history: newest first, grouped by
 // day, each in plain language from its i18n key (never pre-rendered by the
 // daemon). A notice about traffic for a tunnel that is off offers "Conectar"
-// in place, through the same optimistic tunnel action as Inicio.
+// in place, through the same optimistic tunnel action as Inicio; every
+// notice about a profile offers "＋" (send a site through it, ADR-0055).
 import { memo, useMemo } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { eventText, useEventsHistory, type DaemonEvent } from '../../data/activity'
 import { useTunnelAction } from '../../data/resources'
+import { AddRuleIcon } from '../add/entries'
 import { Button } from '../ui/Button'
 import { AlertIcon, InfoIcon, PlugIcon } from '../ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
@@ -39,10 +41,15 @@ const EventRow = memo(function EventRow({ ev, onConnect, busy }: { ev: DaemonEve
           {ev.profile && <span className="mono k-ev__profile">{ev.profile}</span>}
         </p>
       </div>
-      {ev.can_connect && ev.profile && (
-        <Button variant="outlined" size="sm" icon={<PlugIcon />} loading={busy} onClick={() => onConnect(ev.profile!)}>
-          {t('activity.event.policy.event.action_connect', { 0: ev.profile })}
-        </Button>
+      {ev.profile && (
+        <div className="k-ev__actions">
+          {ev.can_connect && (
+            <Button variant="outlined" size="sm" icon={<PlugIcon />} loading={busy} onClick={() => onConnect(ev.profile!)}>
+              {t('activity.event.policy.event.action_connect', { 0: ev.profile })}
+            </Button>
+          )}
+          <AddRuleIcon via={ev.profile} />
+        </div>
       )}
     </li>
   )

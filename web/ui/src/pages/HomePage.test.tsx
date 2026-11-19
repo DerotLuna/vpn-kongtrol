@@ -144,11 +144,13 @@ describe('Inicio: states', () => {
     expect(screen.queryByRole('button', { name: 'Instalar ayudante' })).toBeNull()
   })
 
-  it('first run: no VPNs yet → one primary "Agregar VPN" to Perfiles + the quick start guide', async () => {
+  it('first run: no VPNs yet → one primary "Agregar VPN" that opens the add sheet + the quick start guide', async () => {
     stubApi(base([]))
     render(<App />)
     expect(await screen.findByRole('heading', { name: 'Agrega tu primera VPN' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Agregar VPN' })).toHaveAttribute('href', '/profiles')
+    await userEvent.click(screen.getByRole('button', { name: 'Agregar VPN' }))
+    expect(await screen.findByRole('dialog', { name: 'Agregar' })).toBeInTheDocument()
+    expect(new URLSearchParams(window.location.search).get('add')).toBe('menu')
     expect(screen.getByRole('link', { name: /guía de inicio rápido/ })).toHaveAttribute('target', '_blank')
     expect(screen.queryByRole('button', { name: 'Conectar todas' })).toBeNull()
   })

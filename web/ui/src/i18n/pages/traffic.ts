@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Tráfico (/traffic) · v2.0.0 · 2026-11-18
+// Kongtrol UI strings — Tráfico (/traffic) · v2.1.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -137,6 +137,20 @@ const es = {
   'traffic.net.publicIpOff': 'Desactivada (actívala en Seguridad)',
   'traffic.net.note': 'Lo que ninguna regla manda por una VPN sigue tu salida por defecto.',
   'traffic.net.loading': 'Leyendo tu red…',
+  'traffic.recent.title': 'Recientes',
+  'traffic.recent.what': 'A dónde se conectó este equipo en la última hora y por dónde salió. Solo en memoria: se borra al cerrar Kongtrol.',
+  'traffic.recent.caption': 'Conexiones recientes, de la más nueva a la más vieja',
+  'traffic.recent.col.dest': 'Destino',
+  'traffic.recent.col.program': 'Programa',
+  'traffic.recent.col.via': 'Salió por',
+  'traffic.recent.col.seen': 'Visto',
+  'traffic.recent.direct': 'Conexión normal',
+  'traffic.recent.loading': 'Cargando conexiones recientes…',
+  'traffic.recent.empty': 'Nada todavía: aparecen a medida que este equipo se conecta a sitios.',
+  'traffic.recent.off': 'La lista de conexiones recientes está apagada.',
+  'traffic.recent.off.fix': 'Actívala en Ajustes › Privacidad. Se guarda solo en memoria.',
+  'traffic.recent.off.action': 'Ir a Privacidad',
+  'traffic.recent.unsupported': 'En este sistema Kongtrol aún no puede ver las conexiones sin permisos de administrador.',
 } as const
 
 const en: Strings<typeof es> = {
@@ -266,6 +280,20 @@ const en: Strings<typeof es> = {
   'traffic.net.publicIpOff': 'Off (turn it on in Security)',
   'traffic.net.note': 'Traffic no rule sends through a VPN follows your default egress.',
   'traffic.net.loading': 'Reading your network…',
+  'traffic.recent.title': 'Recent',
+  'traffic.recent.what': 'Where this computer connected in the last hour and which way it went. Memory only: cleared when Kongtrol closes.',
+  'traffic.recent.caption': 'Recent connections, newest first',
+  'traffic.recent.col.dest': 'Destination',
+  'traffic.recent.col.program': 'Program',
+  'traffic.recent.col.via': 'Went through',
+  'traffic.recent.col.seen': 'Seen',
+  'traffic.recent.direct': 'Normal connection',
+  'traffic.recent.loading': 'Loading recent connections…',
+  'traffic.recent.empty': 'Nothing yet: entries appear as this computer connects to sites.',
+  'traffic.recent.off': 'The recent connections list is off.',
+  'traffic.recent.off.fix': 'Turn it on in Settings › Privacy. It is kept in memory only.',
+  'traffic.recent.off.action': 'Go to Privacy',
+  'traffic.recent.unsupported': 'On this system Kongtrol cannot see connections yet without administrator rights.',
 }
 
 export default { es, en }

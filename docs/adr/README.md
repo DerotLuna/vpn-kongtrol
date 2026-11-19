@@ -67,6 +67,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0052](0052-app-icon-and-installer-branding.md) | App icon: Ink squircle plate with the solid mark in Bone (the only logo with a background), plain mid-tone mark up to 24 px, per-platform geometry; icon in `kongtrol.exe` too (`rsrc`); Inno wizard images per DPI, tagline as translated text, cut-off Ready text fixed; refines ADR-0044 §2, ADR-0047 §4 | Accepted | 2026-11-19 |
 | [0053](0053-profiles-applied-live.md) | VPN profiles created, edited, renamed and deleted without restarting the daemon (`vpn.Set` copy-on-write + `app.AdapterSync`); a connected profile keeps its settings until reconnected (`reconnect_required`, `?reconnect=true`); detect says if an app's tunnel is up | Accepted | 2026-11-19 |
 | [0054](0054-recent-destinations-memory-only.md) | Recent destinations (`/api/v1/connections/recent`, `kongtrol traffic recent`): memory only, 500 entries, 1 h, on by default with a switch | Accepted | 2026-11-19 |
+| [0055](0055-add-sheet-one-entry-point.md) | One "＋ Agregar" sheet hosted by the dashboard shell for every add (VPN I use, file import, site through a VPN), deep link `?add=…`; "Guardar y activar" restarts only when the daemon cannot apply it live; connected edits "Guardar y reconectar"; input read like `policy.ClassifyTargets` (shared test table) | Accepted | 2026-11-19 |
 
 ## Statuses
 

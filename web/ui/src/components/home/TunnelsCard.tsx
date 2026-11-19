@@ -7,7 +7,6 @@
 // subscribe on their own. Four States: skeleton on first load, the error
 // with what to do, the first-run step when there are no VPNs, the table.
 import { useMemo } from 'react'
-import { Link } from 'react-router'
 import type { TunnelMetrics } from '../../api/types'
 import { usePreferences } from '../../app/preferences-context'
 import { bulkTargets, useTunnelActions } from '../../data/home'
@@ -17,12 +16,13 @@ import { Button, IconButton } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { DataList, type Column } from '../ui/DataList'
 import { ExternalLink } from '../ui/ExternalLink'
-import { PlugIcon, PlusIcon, RefreshIcon } from '../ui/icons'
+import { PlugIcon, RefreshIcon } from '../ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { formatBytes, formatDuration } from './format'
 import { LatencySparkline } from './Sparkline'
 import { TunnelRoutesRow } from './TunnelRoutes'
 import { TunnelActionsCell, TunnelStatusCell } from './TunnelRow'
+import { AddButton, AddRuleIcon } from '../add/entries'
 
 interface Props {
   tunnels: TunnelMetrics[] | undefined
@@ -77,7 +77,17 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
             <Dash />
           ),
       },
-      { id: 'actions', header: t('home.col.actions'), hideHeader: true, cell: (tn) => <TunnelActionsCell tn={tn} /> },
+      {
+        id: 'actions',
+        header: t('home.col.actions'),
+        hideHeader: true,
+        cell: (tn) => (
+          <span className="home-row-actions">
+            <TunnelActionsCell tn={tn} />
+            <AddRuleIcon via={tn.Name} />
+          </span>
+        ),
+      },
     ],
     [t, lang],
   )
@@ -133,10 +143,7 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
           body={t('home.firstRun.body')}
           action={
             <div className="home-empty-actions">
-              <Link to="/profiles" className="k-btn k-btn--filled k-btn--md">
-                <PlusIcon />
-                <span className="k-btn__label">{t('home.firstRun.action')}</span>
-              </Link>
+              <AddButton req={{ mode: 'menu' }}>{t('home.firstRun.action')}</AddButton>
               <ExternalLink href={guideLink('quickstart')}>{t('help.quickstart')}</ExternalLink>
             </div>
           }
