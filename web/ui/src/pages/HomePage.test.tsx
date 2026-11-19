@@ -8,7 +8,7 @@ import type { TunnelMetrics } from '../api/types'
 import { DataProvider } from '../app/DataProvider'
 import { PreferencesProvider } from '../app/PreferencesProvider'
 import { formatBytes, formatDuration, formatClock } from '../components/home/format'
-import { attachKey, attachWaiting, securityView, sparkPoints } from '../components/home/model'
+import { attachKey, attachWaiting, routesOpen, securityView, sparkPoints } from '../components/home/model'
 import { TunnelsCard } from '../components/home/TunnelsCard'
 import {
   LATENCY_SAMPLES,
@@ -110,6 +110,7 @@ beforeEach(() => {
   sessionStorage.clear()
   latencyHistory.set({})
   pendingActions.set({})
+  routesOpen.set({})
   recentNotices.set([])
   FakeSocket.reset()
 })
@@ -131,7 +132,7 @@ describe('Inicio: states', () => {
     expect(within(row).getByText('42 ms')).toBeInTheDocument()
     // Accessible names carry the tunnel: "Desconectar work", not a bare "Desconectar".
     expect(within(row).getByRole('button', { name: 'Desconectar work' })).toBeEnabled()
-    expect(within(row).getByRole('button', { name: 'Recargar work' })).toBeEnabled()
+    expect(within(row).getByRole('button', { name: 'Reconectar work' })).toBeEnabled()
 
     const off = await rowOf('home')
     expect(within(off).getByText('Desconectada')).toHaveClass('pill')
@@ -220,11 +221,11 @@ describe('Inicio: tunnel lines', () => {
     expect(within(office).getByText('privops: file /etc/x.conf owned by uid 0')).toBeVisible()
   })
 
-  it('"Qué sale por este túnel" opens in place (aria-expanded) and groups routes by origin', async () => {
+  it('"Rutas" opens in place (aria-expanded) and groups routes by origin', async () => {
     stubApi(base([work]))
     render(<App />)
     const row = await rowOf('work')
-    const toggle = await within(row).findByRole('button', { name: 'Qué sale por este túnel (3)' })
+    const toggle = await within(row).findByRole('button', { name: 'Rutas (3)' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     await userEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
@@ -235,6 +236,16 @@ describe('Inicio: tunnel lines', () => {
     expect(within(panel).getByText(/Lo envió el servidor de la VPN/)).toBeInTheDocument()
     expect(within(panel).getByText('Todo lo demás sale por Wi-Fi.')).toBeInTheDocument()
     expect(within(panel).getByRole('link', { name: 'Ver todas las rutas en Tráfico' })).toHaveAttribute('href', '/traffic')
+    // Full width: its own row under the tunnel, one cell spanning every column.
+    const detail = panel.closest('tr')!
+    expect(detail).not.toBe(row)
+    expect(detail.previousElementSibling).toBe(row)
+    expect(panel.closest('td')).toHaveAttribute('colspan', String(row.children.length))
+    // The long question lives in the tooltip (aria-describedby), the label stays one short line.
+    expect(toggle).toHaveAccessibleDescription('Qué sale por este túnel: los destinos que van por esta VPN')
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(panel).not.toBeInTheDocument()
   })
 
   it('latency trend: an SVG with a text alternative, fed by live ticks', async () => {
@@ -302,6 +313,65 @@ describe('Inicio: tunnel actions', () => {
     expect(within(await rowOf('work')).getByText('Conectada')).toBeInTheDocument()
   })
 
+  it('disconnect in flight: row buttons inert, spinner + "Desconectando…", pill in transition, one request on double click', async () => {
+    let resolve!: (r: Response) => void
+    const fetchMock = stubApi(base([work], { 'POST /api/v1/tunnels/work/disconnect': () => new Promise<Response>((r) => (resolve = r)) }))
+    render(<App />)
+    const row = await rowOf('work')
+    await userEvent.dblClick(within(row).getByRole('button', { name: 'Desconectar work' }))
+
+    const pressed = await within(row).findByRole('button', { name: 'Desconectando… work' })
+    expect(pressed).toHaveAttribute('aria-busy', 'true')
+    expect(pressed).toHaveAttribute('aria-disabled', 'true')
+    expect(pressed.querySelector('.k-spinner')).not.toBeNull()
+    expect(pressed).toHaveFocus() // aria-disabled, not disabled: focus stays where the user pressed
+    const other = within(row).getByRole('button', { name: 'Reconectar work' })
+    expect(other).toHaveAttribute('aria-disabled', 'true')
+    expect(other).not.toHaveAttribute('aria-busy')
+    expect(within(row).getByText('Desconectando', { selector: '.pill' })).toHaveClass('connecting')
+
+    await userEvent.click(pressed)
+    await userEvent.click(other)
+    expect(posts(fetchMock)).toEqual(['/api/v1/tunnels/work/disconnect'])
+
+    resolve(new Response(JSON.stringify({ status: 'disconnected', tunnel: 'work' }), { status: 200 }))
+    await waitFor(() => expect(pendingActions.get()).toEqual({}))
+  })
+
+  it('reconnect in flight: the icon button spins, the pill says "Reconectando", Desconectar waits', async () => {
+    let resolve!: (r: Response) => void
+    const fetchMock = stubApi(base([work], { 'POST /api/v1/tunnels/work/reload': () => new Promise<Response>((r) => (resolve = r)) }))
+    render(<App />)
+    const row = await rowOf('work')
+    const icon = within(row).getByRole('button', { name: 'Reconectar work' })
+    expect(icon).toHaveAccessibleDescription('Reconectar: vuelve a leer su configuración guardada y reinicia la conexión')
+    expect(icon.querySelector('svg')).not.toBeNull()
+    await userEvent.dblClick(icon)
+
+    const pressed = await within(row).findByRole('button', { name: 'Reconectando… work' })
+    expect(pressed).toHaveAttribute('aria-busy', 'true')
+    expect(pressed.querySelector('.k-spinner')).not.toBeNull()
+    expect(within(row).getByRole('button', { name: 'Desconectar work' })).toHaveAttribute('aria-disabled', 'true')
+    expect(within(row).getByText('Reconectando', { selector: '.pill' })).toHaveClass('connecting')
+    expect(posts(fetchMock)).toEqual(['/api/v1/tunnels/work/reload'])
+
+    resolve(new Response(JSON.stringify({ status: 'restarting', tunnel: 'work' }), { status: 202 }))
+    await waitFor(() => expect(within(row).getByRole('button', { name: 'Desconectar work' })).not.toHaveAttribute('aria-disabled'))
+  })
+
+  it('provider app waiting for the user to disconnect (waiting_disconnect): in transition, with what to do', async () => {
+    const waiting = tunnel('nord', 'connected', { attach: { phase: 'waiting_disconnect', app: 'NordVPN', since: '' } })
+    const fetchMock = stubApi(base([waiting]))
+    render(<App />)
+    const row = await rowOf('nord')
+    expect(within(row).getByText('Desconectando', { selector: '.pill' })).toBeInTheDocument()
+    expect(within(row).getByText('Desconéctate en NordVPN; Kongtrol espera y lo detecta solo.')).toBeInTheDocument()
+    const pressed = within(row).getByRole('button', { name: 'Desconectando… nord' })
+    expect(pressed).toHaveAttribute('aria-busy', 'true')
+    await userEvent.click(pressed)
+    expect(posts(fetchMock)).toEqual([])
+  })
+
   it('cancel a connecting tunnel', async () => {
     const fetchMock = stubApi(base([tunnel('work', 'connecting')], { 'POST /api/v1/tunnels/work/cancel_connect': () => json({ status: 'connect_cancelled' }) }))
     render(<App />)
@@ -309,23 +379,23 @@ describe('Inicio: tunnel actions', () => {
     await waitFor(() => expect(posts(fetchMock)).toContain('/api/v1/tunnels/work/cancel_connect'))
   })
 
-  it('reload: restarting, not connected (no false "Recargando") and restart required', async () => {
+  it('reload: restarting, not connected (no false "Reconectando") and restart required', async () => {
     let answer: () => Promise<Response> = () => json({ status: 'restarting', tunnel: 'work' }, 202)
     stubApi(base([work], { 'POST /api/v1/tunnels/work/reload': () => answer() }))
     render(<App />)
     const row = await rowOf('work')
 
-    await userEvent.click(within(row).getByRole('button', { name: 'Recargar work' }))
-    expect(await screen.findByText('Recargando work con su configuración guardada…')).toBeInTheDocument()
+    await userEvent.click(within(row).getByRole('button', { name: 'Reconectar work' }))
+    expect(await screen.findByText('Reconectando work con su configuración guardada…')).toBeInTheDocument()
 
     act(() => toasts.clear())
     answer = () => json({ status: 'skipped_not_connected', tunnel: 'work' }, 202)
-    await userEvent.click(await within(row).findByRole('button', { name: 'Recargar work' }))
+    await userEvent.click(await within(row).findByRole('button', { name: 'Reconectar work' }))
     expect(await screen.findByText(/No estaba conectada, así que no hubo que reiniciarla/)).toBeInTheDocument()
 
     act(() => toasts.clear())
     answer = () => json({ status: 'restart_required', tunnel: 'work', message: 'english' }, 409)
-    await userEvent.click(await within(row).findByRole('button', { name: 'Recargar work' }))
+    await userEvent.click(await within(row).findByRole('button', { name: 'Reconectar work' }))
     expect(await screen.findByText('Kongtrol todavía no conoce work (se agregó a mano).')).toBeInTheDocument()
     expect(screen.getByText(/cierra Kongtrol y vuelve a abrirlo/)).toBeInTheDocument()
   })

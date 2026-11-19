@@ -1,8 +1,9 @@
-// Kongtrol UI — Inicio view model: pure mappings from daemon data to words · v1.0.0 · 2026-11-18
+// Kongtrol UI — Inicio view model: pure mappings from daemon data to words · v1.1.0 · 2026-11-19
 //
 // Kept apart from the components (fast refresh) and tested on their own.
 import type { TunnelMetrics } from '../../api/types'
 import type { SecuritySummary } from '../../data/home'
+import { createStore, useStore } from '../../data/store'
 import type { MessageKey } from '../../i18n/messages'
 import type { PillTone } from '../ui/StatusPill'
 
@@ -45,6 +46,29 @@ export function attachKey(a: Attach | undefined): MessageKey | null {
 /** Mirrors vpn.AttachState.Waiting: the user has to act in the provider app. */
 export function attachWaiting(a: Attach | undefined): boolean {
   return !!a && (a.phase === 'waiting_user' || a.phase === 'waiting_disconnect' || a.phase === 'dropped')
+}
+
+/**
+ * Which tunnels have "Rutas" open. The toggle lives in the status cell and
+ * the panel in a full-width row below, so the state lives outside both
+ * (and survives live ticks that re-render the row).
+ */
+export const routesOpen = createStore<Readonly<Record<string, true>>>({})
+
+export function useRoutesOpen(name: string): boolean {
+  return !!useStore(routesOpen)[name]
+}
+
+export function toggleRoutes(name: string): void {
+  const next = { ...routesOpen.get() }
+  if (next[name]) delete next[name]
+  else next[name] = true
+  routesOpen.set(next)
+}
+
+/** Stable DOM id of a tunnel's routes panel (aria-controls). */
+export function routesPanelId(name: string): string {
+  return `home-routes-${encodeURIComponent(name)}`
 }
 
 /** Polyline points for the samples, min-max scaled into the box (legacy charts.js sparkline). */

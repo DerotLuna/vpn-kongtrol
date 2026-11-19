@@ -1,4 +1,4 @@
-// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.1 · 2026-11-18
+// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.2 · 2026-11-19
 //
 // Everything the Home page reads or changes that the shared layer
 // (resources.ts) does not have yet: network overview, what goes through each
@@ -222,6 +222,17 @@ function guided(err: unknown, t: Translate, name: string, action: TunnelAction):
   return err
 }
 
+/**
+ * Marks the action pending at once (same tick as the click) and refuses a
+ * second one while any action on that tunnel runs: a double click or a bulk
+ * action never sends a duplicate request. The mutation clears the mark.
+ */
+function claimPending(name: string, action: TunnelAction): boolean {
+  if (pendingActions.get()[name]) return false
+  setPending(name, action)
+  return true
+}
+
 function withPending<T>(name: string, action: TunnelAction, run: () => Promise<T>): Promise<T> {
   setPending(name, action)
   return run().finally(() => setPending(name, null))
@@ -275,8 +286,10 @@ export function useTunnelActions() {
 
   const { mutate } = mutation
   const run = useCallback(
-    (name: string, action: Exclude<TunnelAction, 'reload'>) =>
-      mutate({ name, action }, { onSettled: () => settleNetwork(client) }),
+    (name: string, action: Exclude<TunnelAction, 'reload'>) => {
+      if (!claimPending(name, action)) return
+      mutate({ name, action }, { onSettled: () => settleNetwork(client) })
+    },
     [mutate, client],
   )
   return run
@@ -315,14 +328,17 @@ export function useTunnelReload() {
     },
     onError: (err, name) => {
       const { message, fix } = describeError(err, t)
-      toasts.show({ tone: 'bad', message, detail: fix, action: { label: t('error.retry'), run: () => mutate(name) } })
+      toasts.show({ tone: 'bad', message, detail: fix, action: { label: t('error.retry'), run: () => reload(name) } })
     },
     onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.tunnels })
       settleNetwork(client)
     },
   })
-  return mutate
+  const reload = useCallback((name: string) => {
+    if (claimPending(name, 'reload')) mutate(name)
+  }, [mutate])
+  return reload
 }
 
 /** "Conectar todas" / "Desconectar todas": one action per tunnel, in parallel. */

@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.5.0 · 2026-11-18
+Version 1.5.1 · 2026-11-19
 
 **Complete.** Every row is ticked or justified (`replaced`, `dropped: ADR-0043`, `n/a`). The legacy
 dashboard was deleted and the new UI moved to `/` ([ADR-0043](adr/0043-new-dashboard-replaces-classic.md)).
@@ -88,7 +88,7 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 - [x] Attach line (provider adapters, `attach.*` 7 phases, `waiting` style when user must act) — legacy app.js:540-543, app.js:1047-1059, app.js:1083 — API `attach {phase,app,location,reason}` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
 - [x] Health line (`health.idle|no_response|unknown` + fix from `reason_key`), caution vs waiting style — legacy app.js:547-551, app.js:1064-1080 — API `health {state,reason_key}` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
 - [x] Last error line `tunnel.lastError ({time})` + translated `last_error_key` (8 keys), raw error as tooltip, hidden when connected — legacy app.js:327-341, app.js:535-537 — API `last_error`, `last_error_key`, `last_error_at` — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx)
-- [x] "What goes through this tunnel (n / everything)" toggle (`aria-expanded`) — legacy app.js:552-555, app.js:747 — API GET /api/v1/tunnels/routes (handlers_tunnel_routes.go:76) — target `/` (opens `/traffic` per-tunnel view or inline) — status: done (web/ui/src/components/home/TunnelRoutes.tsx: inline disclosure + link to /traffic)
+- [x] "What goes through this tunnel (n / everything)" toggle (`aria-expanded`) — legacy app.js:552-555, app.js:747 — API GET /api/v1/tunnels/routes (handlers_tunnel_routes.go:76) — target `/` (opens `/traffic` per-tunnel view or inline) — status: done (web/ui/src/components/home/TunnelRoutes.tsx: one-line toggle "Rutas (n)" with the question as tooltip; panel in a full-width row under the tunnel (DataList `rowDetail`) + link to /traffic)
 - [x] Assigned IP (— when empty) — legacy app.js:559 — API `AssignedIP` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
 - [x] Uptime (`formatDuration`, only when connected) — legacy app.js:560, app.js:1196 — API `UptimeSeconds` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
 - [x] Bytes sent / received (`formatBytes`, — when 0) — legacy app.js:561-562, app.js:1189 — API `BytesSent`, `BytesReceived` — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
@@ -100,7 +100,7 @@ Legacy → target page map: `index.html` → `/` + `/traffic`; `studio.html` →
 - [x] Connect (disconnected/error rows) — legacy app.js:568, app.js:1020 — API POST /api/v1/tunnels/{name}/connect (handlers_tunnels.go:50; 202 `connecting`, 200 `already_connected`, 404, 409 in progress, 503) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: legacy omits `encodeURIComponent` (app.js:1022) and swallows errors (no toast)
 - [x] Cancel (connecting rows) — legacy app.js:572-573, app.js:1033 — API POST /api/v1/tunnels/{name}/cancel_connect (handlers_tunnels.go:88) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: same encoding/error issues (app.js:1035)
 - [x] Disconnect (connected rows) — legacy app.js:569-570, app.js:1087 — API POST /api/v1/tunnels/{name}/disconnect (handlers_tunnels.go:112; 202 `waiting_user` for manual disconnect) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: legacy ignores 202 `waiting_user` (must say "disconnect in the app") and errors
-- [x] Reload (connected rows; re-reads yaml, restarts tunnel in place) — legacy app.js:571, app.js:1107-1128 — API POST /api/v1/tunnels/{name}/reload (handlers_tunnels.go:150; 409 `restart_required`, 202 `restarting|skipped_not_connected`) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: `skipped_not_connected` still toasts "Reloading"
+- [x] Reload (connected rows; re-reads yaml, restarts tunnel in place) — legacy app.js:571, app.js:1107-1128 — API POST /api/v1/tunnels/{name}/reload (handlers_tunnels.go:150; 409 `restart_required`, 202 `restarting|skipped_not_connected`) — target `/` — status: done (web/ui/src/components/home/TunnelRow.tsx + web/ui/src/data/home.ts); **fix**: `skipped_not_connected` still toasts "Reloading". Shown as the icon button "Reconectar" (tooltip says what it does). While any row action runs, the row's buttons stay in place with `aria-disabled`, the pressed one spins with "…ando" (`aria-busy`), the pill shows the transition (also for `waiting_disconnect`) and repeated clicks send nothing
 - [x] Connect all (non-connected tunnels, parallel) — legacy index.html:23, app.js:1177 — API POST …/connect ×N — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
 - [x] Disconnect all (connected tunnels, parallel) — legacy index.html:24, app.js:1182 — API POST …/disconnect ×N — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)
 - [x] Refresh tunnels button — legacy index.html:25, app.js:459 — API GET /api/v1/tunnels — target `/` — status: done (web/ui/src/components/home/TunnelsCard.tsx)

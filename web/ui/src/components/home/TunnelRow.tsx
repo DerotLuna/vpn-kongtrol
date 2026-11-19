@@ -1,4 +1,4 @@
-// Kongtrol UI — one tunnel's status and actions (Inicio) · v1.0.0 · 2026-11-18
+// Kongtrol UI — one tunnel's status and actions (Inicio) · v1.1.0 · 2026-11-19
 //
 // The status cell says, in this order: the state (Four States Rule: word +
 // color + dot shape), how a provider app's tunnel came up or what the user
@@ -14,10 +14,11 @@ import { tunnelState, type TunnelState } from '../../data/resources'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
+import { RefreshIcon } from '../ui/icons'
 import { Tooltip } from '../ui/Tooltip'
 import { formatClock } from './format'
 import { ERROR_KEYS, attachKey, attachWaiting } from './model'
-import { TunnelRoutesDisclosure } from './TunnelRoutes'
+import { TunnelRoutesToggle } from './TunnelRoutes'
 
 const STATE: Record<TunnelState, { key: MessageKey; tone: PillTone }> = {
   connected: { key: 'tunnels.status.connected', tone: 'ok' },
@@ -27,10 +28,28 @@ const STATE: Record<TunnelState, { key: MessageKey; tone: PillTone }> = {
   disconnected: { key: 'tunnels.status.disconnected', tone: 'idle' },
 }
 
+/**
+ * The action in progress on a row: our own request, or a provider app that
+ * answered 202 waiting_user and waits for the user to disconnect in the app
+ * (attach phase waiting_disconnect; the act line says what to do).
+ */
+function busyAction(tn: TunnelMetrics, pending: TunnelAction | undefined): TunnelAction | undefined {
+  return pending ?? (tn.attach?.phase === 'waiting_disconnect' ? 'disconnect' : undefined)
+}
+
+/** Transitional pill while an action runs (Four States: steel "connecting" tone). */
+const BUSY_PILL: Partial<Record<TunnelAction, MessageKey>> = {
+  connect: 'tunnels.status.connecting',
+  disconnect: 'home.status.disconnecting',
+  reload: 'home.status.reconnecting',
+}
+
 export const TunnelStatusCell = memo(function TunnelStatusCell({ tn }: { tn: TunnelMetrics }) {
   const { t, lang } = usePreferences()
+  const busy = busyAction(tn, usePendingAction(tn.Name))
+  const busyPill = busy ? BUSY_PILL[busy] : undefined
   const state = tunnelState(tn)
-  const s = STATE[state]
+  const s = busyPill ? { key: busyPill, tone: 'connecting' as const } : STATE[state]
   const connected = tn.Status === 'connected'
   const health = tn.health?.state
   const unknown = health === 'unknown'
@@ -71,7 +90,7 @@ export const TunnelStatusCell = memo(function TunnelStatusCell({ tn }: { tn: Tun
           )}
         </div>
       )}
-      {connected && <TunnelRoutesDisclosure name={tn.Name} />}
+      {connected && <TunnelRoutesToggle name={tn.Name} />}
     </div>
   )
 })
@@ -83,52 +102,65 @@ const PENDING: Record<TunnelAction, MessageKey> = {
   reload: 'home.action.reloading',
 }
 
+const LABEL: Record<TunnelAction, MessageKey> = {
+  connect: 'home.action.connect',
+  cancel: 'home.action.cancel',
+  disconnect: 'home.action.disconnect',
+  reload: 'home.action.reload',
+}
+
+/** The actions each state allows, main action first. */
+function rowActions(tn: TunnelMetrics, busy: TunnelAction | undefined): TunnelAction[] {
+  const list: TunnelAction[] = tn.Status === 'connected' ? ['disconnect', 'reload'] : tn.Status === 'connecting' ? ['cancel'] : ['connect']
+  // A connect in flight already shows the row as "connecting": keep the
+  // pressed button (with its spinner) instead of swapping it for Cancelar.
+  return busy && !list.includes(busy) ? [busy] : list
+}
+
 // Accessible names carry the tunnel ("Conectar trabajo"), not five identical "Conectar";
-// the visible word stays first (WCAG 2.5.3 label in name).
+// the visible word stays first (WCAG 2.5.3 label in name). While an action
+// runs every button of the row stays in place but inert (aria-disabled keeps
+// focus where the user pressed, unlike disabled) and the pressed one shows a
+// spinner and "…ando" (aria-busy); clicks are ignored, so no duplicate request.
 export const TunnelActionsCell = memo(function TunnelActionsCell({ tn }: { tn: TunnelMetrics }) {
   const { t } = usePreferences()
   const run = useTunnelActions()
   const reload = useTunnelReload()
-  const pending = usePendingAction(tn.Name)
+  const busy = busyAction(tn, usePendingAction(tn.Name))
   const name = tn.Name
 
-  if (pending) {
-    return (
-      <div className="home-actions">
-        <Button variant="outlined" size="sm" loading aria-label={`${t(PENDING[pending])} ${name}`}>
-          {t(PENDING[pending])}
-        </Button>
-      </div>
-    )
-  }
-  if (tn.Status === 'connected') {
-    return (
-      <div className="home-actions">
-        <Button variant="outlined" size="sm" onClick={() => run(name, 'disconnect')} aria-label={`${t('home.action.disconnect')} ${name}`}>
-          {t('home.action.disconnect')}
-        </Button>
-        <Tooltip content={t('home.action.reload.tip')} describe>
-          <Button variant="text" size="sm" onClick={() => reload(name)} aria-label={`${t('home.action.reload')} ${name}`}>
-            {t('home.action.reload')}
-          </Button>
-        </Tooltip>
-      </div>
-    )
-  }
-  if (tn.Status === 'connecting') {
-    return (
-      <div className="home-actions">
-        <Button variant="outlined" size="sm" onClick={() => run(name, 'cancel')} aria-label={`${t('home.action.cancel')} ${name}`}>
-          {t('home.action.cancel')}
-        </Button>
-      </div>
-    )
-  }
   return (
     <div className="home-actions">
-      <Button variant="tonal" size="sm" onClick={() => run(name, 'connect')} aria-label={`${t('home.action.connect')} ${name}`}>
-        {t('home.action.connect')}
-      </Button>
+      {rowActions(tn, busy).map((action) => {
+        const pressed = busy === action
+        const word = t(pressed ? PENDING[action] : LABEL[action])
+        const common = {
+          'aria-label': `${word} ${name}`,
+          'aria-disabled': busy ? true : undefined,
+          'aria-busy': pressed || undefined,
+          onClick: busy ? undefined : () => (action === 'reload' ? reload(name) : run(name, action)),
+        }
+        if (action === 'reload') {
+          return (
+            <Tooltip key={action} content={t('home.action.reload.tip')} describe>
+              <button type="button" className="k-btn k-btn--outlined k-btn--sm home-icon-act" {...common}>
+                {pressed ? <span className="k-spinner" aria-hidden="true" /> : <RefreshIcon />}
+              </button>
+            </Tooltip>
+          )
+        }
+        return (
+          <Button
+            key={action}
+            variant={action === 'connect' ? 'tonal' : 'outlined'}
+            size="sm"
+            icon={pressed ? <span className="k-spinner" aria-hidden="true" /> : undefined}
+            {...common}
+          >
+            {word}
+          </Button>
+        )
+      })}
     </div>
   )
 })

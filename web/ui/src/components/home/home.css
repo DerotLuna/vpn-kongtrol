@@ -1,4 +1,4 @@
-/* KONGTROL UI — Inicio (/) · v1.0.0 · 2026-11-18
+/* KONGTROL UI — Inicio (/) · v1.1.0 · 2026-11-19
    Operate mode, DESIGN.md "Sesión en la Torre": flat cards, amber only for
    the primary action and focus, Four States colors with words, machine
    values (names, IPs, routes, numbers) in Plex Mono, people sentences in
@@ -53,32 +53,53 @@
 .home-spark { color: var(--steel); flex: none; }
 .home-spark--empty { font: 400 11px/1 var(--font-mono); color: var(--text-dim); min-width: 72px; text-align: right; }
 
-.home-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.home-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+/* While an action runs: every button stays in place, inert (aria-disabled);
+   the pressed one keeps full color with its spinner (aria-busy). */
+.home-actions [aria-disabled='true'] { cursor: not-allowed; opacity: 0.55; }
+.home-actions .k-btn[aria-disabled='true']:is(:hover, :active)::after { background: transparent; }
+.home-actions .k-btn[aria-disabled='true']:active { transform: none; }
+.home-actions [aria-busy='true'] { cursor: progress; opacity: 1; }
+/* "Reconectar": icon button, square, same height as the main action. */
+.home-icon-act { width: 36px; padding: 0; color: var(--text-muted); }
+.home-icon-act:hover:not([aria-disabled='true']) { color: var(--text); }
+.home-icon-act svg { width: 18px; height: 18px; }
 
-/* "Qué sale por este túnel" disclosure */
+/* "Rutas" disclosure: one-line toggle in the status cell… */
 .home-routes__toggle {
   display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 6px 2px 2px; margin-left: -2px;
   border: 0; background: none; cursor: pointer; border-radius: var(--radius);
-  color: var(--signal); font: 500 13px/1.3 var(--font-body); text-align: left;
+  color: var(--signal); font: 500 13px/1.3 var(--font-body); text-align: left; white-space: nowrap;
 }
 .home-routes__toggle:hover { color: var(--signal-hi); background: var(--state-hover); }
 .home-routes__chevron { width: 12px; height: 12px; flex: none; transition: transform var(--dur-fast) var(--ease-standard); }
 .home-routes__toggle[aria-expanded='true'] .home-routes__chevron { transform: rotate(90deg); }
+/* …and the panel in a full-width row under the tunnel. */
+.home-tunnels .k-datalist tr:has(+ .home-routes-row) > * { border-bottom-color: transparent; }
+.home-tunnels .k-datalist tbody tr.home-routes-row:hover { background: transparent; }
+.home-tunnels .k-datalist .home-routes-row > td { padding: 0 12px 12px; }
 .home-routes__panel {
-  display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 12px; padding: 12px 14px;
   border-radius: var(--radius); background: var(--surface-2); font-size: 13px;
+  animation: home-reveal var(--dur-fast) var(--ease-standard);
 }
-.home-routes__panel[hidden] { display: none; }
-.home-routes__panel:not([hidden]) { animation: home-reveal var(--dur-fast) var(--ease-standard); }
 @keyframes home-reveal { from { opacity: 0; } }
 .home-routes__origin { font-weight: 600; }
 .home-routes__count { font: 400 12px/1 var(--font-mono); color: var(--text-muted); }
-.home-routes__chips { list-style: none; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.home-routes__chips li {
-  padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border-2);
-  font-size: 12px; line-height: 1.5; overflow-wrap: anywhere;
+.home-routes__chips {
+  list-style: none; display: grid; gap: 6px; margin-top: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 19ch), 1fr));
 }
-.home-routes__chips .home-routes__more { border-style: dashed; color: var(--text-muted); font-family: var(--font-body); }
+.home-routes__chips li {
+  padding: 2px 10px; border-radius: 999px; border: 1px solid var(--border-2);
+  font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; min-width: 0;
+}
+.home-routes__chips .home-routes__more { border-style: dashed; color: var(--text-muted); font-family: var(--font-body); text-align: center; }
+.home-routes__foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px;
+  padding-top: 8px; border-top: 1px solid var(--border);
+}
+.home-routes__foot a { display: inline-flex; align-items: center; min-height: 28px; margin-left: auto; }
 
 /* The table has nine columns: below 1000px each tunnel becomes a stacked
    card (same rules as DataList under 640px), never horizontal scroll. */
@@ -104,6 +125,15 @@
   .home-tunnels .k-datalist td:last-child { padding-top: 10px; justify-content: flex-start; }
   .home-tunnels .home-actions { justify-content: flex-start; }
   .home-tunnels .home-actions .k-btn { min-height: var(--tap); }
+  .home-tunnels .home-actions .home-icon-act { width: var(--tap); }
+  /* The routes panel joins its tunnel's card. */
+  .home-tunnels .k-datalist tr:has(+ .home-routes-row) {
+    margin-bottom: 0; border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+  }
+  .home-tunnels .k-datalist tr.home-routes-row {
+    padding: 0 14px 12px; border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0;
+  }
+  .home-tunnels .k-datalist .home-routes-row > td { display: block; padding: 0; text-align: left; }
 }
 
 /* ── Facts (definition lists) ───────────────────────────────────────────── */
@@ -149,5 +179,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .home-routes__chevron { transition: none; }
-  .home-routes__panel:not([hidden]) { animation: none; }
+  .home-routes__panel { animation: none; }
 }

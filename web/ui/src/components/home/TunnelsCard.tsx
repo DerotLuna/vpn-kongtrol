@@ -1,4 +1,4 @@
-// Kongtrol UI — "Tus VPN" table (Inicio) · v1.0.0 · 2026-11-18
+// Kongtrol UI — "Tus VPN" table (Inicio) · v1.1.0 · 2026-11-19
 //
 // One row per tunnel (DataList: a real table, stacked cards on narrow
 // screens). Rows are memoized and the cache keeps unchanged tunnels
@@ -21,6 +21,7 @@ import { PlugIcon, PlusIcon, RefreshIcon } from '../ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { formatBytes, formatDuration } from './format'
 import { LatencySparkline } from './Sparkline'
+import { TunnelRoutesRow } from './TunnelRoutes'
 import { TunnelActionsCell, TunnelStatusCell } from './TunnelRow'
 
 interface Props {
@@ -32,6 +33,9 @@ interface Props {
 }
 
 const Dash = () => <span className="home-dim">—</span>
+
+// Module function: stable, so memoized rows stay skipped (DataList.rowDetail).
+const routesDetail = (tn: TunnelMetrics, colSpan: number) => <TunnelRoutesRow name={tn.Name} colSpan={colSpan} />
 
 export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
   const { t, lang } = usePreferences()
@@ -146,6 +150,7 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
             columns={columns}
             rows={list}
             rowKey={(tn) => tn.Name}
+            rowDetail={routesDetail}
             {...(onRowRender ? { onRowRender } : {})}
           />
           <p className="home-help">
