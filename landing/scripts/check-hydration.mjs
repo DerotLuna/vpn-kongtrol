@@ -1,4 +1,4 @@
-// Hydration check for the built landing — version 1.3.0 · 2026-11-19.
+// Hydration check for the built landing — version 1.4.0 · 2026-11-19.
 //
 // Every entry hydrates the HTML that scripts/prerender.mjs wrote (hydrateRoot,
 // ADR-0026). React requires the first client render to match that HTML
@@ -9,11 +9,13 @@
 // This runs the real entry (src/pages/<page>/main.tsx) against each built page
 // in jsdom — every page × language, for four visitors:
 //   - default:  no stored choice, light OS theme, Windows, browser in the page language
-//   - stored:   dark theme + page language stored, macOS
+//   - stored:   page language stored, dark OS theme, macOS
 //   - system:   dark OS theme, Linux, browser in the other language (language banner)
+// The landing has one designed theme (ADR-0060): whatever the OS theme, no
+// data-theme attribute may appear on <html>.
 //   - mobile:   iPhone (touch): boot script marks data-device=mobile, so CSS shows
 //               "send to my computer" instead of download buttons (ADR-0027, ADR-0029)
-// The inline theme boot script in <head> runs first, as in a browser. The
+// The inline device boot script in <head> runs first, as in a browser. The
 // check FAILS (exit 1) on any console.error/console.warn from React (the
 // development build reports every mismatch, text and attributes alike), any
 // recoverable or uncaught error, or when the prerendered nodes were replaced
@@ -33,10 +35,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SETTLE_MS = 250 // hydration + passive effects + the post-hydration re-render
 
 const VISITORS = [
-  { name: 'default', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', dark: false, store: {}, browserLang: lang => lang, theme: 'light', os: 'windows' },
-  { name: 'stored', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)', dark: false, store: lang => ({ kgtheme: 'dark', kglang: lang }), browserLang: lang => lang, theme: 'dark', os: 'darwin' },
-  { name: 'system', ua: 'Mozilla/5.0 (X11; Linux x86_64)', dark: true, store: {}, browserLang: lang => (lang === 'es' ? 'en' : 'es'), theme: 'dark', os: 'linux' },
-  { name: 'mobile', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1', dark: false, store: {}, browserLang: lang => lang, theme: 'light', os: 'darwin', mobile: true },
+  { name: 'default', ua: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)', dark: false, store: {}, browserLang: lang => lang, os: 'windows' },
+  { name: 'stored', ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5)', dark: true, store: lang => ({ kglang: lang }), browserLang: lang => lang, os: 'darwin' },
+  { name: 'system', ua: 'Mozilla/5.0 (X11; Linux x86_64)', dark: true, store: {}, browserLang: lang => (lang === 'es' ? 'en' : 'es'), os: 'linux' },
+  { name: 'mobile', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1', dark: false, store: {}, browserLang: lang => lang, os: 'darwin', mobile: true },
 ]
 
 // hero download button label once the OS is known (src/components/ui/downloadCta.tsx)
@@ -109,7 +111,7 @@ try {
       })
       const dom = new JSDOM(html, {
         url: `https://kongtrol.app${PATHS[page][lang]}`,
-        runScripts: 'dangerously', // only the inline theme boot script: external scripts are not loaded
+        runScripts: 'dangerously', // only the inline device boot script: external scripts are not loaded
         pretendToBeVisual: true,
         virtualConsole,
         beforeParse: window => stubBrowser(window, visitor, lang),
@@ -121,9 +123,7 @@ try {
 
       const container = window.document.getElementById('root')
       const firstNode = container?.firstElementChild
-      const bootTheme = window.document.documentElement.getAttribute('data-theme')
       if (!firstNode) record('setup', ['no prerendered markup in #root'])
-      if (bootTheme !== visitor.theme) record('boot script', [`data-theme=${bootTheme}, expected ${visitor.theme}`])
 
       vite.moduleGraph.invalidateAll() // fresh app modules (and module state) per run
       await vite.ssrLoadModule(`/src/pages/${page}/main.tsx`)
@@ -132,8 +132,7 @@ try {
       if (firstNode && (!firstNode.isConnected || container.firstElementChild !== firstNode)) {
         record('hydration', ['prerendered DOM was replaced instead of hydrated'])
       }
-      const theme = window.document.documentElement.getAttribute('data-theme')
-      if (theme !== visitor.theme) record('theme', [`data-theme=${theme} after hydration, expected ${visitor.theme}`])
+      if (window.document.documentElement.hasAttribute('data-theme')) record('theme', ['data-theme set on <html>: the landing has one theme (ADR-0060)'])
       // Windows gets the installer (links.ts WINDOWS_INSTALLER_FILE), the others their binary
       const osFile = visitor.os === 'windows' ? 'Kongtrol-Setup-windows-' : `kongtrol-${visitor.os}-`
       if (page === 'home' && !container.querySelector('.th-body')?.textContent.includes(osFile)) {

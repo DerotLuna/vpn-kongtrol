@@ -248,17 +248,17 @@ export default function Hero({ os, lang }: Props) {
   }
 
   return (
-    <section id="motd" className="section th-section" style={{ borderTop: 'none' }}>
+    <section id="motd" className="section th-section">
       <div className="container">
         <div className="hero-contour th-contour" aria-hidden="true" />
-        <div className="terminal crt th-terminal">
+        <div className="terminal crt th-terminal tone-ink">
           <div className="terminal-bar">
             <div className="terminal-dots" aria-hidden="true">
               <div className="terminal-dot red" />
               <div className="terminal-dot yellow" />
               <div className="terminal-dot green" />
             </div>
-            <span className="terminal-title">ssh guest@kongtrol.tower</span>
+            <span className="terminal-title">kongtrol — terminal</span>
           </div>
           <div
             className="terminal-body th-body"
@@ -274,6 +274,11 @@ export default function Hero({ os, lang }: Props) {
 
             {/* the page's only h1: visible, never animated (it is the LCP) */}
             <h1 className="th-title">{copy.title}</h1>
+            {/* laptops and up: two columns under the h1 — the sentence and
+                buttons (th-main) beside the live log and the prompt (th-side),
+                so the whole window fits one screen with no inner scroll; on
+                narrow screens both wrappers are display: contents (ADR-0060) */}
+            <div className="th-main">
             <p className="th-sub boot-step" style={at(BOOT.sub)}>{copy.sub}</p>
 
             {/* Both variants are always in the markup; CSS shows one from the
@@ -306,7 +311,9 @@ export default function Hero({ os, lang }: Props) {
                 </a>
               </SendToComputer>
             </div>
+            </div>
 
+            <div className="th-side">
             <div className="th-meta">
               <div className="boot-line boot-step t-dim" style={at(BOOT.tag1)}>{copy.tag1}</div>
               <div className="boot-line boot-step t-dim" style={at(BOOT.tag2)}>{copy.tag2}</div>
@@ -347,6 +354,8 @@ export default function Hero({ os, lang }: Props) {
 
             <form className="th-prompt boot-step" style={at(BOOT.prompt)} onSubmit={onSubmit}>
               <span className="t-prompt" aria-hidden="true">$ </span>
+              {/* idle caret: blinks until the visitor focuses or types */}
+              <span className="th-caret" aria-hidden="true" />
               <input
                 ref={inputRef}
                 className="th-input"
@@ -360,6 +369,7 @@ export default function Hero({ os, lang }: Props) {
                 maxLength={80}
               />
             </form>
+            </div>
           </div>
         </div>
       </div>

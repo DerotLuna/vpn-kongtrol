@@ -88,7 +88,7 @@ cd landing && pnpm install && pnpm run dev
 ### Regenerate README media
 
 The GIFs in `README.md` (`assets/readme/hero.gif`, `routing.gif`, `attach.gif`) are recorded from
-the English landing page in dark theme, so they follow its design. After a visual change to the
+the English landing page (one designed theme, ADR-0060), so they follow its design. After a visual change to the
 hero terminal, the routing diagram or the attach demo, run from the repo root:
 
 ```bash

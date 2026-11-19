@@ -1,31 +1,34 @@
-/* Download section (ADR-0027): the visitor's system as one featured card with
-   the page's only filled button there, every other system below as smaller
-   cards with outlined buttons. */
+/* Download section — version 2.0.0 · 2026-11-19 (ADR-0027, ADR-0060).
+   The one Signal-amber band of the page (.tone-signal, index.css). The
+   visitor's best file in one compact featured card (the band's only filled
+   button), then ONE "Otras formas de instalar" row: every other file once,
+   grouped by system, plus the install script with a tab and its own copy
+   button per shell. Header + featured + other ways fit one laptop screen. */
 
-/* the page's last section: the footer's own top padding and border already
-   separate it, so a full --section-y below would leave a gap before it */
-.dl-section { padding-bottom: clamp(32px, 2vw + 24px, 56px); }
-
+/* heading + recommended file: one row from 1080 px, stacked below */
+@media (min-width: 1080px) {
+  .dl-lead { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
+  .dl-lead /* the recommended file: no box — a terminal comment with the detected
+   system, the filled button, the file line; a Bone hairline sets it off from
+   the heading (left on laptops, top when stacked) */
 .dl-featured {
-  margin-top: 40px; padding: clamp(24px, 4vw, 40px);
-  background: var(--surface-2); border: 1px solid var(--signal-line);
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 2px 0 var(--signal);
-  display: grid; gap: 14px;
+  margin-top: 24px; padding: 20px 0 0;
+  border-top: 1px solid var(--signal-line);
+  display: grid; gap: 14px; justify-items: start;
 }
-.dl-featured-tag {
-  margin: 0; font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--signal);
+@media (min-width: 1080px) {
+  .dl-lead .dl-featured { padding: 6px 0 6px clamp(28px, 3vw, 44px); border-top: 0; border-left: 1px solid var(--signal-line); }
 }
+.dl-featured-head, .dl-featured-body { display: grid; gap: 8px; min-width: 0; }
 .dl-featured-title {
-  margin: 0; font-family: var(--font-display); font-weight: 600;
-  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.1rem); line-height: 1.15;
-  letter-spacing: -0.01em; color: var(--text); text-wrap: balance;
+  margin: 0; font-family: var(--font-mono); font-weight: 500;
+  font-size: 0.95rem; line-height: 1.4; letter-spacing: 0.01em; color: var(--text-muted); text-wrap: pretty;
 }
-.dl-featured-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px 20px; margin-top: 6px; }
+.dl-featured-hash { color: var(--text-dim); }
+.dl-featured-os { color: var(--text); font-weight: 600; }
+.dl-featured-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px 20px; }
 .dl-featured-item { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
 .dl-btn-lg { min-height: 52px; padding: 14px 26px; font-size: 0.9rem; }
-.dl-btn-outline { min-height: 52px; }
 
 /* filename: one line, never broken mid-word; ellipsis when the card is narrow */
 .dl-file {
@@ -36,40 +39,41 @@
 }
 
 .dl-mac-which {
-  margin: 4px 0 0; max-width: var(--measure);
+  margin: 0; max-width: var(--measure);
   font-size: 0.9rem; line-height: 1.55; color: var(--text-muted); text-wrap: pretty;
 }
 
 .dl-others-title {
-  margin: 48px 0 16px; font-family: var(--font-display); font-weight: 600;
+  margin: 20px 0 10px; font-family: var(--font-display); font-weight: 600;
   font-size: 1.15rem; color: var(--text);
 }
-.dl-grid {
-  display: grid; gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
-}
+/* one row: a card per system with files left, then the script (wider) */
+.dl-ways { display: flex; flex-wrap: wrap; gap: 14px; }
 .dl-card {
-  padding: 22px 22px 20px; background: var(--surface);
+  flex: 1 1 220px; padding: 14px 14px 12px; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius-lg);
-  display: flex; flex-direction: column; gap: 14px; min-width: 0;
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
 }
-.dl-card-os { margin: 0; font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; color: var(--text); }
-.dl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.dl-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.dl-row-info { display: grid; gap: 4px; min-width: 0; }
-.dl-row-name { font-size: 0.9rem; line-height: 1.4; color: var(--text-muted); }
-.dl-btn-sm { flex-shrink: 0; padding: 10px 14px; font-size: 0.74rem; gap: 8px; }
-.dl-card .dl-mac-which { font-size: 0.82rem; }
+.dl-card.dl-script { flex: 1.5 1 300px; }
+.dl-card-os { margin: 0; font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; color: var(--text); }
+.dl-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dl-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dl-row-info { display: grid; gap: 2px; min-width: 0; }
+.dl-row-name { font-size: 0.86rem; line-height: 1.35; color: var(--text-muted); }
+/* icon-only download: 44 px target, accessible name in .sr-only, file in the tooltip */
+.dl-btn-icon { flex-shrink: 0; width: var(--tap); padding: 0; }
+.dl-card-note { margin: 0; font-size: 0.8rem; line-height: 1.45; color: var(--text-dim); text-wrap: pretty; }
+.dl-script .code-block { margin-top: auto; }
 
 .dl-all { margin: 16px 0 0; }
 .dl-all a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
 .dl-all a:hover { color: var(--signal); }
 
-.dl-mobile { margin-top: 32px; }
+.dl-mobile { margin-top: 24px; }
 
 /* after download: what the OS may show (unsigned binaries) and the one
    admin prompt, in plain words. Collapsed by default so the cards stay first. */
-.dl-after { margin-top: 48px; }
+.dl-after { margin-top: 40px; }
 .dl-after .dl-others-title { margin-top: 0; }
 /* same width as the download cards above; the prose inside keeps a reading
    measure (--measure) so lines never run the full card */
@@ -115,12 +119,8 @@
 @media (max-width: 480px) {
   .dl-more-body { padding-left: 16px; }
   .dl-featured-item, .dl-featured-item > a { width: 100%; }
-  .dl-row { flex-direction: column; align-items: stretch; }
-  .dl-btn-sm { justify-content: center; }
 }
 
-/* "Otras formas de instalar" (#install-other): Windows terminal program +
-   the one-line script, in the same card frame as the systems above. */
-.dl-other { display: grid; gap: 16px; }
-.dl-other .dl-others-title { margin-bottom: 0; }
-.dl-other-text { font-size: 0.88rem; line-height: 1.55; color: var(--text-muted); max-width: 70ch; }
+/* the beta notice inside the Signal band: Bone outline, no caution orange
+   (orange on amber would fail contrast; it is a notice, not an error) */
+.tone-signal .callout.dl-beta { border-color: var(--signal-line); background: var(--signal-soft); }

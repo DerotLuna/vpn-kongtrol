@@ -1,20 +1,22 @@
-import { MouseEvent } from 'react'
 import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_REPO } from '../../links'
+import { GITHUB_RELEASES, GITHUB_REPO } from '../../links'
 import { PageId, pathFor, SITE_UPDATED, SITE_VERSION } from '../../site'
 import { downloadHref, FOOTER_ID, PRIMARY_COPY, PrimaryDownload } from './downloadCta'
 import SendToComputer from './SendToComputer'
+import BackToTop from './BackToTop'
 
 interface Props {
   lang: Lang
   page?: PageId
 }
 
-// Full-height footer (2026-11-19): the large line-art mark with the tagline,
-// the primary download (same component as the hero and the download section),
-// the site and legal links, a "back to top" link, the version line and the
-// giant wordmark. The header hides while it is on screen (Nav.tsx, FOOTER_ID).
+// Full-screen footer (2026-11-19, ADR-0060): exactly one screen above the
+// tmux bar on laptops — the large line-art mark with the tagline, the primary
+// download (same component as the hero and the download section), the site
+// and legal links, the version line, the facts and the giant wordmark behind
+// it. The header hides while it is on screen (Nav.tsx, FOOTER_ID); the round
+// back-to-top button (BackToTop) is fixed bottom-right on every page.
 export default function Footer({ lang, page = 'home' }: Props) {
   const os = useDetectedOS()
   const mobile = useIsMobile()
@@ -24,44 +26,32 @@ export default function Footer({ lang, page = 'home' }: Props) {
       tagline: 'Panel web y CLI completa. Local, gratis y de código abierto.',
       facts: ['beta', '10 VPN', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
+      latest: 'último release',
       siteTitle: 'Kongtrol',
       site: [['Inicio', pathFor('home', 'es')], ['Guía', pathFor('guia', 'es')], ['Descargas', downloadHref(page, 'es')]] as [string, string][],
       legalTitle: 'Legal',
       legal: [['privacidad', 'Privacidad'], ['seguridad', 'Seguridad'], ['terminos', 'Términos']] as [PageId, string][],
       license: 'Licencia (Apache-2.0)',
-      top: 'Inicio',
-      topLabel: 'Volver al inicio de la página',
     }
     : {
       claim: 'All your VPNs under Kongtrol',
       tagline: 'Web panel and a full CLI. Local, free and open source.',
       facts: ['beta', '10 VPNs', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
+      latest: 'latest release',
       siteTitle: 'Kongtrol',
       site: [['Home', pathFor('home', 'en')], ['Guide', pathFor('guia', 'en')], ['Downloads', downloadHref(page, 'en')]] as [string, string][],
       legalTitle: 'Legal',
       legal: [['privacidad', 'Privacy'], ['seguridad', 'Security'], ['terminos', 'Terms']] as [PageId, string][],
       license: 'License (Apache-2.0)',
-      top: 'Top',
-      topLabel: 'Back to the top of the page',
     }
-
-  // Back to top: scroll (smooth unless reduced motion) and move focus to the
-  // page's <main> (tabIndex -1), so keyboard and screen-reader users land at
-  // the top too. Without JS the link still jumps to #main.
-  const toTop = (e: MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault()
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
-    document.getElementById('main')?.focus({ preventScroll: true })
-  }
 
   return (
     <footer id={FOOTER_ID} className="footer">
       <div className="container footer-inner">
         <div className="footer-hero">
           <img
-            className="footer-mark"
+            className="footer-mark logo-mark"
             src={`${import.meta.env.BASE_URL}logo-kong.svg`}
             alt="Kongtrol"
             width={176}
@@ -102,6 +92,14 @@ export default function Footer({ lang, page = 'home' }: Props) {
               <span className="t-prompt">$ </span>
               <span className="t-cmd">kongtrol version</span>
             </div>
+            {/* the latest stable release, baked at build time (vite.config.ts) */}
+            {__LATEST_RELEASE__ && (
+              <div className="footer-term-out">
+                <a href={GITHUB_RELEASES} target="_blank" rel="noreferrer" className="footer-gh-link">
+                  kongtrol <span className="footer-version">{__LATEST_RELEASE__}</span> · {copy.latest}
+                </a>
+              </div>
+            )}
             <div className="footer-term-out">
               kongtrol-site <span className="footer-version">{SITE_VERSION}</span> · {SITE_UPDATED} · <span className="t-dim">exit 0</span>
             </div>
@@ -120,19 +118,16 @@ export default function Footer({ lang, page = 'home' }: Props) {
           </div>
         </div>
 
-        <ul className="footer-facts">
-          {copy.facts.map(f => <li key={f}>{f}</li>)}
-        </ul>
-
         <div className="footer-meta">
+          <ul className="footer-facts">
+            {copy.facts.map(f => <li key={f}>{f}</li>)}
+          </ul>
           <span className="footer-wink mono">{copy.wink}</span>
-          <a href="#main" className="footer-top" onClick={toTop} aria-label={copy.topLabel}>
-            <span aria-hidden="true">↑</span> {copy.top}
-          </a>
         </div>
       </div>
 
       <div className="footer-giant" aria-hidden="true">KONGTROL</div>
+      <BackToTop lang={lang} />
     </footer>
   )
 }

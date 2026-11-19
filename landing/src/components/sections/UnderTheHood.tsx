@@ -43,7 +43,7 @@ export default function UnderTheHood({ lang }: Props) {
     }
 
   return (
-    <section id="hood" className="section hood-section">
+    <section id="hood" className="section hood-section tone-ink">
       <div className="container">
         <div className="section-label cmd-label">{t.label}</div>
         <h2 className="section-title">{t.title}</h2>

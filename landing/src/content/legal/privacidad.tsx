@@ -1,4 +1,5 @@
-// Privacy policy — version 1.4.0 · 2026-11-19.
+// Privacy policy — version 1.4.1 · 2026-11-19.
+// 1.4.1: the site no longer stores a theme choice (one designed theme, ADR-0060); only `kglang`.
 // 1.4.0: recent destinations list (ADR-0054): memory only, 500 entries, 1 h, on by default, switch
 //   `kongtrol config recent-connections off` (internal/monitor/recent.go).
 // 1.3.0: opt-in new version notice (GitHub releases API, off by default; ADR-0034); uninstall and
@@ -26,7 +27,7 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.4.0'
+const VERSION = '1.4.1'
 const UPDATED = '2026-11-19'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
@@ -111,8 +112,8 @@ const es: LegalDocContent = {
     {
       id: 'sitio', num: '4', label: 'Este sitio web', tmux: 'sitio', title: 'Este sitio web (kongtrol.app)',
       body: [<>Este sitio no usa cookies, analíticas ni píxeles de seguimiento, y sirve sus propias tipografías (no
-        carga nada de Google). Solo guarda en tu navegador el idioma o tema que elijas explícitamente
-        (<IC c="kglang" />, <IC c="kgtheme" />).</>,
+        carga nada de Google). Solo guarda en tu navegador el idioma que elijas explícitamente
+        (<IC c="kglang" />).</>,
       <>El sitio está alojado en Cloudflare (Workers): Cloudflare procesa los datos técnicos de cada visita (como la IP y
         el navegador) para servir y proteger el sitio, según su{' '}
         {ext('https://www.cloudflare.com/privacypolicy/', 'política de privacidad')}.</>,
@@ -222,8 +223,7 @@ const en: LegalDocContent = {
     {
       id: 'sitio', num: '4', label: 'This website', tmux: 'website', title: 'This website (kongtrol.app)',
       body: [<>This site uses no cookies, analytics or tracking pixels, and serves its own fonts (nothing is loaded
-        from Google). It only stores in your browser the language or theme you explicitly pick (<IC c="kglang" />,{' '}
-        <IC c="kgtheme" />).</>,
+        from Google). It only stores in your browser the language you explicitly pick (<IC c="kglang" />).</>,
       <>The site is hosted on Cloudflare (Workers): Cloudflare processes the technical data of each visit (such as IP
         address and browser) to serve and protect the site, under its{' '}
         {ext('https://www.cloudflare.com/privacypolicy/', 'privacy policy')}.</>,

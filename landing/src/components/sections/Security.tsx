@@ -61,7 +61,7 @@ export default function Security({ lang }: Props) {
           </div>
 
           <div className="security-terminal reveal">
-            <div className="terminal crt">
+            <div className="terminal crt tone-ink">
               <div className="terminal-bar">
                 <div className="terminal-dots">
                   <div className="terminal-dot red" />

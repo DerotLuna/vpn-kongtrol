@@ -1,8 +1,9 @@
 import { OS, OS_LABELS } from '../../hooks/useOS'
 import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_RELEASES, GITHUB_REPO, INSTALL_CMD, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset, WINDOWS_INSTALLER_FILE, WINDOWS_INSTALLER_URL } from '../../links'
+import { GITHUB_RELEASES, GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset, WINDOWS_INSTALLER_FILE, WINDOWS_INSTALLER_URL } from '../../links'
 import CodeBlock from '../ui/CodeBlock'
+import DevInstall from './DevInstall'
 import { DOWNLOAD_SECTION_ID, DownloadIcon, DownloadNote, OTHER_WAYS_ID, PRIMARY_COPY } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
 import { pathFor } from '../../site'
@@ -10,49 +11,51 @@ import './download.css'
 
 const ORDER: OS[] = ['windows', 'macos', 'linux']
 
-interface Variant {
+interface FileItem {
   file: string
   href: string
   /** friendly name: what the visitor recognises about their computer */
   name: Record<Lang, string>
-  /** short tag for the button, when one OS has several files */
+  /** short tag for a featured button, when one OS features several files */
   tag: Record<Lang, string>
 }
 
 const asset = (key: ReleaseAssetKey) => ({ file: RELEASE_ASSETS[key], href: releaseAsset(key) })
 
-// One OS → its files, recommended first. Filenames come from links.ts.
-// Windows recommends the installer (feature:distribution); Windows on ARM has
-// no installer yet, so it keeps the standalone terminal program.
-const VARIANTS: Record<OS, Variant[]> = {
+// Every downloadable file, once, per OS (filenames come from links.ts). The
+// featured card shows the best option for the detected OS (FEATURED); every
+// other file appears exactly once in "Otras formas de instalar" (2026-11-19:
+// no file is listed twice). Windows on ARM has no installer yet, so its best
+// option is the standalone terminal program, listed once under Windows.
+const FILES: Record<OS, FileItem[]> = {
   windows: [
-    { file: WINDOWS_INSTALLER_FILE, href: WINDOWS_INSTALLER_URL, name: { es: 'Windows 10/11 · 64-bit · instalador', en: 'Windows 10/11 · 64-bit · installer' }, tag: { es: '64-bit', en: '64-bit' } },
-    { ...asset('windows-arm64'), name: { es: 'Windows en ARM · 64-bit', en: 'Windows on ARM · 64-bit' }, tag: { es: 'Windows en ARM', en: 'Windows on ARM' } },
+    { file: WINDOWS_INSTALLER_FILE, href: WINDOWS_INSTALLER_URL, name: { es: 'Instalador · 64-bit', en: 'Installer · 64-bit' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('windows-amd64'), name: { es: '64-bit · sin instalador', en: '64-bit · no installer' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('windows-arm64'), name: { es: 'ARM 64-bit · sin instalador', en: 'ARM 64-bit · no installer' }, tag: { es: 'ARM', en: 'ARM' } },
   ],
   macos: [
-    { ...asset('macos-arm64'), name: { es: 'Mac con Apple Silicon (M1 o posterior)', en: 'Mac with Apple Silicon (M1 or later)' }, tag: { es: 'Apple Silicon', en: 'Apple Silicon' } },
-    { ...asset('macos-amd64'), name: { es: 'Mac con procesador Intel', en: 'Mac with an Intel processor' }, tag: { es: 'Intel', en: 'Intel' } },
+    { ...asset('macos-arm64'), name: { es: 'Apple Silicon (M1 o posterior)', en: 'Apple Silicon (M1 or later)' }, tag: { es: 'Apple Silicon', en: 'Apple Silicon' } },
+    { ...asset('macos-amd64'), name: { es: 'Procesador Intel', en: 'Intel processor' }, tag: { es: 'Intel', en: 'Intel' } },
   ],
   linux: [
-    { ...asset('linux-amd64'), name: { es: 'Linux · 64-bit (x86_64)', en: 'Linux · 64-bit (x86_64)' }, tag: { es: '64-bit', en: '64-bit' } },
-    { ...asset('linux-arm64'), name: { es: 'Linux en ARM · 64-bit (p. ej. Raspberry Pi 4)', en: 'Linux on ARM · 64-bit (e.g. Raspberry Pi 4)' }, tag: { es: 'Linux en ARM', en: 'Linux on ARM' } },
+    { ...asset('linux-amd64'), name: { es: '64-bit (x86_64)', en: '64-bit (x86_64)' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('linux-arm64'), name: { es: 'ARM 64-bit (p. ej. Raspberry Pi 4)', en: 'ARM 64-bit (e.g. Raspberry Pi 4)' }, tag: { es: 'ARM', en: 'ARM' } },
   ],
 }
 
-// "Otras formas de instalar": the Windows terminal programs (one file, no
-// installer). macOS and Linux files above already are terminal programs.
-const WINDOWS_STANDALONE: ReleaseAssetKey[] = ['windows-amd64', 'windows-arm64']
+// The featured files per detected OS: the installer on Windows; both Mac
+// files (the browser cannot tell Apple Silicon from Intel); 64-bit on Linux.
+const FEATURED: Record<OS, string[]> = {
+  windows: [WINDOWS_INSTALLER_FILE],
+  macos: [RELEASE_ASSETS['macos-arm64'], RELEASE_ASSETS['macos-amd64']],
+  linux: [RELEASE_ASSETS['linux-amd64']],
+}
 
 // Featured-card title per OS (macOS covers both chips: the browser can't tell them apart).
 const FEATURED_TITLE: Record<OS, Record<Lang, string>> = {
   windows: { es: 'Windows 10/11 · 64-bit', en: 'Windows 10/11 · 64-bit' },
   macos: { es: 'macOS · Apple Silicon o Intel', en: 'macOS · Apple Silicon or Intel' },
   linux: { es: 'Linux · 64-bit', en: 'Linux · 64-bit' },
-}
-
-const INSTALL_SCRIPT_TITLE: Record<Lang, string> = {
-  es: 'Script de instalación · macOS, Linux y Windows',
-  en: 'Install script · macOS, Linux and Windows',
 }
 
 interface Props {
@@ -70,29 +73,29 @@ export default function Download({ lang }: Props) {
   const mobile = useIsMobile()
   // prerender (OS unknown) and phones: no recommendation, every system equal
   const featured = mobile ? null : detected
+  const featuredFiles = featured ? FILES[featured].filter(f => FEATURED[featured].includes(f.file)) : []
+  // every file not in the featured card, grouped by OS (empty groups dropped)
+  const groups = ORDER
+    .map(o => [o, FILES[o].filter(f => !featuredFiles.includes(f))] as [OS, FileItem[]])
+    .filter(([, files]) => files.length > 0)
   const copy = lang === 'es'
     ? {
       section: '$ make install',
       title: 'Descárgalo gratis.',
       sub: 'Windows, macOS y Linux. Local, gratis y de código abierto. Sin cuenta.',
       download: 'Descargar',
-      recommended: 'Recomendado para tu equipo',
-      others: 'Otros sistemas',
-      choose: 'Elige tu sistema',
+      recommended: 'Tu equipo',
+      macWhichShort: 'Menú Apple → Acerca de este Mac: «Chip» es Apple Silicon.',
       macWhich: '¿Apple Silicon o Intel? Tu navegador no puede saberlo. En tu Mac abre el menú Apple → Acerca de este Mac: si dice «Chip», es Apple Silicon; si dice «Procesador» Intel, es Intel.',
       allReleases: 'Ver todos los releases en GitHub',
       keepNote: <>Si desinstalas, tus datos se quedan (salvo que pidas borrarlos). El aviso de versión nueva es
         opcional y viene apagado. Ver cómo <a href={`${pathFor('guia', 'es')}#update`}>actualizar</a> y{' '}
         <a href={`${pathFor('guia', 'es')}#uninstall`}>desinstalar</a>.</>,
       otherTitle: 'Otras formas de instalar',
-      otherWinTitle: 'Windows · programa de terminal (un solo archivo, sin instalador)',
-      otherWinText: 'Lo usas desde PowerShell o el Símbolo del sistema. El instalador de arriba ya trae este mismo comando; baja este archivo solo si no quieres instalar nada.',
-      terminalText: 'Con una línea en la terminal: el script detecta tu sistema operativo y arquitectura, descarga el binario correcto de la última release, verifica su checksum SHA256, y lo deja listo en el PATH.',
-      terminalScript: `# Linux / macOS
-$ ${INSTALL_CMD.unix}
-
-# Windows (PowerShell)
-$ ${INSTALL_CMD.windows}`,
+      allTitle: 'Todas las descargas',
+      standaloneNote: 'Sin instalador: un archivo para la terminal.',
+      scriptTitle: 'Script de instalación',
+      terminalText: 'Una línea en la terminal: detecta tu sistema, verifica el SHA256 y lo deja en el PATH.',
       beta: 'Beta pública.',
       betaText: 'Todavía no está probado con cada VPN en cada sistema. Si algo no va bien,',
       betaLink: 'cuéntanoslo en GitHub',
@@ -142,23 +145,18 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       title: 'Download it free.',
       sub: 'Windows, macOS and Linux. Local, free and open source. No account.',
       download: 'Download',
-      recommended: 'Recommended for your computer',
-      others: 'Other systems',
-      choose: 'Choose your system',
+      recommended: 'Your computer',
+      macWhichShort: 'Apple menu → About This Mac: "Chip" means Apple Silicon.',
       macWhich: "Apple Silicon or Intel? Your browser can't tell. On your Mac open the Apple menu → About This Mac: if it says \"Chip\", it's Apple Silicon; if it says \"Processor\" with Intel, it's Intel.",
       allReleases: 'View all releases on GitHub',
       keepNote: <>If you uninstall, your data stays (unless you ask to delete it). The new version notice is
         optional and off by default. See how to <a href={`${pathFor('guia', 'en')}#update`}>update</a> and{' '}
         <a href={`${pathFor('guia', 'en')}#uninstall`}>uninstall</a>.</>,
       otherTitle: 'Other ways to install',
-      otherWinTitle: 'Windows · terminal program (a single file, no installer)',
-      otherWinText: "You run it from PowerShell or the Command Prompt. The installer above already includes this same command; get this file only if you don't want to install anything.",
-      terminalText: 'With one line in the terminal: the script detects your OS and architecture, downloads the correct binary from the latest release, verifies its SHA256 checksum, and drops it on your PATH.',
-      terminalScript: `# Linux / macOS
-$ ${INSTALL_CMD.unix}
-
-# Windows (PowerShell)
-$ ${INSTALL_CMD.windows}`,
+      allTitle: 'All downloads',
+      standaloneNote: 'No installer: one file for the terminal.',
+      scriptTitle: 'Install script',
+      terminalText: 'One line in the terminal: it detects your system, verifies the SHA256 and puts it on your PATH.',
       beta: 'Public beta.',
       betaText: "It isn't tested yet with every VPN on every system. If something doesn't work,",
       betaLink: 'tell us on GitHub',
@@ -205,93 +203,82 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
     }
 
   return (
-    <section id={DOWNLOAD_SECTION_ID} className="section dl-section">
+    <section id={DOWNLOAD_SECTION_ID} className="section dl-section tone-signal">
       <div className="container">
-        <div className="section-label cmd-label">{copy.section}</div>
-        <h2 className="section-title">{copy.title}</h2>
-        <p className="section-sub">{copy.sub}</p>
+        {/* laptops: heading left, the recommended file right (one row) */}
+        <div className="dl-lead">
+        <div className="dl-lead-text">
+          <div className="section-label cmd-label">{copy.section}</div>
+          <h2 className="section-title">{copy.title}</h2>
+          <p className="section-sub">{copy.sub}</p>
+        </div>
 
         {mobile && <SendToComputer lang={lang} className="dl-mobile" />}
 
         {featured && (
+          // Not a boxed card: a terminal comment naming the detected system,
+          // the band's one filled button and the file line, set off from
+          // the heading by a hairline (owner feedback 2026-11-19: the boxed
+          // "eyebrow + title" card read as generic).
           <div className="dl-featured">
-            <p className="dl-featured-tag">{copy.recommended}</p>
-            <h3 className="dl-featured-title">{FEATURED_TITLE[featured][lang]}</h3>
-            <div className="dl-featured-actions">
-              {VARIANTS[featured].map((v, i) => (
-                <div key={v.file} className="dl-featured-item">
-                  <a
-                    href={v.href}
-                    className={i === 0 ? 'btn-download dl-btn-lg' : 'btn-ghost dl-btn-outline'}
-                    download
-                  >
-                    <DownloadIcon size={i === 0 ? 18 : 14} />
-                    {featured === 'macos' || i > 0 ? `${copy.download} · ${v.tag[lang]}` : PRIMARY_COPY[lang].forOS[featured]}
-                  </a>
-                  <FileName file={v.file} />
-                </div>
-              ))}
+            <div className="dl-featured-head">
+              <h3 className="dl-featured-title">
+                <span className="dl-featured-hash" aria-hidden="true"># </span>
+                {copy.recommended}: <span className="dl-featured-os">{FEATURED_TITLE[featured][lang]}</span>
+              </h3>
             </div>
-            {featured === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
-            <DownloadNote lang={lang} os={featured} page="home" className="dl-featured-note" />
+            <div className="dl-featured-body">
+              <div className="dl-featured-actions">
+                {featuredFiles.map(v => (
+                  <div key={v.file} className="dl-featured-item">
+                    <a href={v.href} className="btn-download dl-btn-lg" download>
+                      <DownloadIcon size={18} />
+                      {featured === 'macos' ? `${copy.download} · ${v.tag[lang]}` : PRIMARY_COPY[lang].forOS[featured]}
+                    </a>
+                    <FileName file={v.file} />
+                                      </div>
+                ))}
+              </div>
+              {featured === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
+              <DownloadNote lang={lang} os={featured} page="home" className="dl-featured-note" />
+            </div>
           </div>
         )}
-
-        <h3 className="dl-others-title">{featured ? copy.others : copy.choose}</h3>
-        <div className="dl-grid">
-          {ORDER.filter(o => o !== featured).map(o => (
-            <div key={o} className="dl-card">
-              <h4 className="dl-card-os">{OS_LABELS[o]}</h4>
-              <ul className="dl-list">
-                {VARIANTS[o].map(v => (
-                  <li key={v.file} className="dl-row">
-                    <div className="dl-row-info">
-                      <span className="dl-row-name">{v.name[lang]}</span>
-                      <FileName file={v.file} />
-                    </div>
-                    {!mobile && (
-                      <a href={v.href} className="btn-ghost dl-btn-sm" download>
-                        <DownloadIcon size={14} />
-                        {copy.download}
-                        <span className="sr-only"> · {v.name[lang]}</span>
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              {o === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
-            </div>
-          ))}
         </div>
 
-        {/* feature:distribution — the standalone command and the script */}
+        {/* feature:distribution — every other file and the one-line script,
+            each exactly once */}
         <div id={OTHER_WAYS_ID} className="dl-other">
-          <h3 className="dl-others-title">{copy.otherTitle}</h3>
-          <div className="dl-card">
-            <h4 className="dl-card-os">{copy.otherWinTitle}</h4>
-            <p className="dl-other-text">{copy.otherWinText}</p>
-            <ul className="dl-list">
-              {WINDOWS_STANDALONE.map(key => (
-                <li key={key} className="dl-row">
-                  <div className="dl-row-info">
-                    <span className="dl-row-name">{key === 'windows-amd64' ? 'Windows 10/11 · 64-bit' : VARIANTS.windows[1].name[lang]}</span>
-                    <FileName file={RELEASE_ASSETS[key]} />
-                  </div>
-                  {!mobile && (
-                    <a href={releaseAsset(key)} className="btn-ghost dl-btn-sm" download>
-                      <DownloadIcon size={14} />
-                      {copy.download}
-                      <span className="sr-only"> · {RELEASE_ASSETS[key]}</span>
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="dl-card">
-            <h4 className="dl-card-os">{INSTALL_SCRIPT_TITLE[lang]}</h4>
-            <p className="dl-other-text">{copy.terminalText}</p>
-            <CodeBlock ui={lang} lang="bash" wrap>{copy.terminalScript}</CodeBlock>
+          <h3 className="dl-others-title">{featured ? copy.otherTitle : copy.allTitle}</h3>
+          <div className="dl-ways">
+            {groups.map(([o, files]) => (
+              <div key={o} className="dl-card">
+                <h4 className="dl-card-os">{OS_LABELS[o]}</h4>
+                <ul className="dl-list">
+                  {files.map(v => (
+                    <li key={v.file} className="dl-row">
+                      <div className="dl-row-info">
+                        <span className="dl-row-name">{v.name[lang]}</span>
+                        <FileName file={v.file} />
+                      </div>
+                      {!mobile && (
+                        <a href={v.href} className="btn-ghost dl-btn-icon" download title={`${copy.download} · ${v.file}`}>
+                          <DownloadIcon size={16} />
+                          <span className="sr-only">{copy.download} · {OS_LABELS[o]} · {v.name[lang]}</span>
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                {o === 'windows' && <p className="dl-card-note">{copy.standaloneNote}</p>}
+                {o === 'macos' && <p className="dl-card-note">{copy.macWhichShort}</p>}
+              </div>
+            ))}
+            <div className="dl-card dl-script">
+              <h4 className="dl-card-os">{copy.scriptTitle}</h4>
+              <p className="dl-card-note">{copy.terminalText}</p>
+              <DevInstall lang={lang} />
+            </div>
           </div>
         </div>
 
