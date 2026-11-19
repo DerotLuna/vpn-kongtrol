@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 )
@@ -158,7 +159,7 @@ func (s *Server) handlePolicyReload(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/v1/policies
 func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
-	var patch policyPatch
+	var patch configedit.PolicyPatch
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
@@ -168,18 +169,12 @@ func (s *Server) handleCreatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	req := normalizePolicyRule(patch.applyTo(config.PolicyRule{}))
-	if err := validatePolicyRule(req, cfg); err != nil {
-		writeLocalizedError(w, r, http.StatusBadRequest, err)
+	// Same check and append as `kongtrol policy add` with no daemon.
+	req, err := configedit.AddPolicy(cfg, patch.ApplyTo(config.PolicyRule{}))
+	if err != nil {
+		writeLocalizedError(w, r, policyErrStatus(err), err)
 		return
 	}
-	for _, p := range cfg.Policies {
-		if strings.EqualFold(p.Name, req.Name) {
-			writeError(w, http.StatusConflict, "policy name already exists")
-			return
-		}
-	}
-	cfg.Policies = append(cfg.Policies, req)
 	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -194,7 +189,7 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "missing policy name")
 		return
 	}
-	var patch policyPatch
+	var patch configedit.PolicyPatch
 	if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
@@ -204,30 +199,20 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	idx := -1
-	for i := range cfg.Policies {
-		if strings.EqualFold(cfg.Policies[i].Name, name) {
-			idx = i
-			break
-		}
-	}
+	idx := configedit.FindPolicy(cfg, name)
 	if idx == -1 {
-		writeError(w, http.StatusNotFound, "policy not found")
+		writeLocalizedError(w, r, http.StatusNotFound, &config.ValidationError{Key: configedit.ErrKeyPolicyNotFound, Args: []any{name}})
 		return
 	}
-	req := normalizePolicyRule(patch.applyTo(clonePolicyRule(cfg.Policies[idx])))
+	req := configedit.NormalizePolicy(patch.ApplyTo(configedit.ClonePolicy(cfg.Policies[idx])))
 	if req.Name == "" {
 		req.Name = cfg.Policies[idx].Name
 	}
-	if !strings.EqualFold(req.Name, name) {
-		for _, p := range cfg.Policies {
-			if strings.EqualFold(p.Name, req.Name) {
-				writeError(w, http.StatusConflict, "policy name already exists")
-				return
-			}
-		}
+	if !strings.EqualFold(req.Name, name) && configedit.FindPolicy(cfg, req.Name) >= 0 {
+		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: configedit.ErrKeyPolicyExists, Args: []any{req.Name}})
+		return
 	}
-	if err := validatePolicyRule(req, cfg); err != nil {
+	if err := configedit.ValidatePolicy(req, cfg); err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
@@ -247,20 +232,10 @@ func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	var out []config.PolicyRule
-	deleted := false
-	for _, p := range cfg.Policies {
-		if strings.EqualFold(p.Name, name) {
-			deleted = true
-			continue
-		}
-		out = append(out, p)
-	}
-	if !deleted {
-		writeError(w, http.StatusNotFound, "policy not found")
+	if err := configedit.RemovePolicy(cfg, name); err != nil {
+		writeLocalizedError(w, r, http.StatusNotFound, err)
 		return
 	}
-	cfg.Policies = out
 	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -271,9 +246,9 @@ func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/policies/test
 func (s *Server) handleTestPolicy(w http.ResponseWriter, r *http.Request) {
 	type testReq struct {
-		Rule   policyPatch `json:"rule"`
-		Target string      `json:"target"`
-		App    string      `json:"app"`
+		Rule   configedit.PolicyPatch `json:"rule"`
+		Target string                 `json:"target"`
+		App    string                 `json:"app"`
 	}
 	type testResp struct {
 		Matched bool   `json:"matched"`
@@ -286,14 +261,14 @@ func (s *Server) handleTestPolicy(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
-	pr := normalizePolicyRule(req.Rule.applyTo(config.PolicyRule{}))
+	pr := configedit.NormalizePolicy(req.Rule.ApplyTo(config.PolicyRule{}))
 	cfg, _, err := s.loadRuntimeConfig()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := validatePolicyRule(pr, cfg); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	if err := configedit.ValidatePolicy(pr, cfg); err != nil {
+		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
 	rule, err := policy.ParseRule(pr.Name, pr.Via, pr.Match.IPRanges, pr.Match.Domains, pr.Match.Apps, 1)
@@ -471,26 +446,14 @@ func (s *Server) handleDNSResolve(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func normalizePolicyRule(r config.PolicyRule) config.PolicyRule {
-	r.Name = strings.TrimSpace(r.Name)
-	r.Via = strings.TrimSpace(r.Via)
-	r.OnTunnelDown = strings.ToLower(strings.TrimSpace(r.OnTunnelDown))
-	if r.OnTunnelDown == config.OnTunnelDownAllow {
-		r.OnTunnelDown = "" // the default stays out of kongtrol.yaml
+// policyErrStatus is the HTTP status of a configedit policy error: 409 for
+// a name already taken, 400 for everything else.
+func policyErrStatus(err error) int {
+	var ve *config.ValidationError
+	if errors.As(err, &ve) && ve.Key == configedit.ErrKeyPolicyExists {
+		return http.StatusConflict
 	}
-	for i := range r.Match.Domains {
-		r.Match.Domains[i] = strings.TrimSpace(r.Match.Domains[i])
-	}
-	for i := range r.Match.IPRanges {
-		r.Match.IPRanges[i] = strings.TrimSpace(r.Match.IPRanges[i])
-	}
-	for i := range r.Match.Apps {
-		r.Match.Apps[i] = strings.TrimSpace(r.Match.Apps[i])
-	}
-	r.Match.Domains = filterNonEmpty(r.Match.Domains)
-	r.Match.IPRanges = filterNonEmpty(r.Match.IPRanges)
-	r.Match.Apps = filterNonEmpty(r.Match.Apps)
-	return r
+	return http.StatusBadRequest
 }
 
 func filterNonEmpty(in []string) []string {
@@ -503,29 +466,6 @@ func filterNonEmpty(in []string) []string {
 	return out
 }
 
-func validatePolicyRule(rule config.PolicyRule, cfg *config.Config) error {
-	if rule.Name == "" {
-		return fmt.Errorf("policy name is required")
-	}
-	if rule.Via == "" {
-		return fmt.Errorf("policy via profile is required")
-	}
-	if _, ok := cfg.VPNs[rule.Via]; !ok {
-		return fmt.Errorf("via profile %q not found in vpns", rule.Via)
-	}
-	if len(rule.Match.Domains) == 0 && len(rule.Match.IPRanges) == 0 && len(rule.Match.Apps) == 0 {
-		return fmt.Errorf("policy must define at least one domain, ip_range, or app")
-	}
-	if err := config.ValidateOnTunnelDown(rule); err != nil {
-		return err
-	}
-	_, err := policy.ParseRule(rule.Name, rule.Via, rule.Match.IPRanges, rule.Match.Domains, rule.Match.Apps, 1)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func matchPolicyOrProfileToken(token string, rules []policy.Rule) (via string, rule string, ok bool) {
 	if token == "" {
 		return "", "", false
@@ -536,53 +476,4 @@ func matchPolicyOrProfileToken(token string, rules []policy.Rule) (via string, r
 		}
 	}
 	return "", "", false
-}
-
-// policyPatch is the JSON body for policy create/update/test. config.PolicyRule
-// carries only yaml tags, so decoding JSON straight into it silently dropped
-// "ip_ranges"; pointer fields also let an update apply only what was sent.
-type policyPatch struct {
-	Name *string `json:"name"`
-	Via  *string `json:"via"`
-	// OnTunnelDown: allow (default) | block | connect.
-	OnTunnelDown *string `json:"on_tunnel_down"`
-	Match        *struct {
-		IPRanges *[]string `json:"ip_ranges"`
-		Domains  *[]string `json:"domains"`
-		Apps     *[]string `json:"apps"`
-	} `json:"match"`
-}
-
-// applyTo overlays the fields present in p onto base and returns the result.
-func (p policyPatch) applyTo(base config.PolicyRule) config.PolicyRule {
-	if p.Name != nil {
-		base.Name = *p.Name
-	}
-	if p.OnTunnelDown != nil {
-		base.OnTunnelDown = *p.OnTunnelDown
-	}
-	if p.Via != nil {
-		base.Via = *p.Via
-	}
-	if p.Match != nil {
-		if p.Match.IPRanges != nil {
-			base.Match.IPRanges = *p.Match.IPRanges
-		}
-		if p.Match.Domains != nil {
-			base.Match.Domains = *p.Match.Domains
-		}
-		if p.Match.Apps != nil {
-			base.Match.Apps = *p.Match.Apps
-		}
-	}
-	return base
-}
-
-// clonePolicyRule deep-copies r so normalizing the copy never mutates the
-// slices still referenced by the loaded config.
-func clonePolicyRule(r config.PolicyRule) config.PolicyRule {
-	r.Match.IPRanges = append([]string(nil), r.Match.IPRanges...)
-	r.Match.Domains = append([]string(nil), r.Match.Domains...)
-	r.Match.Apps = append([]string(nil), r.Match.Apps...)
-	return r
 }

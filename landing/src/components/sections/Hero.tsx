@@ -2,9 +2,9 @@ import { CSSProperties, FormEvent, useEffect, useRef, useState } from 'react'
 import { OS } from '../../hooks/useOS'
 import { useDetectedOS } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey } from '../../links'
+import { GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey, WINDOWS_INSTALLER_FILE } from '../../links'
 import { pathFor, SITE_UPDATED, SITE_VERSION } from '../../site'
-import { CTA_COPY, downloadHref, GitHubIcon } from '../ui/downloadCta'
+import { CTA_COPY, DownloadIcon, DownloadNote, GitHubIcon, PRIMARY_COPY, primaryDownloadHref } from '../ui/downloadCta'
 import SendToComputer from '../ui/SendToComputer'
 
 interface Props {
@@ -28,11 +28,12 @@ const TUNNELS: Tunnel[] = [
   { profile: 'aws', adapter: 'OpenVPN', ip: '10.42.7.3' },
 ]
 
-const BIN: Record<OS, ReleaseAssetKey> = {
-  windows: 'windows-amd64',
+const BIN: Record<Exclude<OS, 'windows'>, ReleaseAssetKey> = {
   macos: 'macos-arm64',
   linux: 'linux-amd64',
 }
+// the file the boot log names for this system (Windows: the installer)
+const fileFor = (os: OS) => os === 'windows' ? WINDOWS_INSTALLER_FILE : RELEASE_ASSETS[BIN[os]]
 
 // Boot timeline (ms after first paint). The meaningful content (the h1, the
 // plain-language line, the two buttons) is in place within ~0.6s — the h1
@@ -76,7 +77,8 @@ function BootRows() {
   )
 }
 
-// "see downloads" scrolls down to #install: an arrow, not a download tray
+// on macOS / Linux (and before hydration) the button scrolls down to
+// #install: an arrow, not a download tray
 function ArrowDownIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -103,12 +105,12 @@ export default function Hero({ os, lang }: Props) {
     if (el && shell.length > 0) el.scrollTop = el.scrollHeight
   }, [shell])
 
-  // Until a release ships the installer (v0.6.0, ADR-0027) the primary
-  // button scrolls to #install, so it says "see downloads", not "download".
-  // The label is fixed; a small second line names the visitor's system once
-  // it is known after hydration ("para tu equipo" in the prerender). Every
-  // hint is shorter than the label, so the button never changes size (no
-  // layout shift). Phones/tablets get "send to my computer", chosen by CSS
+  // The primary button (PRIMARY_COPY, shared with the download section and
+  // the footer) downloads the Windows installer on Windows and scrolls to
+  // #install elsewhere. The label is fixed ("Descargar"); a small second line
+  // names the visitor's system once it is known after hydration ("para tu
+  // equipo" in the prerender). Every hint is shorter than the label, so the
+  // button never changes size (no layout shift). Phones/tablets get "send to my computer", chosen by CSS
   // from <html data-device> (markup below).
   const detectedOS = useDetectedOS()
   const cta = CTA_COPY[lang]
@@ -124,10 +126,9 @@ export default function Hero({ os, lang }: Props) {
       resolving: '→ resolviendo credenciales desde el keychain… ok',
       security: ['⛨ kill switch', 'ARMADO', '· DNS guard', 'ACTIVO'],
       watchdog: '♺ watchdog: sondeo cada 5s · backoff 2s → 5m',
-      binHint: `→ binario para tu sistema: ${RELEASE_ASSETS[BIN[os]]}`,
+      binHint: `→ para tu sistema: ${fileFor(os)}`,
       binHintMobile: '→ Kongtrol se instala en tu computador: envíate el enlace ↑',
       hint: 'escribe "help" y presiona Enter ↵',
-      seeDownloads: 'Ver descargas',
       osHint: { windows: 'para Windows', macos: 'para Mac', linux: 'para Linux' } as Record<OS, string>,
       osHintGeneric: 'para tu equipo',
     }
@@ -140,10 +141,9 @@ export default function Hero({ os, lang }: Props) {
       resolving: '→ resolving credentials from the keychain… ok',
       security: ['⛨ kill switch', 'ARMED', '· DNS guard', 'ACTIVE'],
       watchdog: '♺ watchdog: poll every 5s · backoff 2s → 5m',
-      binHint: `→ binary for your system: ${RELEASE_ASSETS[BIN[os]]}`,
+      binHint: `→ for your system: ${fileFor(os)}`,
       binHintMobile: '→ Kongtrol installs on your computer: send yourself the link ↑',
       hint: 'type "help" and press Enter ↵',
-      seeDownloads: 'See downloads',
       osHint: { windows: 'for Windows', macos: 'for Mac', linux: 'for Linux' } as Record<OS, string>,
       osHintGeneric: 'for your OS',
     }
@@ -284,16 +284,21 @@ export default function Hero({ os, lang }: Props) {
                 download button. */}
             <div id="hero-cta" className="th-ctas boot-step" style={at(BOOT.ctas)}>
               <div className="th-ctas-desktop">
-                <a href={downloadHref('home', lang)} className="th-btn primary">
-                  <ArrowDownIcon />
+                <a
+                  href={primaryDownloadHref(detectedOS, 'home', lang)}
+                  className="th-btn primary"
+                  download={detectedOS === 'windows' ? '' : undefined}
+                >
+                  {detectedOS === 'windows' ? <DownloadIcon /> : <ArrowDownIcon />}
                   <span className="th-btn-stack">
-                    <span>{copy.seeDownloads}</span>
+                    <span>{PRIMARY_COPY[lang].download}</span>
                     <small className="th-btn-os">{detectedOS ? copy.osHint[detectedOS] : copy.osHintGeneric}</small>
                   </span>
                 </a>
                 <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">
                   <GitHubIcon />{cta.github}
                 </a>
+                <DownloadNote lang={lang} os={detectedOS} page="home" className="th-note" />
               </div>
               <SendToComputer lang={lang} className="th-stc th-ctas-mobile">
                 <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">

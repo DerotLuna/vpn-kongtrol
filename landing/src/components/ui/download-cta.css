@@ -114,3 +114,19 @@
 
 /* "Para todos" card */
 .path-stc { margin-top: 18px; }
+
+/* ── Primary download note (downloadCta.tsx DownloadNote / PrimaryDownload,
+   2026-11-19): what the file is, then "other ways" for terminal users.
+   Short lines, so the hero keeps its height once the OS is known. */
+.pd { display: grid; justify-items: start; gap: 10px; }
+.pd-note {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 14px;
+  font-size: 0.8125rem; line-height: 1.5; color: var(--text-muted);
+}
+.pd-note a {
+  display: inline-flex; align-items: center; min-height: 24px;
+  color: var(--signal); text-decoration: underline; text-underline-offset: 3px;
+}
+/* hero: the note takes its own row under both buttons, in the terminal voice */
+.th-ctas .th-note { flex-basis: 100%; margin-top: -2px; font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.01em; }
+.dl-featured-note { margin-top: 16px; }

@@ -24,7 +24,7 @@ func newSyncTestAdapter(typ string) *syncTestAdapter {
 	return a
 }
 
-func (a *syncTestAdapter) set(s vpn.Status)                                { a.status.Store(s) }
+func (a *syncTestAdapter) set(s vpn.Status)                                 { a.status.Store(s) }
 func (a *syncTestAdapter) Connect(context.Context, vpn.AdapterConfig) error { return nil }
 func (a *syncTestAdapter) Disconnect(context.Context) error                 { return nil }
 func (a *syncTestAdapter) Reconnect(context.Context) error                  { return nil }

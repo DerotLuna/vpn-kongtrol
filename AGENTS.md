@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.18 · 2026-11-19
+Version 1.19 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -121,7 +121,13 @@ Setup per-user installer (native), GoReleaser OSS for the rest (CLI, Linux/Windo
 archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, Homebrew
 **formula** (never a cask: casks get the quarantine flag) and npm (esbuild-style
 `optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
-Upgrades in place keep `~/.kongtrol`, keychain entries and the helper. `install.sh`/`install.ps1` are
+Upgrades in place keep `~/.kongtrol`, keychain entries and the helper, and reconnect the tunnels
+that were up (ADR-0050): the NEW binary runs hidden `down --all --remember` (writes
+`~/.kongtrol/run/resume.json`, one-shot, 24 h), then after files + `service install --if-outdated`
+hidden `resume` reconnects them (`daemon --restart <profiles>`, or the running daemon's API). The
+Inno finished-page checkbox depends on profiles existing; "crear mi primera VPN" runs
+`kongtrol-tray --open /profiles`, which always opens it (also from a second tray instance).
+`install.sh`/`install.ps1` are
 release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035).
 The release body starts with the Windows installer line (`.goreleaser.yaml` `release.header`); a
 double-clicked `kongtrol.exe` (Explorer, no arguments) prints `cli.explorer_notice` and waits for
@@ -349,6 +355,13 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 `api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
 `~/.kongtrol/configs/` (ADR-0042). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
 the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
+<!-- feature:policies -->
+Policy create/delete and profile create live in `internal/configedit` (`AddPolicy`, `RemovePolicy`,
+`AddVPNProfile`/`SaveVPNProfile`, `Save` = Validate + policy engine + atomic write), shared by the
+API handlers and the CLI with no daemon (`kongtrol policy add|remove`, `kongtrol profile add`,
+`profile import --create`); with a daemon the CLI calls the same endpoints. `policy.ClassifyTargets`
+is the "＋ Agregar" input classifier (URL → host, `*.host` unless `--no-subdomains`, IP/CIDR,
+`app:`); web/ui mirrors it. `kongtrol profile detect` = `GET /api/v1/vpns/detect` (vpndetect).
 
 VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
 adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,

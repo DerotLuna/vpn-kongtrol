@@ -1,4 +1,4 @@
-<!-- README version 2.2.1 · 2026-11-19.
+<!-- README version 2.2.2 · 2026-11-19.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -261,7 +261,9 @@ installer again, or install the new `.deb`/`.rpm`. Your settings in `~/.kongtrol
 keychain and the network helper stay. If you already have it, the Windows installer and the
 scripts detect it and say "Update Kongtrol <old> → <new>" (or reinstall, or warn before an older
 version) without asking again what you already chose; the helper asks for permission only if it
-is out of date. Then run `kongtrol restart` (or Restart in the panel) to
+is out of date. The Windows installer and the scripts reconnect the VPNs you had connected by
+themselves; after a package manager update (`.deb`/`.rpm`, Homebrew, Scoop, npm) run
+`kongtrol restart` (or Restart in the panel) to
 switch to the new version with your VPNs reconnected. The new version notice
 <sub>since v0.6.0 (pre-release)</sub> is off by default: turn it on in the panel (Settings) or with
 `kongtrol config update-check on`. It never downloads or installs anything.

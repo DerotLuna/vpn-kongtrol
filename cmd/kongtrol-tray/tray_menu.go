@@ -70,6 +70,15 @@ func setupMenu() {
 		}
 		return
 	}
+	// The installer's "create my first VPN" checkbox with profiles already
+	// there (data kept from an earlier install): open the page anyway.
+	if p := takeOpenRequest(); p != "" {
+		go func() {
+			if !openDashboardPage(p) {
+				log.Printf("kongtrol-tray: --open %s failed", p)
+			}
+		}()
+	}
 
 	m := &trayMenu{}
 
@@ -224,7 +233,11 @@ func showFirstRun() {
 		systray.SetTooltip(msg)
 	}
 	onClick(mSetup, openSetup)
-	if claimFirstRunOpen() {
+	// Automatic opening happens once (marker); an explicit --open from the
+	// installer's checkbox always opens (ADR-0050). The marker is claimed
+	// either way, so the next start does not open it again by itself.
+	claimed := claimFirstRunOpen()
+	if asked := takeOpenRequest() != ""; claimed || asked {
 		go openSetup()
 	}
 	// A fresh install also needs the helper (macOS/Linux have no installer

@@ -10,10 +10,18 @@ interface Props {
   panel?: HTMLAttributes<HTMLPreElement> & { 'aria-labelledby'?: string }
   /** a new value re-mounts the <pre> and cross-fades it in */
   swapKey?: string
+  /** long lines wrap on screen with a hanging indent instead of scrolling
+      (one-liners); copy still gives the exact text */
+  wrap?: boolean
   children: string
 }
 
-export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, children }: Props) {
+// "$ cmd   # note": the trailing comment of a command line. On narrow blocks
+// it drops to its own dimmed line under the command (index.css .cmt-*), so
+// the block never scrolls sideways; copy still gives the original text.
+const TRAILING_COMMENT = /^(.*?\S)(\s{2,})(#.*)$/
+
+export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, wrap, children }: Props) {
   // idle → copied | failed → idle. A refused clipboard (no permission, plain
   // http, old browser) says so instead of failing silently (Apple HIG Feedback).
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
@@ -38,22 +46,25 @@ export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, chi
     : (isES ? 'copiar' : 'copy')
 
   // Simple syntax highlight: lines starting with # are comments, $ is prompt
+  // (wrap: every line is its own block, so each one gets the hanging indent)
   const highlighted = children.split('\n').map((line, i) => {
+    let cls: string | undefined
+    let body: ReactNode = line
     if (line.startsWith('#')) {
-      return <span key={i} className="comment">{line}{'\n'}</span>
-    }
-    if (line.startsWith('$ ') || line.startsWith('> ')) {
-      return (
-        <span key={i}>
+      cls = 'comment'
+    } else if (line.startsWith('$ ') || line.startsWith('> ')) {
+      const m = TRAILING_COMMENT.exec(line.slice(2))
+      body = (
+        <>
           <span className="prompt">{line.slice(0, 2)}</span>
-          {line.slice(2)}{'\n'}
-        </span>
+          {m ? <>{m[1]}<span className="cmt-pad">{m[2]}</span><span className="comment cmt-inline">{m[3]}</span></> : line.slice(2)}
+        </>
       )
+    } else if (line.startsWith('[+]') || line.startsWith('[✓]')) {
+      cls = 'hi'
     }
-    if (line.startsWith('[+]') || line.startsWith('[✓]')) {
-      return <span key={i} className="hi">{line}{'\n'}</span>
-    }
-    return <span key={i}>{line}{'\n'}</span>
+    if (wrap) return <span key={i} className={cls ? `ln ${cls}` : 'ln'}>{body}</span>
+    return <span key={i} className={cls}>{body}{'\n'}</span>
   })
 
   return (
@@ -64,7 +75,7 @@ export default function CodeBlock({ ui, lang = 'bash', head, panel, swapKey, chi
           <span key={state} className={`copy-label${used ? ' is-fb' : ''}`}>{label}</span>
         </button>
       </div>
-      <pre key={swapKey} {...panel} className={swapKey ? 'is-swapped' : undefined}>{highlighted}</pre>
+      <pre key={swapKey} {...panel} className={[swapKey && 'is-swapped', wrap && 'is-wrapped'].filter(Boolean).join(' ') || undefined}>{highlighted}</pre>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { CSSProperties, useEffect, useRef, useState } from 'react'
 import { useInView } from '../../hooks/useInView'
 import { Lang } from '../../i18n'
 import './routeboard.css'
@@ -10,34 +10,73 @@ interface Props {
 type Route = {
   dest: string
   /** what the destination is, in everyday words — kept short so it fits the
-      150-unit node at 11px in the SVG */
+      150-unit card at 11px in the SVG */
   human: string
-  rule: string
-  match: string
   tunnel: string
   adapter: string
   direct?: boolean
 }
 
-// Fixed row centers inside the 640×360 SVG viewBox — no DOM measurement needed.
+// Patch panel ("switchboard", routeboard.css v2). One example at a time: a
+// packet leaves a destination, enters the panel through its socket, follows
+// its cable to the exit socket and lands on the exit; then the rule label
+// shows. CYCLE must cover the CSS timeline (packet --pp-travel, landing at
+// --pp-land); scripts/readme-media.mjs records 4 × CYCLE.
+const CYCLE = 3400
+
+// Fixed geometry in the 640×360 viewBox (desktop) — no DOM measurement.
+// Cards: 6–156 (left) and 484–634 (right). Panel: 236–404. Sockets sit ON the
+// panel edges at each row, so every wire leaves its card edge horizontally.
 const ROWS = [64, 141, 219, 296]
-// Core geometry: center (320,180), ring r 56. Ports are small dots ON the
-// ring (r 3) at x 264 (IN) and 376 (OUT); wires stop at each dot's outer edge.
-const CORE_R = 56
-const PORT_DOT = 3
-const PORT_L = 320 - CORE_R - PORT_DOT
-const PORT_R = 320 + CORE_R + PORT_DOT
-// port labels: baseline just under the dots (core-relative y); a halo in the
-// board colour (paint-order, routeboard.css) keeps them legible over wires
-const PORT_LABEL_Y = PORT_DOT + 17
+const CARD_L = 156
+const CARD_R = 484
+const PANEL_L = 236
+const PANEL_R = 404
+const JACK = 6 // half-width of a socket housing
+// Destination i leaves through exit row OUT[i]: the exits are not in the same
+// order as the destinations, so the cables cross inside the panel like real
+// patch cords. Exits (right column) are listed by row: EXIT_ORDER[row] = route.
+const OUT = [1, 3, 0, 2]
+const EXIT_ORDER = [2, 0, 3, 1]
+
+const cable = (i: number) => {
+  const y1 = ROWS[i]
+  const y2 = ROWS[OUT[i]]
+  return `M${PANEL_L + JACK} ${y1} C 320 ${y1}, 320 ${y2}, ${PANEL_R - JACK} ${y2}`
+}
+// the whole route the packet travels: card edge → socket → cable → socket → card edge
+const route = (i: number) => {
+  const y1 = ROWS[i]
+  const y2 = ROWS[OUT[i]]
+  return `M${CARD_L} ${y1} H${PANEL_L + JACK} C 320 ${y1}, 320 ${y2}, ${PANEL_R - JACK} ${y2} H${CARD_R}`
+}
+
+// Narrow screens: a 300×120 strip between the two lists — sockets on its top
+// edge (destinations, in order) and bottom edge (exits, in EXIT_ORDER).
+const STRIP_X = [48, 116, 184, 252]
+const STRIP_T = 16
+const STRIP_B = 104
+const stripRoute = (i: number) => {
+  const x1 = STRIP_X[i]
+  const x2 = STRIP_X[OUT[i]]
+  return `M${x1} 0 V${STRIP_T} C ${x1} 60, ${x2} 60, ${x2} ${STRIP_B} V120`
+}
+const stripCable = (i: number) => {
+  const x1 = STRIP_X[i]
+  const x2 = STRIP_X[OUT[i]]
+  return `M${x1} ${STRIP_T + JACK} C ${x1} 60, ${x2} 60, ${x2} ${STRIP_B - JACK}`
+}
 
 export default function Features({ lang }: Props) {
   const [active, setActive] = useState(0)
+  // bumps on every new example, so the keyed packet / trace / label remount
+  // and their CSS timeline starts again even when the same route repeats
+  const [run, setRun] = useState(0)
   const [paused, setPaused] = useState(false)
   // once the visitor picks a destination the board stops rotating for good
-  // (WCAG 2.2.2) and the readout starts being announced
+  // (WCAG 2.2.2) and the rule label starts being announced
   const [touched, setTouched] = useState(false)
-  // rotates and animates its wires only while on screen (ADR-0031)
+  // rotates and animates only while on screen (ADR-0031)
   const boardRef = useRef<HTMLDivElement>(null)
   const live = useInView(boardRef)
   // .is-live is toggled on the node, not through className: useReveal adds
@@ -50,18 +89,14 @@ export default function Features({ lang }: Props) {
       title: 'Cada sitio, por la VPN correcta.',
       sub: 'Tú eliges qué sitios y redes van por cada VPN: el sistema de tu empresa por la VPN del trabajo, otro sitio por tu VPN personal. Lo demás sale directo, sin VPN. Varias VPN a la vez, sin pelearse.',
       boardIn: 'Destino',
-      boardCore: 'Reglas de Kongtrol',
       boardOut: 'Sale por',
-      portIn: 'tus apps →',
-      portOut: '→ VPN o internet',
-      readoutRule: 'regla',
-      readoutNoRule: 'sin regla — sale directo, sin VPN',
+      boardName: 'Mapa de rutas: qué destino sale por qué VPN',
       hint: 'Toca un destino para ver por dónde sale',
       routes: [
-        { dest: '10.10.0.0/16', human: 'sistema de tu empresa', rule: 'Red de oficina', match: 'rango de IP', tunnel: 'office', adapter: 'FortiClient' },
-        { dest: '*.amazonaws.com', human: 'servidores en la nube', rule: 'AWS workloads', match: 'dominio', tunnel: 'aws', adapter: 'OpenVPN' },
-        { dest: 'claude.ai', human: 'un sitio en EE. UU.', rule: 'Contenido US', match: 'dominio', tunnel: 'us-content', adapter: 'Proton VPN' },
-        { dest: 'gmail.com', human: 'tu correo de siempre', rule: '', match: '', tunnel: 'directo', adapter: 'sin VPN', direct: true },
+        { dest: '10.10.0.0/16', human: 'sistema de tu empresa', tunnel: 'office', adapter: 'FortiClient' },
+        { dest: '*.amazonaws.com', human: 'servidores en la nube', tunnel: 'aws', adapter: 'OpenVPN' },
+        { dest: 'claude.ai', human: 'un sitio en EE. UU.', tunnel: 'us-content', adapter: 'Proton VPN' },
+        { dest: 'gmail.com', human: 'tu correo de siempre', tunnel: 'directo', adapter: 'sin VPN', direct: true },
       ] as Route[],
     }
     : {
@@ -69,32 +104,34 @@ export default function Features({ lang }: Props) {
       title: 'Every site, through the right VPN.',
       sub: 'You choose which sites and networks go through each VPN: your company system through the work VPN, another site through your personal VPN. Everything else goes out directly, no VPN. Several VPNs at once, no fighting.',
       boardIn: 'Destination',
-      boardCore: 'Kongtrol rules',
-      boardOut: 'Goes through',
-      portIn: 'your apps →',
-      portOut: '→ VPN or internet',
-      readoutRule: 'rule',
-      readoutNoRule: 'no rule — goes out directly, no VPN',
+      boardOut: 'Goes out through',
+      boardName: 'Route map: which destination goes out through which VPN',
       hint: 'Tap a destination to see where it goes out',
       routes: [
-        { dest: '10.10.0.0/16', human: 'your company system', rule: 'Office network', match: 'IP range', tunnel: 'office', adapter: 'FortiClient' },
-        { dest: '*.amazonaws.com', human: 'cloud servers', rule: 'AWS workloads', match: 'domain', tunnel: 'aws', adapter: 'OpenVPN' },
-        { dest: 'claude.ai', human: 'a site in the US', rule: 'US content', match: 'domain', tunnel: 'us-content', adapter: 'Proton VPN' },
-        { dest: 'gmail.com', human: 'your everyday email', rule: '', match: '', tunnel: 'direct', adapter: 'no VPN', direct: true },
+        { dest: '10.10.0.0/16', human: 'your company system', tunnel: 'office', adapter: 'FortiClient' },
+        { dest: '*.amazonaws.com', human: 'cloud servers', tunnel: 'aws', adapter: 'OpenVPN' },
+        { dest: 'claude.ai', human: 'a site in the US', tunnel: 'us-content', adapter: 'Proton VPN' },
+        { dest: 'gmail.com', human: 'your everyday email', tunnel: 'direct', adapter: 'no VPN', direct: true },
       ] as Route[],
     }
 
   useEffect(() => {
     if (paused || touched || !live) return
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const t = window.setInterval(() => setActive(a => (a + 1) % ROWS.length), 2600)
+    const t = window.setInterval(() => {
+      setActive(a => (a + 1) % ROWS.length)
+      setRun(n => n + 1)
+    }, CYCLE)
     return () => window.clearInterval(t)
   }, [paused, touched, live])
 
   const routes = copy.routes
   const cur = routes[active]
   // the visitor picked a destination (click, tap, Enter or Space)
-  const pick = (i: number) => { setActive(i); setTouched(true) }
+  const pick = (i: number) => { setActive(i); setRun(n => n + 1); setTouched(true) }
+  const solid = `${import.meta.env.BASE_URL}logo-kong-solid.svg`
+  const cls = (i: number, extra = '') =>
+    `${extra}${i === active ? ' active' : ''}${routes[i].direct ? ' direct' : ''}`
 
   return (
     <section id="map" className="section features-section">
@@ -103,138 +140,164 @@ export default function Features({ lang }: Props) {
         <h2 className="section-title">{copy.title}</h2>
         <p className="section-sub">{copy.sub}</p>
 
-        {/* ── SIGNATURE: live routing switchboard ── */}
+        {/* ── SIGNATURE: routing patch panel ── */}
         <div
           ref={boardRef}
           className="switchboard reveal"
+          style={{ '--pp-cycle': `${CYCLE}ms` } as CSSProperties}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onFocus={() => setPaused(true)}
           onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setPaused(false) }}
         >
-          <div className="sb-legend">
-            <span className="sb-legend-item in">{copy.boardIn}</span>
-            <span className="sb-legend-item core">{copy.boardCore}</span>
-            <span className="sb-legend-item out">{copy.boardOut}</span>
+          <div className="sb-legend" aria-hidden="true">
+            <span>{copy.boardIn}</span>
+            <span>{copy.boardOut}</span>
           </div>
 
-          <svg className="sb-svg" viewBox="0 0 640 360" role="group" aria-label={copy.boardCore}>
-            {/* wires fade into the core ring as they reach its ports */}
-            <defs>
-              <linearGradient id="sb-fade-g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="640" y2="0">
-                <stop offset="0" stopColor="#fff" />
-                <stop offset={220 / 640} stopColor="#fff" />
-                <stop offset={PORT_L / 640} stopColor="#fff" stopOpacity="0.25" />
-                <stop offset={PORT_R / 640} stopColor="#fff" stopOpacity="0.25" />
-                <stop offset={420 / 640} stopColor="#fff" />
-                <stop offset="1" stopColor="#fff" />
-              </linearGradient>
-              <mask id="sb-fade" maskUnits="userSpaceOnUse" x="0" y="0" width="640" height="360">
-                <rect width="640" height="360" fill="url(#sb-fade-g)" />
-              </mask>
-            </defs>
+          <svg className="sb-svg" viewBox="0 0 640 360" role="group" aria-label={copy.boardName}>
+            {/* wires from each card edge to its socket (behind everything) */}
+            {routes.map((_, i) => (
+              <g key={`w-${i}`}>
+                <path className="pp-wire" d={`M${CARD_L} ${ROWS[i]} H${PANEL_L - JACK}`} />
+                <path className="pp-wire" d={`M${PANEL_R + JACK} ${ROWS[OUT[i]]} H${CARD_R}`} />
+              </g>
+            ))}
 
-            {/* wires — behind nodes */}
-            <g mask="url(#sb-fade)">
-              {routes.map((r, i) => {
-                const y = ROWS[i]
-                const on = i === active
-                return (
-                  <g key={`w-${i}`} className={`sb-wire-group${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
-                    <path className="sb-wire" d={`M156 ${y} C 212 ${y}, 212 180, ${PORT_L} 180`} />
-                    <path className="sb-wire" d={`M${PORT_R} 180 C 428 180, 428 ${y}, 484 ${y}`} />
+            {/* the panel: body, corner screws, the solid mark as device badge */}
+            <g className="pp-panel">
+              <rect className="pp-body" x={PANEL_L} y="22" width={PANEL_R - PANEL_L} height="316" rx="10" />
+              <circle className="pp-screw" cx={PANEL_R - 12} cy="34" r="2.5" />
+              <circle className="pp-screw" cx={PANEL_L + 12} cy="326" r="2.5" />
+              <circle className="pp-screw" cx={PANEL_R - 12} cy="326" r="2.5" />
+              <image className="pp-badge" href={solid} x={PANEL_L + 10} y="30" width="20" height="20" />
+              {routes.map((_, i) => (
+                <path key={`c-${i}`} className={cls(i, 'pp-cable')} d={cable(i)} />
+              ))}
+            </g>
+
+            {/* the active route lights up behind the packet; under reduced
+                motion every route is drawn lit and static (routeboard.css) */}
+            {routes.map((_, i) => (
+              <path
+                key={`t-${i}-${i === active ? run : 'x'}`}
+                className={cls(i, 'pp-trace')}
+                d={route(i)}
+                pathLength={100}
+              />
+            ))}
+
+            {/* sockets: a jack housing with its opening, on both panel edges */}
+            {ROWS.map((y, row) => {
+              const inRoute = row
+              const outRoute = EXIT_ORDER[row]
+              return (
+                <g key={`j-${row}`}>
+                  <g className={cls(inRoute, 'pp-jack in')}>
+                    <rect x={PANEL_L - JACK} y={y - 8} width={JACK * 2} height="16" rx="2" />
+                    <rect className="pp-jack-hole" x={PANEL_L - 2} y={y - 4} width="4" height="8" rx="1" />
                   </g>
-                )
-              })}
-            </g>
+                  <g className={cls(outRoute, 'pp-jack out')}>
+                    <rect x={PANEL_R - JACK} y={y - 8} width={JACK * 2} height="16" rx="2" />
+                    <rect className="pp-jack-hole" x={PANEL_R - 2} y={y - 4} width="4" height="8" rx="1" />
+                  </g>
+                </g>
+              )
+            })}
 
-            {/* core — ring, ports, pulse and logo share one center. The pulse is an
-                ambient ring inside the core ring, unaffected by route changes. */}
-            <g className={`sb-core${cur.direct ? ' direct' : ''}`} transform="translate(320 180)">
-              <circle className="sb-pulse" r="48" />
-              <circle className="sb-ring" r={CORE_R} />
-              <image className="sb-logo" href={`${import.meta.env.BASE_URL}logo-kong.svg`} x="-40" y="-40" width="80" height="80" />
-              <circle className="sb-port in" cx={-CORE_R} r={PORT_DOT} />
-              <circle className="sb-port out" cx={CORE_R} r={PORT_DOT} />
-              {/* each label hangs right under its port: "→" ends at the IN dot
-                  and starts at the OUT dot, so the arrows read as the flow */}
-              <text className="sb-port-label in" x={-CORE_R + PORT_DOT} y={PORT_LABEL_Y} textAnchor="end">{copy.portIn}</text>
-              <text className="sb-port-label out" x={CORE_R - PORT_DOT} y={PORT_LABEL_Y} textAnchor="start">{copy.portOut}</text>
-            </g>
+            {/* the packet: a round dash that travels the active route */}
+            <path key={`p-${run}`} className={`pp-packet${cur.direct ? ' direct' : ''}`} d={route(active)} pathLength={100} />
 
-            {/* destination nodes (left) */}
+            {/* destination cards (left) */}
             {routes.map((r, i) => {
               const y = ROWS[i]
-              const on = i === active
               return (
                 <g
                   key={`in-${i}`}
-                  className={`sb-node in${on ? ' active' : ''}`}
+                  className={cls(i, 'sb-node in')}
                   onClick={() => pick(i)}
-                  aria-pressed={on}
+                  aria-pressed={i === active}
                   role="button"
                   tabIndex={0}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(i) } }}
                 >
-                  <rect x="6" y={y - 20} width="150" height="40" rx="6" />
+                  <rect x="6" y={y - 20} width={CARD_L - 6} height="40" rx="6" />
                   <text x="20" y={y - 2}>{r.dest}</text>
                   <text className="sb-in-human" x="20" y={y + 13}>{r.human}</text>
                 </g>
               )
             })}
 
-            {/* tunnel nodes (right) */}
-            {routes.map((r, i) => {
-              const y = ROWS[i]
-              const on = i === active
+            {/* exit cards (right), listed in panel order */}
+            {EXIT_ORDER.map((i, row) => {
+              const y = ROWS[row]
+              const r = routes[i]
               return (
-                <g key={`out-${i}`} className={`sb-node out${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
-                  <rect x="484" y={y - 20} width="150" height="40" rx="6" />
-                  <text className="sb-out-name" x="498" y={y - 2}>{r.tunnel}</text>
-                  <text className="sb-out-sub" x="498" y={y + 13}>{r.adapter}</text>
+                <g key={`out-${i}`} className={cls(i, 'sb-node out')}>
+                  <rect x={CARD_R} y={y - 20} width="150" height="40" rx="6" />
+                  <text className="sb-out-name" x={CARD_R + 14} y={y - 2}>{r.tunnel}</text>
+                  <text className="sb-out-sub" x={CARD_R + 14} y={y + 13}>{r.adapter}</text>
                 </g>
               )
             })}
           </svg>
 
           {/* Narrow screens: the scaled SVG would shrink its labels below 11px,
-              so the same board is laid out in HTML — one row per destination,
-              real buttons, same state, readout and live region. routeboard.css
-              swaps the two by media query (never by JS), so the prerender and
-              the first client render match; the hidden one is display:none, out
-              of the tab order and the accessibility tree. */}
-          <div className="sb-list" role="group" aria-label={copy.boardCore}>
-            {routes.map((r, i) => {
-              const on = i === active
-              return (
-                <div key={`row-${i}`} className={`sb-row${on ? ' active' : ''}${r.direct ? ' direct' : ''}`}>
-                  <button type="button" className="sb-row-dest" aria-pressed={on} onClick={() => pick(i)}>
-                    <span>{r.dest}</span>
-                    <small>{r.human}</small>
-                  </button>
-                  <span className="sb-row-wire" aria-hidden="true"><b /><i /></span>
-                  <span className="sb-row-out">
-                    <b>{r.tunnel}</b>
-                    <small>{r.adapter}</small>
-                  </span>
-                </div>
-              )
-            })}
+              so the board stacks: destinations (real buttons), a small panel
+              strip with no text, then the exits. routeboard.css swaps the two
+              layouts by media query (never by JS), so the prerender and the
+              first client render match; the hidden one is display:none, out of
+              the tab order and the accessibility tree. */}
+          <div className="sb-stack" role="group" aria-label={copy.boardName}>
+            <p className="sb-stack-head" aria-hidden="true">{copy.boardIn}</p>
+            <div className="sb-stack-list">
+              {routes.map((r, i) => (
+                <button key={`d-${i}`} type="button" className={cls(i, 'sb-chip in')} aria-pressed={i === active} onClick={() => pick(i)}>
+                  <span>{r.dest}</span>
+                  <small>{r.human}</small>
+                </button>
+              ))}
+            </div>
+            <svg className="sb-strip" viewBox="0 0 300 120" aria-hidden="true">
+              <rect className="pp-body" x="4" y={STRIP_T} width="292" height={STRIP_B - STRIP_T} rx="10" />
+              <image className="pp-badge" href={solid} x="12" y={STRIP_T + 30} width="16" height="16" />
+              {routes.map((_, i) => (
+                <path key={`sc-${i}`} className={cls(i, 'pp-cable')} d={stripCable(i)} />
+              ))}
+              {routes.map((_, i) => (
+                <path key={`st-${i}-${i === active ? run : 'x'}`} className={cls(i, 'pp-trace')} d={stripRoute(i)} pathLength={100} />
+              ))}
+              {STRIP_X.map((x, k) => (
+                <g key={`sj-${k}`}>
+                  <g className={cls(k, 'pp-jack in')}>
+                    <rect x={x - 8} y={STRIP_T - JACK} width="16" height={JACK * 2} rx="2" />
+                    <rect className="pp-jack-hole" x={x - 4} y={STRIP_T - 2} width="8" height="4" rx="1" />
+                  </g>
+                  <g className={cls(EXIT_ORDER[k], 'pp-jack out')}>
+                    <rect x={x - 8} y={STRIP_B - JACK} width="16" height={JACK * 2} rx="2" />
+                    <rect className="pp-jack-hole" x={x - 4} y={STRIP_B - 2} width="8" height="4" rx="1" />
+                  </g>
+                </g>
+              ))}
+              <path key={`sp-${run}`} className={`pp-packet${cur.direct ? ' direct' : ''}`} d={stripRoute(active)} pathLength={100} />
+            </svg>
+            <p className="sb-stack-head" aria-hidden="true">{copy.boardOut}</p>
+            <div className="sb-stack-list exits">
+              {EXIT_ORDER.map(i => (
+                <span key={`e-${i}`} className={cls(i, 'sb-chip out')}>
+                  <b>{routes[i].tunnel}</b>
+                  <small>{routes[i].adapter}</small>
+                </span>
+              ))}
+            </div>
           </div>
 
-          <div className="sb-readout" key={active} aria-live={touched ? 'polite' : 'off'}>
-            <span className="sb-readout-dest">{cur.dest} <span className="sb-readout-human">({cur.human})</span></span>
-            <svg className="sb-arrow" width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M0 5h13M9 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            {cur.direct ? (
-              <span className="sb-readout-mid">{copy.readoutNoRule}</span>
-            ) : (
-              <span className="sb-readout-mid">
-                {copy.readoutRule} «<b>{cur.rule}</b>» · {cur.match}
-              </span>
-            )}
-            <svg className="sb-arrow" width="16" height="10" viewBox="0 0 16 10" aria-hidden="true"><path d="M0 5h13M9 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            <span className={`sb-readout-tunnel${cur.direct ? ' direct' : ''}`}>{cur.tunnel}</span>
-          </div>
+          {/* the rule, shown once the packet lands */}
+          <p className="pp-rule" aria-live={touched ? 'polite' : 'off'}>
+            <span key={`r-${run}`} className={cur.direct ? 'direct' : undefined}>
+              {cur.dest} <span aria-hidden="true">→</span> {cur.tunnel}
+            </span>
+          </p>
           <p className="sb-hint">{copy.hint}</p>
         </div>
       </div>

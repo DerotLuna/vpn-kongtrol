@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.2.0 · 2026-11-19 · docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md
+# Version 1.3.0 · 2026-11-19 · docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
 #
@@ -180,7 +180,7 @@ try {
 
   $destPath = Join-Path $installDir "kongtrol.exe"
   # A running daemon locks kongtrol.exe against overwriting, not renaming:
-  # move the old copy aside, put the new one in place, then restart below.
+  # move the old copy aside, put the new one in place, then stop and resume below.
   $oldPath = "$destPath.old"
   if (Test-Path $destPath) {
     Remove-Item $oldPath -Force -ErrorAction SilentlyContinue
@@ -205,6 +205,12 @@ try {
   Set-Content -Path $manifest -Value $lines -Encoding UTF8
 
   if ($kind -ne "install") {
+    # Stop the old Kongtrol and save which VPNs were connected, BEFORE the
+    # helper update (a helper restart could drop a VPN and it would then be
+    # forgotten); `resume` below reconnects exactly those on the new version
+    # (docs/adr/0050-installer-resume-tunnels-and-open-request.md).
+    Write-Info "Stopping Kongtrol for the update (connected VPNs reconnect at the end)..."
+    try { & $destPath down --all --quiet --remember *> $null } catch {}
     # Update the network helper only when it speaks an older protocol: a
     # missing or current helper is left alone and Windows asks nothing.
     Write-Info "Checking the network helper (Windows asks for permission only if it is out of date)..."
@@ -212,11 +218,11 @@ try {
     if ($LASTEXITCODE -ne 0) {
       Write-Warn "the network helper was not updated: open Kongtrol and choose `"Actualizar ayudante (una vez)`", or run: kongtrol service install"
     }
-    # A running daemon (old version) restarts on the new binary with its
-    # connected VPNs; with no daemon running this does nothing.
+    # Reconnect the VPNs saved above (nothing when none was connected).
     try {
-      & $destPath restart --quiet *> $null
-      if ($LASTEXITCODE -eq 0) { Write-Info "Kongtrol restarted on the new version (your connected VPNs reconnected)." }
+      & $destPath resume --quiet *> $null
+      if ($LASTEXITCODE -eq 0) { Write-Info "Kongtrol is reconnecting the VPNs you had connected (if any). Check with: kongtrol status" }
+      else { Write-Warn "your VPNs were not reconnected: open Kongtrol and connect them, or run: kongtrol up" }
     } catch {}
   }
   # Gone once the old daemon exited; a leftover is harmless and replaced next time.

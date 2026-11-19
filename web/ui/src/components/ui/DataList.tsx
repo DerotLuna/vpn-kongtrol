@@ -1,4 +1,4 @@
-// Kongtrol UI kit — DataList (table on wide screens, cards on phones) · v0.2.0 · 2026-11-18
+// Kongtrol UI kit — DataList (table on wide screens, cards on phones) · v0.3.0 · 2026-11-19
 //
 // A real <table> (headers announced per cell); under 640px each row becomes
 // a stacked card whose cells show their column name (CSS, data-label), so
@@ -29,6 +29,12 @@ interface DataListProps<T> {
   empty?: ReactNode
   /** Test hook: called whenever a row renders. */
   onRowRender?: (key: string) => void
+  /**
+   * Optional full-width row under a row (e.g. an expanded detail): return a
+   * <tr> whose cell spans colSpan columns, or null. Must be stable (module
+   * function or useCallback) so memoized rows stay skipped.
+   */
+  rowDetail?: (row: T, colSpan: number) => ReactNode
 }
 
 interface RowProps<T> {
@@ -36,11 +42,12 @@ interface RowProps<T> {
   columns: Column<T>[]
   rowId: string
   onRowRender: ((key: string) => void) | undefined
+  rowDetail: ((row: T, colSpan: number) => ReactNode) | undefined
 }
 
-function RowImpl<T>({ row, columns, rowId, onRowRender }: RowProps<T>) {
+function RowImpl<T>({ row, columns, rowId, onRowRender, rowDetail }: RowProps<T>) {
   onRowRender?.(rowId)
-  return (
+  const main = (
     <tr data-key={rowId}>
       {columns.map((c, i) =>
         i === 0 ? (
@@ -55,13 +62,20 @@ function RowImpl<T>({ row, columns, rowId, onRowRender }: RowProps<T>) {
       )}
     </tr>
   )
+  if (!rowDetail) return main
+  return (
+    <>
+      {main}
+      {rowDetail(row, columns.length)}
+    </>
+  )
 }
 
 // Same columns + same row object = skip. Columns must be stable (module
 // constant or useMemo) for this to hold.
 const Row = memo(RowImpl) as typeof RowImpl
 
-export function DataList<T>({ caption, columns, rows, rowKey, empty, onRowRender }: DataListProps<T>) {
+export function DataList<T>({ caption, columns, rows, rowKey, empty, onRowRender, rowDetail }: DataListProps<T>) {
   // Keys on screen after the last commit; null until the first one. New rows
   // are marked in the DOM (no extra render, memoized rows stay untouched).
   const seen = useRef<ReadonlySet<string> | null>(null)
@@ -95,7 +109,7 @@ export function DataList<T>({ caption, columns, rows, rowKey, empty, onRowRender
         <tbody ref={body}>
           {rows.map((r) => {
             const id = rowKey(r)
-            return <Row key={id} row={r} columns={columns} rowId={id} onRowRender={onRowRender} />
+            return <Row key={id} row={r} columns={columns} rowId={id} onRowRender={onRowRender} rowDetail={rowDetail} />
           })}
         </tbody>
       </table>

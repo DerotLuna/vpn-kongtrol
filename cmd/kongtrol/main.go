@@ -92,7 +92,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		// Skip config load for commands that self-handle config discovery.
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" || prefsOnlyCommand(cmd) {
+		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" || cmd.Name() == "resume" || prefsOnlyCommand(cmd) {
 			return nil
 		}
 		// Only the daemon may start with no kongtrol.yaml (first-run setup

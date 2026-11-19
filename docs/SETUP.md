@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.6 · 2026-11-19
+Versión 1.7 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -90,12 +90,15 @@ el ayudante de red se conservan; desinstalar tampoco borra tu configuración).
 2. Deja marcadas las opciones recomendadas: abrir Kongtrol al iniciar sesión, instalar el
    ayudante de red (Windows pide permiso **una sola vez**) y agregar el comando `kongtrol` a la
    terminal (PATH de tu usuario; se quita al desinstalar).
-3. Al terminar se abre Kongtrol: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
+3. Al terminar, con "Abrir Kongtrol y crear mi primera VPN" marcado, se abre el panel en la
+   página Perfiles: sigue en [Primer uso sin terminal](#primer-uso-sin-terminal).
 
 Para actualizar, ejecuta el instalador nuevo encima: si ya lo tienes, el instalador lo actualiza
 sin perder nada. Muestra "Actualizar Kongtrol <actual> → <nueva>" y no vuelve a preguntar la
 licencia, la carpeta ni las opciones (usa las de antes). Cierra Kongtrol (las VPN se desconectan
-un momento; tu internet normal sigue funcionando), actualiza y ofrece "Abrir Kongtrol". Si la
+un momento; tu internet normal sigue funcionando), actualiza, vuelve a conectar solas las VPN
+que tenías conectadas (también en una actualización silenciosa, por ejemplo con winget) y ofrece
+"Abrir Kongtrol". Si la
 versión nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la
 actualización. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
 pide confirmar (por defecto No).
@@ -194,7 +197,14 @@ Si te enviaron el archivo (o lo bajaste de tu proveedor), Kongtrol puede guardar
 
 - **Panel:** Perfiles → Nueva VPN (o Editar) → WireGuard u OpenVPN → **Importar archivo**. El campo
   de ruta se llena solo; también puedes escribir una ruta a mano.
-- **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`).
+- **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`). Con
+  `--create` también crea el perfil que lo usa, con el nombre del archivo (o `--name`).
+
+Sin preguntas, para scripts: `kongtrol profile detect` lista las apps de VPN instaladas y
+`kongtrol profile add <tipo> --name <nombre> [--host …] [--country …]` crea el perfil con las mismas
+reglas que el panel. La contraseña nunca va en la línea de comandos: se pide sin mostrarla en una
+terminal o se agrega en el panel. Si Kongtrol está en marcha, te ofrece reiniciarlo (`--yes` para
+scripts) para usar el perfil nuevo.
 
 Se revisa con las mismas reglas que usa el servicio de Kongtrol antes de conectar: se rechazan los
 archivos que ejecutan comandos (`PostUp`/`PreUp` en WireGuard; `up`, `down`, `plugin`,
@@ -396,6 +406,22 @@ Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a
 - `10.10.0.0/16` (red interna) → van por `office` (FortiClient)
 - `*.tuempresa.com` → van por `office`
 - Todo lo demás → conexión directa, sin VPN
+
+### La forma rápida: panel o una línea en la terminal
+
+En el panel: **＋ Agregar** → escribe sitios, enlaces, IP, rangos o apps y elige la VPN. En la
+terminal hace lo mismo, con las mismas reglas:
+
+```bash
+kongtrol policy add claude.ai --via us-content            # claude.ai y *.claude.ai
+kongtrol policy add 10.10.0.0/16 intranet.tuempresa.com --via office --block-when-down
+kongtrol policy add app:teams.exe --via office --name teams
+kongtrol policy remove teams                              # pregunta antes; --yes para scripts
+```
+
+Un enlace (`https://…/x`) se guarda como su sitio; `--no-subdomains` deja solo el sitio exacto. Si
+no pones `--name`, el nombre sale solo ("claude.ai por us-content"). Con Kongtrol en marcha se aplica
+al momento; si no, se guarda en `kongtrol.yaml`.
 
 ### Opción A: desde el wizard
 

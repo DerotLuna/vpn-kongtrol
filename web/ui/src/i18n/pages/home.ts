@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Inicio (/) · v2.0.0 · 2026-11-18
+// Kongtrol UI strings — Inicio (/) · v2.1.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -30,12 +30,14 @@ const es = {
   'home.action.connect': 'Conectar',
   'home.action.cancel': 'Cancelar',
   'home.action.disconnect': 'Desconectar',
-  'home.action.reload': 'Recargar',
-  'home.action.reload.tip': 'Vuelve a leer su configuración guardada y la reinicia',
+  'home.action.reload': 'Reconectar',
+  'home.action.reload.tip': 'Reconectar: vuelve a leer su configuración guardada y reinicia la conexión',
   'home.action.connecting': 'Conectando…',
   'home.action.cancelling': 'Cancelando…',
   'home.action.disconnecting': 'Desconectando…',
-  'home.action.reloading': 'Recargando…',
+  'home.action.reloading': 'Reconectando…',
+  'home.status.disconnecting': 'Desconectando',
+  'home.status.reconnecting': 'Reconectando',
 
   'home.attach.attached': '{app} ya estaba conectada: Kongtrol la sigue desde aquí.',
   'home.attach.auto': 'Conectada con {app}.',
@@ -63,8 +65,9 @@ const es = {
   'home.lastError.sessionOwner': 'Esa conexión OpenVPN la inició otro usuario. Desconéctala desde la sesión de ese usuario.',
   'home.lastError.generic': 'Vuelve a intentarlo; si sigue, abre Ajustes → Diagnóstico.',
 
-  'home.routes.toggle': 'Qué sale por este túnel ({n})',
-  'home.routes.toggleAll': 'Qué sale por este túnel (todo)',
+  'home.routes.toggle': 'Rutas ({n})',
+  'home.routes.toggleAll': 'Rutas (todo)',
+  'home.routes.toggle.tip': 'Qué sale por este túnel: los destinos que van por esta VPN',
   'home.routes.all': 'Todo tu tráfico sale por aquí.',
   'home.routes.none': 'Todavía nada: solo el tráfico de la propia VPN.',
   'home.routes.origin.server': 'Lo envió el servidor de la VPN',
@@ -78,7 +81,7 @@ const es = {
   'home.latency.trend': 'Latencia de las últimas {n} medidas: entre {min} y {max} ms, ahora {now} ms.',
   'home.latency.collecting': 'Midiendo',
 
-  'home.toast.reloading': 'Recargando {name} con su configuración guardada…',
+  'home.toast.reloading': 'Reconectando {name} con su configuración guardada…',
   'home.toast.reloadedIdle': 'Configuración de {name} releída. No estaba conectada, así que no hubo que reiniciarla.',
   'home.toast.restartRequired': 'Kongtrol todavía no conoce {name} (se agregó a mano).',
   'home.toast.restartRequired.fix': 'Qué hacer: cierra Kongtrol y vuelve a abrirlo («Salir y desconectar todo» en la bandeja, o kongtrol down y kongtrol up).',
@@ -199,12 +202,14 @@ const en: Strings<typeof es> = {
   'home.action.connect': 'Connect',
   'home.action.cancel': 'Cancel',
   'home.action.disconnect': 'Disconnect',
-  'home.action.reload': 'Reload',
-  'home.action.reload.tip': 'Re-reads its saved configuration and restarts it',
+  'home.action.reload': 'Reconnect',
+  'home.action.reload.tip': 'Reconnect: re-reads its saved configuration and restarts the connection',
   'home.action.connecting': 'Connecting…',
   'home.action.cancelling': 'Cancelling…',
   'home.action.disconnecting': 'Disconnecting…',
-  'home.action.reloading': 'Reloading…',
+  'home.action.reloading': 'Reconnecting…',
+  'home.status.disconnecting': 'Disconnecting',
+  'home.status.reconnecting': 'Reconnecting',
 
   'home.attach.attached': '{app} was already connected: Kongtrol follows it from here.',
   'home.attach.auto': 'Connected with {app}.',
@@ -232,8 +237,9 @@ const en: Strings<typeof es> = {
   'home.lastError.sessionOwner': 'That OpenVPN connection was started by another user. Disconnect it from that user’s session.',
   'home.lastError.generic': 'Try again; if it persists, open Settings → Diagnostics.',
 
-  'home.routes.toggle': 'What goes through this tunnel ({n})',
-  'home.routes.toggleAll': 'What goes through this tunnel (everything)',
+  'home.routes.toggle': 'Routes ({n})',
+  'home.routes.toggleAll': 'Routes (everything)',
+  'home.routes.toggle.tip': 'What goes through this tunnel: the destinations sent over this VPN',
   'home.routes.all': 'All your traffic goes through here.',
   'home.routes.none': 'Nothing yet: only the VPN’s own traffic.',
   'home.routes.origin.server': 'Sent by the VPN server',
@@ -247,7 +253,7 @@ const en: Strings<typeof es> = {
   'home.latency.trend': 'Latency over the last {n} readings: between {min} and {max} ms, now {now} ms.',
   'home.latency.collecting': 'Measuring',
 
-  'home.toast.reloading': 'Reloading {name} with its saved configuration…',
+  'home.toast.reloading': 'Reconnecting {name} with its saved configuration…',
   'home.toast.reloadedIdle': '{name}’s configuration re-read. It was not connected, so nothing had to restart.',
   'home.toast.restartRequired': 'Kongtrol does not know {name} yet (it was added by hand).',
   'home.toast.restartRequired.fix': 'What to do: quit Kongtrol and open it again (“Quit and disconnect all” in the tray, or kongtrol down and kongtrol up).',

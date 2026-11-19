@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.4.0 · 2026-11-19
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.5.1 · 2026-11-19
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
@@ -72,6 +72,8 @@ es.RunHelper=Instalando el ayudante de red · acepta el aviso de Windows…
 en.RunHelper=Installing the network helper · accept the Windows prompt…
 es.RunHelperUpdate=Revisando el ayudante de red · si está desactualizado, acepta el aviso de Windows…
 en.RunHelperUpdate=Checking the network helper · if it is out of date, accept the Windows prompt…
+es.RunResume=Reconectando las VPN que tenías conectadas…
+en.RunResume=Reconnecting the VPNs you had connected…
 es.LaunchTray=Abrir Kongtrol y crear mi primera VPN
 en.LaunchTray=Open Kongtrol and create my first VPN
 es.LaunchTrayOpen=Abrir Kongtrol
@@ -88,8 +90,8 @@ es.TitleDowngrade=Instalar una versión anterior de Kongtrol (%1 → %2)
 en.TitleDowngrade=Install an older Kongtrol version (%1 → %2)
 es.ReadyKeep=Tus VPN, ajustes y contraseñas se conservan. No hace falta elegir nada: se usan las opciones de la instalación anterior.
 en.ReadyKeep=Your VPNs, settings and passwords are kept. Nothing to choose: the options of the previous install are reused.
-es.ReadyDown=Las VPN conectadas se desconectan un momento. El ayudante de red solo se actualiza si hace falta (entonces Windows pide permiso una vez).
-en.ReadyDown=Connected VPNs disconnect for a moment. The network helper is only updated if needed (then Windows asks for permission once).
+es.ReadyDown=Las VPN conectadas se desconectan un momento y se vuelven a conectar solas al terminar. El ayudante de red solo se actualiza si hace falta (entonces Windows pide permiso una vez).
+en.ReadyDown=Connected VPNs disconnect for a moment and reconnect by themselves at the end. The network helper is only updated if needed (then Windows asks for permission once).
 es.BtnUpdate=Actualizar
 en.BtnUpdate=Update
 es.BtnRepair=Reinstalar
@@ -98,10 +100,10 @@ es.BtnDowngrade=Instalar versión anterior
 en.BtnDowngrade=Install older version
 es.DowngradeAsk=Vas a instalar una versión anterior (%1 → %2).%n%nTus VPN y ajustes se conservan. Hazlo solo si la versión nueva te da problemas.%n%n¿Continuar?
 en.DowngradeAsk=You are about to install an older version (%1 → %2).%n%nYour VPNs and settings are kept. Only do this if the new version gives you trouble.%n%nContinue?
-es.FinishedUpdate=Kongtrol se actualizó a %2. Tus VPN y ajustes siguen ahí.%n%nSiguiente: abre Kongtrol y conecta tu VPN.
-en.FinishedUpdate=Kongtrol was updated to %2. Your VPNs and settings are still there.%n%nNext: open Kongtrol and connect your VPN.
-es.FinishedRepair=Kongtrol %2 se reinstaló. Tus VPN y ajustes siguen ahí.%n%nSiguiente: abre Kongtrol y conecta tu VPN.
-en.FinishedRepair=Kongtrol %2 was reinstalled. Your VPNs and settings are still there.%n%nNext: open Kongtrol and connect your VPN.
+es.FinishedUpdate=Kongtrol se actualizó a %2. Tus VPN y ajustes siguen ahí; las que tenías conectadas vuelven a conectarse solas.%n%nSiguiente: abre Kongtrol para ver su estado.
+en.FinishedUpdate=Kongtrol was updated to %2. Your VPNs and settings are still there; any VPN you had connected reconnects by itself.%n%nNext: open Kongtrol to see its status.
+es.FinishedRepair=Kongtrol %2 se reinstaló. Tus VPN y ajustes siguen ahí; las que tenías conectadas vuelven a conectarse solas.%n%nSiguiente: abre Kongtrol para ver su estado.
+en.FinishedRepair=Kongtrol %2 was reinstalled. Your VPNs and settings are still there; any VPN you had connected reconnects by itself.%n%nNext: open Kongtrol to see its status.
 es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nSi piensas reinstalar, elige No.
 en.PurgeAsk=Also delete your settings and saved passwords?%n%nIf you plan to reinstall, choose No.
 
@@ -133,9 +135,20 @@ Filename: "{app}\kongtrol.exe"; Parameters: "service install --quiet"; StatusMsg
 ; it never stays outdated. A missing or current helper is left alone and
 ; no UAC prompt appears (`--if-outdated`, cmd/kongtrol/cmd_service.go).
 Filename: "{app}\kongtrol.exe"; Parameters: "service install --if-outdated --quiet"; StatusMsg: "{cm:RunHelperUpdate}"; Check: IsUpgrade; Flags: runhidden waituntilterminated
-Filename: "{app}\kongtrol-tray.exe"; Description: "{cm:LaunchTray}"; Check: IsFirstInstall; Flags: postinstall nowait skipifsilent
-; Update / reinstall / older version: VPNs already exist, so only "open".
-Filename: "{app}\kongtrol-tray.exe"; Description: "{cm:LaunchTrayOpen}"; Check: IsUpgrade; Flags: postinstall nowait skipifsilent
+; Upgrade (also silent): reconnect the VPNs that were up before
+; PrepareToInstall stopped Kongtrol (`down --all --remember` saved them). After
+; the helper entry above, so they reconnect through a current helper. It only
+; waits until Kongtrol answers; the VPNs connect in the background
+; (docs/adr/0050-installer-resume-tunnels-and-open-request.md).
+Filename: "{app}\kongtrol.exe"; Parameters: "resume --quiet"; StatusMsg: "{cm:RunResume}"; Check: IsUpgrade; Flags: runhidden waituntilterminated
+; The checkbox depends on whether VPN profiles exist (not on whether the
+; program files did: data survives an uninstall). "Create my first VPN"
+; passes --open, so the tray opens the Perfiles page every time it is
+; checked, also when a tray is already running (ADR-0050).
+Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /profiles"; Description: "{cm:LaunchTray}"; Check: NoProfiles; Flags: postinstall nowait skipifsilent
+; Profiles exist: "open" = the tray plus the panel's Inicio, so the user sees
+; their VPNs come back (the tray icon alone can sit hidden behind ^).
+Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /"; Description: "{cm:LaunchTrayOpen}"; Check: HasProfiles; Flags: postinstall nowait skipifsilent
 ; Silent upgrade: bring the tray back (it was closed above).
 Filename: "{app}\kongtrol-tray.exe"; Check: SilentUpgrade; Flags: nowait
 
@@ -407,13 +420,28 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   Exe: string;
   Code: Integer;
+  Stopped: Boolean;
 begin
   Result := '';
   Exe := ExpandConstant('{app}\kongtrol.exe');
   // Files without an uninstall key (older or broken install) still count.
   WasInstalled := WasInstalled or FileExists(Exe);
   if FileExists(Exe) then
-    Exec(Exe, 'down --all --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  begin
+    // The NEW kongtrol.exe stops Kongtrol and saves the connected VPNs for
+    // `resume` ([Run]): an older installed copy does not know --remember.
+    // It talks to the running daemon through its local API. If it cannot
+    // run, the installed copy stops Kongtrol as before (no resume then).
+    Stopped := False;
+    try
+      ExtractTemporaryFile('kongtrol.exe');
+      Stopped := Exec(ExpandConstant('{tmp}\kongtrol.exe'), 'down --all --quiet --remember', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+    except
+      Stopped := False;
+    end;
+    if not Stopped then
+      Exec(Exe, 'down --all --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  end;
   Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im kongtrol-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
@@ -429,6 +457,23 @@ end;
 function IsUpgrade: Boolean;
 begin
   Result := WasInstalled;
+end;
+
+// HasProfiles: a kongtrol.yaml (or legacy config.yaml) exists in
+// %USERPROFILE%\.kongtrol, the paths config.DefaultPaths() checks first. It
+// survives an uninstall without "delete my data", so it decides the
+// finished-page checkbox instead of the program files (ADR-0050).
+function HasProfiles: Boolean;
+var
+  Dir: string;
+begin
+  Dir := ExpandConstant('{%USERPROFILE}\.kongtrol\');
+  Result := FileExists(Dir + 'kongtrol.yaml') or FileExists(Dir + 'config.yaml');
+end;
+
+function NoProfiles: Boolean;
+begin
+  Result := not HasProfiles;
 end;
 
 function SilentUpgrade: Boolean;
