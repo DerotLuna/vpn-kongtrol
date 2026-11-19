@@ -7,7 +7,7 @@ Version 1.0.0 · 2026-11-19
 Status: Accepted · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
 
 Number: 0062 and 0063 are taken by work in other branches (0063 seen in the repository's refs);
-0064 is the next free number.
+0067 (renumbered at merge: 0064–0066 were taken by other branches).
 
 ## Context and Problem Statement
 
