@@ -84,9 +84,9 @@ jobs:
   windows:
     needs: ui
     runs-on: windows-latest
-    # Signing secret lives in the protected `release` environment
-    # (docs/DEVELOPMENT.md, ADR-0063).
-    environment: release
+    # No `environment:` yet: a second job in the protected `release`
+    # environment would ask for a second approval per release. It moves there
+    # together with the SignPath secrets (#30, docs/DEVELOPMENT.md).
     defaults:
       run:
         shell: bash

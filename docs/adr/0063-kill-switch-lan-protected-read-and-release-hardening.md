@@ -1,8 +1,8 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="Kongtrol" width="48" align="left" />
 
-# ADR-0063: Full-tunnel block covers the LAN without allow_lan; generic root read; release jobs without caches; install scripts trust only default folders
+# ADR-0063: Full-tunnel block covers the LAN without allow_lan; generic root read; release jobs without caches; install scripts never sudo into a manifest folder
 
-Version 1.0.0 · 2026-11-19
+Version 1.1.0 · 2026-11-19
 
 Status: Accepted · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
 
@@ -50,8 +50,11 @@ For 1:
 2. Keep a systemd-resolved global DNS pointing at the tunnel DNS while the block holds.
 3. Block only port 53 to the LAN.
 
-For 6: drop the manifest folder entirely / **reuse it only when it is a default folder; another
-folder only through `KONGTROL_INSTALL_DIR`**.
+For 6: drop the manifest folder entirely / reuse it only when it is a default folder / **reuse it
+when it is a default folder or one the user can already write without sudo/admin; another folder
+only through `KONGTROL_INSTALL_DIR`**. The default-only rule (version 1.0.0 of this ADR, never
+merged) left the old copy behind after an update from a custom folder the user owns, where
+rewriting the manifest gains nothing.
 
 ## Decision Outcome
 
@@ -79,15 +82,18 @@ folder only through `KONGTROL_INSTALL_DIR`**.
    has no root-only profile files) and an `.ovpn` without a client profile shape: at least one
    `remote` (top level or in `<connection>`) and `client` or `tls-client`, outside inline blocks.
    WireGuard keeps the helper's validator (one `[Interface]` with a `PrivateKey`, only WireGuard
-   keys).
+   keys). On Unix the file is opened with `O_NOFOLLOW|O_NONBLOCK` and fstat-ed before any read
+   (`openRegular`), so a FIFO or device swapped in after the `Lstat` cannot hang the root process.
 3. **Every refusal of the root read is the generic `api.err.import_protected_path`** (the path the
    caller typed + what to do), also too big and validator failures; the hidden
    `profile read-protected` command prints only that. The normal import of a file the user can read
    keeps the detailed errors (the file is theirs).
 4. **Release jobs restore no cache:** `cache: false` on every `setup-go` of `release.yml`, no pnpm
-   cache in the `ui` job. The jobs that hold signing or publishing secrets (`windows`, `release`)
-   run in the GitHub environment `release`; the owner creates it protected (tag rule `v*`, optional
-   reviewer) and moves the secrets there (`docs/DEVELOPMENT.md`). The OIDC subject of those jobs
+   cache in the `ui` job. The publishing and signing job `release` runs in the GitHub environment
+   `release` (protected by the owner: tag rule `v*`, required reviewer) and its secrets move there
+   (`docs/DEVELOPMENT.md`). The `windows` job joins it only when the SignPath secrets exist (#30):
+   with a required reviewer every job in the environment needs its own approval, and one approval
+   per release is enough while `windows` holds no secret. The OIDC subject of the `release` job
    becomes `repo:…:environment:release`; cosign keyless and attestations identify the workflow file
    and ref (`release.yml@refs/tags/v…`), which does not change.
 5. **Exact versions:** GoReleaser `v2.20.2` (the version the v0.6.0 release ran, run 44583773287) in
@@ -99,10 +105,15 @@ folder only through `KONGTROL_INSTALL_DIR`**.
    own tokens through the API). **No Dependabot:** `renovate.json` (`config:recommended`,
    `helpers:pinGitHubActionDigestsToSemver`) already updates the SHA-pinned actions; two bots
    would open duplicate PRs.
-6. **install.sh / install.ps1** reuse a manifest folder only when it is a default one
-   (`/usr/local/bin`, `~/.local/bin`; `%LOCALAPPDATA%\kongtrol\bin`; macOS app folder
-   `~/Applications` or `/Applications`); otherwise they say so and how to choose it
-   (`KONGTROL_INSTALL_DIR`). sudo is used only for that explicit or a default folder. Both scripts
+6. **install.sh** reuses the CLI folder from the manifest when it is a default one
+   (`/usr/local/bin`, `~/.local/bin`) or the user can write it without sudo (`[ -w ]`): the update
+   replaces the copy in place and stops/resumes Kongtrol as before. A folder that would need sudo
+   is ignored with a warning saying how to choose it (`KONGTROL_INSTALL_DIR`), so sudo only ever
+   writes to that explicit or a default folder. The macOS app folder is always reused: it never
+   uses sudo. **install.ps1** never elevates its writes; it reuses the manifest folder when the
+   user can create a file there (as in the default `%LOCALAPPDATA%\kongtrol\bin`) and otherwise
+   warns the same way, so the exe that `service install --if-outdated` runs with a UAC prompt sits
+   in a folder only the user's own programs could have changed anyway. Both scripts
    run from a function called on the last line (`main "$@"`, `Invoke-KongtrolInstall`), so a cut
    download is a syntax error that runs nothing.
 
@@ -114,9 +125,9 @@ folder only through `KONGTROL_INSTALL_DIR`**.
 - Bad: with `allow_lan: false` (the schema default; the wizard writes `allow_lan: true`) printers,
   NAS and other LAN devices are unreachable until the VPN returns, the notice says how to keep
   them. A refused root read no longer says which line failed; the hint says to import a user copy
-  to see it. Release jobs are slower without caches (minutes, once per tag). Each release may wait
-  for an environment approval once the owner adds a reviewer. An install outside the default
-  folders needs `KONGTROL_INSTALL_DIR` on every update.
+  to see it. Release jobs are slower without caches (minutes, once per tag). Each release waits
+  for one environment approval. An install in a folder that needs sudo and is not a default one
+  needs `KONGTROL_INSTALL_DIR` on every update.
 - Neutral: zizmor still reports `cache-poisoning` (low confidence) on the two `setup-node` steps of
   `release.yml`: v4.4.0 at the pinned SHA has no implicit cache (only the `cache` input, unset).
 
@@ -125,9 +136,12 @@ folder only through `KONGTROL_INSTALL_DIR`**.
 - `internal/app/killswitch_service_test.go` `TestKillSwitch_FullTunnelLocalSubnetsFollowAllowLAN`;
   `cmd/kongtrol/daemon_watchdog_test.go` `TestKillSwitchBlockKey`.
 - `internal/profileimport/protected_test.go` (generic refusal, no echo, `.ovpn` shapes, hard link
-  on Unix); `cmd/kongtrol/protected_read_test.go` `TestProfileReadProtectedCmd_GenericRefusal`.
-- `packaging/tests/install-scripts.sh` (CI `packaging` job): manifest folder and truncation for both
-  scripts, offline.
+  on Unix); `protected_unix_test.go` `TestOpenRegular_FIFOAndSymlinkDoNotHang`;
+  `cmd/kongtrol/protected_read_test.go` `TestProfileReadProtectedCmd_GenericRefusal`.
+- `packaging/tests/install-scripts.sh` (CI `packaging` job), offline with a fake release: a
+  writable custom folder is updated in place (stop + resume run), a folder that needs sudo is
+  ignored with a warning and the install goes to the default folder, `KONGTROL_INSTALL_DIR` is
+  accepted, truncated scripts run nothing; the same folder rules for install.ps1.
 - actionlint 1.7.7 + shellcheck 0.11.0 clean on the workflows; zizmor 1.32.0 offline: no
   `artipacked`, `release.yml` `cache-poisoning` only on the two `setup-node` steps above.
 - Not verified on a real Linux desktop or in a tag run: the full-tunnel LAN block with
@@ -138,7 +152,7 @@ folder only through `KONGTROL_INSTALL_DIR`**.
 
 - Research: [Kill switch LAN exception, resolved fallback and release hardening](../research/2026-11-19-kill-switch-lan-and-release-hardening.md).
 - Code: `internal/app/killswitch_service.go`, `cmd/kongtrol/daemon_watchdog.go`,
-  `internal/profileimport/protected.go`, `internal/profileimport/linkcount_*.go`,
+  `internal/profileimport/protected.go`, `internal/profileimport/protected_{unix,other}.go`,
   `cmd/kongtrol/protected_read.go`, `.github/workflows/{release,ci,docs,landing}.yml`,
   `install.sh`, `install.ps1`, `packaging/tests/install-scripts.sh`.
 - Related: ADR-0009 (kill switch per tunnel), ADR-0025, ADR-0034, ADR-0046, ADR-0057, ADR-0058,

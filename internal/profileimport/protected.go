@@ -29,7 +29,9 @@ const ErrKeyProtectedPath = "api.err.import_protected_path"
 // ever release a VPN profile, never another root-only file.
 //
 // Checks: absolute path; .conf or .ovpn; the last element is not a link
-// (Lstat) and is a regular file; the opened file is that same file
+// (Lstat) and is a regular file; it is opened with O_NOFOLLOW|O_NONBLOCK
+// (Unix) and fstat-ed before any read, so a FIFO or device swapped in
+// cannot hang this root process; the opened file is that same file
 // (os.SameFile, no swap between check and open) and has exactly one link
 // (a hard link could give a root-only file another name; Unix only); at
 // most MaxSize bytes.
@@ -52,16 +54,12 @@ func ReadProtected(path string) ([]byte, error) {
 	if !before.Mode().IsRegular() {
 		return nil, refuse
 	}
-	f, err := os.Open(path)
+	f, after, err := openRegular(path)
 	if err != nil {
 		return nil, refuse
 	}
 	defer f.Close()
-	after, err := f.Stat()
-	if err != nil || !os.SameFile(before, after) || !after.Mode().IsRegular() {
-		return nil, refuse
-	}
-	if n, known := linkCount(after); known && n != 1 {
+	if !os.SameFile(before, after) {
 		return nil, refuse
 	}
 	if after.Size() > MaxSize {
@@ -78,6 +76,30 @@ func ReadProtected(path string) ([]byte, error) {
 		return nil, refuse
 	}
 	return data, nil
+}
+
+// openRegular opens path without following a final symlink and without
+// blocking (Unix: O_NOFOLLOW|O_NONBLOCK), then fstats it before any read:
+// only a regular file with exactly one link (Unix) is returned open.
+func openRegular(path string) (*os.File, os.FileInfo, error) {
+	f, err := openNoFollow(path)
+	if err != nil {
+		return nil, nil, err
+	}
+	fi, err := f.Stat()
+	if err == nil && !fi.Mode().IsRegular() {
+		err = errNotRegular
+	}
+	if err == nil {
+		if n, known := linkCount(fi); known && n != 1 {
+			err = errNotRegular
+		}
+	}
+	if err != nil {
+		f.Close()
+		return nil, nil, err
+	}
+	return f, fi, nil
 }
 
 // openVPNProfileShape reports a client profile: at least one `remote` (top

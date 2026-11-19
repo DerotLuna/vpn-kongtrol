@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.5.0 · 2026-11-19 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 1.6.0 · 2026-11-19 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://kongtrol.app/install.ps1 -useb | iex
 #
@@ -82,6 +82,17 @@ function Get-KongtrolVersion([string]$Exe) {
   return $null
 }
 
+# Test-UserWritableDir: this user can create a file in $Dir (no elevation).
+function Test-UserWritableDir([string]$Dir) {
+  if (-not $Dir -or -not (Test-Path -LiteralPath $Dir -PathType Container)) { return $false }
+  $probe = Join-Path $Dir ".kongtrol-write-test-$(Get-Random)"
+  try {
+    [IO.File]::WriteAllText($probe, "")
+    Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
+    return $true
+  } catch { return $false }
+}
+
 # Everything below runs from Invoke-KongtrolInstall, called on the last line:
 # a download cut short is a parse error that runs nothing, never half a
 # script (ADR-0063). The body of the function is not indented.
@@ -116,10 +127,12 @@ $baseUrl = if ($Version -eq "latest") {
 
 # Existing install (docs/adr/0046-installers-detect-existing-install.md): the
 # manifest an earlier run wrote says where kongtrol.exe went, so an update
-# reuses that folder instead of leaving a second copy behind. Only the
-# default folder is reused from it: the manifest is a file any program of
-# this user can rewrite, and the update runs the exe it finds there with a
-# permission prompt (service install); KONGTROL_INSTALL_DIR chooses another.
+# reuses that folder instead of leaving a second copy behind. The manifest
+# is a file any program of this user can rewrite and the update runs the exe
+# it finds there with a permission prompt (service install), so its folder
+# is reused only when this user can already write it (as the default
+# %LOCALAPPDATA% folder): then nothing is gained by rewriting the manifest.
+# Otherwise KONGTROL_INSTALL_DIR chooses it explicitly (ADR-0063).
 $dataDir = Join-Path $HOME ".kongtrol"
 $manifest = Join-Path $dataDir "install.manifest"
 $previous = if (Test-Path $manifest) { @(Get-Content $manifest) } else { @() }
@@ -127,9 +140,9 @@ $prevExe = $previous | Where-Object { $_ -like "file=*kongtrol.exe" } | ForEach-
 $defaultDir = Join-Path $env:LOCALAPPDATA "kongtrol\bin"
 if ($prevExe) {
   $prevDir = try { [IO.Path]::GetFullPath((Split-Path -Parent $prevExe)).TrimEnd('\') } catch { "" }
-  if ($prevDir -ine [IO.Path]::GetFullPath($defaultDir).TrimEnd('\')) {
+  if (-not (Test-UserWritableDir $prevDir)) {
     if (-not $env:KONGTROL_INSTALL_DIR) {
-      Write-Warn "the last install was in $prevDir, which is not the default folder, so it is not reused. To install there again, set `$env:KONGTROL_INSTALL_DIR=`"$prevDir`" first"
+      Write-Warn "the last install was in $prevDir, which you cannot write without administrator rights, so it is not reused. To install there again, set `$env:KONGTROL_INSTALL_DIR=`"$prevDir`" first"
     }
     $prevExe = $null
   }

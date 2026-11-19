@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.10.0 · 2026-11-19
+Version 2.10.1 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -256,15 +256,17 @@ Every release (`.github/workflows/release.yml`) publishes, for every file:
 or missing signature stops the install and nothing is installed (`KONGTROL_SKIP_SIGNATURE=1`
 only for releases before v0.6.0). Without cosign they print one line saying the signature was not
 checked and the command to verify by hand. They never download cosign. They run from a function
-called on their last line, so a download cut short runs nothing. On an update they reuse the
-folder recorded in `~/.kongtrol/install.manifest` only when it is a default one (`/usr/local/bin`,
-`~/.local/bin`, `%LOCALAPPDATA%\kongtrol\bin`): that file is writable by any program of the user,
-and the install may use `sudo` (or run the new exe with a permission prompt) in that folder.
-Another folder needs `KONGTROL_INSTALL_DIR` ([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
+called on their last line, so a download cut short runs nothing. `~/.kongtrol/install.manifest`
+is writable by any program of the user, so on an update the folder it names is reused only when
+it is a default one (`/usr/local/bin`, `~/.local/bin`) or the user can already write it without
+`sudo` / administrator rights (as `%LOCALAPPDATA%\kongtrol\bin`); a folder that would need `sudo`
+is skipped with a warning and needs `KONGTROL_INSTALL_DIR`. `sudo` therefore never writes where
+that file says ([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
 
 The release jobs restore no build cache (a cache written by a `main` run never feeds a signed
-build), use exact tool versions, keep no git credentials after checkout, and the jobs that hold
-signing or publishing secrets run in the protected GitHub environment `release`
+build), use exact tool versions, keep no git credentials after checkout, and the publishing job
+(`release`, with its secrets) runs in the protected GitHub environment `release`; the Windows
+signing job joins it when the SignPath secrets exist
 ([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
 
 Package managers (winget, Scoop, Homebrew, AUR, apt/dnf) check the SHA-256 written in their

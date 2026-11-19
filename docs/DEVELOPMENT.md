@@ -70,19 +70,27 @@ Every channel is optional: its step skips itself while its secret is missing. To
 | Windows signing | apply at https://signpath.org/apply (free for OSI-licensed projects); after approval, install the SignPath GitHub app and create the project, artifact configuration and signing policy they describe | secret `SIGNPATH_API_TOKEN`; variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG`, `SIGNPATH_POLICY_SLUG` |
 
 **Protected `release` environment** ([ADR-0063](adr/0063-kill-switch-lan-protected-read-and-release-hardening.md)).
-The `windows` (signing) and `release` (publishing) jobs run in the GitHub environment `release`,
-so their secrets can live there instead of at repository level, readable only by those jobs and
-only for the tags the environment allows. Once, in repo settings → Environments:
+The `release` job (GoReleaser, cosign, attestations, Homebrew, npm) runs in the GitHub
+environment `release`, so its secrets can live there instead of at repository level, readable
+only by that job and only for the tags the environment allows. Once, in repo settings →
+Environments:
 
 1. Create `release` before the next tag (otherwise a tag run may find it missing or create it
    unprotected; exact behavior **no verificado**). Deployment branches and tags → *Selected*: add
-   the tag rule `v*`. Optionally add yourself as a required reviewer (each release then waits for
-   one approval per job: `windows` and `release`; their secrets stay locked until then).
-2. Add every secret from the table above to the environment (Secrets → *Add environment
-   secret*, same names), and the SignPath variables as environment variables.
+   the tag rule `v*`. Optionally add yourself as a required reviewer: each release then waits for
+   one approval, and the job's secrets stay locked until then.
+2. Add the publishing secrets from the table above to the environment (Secrets → *Add
+   environment secret*, same names): `HOMEBREW_TAP_TOKEN`, `SCOOP_BUCKET_TOKEN`,
+   `WINGET_GITHUB_TOKEN`, `AUR_KEY`, `NPM_TOKEN`.
 3. Delete the repository-level copies (Settings → Secrets and variables → Actions): a
    repository secret is readable by every workflow, so the protection only holds once the
    environment is the only place that has them.
+
+The `windows` job (SignPath signing) is not in the environment yet: with a required reviewer,
+a second job there would need a second approval for every release. When the SignPath secrets
+exist (#30), add `environment: release` to the `windows` job in `release.yml`, put
+`SIGNPATH_API_TOKEN` and the `SIGNPATH_*` variables in the environment, and expect one approval
+per job.
 
 The release jobs restore no cache (`cache: false` in setup-go, no pnpm cache) and use exact tool
 versions (GoReleaser, pnpm from `web/ui/package.json` `packageManager`), so nothing a `main`
