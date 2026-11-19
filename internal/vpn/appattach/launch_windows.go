@@ -7,5 +7,10 @@ func osLaunch(app App) error {
 	if p, ok := firstExisting(app.WindowsPaths); ok {
 		return startDetached(p)
 	}
+	if app.WindowsFind != nil {
+		if p, ok := firstExisting(app.WindowsFind()); ok {
+			return startDetached(p)
+		}
+	}
 	return ErrAppNotFound
 }

@@ -4,18 +4,27 @@ package nordvpn
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 // defaultLocations is where the NordVPN Windows installer puts the app.
 var defaultLocations = []string{`C:\Program Files\NordVPN\NordVPN.exe`}
 
+// windowsLocations adds the NordVPN.exe of a custom install folder (from
+// "Apps & features", shared with the detect list) at call time; only
+// connect / disconnect use it, never the 5 s status poll.
+func windowsLocations() []string {
+	return append(slices.Clone(defaultLocations), vpndetect.NordVPNAppPaths()...)
+}
+
 // CheckPlatform reports whether the CLI connect path exists on this OS.
 func CheckPlatform() error { return nil }
 
 func connect(override string, t target) error {
-	bin, err := findBinary(override, defaultLocations)
+	bin, err := findBinary(override, windowsLocations())
 	if err != nil {
 		return err
 	}
@@ -27,7 +36,7 @@ func connect(override string, t target) error {
 }
 
 func disconnect(override string) error {
-	bin, err := findBinary(override, defaultLocations)
+	bin, err := findBinary(override, windowsLocations())
 	if err != nil {
 		return err
 	}

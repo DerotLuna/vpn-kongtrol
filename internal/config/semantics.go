@@ -60,11 +60,18 @@ func validateSemantics(cfg *Config) error {
 	if err := ValidateAuditLogPath(cfg.Security.AuditLog.Path); err != nil {
 		return err
 	}
-	if n := cfg.Security.AuditLog.MaxSizeMB; n < 0 || n > 1024 {
+	if n := cfg.Security.AuditLog.MaxSizeMB; n < 0 || n > MaxAuditMaxSizeMB {
 		return newValidationError("config.err.audit_max_size", n)
 	}
-	if n := cfg.Security.AuditLog.RetentionDays; n < 0 || n > 365 {
+	// 0 = the default (older configs keep loading, ADR-0064).
+	if n := cfg.Security.AuditLog.RetentionDays; n < 0 || n > MaxAuditRetentionDays {
 		return newValidationError("config.err.audit_retention", n)
+	}
+	if n := cfg.Security.AuditLog.MaxTotalMB; n < 0 || n > MaxAuditMaxTotalMB {
+		return newValidationError("config.err.audit_max_total", n)
+	}
+	if al := cfg.Security.AuditLog; al.MaxTotalMB > 0 && al.MaxTotalMB < al.EffectiveMaxSizeMB() {
+		return newValidationError("config.err.audit_total_small", al.MaxTotalMB, al.EffectiveMaxSizeMB())
 	}
 	if err := validateExpectedIPs(cfg); err != nil {
 		return err

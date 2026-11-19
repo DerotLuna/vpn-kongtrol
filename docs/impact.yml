@@ -1,4 +1,4 @@
-# Change-impact map — version 1.10 · 2026-11-19
+# Change-impact map — version 1.11 · 2026-11-19
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -295,6 +295,21 @@ features:
       - configs/example.yaml
       - docs/CONFIGURATION.md
       - docs/SETUP.md#wizard
+
+  audit_log:
+    code:
+      - internal/security/audit*.go
+      - internal/api/audit_requests.go
+      - internal/api/handlers_audit.go
+      - cmd/kongtrol/audit_*.go
+      - cmd/kongtrol/cmd_config_audit.go
+      - internal/daemonctl/auditlog.go
+      - web/ui/src/components/activity/AuditConfig.tsx
+    surfaces:
+      - docs/SECURITY.md#audit_log
+      - configs/example.yaml
+      - docs/CONFIGURATION.md
+      - landing/src/content/legal/privacidad.tsx
 
   wizard_doctor:
     code:

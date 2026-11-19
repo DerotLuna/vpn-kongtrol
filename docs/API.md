@@ -95,7 +95,7 @@ POST /api/v1/security/publicip/check         # one lookup now ("Revisar"); 409 p
 POST /api/v1/security/dnsguard               # {"enabled": true|false}
 
 # Settings & scheduler
-GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints, expected_ips {profile: ip} — replaced whole, empty value drops it, validated: existing profile + one IP), audit log (audit_log_path, audit_log_max_size_mb, audit_log_retention_days, audit_log_sign; applied live), recent_connections_enabled (default true; off empties the list at once)
+GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints, expected_ips {profile: ip} — replaced whole, empty value drops it, validated: existing profile + one IP), audit log (audit_log_path, audit_log_max_size_mb, audit_log_retention_days, audit_log_max_total_mb, audit_log_sign; the GET answers the values in use, never 0; applied live, ADR-0064), recent_connections_enabled (default true; off empties the list at once)
 GET/POST  /api/v1/scheduler/rules
 PUT/DELETE /api/v1/scheduler/rules/{name}    # rule {name,profiles,weekdays,start,end,"enabled":bool (false = paused)}; changes apply live (no restart)
 

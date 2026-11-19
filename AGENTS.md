@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.23 · 2026-11-19
+Version 1.24 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -377,6 +377,10 @@ doctor), and the user copies it with one OS prompt — CLI/wizard `sudo`, dashbo
 → `pkexec` — to the hidden `kongtrol profile read-protected`, which releases it only after
 `profileimport.ReadProtected` (absolute, .conf/.ovpn, no link, size cap, helper validators) (ADR-0058). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
 the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
+A new mutating route needs an audit action in `internal/api/audit_requests.go` (a test fails
+otherwise): who / what / result, never the body (ADR-0064). The audit log keeps
+`retention_days` (unset = 30) within `max_total_mb` (unset = 500), cleaned at start, per new file
+and every midnight; inventory in `docs/SECURITY.md` "Audit log".
 <!-- feature:policies -->
 Policy create/delete and profile create live in `internal/configedit` (`AddPolicy`, `RemovePolicy`,
 `AddVPNProfile`/`SaveVPNProfile`, `Save` = Validate + policy engine + atomic write), shared by the

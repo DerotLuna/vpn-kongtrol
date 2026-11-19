@@ -4,7 +4,7 @@
 
 # Configuration reference (kongtrol.yaml)
 
-Version 1.5 · 2026-11-19
+Version 1.6 · 2026-11-19
 
 Every key of `~/.kongtrol/kongtrol.yaml`, read from the schema (`internal/config/schema.go`). Defaults are the ones the code applies. Guide with examples: [CONFIGURATION.md](CONFIGURATION.md) · full example: [configs/example.yaml](../configs/example.yaml) · Español: [CONFIG.md](CONFIG.md).
 
@@ -81,7 +81,8 @@ Protections: kill switch, DNS guard, checks and audit log.
 | `security.public_ip_check.endpoints` | list of string | — | `https://` URLs tried in order; empty = the default one. |
 | `security.audit_log.path` | string | — | Audit log file. |
 | `security.audit_log.max_size_mb` | int | `100` | Largest size of one file (MB); past it the same day continues in audit-YYYY-MM-DD.1.log, .2… (default 100). |
-| `security.audit_log.retention_days` | int | — | Days kept, today included (0 = today and yesterday; at most 365). Older days are deleted. |
+| `security.audit_log.retention_days` | int | `30` | Days kept, today included (1 to 365; unset or 0 = 30). Older days are deleted at start, when a file fills up and every midnight. |
+| `security.audit_log.max_total_mb` | int | `500` | Largest space of all files together (MB, 1 to 10240; unset or 0 = 500, never less than one file). Past it the oldest are deleted first. |
 | `security.audit_log.sign` | bool | — | Signs every entry with HMAC-SHA256 (detects tampering). |
 
 ## `monitor`

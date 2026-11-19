@@ -9,7 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
@@ -20,6 +20,10 @@ type Probe struct {
 	Label       string
 	AdapterType string   // "" when Kongtrol has no adapter for the client
 	PathNames   []string // names resolved through PATH (exec.LookPath)
+	// Candidates returns absolute executable paths worked out when Detect
+	// runs (install folders from the uninstall registry, newest version
+	// folder first); the first existing one wins. nil = none.
+	Candidates  func() []string
 	SearchDirs  []string // directories walked looking for ExeNames
 	SearchDepth int
 	ExeNames    []string // file names matched case-insensitively
@@ -71,6 +75,13 @@ func Detect(p Probe) (string, bool) {
 			return path, true
 		}
 	}
+	if p.Candidates != nil {
+		for _, path := range p.Candidates() {
+			if filepath.IsAbs(path) && isFile(path) {
+				return path, true
+			}
+		}
+	}
 	var candidates []string
 	for _, dir := range p.SearchDirs {
 		walkExe(dir, p.ExeNames, p.SearchDepth, &candidates)
@@ -78,8 +89,8 @@ func Detect(p Probe) (string, bool) {
 	if len(candidates) == 0 {
 		return "", false
 	}
-	sort.Strings(candidates)
-	return candidates[len(candidates)-1], true
+	// The newest wins, comparing version folders as numbers (v4.10 > v4.9).
+	return slices.MaxFunc(candidates, comparePaths), true
 }
 
 // StandardLocations lists where the adapter of this type looks for its

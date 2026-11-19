@@ -70,6 +70,10 @@ type Server struct {
 	// auditVerify checks an audit entry's HMAC (SetAuditVerifier); the
 	// key never reaches the API.
 	auditVerify func(security.AuditEvent) bool
+	// auditLog writes one entry per mutating request and per refused
+	// credential (SetAuditLog, audit_requests.go).
+	auditLog  func(AuditRecord)
+	authAudit authAudit
 	// blockedList returns the prefixes blocked now (SetBlockedList).
 	blockedList func() []string
 	// importDir is where POST /api/v1/vpns/import stores files
@@ -275,6 +279,7 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 			return
 		}
 		if !s.validHost(r.Host) {
+			s.auditDenied(r, "host", http.StatusUnauthorized)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -285,6 +290,7 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 			// a POST; a missing Origin is not proof of same origin (OWASP
 			// CSRF cheat sheet), so it is required here.
 			if !s.validBrowserOrigin(r) {
+				s.auditDenied(r, "origin", http.StatusForbidden)
 				http.Error(w, "forbidden origin", http.StatusForbidden)
 				return
 			}
@@ -292,14 +298,17 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 			// Only native clients holding the file token mint nonces; a
 			// browser session cannot.
 			if !s.tokenAuthenticated(r) {
+				s.auditDenied(r, "credential", http.StatusUnauthorized)
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
 			}
 		case !s.authenticated(r):
+			s.auditDenied(r, "credential", http.StatusUnauthorized)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 		if r.Header.Get("Origin") != "" && !s.validBrowserOrigin(r) {
+			s.auditDenied(r, "origin", http.StatusForbidden)
 			http.Error(w, "forbidden origin", http.StatusForbidden)
 			return
 		}
@@ -315,7 +324,7 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		}
-		next.ServeHTTP(w, r)
+		s.serveAudited(next, w, r)
 	})
 }
 

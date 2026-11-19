@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.5 · 2026-11-19
+Versión 1.6 · 2026-11-19
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -81,7 +81,8 @@ Protecciones: kill switch, DNS guard, chequeos y registro de auditoría.
 | `security.public_ip_check.endpoints` | lista de texto | — | URLs `https://` a probar en orden; vacío = la de por defecto. |
 | `security.audit_log.path` | texto | — | Archivo del registro de auditoría. |
 | `security.audit_log.max_size_mb` | entero | `100` | Tamaño máximo de un archivo (MB); al pasarlo el mismo día sigue en audit-AAAA-MM-DD.1.log, .2… (por defecto 100). |
-| `security.audit_log.retention_days` | entero | — | Días que se guardan, hoy incluido (0 = hoy y ayer; máximo 365). Los más viejos se borran. |
+| `security.audit_log.retention_days` | entero | `30` | Días que se guardan, hoy incluido (1 a 365; sin poner o 0 = 30). Los más viejos se borran al iniciar, al llenarse un archivo y cada medianoche. |
+| `security.audit_log.max_total_mb` | entero | `500` | Espacio máximo de todos los archivos juntos (MB, 1 a 10240; sin poner o 0 = 500, nunca menos que un archivo). Al pasarlo se borran primero los más viejos. |
 | `security.audit_log.sign` | booleano | — | Firma cada entrada con HMAC-SHA256 (detecta manipulación). |
 
 ## `monitor`

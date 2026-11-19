@@ -40,8 +40,9 @@ func TestEveryProbeTypeIsKnownOrUnsupported(t *testing.T) {
 			continue
 		}
 		// Every adapter probe must either have standard locations on this OS
-		// or be a type the adapter deliberately does not support here.
-		if !Known(p.AdapterType) && p.AdapterType != "protonvpn" && p.AdapterType != "nordvpn" && p.AdapterType != "globalprotect" {
+		// or be a type the adapter deliberately does not support here, or a
+		// provider app found through Candidates.
+		if !Known(p.AdapterType) && p.Candidates == nil && p.AdapterType != "protonvpn" && p.AdapterType != "nordvpn" && p.AdapterType != "globalprotect" {
 			t.Errorf("probe %q: adapter type %q has no standard locations", p.Label, p.AdapterType)
 		}
 	}

@@ -1,14 +1,23 @@
-// Kongtrol UI — Actividad: audit log settings · v1.1.0 · 2026-11-18
+// Kongtrol UI — Actividad: audit log settings · v1.2.0 · 2026-11-19
 //
-// Path, max size per file, days kept and HMAC signing (PUT /api/v1/settings,
-// only these fields; applied live by the daemon, ADR-0042). Shown next to
-// the log it configures (parity row "Audit log path, max size MB, HMAC sign
-// switch", IA decision: /activity). Sizes and days are checked here with
-// the daemon's limits (1–1024 MB, 0–365 days) and refused with a "what to
-// do" line; an empty box is never saved as 0 (legacy bug settings.js:201).
+// Path, max size per file, days kept, total space and HMAC signing
+// (PUT /api/v1/settings, only these fields; applied live by the daemon,
+// ADR-0042, ADR-0064). Shown next to the log it configures (parity row
+// "Audit log path, max size MB, HMAC sign switch", IA decision: /activity).
+// Values are checked here with the daemon's limits (1–1024 MB per file,
+// 1–365 days, 1–10240 MB in total and never below one file) and refused
+// with a "what to do" line; an empty box is never saved as 0 (legacy bug
+// settings.js:201). The daemon sends the values in use, never a 0.
 import { useRef, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
-import { useSaveSettings, validateMaxSize, validateRetention, type Invalid, type Settings } from '../../data/settings'
+import {
+  useSaveSettings,
+  validateMaxSize,
+  validateMaxTotal,
+  validateRetention,
+  type Invalid,
+  type Settings,
+} from '../../data/settings'
 import { useUnsavedChanges } from '../../app/unsaved'
 import { focusFirstInvalid } from '../settings/form'
 import { FormBar, SettingsSection } from '../settings/SettingsSection'
@@ -19,17 +28,20 @@ interface Draft {
   path: string
   size: string
   days: string
+  total: string
   sign: boolean
 }
 
 const fromSettings = (s: Settings): Draft => ({
   path: s.audit_log_path,
   size: s.audit_log_max_size_mb ? String(s.audit_log_max_size_mb) : '',
-  days: String(s.audit_log_retention_days ?? 0),
+  days: s.audit_log_retention_days ? String(s.audit_log_retention_days) : '',
+  total: s.audit_log_max_total_mb ? String(s.audit_log_max_total_mb) : '',
   sign: s.audit_log_sign,
 })
 
-const same = (a: Draft, b: Draft) => a.path === b.path && a.size === b.size && a.days === b.days && a.sign === b.sign
+const same = (a: Draft, b: Draft) =>
+  a.path === b.path && a.size === b.size && a.days === b.days && a.total === b.total && a.sign === b.sign
 
 export function AuditConfig({ settings }: { settings: Settings }) {
   const { t } = usePreferences()
@@ -38,6 +50,7 @@ export function AuditConfig({ settings }: { settings: Settings }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [sizeError, setSizeError] = useState<Invalid | null>(null)
   const [daysError, setDaysError] = useState<Invalid | null>(null)
+  const [totalError, setTotalError] = useState<Invalid | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
   const value = draft ?? saved
@@ -51,14 +64,17 @@ export function AuditConfig({ settings }: { settings: Settings }) {
     e.preventDefault()
     const size = validateMaxSize(value.size)
     const days = validateRetention(value.days)
+    const total = validateMaxTotal(value.total, value.size)
     setSizeError(size)
     setDaysError(days)
-    if (size || days) return focusFirstInvalid(formRef.current)
+    setTotalError(total)
+    if (size || days || total) return focusFirstInvalid(formRef.current)
     save.mutate(
       {
         audit_log_path: value.path.trim(),
         audit_log_max_size_mb: Number(value.size.trim()),
         audit_log_retention_days: Number(value.days.trim()),
+        audit_log_max_total_mb: Number(value.total.trim()),
         audit_log_sign: value.sign,
       },
       { onSuccess: () => setDraft(null) },
@@ -96,10 +112,10 @@ export function AuditConfig({ settings }: { settings: Settings }) {
           <TextField
             label={t('activity.config.retention')}
             hint={
-              daysError || !/^\d+$/.test(value.days.trim())
+              daysError || !/^\d+$/.test(value.days.trim()) || days < 1
                 ? t('activity.config.retention.hint')
-                : days === 0
-                  ? t('activity.config.retention.zero')
+                : days === 1
+                  ? t('activity.config.retention.one')
                   : t('activity.config.retention.n', { n: days })
             }
             inputMode="numeric"
@@ -112,6 +128,20 @@ export function AuditConfig({ settings }: { settings: Settings }) {
               if (daysError) setDaysError(validateRetention(e.target.value))
             }}
             onBlur={(e) => setDaysError(validateRetention(e.target.value))}
+          />
+          <TextField
+            label={t('activity.config.total')}
+            hint={t('activity.config.total.hint')}
+            inputMode="numeric"
+            className="k-input--short"
+            autoComplete="off"
+            value={value.total}
+            error={asError(totalError)}
+            onChange={(e) => {
+              edit({ total: e.target.value })
+              if (totalError) setTotalError(validateMaxTotal(e.target.value, value.size))
+            }}
+            onBlur={(e) => setTotalError(validateMaxTotal(e.target.value, value.size))}
           />
         </div>
         <Switch
@@ -129,6 +159,7 @@ export function AuditConfig({ settings }: { settings: Settings }) {
             setDraft(null)
             setSizeError(null)
             setDaysError(null)
+            setTotalError(null)
           }}
         />
       </form>

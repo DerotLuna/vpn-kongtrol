@@ -213,6 +213,8 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	srv.SetEventLog(daemonEvents)
 	// Audit entries are checked against the signing key, which stays here.
 	srv.SetAuditVerifier(auditVerifier())
+	// Every change made through the API, and refused credentials (ADR-0064).
+	srv.SetAuditLog(auditAPIRequest)
 	// First run without kongtrol.yaml, and the restart that applies a
 	// change the running daemon cannot (setup mode, a hand edit with an
 	// unknown type). Profile changes otherwise apply live (ADR-0053).
@@ -397,7 +399,9 @@ func applyKillSwitchState() error {
 	if killSwitchSvc == nil {
 		return nil
 	}
-	if err := killSwitchSvc.Apply(); err != nil {
+	err := killSwitchSvc.Apply()
+	auditKillSwitchState(killSwitchSvc.Status())
+	if err != nil {
 		fmt.Fprintln(os.Stderr, cf("cli.up.warn.kill_switch_enable", err))
 		return err
 	}

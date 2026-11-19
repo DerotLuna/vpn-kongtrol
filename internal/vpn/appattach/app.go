@@ -15,8 +15,12 @@ var ErrAppNotFound = errors.New("provider app not found")
 type App struct {
 	DisplayName  string   // shown to the user ("NordVPN", "Proton VPN", …)
 	WindowsPaths []string // absolute .exe paths, first existing wins
-	MacApp       string   // application name for `open -a`
-	LinuxCmds    []string // GUI launcher commands looked up on PATH
+	// WindowsFind lists more .exe paths, worked out only when the app is
+	// launched (versioned folders, registry install location); tried after
+	// WindowsPaths. nil = none.
+	WindowsFind func() []string
+	MacApp      string   // application name for `open -a`
+	LinuxCmds   []string // GUI launcher commands looked up on PATH
 }
 
 // Launch starts the provider app (or brings it forward when already

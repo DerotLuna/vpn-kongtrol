@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.24.0 · 2026-11-19
+Version 1.25.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -74,6 +74,8 @@ decision live in [`docs/research/`](../research/README.md).
 | [0059](0059-ci-parallel-jobs-and-superseded-runs.md) | CI: jobs wait only for output they use (UI build vs UI checks, release tests beside the macOS/Windows builds, Pages redirect without the landing build); superseded PR/branch runs cancelled, never tags/releases; `actions/*` pinned by SHA | Accepted | 2026-11-19 |
 | [0060](0060-landing-single-theme-bands-and-line-art-marks.md) | Landing in one designed theme: Bone page, Ink bands, one Signal-amber download band, no theme switch (dashboard keeps its themes); key sections fit one laptop screen; downloads listed once; round back-to-top button; ES ↔ EN keeps the section with cross-document View Transitions; line-art mark in the header (54 px) and the in-page illustrations, solid for favicon/tray/tray mock | Accepted | 2026-11-19 |
 | [0061](0061-landing-guide-gui-first-steps.md) | Setup guide rewritten GUI-first: panel place first, command second; numbered steps with a "you will see" line; problems as symptom → what to do → command per OS; installer/script per OS from links.ts; two Ink blocks (quickstart, how it works) on the Bone page | Accepted | 2026-11-19 |
+| [0064](0064-audit-log-retention-and-coverage.md) | Audit log: retention_days unset/0 = 30, new max_total_mb (default 500, oldest first), cleanup at start, per new file and every midnight; every mutating API request audited at metadata level (who, what, result, no body), refused credentials throttled, daemon start/stop and kill switch state; `kongtrol config audit-log` | Accepted | 2026-11-19 |
+| [0065](0065-windows-provider-app-detection.md) | Proton VPN / NordVPN / Surfshark on Windows found by the uninstall entry and default folders, newest `v<version>` folder compared numerically; one lookup shared by detection and the adapters' launch | Accepted | 2026-11-19 |
 
 ## Statuses
 
