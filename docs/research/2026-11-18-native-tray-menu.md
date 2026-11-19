@@ -103,7 +103,7 @@ Béziers). Checked at 512 px: its outer edge lies on average 0.36 px (max 5 px, 
 closing bridges notches between line ends) from the original ink, and 0.15 % of the original
 ink falls outside it (anti-aliased edge pixels), so the silhouette is the original's. The
 owner approved it from review masks at 16/20/24/32/40/48 px (since deleted), with a smaller
-status dot (radius 17 % instead of 20 %) and an edge-contrast "hint" at ≤32 px (an
+status dot (radius 15 % instead of 20 %; the 17 % preview nicked the chin rim) and an edge-contrast "hint" at ≤32 px (an
 approximation, not true grid-fitting). It is now the tray glyph: `generate.go` rasterizes
 `assets/brand/tray-<px>.png` (16, 20, 24, 32, 48, 64) from it, and the run-time badge uses
 `assets.BadgeGeometry`. Measured on the shipped masks (`TestBadgeOffFace`): the dot covers no

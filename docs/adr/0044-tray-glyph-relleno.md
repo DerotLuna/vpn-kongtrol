@@ -47,7 +47,7 @@ Chosen: **option 3**.
    The full line-art logo stays for large surfaces (installer, app icons, about, dashboard,
    README); packaging icons (`assets/logo.ico`, `logo-kong-512.png` for the macOS `.icns`, the
    Linux 512 px PNG) are app icons, not the tray glyph, and do not change.
-3. **Badge.** The state dot is smaller: radius 17 % of the icon (at least 2.5 px, was 20 %), in
+3. **Badge.** The state dot is smaller: radius 15 % of the icon (at least 2.5 px, was 20 %), in
    the bottom-right corner, with a transparent gap ring of size/16 (at least 1 px).
    `assets.BadgeGeometry` is the single definition; `TrayMark`/`TrayPNG`/`TrayICO` use it, so the
    Windows `.ico`, the macOS template image and the Linux PNG all get it.
@@ -56,9 +56,9 @@ Chosen: **option 3**.
 
 - Good: the tray icon reads as the logo at 16 px on dark and light taskbars.
 - Good: the dot never paints over the face at any size (`TestBadgeOffFace`).
-- Bad: the dot's gap ring thins the face plate's 1 px rim at the chin's lower right, so on the
-  smallest sizes the plate touches the gap there. A 15 % radius keeps the rim closed at every
-  size (checked with the same test); 17 % was kept because it is the size the owner approved.
+- Good: at 15 % the dot's gap ring also keeps the face plate's 1 px rim closed at every size
+  (the approved preview used 17 %, whose gap ring nicked the rim at the chin's lower right).
+- Bad: the dot is smaller than before (20 %), so the state reads by color more than by size.
 
 ### Confirmation
 

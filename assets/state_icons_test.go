@@ -76,7 +76,7 @@ func TestTrayBadges(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c := img.RGBAAt(26, 26) // badge center: 32 - 0.17*32 - 0.5 ≈ 26
+		c := img.RGBAAt(26, 26) // badge center: 32 - 0.15*32 - 0.5 ≈ 26
 		if [3]uint8{c.R, c.G, c.B} != want || c.A != 0xff {
 			t.Fatalf("badge %d center = %v, want %v", badge, c, want)
 		}

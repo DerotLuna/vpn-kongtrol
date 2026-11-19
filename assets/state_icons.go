@@ -54,13 +54,13 @@ const (
 )
 
 // BadgeGeometry is the status dot on a size×size tray icon: center (cx, cy)
-// tucked into the bottom-right corner, radius r = 17 % of the icon (at least
+// tucked into the bottom-right corner, radius r = 15 % of the icon (at least
 // 2.5 px) and a transparent gap ring of size/16 (at least 1 px) cut out of
 // the glyph around it. Sized so the dot and its gap stay off the face of
 // the solid mark at every MaskSizes size (ADR-0044; TestBadgeOffFace).
 func BadgeGeometry(size int) (cx, cy, r, gap float64) {
 	s := float64(size)
-	r = math.Max(2.5, s*0.17)
+	r = math.Max(2.5, s*0.15)
 	gap = math.Max(1, s/16)
 	return s - r - 0.5, s - r - 0.5, r, gap
 }
