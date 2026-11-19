@@ -9,6 +9,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/forticlient"
 )
 
 // ── Shared prompt helpers ─────────────────────────────────────────────────────
@@ -98,13 +99,37 @@ func selectAuthMethod(lang i18n.Lang, def string) (string, error) {
 
 // ── Type-specific field collectors ───────────────────────────────────────────
 
+// fortiDetectLine says which FortiClient was found and how `kongtrol up`
+// will connect to it, from the same DetectInstall + SelectPlan the adapter
+// and doctor use (ADR-0020). A version that cannot be read is not asked:
+// SelectPlan then keeps the 6.4 behavior and any failure falls back to
+// "open FortiClient and wait for the user", whatever the user would answer.
+func fortiDetectLine(lang i18n.Lang, goos string, in forticlient.Install) string {
+	plan := forticlient.SelectPlan(goos, in)
+	how := i18n.T(lang, "cli.doctor.forti.strategy."+string(plan.Strategy))
+	switch {
+	case goos != "windows":
+		// Linux / macOS: the strategy does not depend on the version.
+		return i18n.F(lang, "wizard.forti.plan", how)
+	case in.Path == "":
+		return i18n.T(lang, "wizard.forti.not_found")
+	case in.Version == "":
+		return i18n.F(lang, "wizard.forti.version_unknown", how)
+	default:
+		return i18n.F(lang, "wizard.forti.detected", in.Version, how)
+	}
+}
+
 func collectFortiFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
 	var (
 		host       string
 		port       string = "443"
 		tunnelName string = "Office"
-		version    string = "6"
 	)
+
+	// No version question (#16): the connect strategy reads the detected
+	// install only (ADR-0020), so the wizard says what it found instead.
+	fmt.Println(tuiInfo(fortiDetectLine(lang, runtime.GOOS, forticlient.DetectInstall(""))))
 
 	if err := runForm(newForm(huh.NewGroup(
 		huh.NewInput().Title(i18n.T(lang, "collect.host")).
@@ -116,12 +141,6 @@ func collectFortiFields(lang i18n.Lang, name string, fields *[][2]string, auth *
 			Placeholder("443").Validate(validatePort(lang)).Value(&port),
 		huh.NewInput().Title(i18n.T(lang, "collect.tunnel_name")).
 			Placeholder("Office").Value(&tunnelName),
-		huh.NewSelect[string]().Title(i18n.T(lang, "collect.forti_ver")).
-			Options(
-				huh.NewOption("6.x ("+i18n.T(lang, "forti.ver.hint.6")+")", "6"),
-				huh.NewOption("7.x ("+i18n.T(lang, "forti.ver.hint.7")+")", "7"),
-				huh.NewOption("5.x ("+i18n.T(lang, "forti.ver.hint.5")+")", "5"),
-			).Value(&version),
 	))); err != nil {
 		return err
 	}
@@ -136,7 +155,6 @@ func collectFortiFields(lang i18n.Lang, name string, fields *[][2]string, auth *
 		[2]string{"host", host},
 		[2]string{"port", port},
 		[2]string{"tunnel_name", tunnelName},
-		[2]string{"version", version},
 	)
 
 	if runtime.GOOS == "windows" {
