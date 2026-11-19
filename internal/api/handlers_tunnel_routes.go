@@ -80,7 +80,7 @@ func (s *Server) handleAllTunnelRoutes(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/tunnels/{name}/routes — what goes through one tunnel.
 func (s *Server) handleTunnelRoutes(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	if _, ok := s.adapters[name]; !ok {
+	if _, ok := s.adapters.Get(name); !ok {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
 	}
@@ -122,11 +122,7 @@ func (s *Server) tunnelRoutes(only string) tunnelRoutesResponse {
 
 	out := tunnelRoutesResponse{Tunnels: []tunnelRoutesDTO{}}
 	tunnelIfaces := map[string]bool{}
-	names := make([]string, 0, len(s.adapters))
-	for name := range s.adapters {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	names := s.adapters.Names()
 	for _, name := range names {
 		snap := snapshot[name]
 		if only != "" && name != only {
@@ -148,7 +144,7 @@ func (s *Server) tunnelRoutes(only string) tunnelRoutesResponse {
 			tunnelIfaces[i] = true
 		}
 		var reported *vpn.TunnelRoutes
-		if rr, ok := s.adapters[name].(vpn.RouteReporter); ok {
+		if rr, ok := s.adapterOf(name).(vpn.RouteReporter); ok {
 			reported = rr.TunnelRoutes()
 		}
 		dto := buildTunnelRoutes(name, ifaces, snap.ip, osRoutes, reported, policyNames(name, resolved[name], rules))

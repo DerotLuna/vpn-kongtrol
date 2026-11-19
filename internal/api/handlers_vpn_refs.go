@@ -132,7 +132,7 @@ func (s *Server) profileBusy(name string) bool {
 	if connecting {
 		return true
 	}
-	a, ok := s.adapters[name]
+	a, ok := s.adapters.Get(name)
 	return ok && a.Status().Normalize() != vpn.StatusDisconnected
 }
 
@@ -141,15 +141,15 @@ func (s *Server) profileBusy(name string) bool {
 // keychain entries move (copied first, old ones deleted only after the
 // config is written; any failure rolls back), and favorites follow.
 // Returns the HTTP status for the error.
-func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, req vpnProfileReq) (int, error) {
+func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, req vpnProfileReq) (int, profileApply, error) {
 	if err := config.ValidateName("vpn", to); err != nil {
-		return http.StatusBadRequest, err
+		return http.StatusBadRequest, profileApply{}, err
 	}
 	if _, exists := cfg.VPNs[to]; exists {
-		return http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_exists", Args: []any{to}}
+		return http.StatusConflict, profileApply{}, &config.ValidationError{Key: "api.err.vpn_exists", Args: []any{to}}
 	}
 	if s.profileBusy(from) {
-		return http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_rename_busy", Args: []any{from}}
+		return http.StatusConflict, profileApply{}, &config.ValidationError{Key: "api.err.vpn_rename_busy", Args: []any{from}}
 	}
 
 	trial := *cfg
@@ -191,18 +191,19 @@ func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, 
 			continue // nothing stored under the old name
 		}
 		if err := config.SetCredential(to, k.key, v); err != nil {
-			return http.StatusInternalServerError, errors.Join(fmt.Errorf("move %s credential: %w", k.key, err), rollback())
+			return http.StatusInternalServerError, profileApply{}, errors.Join(fmt.Errorf("move %s credential: %w", k.key, err), rollback())
 		}
 		moved = append(moved, k.key)
 	}
 
-	if err := s.saveVPNProfile(&trial, cfgPath, to, trial.VPNs[to], req); err != nil {
+	applied, err := s.saveVPNProfile(&trial, cfgPath, to, trial.VPNs[to], req)
+	if err != nil {
 		status := http.StatusBadRequest
 		var ve *config.ValidationError
 		if !errors.As(err, &ve) {
 			status = http.StatusInternalServerError
 		}
-		return status, errors.Join(err, rollback())
+		return status, profileApply{}, errors.Join(err, rollback())
 	}
 	*cfg = trial
 	for _, k := range moved {
@@ -219,5 +220,5 @@ func (s *Server) renameVPNProfile(cfg *config.Config, cfgPath, from, to string, 
 			return nil
 		})
 	}
-	return http.StatusOK, nil
+	return http.StatusOK, applied, nil
 }

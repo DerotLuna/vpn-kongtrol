@@ -156,7 +156,39 @@ func (c *Client) Shutdown() error {
 // ReloadPolicy asks the daemon to re-read kongtrol.yaml and hot-swap its
 // policy engine.
 func (c *Client) ReloadPolicy() error {
-	return c.post("/api/v1/policies/reload", 10*time.Second)
+	_, err := c.ReloadConfig()
+	return err
+}
+
+// ConfigReloadResult mirrors POST /api/v1/policies/reload (ADR-0053).
+type ConfigReloadResult struct {
+	// Live is false for an older daemon that does not apply profiles
+	// without a restart (no restart_required field in its answer).
+	Live bool `json:"-"`
+	// RestartRequired: some profile could not be applied live.
+	RestartRequired *bool `json:"restart_required"`
+	// ReconnectRequired: connected profiles whose settings changed; they
+	// keep the old ones until reconnected.
+	ReconnectRequired []string `json:"reconnect_required"`
+}
+
+// ReloadConfig re-reads kongtrol.yaml in the daemon and says which
+// profiles need a reconnect or a restart.
+func (c *Client) ReloadConfig() (ConfigReloadResult, error) {
+	var out ConfigReloadResult
+	resp, err := c.do(http.MethodPost, "/api/v1/policies/reload", 10*time.Second)
+	if err != nil {
+		return out, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return out, APIError(resp)
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
+		return ConfigReloadResult{}, nil // an answer without a body: older daemon
+	}
+	out.Live = out.RestartRequired != nil
+	return out, nil
 }
 
 // Tunnels returns the daemon's per-tunnel metrics, including each one's

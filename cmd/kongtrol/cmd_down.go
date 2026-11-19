@@ -75,8 +75,8 @@ func runDown(ctx context.Context, args []string) error {
 	}
 
 	if downAll {
-		names := make([]string, 0, len(adapters))
-		for name := range adapters {
+		names := make([]string, 0, adapters.Len())
+		for _, name := range adapters.Names() {
 			names = append(names, name)
 		}
 		disconnectAllConcurrently(ctx, names, disconnect)

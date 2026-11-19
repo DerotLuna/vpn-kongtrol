@@ -105,9 +105,9 @@ func TestUpDryRun_JSON(t *testing.T) {
 			"office": {Type: "openvpn"},
 		},
 	}
-	adapters = map[string]vpn.VPNAdapter{
+	adapters = vpn.NewSet(map[string]vpn.VPNAdapter{
 		"office": &mockAdapter{status: vpn.StatusDisconnected},
-	}
+	})
 
 	out, err := captureStdout(t, func() error {
 		return runUpDryRun([]string{"office"})
@@ -144,7 +144,7 @@ func TestDoctor_JSON(t *testing.T) {
 	}()
 
 	cfgPath = filepath.Join(t.TempDir(), "missing-kongtrol.yaml")
-	adapters = map[string]vpn.VPNAdapter{}
+	adapters = vpn.NewSet(map[string]vpn.VPNAdapter{})
 	routeMgr = nil
 	dnsMgr = nil
 

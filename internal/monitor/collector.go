@@ -77,7 +77,7 @@ type ProfileHistory struct {
 // Collector aggregates metrics from all registered VPN adapters.
 type Collector struct {
 	mu       sync.RWMutex
-	adapters map[string]vpn.VPNAdapter
+	adapters *vpn.Set
 	metrics  map[string]*TunnelMetrics
 	history  map[string]*ProfileHistory
 	lastErr  map[string]connectFailure
@@ -88,7 +88,7 @@ type Collector struct {
 }
 
 // NewCollector creates a metrics collector for the given adapters.
-func NewCollector(adapters map[string]vpn.VPNAdapter) *Collector {
+func NewCollector(adapters *vpn.Set) *Collector {
 	return &Collector{
 		adapters: adapters,
 		metrics:  make(map[string]*TunnelMetrics),
@@ -266,7 +266,8 @@ func (c *Collector) collect() {
 
 	now := time.Now()
 	changed := false
-	for name, adapter := range c.adapters {
+	current := c.adapters.Snapshot()
+	for name, adapter := range current {
 		prev, hadPrev := c.metrics[name]
 		prevStatus := vpn.Status("")
 		if hadPrev {
@@ -358,6 +359,15 @@ func (c *Collector) collect() {
 			}
 		}
 		h.UpdatedAt = now
+	}
+	// A profile removed without a restart (ADR-0053) leaves the snapshot
+	// and the history at once.
+	for name := range c.metrics {
+		if _, ok := current[name]; !ok {
+			delete(c.metrics, name)
+			delete(c.history, name)
+			changed = true
+		}
 	}
 
 	if changed {

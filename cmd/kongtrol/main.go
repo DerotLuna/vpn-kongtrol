@@ -40,7 +40,8 @@ var (
 	cfgPath             string
 	activeCfgPath       string
 	cfg                 *config.Config
-	adapters            map[string]vpn.VPNAdapter
+	adapters            *vpn.Set
+	adapterSync         *app.AdapterSync // applies profile edits without a restart (ADR-0053)
 	routeMgr            routing.RouteManager
 	engine              *policy.Engine
 	ks                  security.KillSwitch
@@ -56,6 +57,7 @@ var (
 	destBlocker         security.DestinationBlocker
 	daemonEvents        = monitor.NewEventLog(100)
 	policyWatch         *monitor.PolicyWatch
+	recentConns         *monitor.RecentConnections
 	alertBell           bool
 	apiToken            string
 	sessionGreetingLine string

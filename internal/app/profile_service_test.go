@@ -71,7 +71,7 @@ func TestDisconnect_CancelsInflightConnect(t *testing.T) {
 	wd := &recordingWatchdog{}
 	svc := NewProfileService(ProfileServiceDeps{
 		Cfg:      &config.Config{VPNs: map[string]config.VPNConfig{"forti": {Type: "tailscale"}}},
-		Adapters: map[string]vpn.VPNAdapter{"forti": adapter},
+		Adapters: vpn.NewSet(map[string]vpn.VPNAdapter{"forti": adapter}),
 		Watchdog: wd,
 	})
 

@@ -52,7 +52,7 @@ func rt(cidr, iface string) routing.Route {
 func newKS(t *testing.T, cfg *config.Config, adapters map[string]vpn.VPNAdapter, routes []routing.Route, d fakeDests) (*KillSwitchService, *fakeBlocker) {
 	t.Helper()
 	localSubnets = func() []netip.Prefix { return nil }
-	s := NewKillSwitchService(cfg, adapters, nil)
+	s := NewKillSwitchService(cfg, vpn.NewSet(adapters), nil)
 	s.lookupIP = func(string) []net.IP { return nil }
 	b := &fakeBlocker{}
 	s.SetBlocker(b)

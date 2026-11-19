@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.8 · 2026-11-18
+Version 1.9 · 2026-11-19
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -41,24 +41,32 @@ POST /api/v1/tunnels/{name}/connect
 POST /api/v1/tunnels/{name}/cancel_connect
 POST /api/v1/tunnels/{name}/disconnect
 POST /api/v1/tunnels/{name}/reload           # reload kongtrol.yaml + restart this tunnel in place if connected
+GET  /api/v1/connections/recent?limit=n     # recent destinations, memory only (ADR-0054): {"supported","enabled","max":500,"ttl_seconds":3600,
+                                             #   "connections":[{"host","remote_ip","port","process","via","interface","first_seen","last_seen","count"}]};
+                                             #   newest first; via "" = direct; bad limit → 400 api.err.recent_limit
 GET  /api/v1/dns/resolve?domain=...&via=...  # split-DNS resolution for a specific tunnel
 GET  /api/v1/resolve?target=...&app=...      # flow-aware policy resolution (app + target)
 
 # Policies
 GET/POST  /api/v1/policies                  # GET: each policy + `resolved` [{cidr, host, last_seen, expires_at}] (resolved IPs expire 6h unseen)
 PUT/DELETE /api/v1/policies/{name}
-POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine
+POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine and apply profiles live:
+                                             #   {"status","policies","restart_required":bool,"reconnect_required":[profile]}
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
 
-# VPN profiles (config + OS keychain only — new/edited profiles need a daemon restart)
-GET/POST  /api/v1/vpns
-GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing)
+# VPN profiles (config + OS keychain; applied live, ADR-0053 — see "Profile changes" below)
+GET/POST  /api/v1/vpns                      # POST → 201 {"status":"created","profile","restart_required":false,"reconnect_required":false}
+GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing):
+                                             #   [{"label","adapter_type","path","active":true|false|null,"interface"}]; active = the provider app's
+                                             #   tunnel is up now (interface listing / macOS scutil, no admin, no automation); null = cannot tell
 PUT/DELETE /api/v1/vpns/{name}              # PUT with a different "name" renames (→ {"status":"renamed","profile","previous"}): policies, groups,
                                              #   failover lists, scheduler rules, expected_ips, keychain entries and favorites follow;
                                              #   409 api.err.vpn_exists | api.err.vpn_rename_busy (tunnel up or connecting).
                                              # DELETE: 409 api.err.vpn_in_use listing policies, groups, failover and schedules at once;
                                              #   409 api.err.vpn_last; its expected IP is dropped; trial config validated first.
+                                             #   409 api.err.vpn_delete_busy while its tunnel is up or connecting.
+                                             # PUT ?reconnect=true: "save and reconnect" (see below) → adds "reconnected":true.
 POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openvpn","content_base64","overwrite":false} → 201
                                              #   {"status":"imported","path","type","overwritten"}: stored 0600 as ~/.kongtrol/configs/<name>.conf|.ovpn;
                                              #   validated like the helper does (no PostUp/…; no up/down/plugin/script-security>1/log/config…;
@@ -83,7 +91,7 @@ POST /api/v1/security/publicip/check         # one lookup now ("Revisar"); 409 p
 POST /api/v1/security/dnsguard               # {"enabled": true|false}
 
 # Settings & scheduler
-GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints, expected_ips {profile: ip} — replaced whole, empty value drops it, validated: existing profile + one IP), audit log (audit_log_path, audit_log_max_size_mb, audit_log_retention_days, audit_log_sign; applied live)
+GET/PUT   /api/v1/settings                   # health check, scheduler, split DNS, kill switch/DNS guard tuning, public IP lookup (public_ip_check_enabled, public_ip_endpoints, expected_ips {profile: ip} — replaced whole, empty value drops it, validated: existing profile + one IP), audit log (audit_log_path, audit_log_max_size_mb, audit_log_retention_days, audit_log_sign; applied live), recent_connections_enabled (default true; off empties the list at once)
 GET/POST  /api/v1/scheduler/rules
 PUT/DELETE /api/v1/scheduler/rules/{name}    # rule {name,profiles,weekdays,start,end,"enabled":bool (false = paused)}; changes apply live (no restart)
 
@@ -125,7 +133,29 @@ cookie, same origin, `application/json`) plus the explicit `confirm`; the runnin
 <!-- feature:first_run -->
 **Setup mode.** A daemon started with no config file (the tray spawns it on first run) serves the
 dashboard with no profiles; `GET /api/v1/vpns` returns `[]` and the first valid
-`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml`. VPN profile changes answer
-`restart_required: true` because the adapters are built at daemon start: the dashboard then
-offers `POST /api/v1/restart` (after the first profile it restarts on its own). CLI:
-`kongtrol restart`.
+`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml`. In setup mode VPN profile changes still
+answer `restart_required: true`: the dashboard restarts the daemon after the first profile so it
+leaves setup mode (CLI: `kongtrol restart`).
+
+<!-- feature:profile_live -->
+**Profile changes (ADR-0053).** Outside setup mode, creating, editing, renaming or deleting a
+profile (and `POST /api/v1/policies/reload` after a hand edit) takes effect in the running daemon
+at once: `restart_required` is `false` (`true` only if the daemon cannot build that profile, e.g.
+an unknown type). A profile whose tunnel is up is never renamed or deleted (409
+`api.err.vpn_rename_busy` / `api.err.vpn_delete_busy`). Editing it is saved, but the running tunnel
+keeps its old settings: the answer says `reconnect_required: true` and nothing is reconnected
+behind the user's back. `PUT /api/v1/vpns/{name}?reconnect=true` ("Guardar y reconectar") saves and
+then disconnects and reconnects only that tunnel (same path as `/tunnels/{name}/reload`: the kill
+switch knows the drop is intended); the answer adds `"reconnected": true` (the connect finishes in
+the background: follow it in `/api/v1/tunnels` or the live feed) or `"reconnect_error"`. Priority,
+failover and the kill switch override apply without a reconnect. `POST /api/v1/restart` keeps
+working.
+
+<!-- feature:recent_connections -->
+**Recent destinations (ADR-0054).** `GET /api/v1/connections/recent` lists the destinations
+this computer connected to in the last hour, read from the OS TCP table without admin (Windows
+`GetExtendedTcpTable`, Linux `/proc/net/tcp`; macOS `supported: false`). Kept only in the daemon's
+memory (500 entries, forgotten 1 h after last seen, emptied when turned off or on shutdown),
+never written to disk or logs and never sent off the machine; only this authenticated local API
+serves it. Turn it off with `recent_connections_enabled: false` in `/api/v1/settings` or
+`kongtrol config recent-connections off`.

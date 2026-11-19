@@ -75,7 +75,9 @@ type WatchdogEvent struct {
 // inferred from names, adapter types or priority.
 type Watchdog struct {
 	mu       sync.Mutex
-	adapters map[string]vpn.VPNAdapter
+	adapters *vpn.Set
+	// watchers holds the cancel func of each running per-profile watcher.
+	watchers map[string]context.CancelFunc
 	intended map[string]bool   // true = user requested disconnect; skip reconnect
 	active   map[string]bool   // true = profile was connected; eligible for watchdog
 	replaced map[string]string // profile → declared backup that took over
@@ -116,10 +118,12 @@ func (w *Watchdog) SetEventCallback(fn func(WatchdogEvent)) {
 }
 
 // NewWatchdog creates a watchdog.
-// adapters is a snapshot-safe map (the caller must not mutate it after passing).
-func NewWatchdog(adapters map[string]vpn.VPNAdapter, connect ConnectFunc, log *zap.Logger) *Watchdog {
+// adapters is the daemon's live set: profiles added or removed without a
+// restart (ADR-0053) are seen on the next poll.
+func NewWatchdog(adapters *vpn.Set, connect ConnectFunc, log *zap.Logger) *Watchdog {
 	return &Watchdog{
 		adapters:       adapters,
+		watchers:       make(map[string]context.CancelFunc),
 		intended:       make(map[string]bool),
 		active:         make(map[string]bool),
 		replaced:       make(map[string]string),
@@ -170,12 +174,12 @@ func (w *Watchdog) ConfigureFailover(failover map[string][]string) {
 	defer w.mu.Unlock()
 	w.failover = make(map[string][]string, len(failover))
 	for source, targets := range failover {
-		if _, ok := w.adapters[source]; !ok {
+		if !w.adapters.Has(source) {
 			continue
 		}
 		var list []string
 		for _, t := range targets {
-			if _, ok := w.adapters[t]; ok && t != source {
+			if w.adapters.Has(t) && t != source {
 				list = append(list, t)
 			}
 		}
@@ -220,10 +224,8 @@ func (w *Watchdog) MarkActive(name string) {
 	delete(w.replaced, name)
 	alreadyActive := w.active[name]
 	w.active[name] = true
-	ctx := w.ctx
-	adapter, hasAdapter := w.adapters[name]
-	if !alreadyActive && ctx != nil && hasAdapter {
-		w.wg.Go(func() { w.watch(ctx, name, adapter) })
+	if !alreadyActive && w.ctx != nil && w.adapters.Has(name) {
+		w.spawnLocked(name)
 	}
 	w.mu.Unlock()
 }
@@ -238,9 +240,8 @@ func (w *Watchdog) Start(ctx context.Context) {
 
 	// Spawn watchers for any profiles already marked active before Start.
 	for name := range w.active {
-		if adapter, ok := w.adapters[name]; ok {
-			name, adapter := name, adapter
-			w.wg.Go(func() { w.watch(ctx, name, adapter) })
+		if w.adapters.Has(name) {
+			w.spawnLocked(name)
 		}
 	}
 	w.mu.Unlock()
@@ -252,6 +253,7 @@ func (w *Watchdog) Stop() {
 	cancel := w.cancel
 	w.cancel = nil
 	w.ctx = nil
+	clear(w.watchers)
 	w.mu.Unlock()
 	if cancel != nil {
 		cancel()
@@ -322,7 +324,58 @@ func (w *Watchdog) connectFor(ctx context.Context, source, target string) (ran b
 	return true, err
 }
 
-func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapter) {
+// spawnLocked starts the watcher of name. w.mu must be held and w.ctx set.
+func (w *Watchdog) spawnLocked(name string) {
+	if cancel, ok := w.watchers[name]; ok {
+		cancel()
+	}
+	ctx, cancel := context.WithCancel(w.ctx)
+	w.watchers[name] = cancel
+	w.wg.Go(func() { w.watch(ctx, name) })
+}
+
+// Forget drops everything the watchdog knows about name and stops its
+// watcher: the profile was removed or renamed without a restart
+// (ADR-0053). A profile with the same name added later starts clean.
+func (w *Watchdog) Forget(name string) {
+	w.mu.Lock()
+	cancels := make([]context.CancelFunc, 0, len(w.inflight[name])+1)
+	for _, c := range w.inflight[name] {
+		cancels = append(cancels, c)
+	}
+	if c, ok := w.watchers[name]; ok {
+		cancels = append(cancels, c)
+		delete(w.watchers, name)
+	}
+	delete(w.active, name)
+	delete(w.intended, name)
+	delete(w.replaced, name)
+	delete(w.lastHealth, name)
+	delete(w.lastHealthAt, name)
+	delete(w.failover, name)
+	for src, list := range w.failover {
+		kept := list[:0:0]
+		for _, t := range list {
+			if t != name {
+				kept = append(kept, t)
+			}
+		}
+		if len(kept) == 0 {
+			delete(w.failover, src)
+		} else {
+			w.failover[src] = kept
+		}
+	}
+	w.mu.Unlock()
+	for _, c := range cancels {
+		c()
+	}
+}
+
+// watch polls name until ctx ends. The adapter is looked up on every
+// poll, so an adapter replaced without a restart (ADR-0053) is followed;
+// a profile no longer in the set ends the watcher.
+func (w *Watchdog) watch(ctx context.Context, name string) {
 	w.mu.Lock()
 	poll := w.poll
 	w.mu.Unlock()
@@ -347,6 +400,10 @@ func (w *Watchdog) watch(ctx context.Context, name string, adapter vpn.VPNAdapte
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			adapter, ok := w.adapters.Get(name)
+			if !ok {
+				return // removed without a restart; Forget cleans up
+			}
 			status := adapter.Status().Normalize()
 			health := tunnelHealth(adapter)
 			if status == vpn.StatusConnected {
@@ -513,7 +570,7 @@ func (w *Watchdog) tryFailover(ctx context.Context, source string, attempt int, 
 	w.mu.Unlock()
 
 	for _, target := range targets {
-		adapter, ok := w.adapters[target]
+		adapter, ok := w.adapters.Get(target)
 		if !ok {
 			continue
 		}

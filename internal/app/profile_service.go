@@ -38,7 +38,7 @@ type DNSManager interface {
 
 type ProfileService struct {
 	cfg            *config.Config
-	adapters       map[string]vpn.VPNAdapter
+	adapters       *vpn.Set
 	watchdog       Watchdog
 	policyResolver PolicyResolver
 	dnsMgr         DNSManager
@@ -72,7 +72,7 @@ var disconnectCancelWait = 15 * time.Second
 
 type ProfileServiceDeps struct {
 	Cfg            *config.Config
-	Adapters       map[string]vpn.VPNAdapter
+	Adapters       *vpn.Set
 	Watchdog       Watchdog
 	PolicyResolver PolicyResolver
 	DNSManager     DNSManager
@@ -110,7 +110,7 @@ func NewProfileService(deps ProfileServiceDeps) *ProfileService {
 }
 
 func (s *ProfileService) Connect(ctx context.Context, name string) error {
-	adapter, ok := s.adapters[name]
+	adapter, ok := s.adapters.Get(name)
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.unknown_profile", name))
 	}
@@ -232,7 +232,7 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 }
 
 func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
-	adapter, ok := s.adapters[name]
+	adapter, ok := s.adapters.Get(name)
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.unknown_profile", name))
 	}

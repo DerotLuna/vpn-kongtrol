@@ -49,7 +49,7 @@ func (s *Server) handleListTunnels(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/tunnels/{name}/connect
 func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	adapter, ok := s.adapters[name]
+	adapter, ok := s.adapters.Get(name)
 	if !ok {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
@@ -87,7 +87,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/tunnels/{name}/cancel_connect
 func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	_, ok := s.adapters[name]
+	_, ok := s.adapters.Get(name)
 	if !ok {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return
@@ -111,7 +111,7 @@ func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/tunnels/{name}/disconnect
 func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
-	_, ok := s.adapters[name]
+	_, ok := s.adapters.Get(name)
 	if !ok {
 		writeError(w, http.StatusNotFound, "tunnel not found: "+name)
 		return

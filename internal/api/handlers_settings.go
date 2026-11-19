@@ -22,25 +22,26 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 
 func settingsToDTO(cfg *config.Config) settingsDTO {
 	return settingsDTO{
-		DashboardBind:         cfg.Monitor.Dashboard.Bind,
-		DashboardPort:         cfg.Monitor.Dashboard.Port,
-		HealthCheckInterval:   cfg.Monitor.HealthCheck.Interval,
-		HealthCheckTimeout:    cfg.Monitor.HealthCheck.Timeout,
-		SchedulerEnabled:      cfg.Monitor.Scheduler.Enabled,
-		SchedulerInterval:     cfg.Monitor.Scheduler.Interval,
-		SplitDNSEnabled:       cfg.Monitor.SplitDNS.Enabled,
-		SplitDNSInterval:      cfg.Monitor.SplitDNS.Interval,
-		KillSwitchMode:        cfg.Security.KillSwitch.Mode,
-		KillSwitchAllowLAN:    cfg.Security.KillSwitch.AllowLAN,
-		DNSGuardFallbackDNS:   cfg.Security.DNSGuard.FallbackDNS,
-		LeakDetectionEnabled:  cfg.PublicIPCheckEnabled(),
-		PublicIPCheckEnabled:  cfg.PublicIPCheckEnabled(),
-		PublicIPEndpoints:     cfg.PublicIPEndpoints(),
-		ExpectedIPs:           expectedIPsDTO(cfg),
-		AuditLogPath:          cfg.Security.AuditLog.Path,
-		AuditLogMaxSizeMB:     cfg.Security.AuditLog.MaxSizeMB,
-		AuditLogRetentionDays: cfg.Security.AuditLog.RetentionDays,
-		AuditLogSign:          cfg.Security.AuditLog.Sign,
+		DashboardBind:            cfg.Monitor.Dashboard.Bind,
+		DashboardPort:            cfg.Monitor.Dashboard.Port,
+		HealthCheckInterval:      cfg.Monitor.HealthCheck.Interval,
+		HealthCheckTimeout:       cfg.Monitor.HealthCheck.Timeout,
+		SchedulerEnabled:         cfg.Monitor.Scheduler.Enabled,
+		SchedulerInterval:        cfg.Monitor.Scheduler.Interval,
+		SplitDNSEnabled:          cfg.Monitor.SplitDNS.Enabled,
+		SplitDNSInterval:         cfg.Monitor.SplitDNS.Interval,
+		KillSwitchMode:           cfg.Security.KillSwitch.Mode,
+		KillSwitchAllowLAN:       cfg.Security.KillSwitch.AllowLAN,
+		DNSGuardFallbackDNS:      cfg.Security.DNSGuard.FallbackDNS,
+		LeakDetectionEnabled:     cfg.PublicIPCheckEnabled(),
+		PublicIPCheckEnabled:     cfg.PublicIPCheckEnabled(),
+		PublicIPEndpoints:        cfg.PublicIPEndpoints(),
+		ExpectedIPs:              expectedIPsDTO(cfg),
+		AuditLogPath:             cfg.Security.AuditLog.Path,
+		AuditLogMaxSizeMB:        cfg.Security.AuditLog.MaxSizeMB,
+		AuditLogRetentionDays:    cfg.Security.AuditLog.RetentionDays,
+		AuditLogSign:             cfg.Security.AuditLog.Sign,
+		RecentConnectionsEnabled: cfg.RecentConnectionsEnabled(),
 	}
 }
 
@@ -166,6 +167,8 @@ type settingsPatch struct {
 	AuditLogMaxSizeMB     *int      `json:"audit_log_max_size_mb"`
 	AuditLogRetentionDays *int      `json:"audit_log_retention_days"`
 	AuditLogSign          *bool     `json:"audit_log_sign"`
+	// RecentConnectionsEnabled: the in-memory recent destinations list.
+	RecentConnectionsEnabled *bool `json:"recent_connections_enabled"`
 	// ExpectedIPs replaces the whole map; an empty value drops that profile.
 	ExpectedIPs *map[string]string `json:"expected_ips"`
 }
@@ -214,6 +217,9 @@ func (p settingsPatch) applyTo(cfg *config.Config) {
 		cfg.Security.AuditLog.RetentionDays = *p.AuditLogRetentionDays
 	}
 	setBool(&cfg.Security.AuditLog.Sign, p.AuditLogSign)
+	if p.RecentConnectionsEnabled != nil {
+		cfg.SetRecentConnections(*p.RecentConnectionsEnabled)
+	}
 	if p.ExpectedIPs != nil {
 		// A fresh map: the trial copy must not share the stored one.
 		m := map[string]string{}

@@ -38,7 +38,7 @@ func newReloadTestServer(t *testing.T, yamlBody string, adapters map[string]vpn.
 	path := writeTestConfig(t, yamlBody)
 	s := &Server{
 		configPath:    path,
-		adapters:      adapters,
+		adapters:      vpn.NewSet(adapters),
 		connectCancel: make(map[string]context.CancelFunc),
 	}
 	initial, err := config.Load(path)
@@ -185,10 +185,8 @@ groups:
 // TestHandleReloadGroup_MissingAdapterReturnsRestartRequired proves that a
 // group referencing a profile the running daemon has no adapter for (a
 // brand-new profile added by the hand edit) is reported back as
-// restart_required instead of silently skipped or attempted — matching the
-// same restart_required convention handleCreateVPN/handleUpdateVPN already
-// use for the "adapters map isn't hot-registrable" limitation documented in
-// CLAUDE.md.
+// restart_required instead of silently skipped or attempted, when the
+// daemon cannot apply profiles live (no SetProfileSync; ADR-0053).
 func TestHandleReloadGroup_MissingAdapterReturnsRestartRequired(t *testing.T) {
 	yamlBody := baseTestYAML + `
   newvpn:

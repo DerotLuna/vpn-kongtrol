@@ -177,10 +177,9 @@ func (req vpnProfileReq) applyTo(vc *config.VPNConfig) {
 	}
 }
 
-// POST /api/v1/vpns — create a new VPN profile. Writes config + OS keychain
-// only; a newly created profile is not hot-registered with the running
-// daemon (the shared adapters map has no safe runtime-mutation path — see
-// cmd/kongtrol/main.go loadConfig), so the response flags restart_required.
+// POST /api/v1/vpns — create a new VPN profile. Writes config + OS keychain,
+// then the running daemon registers its adapter at once (ADR-0053):
+// restart_required is false unless this daemon cannot apply it live.
 func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
 	var req vpnProfileReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -201,16 +200,18 @@ func (s *Server) handleCreateVPN(w http.ResponseWriter, r *http.Request) {
 		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_exists", Args: []any{name}})
 		return
 	}
-	if err := s.saveVPNProfile(cfg, cfgPath, name, config.VPNConfig{}, req); err != nil {
+	applied, err := s.saveVPNProfile(cfg, cfgPath, name, config.VPNConfig{}, req)
+	if err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{"status": "created", "profile": name, "restart_required": true})
+	writeJSON(w, http.StatusCreated, profileChangeBody("created", name, applied))
 }
 
 // PUT /api/v1/vpns/{name} — partial update of an existing VPN profile: the
 // stored VPNConfig is the base and only fields present in the body change.
-// Same restart-required caveat as create.
+// Applied live like create; a profile whose tunnel is up keeps its old
+// settings until reconnected (reconnect_required).
 func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
@@ -234,25 +235,51 @@ func (s *Server) handleUpdateVPN(w http.ResponseWriter, r *http.Request) {
 	}
 	// A different "name" in the body renames the profile (ADR-0042).
 	if newName := strVal(req.Name); newName != "" && newName != name {
-		if status, err := s.renameVPNProfile(cfg, cfgPath, name, newName, req); err != nil {
+		status, applied, err := s.renameVPNProfile(cfg, cfgPath, name, newName, req)
+		if err != nil {
 			writeLocalizedError(w, r, status, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"status": "renamed", "profile": newName, "previous": name, "restart_required": true})
+		body := profileChangeBody("renamed", newName, applied)
+		body["previous"] = name
+		writeJSON(w, http.StatusOK, body)
 		return
 	}
-	if err := s.saveVPNProfile(cfg, cfgPath, name, existing, req); err != nil {
+	applied, err := s.saveVPNProfile(cfg, cfgPath, name, existing, req)
+	if err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "updated", "profile": name, "restart_required": true})
+	body := profileChangeBody("updated", name, applied)
+	// A tunnel that is up keeps what it was started with: say so instead
+	// of reconnecting behind the user's back.
+	if applied.live && s.profileBusy(name) && (req.Password != "" || tunnelSettingsChanged(existing, cfg.VPNs[name])) {
+		body["reconnect_required"] = true
+	}
+	// ?reconnect=true: the user chose "save and reconnect". Only this
+	// tunnel goes down and up again (the same path as reload: the kill
+	// switch knows the drop is intended); the connect finishes in the
+	// background and shows in /api/v1/tunnels and the live feed.
+	if body["reconnect_required"] == true && r.URL.Query().Get("reconnect") == "true" {
+		restarted, _, _, errs := s.restartProfilesInPlace(r, []string{name})
+		switch {
+		case len(errs) > 0:
+			// Saved; only the reconnect failed: the tunnel keeps going
+			// with its old settings or is down, as /tunnels shows.
+			body["reconnect_error"] = strings.Join(errs, "; ")
+		case len(restarted) > 0:
+			body["reconnect_required"] = false
+			body["reconnected"] = true
+		}
+	}
+	writeJSON(w, http.StatusOK, body)
 }
 
 // saveVPNProfile overlays req onto base (zero value on create, the stored
 // profile on update), validates the result against a trial copy of cfg
 // before writing anything, then stores any provided credentials in the OS
 // keychain and persists cfg via the existing saveRuntimeConfig pattern.
-func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, base config.VPNConfig, req vpnProfileReq) error {
+func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, base config.VPNConfig, req vpnProfileReq) (profileApply, error) {
 	for field, value := range map[string]*string{
 		"name": req.Name, "type": req.Type, "host": req.Host, "server": req.Server,
 		"protocol": req.Protocol, "config": req.ConfigFile, "auth_method": req.AuthMethod,
@@ -261,7 +288,7 @@ func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, base c
 		"wait_timeout": req.WaitTimeout, "app_path": req.AppPath,
 	} {
 		if value != nil && containsEnvReference(*value) {
-			return fmt.Errorf("%s must not contain environment-variable references", field)
+			return profileApply{}, fmt.Errorf("%s must not contain environment-variable references", field)
 		}
 	}
 
@@ -284,7 +311,7 @@ func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, base c
 	trialVPNs[name] = vc
 	trial.VPNs = trialVPNs
 	if err := config.Validate(&trial); err != nil {
-		return err
+		return profileApply{}, err
 	}
 
 	cfg.VPNs[name] = vc
@@ -292,24 +319,25 @@ func (s *Server) saveVPNProfile(cfg *config.Config, cfgPath, name string, base c
 	if username != "" {
 		backup := backupCredential(name, "username")
 		if err := config.SetCredential(name, "username", username); err != nil {
-			return fmt.Errorf("store username credential: %w", err)
+			return profileApply{}, fmt.Errorf("store username credential: %w", err)
 		}
 		backups = append(backups, backup)
 	}
 	if req.Password != "" {
 		backup := backupCredential(name, "password")
 		if err := config.SetCredential(name, "password", req.Password); err != nil {
-			return errors.Join(
+			return profileApply{}, errors.Join(
 				fmt.Errorf("store password credential: %w", err),
 				restoreCredentials(name, backups),
 			)
 		}
 		backups = append(backups, backup)
 	}
-	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
-		return errors.Join(err, restoreCredentials(name, backups))
+	applied, err := s.commitRuntimeConfig(cfgPath, cfg)
+	if err != nil {
+		return profileApply{}, errors.Join(err, restoreCredentials(name, backups))
 	}
-	return nil
+	return applied, nil
 }
 
 type credentialBackup struct {
@@ -354,7 +382,9 @@ func containsEnvReference(value string) bool {
 }
 
 // DELETE /api/v1/vpns/{name} — reject if the profile is still referenced by
-// a policy or group, or if it's the last remaining profile.
+// a policy or group, if it's the last remaining profile, or if its tunnel
+// is up or coming up (its adapter owns that tunnel, ADR-0053). Applied
+// live: the adapter is dropped at once.
 func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	cfg, cfgPath, err := s.loadRuntimeConfig()
@@ -375,6 +405,10 @@ func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 	// failover, scheduler rules (ADR-0042).
 	if refs := findProfileRefs(cfg, name); !refs.empty() {
 		writeLocalizedError(w, r, http.StatusConflict, inUseError(name, refs))
+		return
+	}
+	if s.profileBusy(name) {
+		writeLocalizedError(w, r, http.StatusConflict, &config.ValidationError{Key: "api.err.vpn_delete_busy", Args: []any{name}})
 		return
 	}
 
@@ -401,7 +435,8 @@ func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	*cfg = trial
-	if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+	applied, err := s.commitRuntimeConfig(cfgPath, cfg)
+	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -422,5 +457,5 @@ func (s *Server) handleDeleteVPN(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("profile deleted but credential cleanup failed: %v", err))
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"status": "deleted", "profile": name, "restart_required": true})
+	writeJSON(w, http.StatusOK, profileChangeBody("deleted", name, applied))
 }

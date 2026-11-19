@@ -82,7 +82,7 @@ func purgeExtraFiles(c *config.Config) []string {
 // still needs (api-token, run/, logs) stay; the caller restarts it into
 // first-run setup.
 func purgeDataFromDaemon() error {
-	disconnectActiveOnShutdown(adapters, disconnectProfile, shutdownDisconnectTimeout)
+	disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)
 	if destBlocker != nil {
 		_ = destBlocker.Set(nil)
 	}

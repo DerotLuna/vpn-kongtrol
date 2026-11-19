@@ -30,7 +30,7 @@ import (
 type Server struct {
 	bind            string
 	port            int
-	adapters        map[string]vpn.VPNAdapter
+	adapters        *vpn.Set
 	collector       *monitor.Collector
 	routes          routing.RouteManager
 	ks              security.KillSwitch
@@ -84,13 +84,17 @@ type Server struct {
 	updateLast     func() update.Result
 	onUpdateToggle func(bool)
 	purgeData      func() error
+	// profileSync applies saved profiles live (profile_sync.go).
+	profileSync func(*config.Config) ProfileSyncResult
+	// recent backs GET /api/v1/connections/recent (handlers_connections.go).
+	recent *monitor.RecentConnections
 }
 
 // NewServer creates a new API server.
 func NewServer(
 	bind string,
 	port int,
-	adapters map[string]vpn.VPNAdapter,
+	adapters *vpn.Set,
 	collector *monitor.Collector,
 	routes routing.RouteManager,
 	ks security.KillSwitch,
@@ -174,6 +178,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/security/publicip/check", s.handleCheckPublicIP)
 	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
 	mux.HandleFunc("GET /api/v1/vpns/detect", s.handleDetectVPNs)
+	mux.HandleFunc("GET /api/v1/connections/recent", s.handleRecentConnections)
 	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
 	mux.HandleFunc("POST /api/v1/vpns/import", s.handleImportVPNFile)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
@@ -419,4 +424,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // Addr returns the full listening address (for display / browser open).
 func (s *Server) Addr() string {
 	return "http://" + net.JoinHostPort(s.bind, fmt.Sprintf("%d", s.port))
+}
+
+// adapterOf returns the adapter of profile name, or nil.
+func (s *Server) adapterOf(name string) vpn.VPNAdapter {
+	a, _ := s.adapters.Get(name)
+	return a
 }

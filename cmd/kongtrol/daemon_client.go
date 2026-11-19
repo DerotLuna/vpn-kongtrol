@@ -73,6 +73,12 @@ func daemonRequest(method, url string, body io.Reader) (*http.Request, error) {
 // kongtrol.yaml outside the dashboard/CLI" case `kongtrol reload` exists for.
 func daemonReloadPolicy(base string) error { return daemonClient(base).ReloadPolicy() }
 
+// daemonReloadConfigFn re-reads kongtrol.yaml in the daemon and returns
+// which profiles need a reconnect (a var so tests can fake it).
+var daemonReloadConfigFn = func(base string) (daemonctl.ConfigReloadResult, error) {
+	return daemonClient(base).ReloadConfig()
+}
+
 // daemonGroupReloadResult mirrors POST /api/v1/groups/{name}/reload.
 type daemonGroupReloadResult = daemonctl.GroupReloadResult
 

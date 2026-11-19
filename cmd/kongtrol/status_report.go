@@ -136,7 +136,7 @@ func collectStatusReport() (statusReportJSON, error) {
 	report := statusReportJSON{
 		GeneratedAt: now,
 		Source:      "local",
-		Tunnels:     make([]statusTunnelJSON, 0, len(adapters)),
+		Tunnels:     make([]statusTunnelJSON, 0, adapters.Len()),
 		Security: statusSecurityJSON{
 			KillSwitchEnabled:       cfg.Security.KillSwitch.Enabled,
 			DNSGuardEnabled:         cfg.Security.DNSGuard.Enabled,
@@ -197,8 +197,8 @@ func collectStatusReport() (statusReportJSON, error) {
 			report.Security.LeakCheck = leakResultToAPI(result)
 		}
 	}
-	for _, name := range sortedAdapterNames(adapters) {
-		adapter := adapters[name]
+	for _, name := range adapters.Names() {
+		adapter, _ := adapters.Get(name)
 		status := adapter.Status().Normalize()
 		item := statusTunnelJSON{
 			Name:   name,
@@ -318,7 +318,7 @@ func printStatus() {
 	if daemonErr == nil {
 		history, _ := fetchDaemonHistory()
 		seen := make(map[string]bool, len(tunnels))
-		rows := make([]tunnelRow, 0, len(tunnels)+len(adapters))
+		rows := make([]tunnelRow, 0, len(tunnels)+adapters.Len())
 		for _, t := range tunnels {
 			status := t.Status.Normalize()
 			ip := "—"
@@ -336,7 +336,7 @@ func printStatus() {
 		}
 
 		// Ensure all configured profiles are shown even when daemon omits inactive tunnels.
-		for _, name := range sortedAdapterNames(adapters) {
+		for _, name := range adapters.Names() {
 			if seen[name] {
 				continue
 			}
@@ -377,13 +377,13 @@ func printStatus() {
 		return
 	}
 
-	rows := make([]tunnelRow, 0, len(adapters))
+	rows := make([]tunnelRow, 0, adapters.Len())
 	history := map[string]monitor.ProfileHistory{}
 	if col != nil {
 		history = col.HistorySnapshot()
 	}
-	for _, name := range sortedAdapterNames(adapters) {
-		adapter := adapters[name]
+	for _, name := range adapters.Names() {
+		adapter, _ := adapters.Get(name)
 		status := adapter.Status().Normalize()
 		ip := "—"
 		var connectedAt time.Time
@@ -433,8 +433,8 @@ func printStatus() {
 		fmt.Println(renderTunnelRow(layout, r))
 	}
 	fmt.Println("  " + sep)
-	local := make([]monitor.TunnelMetrics, 0, len(adapters))
-	for _, name := range sortedAdapterNames(adapters) {
+	local := make([]monitor.TunnelMetrics, 0, adapters.Len())
+	for _, name := range adapters.Names() {
 		if m, ok := localTunnelState(name); ok {
 			local = append(local, m)
 		}
@@ -497,7 +497,7 @@ func runStatusWatch() error {
 		dashURL = base
 	}
 
-	runUpTUI(ctx, cancel, adapters, ks, dnsMgr, dashURL, false)
+	runUpTUI(ctx, cancel, adapters.Snapshot(), ks, dnsMgr, dashURL, false)
 	return nil
 }
 

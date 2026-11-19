@@ -23,7 +23,7 @@ func TestReplacementArgs(t *testing.T) {
 func TestKnownTargets_DropsDeletedProfiles(t *testing.T) {
 	old := adapters
 	t.Cleanup(func() { adapters = old })
-	adapters = map[string]vpn.VPNAdapter{"office": nil}
+	adapters = vpn.NewSet(map[string]vpn.VPNAdapter{"office": nil})
 
 	got := knownTargets([]string{"office", "gone"})
 	if !slices.Equal(got, []string{"office"}) {

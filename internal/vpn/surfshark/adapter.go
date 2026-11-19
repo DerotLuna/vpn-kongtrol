@@ -18,6 +18,7 @@ import (
 
 func init() {
 	vpn.Register("surfshark", func() vpn.VPNAdapter { return &Adapter{} })
+	appattach.RegisterMatcher("surfshark", matcher)
 }
 
 // Adapter implements vpn.VPNAdapter for the Surfshark app.

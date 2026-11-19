@@ -158,7 +158,7 @@ func (s *Server) handleConnectGroup(w http.ResponseWriter, r *http.Request) {
 	started := make([]string, 0, len(g.Profiles))
 	alreadyConnected := make([]string, 0)
 	for _, profile := range g.Profiles {
-		adapter, ok := s.adapters[profile]
+		adapter, ok := s.adapters.Get(profile)
 		if !ok {
 			continue
 		}
@@ -212,7 +212,7 @@ func (s *Server) handleDisconnectGroup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, profile := range g.Profiles {
-		if _, ok := s.adapters[profile]; !ok {
+		if _, ok := s.adapters.Get(profile); !ok {
 			continue
 		}
 		s.cancelPendingConnect(profile)
@@ -290,7 +290,7 @@ func (s *Server) handleReloadGroup(w http.ResponseWriter, r *http.Request) {
 // group) and handleReloadTunnel (single profile).
 func (s *Server) restartProfilesInPlace(r *http.Request, profiles []string) (restarted, skipped, missing []string, errs []string) {
 	for _, p := range profiles {
-		if _, ok := s.adapters[p]; !ok {
+		if _, ok := s.adapters.Get(p); !ok {
 			missing = append(missing, p)
 		}
 	}
@@ -305,7 +305,7 @@ func (s *Server) restartProfilesInPlace(r *http.Request, profiles []string) (res
 	restarted = make([]string, 0, len(profiles))
 	skipped = make([]string, 0, len(profiles))
 	for _, profile := range profiles {
-		adapter, ok := s.adapters[profile]
+		adapter, ok := s.adapters.Get(profile)
 		if !ok || adapter.Status().Normalize() != vpn.StatusConnected {
 			skipped = append(skipped, profile)
 			continue
@@ -373,4 +373,8 @@ type settingsDTO struct {
 	AuditLogMaxSizeMB     int    `json:"audit_log_max_size_mb"`
 	AuditLogRetentionDays int    `json:"audit_log_retention_days"`
 	AuditLogSign          bool   `json:"audit_log_sign"`
+
+	// RecentConnectionsEnabled: the in-memory list of recent destinations
+	// (monitor.recent_connections.enabled, default on; ADR-0054).
+	RecentConnectionsEnabled bool `json:"recent_connections_enabled"`
 }

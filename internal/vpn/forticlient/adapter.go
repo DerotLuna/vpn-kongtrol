@@ -27,6 +27,7 @@ import (
 
 func init() {
 	vpn.Register("forticlient", func() vpn.VPNAdapter { return &Adapter{} })
+	appattach.RegisterMatcher("forticlient", matcher)
 }
 
 const (

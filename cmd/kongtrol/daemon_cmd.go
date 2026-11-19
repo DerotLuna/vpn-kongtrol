@@ -56,7 +56,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 		defer releaseRestartLock()
 	}
 	for _, name := range targets {
-		if _, ok := adapters[name]; !ok {
+		if _, ok := adapters.Get(name); !ok {
 			return fmt.Errorf("%s", cf("cli.error.unknown_profile", name))
 		}
 	}
@@ -96,7 +96,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	}()
 	// Safety net for every exit path; runs before DNS restore and PID
 	// removal. The normal path below already disconnected everything.
-	defer disconnectActiveOnShutdown(adapters, disconnectProfile, shutdownDisconnectTimeout)
+	defer disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)
 
 	stopServices := startDaemonServices(ctx)
 	defer stopServices()
@@ -128,7 +128,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	// Disconnect while kill switch, watchdog and API are still alive
 	// (their defers run after this), strictly before DNS restore and PID
 	// file removal.
-	disconnectActiveOnShutdown(adapters, disconnectProfile, shutdownDisconnectTimeout)
+	disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)
 	return nil
 }
 
@@ -156,6 +156,9 @@ func startDaemonServices(ctx context.Context) func() {
 	// Notices for traffic of a policy whose tunnel is off.
 	if policyWatch != nil {
 		go policyWatch.Run(ctx, 15*time.Second)
+	}
+	if recentConns != nil {
+		go recentConns.Run(ctx, 15*time.Second) // monitor.RecentEvery
 	}
 	if watchdog != nil {
 		watchdog.Start(ctx)
@@ -188,7 +191,7 @@ func startDaemonServices(ctx context.Context) func() {
 				return
 			}
 			if col != nil {
-				for name, a := range adapters {
+				for name, a := range adapters.Snapshot() {
 					if a.Status().Normalize() == vpn.StatusConnected {
 						col.RecordLeak(name)
 					}

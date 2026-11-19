@@ -46,7 +46,7 @@ func init() {
 // connectedProfiles lists the profiles whose tunnel is up, sorted.
 func connectedProfiles() []string {
 	var names []string
-	for name, a := range adapters {
+	for name, a := range adapters.Snapshot() {
 		if a.Status().Normalize() == vpn.StatusConnected {
 			names = append(names, name)
 		}
@@ -96,7 +96,7 @@ func waitDaemonGone(base string, timeout time.Duration) bool {
 func knownTargets(targets []string) []string {
 	out := targets[:0]
 	for _, name := range targets {
-		if _, ok := adapters[name]; ok {
+		if _, ok := adapters.Get(name); ok {
 			out = append(out, name)
 			continue
 		}

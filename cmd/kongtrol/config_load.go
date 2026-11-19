@@ -46,27 +46,15 @@ func loadConfig() error {
 	}
 
 	// Instantiate adapters from config.
-	adapters = make(map[string]vpn.VPNAdapter)
+	initial := make(map[string]vpn.VPNAdapter, len(cfg.VPNs))
 	for name, vpnCfg := range cfg.VPNs {
-		a, err := vpn.New(vpnCfg.Type)
+		a, err := app.NewProfileAdapter(vpnCfg)
 		if err != nil {
 			return fmt.Errorf("config: profile %q: %w", name, err)
 		}
-		// Pre-seed config so Status() can probe externally-started tunnels.
-		if c, ok := a.(vpn.Configurable); ok {
-			c.Configure(vpn.AdapterConfig{
-				Host:       vpnCfg.Host,
-				Port:       vpnCfg.Port,
-				TunnelName: vpnCfg.TunnelName,
-				CertPath:   vpnCfg.Auth.Cert,
-				KeyPath:    vpnCfg.Auth.Key,
-				ConfigPath: vpnCfg.ConfigFile,
-				Username:   vpnCfg.Auth.Username,
-				Extra:      vpnCfg.AdapterExtra(),
-			})
-		}
-		adapters[name] = a
+		initial[name] = a
 	}
+	adapters = vpn.NewSet(initial)
 
 	// Route manager (OS-specific).
 	routeMgr = routing.NewRouteManager()
@@ -104,7 +92,8 @@ func loadConfig() error {
 		parseDuration(cfg.Monitor.HealthCheck.Timeout, 10*time.Second),
 		healthCheckProfile,
 	)
-	watchdog.ConfigureFailover(profileFailover())
+	watchdog.ConfigureFailover(profileFailover(cfg))
+	adapterSync = app.NewAdapterSync(adapters, cfg, watchdog.Forget)
 	watchdog.SetEventCallback(onWatchdogEvent)
 
 	// DNS manager — reference-counted guard across simultaneous tunnels.
@@ -122,13 +111,17 @@ func loadConfig() error {
 		Events:  daemonEvents,
 		OnEvent: logPolicyEvent,
 	}
+	// Recent destinations: memory only, never on disk or sent (ADR-0054).
+	recentConns = monitor.NewRecentConnections(cfg.RecentConnectionsEnabled())
+	recentConns.Host = policyResolver.HostOf
+	recentConns.Via = tunnelOfLocalAddr
 	scheduler = monitor.NewScheduler(
 		cfg,
 		parseDuration(cfg.Monitor.Scheduler.Interval, time.Minute),
 		connectProfile,
 		disconnectProfile,
 		func(profile string) vpn.Status {
-			if a, ok := adapters[profile]; ok {
+			if a, ok := adapters.Get(profile); ok {
 				return a.Status().Normalize()
 			}
 			return vpn.StatusDisconnected

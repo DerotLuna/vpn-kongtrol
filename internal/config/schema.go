@@ -240,6 +240,16 @@ type MonitorConfig struct {
 	Scheduler   SchedulerConfig   `yaml:"scheduler,omitempty"`
 	SplitDNS    SplitDNSConfig    `yaml:"split_dns,omitempty"`
 	Alerts      AlertsConfig      `yaml:"alerts,omitempty"`
+	// RecentConnections: the in-memory list of recent destinations
+	// (GET /api/v1/connections/recent, `kongtrol traffic recent`, ADR-0054).
+	RecentConnections RecentConnectionsConfig `yaml:"recent_connections,omitempty"`
+}
+
+// RecentConnectionsConfig turns the recent destinations list on or off.
+// Enabled nil means on (the default): the list only lives in the daemon's
+// memory and is never written to disk, logged or sent anywhere.
+type RecentConnectionsConfig struct {
+	Enabled *bool `yaml:"enabled,omitempty"`
 }
 
 // DashboardConfig configures the embedded web dashboard.

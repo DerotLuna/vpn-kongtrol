@@ -25,7 +25,7 @@ func (a attachTestAdapter) AttachState() *vpn.AttachState { return a.state }
 // waiting_user instead of a 500, so clients show "disconnect in <App>".
 func TestDisconnectManualIsAccepted(t *testing.T) {
 	s := &Server{
-		adapters:      map[string]vpn.VPNAdapter{"surf": newWSTestAdapter(vpn.StatusConnected)},
+		adapters:      vpn.NewSet(map[string]vpn.VPNAdapter{"surf": newWSTestAdapter(vpn.StatusConnected)}),
 		connectCancel: make(map[string]context.CancelFunc),
 		disconnectProfile: func(context.Context, string) error {
 			return fmt.Errorf("Surfshark: %w", vpn.ErrManualDisconnect)
@@ -47,10 +47,10 @@ func TestDisconnectManualIsAccepted(t *testing.T) {
 func TestTunnelsExposeAttach(t *testing.T) {
 	ad := attachTestAdapter{newWSTestAdapter(vpn.StatusConnecting),
 		&vpn.AttachState{Phase: vpn.PhaseWaitingUser, App: "Surfshark", TimeoutSeconds: 300}}
-	col := monitor.NewCollector(map[string]vpn.VPNAdapter{"surf": ad})
+	col := monitor.NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"surf": ad}))
 	col.Start(time.Hour)
 	t.Cleanup(col.Stop)
-	s := &Server{adapters: map[string]vpn.VPNAdapter{"surf": ad}, collector: col}
+	s := &Server{adapters: vpn.NewSet(map[string]vpn.VPNAdapter{"surf": ad}), collector: col}
 	attach, ok := listTunnels(t, s)["surf"]["attach"].(map[string]any)
 	if !ok || attach["phase"] != "waiting_user" || attach["app"] != "Surfshark" {
 		t.Fatalf("attach = %v", attach)

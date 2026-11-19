@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/netip"
 	"path/filepath"
 	"strings"
 
@@ -8,11 +9,29 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
+// tunnelOfLocalAddr names the connected profile whose tunnel has local
+// address a ("" = not a Kongtrol tunnel): a connection with that source
+// address left through that tunnel (recent destinations, ADR-0054).
+func tunnelOfLocalAddr(a netip.Addr) string {
+	if col == nil || !a.IsValid() {
+		return ""
+	}
+	for name, m := range col.Snapshot() {
+		if m.Status.Normalize() != vpn.StatusConnected || m.AssignedIP == "" {
+			continue
+		}
+		if ip, err := netip.ParseAddr(strings.TrimSpace(m.AssignedIP)); err == nil && ip.Unmap() == a.Unmap() {
+			return name
+		}
+	}
+	return ""
+}
+
 // probeTunnel reports a profile's tunnel to the policy resolver, which
 // follows tunnels that come up or drop outside Connect/Disconnect
 // (provider apps, watchdog reconnects).
 func probeTunnel(profile string) monitor.TunnelState {
-	a, ok := adapters[profile]
+	a, ok := adapters.Get(profile)
 	if !ok || cfg == nil {
 		return monitor.TunnelState{}
 	}
@@ -42,7 +61,7 @@ func interfaceOfWireGuardProfile(profile string) string {
 }
 
 func profileStatus(profile string) vpn.Status {
-	if a, ok := adapters[profile]; ok {
+	if a, ok := adapters.Get(profile); ok {
 		return a.Status().Normalize()
 	}
 	return vpn.StatusDisconnected

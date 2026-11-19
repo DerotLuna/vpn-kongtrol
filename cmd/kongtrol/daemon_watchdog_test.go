@@ -20,7 +20,7 @@ func TestProfileFailover_OnlyExplicitDeclarations(t *testing.T) {
 		"ekiipago-ovpn": {Type: "openvpn", Priority: 20},
 		"brainbox-ovpn": {Type: "openvpn", Priority: 20},
 	}}
-	if got := profileFailover(); len(got) != 0 {
+	if got := profileFailover(cfg); len(got) != 0 {
 		t.Fatalf("failover derived from priority/names: %v", got)
 	}
 
@@ -28,8 +28,8 @@ func TestProfileFailover_OnlyExplicitDeclarations(t *testing.T) {
 	v.Failover = []string{"brainbox-ovpn"}
 	cfg.VPNs["brainbox"] = v
 	want := map[string][]string{"brainbox": {"brainbox-ovpn"}}
-	if got := profileFailover(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("profileFailover() = %v, want %v", got, want)
+	if got := profileFailover(cfg); !reflect.DeepEqual(got, want) {
+		t.Fatalf("profileFailover(cfg) = %v, want %v", got, want)
 	}
 }
 

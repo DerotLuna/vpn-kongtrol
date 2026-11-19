@@ -37,7 +37,7 @@ func TestWatchdog_NoResponseThenResponding(t *testing.T) {
 	}
 	var mu sync.Mutex
 	var events []string
-	wd := monitor.NewWatchdog(map[string]vpn.VPNAdapter{"brainbox": a}, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(map[string]vpn.VPNAdapter{"brainbox": a}), connect, zapNop())
 	wd.SetPollInterval(20 * time.Millisecond)
 	wd.SetEventCallback(func(e monitor.WatchdogEvent) {
 		mu.Lock()

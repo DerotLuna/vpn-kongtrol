@@ -55,7 +55,7 @@ func runUpDryRun(targets []string) error {
 		}
 		profile.Type = vpnCfg.Type
 
-		adapter, ok := adapters[name]
+		adapter, ok := adapters.Get(name)
 		if !ok {
 			report.Failures++
 			profile.Checks = append(profile.Checks, dryRunCheck{Level: "fail", Name: "adapter", Detail: ct("cli.dry_run.adapter_missing")})

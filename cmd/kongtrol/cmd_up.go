@@ -30,7 +30,7 @@ var upCmd = &cobra.Command{
 			err     error
 		)
 		if upAll {
-			targets = sortedAdapterNames(adapters)
+			targets = adapters.Names()
 		} else {
 			targets, err = resolveUpProfiles(args, upGroup, upFavorites)
 			if err != nil {
@@ -55,7 +55,7 @@ func init() {
 // Indirections so runUp is testable without a terminal or a real daemon.
 var (
 	attachViewerFn = func(ctx context.Context, cancel context.CancelFunc, base string) {
-		runUpTUI(ctx, cancel, adapters, ks, dnsMgr, base, false)
+		runUpTUI(ctx, cancel, adapters.Snapshot(), ks, dnsMgr, base, false)
 	}
 	upIsTerminalFn = isTerminal
 	// upPollInterval is how often a pending connect's state is re-read.

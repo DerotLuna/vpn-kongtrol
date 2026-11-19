@@ -83,7 +83,7 @@ func TestWatchdog_NoImplicitFailover(t *testing.T) {
 		return errors.New("openvpn: server unreachable")
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 	wd.SetPollInterval(50 * time.Millisecond)
 	// Declared failover elsewhere must not leak to these profiles.
 	wd.ConfigureFailover(map[string][]string{"us-content": {"ekiipago"}})
@@ -142,7 +142,7 @@ func TestWatchdog_FailoverToDeclaredBackup(t *testing.T) {
 		}
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 	wd.SetPollInterval(50 * time.Millisecond)
 	wd.ConfigureFailover(map[string][]string{"office-a": {"office-b"}})
 	var log eventLog
@@ -187,7 +187,7 @@ func TestWatchdog_MarkIntendedCancelsInflightReconnect(t *testing.T) {
 		returned <- ctx.Err()
 		return ctx.Err()
 	}
-	wd := monitor.NewWatchdog(map[string]vpn.VPNAdapter{"forti": adapter}, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(map[string]vpn.VPNAdapter{"forti": adapter}), connect, zapNop())
 	wd.SetPollInterval(50 * time.Millisecond)
 	var log eventLog
 	wd.SetEventCallback(log.add)

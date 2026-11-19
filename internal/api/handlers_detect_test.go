@@ -7,12 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
 func TestDetectVPNs(t *testing.T) {
-	orig := detectClients
-	t.Cleanup(func() { detectClients = orig })
+	orig, origActive := detectClients, activeTunnel
+	t.Cleanup(func() { detectClients, activeTunnel = orig, origActive })
+	// Tunnel state is covered by TestDetectVPNs_ActiveTunnel.
+	activeTunnel = func(string) (appattach.Tunnel, bool, bool) { return appattach.Tunnel{}, false, false }
 
 	// Nothing installed: an empty list, never null.
 	detectClients = func() []vpndetect.Client { return nil }

@@ -140,14 +140,19 @@ func (s *Server) handlePoliciesMeta(w http.ResponseWriter, r *http.Request) {
 // other policy CRUD handler in this file): those mutate an in-memory copy
 // and persist it; this only re-reads and re-applies what's already on disk.
 func (s *Server) handlePolicyReload(w http.ResponseWriter, r *http.Request) {
-	cfg, err := s.reloadRuntimeConfig()
+	cfg, applied, err := s.reloadRuntimeConfigApply()
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// Profiles applied live (ADR-0053); the ones whose tunnel is up and
+	// whose settings changed keep the old ones until reconnected.
+	reconnect := append(append([]string{}, applied.res.Reconnect...), applied.res.Kept...)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status":   "reloaded",
-		"policies": len(cfg.Policies),
+		"status":             "reloaded",
+		"policies":           len(cfg.Policies),
+		"restart_required":   !applied.live || len(applied.res.Failed) > 0,
+		"reconnect_required": reconnect,
 	})
 }
 

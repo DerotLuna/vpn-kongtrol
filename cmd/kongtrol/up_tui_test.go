@@ -70,7 +70,7 @@ func TestFilteredRows_UsesCollectorSnapshotWhenAvailable(t *testing.T) {
 			ConnectedAt: time.Now().Add(-90 * time.Second),
 		},
 	}
-	col := monitor.NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	col := monitor.NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	col.Start(time.Hour) // primes one collect() synchronously, then goes quiet
 	defer col.Stop()
 

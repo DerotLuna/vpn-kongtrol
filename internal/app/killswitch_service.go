@@ -40,7 +40,7 @@ type KillSwitchService struct {
 	mu       sync.Mutex
 	applyMu  sync.Mutex
 	cfg      *config.Config
-	adapters map[string]vpn.VPNAdapter
+	adapters *vpn.Set
 	blocker  security.DestinationBlocker
 	legacy   security.KillSwitch // legacy all-traffic rules, removed once
 	dests    DestinationSource
@@ -79,7 +79,7 @@ const captureEvery = 2 * time.Minute
 
 // NewKillSwitchService returns the service. ks is the legacy kill switch,
 // used only to remove all-traffic rules left by older releases.
-func NewKillSwitchService(cfg *config.Config, adapters map[string]vpn.VPNAdapter, ks security.KillSwitch) *KillSwitchService {
+func NewKillSwitchService(cfg *config.Config, adapters *vpn.Set, ks security.KillSwitch) *KillSwitchService {
 	return &KillSwitchService{
 		cfg:      cfg,
 		adapters: adapters,
@@ -187,7 +187,7 @@ func (s *KillSwitchService) Apply() error {
 		info      *vpn.TunnelInfo
 	}
 	seen := map[string]obs{}
-	for name, a := range s.adapters {
+	for name, a := range s.adapters.Snapshot() {
 		o := obs{connected: a.Status().Normalize() == vpn.StatusConnected}
 		if o.connected {
 			if info, err := a.TunnelInfo(); err == nil {
@@ -252,11 +252,7 @@ func (s *KillSwitchService) Apply() error {
 	// 3. What to block.
 	status := security.KillSwitchStatus{State: security.KillSwitchOff}
 	var block []netip.Prefix
-	names := make([]string, 0, len(s.adapters))
-	for name := range s.adapters {
-		names = append(names, name)
-	}
-	sort.Strings(names)
+	names := s.adapters.Names()
 	for _, name := range names {
 		if !s.profileKillSwitchEnabled(name) {
 			continue
@@ -368,7 +364,8 @@ func (s *KillSwitchService) capture(name string, st *ksProfile, iface string, in
 	}
 	// Routes the adapter itself reports (OpenVPN server pushes, WireGuard
 	// AllowedIPs) — vpn.RouteReporter is the shared contract.
-	if rr, ok := s.adapters[name].(vpn.RouteReporter); ok {
+	a, _ := s.adapters.Get(name)
+	if rr, ok := a.(vpn.RouteReporter); ok {
 		if tr := rr.TunnelRoutes(); tr != nil {
 			if tr.AllTraffic {
 				full = true

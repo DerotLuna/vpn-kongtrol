@@ -13,9 +13,9 @@ import (
 func TestHandleConnect_UsesSharedLifecycle(t *testing.T) {
 	called := make(chan string, 1)
 	s := &Server{
-		adapters: map[string]vpn.VPNAdapter{
+		adapters: vpn.NewSet(map[string]vpn.VPNAdapter{
 			"office": newWSTestAdapter(vpn.StatusDisconnected),
-		},
+		}),
 		connectCancel: make(map[string]context.CancelFunc),
 		connectProfile: func(_ context.Context, name string) error {
 			called <- name
@@ -44,9 +44,9 @@ func TestHandleConnect_UsesSharedLifecycle(t *testing.T) {
 func TestHandleDisconnect_UsesSharedLifecycle(t *testing.T) {
 	called := ""
 	s := &Server{
-		adapters: map[string]vpn.VPNAdapter{
+		adapters: vpn.NewSet(map[string]vpn.VPNAdapter{
 			"office": newWSTestAdapter(vpn.StatusConnected),
-		},
+		}),
 		connectCancel: make(map[string]context.CancelFunc),
 		disconnectProfile: func(_ context.Context, name string) error {
 			called = name

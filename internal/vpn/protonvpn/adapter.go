@@ -32,6 +32,7 @@ var ErrUnsupportedOS = errors.New("protonvpn: no Proton VPN CLI on this OS; Kong
 
 func init() {
 	vpn.Register("protonvpn", func() vpn.VPNAdapter { return &Adapter{} })
+	appattach.RegisterMatcher("protonvpn", matcher)
 }
 
 // Adapter implements vpn.VPNAdapter for Proton VPN.

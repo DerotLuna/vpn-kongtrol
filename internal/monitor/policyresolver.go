@@ -465,6 +465,20 @@ func (r *PolicyResolver) MatchAddr(a netip.Addr) (PolicyMatch, bool) {
 	return PolicyMatch{}, false
 }
 
+// HostOf returns the policy domain a resolved to, "" when no policy
+// domain resolved to it (recent destinations, ADR-0054).
+func (r *PolicyResolver) HostOf(a netip.Addr) string {
+	key := hostCIDR(a.Unmap())
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, ips := range r.resolved {
+		if s, ok := ips[key]; ok && s.host != "" {
+			return s.host
+		}
+	}
+	return ""
+}
+
 func (r *PolicyResolver) config() *config.Config {
 	r.mu.Lock()
 	defer r.mu.Unlock()

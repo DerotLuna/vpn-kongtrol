@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -18,11 +19,14 @@ import (
 // is to update the *running* daemon's in-memory config, policy engine,
 // watchdog and DNS manager, so it fails clearly if no daemon answers.
 //
-// With no arguments it applies everything: policies, then every connected
-// tunnel restarted in place. Profiles the daemon does not know yet (added by
-// hand) need a daemon restart (its adapters are built once at boot): reload
-// asks and runs `kongtrol restart`'s path; --yes answers for scripts and,
-// without a terminal, it prints how to do it.
+// With no arguments it applies everything: the daemon applies profiles
+// live (ADR-0053), so only a connected profile whose settings changed needs
+// a reconnect; reload asks "¿Reconectar <vpn> ahora?" for each one and never
+// touches the other tunnels. A profile the daemon cannot apply live needs a
+// daemon restart: reload asks and runs `kongtrol restart`'s path. --yes
+// answers for scripts and, without a terminal, it prints how to do it. An
+// older daemon (no live apply) gets the old path: every connected tunnel
+// restarted in place.
 var (
 	reloadGroup      string
 	reloadTunnel     string // deprecated --tunnel, now the [perfil] argument
@@ -65,7 +69,8 @@ func runReload(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s", ct("cli.reload.error.no_daemon"))
 	}
 
-	if err := daemonReloadPolicy(base); err != nil {
+	res, err := daemonReloadConfigFn(base)
+	if err != nil {
 		return fmt.Errorf("%s: %w", ct("cli.reload.error.policy"), err)
 	}
 	fmt.Println(tuiOK(ct("cli.reload.policy_reloaded")))
@@ -77,6 +82,9 @@ func runReload(cmd *cobra.Command, args []string) error {
 		return reloadOneTunnel(base, tunnel)
 	case reloadGroup != "":
 		return reloadOneGroup(base, reloadGroup)
+	}
+	if res.Live {
+		return reloadChangedProfiles(base, res)
 	}
 	return reloadEverything(base)
 }
@@ -110,8 +118,46 @@ func reloadOneGroup(base, group string) error {
 	return nil
 }
 
-// reloadEverything restarts every connected tunnel in place with the new
-// file, then offers a restart when kongtrol.yaml has profiles the daemon
+// reloadChangedProfiles: the daemon applied the file live (ADR-0053).
+// Only connected profiles whose settings changed need a reconnect, which
+// cuts that tunnel for a few seconds: each one is asked (--yes answers);
+// other tunnels are never touched.
+func reloadChangedProfiles(base string, res daemonctl.ConfigReloadResult) error {
+	names := append([]string(nil), res.ReconnectRequired...)
+	sort.Strings(names)
+	for _, name := range names {
+		fmt.Println(tuiWarn(cf("cli.reload.changed_connected", name)))
+		if !confirmAction(cf("cli.reload.ask_reconnect", name), reloadYes, true) {
+			fmt.Println(tuiInfo(cf("cli.reload.reconnect_hint", name)))
+			continue
+		}
+		if err := reloadOneTunnel(base, name); err != nil {
+			fmt.Println(tuiErr(err.Error()))
+		}
+	}
+	if res.RestartRequired != nil && *res.RestartRequired {
+		return offerRestartForNewProfiles(base, unknownProfiles(base))
+	}
+	return nil
+}
+
+// unknownProfiles lists kongtrol.yaml profiles the daemon does not show.
+func unknownProfiles(base string) []string {
+	statuses, _ := daemonTunnelStatusesFn(base)
+	var out []string
+	if cfg != nil {
+		for name := range cfg.VPNs {
+			if _, known := statuses[name]; !known {
+				out = append(out, name)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// reloadEverything (a daemon older than ADR-0053) restarts every connected
+// tunnel in place with the new file, then offers a restart when kongtrol.yaml has profiles the daemon
 // does not know yet.
 func reloadEverything(base string) error {
 	statuses, err := daemonTunnelStatusesFn(base)

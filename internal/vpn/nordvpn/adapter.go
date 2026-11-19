@@ -38,6 +38,7 @@ var ErrNotLoggedIn = errors.New("nordvpn: not logged in — run `nordvpn login` 
 
 func init() {
 	vpn.Register("nordvpn", func() vpn.VPNAdapter { return &Adapter{} })
+	appattach.RegisterMatcher("nordvpn", matcher)
 }
 
 // Adapter implements vpn.VPNAdapter for the official NordVPN client.

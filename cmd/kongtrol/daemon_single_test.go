@@ -73,7 +73,7 @@ func TestRunDown_ViaDaemon_StopsWhenLastProfileGone(t *testing.T) {
 
 func TestRunDown_All_ViaDaemon(t *testing.T) {
 	disc, stopped := stubDaemonFns(t, true, []string{"a", "b"})
-	adapters = map[string]vpn.VPNAdapter{"a": &mockAdapter{}, "b": &mockAdapter{}}
+	adapters = vpn.NewSet(map[string]vpn.VPNAdapter{"a": &mockAdapter{}, "b": &mockAdapter{}})
 	downAll = true
 	if err := runDown(context.Background(), nil); err != nil {
 		t.Fatal(err)
@@ -87,7 +87,7 @@ func TestRunDown_All_ViaDaemon(t *testing.T) {
 
 func TestRunDown_NoDaemon_UsesLocalAndStops(t *testing.T) {
 	disc, stopped := stubDaemonFns(t, false, nil)
-	adapters = map[string]vpn.VPNAdapter{}
+	adapters = vpn.NewSet(map[string]vpn.VPNAdapter{})
 	downAll = true
 	if err := runDown(context.Background(), nil); err != nil {
 		t.Fatal(err)

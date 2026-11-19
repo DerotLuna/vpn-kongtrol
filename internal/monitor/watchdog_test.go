@@ -52,7 +52,7 @@ func TestWatchdog_ReconnectsOnDrop(t *testing.T) {
 		return nil
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -88,7 +88,7 @@ func TestWatchdog_SkipsIntendedDisconnect(t *testing.T) {
 		return nil
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -121,7 +121,7 @@ func TestWatchdog_MarkActive_ReEnablesReconnect(t *testing.T) {
 		return nil
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -167,7 +167,7 @@ func TestWatchdog_ConnectTimeoutBoundsHungConnect(t *testing.T) {
 		return ctx.Err()
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 	wd.SetConnectTimeout(200 * time.Millisecond)
 	wd.SetEventCallback(func(e monitor.WatchdogEvent) {
 		if e.Event == "reconnect_failed" {
@@ -209,7 +209,7 @@ func TestWatchdog_Stop(t *testing.T) {
 		return nil
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	wd.MarkActive("office")
@@ -244,7 +244,7 @@ func TestWatchdog_MultipleProfiles(t *testing.T) {
 		return nil
 	}
 
-	wd := monitor.NewWatchdog(adapters, connect, zapNop())
+	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	wd.MarkActive("p1")
@@ -280,7 +280,7 @@ func (manualAdapter) Capabilities() vpn.Capabilities { return vpn.Capabilities{M
 func TestWatchdog_ManualReconnectNotifies(t *testing.T) {
 	adapter := manualAdapter{newMockAdapter(vpn.StatusConnected)}
 	var reconnects, notices atomic.Int32
-	wd := monitor.NewWatchdog(map[string]vpn.VPNAdapter{"surf": adapter},
+	wd := monitor.NewWatchdog(vpn.NewSet(map[string]vpn.VPNAdapter{"surf": adapter}),
 		func(context.Context, string) error { reconnects.Add(1); return nil }, zapNop())
 	wd.SetEventCallback(func(e monitor.WatchdogEvent) {
 		if e.Event == "manual_reconnect_required" {

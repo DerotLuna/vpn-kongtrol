@@ -44,7 +44,7 @@ func (a *wsTestAdapter) TunnelInfo() (*vpn.TunnelInfo, error)             { retu
 // channel, rather than waiting for the (much slower) heartbeat ticker.
 func TestHandleWebSocket_PushesOnChangeNotHeartbeat(t *testing.T) {
 	ad := newWSTestAdapter(vpn.StatusDisconnected)
-	col := monitor.NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	col := monitor.NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	// Fast poll — this test only cares that a real state change is pushed
 	// well under the server's 5s heartbeat, not the collector's own cadence.
 	col.Start(30 * time.Millisecond)
@@ -85,7 +85,7 @@ func TestHandleWebSocket_PushesOnChangeNotHeartbeat(t *testing.T) {
 // /api/v1/tunnels handler, which does convert to an array.
 func TestHandleWebSocket_PayloadShape(t *testing.T) {
 	ad := newWSTestAdapter(vpn.StatusConnected)
-	col := monitor.NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	col := monitor.NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	col.Start(time.Hour)
 	defer col.Stop()
 

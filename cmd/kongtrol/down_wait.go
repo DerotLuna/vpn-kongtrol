@@ -16,7 +16,7 @@ var downPollInterval = time.Second
 // localTunnelState reads profile name's state from this process's adapter
 // (no daemon running).
 func localTunnelState(name string) (monitor.TunnelMetrics, bool) {
-	a, ok := adapters[name]
+	a, ok := adapters.Get(name)
 	if !ok {
 		return monitor.TunnelMetrics{}, false
 	}

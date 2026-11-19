@@ -97,8 +97,46 @@ func disconnectProfile(ctx context.Context, name string) error {
 	err := svc.Disconnect(ctx, name)
 	if err == nil {
 		triggerPublicIPCheck() // egress may have changed (no-op unless opted in)
+		// An edit saved while this tunnel was up takes effect now.
+		resyncProfiles()
 	}
 	return err
+}
+
+// syncProfilesLive brings the adapter set in line with c after a config
+// save (ADR-0053): new profiles can connect at once, deleted ones go, and
+// edited ones get a new adapter unless their tunnel is up.
+func syncProfilesLive(c *config.Config) api.ProfileSyncResult {
+	if adapterSync == nil || c == nil {
+		return api.ProfileSyncResult{}
+	}
+	return afterProfileSync(c, adapterSync.Sync(c))
+}
+
+// resyncProfiles applies the last saved config again (after a disconnect).
+func resyncProfiles() {
+	if adapterSync == nil {
+		return
+	}
+	if res := adapterSync.Resync(); res.Changed() {
+		afterProfileSync(nil, res)
+	}
+}
+
+func afterProfileSync(c *config.Config, res app.SyncResult) api.ProfileSyncResult {
+	if c != nil && watchdog != nil {
+		// Backups may name profiles that only exist now.
+		watchdog.ConfigureFailover(profileFailover(c))
+	}
+	if res.Changed() && col != nil {
+		go col.Refresh() // live views show the new list now
+	}
+	out := api.ProfileSyncResult{Reconnect: res.Reconnect, Kept: res.Kept}
+	for name, err := range res.Failed {
+		out.Failed = append(out.Failed, name)
+		emitAlert("WARN", name, err.Error())
+	}
+	return out
 }
 
 func connectProfile(ctx context.Context, name string) error {
@@ -146,6 +184,9 @@ func buildAPIServer(onShutdown func()) *api.Server {
 			// retention) and the scheduler (rules, interval, on/off).
 			applyAuditConfig(cfg)
 			applySchedulerConfig(cfg)
+			if recentConns != nil {
+				recentConns.SetEnabled(cfg.RecentConnectionsEnabled())
+			}
 			go func() { _ = applyKillSwitchState() }()
 		},
 		func(newCfg *config.Config) {
@@ -168,10 +209,13 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	srv.SetEventLog(daemonEvents)
 	// Audit entries are checked against the signing key, which stays here.
 	srv.SetAuditVerifier(auditVerifier())
-	// First run without kongtrol.yaml, and the restart that applies new or
-	// edited profiles (the adapters map is only built at boot).
+	// First run without kongtrol.yaml, and the restart that applies a
+	// change the running daemon cannot (setup mode, a hand edit with an
+	// unknown type). Profile changes otherwise apply live (ADR-0053).
 	srv.SetSetupMode(setupMode)
 	srv.SetRestarter(restartDaemon)
+	srv.SetProfileSync(syncProfilesLive)
+	srv.SetRecentConnections(recentConns)
 	wireLifecycleAPI(srv)
 	return srv
 }
@@ -245,9 +289,9 @@ func startHistoryPersistence(ctx context.Context) {
 // profileFailover returns the backup profiles each profile declares
 // (vpns.<name>.failover). Only these are ever connected by the watchdog in
 // place of a profile that cannot reconnect; priority plays no part.
-func profileFailover() map[string][]string {
-	out := make(map[string][]string, len(cfg.VPNs))
-	for name, vpnCfg := range cfg.VPNs {
+func profileFailover(c *config.Config) map[string][]string {
+	out := make(map[string][]string, len(c.VPNs))
+	for name, vpnCfg := range c.VPNs {
 		if len(vpnCfg.Failover) > 0 {
 			out[name] = append([]string(nil), vpnCfg.Failover...)
 		}
@@ -369,7 +413,7 @@ func applyDNSGuardState() {
 		dnsMgr.ForceRestore()
 		return
 	}
-	for name, a := range adapters {
+	for name, a := range adapters.Snapshot() {
 		vpnCfg, ok := cfg.VPNs[name]
 		if !ok || vpnCfg.Type == "wireguard" {
 			continue

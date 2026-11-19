@@ -17,12 +17,12 @@ import (
 func newLastErrorServer(t *testing.T, connectErr func() error) (*Server, chan struct{}) {
 	t.Helper()
 	ad := newWSTestAdapter(vpn.StatusDisconnected)
-	col := monitor.NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	col := monitor.NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	col.Start(time.Hour) // primes one snapshot; no further polls during the test
 	t.Cleanup(col.Stop)
 	done := make(chan struct{}, 4)
 	s := &Server{
-		adapters:      map[string]vpn.VPNAdapter{"office": ad},
+		adapters:      vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}),
 		collector:     col,
 		connectCancel: make(map[string]context.CancelFunc),
 		connectProfile: func(context.Context, string) error {

@@ -17,7 +17,7 @@ type collectorAdapter struct {
 
 func TestCollector_LoadSaveHistory(t *testing.T) {
 	ad := &collectorAdapter{status: vpn.StatusConnected}
-	c := NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	c.RecordReconnect("office")
 	c.RecordLeak("office")
 	path := filepath.Join(t.TempDir(), "history.json")
@@ -26,7 +26,7 @@ func TestCollector_LoadSaveHistory(t *testing.T) {
 		t.Fatalf("SaveHistory: %v", err)
 	}
 
-	c2 := NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	c2 := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	if err := c2.LoadHistory(path); err != nil {
 		t.Fatalf("LoadHistory: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestCollector_HistoryAndHealth(t *testing.T) {
 			ConnectedAt:   time.Now().Add(-10 * time.Minute),
 		},
 	}
-	c := NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	c.collect()
 	c.RecordReconnect("office")
 	c.RecordLeak("office")
@@ -83,7 +83,7 @@ func TestCollector_TracksLastConnectedAndDown(t *testing.T) {
 		status: vpn.StatusDisconnected,
 		info:   &vpn.TunnelInfo{},
 	}
-	c := NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 	c.collect()
 
 	ad.status = vpn.StatusConnected
@@ -112,7 +112,7 @@ func TestCollector_TracksLastConnectedAndDown(t *testing.T) {
 
 func TestCollector_SubscribeNotifiesOnlyOnRealChange(t *testing.T) {
 	ad := &collectorAdapter{status: vpn.StatusDisconnected, info: &vpn.TunnelInfo{}}
-	c := NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 
 	ch, cancel := c.Subscribe()
 	defer cancel()
@@ -147,7 +147,7 @@ func TestCollector_SubscribeNotifiesOnlyOnRealChange(t *testing.T) {
 
 func TestCollector_SubscribeSendIsNonBlocking(t *testing.T) {
 	ad := &collectorAdapter{status: vpn.StatusDisconnected, info: &vpn.TunnelInfo{}}
-	c := NewCollector(map[string]vpn.VPNAdapter{"office": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
 
 	ch, cancel := c.Subscribe()
 	defer cancel()
@@ -179,7 +179,7 @@ func TestCollector_FallsBackToInterfaceCounters(t *testing.T) {
 		return 111, 222, true
 	}
 	ad := &collectorAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "wg-test"}}
-	c := NewCollector(map[string]vpn.VPNAdapter{"p": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"p": ad}))
 	c.collect()
 	m := c.Snapshot()["p"]
 	if m.BytesSent != 111 || m.BytesReceived != 222 {
@@ -197,7 +197,7 @@ func TestCollector_FallsBackToInterfaceCounters(t *testing.T) {
 
 func TestCollector_KeepsLatencyBetweenProbes(t *testing.T) {
 	ad := &collectorAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{}}
-	c := NewCollector(map[string]vpn.VPNAdapter{"p": ad})
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"p": ad}))
 	c.collect()
 	c.RecordHealth("p", 42*time.Millisecond, true, true)
 	c.collect() // a later 5s pass must not wipe the 30s probe's reading

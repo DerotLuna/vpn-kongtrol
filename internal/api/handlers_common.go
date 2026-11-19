@@ -75,25 +75,32 @@ func (s *Server) loadRuntimeConfig() (*config.Config, string, error) {
 }
 
 func (s *Server) saveRuntimeConfig(cfgPath string, cfg *config.Config) error {
+	_, err := s.commitRuntimeConfig(cfgPath, cfg)
+	return err
+}
+
+// commitRuntimeConfig is saveRuntimeConfig that also says how the profile
+// set was applied to the running daemon (VPN profile CRUD, ADR-0053).
+func (s *Server) commitRuntimeConfig(cfgPath string, cfg *config.Config) (profileApply, error) {
 	if err := config.Validate(cfg); err != nil {
-		return err
+		return profileApply{}, err
 	}
 	newEngine, err := policy.New(cfg)
 	if err != nil {
-		return fmt.Errorf("policy engine validation failed: %w", err)
+		return profileApply{}, fmt.Errorf("policy engine validation failed: %w", err)
 	}
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
-		return fmt.Errorf("marshal config: %w", err)
+		return profileApply{}, fmt.Errorf("marshal config: %w", err)
 	}
 	if err := config.WriteFileAtomic(cfgPath, data, 0o600); err != nil {
-		return fmt.Errorf("write config: %w", err)
+		return profileApply{}, fmt.Errorf("write config: %w", err)
 	}
 	s.policyEngine.Store(newEngine)
 	if s.onPolicyUpdate != nil {
 		s.onPolicyUpdate(cfg, newEngine)
 	}
-	return nil
+	return s.syncProfiles(cfg), nil
 }
 
 // reloadRuntimeConfig re-reads kongtrol.yaml fresh from disk (never a stale
@@ -105,20 +112,28 @@ func (s *Server) saveRuntimeConfig(cfgPath string, cfg *config.Config) error {
 // the running daemon to pick it up," so there is nothing in memory to
 // persist, only the file on disk to re-read and apply.
 func (s *Server) reloadRuntimeConfig() (*config.Config, error) {
+	cfg, _, err := s.reloadRuntimeConfigApply()
+	return cfg, err
+}
+
+// reloadRuntimeConfigApply is reloadRuntimeConfig that also says how the
+// profiles were applied (ADR-0053).
+func (s *Server) reloadRuntimeConfigApply() (*config.Config, profileApply, error) {
 	cfg, _, err := s.loadRuntimeConfig()
 	if err != nil {
-		return nil, err
+		return nil, profileApply{}, err
 	}
 	if err := config.Validate(cfg); err != nil {
-		return nil, err
+		return nil, profileApply{}, err
 	}
 	newEngine, err := policy.New(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("policy engine validation failed: %w", err)
+		return nil, profileApply{}, fmt.Errorf("policy engine validation failed: %w", err)
 	}
 	s.policyEngine.Store(newEngine)
 	if s.onPolicyUpdate != nil {
 		s.onPolicyUpdate(cfg, newEngine)
 	}
-	return cfg, nil
+	// Profiles added or edited by hand become usable now (ADR-0053).
+	return cfg, s.syncProfiles(cfg), nil
 }
