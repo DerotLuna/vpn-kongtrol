@@ -11,6 +11,7 @@ import { IconButton } from '../ui/Button'
 import { Button } from '../ui/Button'
 import { CloseIcon, PlusIcon } from '../ui/icons'
 import type { FieldError } from '../ui/Field'
+import { Select } from '../ui/Select'
 import { ArrowUpIcon } from './icons'
 
 interface Props {
@@ -68,16 +69,14 @@ export function FailoverEditor({ value, onChange, candidates, error }: Props) {
       )}
       {free.length > 0 && (
         <div className="kp-failover__add">
-          <label className="visually-hidden" htmlFor={`${id}-add`}>
-            {t('profiles.failover.pick')}
-          </label>
-          <select id={`${id}-add`} className="k-input k-select" value={chosen} onChange={(e) => setPick(e.target.value)}>
-            {free.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <Select
+            id={`${id}-add`}
+            aria-label={t('profiles.failover.pick')}
+            mono
+            value={chosen}
+            onChange={setPick}
+            options={free.map((c) => ({ value: c, label: c }))}
+          />
           <Button variant="outlined" icon={<PlusIcon />} onClick={() => chosen && onChange([...value, chosen])}>
             {t('profiles.failover.add')}
           </Button>

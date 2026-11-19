@@ -16,6 +16,7 @@ import type { MessageKey } from '../i18n/messages'
 import { keys } from './keys'
 import { useOptimisticMutation } from './optimistic'
 import { createStore, useStore } from './store'
+import { endTransition, pendingActions, setPending, watchTransition, type TunnelAction } from './transition'
 import { toasts } from './toast'
 
 // ── Types (mirrors of the Go DTOs; source in each comment) ────────────────
@@ -186,21 +187,9 @@ export function settleNetwork(client: QueryClient): void {
 
 // ── Per-tunnel actions ────────────────────────────────────────────────────
 
-export type TunnelAction = 'connect' | 'cancel' | 'disconnect' | 'reload'
-
-/** Which action runs on which tunnel right now (rows show it in place). */
-export const pendingActions = createStore<Readonly<Record<string, TunnelAction>>>({})
-
-function setPending(name: string, action: TunnelAction | null) {
-  const next = { ...pendingActions.get() }
-  if (action) next[name] = action
-  else delete next[name]
-  pendingActions.set(next)
-}
-
-export function usePendingAction(name: string): TunnelAction | undefined {
-  return useStore(pendingActions)[name]
-}
+// The pending marks and the "until the daemon says it ended" watch live in
+// transition.ts (shared with Grupos and the tray flyout).
+export { pendingActions, usePendingAction, type TunnelAction } from './transition'
 
 type Translate = ReturnType<typeof usePreferences>['t']
 
@@ -225,57 +214,73 @@ function guided(err: unknown, t: Translate, name: string, action: TunnelAction):
 /**
  * Marks the action pending at once (same tick as the click) and refuses a
  * second one while any action on that tunnel runs: a double click or a bulk
- * action never sends a duplicate request. The mutation clears the mark.
+ * action never sends a duplicate request. The one exception is Cancelar
+ * while a connect is still in progress.
  */
 function claimPending(name: string, action: TunnelAction): boolean {
-  if (pendingActions.get()[name]) return false
+  const current = pendingActions.get()[name]
+  if (current && !(action === 'cancel' && current === 'connect')) return false
+  // Cancelar replaces the connect's watch (and its timeout notice).
+  if (current) endTransition(name)
   setPending(name, action)
   return true
-}
-
-function withPending<T>(name: string, action: TunnelAction, run: () => Promise<T>): Promise<T> {
-  setPending(name, action)
-  return run().finally(() => setPending(name, null))
 }
 
 function patch(list: TunnelMetrics[], name: string, change: Partial<TunnelMetrics>): TunnelMetrics[] {
   return list.map((tn) => (tn.Name === name ? { ...tn, ...change } : tn))
 }
 
+/** The toast when an accepted action has not ended after its timeout (what to do). */
+export function useSlowActionNotice(): (name: string, action: TunnelAction) => void {
+  const { t } = usePreferences()
+  return useCallback(
+    (name: string, action: TunnelAction) => {
+      if (action === 'connect') toasts.show({ tone: 'info', message: t('tunnels.slow.connect', { name }), detail: t('tunnels.slow.connect.fix') })
+      else if (action === 'disconnect' || action === 'cancel')
+        toasts.show({ tone: 'info', message: t('tunnels.slow.disconnect', { name }), detail: t('tunnels.slow.disconnect.fix') })
+    },
+    [t],
+  )
+}
+
+/** Answers that already are the end state: nothing to wait for. */
+const DONE_AT_ONCE = new Set(['already_connected', 'connect_cancelled', 'waiting_user'])
+
 /**
  * Connect, cancel and disconnect with the expected state at once and a
  * rollback (+ toast with what to do) if the daemon refuses.
- * - connect: the row turns "Conectando" at once; 409 (already connecting)
- *   is not an error.
- * - cancel: back to "Desconectada".
- * - disconnect: the row keeps its state with "Desconectando…" on the button
- *   until the daemon answers, because a provider app without a CLI answers
- *   202 waiting_user and stays connected until the user acts in the app
- *   (no flicker connected → off → connected).
+ * - connect: the row turns "Conectando" at once and stays so after the
+ *   daemon's 202 until the live state ends it (transition.ts): connected,
+ *   an error, a provider app waiting for the user, or the timeout with
+ *   what to do. 409 (already connecting) is not an error.
+ * - cancel: back to "Desconectada" once the daemon confirms.
+ * - disconnect: the row keeps its state with "Desconectando…" until the
+ *   tunnel is down; a provider app without a CLI answers 202 waiting_user
+ *   and stays connected until the user acts in the app (no flicker
+ *   connected → off → connected).
  */
 export function useTunnelActions() {
   const client = useQueryClient()
   const { t } = usePreferences()
+  const onTimeout = useSlowActionNotice()
 
   const mutation = useOptimisticMutation<{ name: string; action: Exclude<TunnelAction, 'reload'> }, string, TunnelMetrics[]>({
     queryKey: keys.tunnels,
-    mutationFn: ({ name, action }) =>
-      withPending(name, action, async () => {
-        try {
-          if (action === 'connect') return (await api.connect(name)).status
-          if (action === 'cancel') {
-            await api.cancelConnect(name)
-            return 'connect_cancelled'
-          }
-          return (await api.disconnect(name)).status
-        } catch (err) {
-          if (action === 'connect' && err instanceof ApiError && err.status === 409) return 'connecting'
-          throw guided(err, t, name, action)
+    mutationFn: async ({ name, action }) => {
+      try {
+        if (action === 'connect') return (await api.connect(name)).status
+        if (action === 'cancel') {
+          await api.cancelConnect(name)
+          return 'connect_cancelled'
         }
-      }),
+        return (await api.disconnect(name)).status
+      } catch (err) {
+        if (action === 'connect' && err instanceof ApiError && err.status === 409) return 'connecting'
+        throw guided(err, t, name, action)
+      }
+    },
     apply: (list, { name, action }) => {
       if (action === 'connect') return patch(list, name, { Status: 'connecting', last_error: '', last_error_key: '' })
-      if (action === 'cancel') return patch(list, name, { Status: 'disconnected' })
       return list
     },
     successMessage: ({ name, action }, status) => {
@@ -288,16 +293,27 @@ export function useTunnelActions() {
   const run = useCallback(
     (name: string, action: Exclude<TunnelAction, 'reload'>) => {
       if (!claimPending(name, action)) return
-      mutate({ name, action }, { onSettled: () => settleNetwork(client) })
+      mutate(
+        { name, action },
+        {
+          onSuccess: (status) => {
+            if (DONE_AT_ONCE.has(status)) endTransition(name)
+            else watchTransition(client, name, action, { onTimeout })
+          },
+          onError: () => endTransition(name),
+          onSettled: () => settleNetwork(client),
+        },
+      )
     },
-    [mutate, client],
+    [mutate, client, onTimeout],
   )
   return run
 }
 
 /**
  * Reload: re-reads kongtrol.yaml and restarts the tunnel in place.
- * 202 restarting → "Recargando…"; skipped_not_connected → the config was
+ * 202 restarting → "Recargando…" until the tunnel is back (new
+ * ConnectedAt) or the timeout; skipped_not_connected → the config was
  * re-read, nothing to restart (legacy said "Recargando" here, a bug);
  * 409 restart_required → Kongtrol itself must restart.
  */
@@ -305,28 +321,30 @@ export function useTunnelReload() {
   const client = useQueryClient()
   const { t } = usePreferences()
   const { mutate } = useMutation({
-    mutationFn: (name: string) =>
-      withPending(name, 'reload', async () => {
-        try {
-          return await homeApi.reload(name)
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 409) {
-            throw new ApiError('server', 409, {
-              error: t('home.toast.restartRequired', { name }),
-              hint: t('home.toast.restartRequired.fix'),
-              error_key: 'restart_required',
-            })
-          }
-          throw guided(err, t, name, 'reload')
+    mutationFn: async ({ name }: { name: string; connectedAt: string }) => {
+      try {
+        return await homeApi.reload(name)
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 409) {
+          throw new ApiError('server', 409, {
+            error: t('home.toast.restartRequired', { name }),
+            hint: t('home.toast.restartRequired.fix'),
+            error_key: 'restart_required',
+          })
         }
-      }),
-    onSuccess: (res, name) => {
+        throw guided(err, t, name, 'reload')
+      }
+    },
+    onSuccess: (res, { name, connectedAt }) => {
+      if (res.status === 'restarting') watchTransition(client, name, 'reload', { connectedAt })
+      else endTransition(name)
       toasts.show({
         tone: 'info',
         message: res.status === 'skipped_not_connected' ? t('home.toast.reloadedIdle', { name }) : t('home.toast.reloading', { name }),
       })
     },
-    onError: (err, name) => {
+    onError: (err, { name }) => {
+      endTransition(name)
       const { message, fix } = describeError(err, t)
       toasts.show({ tone: 'bad', message, detail: fix, action: { label: t('error.retry'), run: () => reload(name) } })
     },
@@ -335,10 +353,37 @@ export function useTunnelReload() {
       settleNetwork(client)
     },
   })
-  const reload = useCallback((name: string) => {
-    if (claimPending(name, 'reload')) mutate(name)
-  }, [mutate])
+  const reload = useCallback(
+    (name: string) => {
+      const connectedAt = client.getQueryData<TunnelMetrics[]>(keys.tunnels)?.find((tn) => tn.Name === name)?.ConnectedAt ?? ''
+      if (claimPending(name, 'reload')) mutate({ name, connectedAt })
+    },
+    [mutate, client],
+  )
   return reload
+}
+
+/**
+ * After a group action the daemon works on each member in the background:
+ * every member it started (connect) or that was up (disconnect) shows the
+ * action in its row until its live state ends it, like a single tunnel.
+ */
+export function trackGroupMembers(
+  client: QueryClient,
+  names: readonly string[],
+  action: 'connect' | 'disconnect',
+  onTimeout?: (name: string, a: TunnelAction) => void,
+): void {
+  for (const n of names) {
+    if (pendingActions.get()[n]) continue
+    watchTransition(client, n, action, onTimeout ? { onTimeout } : {})
+  }
+}
+
+/** Members that are up now (what a group disconnect will take down). */
+export function connectedMembers(client: QueryClient, profiles: readonly string[]): string[] {
+  const list = client.getQueryData<TunnelMetrics[]>(keys.tunnels) ?? []
+  return profiles.filter((p) => list.some((tn) => tn.Name === p && tn.Status === 'connected'))
 }
 
 /** "Conectar todas" / "Desconectar todas": one action per tunnel, in parallel. */
@@ -355,6 +400,7 @@ export type GroupAction = 'connect' | 'disconnect'
 export function useGroupAction() {
   const client = useQueryClient()
   const { t } = usePreferences()
+  const onTimeout = useSlowActionNotice()
   const mutation = useMutation({
     mutationKey: homeMutationKeys.groupAction,
     mutationFn: async ({ name, action }: { name: string; action: GroupAction; profiles: readonly string[] }) => {
@@ -377,11 +423,13 @@ export function useGroupAction() {
     },
     onSuccess: (res, { name, action, profiles }) => {
       if (action === 'disconnect') {
+        trackGroupMembers(client, connectedMembers(client, profiles), 'disconnect', onTimeout)
         toasts.show({ tone: 'info', message: t('home.groups.toast.disconnecting', { name }) })
         return
       }
       const started = res?.started ?? []
       const already = res?.already_connected ?? []
+      trackGroupMembers(client, started, 'connect', onTimeout)
       const skipped = profiles.filter((p) => !started.includes(p) && !already.includes(p))
       const message =
         started.length > 0

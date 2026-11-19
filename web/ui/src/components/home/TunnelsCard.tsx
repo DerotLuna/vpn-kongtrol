@@ -1,4 +1,4 @@
-// Kongtrol UI — "Tus VPN" table (Inicio) · v1.1.0 · 2026-11-19
+// Kongtrol UI — "Tus VPN" table (Inicio) · v1.2.0 · 2026-11-19
 //
 // One row per tunnel (DataList: a real table, stacked cards on narrow
 // screens). Rows are memoized and the cache keeps unchanged tunnels
@@ -17,12 +17,13 @@ import { Card } from '../ui/Card'
 import { DataList, type Column } from '../ui/DataList'
 import { ExternalLink } from '../ui/ExternalLink'
 import { PlugIcon, RefreshIcon } from '../ui/icons'
+import { PowerIcon } from '../profiles/icons'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { formatBytes, formatDuration } from './format'
 import { LatencySparkline } from './Sparkline'
 import { TunnelRoutesRow } from './TunnelRoutes'
 import { TunnelActionsCell, TunnelStatusCell } from './TunnelRow'
-import { AddButton, AddRuleIcon } from '../add/entries'
+import { AddButton } from '../add/entries'
 
 interface Props {
   tunnels: TunnelMetrics[] | undefined
@@ -81,12 +82,7 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
         id: 'actions',
         header: t('home.col.actions'),
         hideHeader: true,
-        cell: (tn) => (
-          <span className="home-row-actions">
-            <TunnelActionsCell tn={tn} />
-            <AddRuleIcon via={tn.Name} />
-          </span>
-        ),
+        cell: (tn) => <TunnelActionsCell tn={tn} />,
       },
     ],
     [t, lang],
@@ -101,12 +97,19 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
     <div className="home-toolbar">
       {list.length > 1 && (
         <>
-          <Button variant="tonal" size="sm" disabled={toConnect.length === 0} onClick={() => toConnect.forEach((n) => run(n, 'connect'))}>
+          <Button
+            variant="tonal"
+            size="sm"
+            icon={<PlugIcon />}
+            disabled={toConnect.length === 0}
+            onClick={() => toConnect.forEach((n) => run(n, 'connect'))}
+          >
             {t('home.tunnels.connectAll')}
           </Button>
           <Button
             variant="outlined"
             size="sm"
+            icon={<PowerIcon />}
             disabled={toDisconnect.length === 0}
             onClick={() => toDisconnect.forEach((n) => run(n, 'disconnect'))}
           >
@@ -114,7 +117,7 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
           </Button>
         </>
       )}
-      <IconButton label={t('home.tunnels.refresh')} icon={<RefreshIcon />} onClick={onRefresh} />
+      <IconButton size="sm" variant="outlined" label={t('home.tunnels.refresh')} icon={<RefreshIcon />} onClick={onRefresh} />
     </div>
   )
 

@@ -1,5 +1,7 @@
 // Shared test fakes: daemon API routes and a controllable WebSocket.
 import type { QueryClient } from '@tanstack/react-query'
+import { screen, within } from '@testing-library/react'
+import type { UserEvent } from '@testing-library/user-event'
 import { vi } from 'vitest'
 import type { HelperStatus, TunnelMetrics } from '../api/types'
 import { createQueryClient } from '../data/queryClient'
@@ -98,4 +100,11 @@ export const helperReady: HelperStatus = {
   available: true,
   needs_install: false,
   helper_version: 'v1.2.3',
+}
+
+/** Chooses an option of a kit Select / Combobox (own listbox, not a native <select>). */
+export async function pickOption(user: UserEvent, combobox: HTMLElement, option: string | RegExp): Promise<void> {
+  await user.click(combobox)
+  const list = await screen.findByRole('listbox')
+  await user.click(within(list).getByRole('option', { name: option }))
 }

@@ -1,39 +1,52 @@
-/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.0.0 · 2026-11-19
+/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.1.0 · 2026-11-19
    DESIGN.md tokens only; 44px targets; 11px floor; motion only for the
-   overlay's state change, off with reduced motion. */
+   overlay's state change, off with reduced motion. Compact (owner feedback
+   2026-11-19): 520px wide, 12px rhythm, 32px icon tiles; one primary
+   (amber) per step, secondary outlined/tonal, "Volver" a quiet text
+   button at the start of the footer. */
 
 @media (min-width: 600px) {
-  .k-dialog.k-add-sheet { width: min(600px, calc(100vw - 32px)); }
+  .k-dialog.k-add-sheet { width: min(520px, calc(100vw - 32px)); }
 }
-.k-add { display: flex; flex-direction: column; gap: 14px; }
-.k-add__step { display: flex; flex-direction: column; gap: 14px; }
-.k-add__h { font: 600 16px/1.3 var(--font-display); }
-.k-add__muted { color: var(--text-muted); }
+.k-add-sheet .k-dialog__body { gap: 12px; padding: 16px 18px 18px; }
+.k-add { display: flex; flex-direction: column; gap: 12px; }
+.k-add__step { display: flex; flex-direction: column; gap: 12px; }
+.k-add__h { font: 600 15px/1.3 var(--font-display); }
+.k-add__muted { color: var(--text-muted); font-size: 14px; }
 .k-add__small { font-size: 13px; }
 .k-add__lead { font-weight: 600; }
-.k-add__note { color: var(--text-muted); font-size: 14px; }
-.k-add__actions { margin-top: 2px; }
+.k-add__note { color: var(--text-muted); font-size: 13px; }
+.k-add__actions { margin-top: 0; align-items: center; }
+/* "Volver" / "Agregar otro": quiet, at the footer's start; the main action stays at the end. */
+.k-add__actions .k-add__back { margin-right: auto; padding-left: 6px; color: var(--text-muted); }
+.k-add__actions .k-add__back:hover:not(:disabled) { color: var(--text); }
+@media (max-width: 599px) {
+  .k-add__actions .k-add__back { margin-right: 0; }
+}
 
 /* Choices (menu, done) */
-.k-add-choices, .k-add-apps { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.k-add-choices, .k-add-apps { list-style: none; display: flex; flex-direction: column; gap: 6px; }
 .k-add-choice {
-  display: flex; align-items: flex-start; gap: 14px; width: 100%; min-height: var(--tap); padding: 14px;
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--tap); padding: 10px 12px;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
   color: var(--text); text-align: left; font: inherit; cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard);
 }
 .k-add-choice:hover { background: var(--surface-2); border-color: var(--border-2); }
 .k-add-choice:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
-.k-add-choice__icon { flex: none; display: inline-flex; width: 24px; height: 24px; color: var(--signal); }
-.k-add-choice__icon svg { width: 24px; height: 24px; }
-.k-add-choice__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.k-add-choice__title { font-weight: 600; }
-.k-add-choice__body { color: var(--text-muted); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.k-add-choice__icon {
+  flex: none; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius);
+  background: var(--signal-soft); color: var(--signal);
+}
+.k-add-choice__icon svg { width: 18px; height: 18px; }
+.k-add-choice__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.k-add-choice__title { font-weight: 600; font-size: 15px; line-height: 1.3; }
+.k-add-choice__body { color: var(--text-muted); font-size: 13px; line-height: 1.45; display: flex; flex-direction: column; gap: 2px; }
 .k-add-choice__found { font: 500 12px/1.4 var(--font-mono); color: var(--text); }
 
 /* Found apps */
 .k-add-app {
-  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  display: flex; align-items: center; gap: 12px; padding: 8px 10px;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);
 }
 .k-add-app__text { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }

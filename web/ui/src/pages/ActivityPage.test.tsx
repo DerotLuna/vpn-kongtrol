@@ -2,9 +2,10 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
-import { activityKeys, auditToJSONL, auditURL, badRange, mergeEvents, nextCursor, signatureState, type AuditEvent, type DaemonEvent } from '../data/activity'
+import { activityKeys, auditToJSONL, auditURL, mergeEvents, nextCursor, signatureState, type AuditEvent, type DaemonEvent } from '../data/activity'
 import { createQueryClient } from '../data/queryClient'
-import { FakeSocket, helperReady, json, stubFetch } from '../test/fakes'
+import { presetRange, toISODay } from '../components/ui/dates'
+import { FakeSocket, helperReady, json, pickOption, stubFetch } from '../test/fakes'
 
 beforeEach(() => {
   Object.defineProperty(navigator, 'languages', { value: ['es-AR'], configurable: true })
@@ -137,7 +138,7 @@ describe('Actividad · registro de auditoría', () => {
     // translated level names, never raw INFO/WARN
     expect(screen.getAllByText('Seguridad').length).toBeGreaterThan(0)
 
-    await userEvent.selectOptions(screen.getByLabelText('Nivel'), 'WARN')
+    await pickOption(userEvent.setup(), screen.getByRole('combobox', { name: 'Nivel' }), 'Aviso')
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&level=WARN')).toBe(true)
   })
@@ -159,29 +160,28 @@ describe('Actividad · registro de auditoría', () => {
     expect(screen.queryByRole('button', { name: 'Cargar más' })).not.toBeInTheDocument()
   })
 
-  it('filters dates on the daemon and refuses From after To', async () => {
+  it('filters dates on the daemon with one range control: a preset at once, then Clear', async () => {
+    const week = presetRange('last7', toISODay(new Date()))
     const fetchMock = stubFetch({
       ...auditRoutes,
-      'GET /api/v1/audit?limit=200&from=2026-11-10': () => page([all[0]!]),
-      'GET /api/v1/audit?limit=200&from=2026-11-10&to=2026-11-12': () => page([]),
+      [`GET /api/v1/audit?limit=200&from=${week.from}&to=${week.to}`]: () => page([all[0]!]),
     })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
     await screen.findByText('Mostrando 3 entradas')
-    const from = screen.getByLabelText('Desde')
-    await userEvent.type(from, '2026-11-10')
+    const dates = screen.getByRole('button', { name: 'Fechas' })
+    expect(dates).toHaveTextContent('Todas las fechas')
+    await userEvent.click(dates)
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Elegir fechas' })).getByRole('button', { name: 'Últimos 7 días' }))
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
-    await userEvent.type(screen.getByLabelText('Hasta'), '2026-11-12')
-    await waitFor(() =>
-      expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&from=2026-11-10&to=2026-11-12')).toBe(true),
-    )
-    await userEvent.clear(from)
-    await userEvent.type(from, '2026-11-20')
-    expect(await screen.findByText('«Desde» es posterior a «Hasta».')).toBeInTheDocument()
-    expect(from).toHaveAttribute('aria-invalid', 'true')
+    expect(fetchMock.mock.calls.some(([u]) => String(u) === `/api/v1/audit?limit=200&from=${week.from}&to=${week.to}`)).toBe(true)
+    expect(dates).toHaveTextContent('Últimos 7 días')
+    await userEvent.click(dates)
+    await userEvent.click(screen.getByRole('button', { name: 'Borrar fechas' }))
+    expect(await screen.findByText('Mostrando 3 entradas')).toBeInTheDocument()
   })
 
-  it('filters by profile on Enter', async () => {
+  it('filters by profile: type to filter the list, Enter picks', async () => {
     stubFetch(auditRoutes)
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
@@ -251,12 +251,10 @@ describe('activity data helpers', () => {
     )
   })
 
-  it('cursor and date range', () => {
+  it('cursor', () => {
     expect(nextCursor({ events: [audit('1', 'INFO', { timestamp: 't1' })], more: true })).toBe('t1')
     expect(nextCursor({ events: [audit('1', 'INFO')], more: false })).toBeUndefined()
     expect(nextCursor({ events: [], more: true })).toBeUndefined()
-    expect(badRange('2026-11-02', '2026-11-01')).toBe(true)
-    expect(badRange('2026-11-01', '')).toBe(false)
   })
 
   it('signature states: valid only when the daemon verified it', () => {

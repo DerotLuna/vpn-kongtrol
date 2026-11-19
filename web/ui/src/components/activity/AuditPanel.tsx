@@ -8,12 +8,11 @@
 // 200 [] for it) and any other error says what happened. Each entry shows
 // its signature in a word + icon: "Firma válida", "Firma no válida"
 // (danger: edited, or signed with another key) or "Sin firma".
-import { useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import {
   AUDIT_LEVELS,
   auditToJSONL,
-  badRange,
   downloadText,
   signatureState,
   useAuditLog,
@@ -26,7 +25,8 @@ import { toasts } from '../../data/toast'
 import type { MessageKey } from '../../i18n/messages'
 import { Button, IconButton } from '../ui/Button'
 import { DataList, type Column } from '../ui/DataList'
-import { SelectField, TextField } from '../ui/Field'
+import { ComboboxField, DateRangeField, SelectField } from '../ui/Field'
+import { useProfilesQuery } from '../../data/profiles'
 import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon } from '../ui/icons'
 import { Banner, EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
@@ -68,24 +68,27 @@ function Signature({ ev }: { ev: AuditEvent }) {
 
 export function AuditPanel({ settings, settingsError }: { settings: Settings | undefined; settingsError: unknown }) {
   const { t, lang } = usePreferences()
-  const [profileInput, setProfileInput] = useState('')
   const [profile, setProfile] = useState('')
   const [level, setLevel] = useState<AuditLevel | ''>('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
+  const [range, setRange] = useState({ from: '', to: '' })
+  const { from, to } = range
+  const known = useProfilesQuery().data
   const [live, setLive] = useState(true)
   const configured = settings ? settings.audit_log_path.trim() !== '' : undefined
   // Without the settings (they failed to load) the log is still worth showing.
   const showLog = configured === true || (settingsError != null && !settings)
-  const rangeBad = badRange(from, to)
 
   const query = useAuditLog(
-    { profile, level, from: rangeBad ? '' : from, to: rangeBad ? '' : to },
+    { profile, level, from, to },
     live && configured !== false,
     configured !== false,
   )
   const rows = useMemo(() => query.data?.pages.flatMap((p) => p.events), [query.data])
-  const profiles = useMemo(() => [...new Set((rows ?? []).map((e) => e.profile).filter(Boolean))].sort(), [rows])
+  // Configured profiles plus any name the log mentions (a profile renamed or deleted since).
+  const profiles = useMemo(
+    () => [...new Set([...(known ?? []).map((p) => p.name), ...(rows ?? []).map((e) => e.profile)].filter(Boolean))].sort(),
+    [known, rows],
+  )
   const filtered = profile !== '' || level !== '' || from !== '' || to !== ''
 
   const fmt = useMemo(() => new Intl.DateTimeFormat(lang, { dateStyle: 'short', timeStyle: 'medium' }), [lang])
@@ -109,16 +112,10 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
     [t, fmt],
   )
 
-  const applyProfile = (e: FormEvent) => {
-    e.preventDefault()
-    setProfile(profileInput.trim())
-  }
   const clear = () => {
-    setProfileInput('')
     setProfile('')
     setLevel('')
-    setFrom('')
-    setTo('')
+    setRange({ from: '', to: '' })
   }
   const exportRows = () => {
     if (!rows) return
@@ -211,51 +208,24 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
 
       {showLog && (
         <div className="k-audit__filters" role="group" aria-label={t('activity.audit.filters')}>
-          <form onSubmit={applyProfile} className="k-audit__profile">
-            <TextField
-              label={t('activity.audit.profile')}
-              hint={t('activity.audit.profile.hint')}
-              mono
-              list="audit-profiles"
-              placeholder={t('activity.audit.profile.any')}
-              autoComplete="off"
-              spellCheck={false}
-              value={profileInput}
-              onChange={(e) => setProfileInput(e.target.value)}
-              onBlur={() => {
-                if (profileInput.trim() !== profile) setProfile(profileInput.trim())
-              }}
-            />
-            <datalist id="audit-profiles">
-              {profiles.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          </form>
-          <SelectField label={t('activity.audit.level')} value={level} onChange={(e) => setLevel(e.target.value as AuditLevel | '')}>
-            <option value="">{t('activity.audit.level.all')}</option>
-            {AUDIT_LEVELS.map((l) => (
-              <option key={l} value={l}>
-                {t(LEVEL[l].label)}
-              </option>
-            ))}
-          </SelectField>
-          <TextField
-            type="date"
-            label={t('activity.audit.from')}
-            value={from}
-            max={to || undefined}
-            onChange={(e) => setFrom(e.target.value)}
-            error={rangeBad ? { message: t('activity.audit.range.invalid'), fix: t('activity.audit.range.invalid.fix') } : null}
+          <ComboboxField
+            label={t('activity.audit.profile')}
+            hint={t('activity.audit.profile.hint')}
+            mono
+            allowCustom
+            value={profile}
+            onChange={setProfile}
+            placeholder={t('activity.audit.profile.any')}
+            emptyText={t('kit.select.empty')}
+            options={[{ value: '', label: t('activity.audit.profile.any') }, ...profiles.map((p) => ({ value: p, label: p }))]}
           />
-          <TextField
-            type="date"
-            label={t('activity.audit.to')}
-            hint={t('activity.audit.range.note')}
-            value={to}
-            min={from || undefined}
-            onChange={(e) => setTo(e.target.value)}
+          <SelectField<AuditLevel | ''>
+            label={t('activity.audit.level')}
+            value={level}
+            onChange={setLevel}
+            options={[{ value: '', label: t('activity.audit.level.all') }, ...AUDIT_LEVELS.map((l) => ({ value: l, label: t(LEVEL[l].label) }))]}
           />
+          <DateRangeField label={t('activity.audit.dates')} hint={t('activity.audit.range.note')} value={range} onChange={setRange} />
           <div className="k-audit__live">
             <Switch
               checked={live}

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, vi } from 'vitest'
 import { authState } from '../api/auth'
 import { connection, liveState } from '../data/connection'
 import { toasts } from '../data/toast'
+import { resetTransitions } from '../data/transition'
 
 // Pages load on demand (route `lazy`, ADR-0041). In a test, the first visit
 // to a page used to transform and import its module inside the test, after
@@ -30,6 +31,7 @@ beforeEach(() => {
 
 afterEach(() => {
   toasts.clear()
+  resetTransitions()
   authState.set('ok')
   connection.set('unknown')
   liveState.set('connecting')
@@ -38,6 +40,22 @@ afterEach(() => {
   vi.unstubAllGlobals()
   localStorage.clear()
 })
+
+// jsdom's UA stylesheet hides [popover]:not(:popover-open) but jsdom has no
+// showPopover(), so the kit's floating layers (menu, listbox, tooltip,
+// calendar; floating.ts) would stay hidden from queries. They are mounted
+// only while open, so showing every popover is the browser's behaviour.
+const popoverStyle = document.createElement('style')
+popoverStyle.textContent = '[popover] { display: block !important; }'
+document.head.append(popoverStyle)
+// Floating UI reads ResizeObserver in autoUpdate; jsdom has none.
+if (!('ResizeObserver' in window)) {
+  ;(window as unknown as { ResizeObserver: unknown }).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
 
 // jsdom has no matchMedia; default to a light system scheme.
 if (!window.matchMedia) {

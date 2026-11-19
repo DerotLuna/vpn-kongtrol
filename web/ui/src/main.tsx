@@ -1,4 +1,4 @@
-// Kongtrol UI entry · v0.2.0 · 2026-11-18
+// Kongtrol UI entry · v0.3.0 · 2026-11-19
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 // Self-hosted fonts (assets/brand/fonts, shared with the dashboard and the
@@ -9,6 +9,7 @@ import { startAuth } from './api/auth'
 import { applyTheme, initialTheme } from './theme/theme'
 import './theme/global.css'
 import './theme/kit.css'
+import './theme/kit-controls.css'
 import './theme/shell.css'
 
 // Set the theme before the first render to avoid a flash.

@@ -1,4 +1,4 @@
-// Kongtrol UI kit — Button / IconButton · v0.1.0 · 2026-11-18
+// Kongtrol UI kit — Button / IconButton · v0.2.0 · 2026-11-19
 //
 // Variants follow Material 3's emphasis ladder mapped to DESIGN.md:
 // filled = the one primary action (amber), tonal = secondary emphasis,
@@ -42,21 +42,28 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   label: string
   icon: ReactNode
   variant?: 'standard' | 'outlined'
+  /** md = 44px (default), sm = 36px: the same height as a small Button beside it. */
+  size?: ButtonSize
   pressed?: boolean
+  /** Busy: a spinner replaces the icon (aria-busy); the name stays. */
+  loading?: boolean
+  /** A longer tooltip than the name (it then describes the button). */
+  tip?: string
 }
 
-/** 44px square; the label is the accessible name and the tooltip (WCAG 1.4.13). */
-export function IconButton({ label, icon, variant = 'standard', pressed, className = '', type = 'button', ...rest }: IconButtonProps) {
+/** Square, 44px (sm 36px); the label is the accessible name and the tooltip (WCAG 1.4.13). */
+export function IconButton({ label, icon, variant = 'standard', size = 'md', pressed, loading = false, tip, className = '', type = 'button', ...rest }: IconButtonProps) {
   return (
-    <Tooltip content={label}>
+    <Tooltip content={tip ?? label} {...(tip ? { describe: true } : {})}>
       <button
         type={type}
         aria-label={label}
         aria-pressed={pressed}
-        className={`k-icon-btn k-icon-btn--${variant} ${className}`.trim()}
+        aria-busy={loading || undefined}
+        className={`k-icon-btn k-icon-btn--${variant} k-icon-btn--${size} ${className}`.trim()}
         {...rest}
       >
-        {icon}
+        {loading ? <span className="k-spinner" aria-hidden="true" /> : icon}
       </button>
     </Tooltip>
   )

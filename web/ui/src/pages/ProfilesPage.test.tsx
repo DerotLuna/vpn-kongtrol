@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
 import { RESTART_TIMING, resetRestartPhase, type VPNProfile } from '../data/profiles'
-import { FakeSocket, helperReady, json, stubFetch, tunnel, type Routes } from '../test/fakes'
+import { FakeSocket, helperReady, json, pickOption, stubFetch, tunnel, type Routes } from '../test/fakes'
 
 function profile(name: string, extra: Partial<VPNProfile> = {}): VPNProfile {
   return {
@@ -232,13 +232,13 @@ describe('ProfilesPage', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Edit work' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit work' })
     const add = within(dialog).getByRole('combobox', { name: 'Backup VPN to add' })
-    await userEvent.selectOptions(add, 'home')
+    await pickOption(userEvent.setup(), add, 'home')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add backup' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
     expect(await within(dialog).findByText('The backups form a loop: work → home → work.')).toBeInTheDocument()
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Remove home' }))
-    await userEvent.selectOptions(within(dialog).getByRole('combobox', { name: 'Backup VPN to add' }), 'spare')
+    await pickOption(userEvent.setup(), within(dialog).getByRole('combobox', { name: 'Backup VPN to add' }), 'spare')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Add backup' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
     await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/work?reconnect=true')).toMatchObject({ failover: ['spare'] }))

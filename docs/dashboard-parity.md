@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.6.0 · 2026-11-19
+Version 1.7.0 · 2026-11-19
 
 **Complete.** Every row is ticked or justified (`replaced`, `dropped: ADR-0043`, `n/a`). The legacy
 dashboard was deleted and the new UI moved to `/` ([ADR-0043](adr/0043-new-dashboard-replaces-classic.md)).
@@ -447,8 +447,8 @@ Table / states / notices
 
 #### `select.js`
 
-- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: replaced by the native `<select>` (components/ui/Field.tsx `SelectField`): keyboard and screen readers for free; custom widget dropped: ADR-0043
-- [x] Keyboard: ArrowDown/Enter/Space opens, arrows move, Enter/Space selects, Escape closes, focus returns to trigger — legacy select.js:47-56, 69, 81-85 — target shared component — status: done by the native `<select>` (components/ui/Field.tsx `SelectField`)
+- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: done by the kit `Select` (components/ui/Select.tsx, APG select-only combobox; listeners only while open, so the legacy leak cannot return), used by `SelectField` and every former `<select>`; ADR-0043 first kept the native `<select>`, ADR-0064 replaced it at the owner's request (2026-11-19)
+- [x] Keyboard: ArrowDown/Enter/Space opens, arrows move, Enter/Space selects, Escape closes, focus returns to trigger — legacy select.js:47-56, 69, 81-85 — target shared component — status: done by the kit `Select` (plus Home/End, PageUp/PageDown, type-ahead; tests in components/ui/kit.test.tsx)
 
 #### `i18n.js`
 

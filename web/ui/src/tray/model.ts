@@ -1,9 +1,10 @@
-// Kongtrol UI — tray flyout state rules · v1.0.0 · 2026-11-18
+// Kongtrol UI — tray flyout state rules · v1.1.0 · 2026-11-19
 //
 // Pure functions so the Four States rule (DESIGN.md) is tested without
 // rendering: connected = live, connecting = steel, no response = caution,
 // error = danger; every state also has a word.
 import type { Group, SecurityStatus, TunnelMetrics } from '../api/types'
+import { transitionSettled } from '../data/transition'
 import type { MessageKey } from '../i18n/messages'
 
 /** What the user just asked for and the feed has not confirmed yet. */
@@ -52,11 +53,13 @@ export function rowState(tn: TunnelMetrics, pending?: Pending): RowState {
   return { tone: 'idle', word: 'tray.status.disconnected', on: false, busy: false, note: null }
 }
 
-/** Whether the feed now shows what the user asked for. */
+/**
+ * Whether the feed now shows that what the user asked for ended: the same
+ * rule as the panel (data/transition.ts) — connected, an error or a failed
+ * attempt (last_error), or a provider app now waiting for the user.
+ */
 export function pendingDone(tn: TunnelMetrics | undefined, pending: Pending): boolean {
-  if (!tn) return true
-  if (pending === 'connect') return tn.Status === 'connected' || tn.Status === 'error'
-  return tn.Status === 'disconnected' || tn.Status === 'error'
+  return transitionSettled(tn, pending, { connectedAt: '', sawProgress: false })
 }
 
 export interface Aggregate {

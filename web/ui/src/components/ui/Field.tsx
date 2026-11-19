@@ -1,11 +1,14 @@
-// Kongtrol UI kit — form fields · v0.1.0 · 2026-11-18
+// Kongtrol UI kit — form fields · v0.2.0 · 2026-11-19
 //
 // Visible label above the control (never placeholder-only), optional hint,
 // and an inline error that names the problem plus one "what to do" line
 // (WCAG 3.3.1 / 3.3.3; the daemon's `hint` fits the fix slot as is). The
 // error is linked with aria-describedby and the control gets aria-invalid.
 // Validation runs on blur / submit, not on every keystroke.
-import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import type { DateRange } from './dates'
+import { DateRangePicker } from './DateRangePicker'
+import { Combobox, Select, type SelectOption } from './Select'
 
 export interface FieldError {
   message: string
@@ -19,7 +22,7 @@ interface FieldShellProps {
   required?: boolean
   /** Machine-like values (IPs, CIDRs, paths) read in mono (DESIGN.md). */
   mono?: boolean
-  children: (ids: { id: string; describedBy: string | undefined; invalid: boolean }) => ReactNode
+  children: (ids: { id: string; labelId: string; describedBy: string | undefined; invalid: boolean }) => ReactNode
 }
 
 function FieldShell({ label, hint, error, required, children }: FieldShellProps) {
@@ -29,11 +32,11 @@ function FieldShell({ label, hint, error, required, children }: FieldShellProps)
   const describedBy = [errId, hintId].filter(Boolean).join(' ') || undefined
   return (
     <div className="k-field" data-invalid={error ? true : undefined}>
-      <label htmlFor={id} className="k-field__label">
+      <label htmlFor={id} id={`${id}-label`} className="k-field__label">
         {label}
         {required && <span aria-hidden="true"> *</span>}
       </label>
-      {children({ id, describedBy, invalid: !!error })}
+      {children({ id, labelId: `${id}-label`, describedBy, invalid: !!error })}
       {error && (
         <p id={errId} className="k-field__error">
           <strong>{error.message}</strong>
@@ -69,28 +72,69 @@ export function TextField({ label, hint, error, required, mono, className = '', 
   )
 }
 
-export function SelectField({
+/** The kit Select (own listbox, not the browser's <select>) with label, hint and error. */
+export function SelectField<V extends string>({
   label,
   hint,
   error,
   required,
-  className = '',
-  children,
+  mono,
   ...rest
-}: Shared & SelectHTMLAttributes<HTMLSelectElement> & { children: ReactNode }) {
+}: Shared & {
+  value: V
+  onChange: (value: V) => void
+  options: readonly SelectOption<V>[]
+  disabled?: boolean
+  placeholder?: string
+  className?: string
+  name?: string
+}) {
   return (
     <FieldShell label={label} hint={hint} error={error ?? null} {...(required ? { required } : {})}>
-      {({ id, describedBy, invalid }) => (
-        <select
-          id={id}
-          className={`k-input k-select ${className}`.trim()}
-          aria-describedby={describedBy}
-          aria-invalid={invalid || undefined}
-          required={required}
-          {...rest}
-        >
-          {children}
-        </select>
+      {({ id, labelId, describedBy, invalid }) => (
+        <Select id={id} aria-labelledby={labelId} aria-describedby={describedBy} aria-invalid={invalid || undefined} mono={mono} {...rest} />
+      )}
+    </FieldShell>
+  )
+}
+
+/** The kit Combobox (type to filter a list) with label, hint and error. */
+export function ComboboxField({
+  label,
+  hint,
+  error,
+  required,
+  mono,
+  ...rest
+}: Shared & {
+  value: string
+  onChange: (value: string) => void
+  options: readonly SelectOption[]
+  placeholder?: string
+  allowCustom?: boolean
+  emptyText?: string
+  className?: string
+}) {
+  return (
+    <FieldShell label={label} hint={hint} error={error ?? null} {...(required ? { required } : {})}>
+      {({ id, labelId, describedBy, invalid }) => (
+        <Combobox id={id} aria-labelledby={labelId} aria-describedby={describedBy} aria-invalid={invalid || undefined} mono={mono} {...rest} />
+      )}
+    </FieldShell>
+  )
+}
+
+/** The kit DateRangePicker (one "Desde–Hasta" control with presets) with label, hint and error. */
+export function DateRangeField({
+  label,
+  hint,
+  error,
+  ...rest
+}: Omit<Shared, 'mono' | 'required'> & { value: DateRange; onChange: (value: DateRange) => void; max?: string }) {
+  return (
+    <FieldShell label={label} hint={hint} error={error ?? null}>
+      {({ id, labelId, describedBy, invalid }) => (
+        <DateRangePicker id={id} aria-labelledby={labelId} aria-describedby={describedBy} aria-invalid={invalid || undefined} {...rest} />
       )}
     </FieldShell>
   )

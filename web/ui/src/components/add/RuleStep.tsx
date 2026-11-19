@@ -132,7 +132,7 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
           <span>{t('add.rule.noVpn.fix')}</span>
         </Banner>
         <footer className="k-dialog__actions k-add__actions">
-          <Button variant="outlined" icon={<ArrowLeftIcon />} onClick={onBack}>
+          <Button variant="text" className="k-add__back" icon={<ArrowLeftIcon />} onClick={onBack}>
             {t('add.back')}
           </Button>
         </footer>
@@ -209,14 +209,15 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
           <span>{t('add.rule.subs')}</span>
         </label>
       )}
-      <SelectField label={t('add.rule.via')} value={draft.via} onChange={(e) => onChange({ via: e.target.value })} error={viaError}>
-        <option value="">{t('add.rule.via.pick')}</option>
-        {profiles.map((p) => (
-          <option key={p} value={p}>
-            {t(state(p) === 'connected' ? 'add.rule.via.on' : 'add.rule.via.off', { name: p })}
-          </option>
-        ))}
-      </SelectField>
+      <SelectField
+        label={t('add.rule.via')}
+        value={draft.via}
+        onChange={(via) => onChange({ via })}
+        error={viaError}
+        mono
+        placeholder={t('add.rule.via.pick')}
+        options={profiles.map((p) => ({ value: p, label: t(state(p) === 'connected' ? 'add.rule.via.on' : 'add.rule.via.off', { name: p }) }))}
+      />
       <fieldset className="k-add-radios" aria-invalid={downError ? true : undefined}>
         <legend className="k-field__label">{t('add.rule.down')}</legend>
         {(['allow', 'block'] as const).map((v) => (
@@ -272,7 +273,7 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
       </details>
 
       <footer className="k-dialog__actions k-add__actions">
-        <Button variant="outlined" icon={<ArrowLeftIcon />} onClick={onBack}>
+        <Button variant="text" className="k-add__back" icon={<ArrowLeftIcon />} onClick={onBack}>
           {t('add.back')}
         </Button>
         <Button type="submit" loading={save.isPending}>

@@ -188,8 +188,8 @@ button.r-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 
 .r-preview svg { width: 20px; height: 20px; flex: none; color: var(--text-dim); margin-top: 2px; }
 .r-preview__label { font-weight: 600; }
 
-/* Phone cards (DataList under 640px): actions sit on one line at the right. */
-@media (max-width: 639px) {
+/* Cards (DataList narrower than 680px): actions sit on one line at the right. */
+@container datalist (max-width: 679px) {
   .r-list .k-datalist td:last-child { width: auto; justify-content: flex-end; }
   .r-list .k-datalist .r-chips { justify-content: flex-end; }
 }

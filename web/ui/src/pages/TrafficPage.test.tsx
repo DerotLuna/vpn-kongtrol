@@ -9,7 +9,7 @@ import { PreferencesProvider } from '../app/PreferencesProvider'
 import { keys } from '../data/keys'
 import { createQueryClient } from '../data/queryClient'
 import { trafficHistory, type Policy, type TunnelRoutesResponse } from '../data/traffic'
-import { json, stubFetch, tunnel, type Routes } from '../test/fakes'
+import { json, pickOption, stubFetch, tunnel, type Routes } from '../test/fakes'
 import { TrafficPage } from './TrafficPage'
 
 const at = (s: number) => new Date(Date.UTC(2026, 10, 18, 12, 0, s)).toISOString()
@@ -236,7 +236,7 @@ describe('TrafficPage', () => {
     expect(await screen.findByText('2 de 2 rutas')).toBeInTheDocument()
     expect(screen.getByText('Wi-Fi (métrica 25)')).toBeInTheDocument()
     expect(screen.getByText('Desactivada (actívala en Seguridad)')).toBeInTheDocument()
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Mostrar' }), 'profile:work')
+    await pickOption(user, screen.getByRole('combobox', { name: 'Mostrar' }), /work/)
     expect(screen.getByText('1 de 2 rutas')).toBeInTheDocument()
     expect(screen.getByText('work · tun0')).toBeInTheDocument()
   })

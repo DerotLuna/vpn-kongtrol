@@ -170,13 +170,12 @@ function RoutesTable({ policies, tunnelRoutes }: Props) {
   return (
     <div className="tr-sysroutes" aria-busy={q.isFetching || undefined}>
       <div className="tr-sysroutes__bar">
-        <SelectField label={t('traffic.system.filter')} value={current} onChange={(e) => setFilter(e.target.value)}>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {optionLabel(o, t)}
-            </option>
-          ))}
-        </SelectField>
+        <SelectField
+          label={t('traffic.system.filter')}
+          value={current}
+          onChange={setFilter}
+          options={options.map((o) => ({ value: o.value, label: optionLabel(o, t) }))}
+        />
         <Button variant="outlined" icon={<RefreshIcon />} onClick={refresh} loading={q.isRefetching}>
           {t('traffic.system.refresh')}
         </Button>

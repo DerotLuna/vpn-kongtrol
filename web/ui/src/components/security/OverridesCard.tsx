@@ -2,9 +2,9 @@
 //
 // Decision in docs/dashboard-parity.md §2: the editable override lives here
 // (/security#profile-overrides); /profiles shows it read-only. Each change
-// is optimistic and rolls back with a toast if the daemon refuses. A
-// native <select> (keyboard and screen readers for free; the classic
-// panel's custom select leaked listeners: parity §5.1 #10).
+// is optimistic and rolls back with a toast if the daemon refuses. The kit
+// Select (APG select-only combobox; it adds listeners only while open, so
+// the classic panel's leak, parity §5.1 #10, cannot come back).
 import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
@@ -12,6 +12,7 @@ import { useOverride, useProfiles, type KillSwitchOverride, type ProfileSummary 
 import { Card } from '../ui/Card'
 import { DataList, type Column } from '../ui/DataList'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
+import { Select } from '../ui/Select'
 import { StatusPill } from '../ui/StatusPill'
 
 export function OverridesCard({ globalOn }: { globalOn: boolean }) {
@@ -31,18 +32,17 @@ export function OverridesCard({ globalOn }: { globalOn: boolean }) {
         id: 'setting',
         header: t('security.override.col.setting'),
         cell: (p) => (
-          <select
-            className="k-input k-select sec-select"
+          <Select<KillSwitchOverride>
+            className="sec-select"
             aria-label={t('security.override.label', { name: p.name })}
             value={p.kill_switch_override || 'inherit'}
-            onChange={(e) => mutate({ name: p.name, override: e.target.value as KillSwitchOverride })}
-          >
-            <option value="inherit">
-              {t('security.override.inherit', { state: globalOn ? t('security.on') : t('security.off') })}
-            </option>
-            <option value="on">{t('security.override.on')}</option>
-            <option value="off">{t('security.override.off')}</option>
-          </select>
+            onChange={(override) => mutate({ name: p.name, override })}
+            options={[
+              { value: 'inherit', label: t('security.override.inherit', { state: globalOn ? t('security.on') : t('security.off') }) },
+              { value: 'on', label: t('security.override.on') },
+              { value: 'off', label: t('security.override.off') },
+            ]}
+          />
         ),
       },
       {

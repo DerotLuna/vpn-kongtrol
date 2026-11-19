@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../App'
 import { messages } from '../../i18n/messages'
-import { helperReady, json, stubFetch, type Routes } from '../../test/fakes'
+import { helperReady, json, pickOption, stubFetch, type Routes } from '../../test/fakes'
 import type { SecuritySettings, SecurityState } from '../../data/security'
 import { dnsView, isDuration, isIP, killSwitchView, leakPhase } from './model'
 import { expectedMap, expectedProblems, expectedRows, invalidEndpoints, lanPatch, parseEndpoints } from '../../data/security'
@@ -146,10 +146,10 @@ describe('Seguridad page', () => {
   it('per-profile override saves at once and rolls back if refused', async () => {
     const fetchMock = setup({ 'PUT /api/v1/vpns/oficina/killswitch': () => json({ error: 'vpn profile not found' }, 404) })
     const select = await screen.findByRole('combobox', { name: 'Kill switch de oficina' })
-    await userEvent.selectOptions(select, 'off')
+    await pickOption(userEvent.setup(), select, 'Siempre apagado')
     const call = posts(fetchMock, '/api/v1/vpns/oficina/killswitch')[0]
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ override: 'off' })
-    await waitFor(() => expect(select).toHaveValue('inherit'))
+    await waitFor(() => expect(select).toHaveTextContent(/Como el general/))
     expect(await screen.findByText('vpn profile not found')).toBeInTheDocument()
   })
 

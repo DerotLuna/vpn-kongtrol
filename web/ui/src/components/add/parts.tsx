@@ -32,7 +32,7 @@ export function ActivateFooter({ phase, onBack, onRetry }: { phase: ActivatePhas
         </p>
       )}
       <footer className="k-dialog__actions k-add__actions">
-        <Button variant="outlined" icon={<ArrowLeftIcon />} onClick={onBack} disabled={busy}>
+        <Button variant="text" className="k-add__back" icon={<ArrowLeftIcon />} onClick={onBack} disabled={busy}>
           {t('add.back')}
         </Button>
         {phase !== 'restartFailed' && (

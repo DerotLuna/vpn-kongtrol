@@ -78,7 +78,7 @@
 .tr-rule-name { display: inline-flex; flex-direction: column; gap: 4px; align-items: flex-start; }
 .tr-ips__list { list-style: none; display: flex; flex-direction: column; gap: 4px; padding: 4px 0 6px; font-size: 13px; }
 .tr-ips__exp { color: var(--text-dim); font-variant-numeric: tabular-nums; }
-@media (max-width: 639px) {
+@container datalist (max-width: 679px) {
   .tr-rules .k-datalist td { flex-wrap: wrap; }
   .tr-ips { text-align: left; }
 }

@@ -95,11 +95,6 @@ export function useAuditLog(q: AuditQuery, live: boolean, enabled = true) {
   })
 }
 
-/** "Desde" after "Hasta" (the daemon refuses it with api.err.audit_range). */
-export function badRange(from: string, to: string): boolean {
-  return from !== '' && to !== '' && from > to
-}
-
 export type SignatureState = 'verified' | 'tampered' | 'unsigned'
 
 /** Firma válida / no válida / sin firma (a signed entry the daemon could not verify is "no válida"). */
