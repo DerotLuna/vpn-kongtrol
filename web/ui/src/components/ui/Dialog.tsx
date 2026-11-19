@@ -1,4 +1,4 @@
-// Kongtrol UI kit — Dialog / Sheet · v0.1.0 · 2026-11-18
+// Kongtrol UI kit — Dialog / Sheet · v0.2.0 · 2026-11-19
 //
 // Native <dialog> + showModal(): the browser makes the rest of the page
 // inert, traps focus, closes on Esc and restores focus to the opener (MDN,
@@ -21,11 +21,13 @@ interface DialogProps {
   /** Buttons; the first in DOM order is the safe one (Cancel). */
   actions?: ReactNode
   variant?: 'dialog' | 'sheet'
+  /** Extra class on the <dialog> (e.g. a wider sheet). */
+  className?: string
   /** alertdialog for confirmations that interrupt (WAI-ARIA APG). */
   alert?: boolean
 }
 
-export function Dialog({ open, onClose, title, description, children, actions, variant = 'dialog', alert = false }: DialogProps) {
+export function Dialog({ open, onClose, title, description, children, actions, variant = 'dialog', alert = false, className = '' }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
   const id = useId()
   const { t } = usePreferences()
@@ -45,7 +47,7 @@ export function Dialog({ open, onClose, title, description, children, actions, v
   return (
     <dialog
       ref={ref}
-      className={`k-dialog k-dialog--${variant}`}
+      className={`k-dialog k-dialog--${variant} ${className}`.trim()}
       role={alert ? 'alertdialog' : undefined}
       aria-labelledby={`${id}-t`}
       aria-describedby={description ? `${id}-d` : undefined}

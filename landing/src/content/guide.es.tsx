@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 2.6.2 · 2026-11-19.
+// Version 2.7.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -507,7 +507,7 @@ $ kongtrol status --watch`,
     // feature:dashboard
     dashboard1: <>Dashboard web</>,
     dashboard2: <>Ábrelo desde el ícono de la bandeja («Abrir panel») o con <IC c="kongtrol dashboard" />: se abre en
-                tu navegador ya autorizado. Escribir la dirección a mano no basta, por seguridad. Es una consola de gestión completa, con siete secciones:</>,
+                tu navegador ya autorizado. Escribir la dirección a mano no basta, por seguridad. Arriba, el botón «＋ Agregar» conecta una VPN que ya usas, importa un archivo .conf u .ovpn (también puedes soltarlo sobre el panel) o hace que un sitio salga por una VPN, en una sola frase. Es una consola de gestión completa, con siete secciones:</>,
     dashboard3: <>Página</>,
     dashboard4: <>Qué hace</>,
     dashName1: <>Inicio</>,
@@ -517,7 +517,7 @@ $ kongtrol status --watch`,
     dashName3: <>Reglas</>,
     dashDesc3: <>Qué sitios, redes y apps salen por cada VPN, con prueba antes de guardar y qué pasa si su VPN está apagada; pestaña Horarios para conectar o desconectar a ciertas horas</>,
     dashName4: <>Tráfico</>,
-    dashDesc4: <>Tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas de cada túnel y la tabla de rutas del equipo</>,
+    dashDesc4: <>Tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas de cada túnel, la tabla de rutas del equipo las conexiones recientes (solo en memoria; se apagan en Ajustes) con «Hacer que esto salga por…»</>,
     dashName5: <>Seguridad</>,
     dashDesc5: <>Kill Switch y DNS Guard en vivo con sus ajustes, interruptor por perfil, DNS dividido y la consulta opcional de IP pública (apagada por defecto) con botón Revisar</>,
     dashName6: <>Actividad</>,

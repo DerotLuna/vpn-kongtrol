@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 2.6.2 · 2026-11-19.
+// Version 2.7.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -509,7 +509,7 @@ $ kongtrol status --watch`,
     // feature:dashboard
     dashboard1: <>Web dashboard</>,
     dashboard2: <>Open it from the tray icon ("Open dashboard") or with <IC c="kongtrol dashboard" />: it opens in
-                your browser already authorized. Typing the address by hand is not enough, for security. It's a full management console, with seven sections:</>,
+                your browser already authorized. Typing the address by hand is not enough, for security. At the top, the “＋ Add” button connects a VPN you already use, imports a .conf or .ovpn file (you can also drop it on the dashboard) or sends a site through a VPN, in one sentence. It's a full management console, with seven sections:</>,
     dashboard3: <>Page</>,
     dashboard4: <>What it does</>,
     dashName1: <>Home</>,
@@ -519,7 +519,7 @@ $ kongtrol status --watch`,
     dashName3: <>Rules</>,
     dashDesc3: <>Which sites, networks and apps go through each VPN, tested before saving, and what happens when their VPN is off; Schedule tab to connect or disconnect at set times</>,
     dashName4: <>Traffic</>,
-    dashDesc4: <>Traffic per VPN over time, where a site or IP goes out, each tunnel's routes and the computer's route table</>,
+    dashDesc4: <>Traffic per VPN over time, where a site or IP goes out, each tunnel's routes, the computer's route table and recent connections (memory only; turn them off in Settings) with “Send this through…”</>,
     dashName5: <>Security</>,
     dashDesc5: <>Live Kill Switch and DNS Guard with their settings, per-profile switch, split DNS and the optional public IP lookup (off by default) with a Check button</>,
     dashName6: <>Activity</>,

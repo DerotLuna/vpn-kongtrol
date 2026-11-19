@@ -1,4 +1,4 @@
-// Kongtrol UI — the guided profile form · v1.1.0 · 2026-11-18
+// Kongtrol UI — the guided profile form · v1.2.0 · 2026-11-19
 //
 // Only the fields the chosen VPN type uses, in four short sections:
 // what it is, how it connects, how it signs in, what happens if it drops.
@@ -11,7 +11,6 @@ import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
 import type { AdapterType, VPNProfile } from '../../data/profiles'
 import type { MessageKey } from '../../i18n/messages'
-import { Button } from '../ui/Button'
 import { SelectField, TextField, type FieldError } from '../ui/Field'
 import { StatusPill } from '../ui/StatusPill'
 import { Switch } from '../ui/Switch'
@@ -20,7 +19,6 @@ import { AUTH_METHODS, CATALOG, specOf, type AuthMethod } from './catalog'
 import type { Draft, DraftField, Problems } from './draft'
 import { FailoverEditor } from './FailoverEditor'
 import { ImportFile } from './ImportFile'
-import { ArrowLeftIcon } from './icons'
 
 interface Props {
   draft: Draft
@@ -34,8 +32,6 @@ interface Props {
   editing?: VPNProfile | undefined
   /** Its tunnel is up or connecting: a rename would be refused (api.err.vpn_rename_busy). */
   busy?: boolean
-  /** Back to the VPN tiles (create only). */
-  onPickAnother?: (() => void) | undefined
 }
 
 const AUTH_LABEL: Record<AuthMethod, MessageKey> = {
@@ -64,7 +60,7 @@ function Tech({ yaml }: { yaml: string }) {
   return <span className="kp-yaml mono"> · {yaml}</span>
 }
 
-export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErrors, profiles, editing, busy = false, onPickAnother }: Props) {
+export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErrors, profiles, editing, busy = false }: Props) {
   const { t } = usePreferences()
   const spec = specOf(draft.type)
   const err = (f: DraftField): FieldError | null => {
@@ -136,11 +132,6 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
             <p className="kp-typehead__name">{spec.label}</p>
             <p className="kp-muted kp-small">{t(spec.group === 'attach' ? 'profiles.picker.attach.body' : 'profiles.picker.direct.body')}</p>
             <SupportChip spec={spec} long />
-            {onPickAnother && (
-              <Button variant="text" icon={<ArrowLeftIcon />} onClick={onPickAnother} className="kp-back">
-                {t('profiles.action.back')}
-              </Button>
-            )}
           </div>
         </div>
         <SelectField

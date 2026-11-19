@@ -1,59 +1,73 @@
 package policy
 
 import (
+	"encoding/json"
+	"os"
 	"reflect"
 	"testing"
 )
 
-func TestClassifyTargets(t *testing.T) {
-	cases := []struct {
-		name       string
-		in         []string
-		subdomains bool
-		want       Targets
-		invalid    []string
-	}{
-		{"domain with subdomains", []string{"github.com"}, true,
-			Targets{Domains: []string{"github.com", "*.github.com"}, First: "github.com"}, nil},
-		{"domain without subdomains", []string{"GitHub.com."}, false,
-			Targets{Domains: []string{"github.com"}, First: "github.com"}, nil},
-		{"url becomes its host", []string{"https://Intranet.Example.com:8443/a?b#c"}, true,
-			Targets{Domains: []string{"intranet.example.com", "*.intranet.example.com"}, First: "intranet.example.com"}, nil},
-		{"host with port and path", []string{"example.com:443/x"}, false,
-			Targets{Domains: []string{"example.com"}, First: "example.com"}, nil},
-		{"wildcard kept as written", []string{"*.corp.example"}, true,
-			Targets{Domains: []string{"*.corp.example"}, First: "*.corp.example"}, nil},
-		{"ip and cidr", []string{"10.0.0.5", "10.0.0.0/8", "2001:db8::/32", "::1"}, true,
-			Targets{IPRanges: []string{"10.0.0.5", "10.0.0.0/8", "2001:db8::/32", "::1"}, First: "10.0.0.5"}, nil},
-		{"ip inside a url", []string{"http://192.168.1.10:8080/"}, true,
-			Targets{IPRanges: []string{"192.168.1.10"}, First: "192.168.1.10"}, nil},
-		{"apps", []string{"app:chrome.exe", "APP: C:\\Program Files\\x.exe "}, true,
-			Targets{Apps: []string{"chrome.exe", "C:\\Program Files\\x.exe"}, First: "chrome.exe"}, nil},
-		{"mixed and deduplicated", []string{"a.com", "a.com", "10.1.0.0/16", "app:x"}, true,
-			Targets{Domains: []string{"a.com", "*.a.com"}, IPRanges: []string{"10.1.0.0/16"}, Apps: []string{"x"}, First: "a.com"}, nil},
-		{"invalid entries", []string{"not a host", "app:", "10.0.0.0/99", "", "ok.com"}, false,
-			Targets{Domains: []string{"ok.com"}, First: "ok.com"}, []string{"not a host", "app:", "10.0.0.0/99"}},
+// classifyTable is testdata/classify_targets.json, shared with the
+// dashboard's "＋ Agregar" sheet (web/ui/src/components/add/model.test.ts):
+// both must read the same entries the same way (ADR-0052).
+type classifyTable struct {
+	Cases []struct {
+		Name       string   `json:"name"`
+		In         []string `json:"in"`
+		Subdomains bool     `json:"subdomains"`
+		Domains    []string `json:"domains"`
+		IPRanges   []string `json:"ip_ranges"`
+		Apps       []string `json:"apps"`
+		First      string   `json:"first"`
+		Invalid    []string `json:"invalid"`
+	} `json:"cases"`
+	AutoName []struct {
+		First string `json:"first"`
+		Via   string `json:"via"`
+		Want  string `json:"want"`
+	} `json:"auto_name"`
+}
+
+func loadClassifyTable(t *testing.T) classifyTable {
+	t.Helper()
+	raw, err := os.ReadFile("testdata/classify_targets.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got, invalid := ClassifyTargets(c.in, c.subdomains)
-			if !reflect.DeepEqual(got, c.want) || !reflect.DeepEqual(invalid, c.invalid) {
-				t.Fatalf("got %+v invalid %q, want %+v invalid %q", got, invalid, c.want, c.invalid)
+	var tab classifyTable
+	if err := json.Unmarshal(raw, &tab); err != nil {
+		t.Fatal(err)
+	}
+	if len(tab.Cases) == 0 || len(tab.AutoName) == 0 {
+		t.Fatal("empty table")
+	}
+	return tab
+}
+
+// orNil makes an empty JSON list compare equal to a nil Go slice.
+func orNil(s []string) []string {
+	if len(s) == 0 {
+		return nil
+	}
+	return s
+}
+
+func TestClassifyTargets(t *testing.T) {
+	for _, c := range loadClassifyTable(t).Cases {
+		t.Run(c.Name, func(t *testing.T) {
+			got, invalid := ClassifyTargets(c.In, c.Subdomains)
+			want := Targets{Domains: orNil(c.Domains), IPRanges: orNil(c.IPRanges), Apps: orNil(c.Apps), First: c.First}
+			if !reflect.DeepEqual(got, want) || !reflect.DeepEqual(invalid, orNil(c.Invalid)) {
+				t.Fatalf("got %+v invalid %q, want %+v invalid %q", got, invalid, want, c.Invalid)
 			}
 		})
 	}
 }
 
 func TestAutoName(t *testing.T) {
-	cases := []struct{ first, via, want string }{
-		{"github.com", "oficina", "github.com por oficina"},
-		{`C:\Program Files\App\x.exe`, "casa", "x.exe por casa"},
-		{"/usr/bin/curl", "casa", "curl por casa"},
-		{`a"b<c>`, "v", "abc por v"},
-	}
-	for _, c := range cases {
-		if got := AutoName("%[1]s por %[2]s", c.first, c.via, nil); got != c.want {
-			t.Errorf("AutoName(%q) = %q, want %q", c.first, got, c.want)
+	for _, c := range loadClassifyTable(t).AutoName {
+		if got := AutoName("%[1]s por %[2]s", c.First, c.Via, nil); got != c.Want {
+			t.Errorf("AutoName(%q) = %q, want %q", c.First, got, c.Want)
 		}
 	}
 	long := AutoName("%[1]s por %[2]s", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com", "v", nil)

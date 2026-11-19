@@ -1,9 +1,9 @@
-// Kongtrol UI — "Crea tu primera VPN" (no profiles yet) · v1.0.0 · 2026-11-18
+// Kongtrol UI — "Crea tu primera VPN" (no profiles yet) · v1.1.0 · 2026-11-19
 //
 // The empty state teaches the next step (NN/g; DESIGN.md Operate): three
 // short steps, then the VPN apps found on this computer as one-click
-// starting points, then "another VPN". In setup mode (daemon started with
-// no kongtrol.yaml) Kongtrol restarts on its own after the first save.
+// starting points, then "another VPN". Each opens the shell's "＋ Agregar"
+// sheet (ADR-0052), which saves and then restarts Kongtrol on its own.
 import type { AdapterType, DetectedClient } from '../../data/profiles'
 import { usePreferences } from '../../app/preferences-context'
 import { guideLink } from '../../links'
@@ -34,7 +34,7 @@ export function FirstRun({ setupMode, detected, detecting, onStart }: Props) {
       <ol className="kp-first__steps">
         <li>{t('profiles.first.step1')}</li>
         <li>{t('profiles.first.step2')}</li>
-        <li>{t(setupMode ? 'profiles.first.step3setup' : 'profiles.first.step3')}</li>
+        <li>{t('profiles.first.step3setup')}</li>
       </ol>
 
       <div className="kp-first__found" aria-live="polite" aria-busy={detecting || undefined}>

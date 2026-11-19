@@ -1,7 +1,8 @@
-// Kongtrol UI — app shell · v0.4.0 · 2026-11-18
+// Kongtrol UI — app shell · v0.5.0 · 2026-11-19
 //
 // Layout route for every page (ADR-0038):
-// - Header: logo top-left, aggregate VPN status, help (same place on every
+// - Header: logo top-left, aggregate VPN status, "＋ Agregar" (the add
+//   sheet, ADR-0052), help (same place on every
 //   page, WCAG 3.2.6), language, theme, version.
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent
 //   NavigationView): sidebar with labels ≥ 840px, rail 600–839px, bottom
@@ -19,9 +20,11 @@ import { SECTIONS } from '../../app/sections'
 import { useNoticeToasts } from '../../data/home'
 import { useHelperReadyToast } from '../../data/resources'
 import { GUIDE_URL } from '../../links'
-import { IconButton } from '../ui/Button'
+import { useAddSheet } from '../../app/addLink'
+import { AddSheet } from '../add/AddSheet'
+import { Button, IconButton } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
-import { BookIcon, MoonIcon, MoreIcon, SunIcon } from '../ui/icons'
+import { BookIcon, MoonIcon, MoreIcon, PlusIcon, SunIcon } from '../ui/icons'
 import { Logo } from '../ui/Logo'
 import { Toaster } from '../ui/Toaster'
 import { AggregateStatus, VersionTag } from './AggregateStatus'
@@ -106,6 +109,7 @@ export function AppShell() {
   const { lang, setLang, t, theme, toggleTheme } = usePreferences()
   const { pathname } = useLocation()
   const first = useRef(true)
+  const { open: openAdd } = useAddSheet()
   useHelperReadyToast()
   // Daemon notices (policy, watchdog, update) toast on every page, like the
   // tray; one poll for the whole app, shared with Inicio's list.
@@ -135,6 +139,15 @@ export function AppShell() {
         </Link>
         <AggregateStatus />
         <div className="k-topbar__actions" role="group" aria-label={t('header.toolbar')}>
+          <Button
+            variant="tonal"
+            className="k-topbar__add"
+            icon={<PlusIcon />}
+            aria-haspopup="dialog"
+            onClick={() => openAdd({ mode: 'menu' })}
+          >
+            {t('add.button')}
+          </Button>
           <a className="k-topbar__link" href={GUIDE_URL} target="_blank" rel="noopener noreferrer">
             <BookIcon />
             <span className="k-topbar__label">{t('help.guide')}</span>
@@ -162,6 +175,7 @@ export function AppShell() {
       </main>
       <BottomBar />
       <Toaster />
+      <AddSheet />
       <UnsavedChangesGuard />
     </div>
   )

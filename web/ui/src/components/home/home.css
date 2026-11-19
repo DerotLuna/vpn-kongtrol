@@ -181,3 +181,4 @@
   .home-routes__chevron { transition: none; }
   .home-routes__panel { animation: none; }
 }
+.home-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; min-width: 0; }

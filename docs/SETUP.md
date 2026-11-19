@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.7 · 2026-11-19
+Versión 1.8 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -732,12 +732,15 @@ kongtrol dashboard
 ya autorizado, con un código de un solo uso. Escribir `http://127.0.0.1:9741` a mano no basta:
 la página te pedirá abrirla desde Kongtrol ([ADR-0039](adr/0039-browser-sessions-one-time-nonce.md)).
 Es una consola de gestión completa, no solo
-monitoreo, con estas páginas:
+monitoreo. Arriba, «＋ Agregar» abre una sola hoja para conectar una VPN que ya usas, importar un
+`.conf`/`.ovpn` (también soltándolo sobre el panel) o hacer que un sitio salga por una VPN en una
+frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&target=<sitio>`,
+[ADR-0052](adr/0052-add-sheet-one-entry-point.md)). Las páginas:
 
 - **Inicio** — tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos
 - **Perfiles** — crear, editar, renombrar y borrar perfiles VPN (la contraseña va al llavero del sistema), respaldo (`failover`) y la guía del primer uso; pestaña **Grupos** (crear, editar, conectar o desconectar varias VPN a la vez)
 - **Reglas** — qué sitios, redes y apps salen por cada VPN (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su VPN está apagada; pestaña **Horarios** (conectar o desconectar VPN a ciertas horas)
-- **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel y la tabla de rutas del equipo
+- **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel, la tabla de rutas del equipo y **Recientes** (a dónde se conectó el equipo en la última hora y por dónde salió; se guarda solo en memoria y se apaga en Ajustes › Privacidad) con «Hacer que esto salga por…»
 - **Seguridad** — Kill Switch y DNS Guard en vivo (con sus ajustes), el interruptor por perfil, la IP pública opcional (apagada por defecto) y DNS dividido
 - **Actividad** — registro de auditoría (filtros por fecha, perfil y nivel; firma HMAC comprobada) y los avisos del daemon
 - **Ajustes** — idioma, tema, **Diagnóstico** (las mismas comprobaciones que `kongtrol doctor`, **Reparar** si falta el ayudante, **Exportar configuración** sin contraseñas), comprobación de salud, avisos de versión nueva, ayudante, reiniciar / detener Kongtrol y borrar datos

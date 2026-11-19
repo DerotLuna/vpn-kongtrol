@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Ajustes (/settings): diagnostics, export, update notice, delete my data, system, health · v1.1.0 · 2026-11-18
+// Kongtrol UI strings — Ajustes (/settings): diagnostics, export, update notice, delete my data, system, health · v1.2.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -120,6 +120,8 @@ const es = {
   'settings.publicip.on': 'Activada',
   'settings.publicip.off': 'Apagada',
   'settings.publicip.link': 'Abrir Seguridad',
+  'settings.recent': 'Conexiones recientes (Tráfico)',
+  'settings.recent.what': 'Se guarda solo en memoria, se borra al cerrar Kongtrol.',
 
   'settings.about.title': 'Ayuda y documentos',
   'settings.about.guide': 'Guía de uso',
@@ -243,6 +245,8 @@ const en: Strings<typeof es> = {
   'settings.publicip.on': 'On',
   'settings.publicip.off': 'Off',
   'settings.publicip.link': 'Open Security',
+  'settings.recent': 'Recent connections (Traffic)',
+  'settings.recent.what': 'Kept in memory only, cleared when Kongtrol closes.',
 
   'settings.about.title': 'Help and documents',
   'settings.about.guide': 'User guide',

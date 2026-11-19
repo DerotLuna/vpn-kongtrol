@@ -69,23 +69,6 @@ button.r-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 
 @media (min-width: 840px) { .r-form__grid { grid-template-columns: 1fr 1fr; } }
 .r-form__actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
 
-.r-templates { display: flex; flex-direction: column; gap: 10px; }
-.r-templates__lead { font-size: 14px; color: var(--text-muted); }
-.r-templates__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
-.r-template {
-  display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: 10px 14px; text-align: left;
-  border: 1px solid var(--border-2); border-radius: var(--radius); background: transparent; color: var(--text); cursor: pointer;
-  font: inherit; transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
-}
-.r-template strong { font-size: 14px; }
-.r-template span { font-size: 13px; color: var(--text-muted); }
-.r-template:hover { background: var(--state-hover); border-color: var(--text-dim); }
-.r-template:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
-.r-template[aria-pressed='true'] { background: var(--state-select); border-color: var(--signal-line); }
-
-.r-callout { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; padding: 10px 12px; border-radius: var(--radius); background: var(--steel-soft); }
-.r-callout svg { width: 18px; height: 18px; flex: none; color: var(--steel); margin-top: 2px; }
-
 .r-choice { border: 0; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .r-choice legend { margin-bottom: 8px; padding: 0; }
 .r-choice__item {
@@ -213,5 +196,5 @@ button.r-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 
 
 @media (prefers-reduced-motion: reduce) {
   .r-flow { animation: none; }
-  .r-disclosure > summary::before, .r-day > span[aria-hidden], .r-template, button.r-chip { transition: none; }
+  .r-disclosure > summary::before, .r-day > span[aria-hidden], button.r-chip { transition: none; }
 }

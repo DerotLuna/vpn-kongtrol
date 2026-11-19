@@ -1,50 +1,49 @@
-// Kongtrol UI — "Nueva VPN" / "Editar" sheet · v1.1.0 · 2026-11-18
+// Kongtrol UI — "Editar <perfil>" sheet · v2.0.0 · 2026-11-19
 //
-// A sheet (bottom on phones, centered on wide screens) because creating a
-// VPN is a short focused task with its own steps: 1) which VPN, 2) its
-// details. Editing opens on step 2. Checks run on "Guardar" and then on
-// every change; the daemon's own validation error lands on its field when
-// we know which one, otherwise above the form — always with what to do.
-// Nothing is saved until the daemon accepts, so a refusal never leaves a
-// half-saved profile on screen.
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+// A sheet (bottom on phones, centered on wide screens) with the full guided
+// form. Creating a profile moved to the shell's "＋ Agregar" sheet
+// (components/add, ADR-0052); this one only edits. Checks run on "Guardar"
+// and then on every change; the daemon's own validation error lands on its
+// field when we know which one, otherwise above the form — always with what
+// to do. Nothing is saved until the daemon accepts.
+//
+// A connected profile saves with "Guardar y reconectar": PUT
+// /api/v1/vpns/{name}?reconnect=true, so only this VPN cuts for a few
+// seconds and comes back with the new settings (owner decision, ADR-0052).
+// An older daemon answers `reconnect_required` instead: the toast then
+// offers "Reconectar" (the tunnel reload Inicio uses).
+import { useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
 import { useUnsavedChanges } from '../../app/unsaved'
-import { useSaveProfile, type AdapterType, type DetectedClient, type VPNProfile } from '../../data/profiles'
+import { useTunnelReload } from '../../data/home'
+import { useSaveProfile, type VPNProfile } from '../../data/profiles'
 import { toasts } from '../../data/toast'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
 import type { FieldError } from '../ui/Field'
 import { Banner } from '../ui/States'
-import { checkDraft, emptyDraft, fieldForErrorKey, fromProfile, toRequest, withType, type Draft, type DraftField, type Problems } from './draft'
+import { checkDraft, fieldForErrorKey, fromProfile, toRequest, withType, type Draft, type DraftField, type Problems } from './draft'
 import { localizeError } from './errors'
 import { ProfileForm } from './ProfileForm'
-import { useRestartAction } from './useRestartAction'
-import { TypePicker } from './TypePicker'
 
 interface Props {
   open: boolean
   onClose: () => void
-  /** Profile to edit; undefined = create. */
-  editing?: VPNProfile | undefined
-  /** Create with this type already chosen (skips step 1). */
-  initialType?: AdapterType | undefined
+  editing: VPNProfile
   profiles: readonly VPNProfile[]
-  detected: readonly DetectedClient[]
-  /** First run: after the first profile, restart on our own and go to Inicio. */
-  firstRun: boolean
-  /** The edited profile's tunnel is up or connecting (renaming is refused then). */
+  /** The tunnel is up or connecting (renaming is refused then). */
   busy?: boolean
+  /** The tunnel is connected: saving reconnects it. */
+  connected?: boolean
 }
 
-export function ProfileEditor({ open, onClose, editing, initialType, profiles, detected, firstRun, busy = false }: Props) {
+export function ProfileEditor({ open, onClose, editing, profiles, busy = false, connected = false }: Props) {
   const { t } = usePreferences()
   const save = useSaveProfile()
-  const { restart } = useRestartAction()
-  const [step, setStep] = useState<'pick' | 'form'>(editing || initialType ? 'form' : 'pick')
-  const [draft, setDraft] = useState<Draft>(() => (editing ? fromProfile(editing) : emptyDraft(initialType ?? 'openvpn')))
+  const reload = useTunnelReload()
+  const [draft, setDraft] = useState<Draft>(() => fromProfile(editing))
   // What the sheet opened with: any difference is an unsaved edit.
   const [pristine] = useState(draft)
   useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(pristine))
@@ -53,7 +52,7 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
   const [formError, setFormError] = useState<unknown>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
-  const problems: Problems = tried ? checkDraft(draft, { profiles, editing: editing?.name }) : {}
+  const problems: Problems = tried ? checkDraft(draft, { profiles, editing: editing.name }) : {}
 
   const patch = (p: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...p }))
@@ -65,24 +64,11 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
     })
   }
 
-  // Step 2 starts at its first field; going back starts at the tiles.
-  useEffect(() => {
-    if (!open) return
-    const el = formRef.current?.querySelector<HTMLElement>(step === 'form' ? 'select, input' : '.kp-tile')
-    if (step === 'form' && !editing && !initialType) el?.focus()
-    if (step === 'pick' && formRef.current?.dataset.back) el?.focus()
-  }, [step, open, editing, initialType])
-
-  const pickType = (type: AdapterType) => {
-    setDraft((d) => withType(d, type))
-    setStep('form')
-  }
-
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setTried(true)
     setFormError(null)
-    const found = checkDraft(draft, { profiles, editing: editing?.name })
+    const found = checkDraft(draft, { profiles, editing: editing.name })
     if (Object.keys(found).length > 0) {
       // Move to the first problem (WCAG 3.3.1); the error is linked to it.
       requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], .kp-failover select, .kp-failover button')?.focus())
@@ -90,26 +76,45 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
     }
     const name = draft.name.trim()
     save.mutate(
-      { original: editing?.name, body: toRequest(draft, editing ? 'update' : 'create') },
+      { original: editing.name, body: toRequest(draft, 'update'), reconnect: connected },
       {
         onSuccess: (res) => {
           onClose()
-          if (firstRun && !editing) {
-            void restart({ thenHome: true, progress: t('profiles.setup.saved') })
-            return
-          }
           if (res?.status === 'renamed') {
             toasts.show({
               tone: 'ok',
-              message: t('profiles.toast.renamed', { from: res.previous ?? editing?.name ?? '', to: res.profile }),
+              message: t('profiles.toast.renamed', { from: res.previous ?? editing.name, to: res.profile }),
               detail: t('profiles.toast.renamed.detail'),
               duration: 9_000,
             })
             return
           }
+          if (res?.reconnected) {
+            toasts.show({ tone: 'ok', message: t('profiles.toast.reconnected', { name }) })
+            return
+          }
+          if (res?.reconnect_error) {
+            toasts.show({
+              tone: 'bad',
+              message: t('profiles.toast.reconnectFailed', { name }),
+              detail: `${res.reconnect_error} · ${t('profiles.toast.reconnectFailed.fix')}`,
+              action: { label: t('profiles.action.reconnect'), run: () => reload(name) },
+            })
+            return
+          }
+          if (res?.reconnect_required) {
+            toasts.show({
+              tone: 'info',
+              message: t('profiles.toast.updated', { name }),
+              detail: t('profiles.toast.reconnectToUse'),
+              action: { label: t('profiles.action.reconnect'), run: () => reload(name) },
+              duration: 10_000,
+            })
+            return
+          }
           toasts.show({
             tone: 'ok',
-            message: t(editing ? 'profiles.toast.updated' : 'profiles.toast.created', { name }),
+            message: t('profiles.toast.updated', { name }),
             detail: t('profiles.toast.restartToUse'),
             duration: 7_000,
           })
@@ -129,66 +134,45 @@ export function ProfileEditor({ open, onClose, editing, initialType, profiles, d
     )
   }
 
-  const title = editing
-    ? t('profiles.editor.editTitle', { name: editing.name })
-    : firstRun
-      ? t('profiles.editor.firstTitle')
-      : t('profiles.editor.newTitle')
-  const stepText = editing ? undefined : t('profiles.editor.step', { n: step === 'pick' ? 1 : 2, total: 2 })
   const formErr = formError ? describeError(formError, t) : null
+  const saveLabel = connected
+    ? save.isPending
+      ? t('profiles.action.reconnecting')
+      : t('profiles.action.saveReconnect')
+    : t('profiles.action.save')
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
       variant="sheet"
-      title={title}
-      description={
-        <>
-          {stepText && <span className="kp-step">{stepText} · </span>}
-          {step === 'pick' ? t('profiles.editor.pickLead') : editing ? t('profiles.editor.editLead') : t('profiles.editor.formLead')}
-        </>
-      }
+      title={t('profiles.editor.editTitle', { name: editing.name })}
+      description={t('profiles.editor.editLead')}
     >
       <form ref={formRef} className="kp-editor" onSubmit={submit} noValidate>
-        {step === 'pick' ? (
-          <TypePicker detected={detected} onPick={pickType} />
-        ) : (
-          <>
-            {formErr && (
-              <Banner tone="bad" title={formErr.message} urgent>
-                <span>{formErr.fix}</span>
-              </Banner>
-            )}
-            <ProfileForm
-              draft={draft}
-              onChange={patch}
-              onTypeChange={(type) => setDraft((d) => withType(d, type))}
-              problems={problems}
-              serverErrors={serverErrors}
-              profiles={profiles}
-              editing={editing}
-              busy={busy}
-              onPickAnother={
-                editing
-                  ? undefined
-                  : () => {
-                      if (formRef.current) formRef.current.dataset.back = '1'
-                      setStep('pick')
-                    }
-              }
-            />
-          </>
+        {formErr && (
+          <Banner tone="bad" title={formErr.message} urgent>
+            <span>{formErr.fix}</span>
+          </Banner>
         )}
+        <ProfileForm
+          draft={draft}
+          onChange={patch}
+          onTypeChange={(type) => setDraft((d) => withType(d, type))}
+          problems={problems}
+          serverErrors={serverErrors}
+          profiles={profiles}
+          editing={editing}
+          busy={busy}
+        />
+        {connected && <p className="kp-muted kp-small kp-editor__cut">{t('profiles.editor.reconnectNote')}</p>}
         <footer className="k-dialog__actions kp-editor__actions">
           <Button variant="outlined" onClick={onClose}>
             {t('profiles.action.cancel')}
           </Button>
-          {step === 'form' && (
-            <Button type="submit" loading={save.isPending}>
-              {editing ? t('profiles.action.save') : firstRun ? t('profiles.action.createFirst') : t('profiles.action.create')}
-            </Button>
-          )}
+          <Button type="submit" loading={save.isPending}>
+            {saveLabel}
+          </Button>
         </footer>
       </form>
     </Dialog>

@@ -1,4 +1,4 @@
-// Perfiles (/profiles) — the VPN profiles Kongtrol manages · v1.1.0 · 2026-11-18
+// Perfiles (/profiles) — the VPN profiles Kongtrol manages · v1.2.0 · 2026-11-19
 //
 // Parity contract: docs/dashboard-parity.md §3.2 "Tab: VPN Profiles". Reads
 // profiles, setup state and installed VPN apps once per visit (no polling,
@@ -7,6 +7,7 @@
 // they connect: the banner offers it. With no profiles the page is the
 // first-run guide.
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useAddSheet } from '../app/addLink'
 import { usePreferences } from '../app/preferences-context'
 import { Monogram, ProfilesHeader } from '../components/profiles/Bits'
 import { specOf } from '../components/profiles/catalog'
@@ -36,7 +37,7 @@ import {
 } from '../data/profiles'
 import { useTunnelsQuery } from '../data/resources'
 
-type EditorState = { mode: 'closed' } | { mode: 'create'; type?: AdapterType | undefined; seq: number } | { mode: 'edit'; profile: VPNProfile; seq: number }
+type EditorState = { mode: 'closed' } | { mode: 'edit'; profile: VPNProfile; seq: number }
 
 // Row objects are cached per profile object (structural sharing keeps it
 // identical while unchanged), so a live tick re-renders only the row whose
@@ -90,7 +91,9 @@ export function ProfilesPage() {
   }, [list, tunnels.data, pending])
   const shown = useMemo(() => rows.filter((r) => matchesFilter(r.profile, filter)), [rows, filter])
 
-  const openCreate = useCallback((type?: AdapterType) => setEditor({ mode: 'create', type, seq: ++seq.current }), [])
+  // Creating opens the shell's "＋ Agregar" sheet (ADR-0052).
+  const { open: openAdd } = useAddSheet()
+  const openCreate = useCallback((type?: AdapterType) => openAdd({ mode: 'vpn', ...(type ? { type } : {}) }), [openAdd])
   const onEdit = useCallback((profile: VPNProfile) => setEditor({ mode: 'edit', profile, seq: ++seq.current }), [])
   const onDelete = useCallback((profile: VPNProfile) => setToDelete(profile), [])
   const close = useCallback(() => setEditor({ mode: 'closed' }), [])
@@ -121,8 +124,10 @@ export function ProfilesPage() {
     () => new Set((tunnels.data ?? []).filter((tn) => tn.Status === 'connected' || tn.Status === 'connecting').map((tn) => tn.Name)),
     [tunnels.data],
   )
-
-  const firstRun = !!setup.data?.needs_setup || empty
+  const connectedNames = useMemo(
+    () => new Set((tunnels.data ?? []).filter((tn) => tn.Status === 'connected').map((tn) => tn.Name)),
+    [tunnels.data],
+  )
 
   return (
     <div className="kp-page">
@@ -204,17 +209,15 @@ export function ProfilesPage() {
         </p>
       )}
 
-      {editor.mode !== 'closed' && (
+      {editor.mode === 'edit' && (
         <ProfileEditor
           key={editor.seq}
           open
           onClose={close}
-          editing={editor.mode === 'edit' ? editor.profile : undefined}
-          initialType={editor.mode === 'create' ? editor.type : undefined}
+          editing={editor.profile}
           profiles={list}
-          detected={detected.data ?? []}
-          firstRun={firstRun && editor.mode === 'create'}
-          busy={editor.mode === 'edit' && busyNames.has(editor.profile.name)}
+          busy={busyNames.has(editor.profile.name)}
+          connected={connectedNames.has(editor.profile.name)}
         />
       )}
 

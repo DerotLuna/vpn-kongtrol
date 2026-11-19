@@ -15,6 +15,7 @@ import { Link, useLocation } from 'react-router'
 import { usePreferences } from '../app/preferences-context'
 import { PageHeader } from '../components/layout/PageHeader'
 import { LookupCard } from '../components/traffic/LookupCard'
+import { RecentCard } from '../components/traffic/RecentCard'
 import { SystemRoutes } from '../components/traffic/SystemRoutes'
 import { TunnelTrafficCard } from '../components/traffic/TunnelTrafficCard'
 import { SectionError } from '../components/traffic/SectionError'
@@ -75,6 +76,7 @@ export function TrafficPage({ onCardRender }: TrafficPageProps = {}) {
       <PageHeader title={t('nav.traffic')} lead={t('page.traffic.lead')} />
       <div className="tr-page">
         <LookupCard tunnels={list} routes={tunnelRoutes.data} />
+        <RecentCard />
 
         <section className="tr-tunnels" aria-labelledby="tr-tunnels-title" aria-busy={tunnels.isPending || undefined}>
           <h2 id="tr-tunnels-title" className="tr-section-title">

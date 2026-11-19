@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Perfiles (/profiles) and Grupos (/profiles/groups) · v2.1.0 · 2026-11-18
+// Kongtrol UI strings — Perfiles (/profiles) and Grupos (/profiles/groups) · v2.2.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -70,23 +70,23 @@ const es = {
 
   // Actions
   'profiles.action.new': 'Nueva VPN',
-  'profiles.action.create': 'Crear VPN',
-  'profiles.action.createFirst': 'Crear y activar',
-  'profiles.action.save': 'Guardar cambios',
+  'profiles.action.save': 'Guardar',
+  'profiles.action.saveReconnect': 'Guardar y reconectar',
+  'profiles.action.reconnecting': 'Reconectando…',
+  'profiles.action.reconnect': 'Reconectar',
+  'profiles.editor.reconnectNote': 'Se corta unos segundos solo esta VPN.',
+  'profiles.toast.reconnected': 'VPN «{name}» guardada y reconectada.',
+  'profiles.toast.reconnectFailed': 'VPN «{name}» guardada, pero no se pudo reconectar.',
+  'profiles.toast.reconnectFailed.fix': 'Pulsa «Reconectar»; si sigue igual, desconéctala y vuelve a conectarla.',
+  'profiles.toast.reconnectToUse': 'Reconéctala para usar los cambios: se corta unos segundos solo esta VPN.',
   'profiles.action.cancel': 'Cancelar',
-  'profiles.action.back': 'Elegir otra',
   'profiles.action.delete': 'Borrar',
   'profiles.action.understood': 'Entendido',
   'profiles.action.editName': 'Editar {name}',
   'profiles.action.deleteName': 'Borrar {name}',
 
   // Editor
-  'profiles.editor.newTitle': 'Nueva VPN',
-  'profiles.editor.firstTitle': 'Tu primera VPN',
   'profiles.editor.editTitle': 'Editar {name}',
-  'profiles.editor.step': 'Paso {n} de {total}',
-  'profiles.editor.pickLead': '¿Qué VPN quieres agregar?',
-  'profiles.editor.formLead': 'Completa los datos. Solo ves lo que esta VPN necesita.',
   'profiles.editor.editLead': 'Cambia lo que necesites. La contraseña guardada nunca se muestra.',
   'profiles.picker.attach': 'Con la app que ya usas',
   'profiles.picker.attach.body': 'Conectas en la app oficial, como siempre. Kongtrol detecta el túnel y lo vigila.',
@@ -242,7 +242,6 @@ const es = {
   'profiles.first.lead': 'Tres pasos y listo. No hace falta la terminal.',
   'profiles.first.step1': 'Elige la VPN que usas.',
   'profiles.first.step2': 'Completa los datos que te pide (solo los de esa VPN).',
-  'profiles.first.step3': 'Reinicia Kongtrol para activarla.',
   'profiles.first.step3setup': 'Kongtrol se reinicia solo y la activa.',
   'profiles.first.detecting': 'Buscando VPN instaladas en este equipo…',
   'profiles.first.found': 'Encontramos en este equipo',
@@ -253,7 +252,6 @@ const es = {
   'profiles.first.unsupported': 'También vimos {apps}: Kongtrol aún no las maneja.',
   'profiles.first.other': 'Elegir otra VPN',
   'profiles.first.choose': 'Elegir mi VPN',
-  'profiles.setup.saved': 'Listo · Kongtrol se reinicia para activar tu VPN…',
 
   // Restart
   'profiles.restart.pending': 'Reinicia Kongtrol para usar los cambios',
@@ -383,22 +381,22 @@ const en: Strings<typeof es> = {
   'profiles.onDown.after': ' (allow, block or connect it).',
 
   'profiles.action.new': 'New VPN',
-  'profiles.action.create': 'Create VPN',
-  'profiles.action.createFirst': 'Create and turn on',
-  'profiles.action.save': 'Save changes',
+  'profiles.action.save': 'Save',
+  'profiles.action.saveReconnect': 'Save and reconnect',
+  'profiles.action.reconnecting': 'Reconnecting…',
+  'profiles.action.reconnect': 'Reconnect',
+  'profiles.editor.reconnectNote': 'Only this VPN cuts for a few seconds.',
+  'profiles.toast.reconnected': 'VPN “{name}” saved and reconnected.',
+  'profiles.toast.reconnectFailed': 'VPN “{name}” saved, but it could not reconnect.',
+  'profiles.toast.reconnectFailed.fix': 'Press “Reconnect”; if that does not help, disconnect it and connect it again.',
+  'profiles.toast.reconnectToUse': 'Reconnect it to use the changes: only this VPN cuts for a few seconds.',
   'profiles.action.cancel': 'Cancel',
-  'profiles.action.back': 'Pick another',
   'profiles.action.delete': 'Delete',
   'profiles.action.understood': 'Got it',
   'profiles.action.editName': 'Edit {name}',
   'profiles.action.deleteName': 'Delete {name}',
 
-  'profiles.editor.newTitle': 'New VPN',
-  'profiles.editor.firstTitle': 'Your first VPN',
   'profiles.editor.editTitle': 'Edit {name}',
-  'profiles.editor.step': 'Step {n} of {total}',
-  'profiles.editor.pickLead': 'Which VPN do you want to add?',
-  'profiles.editor.formLead': 'Fill in the details. You only see what this VPN needs.',
   'profiles.editor.editLead': 'Change what you need. The stored password is never shown.',
   'profiles.picker.attach': 'With the app you already use',
   'profiles.picker.attach.body': 'You connect in the official app, as always. Kongtrol detects the tunnel and watches it.',
@@ -548,7 +546,6 @@ const en: Strings<typeof es> = {
   'profiles.first.lead': 'Three steps and done. No terminal needed.',
   'profiles.first.step1': 'Pick the VPN you use.',
   'profiles.first.step2': 'Fill in what it asks for (only that VPN’s details).',
-  'profiles.first.step3': 'Restart Kongtrol to turn it on.',
   'profiles.first.step3setup': 'Kongtrol restarts on its own and turns it on.',
   'profiles.first.detecting': 'Looking for VPN apps installed on this computer…',
   'profiles.first.found': 'Found on this computer',
@@ -559,7 +556,6 @@ const en: Strings<typeof es> = {
   'profiles.first.unsupported': "We also saw {apps}: Kongtrol doesn't handle them yet.",
   'profiles.first.other': 'Pick another VPN',
   'profiles.first.choose': 'Pick my VPN',
-  'profiles.setup.saved': 'Done · Kongtrol is restarting to turn your VPN on…',
 
   'profiles.restart.pending': 'Restart Kongtrol to use the changes',
   'profiles.restart.pendingHint': 'Connected VPNs disconnect and reconnect on their own.',

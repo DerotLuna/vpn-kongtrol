@@ -1,4 +1,4 @@
-// Reglas + Horarios — pure model (no React, no i18n) · v1.0.0 · 2026-11-18
+// Reglas + Horarios — pure model (no React, no i18n) · v1.1.0 · 2026-11-19
 //
 // Drafts, inline validation, overlap detection and the schedule preview,
 // kept pure so they are unit-tested on their own (model.test.ts). The
@@ -201,29 +201,6 @@ export function policyFromPayload(p: PolicyPayload): Policy {
     ip_ranges: p.match.ip_ranges,
     apps: p.match.apps,
     on_tunnel_down: p.on_tunnel_down,
-  }
-}
-
-/** Starting points for people who do not write globs or CIDRs. */
-export type TemplateId = 'company' | 'network' | 'site'
-
-/** Example names, translated by the caller (miempresa.com / mycompany.com). */
-export interface TemplateNames {
-  company: string
-  site: string
-}
-
-export function templateDraft(id: TemplateId, n: TemplateNames): Omit<PolicyDraft, 'via' | 'name'> {
-  switch (id) {
-    // A company's own sites: the domain itself and every first-level subdomain.
-    case 'company':
-      return { domains: `${n.company}\n*.${n.company}`, ipRanges: '', apps: '', onDown: 'block' }
-    // An internal network (servers, printers, intranet) reached through the work VPN.
-    case 'network':
-      return { domains: '', ipRanges: '10.0.0.0/8', apps: '', onDown: 'allow' }
-    // One site through another VPN (e.g. a service only available in another country).
-    case 'site':
-      return { domains: `${n.site}\n*.${n.site}`, ipRanges: '', apps: '', onDown: 'allow' }
   }
 }
 

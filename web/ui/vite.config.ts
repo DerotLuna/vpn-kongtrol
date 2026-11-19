@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-// Kongtrol UI — Vite config · v0.2.0 · 2026-11-18
+// Kongtrol UI — Vite config · v0.3.0 · 2026-11-19
 //
 // Build: `pnpm build` writes web/ui/dist, which web/ui_embed.go embeds into the
 // Go binary and internal/api serves at / (ADR-0043).
@@ -12,6 +12,9 @@ import { defineConfig, type Plugin } from 'vite'
 
 const brandDir = fileURLToPath(new URL('../../assets/brand', import.meta.url))
 const outDir = fileURLToPath(new URL('./dist', import.meta.url))
+// Test table shared with the Go policy tests (classify_targets.json, ADR-0052);
+// tests read it, the build never does.
+const sharedTestData = fileURLToPath(new URL('../../internal/policy/testdata', import.meta.url))
 
 // Daemon address for the dev proxy. Default matches the dashboard's default
 // port (internal/config/schema.go); override when `kongtrol config dashboard
@@ -59,7 +62,7 @@ export default defineConfig({
     host: devHost,
     port: devPort,
     strictPort: true,
-    fs: { allow: ['.', brandDir] },
+    fs: { allow: ['.', brandDir, sharedTestData] },
     proxy: {
       '/api': {
         target: daemon,
