@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 2.7.0 · 2026-11-19.
+// Version 2.8.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -164,7 +164,9 @@ $ kongtrol --help`,
     wizard24: <>Cada campo tiene una pista de dónde encontrar el valor:</>,
     wizard25: <>Ver ejemplo del flujo por campos (FortiClient)</>,
     wizard26: os === 'windows'
-? `    Encuéntralo en FortiClient > Ajustes o pídelo a IT. Ej: vpn.empresa.com
+? `> FortiClient 6.4.10.1821 detectado · conexión: automatiza la ventana (diseño de la 6.4)
+
+    Encuéntralo en FortiClient > Ajustes o pídelo a IT. Ej: vpn.empresa.com
   Host VPN: vpn.tuempresa.com
 
     443 para SSL VPN (default). Cambia solo si IT indica otro puerto.
@@ -172,17 +174,13 @@ $ kongtrol --help`,
 
     El nombre exacto de la conexión tal como aparece en la lista de FortiClient GUI.
   Nombre del túnel [Office]: Office
-
-  Versión de FortiClient:
-    1) 6  6.4.x — más común
-    2) 7  7.x
-    3) 5  5.x — legacy
-  Elige [1]:
 
     En Windows FortiClient conecta por nombre de túnel — sin certificado. Se usará 'credentials'.
   Usuario: tu_usuario
   Contraseña para office (guardada en llavero): ****`
-: `    Encuéntralo en FortiClient > Ajustes o pídelo a IT. Ej: vpn.empresa.com
+: `> FortiClient · conexión: CLI de FortiClient
+
+    Encuéntralo en FortiClient > Ajustes o pídelo a IT. Ej: vpn.empresa.com
   Host VPN: vpn.tuempresa.com
 
     443 para SSL VPN (default). Cambia solo si IT indica otro puerto.
@@ -190,12 +188,6 @@ $ kongtrol --help`,
 
     El nombre exacto de la conexión tal como aparece en la lista de FortiClient GUI.
   Nombre del túnel [Office]: Office
-
-  Versión de FortiClient:
-    1) 6  6.4.x — más común
-    2) 7  7.x
-    3) 5  5.x — legacy
-  Elige [1]:
 
   Método de autenticación:
     1) credentials              usuario y contraseña

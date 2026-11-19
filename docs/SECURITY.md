@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.8.0 · 2026-11-19
+Version 2.9.0 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -236,10 +236,13 @@ Every release (`.github/workflows/release.yml`) publishes, for every file:
 
   ```bash
   cosign verify-blob checksums.txt --bundle checksums.txt.sigstore.json \
-    --certificate-identity-regexp '^https://github.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v' \
+    --certificate-identity-regexp '^https://github\.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v' \
     --certificate-oidc-issuer https://token.actions.githubusercontent.com
   sha256sum --ignore-missing -c checksums.txt
   ```
+
+  The bundle needs cosign 2.4 or newer; on cosign 2.4–2.x add `--new-bundle-format` (3.0 reads
+  bundles by default). Releases before v0.6.0 were not signed.
 
 - GitHub [build provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations)
   (SLSA provenance) for every archive, package, installer and binary:
@@ -247,8 +250,16 @@ Every release (`.github/workflows/release.yml`) publishes, for every file:
 - An SBOM (SPDX JSON, `*.sbom.json`) for every archive.
 - npm packages are published with `--provenance`, shown on npmjs.com.
 
+**The install scripts do this for you** ([ADR-0057](adr/0057-installers-verify-release-signature.md)):
+`install.sh` and `install.ps1` always check the download against `checksums.txt`. When `cosign`
+2.4+ is installed they first verify `checksums.txt.sigstore.json` with the identity above; a bad
+or missing signature stops the install and nothing is installed (`KONGTROL_SKIP_SIGNATURE=1`
+only for releases before v0.6.0). Without cosign they print one line saying the signature was not
+checked and the command to verify by hand. They never download cosign.
+
 Package managers (winget, Scoop, Homebrew, AUR, apt/dnf) check the SHA-256 written in their
-manifest. None of these steps sends anything from the user's machine.
+manifest. None of these steps sends anything from the user's machine (cosign, when you run it,
+contacts the public Sigstore services to fetch its trust root).
 
 ## Enforcement per OS
 
@@ -337,6 +348,6 @@ This is a self-assessment, not an audit or certification.
 | Security misconfiguration — A05, DA6 | Loopback-only bind (non-loopback refused); security headers on every response; update and public IP checks off by default; restrictive file modes for state. | — |
 | Sensitive data / crypto — A02, DA3, DA4 | Credentials only in the OS keychain; HMAC-signed audit log; TLS 1.2+ with default verification for the two opt-in outbound calls. | — |
 | Insecure communication — DA7 | Only the opt-in outbound calls listed above, https only, constrained redirects; everything else is loopback or local IPC. | — |
-| Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts do not yet verify the cosign signature of `checksums.txt` ([#38](https://github.com/DerotLuna/vpn-kongtrol/issues/38)); Windows binaries are unsigned until SignPath is configured. |
+| Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts verify the cosign signature of `checksums.txt` only when cosign is installed (ADR-0057); Windows binaries are unsigned until SignPath is configured. |
 | Logging — A09, DA10 | The helper audits every privileged request (read-only successes of managed tunnels excepted); HMAC-signed audit log in the daemon. | Browser session creation is not audited. |
 | Privileged helper / installer — Desktop Top 10 | Closed operation list, caller identified by the OS, lease-based fail-open cleanup, trusted-binary checks (Unix root-owned; Windows admin-owned and admin-writable only); uninstall deletes only Kongtrol's own files and refuses sudo. | Inno Setup uninstaller working directory not verified ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)). |

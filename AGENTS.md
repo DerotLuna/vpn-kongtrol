@@ -128,7 +128,9 @@ hidden `resume` reconnects them (`daemon --restart <profiles>`, or the running d
 Inno finished-page checkbox depends on profiles existing; "crear mi primera VPN" runs
 `kongtrol-tray --open /profiles`, which always opens it (also from a second tray instance).
 `install.sh`/`install.ps1` are
-release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035).
+release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035). They
+check `checksums.txt` and, only when `cosign` 2.4+ is installed, its Sigstore bundle first (bad or
+missing signature stops; never download cosign; ADR-0057).
 The release body starts with the Windows installer line (`.goreleaser.yaml` `release.header`); a
 double-clicked `kongtrol.exe` (Explorer, no arguments) prints `cli.explorer_notice` and waits for
 Enter — cobra's own mousetrap is off because it adds an English-only line (ADR-0045).

@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.3.0 · 2026-11-19 · docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 1.4.0 · 2026-11-19 · docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
 #
@@ -17,6 +17,13 @@
 #   $env:KONGTROL_INSTALL_DIR   install directory (default: the previous one, else $env:LOCALAPPDATA\kongtrol\bin)
 #   $env:KONGTROL_VERSION       release tag to install, e.g. v1.2.3 (default: latest)
 #   $env:KONGTROL_YES           1 = same as -Yes
+#   $env:KONGTROL_SKIP_SIGNATURE 1 = don't check the cosign signature of checksums.txt
+#                               (only for releases before v0.6.0, which were not signed)
+#
+# Integrity: the download is checked against checksums.txt. When cosign 2.4+
+# is installed, the Sigstore signature of checksums.txt is checked first (it
+# must come from this repo's release workflow) and a bad signature stops the
+# install. Without cosign the script says so and how to verify by hand.
 param([switch]$Uninstall, [switch]$Purge, [switch]$Yes)
 
 $ErrorActionPreference = "Stop"
@@ -135,6 +142,53 @@ try {
     Invoke-WebRequest -Uri "$baseUrl/checksums.txt" -OutFile $checksumsPath -UseBasicParsing
   } catch {
     Die "could not fetch checksums.txt"
+  }
+
+  # Signature of checksums.txt (docs/adr/0057-installers-verify-release-signature.md):
+  # signed keyless by .github/workflows/release.yml on a v* tag.
+  $cosignIdentity = '^https://github\.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v'
+  $cosignIssuer = 'https://token.actions.githubusercontent.com'
+  $verifyHint = "cosign verify-blob --bundle checksums.txt.sigstore.json --certificate-identity-regexp '$cosignIdentity' --certificate-oidc-issuer $cosignIssuer checksums.txt (or: gh attestation verify checksums.txt --repo $Repo)"
+  $cosign = Get-Command cosign -ErrorAction SilentlyContinue
+  if ($env:KONGTROL_SKIP_SIGNATURE -eq "1") {
+    Write-Warn "signature check skipped (KONGTROL_SKIP_SIGNATURE=1): checked with checksums.txt only."
+  } elseif (-not $cosign) {
+    Write-Info "Signature not checked (cosign is not installed): checked with checksums.txt only. To verify by hand: $verifyHint"
+  } else {
+    # Sigstore bundles (.sigstore.json) need cosign 2.4+; 2.4-2.x reads them
+    # with --new-bundle-format, 3+ by default.
+    # cosign may write to stderr: run it with errors not terminating (Windows
+    # PowerShell 5.1 turns native stderr into errors under "Stop").
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    $cosignVersion = $null
+    $line = (& $cosign.Source version 2>$null | Select-String 'GitVersion:' | Select-Object -First 1)
+    if ($line -and $line.Line -match 'GitVersion:\s+v?(\d+\.\d+\.\d+)') { $cosignVersion = $Matches[1] }
+    $ErrorActionPreference = $prevEap
+    if (-not $cosignVersion -or (Compare-KongtrolVersion $cosignVersion "2.4.0") -lt 0) {
+      Write-Warn "cosign is too old to check the release signature (needs 2.4 or newer): checked with checksums.txt only. Update cosign, or verify by hand: $verifyHint"
+    } else {
+      Write-Info "Verifying the signature of checksums.txt (cosign)..."
+      $bundlePath = Join-Path $tmpDir "checksums.txt.sigstore.json"
+      try {
+        Invoke-WebRequest -Uri "$baseUrl/checksums.txt.sigstore.json" -OutFile $bundlePath -UseBasicParsing
+      } catch {
+        Die "this release has no signature (checksums.txt.sigstore.json), so nothing was installed. Releases before v0.6.0 were not signed: to install one anyway, set `$env:KONGTROL_SKIP_SIGNATURE=1 and run again. Otherwise report it: https://github.com/$Repo/issues"
+      }
+      $cosignArgs = @("verify-blob")
+      if ((Compare-KongtrolVersion $cosignVersion "3.0.0") -lt 0) { $cosignArgs += "--new-bundle-format" }
+      $cosignArgs += @("--bundle", $bundlePath, "--certificate-identity-regexp", $cosignIdentity, "--certificate-oidc-issuer", $cosignIssuer, $checksumsPath)
+      $prevEap = $ErrorActionPreference
+      $ErrorActionPreference = "Continue"
+      $cosignOut = & $cosign.Source @cosignArgs 2>&1 | ForEach-Object { "$_" }
+      $cosignExit = $LASTEXITCODE
+      $ErrorActionPreference = $prevEap
+      if ($cosignExit -ne 0) {
+        $reason = ($cosignOut | Where-Object { $_ -and $_ -notmatch '^error during' } | Select-Object -Last 1)
+        Die "the signature of checksums.txt could not be verified, so nothing was installed (cosign: $reason). If you are offline, connect and try again; otherwise do not use this download and report it: https://github.com/$Repo/security"
+      }
+      Write-Info "Signature OK: checksums.txt comes from the Kongtrol release workflow."
+    }
   }
 
   $expectedLine = Select-String -Path $checksumsPath -Pattern "  $binary$" | Select-Object -First 1

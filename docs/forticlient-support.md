@@ -2,7 +2,7 @@
 
 # FortiClient support matrix
 
-Version 1.0.0 · 2026-11-17
+Version 1.1.0 · 2026-11-19
 
 <!-- feature:providers -->
 Kongtrol works with **any** FortiClient version: if it can't connect automatically, `kongtrol up`
@@ -10,8 +10,9 @@ opens FortiClient and waits for you to connect there, then takes over (attach mo
 [ADR-0006](adr/0006-provider-adapters-attach-mode.md)). What changes per version is only the
 **automatic connect** step. Kongtrol detects the installed version (file version of
 `FortiClient.exe`, folder from the installer's `INSTALLDIR` registry value) and picks a strategy
-([ADR-0020](adr/0020-forticlient-multi-version-strategies.md)). `kongtrol doctor` shows the
-detected version, the strategy and its status.
+([ADR-0020](adr/0020-forticlient-multi-version-strategies.md)). `kongtrol init` shows the
+detected version and strategy in one line and never asks for the version (the `version` field in
+`kongtrol.yaml` is informational only); `kongtrol doctor` also shows the strategy's status.
 
 Statuses: **verified** = tested end to end by a maintainer on that version · **reported** = a
 contributor reported it working, not re-tested by a maintainer · **no verificado** = nobody has
