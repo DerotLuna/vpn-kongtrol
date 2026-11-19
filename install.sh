@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.2.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0045-installers-detect-existing-install.md
+# Version 2.2.0 · 2026-11-19 · docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md
 #
 #   curl -fsSL https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.sh | sh
 #
@@ -132,7 +132,7 @@ else
   asset="kongtrol_linux_${goarch}.tar.gz"
 fi
 
-# Existing install (docs/adr/0045-installers-detect-existing-install.md): the
+# Existing install (docs/adr/0046-installers-detect-existing-install.md): the
 # manifest an earlier run wrote says where it put things, so an update reuses
 # those folders and the autostart choice instead of asking again or leaving
 # a second copy behind. Without a manifest, a kongtrol in the default

@@ -168,7 +168,7 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// helperInstallMode is what a plain `service install` does (ADR-0045).
+// helperInstallMode is what a plain `service install` does (ADR-0046).
 type helperInstallMode int
 
 const (

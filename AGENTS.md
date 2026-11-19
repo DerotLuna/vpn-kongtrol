@@ -127,7 +127,7 @@ Every installer detects an existing install (Inno: HKCU `{AppId}_is1` `DisplayVe
 `InitializeSetup`; scripts: `install.manifest` + `kongtrol version`) and presents itself as
 update / reinstall / older version (SemVer precedence, same table in all three), skipping
 license/folder/tasks and reusing previous folders and choices; an older version is confirmed
-only interactively (ADR-0045). Plain `kongtrol service install` leaves a current helper alone
+only interactively (ADR-0046). Plain `kongtrol service install` leaves a current helper alone
 (no UAC/sudo) and says "Actualizando" for another version.
 
 <!-- feature:uninstall -->

@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.2.0 · 2026-11-19 · docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0045-installers-detect-existing-install.md
+# Version 1.2.0 · 2026-11-19 · docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md
 #
 #   iwr https://raw.githubusercontent.com/DerotLuna/vpn-kongtrol/main/install.ps1 -useb | iex
 #
@@ -102,7 +102,7 @@ $baseUrl = if ($Version -eq "latest") {
   "https://github.com/$Repo/releases/download/$Version"
 }
 
-# Existing install (docs/adr/0045-installers-detect-existing-install.md): the
+# Existing install (docs/adr/0046-installers-detect-existing-install.md): the
 # manifest an earlier run wrote says where kongtrol.exe went, so an update
 # reuses that folder instead of leaving a second copy behind.
 $dataDir = Join-Path $HOME ".kongtrol"

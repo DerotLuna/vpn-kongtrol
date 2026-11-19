@@ -2,7 +2,7 @@
 
 # Installers that detect an existing install
 
-Version 1.0.0 · 2026-11-19 · Backs [ADR-0045](../adr/0045-installers-detect-existing-install.md)
+Version 1.0.0 · 2026-11-19 · Backs [ADR-0046](../adr/0046-installers-detect-existing-install.md)
 
 All sources accessed 2026-11-19.
 
@@ -66,4 +66,4 @@ Release tags are `vX.Y.Z[-rc.N]` and `release.yml` passes `AppVersion` without t
 (`internal/privops/client.go`), so `Ping` against an older helper never returns a
 `PingResult` with an older protocol. `outdatedHelperAction` treated that error as "not
 installed", so `service install --if-outdated` (Windows upgrades) skipped an outdated helper.
-Fixed in ADR-0045, with a test case.
+Fixed in ADR-0046, with a test case.

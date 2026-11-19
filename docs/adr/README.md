@@ -57,7 +57,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0042](0042-dashboard-api-completeness.md) | Dashboard API completeness: audit verified/rotated by size/retention/date query, leak action removed (leak only notifies, connected profiles only), profile rename + delete with references + file import, localized group/scheduler errors, scheduler hot reload + rule `enabled`, stable policy order, manual-reconnect notice, gzip for `/app/` | Accepted | 2026-11-18 |
 | [0043](0043-new-dashboard-replaces-classic.md) | The new dashboard replaces the classic one and moves to `/`: parity gate closed, `/app/*` and classic pages redirect (308), `/tray`, classic dashboard + `/brand/` deleted, CSP without `unsafe-inline`; supersedes ADR-0011 | Accepted | 2026-11-18 |
 | [0044](0044-tray-glyph-relleno.md) | Tray glyph relleno: the tray / menu bar icon is the solid mark derived from the logo (`source/logo-kong-solid.svg`), status dot 17 % with a gap ring (`assets.BadgeGeometry`); refines ADR-0037 §3 | Accepted | 2026-11-18 |
-| [0045](0045-installers-detect-existing-install.md) | Every installer (Inno Setup, `install.sh`, `install.ps1`) detects an existing install and says update / reinstall / older version, skips questions already answered; `service install` leaves a current helper alone; refines ADR-0037 §7 | Accepted | 2026-11-19 |
+| [0046](0046-installers-detect-existing-install.md) | Every installer (Inno Setup, `install.sh`, `install.ps1`) detects an existing install and says update / reinstall / older version, skips questions already answered; `service install` leaves a current helper alone; refines ADR-0037 §7 | Accepted | 2026-11-19 |
 
 ## Statuses
 

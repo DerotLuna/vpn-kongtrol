@@ -1,6 +1,6 @@
 <img src="../../assets/brand/logo-kong-64.png" alt="VPN Kongtrol" width="48" align="left" />
 
-# ADR-0045: Every installer detects an existing install and presents itself as an update
+# ADR-0046: Every installer detects an existing install and presents itself as an update
 
 Version 1.0.0 · 2026-11-19
 

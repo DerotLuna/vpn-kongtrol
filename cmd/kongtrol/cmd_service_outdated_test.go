@@ -40,7 +40,7 @@ func TestOutdatedHelperAction(t *testing.T) {
 }
 
 // A plain `service install` never asks for permission for a helper that is
-// already current (ADR-0045); everything else still installs or updates,
+// already current (ADR-0046); everything else still installs or updates,
 // so every "what to do: kongtrol service install" hint keeps working.
 func TestHelperInstallAction(t *testing.T) {
 	cur := privops.PingResult{Protocol: privops.ProtocolVersion, Version: "1.2.0"}

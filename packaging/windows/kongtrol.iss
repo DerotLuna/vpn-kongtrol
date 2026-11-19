@@ -3,7 +3,7 @@
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
 ; is detected and the wizard becomes "Actualizar" / "Reinstalar" / "versión
-; anterior" (docs/adr/0045-installers-detect-existing-install.md). Installs for the current
+; anterior" (docs/adr/0046-installers-detect-existing-install.md). Installs for the current
 ; user only (no admin): kongtrol.exe (CLI + daemon) and kongtrol-tray.exe side by
 ; side in %LOCALAPPDATA%\Programs\Kongtrol, a Start menu entry, optional
 ; autostart at sign-in, the user PATH entry (on by default), and optionally the network
@@ -73,7 +73,7 @@ es.LaunchTray=Abrir Kongtrol y crear mi primera VPN
 en.LaunchTray=Open Kongtrol and create my first VPN
 es.LaunchTrayOpen=Abrir Kongtrol
 en.LaunchTrayOpen=Open Kongtrol
-; Existing install (docs/adr/0045-installers-detect-existing-install.md):
+; Existing install (docs/adr/0046-installers-detect-existing-install.md):
 ; %1 = installed version, %2 = this installer's version.
 es.TitleUpdate=Actualizar Kongtrol %1 → %2
 en.TitleUpdate=Update Kongtrol %1 → %2
