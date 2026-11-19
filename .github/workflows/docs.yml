@@ -56,7 +56,7 @@ jobs:
     env:
       COMMENT: ${{ github.workspace }}/docs-comment.md
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 1
 
@@ -83,7 +83,7 @@ jobs:
           git fetch --no-tags --depth=200 origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}" "+${{ github.event.pull_request.head.sha }}:refs/remotes/pr/head"
           echo "# Docs" > "$COMMENT"
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         if: steps.filter.outputs.go == 'true' || github.event_name == 'pull_request'
         with:
           go-version: "1.27"
@@ -119,7 +119,7 @@ jobs:
         if: steps.filter.outputs.links == 'true' || steps.filter.outputs.landing == 'true' || github.event_name == 'schedule'
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: steps.filter.outputs.links == 'true' || steps.filter.outputs.landing == 'true' || github.event_name == 'schedule'
         with:
           node-version: 22

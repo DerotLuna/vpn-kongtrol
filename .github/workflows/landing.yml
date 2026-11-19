@@ -29,9 +29,15 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same PR cancels the build it supersedes. On main a run
+# is never cancelled (it may be deploying); a newer one waits instead. The
+# GitHub Pages deploy keeps its own job-level group below (never cancelled,
+# as in GitHub's Pages starter workflows), so PR runs no longer queue behind
+# deploys from main as they did with the old workflow-wide "pages" group.
+# docs/adr/0059-ci-parallel-jobs-and-superseded-runs.md
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: landing-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build-landing:
@@ -42,7 +48,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
@@ -50,7 +56,7 @@ jobs:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22 # jsdom (hydration check) needs Node >= 22.22; Node 20 is EOL
           cache: "pnpm"
@@ -67,10 +73,14 @@ jobs:
       - name: Hydration check
         run: pnpm run check:hydration
 
+  # The stubs are fixed text that never reads landing/, so this job does not
+  # wait for build-landing (the real site is built and deployed by Cloudflare).
   redirect:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build-landing
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
@@ -108,10 +118,10 @@ jobs:
           sed -i 's#</head>#<script>location.replace("https://kongtrol.app"+location.pathname.replace(/^\\/vpn-kongtrol/,"").replace(/\\.html$/,"")+location.hash)</script>\n</head>#' redirect/404.html
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: redirect
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

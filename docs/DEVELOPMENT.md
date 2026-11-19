@@ -34,7 +34,8 @@ golangci-lint run ./cmd/... ./internal/... ./assets ./web
 
 Push a `v*` tag; `.github/workflows/release.yml` does the rest
 ([ADR-0025](adr/0025-desktop-release-channels-first-run.md)): macOS app (native macOS runner),
-Windows installer (Inno Setup, native Windows runner), then GoReleaser (CLI for every OS, Linux and
+Windows installer (Inno Setup, native Windows runner) and the race tests run in parallel
+([ADR-0059](adr/0059-ci-parallel-jobs-and-superseded-runs.md)), then GoReleaser (CLI for every OS, Linux and
 Windows tray, archives, `.deb`/`.rpm`, SBOMs, `checksums.txt` + Sigstore signature, GitHub
 release, Scoop, winget, AUR), build provenance attestations, the Homebrew formula and the npm
 packages. Tags with a `-` (`v1.2.0-rc.1`) are prereleases: no package manager is updated and npm

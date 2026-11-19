@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.21.0 · 2026-11-19
+Version 1.22.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -71,6 +71,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0056](0056-tray-flyout-ready-fallback.md) | Tray flyout: WebView2 controller visible on every show; the page answers `ready` only when on screen, after load and every show; no answer in 3 s → close it, open the native menu, log the cause, native menu on left click until restart (refines ADR-0036) | Accepted | 2026-11-19 |
 | [0057](0057-installers-verify-release-signature.md) | Install scripts verify the Sigstore signature of `checksums.txt` with cosign 2.4+ when it is installed (bad or missing signature stops; `KONGTROL_SKIP_SIGNATURE=1` for pre-v0.6.0 releases); otherwise checksum only plus a one-line manual hint; cosign never downloaded | Accepted | 2026-11-19 |
 | [0058](0058-linux-dropped-tunnel-dns-and-root-only-configs.md) | Linux: a dropped tunnel releases its DNS (kept for a full tunnel the kill switch holds); systemd-resolved per-link DNS; one kill switch notice per outage; root-only profile files copied with one OS prompt (sudo/pkexec) to a validating root child, never through the helper | Accepted | 2026-11-19 |
+| [0059](0059-ci-parallel-jobs-and-superseded-runs.md) | CI: jobs wait only for output they use (UI build vs UI checks, release tests beside the macOS/Windows builds, Pages redirect without the landing build); superseded PR/branch runs cancelled, never tags/releases; `actions/*` pinned by SHA | Accepted | 2026-11-19 |
 
 ## Statuses
 
