@@ -75,6 +75,9 @@ type Server struct {
 	// importDir is where POST /api/v1/vpns/import stores files
 	// ("" = ~/.kongtrol/configs; SetImportDir).
 	importDir string
+	// readProtected reads a root-only profile file with one OS permission
+	// prompt (SetProtectedReader; nil = not offered on this OS).
+	readProtected func(ctx context.Context, path string) ([]byte, error)
 	// setupMode / restart back /api/v1/setup and /api/v1/restart; see
 	// SetSetupMode and SetRestarter.
 	setupMode atomic.Bool

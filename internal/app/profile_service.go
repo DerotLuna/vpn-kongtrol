@@ -399,6 +399,11 @@ func (s *ProfileService) PolicyAllowedIPs(profileName string) []string {
 
 func (s *ProfileService) runProfilePreflight(name string, vpnCfg config.VPNConfig, aCfg vpn.AdapterConfig) error {
 	if vpnCfg.ConfigFile != "" {
+		if err := config.CheckFileReadable(vpnCfg.ConfigFile); err != nil {
+			// Only root can read it (e.g. /etc/wireguard): say so and how
+			// to copy it, never a bare "permission denied" (ADR-0058).
+			return fmt.Errorf("%s", s.f("cli.preflight.config_root_only", name, vpnCfg.ConfigFile))
+		}
 		if _, err := os.Stat(vpnCfg.ConfigFile); err != nil {
 			return fmt.Errorf("%s", s.f("cli.preflight.missing_config", name, err))
 		}

@@ -144,6 +144,36 @@ func TestKillSwitch_FullTunnelBlocksAllButEndpointAndLAN(t *testing.T) {
 	}
 }
 
+// A drop is announced once per outage, saying whether everything is cut
+// (full tunnel) or only the tunnel's destinations; HoldsAllTraffic is what
+// keeps the DNS guard of a full tunnel (#37, ADR-0058).
+func TestKillSwitch_OnBlockOncePerOutageAndHoldsAllTraffic(t *testing.T) {
+	bb := &fakeAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "tun0"}}
+	full := &fakeAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "tun1"}}
+	s, _ := newKS(t, ksCfg(), map[string]vpn.VPNAdapter{"brainbox": bb, "full": full},
+		[]routing.Route{rt("10.20.0.0/16", "tun0"), rt("0.0.0.0/0", "tun1")}, fakeDests{})
+	got := map[string]bool{}
+	calls := 0
+	s.SetOnBlock(func(name string, fullTunnel bool) { got[name] = fullTunnel; calls++ })
+	_ = s.Apply()
+	if calls != 0 {
+		t.Fatalf("notice while up: %d", calls)
+	}
+	bb.status, full.status = vpn.StatusError, vpn.StatusError
+	if !s.HoldsAllTraffic("full") || s.HoldsAllTraffic("brainbox") {
+		t.Fatal("HoldsAllTraffic must be true only for the full tunnel")
+	}
+	_ = s.Apply()
+	_ = s.Apply() // same outage: no second notice
+	if calls != 2 || got["brainbox"] || !got["full"] {
+		t.Fatalf("notices = %v (%d calls)", got, calls)
+	}
+	s.NoteIntent("full", true) // the user turned it off
+	if s.HoldsAllTraffic("full") {
+		t.Fatal("a tunnel the user turned off never holds traffic")
+	}
+}
+
 func TestKillSwitch_PolicyBlockAndConnectedTunnelKept(t *testing.T) {
 	cfg := ksCfg()
 	cfg.Security.KillSwitch.Enabled = false

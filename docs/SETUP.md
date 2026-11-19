@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.8 · 2026-11-19
+Versión 1.9 · 2026-11-19
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -210,6 +210,19 @@ Se revisa con las mismas reglas que usa el servicio de Kongtrol antes de conecta
 archivos que ejecutan comandos (`PostUp`/`PreUp` en WireGuard; `up`, `down`, `plugin`,
 `script-security 2` en OpenVPN) y un `.ovpn` importado debe llevar sus certificados dentro
 (`<ca>…</ca>`). Nunca reemplaza un archivo con el mismo nombre sin confirmarlo.
+
+**Archivos que solo puede leer el administrador (Linux, p. ej. `/etc/wireguard/wg0.conf`).**
+Kongtrol corre con tu usuario y no puede leerlos ahí. No hace falta moverlos a mano:
+
+- **Terminal:** `kongtrol profile import /etc/wireguard/wg0.conf` (o `kongtrol init`) pregunta
+  «¿Copiarlo a Kongtrol con tu permiso?» y pide tu contraseña una vez (`sudo`).
+- **Panel:** escribe la ruta en el campo del archivo y guarda; Kongtrol avisa que solo el
+  administrador puede leerlo y ofrece **Copiar con permiso de administrador** (la ventana de
+  contraseña del sistema, `pkexec`).
+
+Solo se copia si es un `.conf`/`.ovpn` válido (mismas reglas de arriba); queda en
+`~/.kongtrol/configs/` con permiso solo para ti. Sin terminal en macOS:
+`sudo install -m 600 -o $USER /ruta/al/archivo ~/` y luego impórtalo. (ADR-0058)
 
 ---
 
@@ -910,12 +923,35 @@ Si Kongtrol se cierra inesperadamente con DNS guard activo:
 # Windows
 netsh interface ip set dns "Ethernet" dhcp
 
-# Linux
+# Linux con systemd-resolved (Ubuntu, Fedora): Kongtrol fija el DNS solo en la interfaz del
+# túnel; se borra solo cuando la interfaz desaparece. Si quedó colgado:
+resolvectl revert tun0        # el nombre de la interfaz del túnel
+
+# Linux sin systemd-resolved
 sudo cp /etc/resolv.conf.kongtrol.bak /etc/resolv.conf
 
 # macOS
 networksetup -setdnsservers Wi-Fi empty
 ```
+
+<!-- feature:killswitch feature:dns_guard -->
+### Linux: se cae la VPN y no abre ningún sitio
+
+Desde esta versión, cuando una VPN se cae sola Kongtrol devuelve el DNS del sistema (sus
+servidores DNS solo se alcanzan por el túnel caído) y avisa qué bloquea el kill switch:
+
+- **«…bloquea solo sus destinos»**: el resto de internet sigue normal.
+- **«…llevaba todo tu tráfico»**: el perfil es de túnel completo (en WireGuard,
+  `AllowedIPs = 0.0.0.0/0`). Con el kill switch activo, internet queda bloqueado hasta que vuelva;
+  eso es lo que pide un túnel completo. Para navegar ya: desconéctalo (panel o
+  `kongtrol down <perfil>`). Si solo necesitas algunos sitios por esa VPN, agrega reglas
+  (Agregar → «Hacer que un sitio salga por una VPN»): con reglas, Kongtrol lleva por el túnel solo
+  esos destinos y lo demás no depende de él.
+
+WireGuard con línea `DNS =`: `wg-quick` manda **todas** las búsquedas al DNS del túnel mientras la
+interfaz exista (en systemd-resolved, `resolvconf -x` equivale a `~.`). Si el servidor deja de
+responder, nada resuelve hasta que Kongtrol lo reconecta. Si no necesitas nombres internos de esa
+red, quita la línea `DNS =` del archivo.
 
 ### "unknown profile" al usar --group
 
@@ -937,8 +973,9 @@ Si Kongtrol se cerró abruptamente:
 # Windows (como Administrador)
 netsh advfirewall reset
 
-# Linux
-sudo iptables -F OUTPUT
+# Linux (solo las cadenas de Kongtrol, nunca tus otras reglas)
+sudo iptables -D OUTPUT -j KONGTROL_BLOCK; sudo iptables -F KONGTROL_BLOCK; sudo iptables -X KONGTROL_BLOCK
+sudo ip6tables -D OUTPUT -j KONGTROL_BLOCK; sudo ip6tables -F KONGTROL_BLOCK; sudo ip6tables -X KONGTROL_BLOCK
 
 # macOS
 sudo pfctl -d

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 )
 
@@ -64,7 +65,9 @@ func validateExistingPath(lang i18n.Lang) func(string) error {
 		if s == "" {
 			return nil
 		}
-		if _, err := os.Stat(s); err != nil {
+		if _, err := os.Stat(s); err != nil && !config.IsPermission(err) {
+			// A root-only file exists: promptConfigPath copies it with
+			// permission (ADR-0058); anything else is "not found".
 			return fmt.Errorf(i18n.T(lang, "validate.path_not_found"), s)
 		}
 		return nil

@@ -132,6 +132,7 @@ describe('helpers', () => {
   it('maps daemon validation keys to fields and finds who uses a profile as backup', () => {
     expect(fieldForErrorKey('config.err.failover_cycle')).toBe('failover')
     expect(fieldForErrorKey('config.err.wait_timeout')).toBe('waitTimeout')
+    expect(fieldForErrorKey('config.err.file_root_only')).toBe('config')
     expect(fieldForErrorKey('config.err.server_combo')).toBe('server')
     expect(fieldForErrorKey('api.err.vpn_rename_busy')).toBe('name')
     expect(fieldForErrorKey('api.err.vpn_exists')).toBe('name')

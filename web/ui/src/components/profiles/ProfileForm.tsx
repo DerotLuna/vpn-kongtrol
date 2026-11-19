@@ -195,7 +195,12 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
             />
           )}
           {spec.config && (draft.type === 'wireguard' || draft.type === 'openvpn') && (
-            <ImportFile type={draft.type} profileName={draft.name} onImported={(path) => onChange({ config: path })} />
+            <ImportFile
+              type={draft.type}
+              profileName={draft.name}
+              onImported={(path) => onChange({ config: path })}
+              protectedPath={serverErrors.config && draft.config.startsWith('/') ? draft.config : undefined}
+            />
           )}
           {spec.host && (
             <TextField

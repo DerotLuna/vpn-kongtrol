@@ -211,6 +211,10 @@ func (d *run) checkCerts(cfg *config.Config) {
 }
 
 func (d *run) checkFile(label, path string) {
+	if config.CheckFileReadable(path) != nil {
+		d.fail(label, d.f("cli.doctor.file.root_only", path), d.f("doctor.hint.file_root_only", path))
+		return
+	}
 	info, err := os.Stat(path)
 	if err != nil {
 		d.fail(label, d.f("cli.doctor.file.not_found", path), d.t("doctor.hint.file_missing"))

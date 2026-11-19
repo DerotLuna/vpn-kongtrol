@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.21 · 2026-11-19
+Version 1.22 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -368,7 +368,11 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 `POST /api/v1/vpns/import` and `kongtrol profile import` share `internal/profileimport`: a
 `.conf`/`.ovpn` validated by the helper's own `privops` validators, refusals mapped to specific
 `api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
-`~/.kongtrol/configs/` (ADR-0042). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
+`~/.kongtrol/configs/` (ADR-0042). A file only root can read (`/etc/wireguard/wg0.conf`) is never read
+through the helper: `config.CheckFileReadable` → `config.err.file_root_only` (profile save, preflight,
+doctor), and the user copies it with one OS prompt — CLI/wizard `sudo`, dashboard `{"path","elevate":true}`
+→ `pkexec` — to the hidden `kongtrol profile read-protected`, which releases it only after
+`profileimport.ReadProtected` (absolute, .conf/.ovpn, no link, size cap, helper validators) (ADR-0058). Audit entries carry `signed`/`verified` (key stays in the daemon); the audit logger and
 the scheduler are reconfigured live on every save (`applyAuditConfig`, `applySchedulerConfig`).
 <!-- feature:policies -->
 Policy create/delete and profile create live in `internal/configedit` (`AddPolicy`, `RemovePolicy`,
@@ -426,7 +430,7 @@ changing the port from the page serving that request would cut the connection mi
 
 ### DNS manager internals
 
-`monitor.DNSManager` is reference-counted across simultaneous tunnels. `OnConnect` merges + deduplicates DNS servers from all active profiles and applies the guard. `OnDisconnect` re-applies with the remaining set, or restores original DNS when the last profile disconnects. Always call `ForceRestore()` on SIGTERM/panic path (it's deferred in `upCmd`).
+`monitor.DNSManager` is reference-counted across simultaneous tunnels. `OnConnect` merges + deduplicates DNS servers from all active profiles and applies the guard. `OnDisconnect` re-applies with the remaining set, or restores original DNS when the last profile disconnects. A tunnel that drops on its own (watchdog `reconnect_attempt` / `manual_reconnect_required`) calls `Release(profile)` unless `KillSwitchService.HoldsAllTraffic` (full tunnel held by the kill switch); the reconnect re-applies it (ADR-0058). On Linux with systemd-resolved the helper sets DNS per tunnel link (`resolvectl dns`/`domain ~.`, undone with `revert`, dropped by resolved with the link) instead of rewriting `/etc/resolv.conf`. Always call `ForceRestore()` on the daemon's SIGTERM/panic path (`daemon_cmd.go`); `up` is only a client of the daemon.
 
 <!-- feature:openvpn -->
 ### OpenVPN adapter internals
@@ -453,7 +457,7 @@ changing the port from the page serving that request would cut the connection mi
 
 The user decides which tunnels are up; a policy whose tunnel is off uses the normal internet unless `on_tunnel_down` says otherwise.
 - `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Overlaps follow the policy engine order. Resolved IPs expire after 6h unseen.
-- `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints (+ LAN with `allow_lan` / legacy `mode: loose`). Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far.
+- `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints (+ LAN with `allow_lan` / legacy `mode: loose`). Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far. When a dropped tunnel starts being blocked, `SetOnBlock` emits one notice per outage (`killswitch.event.blocking` / `blocking_full`, kind `tunnel_watchdog`) with what to do (ADR-0058).
 - `monitor.PolicyWatch` checks open TCP connections (Windows GetExtendedTcpTable, Linux /proc/net/tcp; macOS unsupported) every 15s and emits `monitor.Event`s (i18n key + args, throttled 30 min per policy; `connect` rate-limited 3 min) served by `GET /api/v1/events?after=<seq>` to tray, dashboard (toasts + Actividad, `web/ui/src/data/home.ts`) and the live view.
 
 ### Public IP lookup (opt-in)

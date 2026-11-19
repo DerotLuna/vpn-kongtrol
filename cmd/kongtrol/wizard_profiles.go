@@ -115,7 +115,7 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		}
 
 	case "wireguard":
-		if err := collectWireGuardFields(lang, &fields, &auth); err != nil {
+		if err := collectWireGuardFields(lang, name, &fields, &auth); err != nil {
 			return "", nil, err
 		}
 

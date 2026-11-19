@@ -73,6 +73,7 @@ func loadConfig() error {
 	killSwitchSvc = app.NewKillSwitchService(cfg, adapters, ks)
 	killSwitchSvc.SetBlocker(destBlocker)
 	killSwitchSvc.SetRouteLister(routeMgr.List)
+	killSwitchSvc.SetOnBlock(onKillSwitchBlock)
 	// Public IP lookup (and the leak check built on it): always present so
 	// it can be toggled at runtime, but it makes no request unless the user
 	// opted in (security.public_ip_check). Kill switch and DNS guard never

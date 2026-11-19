@@ -53,6 +53,8 @@ type KillSwitchService struct {
 	// blocked is the prefix set last sent to the blocker (Blocked()).
 	blocked     []netip.Prefix
 	legacyClean bool
+	// onBlock tells the daemon a dropped tunnel started being blocked.
+	onBlock func(name string, fullTunnel bool)
 }
 
 // DestinationSource gives the policy destinations (static CIDRs + resolved
@@ -316,12 +318,48 @@ func (s *KillSwitchService) Apply() error {
 		}
 	}
 	s.mu.Lock()
+	prev := s.status.Blocking
 	s.status = status
 	if err == nil {
 		s.blocked = block // what is in place now; a failed Set keeps the last one
 	}
+	onBlock := s.onBlock
 	s.mu.Unlock()
+	// Tell the user once per outage what is blocked and what to do (#37).
+	if onBlock != nil {
+		for _, name := range status.Blocking {
+			if !slices.Contains(prev, name) {
+				onBlock(name, slices.Contains(status.FullTunnel, name))
+			}
+		}
+	}
 	return err
+}
+
+// SetOnBlock sets the callback run once when a dropped tunnel starts being
+// blocked (fullTunnel: everything but the VPN servers and the LAN).
+func (s *KillSwitchService) SetOnBlock(fn func(name string, fullTunnel bool)) {
+	s.mu.Lock()
+	s.onBlock = fn
+	s.mu.Unlock()
+}
+
+// HoldsAllTraffic reports, for a tunnel that just dropped, whether the
+// kill switch blocks (or, once the next Apply runs, will block) all
+// traffic because that tunnel carried everything. Then its DNS servers stay set: giving the
+// system resolver back would send lookups outside the tunnel (a leak)
+// while every other destination is blocked anyway.
+func (s *KillSwitchService) HoldsAllTraffic(name string) bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.cfg == nil || !s.profileKillSwitchEnabled(name) {
+		return false
+	}
+	st, ok := s.state[name]
+	return ok && st.fullTunnel && st.wasUp && !st.intended
 }
 
 // Blocked returns the prefixes blocked now, sorted (empty when nothing is).

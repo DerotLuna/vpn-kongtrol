@@ -1,4 +1,4 @@
-// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.0.0 · 2026-11-18
+// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.1.0 · 2026-11-19
 //
 // feature:profile_import
 // The non-technical path to a .conf / .ovpn: pick (or drop) the file the
@@ -29,6 +29,12 @@ interface Props {
   /** The profile name typed so far; the stored file is named after it. */
   profileName: string
   onImported: (path: string) => void
+  /**
+   * A path typed in the field that only the administrator can read (the
+   * save answered config.err.file_root_only, e.g. /etc/wireguard/wg0.conf):
+   * offer to copy it with the OS permission window (ADR-0058).
+   */
+  protectedPath?: string | undefined
 }
 
 type Phase =
@@ -37,7 +43,7 @@ type Phase =
   | { kind: 'exists'; file: File; error: ErrorText }
   | { kind: 'error'; error: ErrorText }
 
-export function ImportFile({ type, profileName, onImported }: Props) {
+export function ImportFile({ type, profileName, onImported, protectedPath }: Props) {
   const { t } = usePreferences()
   const save = useImportProfileFile()
   const input = useRef<HTMLInputElement>(null)
@@ -81,6 +87,22 @@ export function ImportFile({ type, profileName, onImported }: Props) {
     )
   }
 
+  // Root-only file: the daemon reads it after the OS permission window
+  // (pkexec), with the same checks, and the copy replaces the path.
+  const copyProtected = (path: string) => {
+    const file = path.split('/').pop() ?? path
+    save.mutate(
+      { name: importName(profileName, file), type, path, elevate: true },
+      {
+        onSuccess: (result) => {
+          setPhase({ kind: 'done', result })
+          onImported(result.path)
+        },
+        onError: (err) => setPhase({ kind: 'error', error: describeError(err, t) }),
+      },
+    )
+  }
+
   const pick = (files: FileList | null) => {
     const file = files?.[0]
     if (file) void send(file, false)
@@ -120,6 +142,20 @@ export function ImportFile({ type, profileName, onImported }: Props) {
         </Button>
         <p className="kp-import__what">{drag ? t('profiles.import.drop') : t('profiles.import.what', { ext })}</p>
       </div>
+
+      {protectedPath && phase.kind !== 'done' && (
+        <Banner
+          tone="caution"
+          title={t('profiles.import.protected', { path: protectedPath })}
+          actions={
+            <Button variant="outlined" size="sm" loading={save.isPending} onClick={() => copyProtected(protectedPath)}>
+              {t('profiles.import.protectedCopy')}
+            </Button>
+          }
+        >
+          <span>{t('profiles.import.protectedWhat')}</span>
+        </Banner>
+      )}
 
       <div aria-live="polite">
         {phase.kind === 'done' && (

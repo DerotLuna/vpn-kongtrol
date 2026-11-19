@@ -17,11 +17,11 @@ import (
 // All DNS servers from all active adapters are merged (deduped) when the
 // guard is (re)applied.
 type DNSManager struct {
-	mu      sync.Mutex
-	guard   security.DNSGuard
-	iface   string            // last known tunnel interface name
-	active  map[string][]net.IP // profile → dns servers
-	log     *zap.Logger
+	mu     sync.Mutex
+	guard  security.DNSGuard
+	iface  string              // last known tunnel interface name
+	active map[string][]net.IP // profile → dns servers
+	log    *zap.Logger
 }
 
 // NewDNSManager creates a manager backed by the given guard implementation.
@@ -63,6 +63,26 @@ func (m *DNSManager) OnDisconnect(profile string) {
 	} else {
 		m.apply()
 	}
+}
+
+// Release is OnDisconnect for a tunnel that dropped on its own: it acts
+// only if profile holds the guard and reports whether it did. Its servers
+// sit behind the dead tunnel, so keeping them would make every name fail —
+// sites that never used that VPN too (#37). Connect applies them again
+// when the tunnel is back (ADR-0058).
+func (m *DNSManager) Release(profile string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.active[profile]; !ok {
+		return false
+	}
+	delete(m.active, profile)
+	if len(m.active) == 0 {
+		m.restore()
+	} else {
+		m.apply()
+	}
+	return true
 }
 
 // ForceRestore unconditionally restores original DNS (call on SIGTERM/panic).

@@ -269,6 +269,9 @@ export function fieldForErrorKey(key: string): DraftField | undefined {
   switch (key) {
     case 'config.err.wait_timeout':
       return 'waitTimeout'
+    // Only root can read the config file (ADR-0058).
+    case 'config.err.file_root_only':
+      return 'config'
     case 'config.err.group_nord':
       return 'group'
     case 'config.err.no_location':

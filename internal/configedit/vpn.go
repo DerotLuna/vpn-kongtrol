@@ -153,6 +153,13 @@ func SaveVPNProfile(cfg *config.Config, name string, base config.VPNConfig, p VP
 	if err := config.Validate(&trial); err != nil {
 		return err
 	}
+	// A config file only root can read would fail at every connect:
+	// refuse it now with the way out (copy it with permission, ADR-0058).
+	if p.ConfigFile != nil {
+		if err := config.CheckFileReadable(vc.ConfigFile); err != nil {
+			return err
+		}
+	}
 
 	if cfg.VPNs == nil {
 		cfg.VPNs = map[string]config.VPNConfig{}

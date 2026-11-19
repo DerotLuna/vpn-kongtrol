@@ -167,7 +167,7 @@ func collectFortiFields(lang i18n.Lang, name string, fields *[][2]string, auth *
 }
 
 func collectOpenVPNFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
-	ovpnConfig, err := promptPath(lang, "collect.ovpn_config", "")
+	ovpnConfig, err := promptConfigPath(lang, "collect.ovpn_config", name)
 	if err != nil {
 		return err
 	}
@@ -203,8 +203,28 @@ func collectCiscoFields(lang i18n.Lang, name string, fields *[][2]string, auth *
 	return promptCredentialAuth(lang, name, "collect.cisco_user", auth)
 }
 
-func collectWireGuardFields(lang i18n.Lang, fields *[][2]string, auth *config.AuthConfig) error {
-	wgConfig, err := promptPath(lang, "collect.wg_config", "")
+// promptConfigPath is promptPath for a profile's .conf / .ovpn. A file only
+// root can read (e.g. /etc/wireguard/wg0.conf) is copied into
+// ~/.kongtrol/configs with one permission prompt after asking, and the copy
+// is used (ADR-0058); if that does not work the path is asked again.
+func promptConfigPath(lang i18n.Lang, key, name string) (string, error) {
+	for {
+		p, err := promptPath(lang, key, "")
+		if err != nil || p == "" || config.CheckFileReadable(p) == nil {
+			return p, err
+		}
+		fmt.Println(styleDim.Render("  " + i18n.F(lang, "wizard.config_root_only", p)))
+		res, err := importRootOnly(absPath(p), name, false, false)
+		if err == nil {
+			fmt.Println(tuiOK(i18n.F(lang, "cli.profile.import.done", res.Path)))
+			return res.Path, nil
+		}
+		fmt.Println(tuiWarn(err.Error()))
+	}
+}
+
+func collectWireGuardFields(lang i18n.Lang, name string, fields *[][2]string, auth *config.AuthConfig) error {
+	wgConfig, err := promptConfigPath(lang, "collect.wg_config", name)
 	if err != nil {
 		return err
 	}

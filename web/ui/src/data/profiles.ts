@@ -104,8 +104,12 @@ export interface ProfileChangeResult {
 export interface ImportRequest {
   name: string
   type: 'wireguard' | 'openvpn'
-  content_base64: string
+  /** The file the user picked; or `path` for a file on this machine. */
+  content_base64?: string
   overwrite?: boolean
+  /** Absolute path instead of content; with `elevate`, a root-only file is read after the OS permission window (ADR-0058). */
+  path?: string
+  elevate?: boolean
 }
 
 /** POST /api/v1/vpns/import answer (201). */

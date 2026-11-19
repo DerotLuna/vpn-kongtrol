@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.10 · 2026-11-19
+Version 1.11 · 2026-11-19
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -73,6 +73,9 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   validated like the helper does (no PostUp/…; no up/down/plugin/script-security>1/log/config…;
                                              #   an .ovpn must inline its certs/keys). 409 api.err.import_exists unless overwrite; 400 api.err.import_* (hook, directive,
                                              #   script_security, file_ref, not_wireguard, invalid…; same rules as `kongtrol profile import`)
+                                             #   Or {"path":"/abs/file.conf","elevate":false} instead of content: a file only root can read
+                                             #   answers 403 config.err.file_root_only; "elevate":true reads it after the OS permission
+                                             #   window (pkexec, Linux) → 201, or 403 api.err.import_elevated_failed (ADR-0058)
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 
 # Groups

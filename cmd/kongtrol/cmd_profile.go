@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/profileimport"
 )
 
@@ -54,12 +55,17 @@ var profileImportCmd = &cobra.Command{
 
 // runProfileImport reads file and imports it under name (default: the
 // file name without its extension); the type comes from the extension.
+// A file only root can read (e.g. /etc/wireguard/wg0.conf) is read with
+// one permission prompt after asking (importRootOnly, ADR-0058).
 func runProfileImport(file, name string, overwrite bool) (profileimport.Result, error) {
 	typ := profileimport.TypeForFile(file)
 	if typ == "" {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.ext", filepath.Base(file)))
 	}
 	fi, err := os.Stat(file)
+	if err != nil && config.IsPermission(err) {
+		return importRootOnly(absPath(file), name, overwrite, profileImportYes)
+	}
 	if err != nil || !fi.Mode().IsRegular() {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.read", file))
 	}
@@ -67,9 +73,25 @@ func runProfileImport(file, name string, overwrite bool) (profileimport.Result, 
 		return profileimport.Result{}, localizeConfigErr(profileimport.TooBig())
 	}
 	content, err := os.ReadFile(file)
+	if err != nil && config.IsPermission(err) {
+		return importRootOnly(absPath(file), name, overwrite, profileImportYes)
+	}
 	if err != nil {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.read", file))
 	}
+	return storeImport(file, name, typ, content, overwrite)
+}
+
+// absPath is p made absolute (the elevated read takes absolute paths only).
+func absPath(p string) string {
+	if a, err := filepath.Abs(p); err == nil {
+		return a
+	}
+	return p
+}
+
+// storeImport validates content and stores it in ~/.kongtrol/configs.
+func storeImport(file, name, typ string, content []byte, overwrite bool) (profileimport.Result, error) {
 	if strings.TrimSpace(name) == "" {
 		name = strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 	}

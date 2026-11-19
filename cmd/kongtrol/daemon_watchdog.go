@@ -11,6 +11,7 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 	case "reconnect_attempt":
 		emitAlert("WARN", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
 		logAudit("WARN", "vpn.reconnect_attempt", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
+		releaseDroppedDNS(profile)
 	case "reconnect_failed":
 		emitAlert("ERROR", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
 		logAudit("ERROR", "vpn.reconnect_failed", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
@@ -52,6 +53,7 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 		// Once per drop: no automatic path (no CLI, or auto_connect off),
 		// so the user has to reconnect in the provider's app.
 		watchdogNotice("WARN", "vpn.manual_reconnect_required", "watchdog.event.manual_reconnect", profile)
+		releaseDroppedDNS(profile)
 	}
 }
 
@@ -67,4 +69,28 @@ func watchdogNotice(level, action, key string, args ...string) {
 	msg := cf(key, fmtArgs...)
 	emitAlert(level, args[0], msg)
 	logAudit(level, action, args[0], msg)
+}
+
+// releaseDroppedDNS gives a tunnel's DNS servers back when it dropped on
+// its own: they are only reachable through the dead tunnel, so keeping
+// them makes every name fail, even for sites that never used that VPN
+// (#37). A full tunnel the kill switch holds keeps them (no lookups
+// outside the tunnel while everything else is blocked). The reconnect
+// (ProfileService.Connect) applies them again (ADR-0058).
+func releaseDroppedDNS(profile string) {
+	if dnsMgr == nil || killSwitchSvc.HoldsAllTraffic(profile) {
+		return
+	}
+	dnsMgr.Release(profile)
+}
+
+// onKillSwitchBlock tells every client, once per outage, that the kill
+// switch started blocking for a dropped tunnel and what that means: only
+// its destinations, or everything (a full tunnel) with what to do.
+func onKillSwitchBlock(profile string, fullTunnel bool) {
+	key := "killswitch.event.blocking"
+	if fullTunnel {
+		key = "killswitch.event.blocking_full"
+	}
+	watchdogNotice("WARN", "killswitch.blocking", key, profile)
 }

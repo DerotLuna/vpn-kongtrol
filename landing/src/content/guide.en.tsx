@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 2.7.0 · 2026-11-19.
+// Version 2.8.0 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -573,7 +573,10 @@ GET  /api/v1/audit                 # ?profile=&level=&limit=`,
     trouble4: `$ kongtrol down --all    # disables the kill switch automatically`,
     trouble5: <>If Kongtrol closed abruptly: with the helper installed, its blocks lift on their own in about
                 20 seconds (the network stays open, never cut). If they're still there, remove <strong>only</strong> Kongtrol's rules.
-                Don't use <IC c="netsh advfirewall reset" />: it deletes all your firewall rules.</>,
+                Don't use <IC c="netsh advfirewall reset" />: it deletes all your firewall rules.
+                If a VPN that carried all your traffic (full tunnel) drops, the kill switch blocks the internet on purpose
+                until it is back, and Kongtrol tells you so: disconnect it to browse now, or add rules so only those sites
+                depend on it.</>,
     trouble6: os === 'windows'
 ? `# PowerShell as Administrator:
 > netsh advfirewall firewall delete rule name=KongtrolBlock

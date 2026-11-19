@@ -534,6 +534,8 @@ const NOTICE_TEXT: Record<string, MessageKey> = {
   'watchdog.event.no_response': 'home.notice.watchdog.noResponse',
   'watchdog.event.responding': 'home.notice.watchdog.responding',
   'watchdog.event.manual_reconnect': 'home.notice.watchdog.manualReconnect',
+  'killswitch.event.blocking': 'home.notice.killswitch.blocking',
+  'killswitch.event.blocking_full': 'home.notice.killswitch.blockingFull',
   'update.event.available': 'home.notice.update.available',
 }
 

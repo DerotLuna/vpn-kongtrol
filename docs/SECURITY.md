@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.8.0 · 2026-11-19
+Version 2.9.0 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -287,12 +287,30 @@ If Kongtrol crashes without cleanly restoring DNS, run:
 # Windows
 netsh interface ip set dns "Ethernet" dhcp
 
-# Linux
+# Linux with systemd-resolved: DNS is set on the tunnel link only (resolvectl dns/domain ~.),
+# dropped by resolved when the link goes away; to undo by hand:
+resolvectl revert <tunnel-interface>
+
+# Linux without systemd-resolved
 sudo cp /etc/resolv.conf.kongtrol.bak /etc/resolv.conf
 
 # macOS
 networksetup -setdnsservers Wi-Fi empty
 ```
+
+A tunnel that drops on its own gives its DNS servers back at once (they are only reachable
+through it), unless the kill switch holds all traffic for that full-tunnel profile: then lookups
+stay on the tunnel's servers so none leaks outside it ([ADR-0058](adr/0058-linux-dropped-tunnel-dns-and-root-only-configs.md)).
+
+## Root-only profile files
+
+A profile file only root can read (`/etc/wireguard/wg0.conf`) is never read through the helper:
+that would hand root-only keys to any process of the user without asking. Instead the user gives
+one OS permission prompt (`sudo` in a terminal, `pkexec` from the dashboard) to a short-lived
+`kongtrol profile read-protected <path>` that runs as root and prints the file only if it is an
+absolute `.conf`/`.ovpn`, a regular file (not a link), at most 512 KiB and passes the helper's own
+WireGuard/OpenVPN checks; a refusal never echoes the content. The copy is stored 0600 in
+`~/.kongtrol/configs/` ([ADR-0058](adr/0058-linux-dropped-tunnel-dns-and-root-only-configs.md)).
 
 ## Kill switch recovery
 
@@ -306,8 +324,8 @@ If Kongtrol closed abruptly and traffic is still blocked:
 # Windows (as Administrator)
 netsh advfirewall reset
 
-# Linux
-sudo iptables -F OUTPUT
+# Linux (only Kongtrol's chain, never your other rules; same with ip6tables)
+sudo iptables -D OUTPUT -j KONGTROL_BLOCK; sudo iptables -F KONGTROL_BLOCK; sudo iptables -X KONGTROL_BLOCK
 
 # macOS
 sudo pfctl -d

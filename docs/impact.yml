@@ -43,6 +43,7 @@ features:
     code:
       - internal/security/dnsguard*.go
       - internal/monitor/dnsmanager.go
+      - internal/privops/resolved.go
       - internal/monitor/splitdns.go
       - cmd/kongtrol/cmd_config_security.go
     surfaces:
@@ -270,6 +271,8 @@ features:
       - internal/api/handlers_vpn_import.go
       - cmd/kongtrol/cmd_profile.go
       - cmd/kongtrol/cmd_profile_add.go
+      - cmd/kongtrol/protected_read*.go
+      - internal/config/files.go
       - web/ui/src/components/profiles/ImportFile.tsx
       - web/ui/src/components/profiles/importModel.ts
       - web/ui/src/components/add/FileStep.tsx

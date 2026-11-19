@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -63,9 +64,28 @@ const (
 	resolvBackup = "/etc/resolv.conf.kongtrol.bak"
 )
 
-type dnsSnapshot struct{ content []byte }
+// dnsSnapshot is what RestoreDNS puts back: the old resolv.conf, or (with
+// systemd-resolved) the resolvectl to revert the tunnel link with.
+type dnsSnapshot struct {
+	content    []byte
+	resolvectl string
+}
+
+// resolvedCtl returns a root-owned resolvectl when systemd-resolved owns
+// /etc/resolv.conf (resolved.go); ok is false otherwise.
+func resolvedCtl() (exe string, ok bool) {
+	target, err := filepath.EvalSymlinks(resolvConf)
+	if err != nil || !resolvConfManagedByResolved(target) {
+		return "", false
+	}
+	exe, err = trustedBinary("/usr/bin/resolvectl", "/bin/resolvectl")
+	return exe, err == nil
+}
 
 func sysSnapshotDNS(_ context.Context, _ string) (dnsSnapshot, error) {
+	if exe, ok := resolvedCtl(); ok {
+		return dnsSnapshot{resolvectl: exe}, nil
+	}
 	b, err := os.ReadFile(resolvConf)
 	if err != nil {
 		return dnsSnapshot{}, err
@@ -76,7 +96,19 @@ func sysSnapshotDNS(_ context.Context, _ string) (dnsSnapshot, error) {
 	return dnsSnapshot{content: b}, nil
 }
 
-func sysSetDNS(_ context.Context, req DNSRequest) error {
+func sysSetDNS(ctx context.Context, req DNSRequest) error {
+	if exe, ok := resolvedCtl(); ok {
+		for _, args := range resolvectlSetArgs(req) {
+			if _, err := run(ctx, exe, args...); err != nil {
+				if args[0] == "default-route" {
+					continue // systemd < 240: ~. alone routes every name
+				}
+				_, _ = run(ctx, exe, "revert", req.Interface)
+				return err
+			}
+		}
+		return nil
+	}
 	var sb strings.Builder
 	sb.WriteString("# Managed by vpn-kongtrol — original backed up at " + resolvBackup + "\n")
 	for _, s := range req.Servers {
@@ -85,7 +117,20 @@ func sysSetDNS(_ context.Context, req DNSRequest) error {
 	return os.WriteFile(resolvConf, []byte(sb.String()), 0o644)
 }
 
-func sysRestoreDNS(_ context.Context, _ string, snap dnsSnapshot) error {
+func sysRestoreDNS(ctx context.Context, iface string, snap dnsSnapshot) error {
+	if snap.resolvectl != "" {
+		if _, err := run(ctx, snap.resolvectl, "revert", iface); err != nil {
+			// The link is gone: resolved already dropped its settings.
+			if _, lerr := netlink.LinkByName(iface); lerr != nil {
+				return nil
+			}
+			return err
+		}
+		return nil
+	}
+	if snap.content == nil {
+		return nil
+	}
 	if err := os.WriteFile(resolvConf, snap.content, 0o644); err != nil {
 		return err
 	}

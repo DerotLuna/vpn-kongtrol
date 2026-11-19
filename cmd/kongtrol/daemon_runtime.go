@@ -203,6 +203,10 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	)
 	// One-click helper install from the tray / dashboard.
 	srv.SetHelperInstaller(version, installHelperFromGUI)
+	// Root-only profile files (/etc/wireguard): one OS prompt (ADR-0058).
+	if apiProtectedReader != nil {
+		srv.SetProtectedReader(apiProtectedReader)
+	}
 	// Split-tunnel kill switch state and policy notices for every client.
 	srv.SetKillSwitchStatus(killSwitchSvc.Status)
 	srv.SetBlockedList(killSwitchSvc.Blocked)

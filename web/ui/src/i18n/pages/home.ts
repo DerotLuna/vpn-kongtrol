@@ -174,6 +174,8 @@ const es = {
   'home.notice.watchdog.noResponse': '{0} dejó de responder: su servidor no contesta · Kongtrol la reconecta solo; si sigue, revisa tu internet o avisa a quien administra esa VPN',
   'home.notice.watchdog.responding': '{0} vuelve a responder',
   'home.notice.watchdog.manualReconnect': '{0} se cayó · Kongtrol no puede reconectarla solo: conéctala en su app y Kongtrol la sigue',
+  'home.notice.killswitch.blocking': '{0} se cayó · el kill switch bloquea solo sus destinos; el resto de internet sigue normal. Kongtrol la reconecta solo',
+  'home.notice.killswitch.blockingFull': '{0} se cayó y llevaba todo tu tráfico · el kill switch bloquea internet hasta que vuelva. Para navegar ya, desconéctala; si solo necesitas algunos sitios por ella, agrega reglas para que lo demás no dependa de esa VPN',
   'home.notice.update.available': 'Hay una versión nueva de Kongtrol: {0} (tienes {1}) · actualiza con tu instalador o tu gestor de paquetes, o descárgala desde kongtrol.app · novedades: {2}',
   'home.notice.generic': 'Aviso de Kongtrol sobre {profile}',
 
@@ -346,6 +348,8 @@ const en: Strings<typeof es> = {
   'home.notice.watchdog.noResponse': '{0} stopped responding: its server does not answer · Kongtrol reconnects it on its own; if it persists, check your internet or tell whoever runs that VPN',
   'home.notice.watchdog.responding': '{0} responds again',
   'home.notice.watchdog.manualReconnect': '{0} dropped · Kongtrol can’t reconnect it on its own: connect it in its app and Kongtrol follows it',
+  'home.notice.killswitch.blocking': '{0} dropped · the kill switch blocks only its destinations; the rest of the internet works as usual. Kongtrol reconnects it on its own',
+  'home.notice.killswitch.blockingFull': '{0} dropped and carried all your traffic · the kill switch blocks the internet until it is back. To browse now, disconnect it; if you only need some sites through it, add rules so the rest does not depend on that VPN',
   'home.notice.update.available': 'A new Kongtrol version is out: {0} (you have {1}) · update with your installer or package manager, or download it from kongtrol.app · what’s new: {2}',
   'home.notice.generic': 'Kongtrol notice about {profile}',
 

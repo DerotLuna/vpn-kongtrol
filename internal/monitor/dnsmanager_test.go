@@ -213,3 +213,26 @@ func TestDNSManager_Snapshot(t *testing.T) {
 		t.Fatalf("after last drop = %+v", s)
 	}
 }
+
+// TestDNSManager_ReleaseDroppedTunnel: a tunnel that dropped on its own
+// gives its DNS back (#37); an unknown profile changes nothing.
+func TestDNSManager_ReleaseDroppedTunnel(t *testing.T) {
+	mgr, g := newMgr(t)
+	if mgr.Release("a") {
+		t.Fatal("Release of a profile without the guard reported true")
+	}
+	mgr.OnConnect("a", "tun0", []net.IP{dns1})
+	mgr.OnConnect("b", "tun1", []net.IP{dns2})
+	if !mgr.Release("a") {
+		t.Fatal("Release(a) = false")
+	}
+	if got := g.appliedIPs(); len(got) != 1 || !got[0].Equal(dns2) {
+		t.Fatalf("after releasing a, applied %v, want only b's server", got)
+	}
+	if !mgr.Release("b") || g.IsActive() || g.restoreCount() != 1 {
+		t.Fatalf("releasing the last profile must restore DNS once (active=%v restores=%d)", g.IsActive(), g.restoreCount())
+	}
+	if mgr.Release("b") {
+		t.Fatal("second Release(b) reported true")
+	}
+}
