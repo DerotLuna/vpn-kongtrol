@@ -50,7 +50,7 @@ vpn-kongtrol/
 ├── assets/
 │   ├── brand/                     # single source: logo/mark SVG + PNG, fonts/, source/ masters,
 │   │                              #   generate.go (rasters); landing + web/ui copy/import from here
-│   ├── logo.ico                   # Windows exe icon (make build-tray-native → rsrc)
+│   ├── logo.ico                   # Windows app icon, generated (rsrc → kongtrol.exe, kongtrol-tray.exe, Setup.exe)
 │   ├── embed.go                   # //go:embed brand/... → LogoKongPNG, Brand() FS
 │   └── icon.go                    # TrayIcon(size) — resizes for systray
 │

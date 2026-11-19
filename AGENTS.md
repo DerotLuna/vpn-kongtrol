@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.19 · 2026-11-19
+Version 1.20 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -270,7 +270,7 @@ ProfileService.Disconnect(name)
 | `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
 | `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
 | `web/` | the dashboard `web/ui/` (see below), embedded by `web/ui_embed.go` and served at `/` |
-| `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run -tags brandgen assets/brand/generate.go`); `assets/embed.go`; tray / menu bar icons come from `brand/tray-<px>.png` (transparent masks that `generate.go` rasterizes from `source/logo-kong-solid.svg`, the solid glyph it derives from `source/logo-kong.svg`, ADR-0044), tinted and badged at run time by `TrayMark`/`TrayICO`/`TrayPNG` in `assets/icon.go` and `assets/state_icons.go` (dot size and gap: `BadgeGeometry`) |
+| `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run -tags brandgen assets/brand/generate.go`); `assets/embed.go`; tray / menu bar icons come from `brand/tray-<px>.png` (transparent masks that `generate.go` rasterizes from `source/logo-kong-solid.svg`, the solid glyph it derives from `source/logo-kong.svg`, ADR-0044), tinted and badged at run time by `TrayMark`/`TrayICO`/`TrayPNG` in `assets/icon.go` and `assets/state_icons.go` (dot size and gap: `BadgeGeometry`); the app icon (ADR-0052, the only logo with a background: Ink plate, solid mark in Bone) is generated too — `assets/logo.ico` (embedded in `kongtrol.exe` and `kongtrol-tray.exe` by `akavel/rsrc` into gitignored `rsrc_windows_<arch>.syso` in `make build` / `build-tray-native`, `release.yml`, `.goreleaser.yaml`; also `SetupIconFile`), `brand/app-icon-1024.png` (macOS `.icns`), `app-icon-512/256.png` (Linux), `app-icon-180.png` (landing touch icon) and the installer images `brand/installer/` |
 | `landing/` | Public site (Vite + React + TS, multi-page, ES at `/…`, EN at `/en/…`), deployed by Cloudflare Workers Builds as static assets (`landing/wrangler.jsonc`, ADR-0022) |
 | `cmd/kongtrol` | cobra CLI: `main.go` (commands + wiring) + `wizard.go` (`kongtrol init`) |
 | `cmd/kongtrol-tray` | systray app; client of the shared daemon (spawns `kongtrol daemon` via `internal/daemonctl` if absent). Two exit items: "Salir y desconectar todo" (shutdown daemon + close tray) and "Cerrar ícono (las VPN siguen)" (close tray only). Left click on Windows opens the flyout (`flyout*.go`, `web/ui` `/tray`, ADR-0036); right click and other OSes keep the native menu. Native menu (ADR-0037): header → actions → version → exits; VPN lines are always "name · <state word>" (`tray_state.go`, never a raw status), connected ones checked and first, a DESIGN.md state dot per line; icon badge = aggregate state; per-OS icon code in `trayicon_<os>.go` |

@@ -1,6 +1,6 @@
 //go:build brandgen
 
-// Brand asset generator — version 1.4.0 · 2026-11-19.
+// Brand asset generator — version 1.5.0 · 2026-11-19.
 //
 // Regenerates the raster fallbacks in assets/brand/ from the masters in
 // assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg, plus
@@ -14,6 +14,14 @@
 // source/logo-kong-solid.svg below); visible logos from ~40 px up use the
 // line-art original. logo.svg is the "Kongtrol" lockup (the name is just
 // Kongtrol, ADR-0047); logo-512.png is rasterized from that vector.
+//
+// App icon (ADR-0052, the only logo with a background): Ink squircle plate,
+// solid mark in Bone, from source/logo-kong-solid.svg — assets/logo.ico (both
+// Windows binaries and Setup.exe), app-icon-1024.png (macOS .icns),
+// app-icon-512/256.png (Linux), app-icon-180.png (web touch icon),
+// source/app-icon.svg (vector reference). Installer images:
+// installer/wizard-<w>x<h>.png (lockup in Bone on Ink, no words) and
+// installer/wizard-small-<px>.png (the app icon).
 //
 // Uses only the standard library plus golang.org/x/image (in go.mod; the
 // build tag is "brandgen", not "ignore", because go mod tidy skips files
@@ -43,6 +51,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
@@ -85,7 +94,6 @@ type job struct {
 func main() {
 	jobs := []job{
 		{"source/logo-kong.png", "logo-kong-64.png", 64, 64, lineArtPNG},
-		{"source/logo-kong.png", "logo-kong-192.png", 192, 192, lineArtPNG},
 		{"source/logo-kong.png", "logo-kong-512.png", 512, 512, lineArtPNG},
 		{"source/social-preview.png", "og-1200x630.jpg", 1200, 630, photoJPEG},
 	}
@@ -125,6 +133,12 @@ func main() {
 		log.Fatal(err)
 	}
 	if err := renderTrayMasks(); err != nil {
+		log.Fatal(err)
+	}
+	if err := renderAppIcons(); err != nil {
+		log.Fatal(err)
+	}
+	if err := renderInstallerImages(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -838,7 +852,12 @@ func rasterMask(paths []seg, px int) *image.NRGBA {
 
 // fill rasterizes the outlines mapped by f into a px×px black + alpha image.
 func fill(paths []seg, px int, f func(pt) (float32, float32)) *image.NRGBA {
-	r := vector.NewRasterizer(px, px)
+	return fillWH(paths, px, px, f)
+}
+
+// fillWH is fill on a w×h canvas.
+func fillWH(paths []seg, w, h int, f func(pt) (float32, float32)) *image.NRGBA {
+	r := vector.NewRasterizer(w, h)
 	for _, s := range paths {
 		switch s.op {
 		case 'M':
@@ -854,7 +873,7 @@ func fill(paths []seg, px int, f func(pt) (float32, float32)) *image.NRGBA {
 			r.ClosePath()
 		}
 	}
-	mask := image.NewAlpha(image.Rect(0, 0, px, px))
+	mask := image.NewAlpha(image.Rect(0, 0, w, h))
 	r.Draw(mask, mask.Bounds(), image.Opaque, image.Point{})
 	out := image.NewNRGBA(mask.Bounds())
 	for i, a := range mask.Pix {
@@ -955,4 +974,361 @@ func minifySVG(src, dst string, inverse bool) (int, error) {
 	}
 	s = strings.TrimSpace(s) + "\n"
 	return len(s), os.WriteFile(dst, []byte(s), 0o644)
+}
+
+// ── App icon and installer images (ADR-0052) ────────────────────────────────
+//
+// The app icon is the one exception to "logos have no background"
+// (DESIGN.md "Logo"): a squircle plate in Ink with the solid mark in Bone
+// Paper, both DESIGN.md tokens. It is drawn here from
+// source/logo-kong-solid.svg; source/app-icon.svg is its vector form (macOS
+// geometry), written for reference and never edited by hand.
+//
+// Geometry (fractions of the square canvas; sources and what is unverified
+// in docs/research/2026-11-19-app-icon.md):
+//   - macOS: plate 824/1024 centered (Apple's Big Sur icon grid; the
+//     transparent margin is part of the icon); the .icns is built from
+//     app-icon-1024.png by packaging/macos/build-app.sh with Apple's iconutil.
+//   - Windows and Linux: plate 44/48 (Fluent icons are drawn on a 48 px grid
+//     and fill it); assets/logo.ico, app-icon-256/512.png.
+//   - Web touch icon: full-bleed square, no transparency (iOS masks it).
+//   - .ico frames up to icoPlainMax px carry the solid mark without a plate,
+//     in a mid-tone that keeps ≥ 3:1 on light and dark taskbars (Fluent asks
+//     at least half of the icon to pass 3:1 on both themes); on a 16–24 px
+//     plate the head is 10–15 px and the face no longer reads. From 32 px
+//     (Start pins at 100 %, taskbar from 125 %) the plate reads and is used.
+
+var (
+	appInk  = color.NRGBA{0x1b, 0x18, 0x13, 0xff} // DESIGN.md text-light, "Ink"
+	appBone = color.NRGBA{0xf1, 0xed, 0xe4, 0xff} // DESIGN.md bg-light, "Bone Paper"
+	// appMid is the plateless small-size ink: relative luminance ≈ 0.20, so
+	// ≈ 4:1 on white and ≈ 3.9:1 on #202020 (Windows dark taskbar).
+	appMid = color.NRGBA{0x85, 0x7c, 0x6b, 0xff}
+)
+
+// iconGeom places the plate and the mark on a square canvas.
+type iconGeom struct {
+	plate  float64 // plate side / canvas side
+	mark   float64 // mark's larger side / plate side
+	square bool    // plain full-bleed square (the OS applies its own mask)
+}
+
+var (
+	geomMac   = iconGeom{plate: 824.0 / 1024, mark: 0.66}
+	geomWin   = iconGeom{plate: 44.0 / 48, mark: 0.68}
+	geomTouch = iconGeom{plate: 1, mark: 0.62, square: true}
+)
+
+// icoSizes are the frames of assets/logo.ico (Explorer, taskbar, Start,
+// Alt+Tab at 100–200 % scaling); up to icoPlainMax px they are plateless.
+var icoSizes = []int{16, 20, 24, 32, 40, 48, 64, 256}
+
+const icoPlainMax = 24
+
+func renderAppIcons() error {
+	solid, err := loadSVGPaths(filepath.Join(dir, solidOut))
+	if err != nil {
+		return err
+	}
+	if err := writeAppIconSVG(solid); err != nil {
+		return err
+	}
+	frames := make([][]byte, 0, len(icoSizes))
+	for _, px := range icoSizes {
+		var img *image.NRGBA
+		if px <= icoPlainMax {
+			img = tint(hint(rasterMask(solid, px), px), appMid)
+		} else {
+			img = appIcon(solid, px, geomWin)
+		}
+		frames = append(frames, encodePNG(img))
+	}
+	ico := wrapICO(frames, icoSizes)
+	if err := os.WriteFile(filepath.Join("assets", "logo.ico"), ico, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%-20s %9s %7d bytes (%v px, plateless up to %d)\n", "../logo.ico", "ico", len(ico), icoSizes, icoPlainMax)
+	for _, o := range []struct {
+		name string
+		px   int
+		g    iconGeom
+	}{
+		{"app-icon-1024.png", 1024, geomMac},
+		{"app-icon-512.png", 512, geomWin},
+		{"app-icon-256.png", 256, geomWin},
+		{"app-icon-180.png", 180, geomTouch},
+	} {
+		if err := writePNG(filepath.Join(dir, o.name), appIcon(solid, o.px, o.g)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// appIcon draws the plate in Ink with the solid mark centered in Bone.
+func appIcon(solid []seg, px int, g iconGeom) *image.NRGBA {
+	side := float64(px) * g.plate
+	off := (float64(px) - side) / 2
+	var plate []uint8
+	if g.square {
+		plate = bytes.Repeat([]byte{0xff}, px*px)
+	} else {
+		plate = alphaOf(fillWH(squircle(off, off, side), px, px, func(p pt) (float32, float32) {
+			return float32(p.x), float32(p.y)
+		}))
+	}
+	mark := alphaOf(fitPaths(solid, px, px, float64(px)/2, float64(px)/2, side*g.mark, side*g.mark))
+	out := image.NewNRGBA(image.Rect(0, 0, px, px))
+	for i := range plate {
+		c := mix(appInk, appBone, float64(mark[i])/255)
+		out.Pix[i*4], out.Pix[i*4+1], out.Pix[i*4+2], out.Pix[i*4+3] = c.R, c.G, c.B, plate[i]
+	}
+	return out
+}
+
+// writeAppIconSVG writes source/app-icon.svg: the macOS-geometry icon as a
+// vector (the plate, then the solid mark's own path under a transform).
+func writeAppIconSVG(solid []seg) error {
+	b, err := os.ReadFile(filepath.Join(dir, solidOut))
+	if err != nil {
+		return err
+	}
+	m := svgPathD.FindStringSubmatch(string(b))
+	if m == nil {
+		return fmt.Errorf("%s: no path", solidOut)
+	}
+	const px = 1024
+	side := px * geomMac.plate
+	off := (px - side) / 2
+	var d strings.Builder
+	for _, s := range squircle(off, off, side) {
+		if s.op == 'Z' {
+			d.WriteString("Z")
+			continue
+		}
+		fmt.Fprintf(&d, "%c%s %s", s.op, num(s.p[0].x), num(s.p[0].y))
+	}
+	k, ox, oy := fitTransform(solid, px/2, px/2, side*geomMac.mark, side*geomMac.mark)
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d">`+
+		`<!-- Derived from logo-kong-solid.svg by assets/brand/generate.go (ADR-0052); do not edit. -->`+
+		`<path fill="#%02x%02x%02x" d="%s"/>`+
+		`<path fill="#%02x%02x%02x" fill-rule="evenodd" transform="translate(%s %s) scale(%s)" d="%s"/></svg>`+"\n",
+		px, px, appInk.R, appInk.G, appInk.B, d.String(),
+		appBone.R, appBone.G, appBone.B, num(ox), num(oy), strconv.FormatFloat(k, 'f', 5, 64), m[1])
+	if err := os.WriteFile(filepath.Join(dir, "source", "app-icon.svg"), []byte(svg), 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("%-20s %9s %7d bytes\n", "source/app-icon.svg", "vector", len(svg))
+	return nil
+}
+
+// squircle returns the superellipse |x|^5 + |y|^5 = 1 scaled to side: the
+// usual approximation of Apple's continuous-corner icon plate (Apple does
+// not publish the exact curve).
+func squircle(x0, y0, side float64) []seg {
+	const n, steps = 5.0, 720
+	a := side / 2
+	cx, cy := x0+a, y0+a
+	pow := func(v float64) float64 { return math.Copysign(math.Pow(math.Abs(v), 2/n), v) }
+	out := make([]seg, 0, steps+1)
+	for i := 0; i < steps; i++ {
+		t := 2 * math.Pi * float64(i) / steps
+		op := byte('L')
+		if i == 0 {
+			op = 'M'
+		}
+		out = append(out, seg{op: op, p: []pt{{cx + a*pow(math.Cos(t)), cy + a*pow(math.Sin(t))}}})
+	}
+	return append(out, seg{op: 'Z'})
+}
+
+func bounds(paths []seg) (minX, minY, maxX, maxY float64) {
+	minX, minY, maxX, maxY = math.Inf(1), math.Inf(1), math.Inf(-1), math.Inf(-1)
+	for _, s := range paths {
+		for _, p := range s.p {
+			minX, minY = math.Min(minX, p.x), math.Min(minY, p.y)
+			maxX, maxY = math.Max(maxX, p.x), math.Max(maxY, p.y)
+		}
+	}
+	return
+}
+
+// fitTransform scales paths to fit a boxW×boxH box centered on (cx, cy):
+// canvas point = p·k + (ox, oy).
+func fitTransform(paths []seg, cx, cy, boxW, boxH float64) (k, ox, oy float64) {
+	minX, minY, maxX, maxY := bounds(paths)
+	k = math.Min(boxW/(maxX-minX), boxH/(maxY-minY))
+	return k, cx - (minX+maxX)/2*k, cy - (minY+maxY)/2*k
+}
+
+// fitPaths rasterizes paths into a w×h canvas, placed as in fitTransform.
+func fitPaths(paths []seg, w, h int, cx, cy, boxW, boxH float64) *image.NRGBA {
+	k, ox, oy := fitTransform(paths, cx, cy, boxW, boxH)
+	return fillWH(paths, w, h, func(p pt) (float32, float32) { return float32(ox + p.x*k), float32(oy + p.y*k) })
+}
+
+func alphaOf(img *image.NRGBA) []uint8 {
+	a := make([]uint8, len(img.Pix)/4)
+	for i := range a {
+		a[i] = img.Pix[i*4+3]
+	}
+	return a
+}
+
+// tint colors a black + alpha mask.
+func tint(img *image.NRGBA, c color.NRGBA) *image.NRGBA {
+	for i := 0; i < len(img.Pix); i += 4 {
+		img.Pix[i], img.Pix[i+1], img.Pix[i+2] = c.R, c.G, c.B
+	}
+	return img
+}
+
+// mix blends a toward b by t (coverage; only edge pixels are blended).
+func mix(a, b color.NRGBA, t float64) color.NRGBA {
+	l := func(x, y uint8) uint8 { return uint8(math.Round(float64(x) + (float64(y)-float64(x))*t)) }
+	return color.NRGBA{l(a.R, b.R), l(a.G, b.G), l(a.B, b.B), 0xff}
+}
+
+func encodePNG(img image.Image) []byte {
+	var buf bytes.Buffer
+	if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, img); err != nil {
+		log.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func writePNG(path string, img image.Image) error {
+	b := encodePNG(img)
+	if err := os.WriteFile(path, b, 0o644); err != nil {
+		return err
+	}
+	r := img.Bounds()
+	fmt.Printf("%-20s %4dx%-4d %7d bytes\n", strings.TrimPrefix(filepath.ToSlash(path), dir+"/"), r.Dx(), r.Dy(), len(b))
+	return nil
+}
+
+// wrapICO wraps square PNG frames in an ICONDIR (PNG frames are valid since
+// Windows Vista; https://en.wikipedia.org/wiki/ICO_(file_format)). Same
+// layout as assets.wrapICO, which builds the tray icon at run time.
+func wrapICO(frames [][]byte, sizes []int) []byte {
+	head := 6 + 16*len(frames)
+	buf := []byte{0, 0, 1, 0}
+	buf = binary.LittleEndian.AppendUint16(buf, uint16(len(frames)))
+	off := head
+	for i, f := range frames {
+		dim := byte(sizes[i])
+		if sizes[i] >= 256 {
+			dim = 0 // 0 means 256
+		}
+		buf = append(buf, dim, dim, 0, 0, 1, 0, 32, 0)
+		buf = binary.LittleEndian.AppendUint32(buf, uint32(len(f)))
+		buf = binary.LittleEndian.AppendUint32(buf, uint32(off))
+		off += len(f)
+	}
+	for _, f := range frames {
+		buf = append(buf, f...)
+	}
+	return buf
+}
+
+// ── Installer images (Inno Setup 6.6+) ─────────────────────────────────────
+//
+// WizardImageFile (left panel of the welcome and finished pages, aspect
+// 164:314) and WizardSmallImageFile (top-right square): one file per image
+// area size Inno lists for 100/125/150/200/250 % scaling, so Setup picks a
+// rendered one instead of stretching
+// (https://jrsoftware.org/ishelp/topic_setup_wizardimagefile.htm,
+// https://jrsoftware.org/ishelp/topic_setup_wizardsmallimagefile.htm).
+// The wizard image carries no words: the installer speaks Spanish and
+// English and one image cannot switch language, so the tagline is the
+// welcome page's text (packaging/windows/kongtrol.iss, [Messages]).
+
+var (
+	wizardSizes      = [][2]int{{202, 386}, {269, 515}, {336, 643}, {430, 824}, {534, 1022}}
+	wizardSmallSizes = []int{58, 77, 97, 124, 159}
+)
+
+func renderInstallerImages() error {
+	out := filepath.Join(dir, "installer")
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		return err
+	}
+	lockup, err := loadSVGPaths(filepath.Join(dir, "source", "logo.svg"))
+	if err != nil {
+		return err
+	}
+	mark, word := splitLockup(lockup)
+	for _, s := range wizardSizes {
+		if err := writePNG(filepath.Join(out, fmt.Sprintf("wizard-%dx%d.png", s[0], s[1])), wizardImage(mark, word, s[0], s[1])); err != nil {
+			return err
+		}
+	}
+	solid, err := loadSVGPaths(filepath.Join(dir, solidOut))
+	if err != nil {
+		return err
+	}
+	for _, px := range wizardSmallSizes {
+		if err := writePNG(filepath.Join(out, fmt.Sprintf("wizard-small-%d.png", px)), appIcon(solid, px, geomWin)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// wizardImage: an Ink panel with the line-art mark large and the wordmark
+// under it, both in Bone, the group a little above the middle.
+func wizardImage(mark, word []seg, w, h int) *image.NRGBA {
+	fw := float64(w)
+	mx0, my0, mx1, my1 := bounds(mark)
+	wx0, wy0, wx1, wy1 := bounds(word)
+	markW := 0.78 * fw
+	markH := markW * (my1 - my0) / (mx1 - mx0)
+	wordW := 0.60 * fw
+	wordH := wordW * (wy1 - wy0) / (wx1 - wx0)
+	gap := 0.10 * fw
+	top := (float64(h)-(markH+gap+wordH))/2 - 0.06*float64(h)
+	a := alphaOf(fitPaths(mark, w, h, fw/2, top+markH/2, markW, markH))
+	b := alphaOf(fitPaths(word, w, h, fw/2, top+markH+gap+wordH/2, wordW, wordH))
+	img := image.NewNRGBA(image.Rect(0, 0, w, h))
+	for i := range a {
+		c := mix(appInk, appBone, float64(max(a[i], b[i]))/255)
+		img.Pix[i*4], img.Pix[i*4+1], img.Pix[i*4+2], img.Pix[i*4+3] = c.R, c.G, c.B, 0xff
+	}
+	return img
+}
+
+// splitLockup separates the lockup's subpaths into the mark (above) and the
+// wordmark (below) at the widest empty horizontal band between them.
+func splitLockup(paths []seg) (mark, word []seg) {
+	type sub struct {
+		s          []seg
+		minY, maxY float64
+	}
+	var subs []sub
+	for _, s := range paths {
+		if s.op == 'M' {
+			subs = append(subs, sub{minY: math.Inf(1), maxY: math.Inf(-1)})
+		}
+		c := &subs[len(subs)-1]
+		c.s = append(c.s, s)
+		for _, p := range s.p {
+			c.minY, c.maxY = math.Min(c.minY, p.y), math.Max(c.maxY, p.y)
+		}
+	}
+	sort.SliceStable(subs, func(i, j int) bool { return subs[i].minY < subs[j].minY })
+	cut, best, reach := 0.0, -1.0, math.Inf(-1)
+	for i, s := range subs {
+		if i > 0 && s.minY-reach > best {
+			best, cut = s.minY-reach, (s.minY+reach)/2
+		}
+		reach = math.Max(reach, s.maxY)
+	}
+	for _, s := range subs {
+		if s.maxY < cut {
+			mark = append(mark, s.s...)
+		} else {
+			word = append(word, s.s...)
+		}
+	}
+	return mark, word
 }

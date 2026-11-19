@@ -20,7 +20,9 @@ project_name: vpn-kongtrol
 before:
   hooks:
     - go mod tidy
-    # Windows exe icon for the tray (generated, gitignored).
+    # Windows exe icon for the CLI and the tray (generated, gitignored; ADR-0052).
+    - go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico assets/logo.ico -o cmd/kongtrol/rsrc_windows_amd64.syso
+    - go run github.com/akavel/rsrc@v0.10.2 -arch arm64 -ico assets/logo.ico -o cmd/kongtrol/rsrc_windows_arm64.syso
     - go run github.com/akavel/rsrc@v0.10.2 -arch amd64 -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows_amd64.syso
     - go run github.com/akavel/rsrc@v0.10.2 -arch arm64 -ico assets/logo.ico -o cmd/kongtrol-tray/rsrc_windows_arm64.syso
 
@@ -69,7 +71,7 @@ archives:
       - LICENSE
       - src: packaging/linux/kongtrol.desktop
         dst: kongtrol.desktop
-      - src: assets/brand/logo-kong-512.png
+      - src: assets/brand/app-icon-512.png
         dst: kongtrol.png
 
   # Raw, uncompressed CLI binary per platform — consumed directly by
@@ -106,8 +108,11 @@ nfpms:
       - src: packaging/linux/kongtrol.desktop
         dst: /etc/xdg/autostart/kongtrol.desktop
         type: config
-      - src: assets/brand/logo-kong-512.png
+      # App icon (ADR-0052), one rendered file per hicolor size.
+      - src: assets/brand/app-icon-512.png
         dst: /usr/share/icons/hicolor/512x512/apps/kongtrol.png
+      - src: assets/brand/app-icon-256.png
+        dst: /usr/share/icons/hicolor/256x256/apps/kongtrol.png
       - src: LICENSE
         dst: /usr/share/doc/kongtrol/LICENSE
 

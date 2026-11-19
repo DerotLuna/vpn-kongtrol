@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.16.0 · 2026-11-19
+Version 1.17.0 · 2026-11-19
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -63,6 +63,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0048](0048-tagline-todas-tus-vpn-bajo-kongtrol.md) | Tagline "Todas tus VPN bajo Kongtrol" / "All your VPNs under Kongtrol" (play on "control"); refines ADR-0047 point 1 | Accepted | 2026-11-19 |
 | [0049](0049-installer-language-from-system.md) | Windows installer `ShowLanguageDialog=auto`: system language for ES/EN, dialog only for other languages, also on updates | Accepted | 2026-11-19 |
 | [0050](0050-installer-resume-tunnels-and-open-request.md) | Updates reconnect the tunnels that were up (`down --all --remember` → `resume`, reusing `daemon --restart`); installer checkbox by profiles, "crear mi primera VPN" = `kongtrol-tray --open /profiles` (always opens) | Accepted | 2026-11-19 |
+| [0052](0052-app-icon-and-installer-branding.md) | App icon: Ink squircle plate with the solid mark in Bone (the only logo with a background), plain mid-tone mark up to 24 px, per-platform geometry; icon in `kongtrol.exe` too (`rsrc`); Inno wizard images per DPI, tagline as translated text, cut-off Ready text fixed; refines ADR-0044 §2, ADR-0047 §4 | Accepted | 2026-11-19 |
 
 ## Statuses
 
