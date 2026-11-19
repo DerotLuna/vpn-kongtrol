@@ -35,7 +35,7 @@
 .nav-dl {
   display: inline-flex; align-items: center; gap: 8px;
   min-height: 38px; padding: 0 14px;
-  background: var(--signal); color: var(--on-signal);
+  background: var(--signal-fill); color: var(--on-signal);
   font-family: var(--font-mono); font-weight: 600;
   font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase;
   border-radius: var(--radius); position: relative;
@@ -92,7 +92,7 @@
 .stc-icon-btn {
   position: relative; display: inline-grid; place-items: center;
   width: 38px; height: 38px; padding: 0; cursor: pointer;
-  background: var(--signal); color: var(--on-signal);
+  background: var(--signal-fill); color: var(--on-signal);
   border: none; border-radius: var(--radius);
 }
 .stc-icon-btn::before { content: ''; position: absolute; inset: -3px; }

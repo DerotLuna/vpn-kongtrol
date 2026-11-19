@@ -19,7 +19,7 @@
 /* Group tint: attach = --signal, direct = --steel (green --live is only for
    "connected", never a group). Used only for borders, the corner tick and a
    faint wash — letters stay --text for contrast. */
-.provider-grid.is-attach { --tint: var(--signal); }
+.provider-grid.is-attach { --tint: var(--signal-mark); }
 .provider-grid.is-direct { --tint: var(--steel); }
 
 .provider {
@@ -75,8 +75,8 @@
   border: 1px solid var(--border); border-radius: 999px; padding: 3px 8px; background: var(--bg);
 }
 :is(.provider-os, .providers-legend) .os-state { font-family: var(--font-mono); font-size: var(--text-min); letter-spacing: 0.04em; }
-:is(.provider-os, .providers-legend) .is-auto .os-state { color: var(--signal); }
-:is(.provider-os, .providers-legend) .is-auto { border-color: color-mix(in srgb, var(--signal) 40%, var(--border)); }
+:is(.provider-os, .providers-legend) .is-auto .os-state { color: var(--signal); font-weight: 600; }
+:is(.provider-os, .providers-legend) .is-auto { color: var(--text); border-color: var(--signal-mark); background: var(--signal-soft); }
 :is(.provider-os, .providers-legend) .is-manual .os-state { color: var(--text-muted); }
 :is(.provider-os, .providers-legend) .is-partial .os-state { color: var(--signal); }
 

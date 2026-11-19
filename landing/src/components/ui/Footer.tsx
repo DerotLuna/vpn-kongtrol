@@ -14,8 +14,8 @@ interface Props {
 // Full-screen footer (2026-11-19, ADR-0060): exactly one screen above the
 // tmux bar on laptops — the large line-art mark with the tagline, the primary
 // download (same component as the hero and the download section), the site
-// and legal links, the version line, the facts and the giant wordmark behind
-// it. The header hides while it is on screen (Nav.tsx, FOOTER_ID); the round
+// and legal links (GitHub only once: the `git clone` line), the version line,
+// then the facts row, and the giant wordmark alone at the bottom (ADR-0066). The header hides while it is on screen (Nav.tsx, FOOTER_ID); the round
 // back-to-top button (BackToTop) is fixed bottom-right on every page.
 export default function Footer({ lang, page = 'home' }: Props) {
   const os = useDetectedOS()
@@ -74,7 +74,6 @@ export default function Footer({ lang, page = 'home' }: Props) {
             <p className="footer-col-title">{copy.siteTitle}</p>
             <ul>
               {copy.site.map(([label, href]) => <li key={label}><a href={href} className="footer-legal-link">{label}</a></li>)}
-              <li><a href={GITHUB_REPO} className="footer-legal-link" target="_blank" rel="noreferrer">GitHub</a></li>
             </ul>
           </nav>
           <nav className="footer-col" aria-label={copy.legalTitle}>

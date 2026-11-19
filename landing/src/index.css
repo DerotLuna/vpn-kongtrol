@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.9.1 · 2026-11-19
+   v2.10 · 2026-11-19
    Visual language borrowed from the brand mark: concentric contour rings
-   (radar / topographic signal). Cool instrument room; amber = the live signal.
+   (radar / topographic signal). Cool instrument room; gold = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
    scroll-driven reveals, CRT easter egg (↑↑↓↓←→←→BA).
    v2.3: CSS boot timeline (no layout shift), spacing/type scale, 44px CTAs,
@@ -23,6 +23,8 @@
    back-to-top button; page changes cross-fade (@view-transition).
    v2.9.1: guide-only rules (quickstart, flow diagram) live in
    components/sections/guide.css (ADR-0061).
+   v2.10: one gold accent (#ffb020) on every tone (ADR-0066): gold fills with
+   Ink text, Ink accent text with gold marks on Bone, a gold download band.
    v2.7: disclosures open/close with a height transition (::details-content),
    drawn +/− marker, tab panels and copy feedback fade in.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -42,13 +44,20 @@
   --border:      #ddd5c4;
   --border-2:    #c9bfa8;
 
-  /* deep amber so small amber text clears 4.5:1 on bone paper;
-     solid amber fills switch to light text via --on-signal */
-  --signal:      #904f00;
-  --signal-hi:   #7a4300;
-  --signal-soft: rgba(144,79,0,0.10);
-  --signal-glow: rgba(144,79,0,0.20);
-  --signal-line: rgba(144,79,0,0.28);
+  /* Gold — the one brand accent, the same #ffb020 on every tone (ADR-0066).
+     Gold as text fails on Bone (1.57:1), so the accent splits in roles:
+     --signal       accent text / lines / focus: Ink here (15.15:1 on bg)
+     --signal-fill  solid fills (primary button, active tab): gold, with Ink
+                    text on it (--on-signal, 10.70:1)
+     --signal-mark  decorative gold only (underlines, rings, dots, washes) —
+                    never the only carrier of meaning */
+  --signal:      #1b1813;
+  --signal-fill: #ffb020;
+  --signal-hi:   #ffc456;   /* fill hover */
+  --signal-mark: #ffb020;
+  --signal-soft: rgba(255,176,32,0.20);   /* Ink text on it 13.78:1 */
+  --signal-glow: rgba(255,176,32,0.45);
+  --signal-line: #ffb020;
 
   --steel:       #2f6a8f;
   --steel-soft:  rgba(47,106,143,0.12);
@@ -61,7 +70,7 @@
   --live-soft:   rgba(18,111,57,0.14);
   --caution:      #a54006;
   --caution-soft: rgba(165,64,6,0.12);
-  --on-signal:   #fbf9f4;
+  --on-signal:   #0a0c10;
   --ok:          var(--live);
 
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
@@ -122,9 +131,11 @@
   --border:      #232833;
   --border-2:    #313847;
 
-  /* signal — amber is the only warm hue; means "active / controlled" */
+  /* signal — gold is the only warm hue; means "active / controlled" */
   --signal:      #ffb020;
+  --signal-fill: #ffb020;
   --signal-hi:   #ffc456;
+  --signal-mark: #ffb020;
   --signal-soft: rgba(255,176,32,0.12);
   --signal-glow: rgba(255,176,32,0.28);
   --signal-line: rgba(255,176,32,0.30);
@@ -159,46 +170,49 @@
   color: var(--text);
 }
 
-/* Signal — ONE band only: the download section (ADR-0060). The deep amber of
-   the hero ASCII banner (Bone --signal #904f00) as the surface, Bone text,
-   an inverted primary button (Bone fill, dark amber text) and code blocks
-   inset in Ink (selector above). Contrast (WCAG 2.x, computed): text #fbf9f4
-   6.04:1, muted #f1ede4 5.44:1, dim #e6dccb 4.68:1 on #904f00; on the
-   #7a4300 cards 7.59 / 6.83 / 5.88; button text #6b3b00 on #fbf9f4 8.87:1;
-   outlines #e6dccb 4.68:1 (UI ≥ 3:1). Amber stays an accent everywhere else. */
+/* Signal — ONE band only: the download section, a GOLD band (ADR-0066,
+   refining ADR-0060). Gold surface, Ink text, cards a lighter gold, the
+   primary button inverted (Ink fill, gold text) and code blocks inset in Ink
+   (selector above). Contrast (WCAG 2.x, computed): text #0a0c10 10.70:1 on
+   #ffb020 and 12.38:1 on the #ffc456 cards; muted Ink 82% 7.67 / 8.57;
+   dim Ink 70% 5.59 / 6.02 (5.10 on the soft wash); button text #ffb020 on
+   #0a0c10 10.70:1 (8.72 on the #1d222c hover); outlines Ink 55% 3.65 / 3.82
+   (UI >= 3:1); live #0b5a2c 4.57 / 5.29. */
 .tone-signal {
-  --bg:          #904f00;
-  --surface:     #7a4300;
-  --surface-2:   #6b3b00;
-  --surface-3:   #6b3b00;
-  --border:      rgba(251,249,244,0.28);
-  --border-2:    #e6dccb;
-  --signal:      #fbf9f4;
-  --signal-hi:   #ffffff;
-  --signal-soft: rgba(251,249,244,0.14);
-  --signal-glow: rgba(43,24,0,0.35);
-  --signal-line: rgba(251,249,244,0.55);
-  --steel:       #e6dccb;
-  --steel-soft:  rgba(251,249,244,0.10);
-  --text:        #fbf9f4;
-  --text-muted:  #f1ede4;
-  --text-dim:    #e6dccb;
-  --danger:      #fbf9f4;
-  --live:        #d6f5e0;
-  --live-soft:   rgba(214,245,224,0.16);
+  --bg:          #ffb020;
+  --surface:     #ffc456;
+  --surface-2:   #ffc456;
+  --surface-3:   #ffc456;
+  --border:      rgba(10,12,16,0.18);
+  --border-2:    rgba(10,12,16,0.55);
+  --signal:      #0a0c10;
+  --signal-fill: #0a0c10;
+  --signal-hi:   #1d222c;
+  --signal-mark: #0a0c10;
+  --signal-soft: rgba(10,12,16,0.08);
+  --signal-glow: rgba(10,12,16,0.35);
+  --signal-line: rgba(10,12,16,0.45);
+  --steel:       rgba(10,12,16,0.82);
+  --steel-soft:  rgba(10,12,16,0.06);
+  --text:        #0a0c10;
+  --text-muted:  rgba(10,12,16,0.82);
+  --text-dim:    rgba(10,12,16,0.70);
+  --danger:      #0a0c10;
+  --live:        #0b5a2c;
+  --live-soft:   rgba(11,90,44,0.12);
   --ok:          var(--live);
-  --caution:      #fbf9f4;
-  --caution-soft: rgba(251,249,244,0.10);
-  --on-signal:   #6b3b00;
+  --caution:      #0a0c10;
+  --caution-soft: rgba(10,12,16,0.08);
+  --on-signal:   #ffb020;
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),
-    transparent 0 15px, rgba(251,249,244,0.06) 15px 16px);
-  color-scheme: dark;
+    transparent 0 15px, rgba(10,12,16,0.06) 15px 16px);
+  color-scheme: light;
   background-color: var(--bg);
   color: var(--text);
 }
 /* every logo <img>/<image> is black line art or the black solid mark: on an
-   Ink or Signal band it turns Bone */
-.tone-ink .logo-mark, .tone-signal .logo-mark { filter: invert(1); }
+   Ink band it turns Bone; on Bone and on the gold band it stays black */
+.tone-ink .logo-mark { filter: invert(1); }
 
 
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -270,11 +284,18 @@ body::before {
     radial-gradient(820px 520px at -6% 108%, var(--steel-soft), transparent 62%);
 }
 
-a { color: var(--signal); text-decoration: none; transition: color 0.15s; }
+a { color: var(--signal); text-decoration: none; transition: color 0.15s, text-decoration-color 0.15s; }
 a:hover { text-decoration: underline; }
+/* links inside running text: on Bone the accent text is Ink, so a gold
+   underline marks them (WCAG 1.4.1: not colour alone) — ADR-0066 */
+:where(p, li, dd, td, blockquote, figcaption) > a:not([class]) {
+  text-decoration: underline; text-decoration-color: var(--signal-mark);
+  text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+:where(p, li, dd, td, blockquote, figcaption) > a:not([class]):hover { text-decoration-color: currentColor; }
 img { display: block; max-width: 100%; }
 
-::selection { background: var(--signal); color: var(--on-signal); }
+::selection { background: var(--signal-fill); color: var(--on-signal); }
 
 /* ── Typography ─────────────────────────────────────────────────────────────── */
 h1, h2, h3, h4 {
@@ -296,7 +317,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   margin-right: 9px;
   vertical-align: -1px;
   border-radius: 50%;
-  border: 1.5px solid var(--signal);
+  border: 1.5px solid var(--signal-mark);
   /* second contour line, drawn as a hairline ring, not a glow */
   outline: 1px solid var(--signal-line); outline-offset: 2px;
 }
@@ -445,14 +466,14 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .hero-contour::after {
   content: ''; position: absolute; left: 50%; top: 50%;
   width: 9px; height: 9px; translate: -50% -50%; border-radius: 50%;
-  background: var(--signal);
+  background: var(--signal-mark);
   /* a hairline ring around the core, no glow (DESIGN.md: glow only on primary button hover) */
   outline: 1px solid var(--signal-line); outline-offset: 4px;
   animation: corePulse 3.4s ease-in-out infinite;
 }
-/* on Bone the deep amber sweep reads faint at its glow alpha: push it */
+/* on Bone the gold sweep reads faint at its glow alpha: push it */
 .hero-contour::before {
-  background: conic-gradient(from 0deg, transparent 0 78%, color-mix(in srgb, var(--signal) 55%, transparent) 92%, transparent 100%);
+  background: conic-gradient(from 0deg, transparent 0 78%, color-mix(in srgb, var(--signal-mark) 70%, transparent) 92%, transparent 100%);
 }
 @keyframes radarSweep { to { transform: rotate(360deg); } }
 /* transform-only pulse (compositor), the glow itself stays static */
@@ -476,9 +497,9 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .btn-download:active, .btn-ghost:active, .th-btn:active { transform: translateY(0) scale(0.98); transition-duration: 0.06s; }
 
 .btn-download {
-  background: var(--signal); color: var(--on-signal); font-weight: 600;
+  background: var(--signal-fill); color: var(--on-signal); font-weight: 600;
   font-size: 0.82rem; text-transform: uppercase;
-  padding: 12px 22px; border: 1px solid var(--signal);
+  padding: 12px 22px; border: 1px solid var(--signal-fill);
   box-shadow: 0 1px 2px rgba(0,0,0,0.18);
 }
 .btn-download:hover { background: var(--signal-hi); border-color: var(--signal-hi); box-shadow: 0 10px 28px -6px var(--signal-glow); }
@@ -538,7 +559,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
   font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.18em;
   text-transform: uppercase; color: var(--signal); margin-bottom: 14px;
 }
-/* section labels rendered as real commands — no ring glyph, prompt-amber */
+/* section labels rendered as real commands — no ring glyph, prompt-gold */
 .section-label.cmd-label { text-transform: none; letter-spacing: 0.05em; font-size: 0.8rem; }
 .section-label.cmd-label::before { content: none; }
 .section-title {
@@ -744,7 +765,7 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
 /* the transition lives on :hover only: hover and a click under the pointer animate, the OS
    picked by detection after hydration snaps (no color animation during load, ADR-0031) */
 .os-tab:hover { color: var(--text); background: var(--surface-2); transition: color var(--dur-short) var(--ease-standard), background-color var(--dur-short) var(--ease-standard); }
-.os-tab.active { background: var(--signal); color: var(--on-signal); font-weight: 600; }
+.os-tab.active { background: var(--signal-fill); color: var(--on-signal); font-weight: 600; }
 .os-panel { display: none; } .os-panel.active { display: block; }
 
 /* table */
@@ -797,16 +818,21 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   min-height: calc(100vh - var(--tmux-h, 0px));
   min-height: calc(100svh - var(--tmux-h, 0px));
   display: flex; flex-direction: column;
-  padding: clamp(24px, 6svh, 80px) 0 clamp(16px, 3svh, 32px);
+  padding: clamp(24px, 4.5svh, 80px) 0 clamp(16px, 3svh, 32px);
 }
 @media (min-width: 721px) and (min-height: 600px) {
   .footer { height: calc(100svh - var(--tmux-h, 0px)); }
 }
-.footer-inner { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+/* the giant wordmark's visible height; the content stops above it (ADR-0066) */
+.footer { --giant-size: min(16vw, 30svh, 300px); --giant-h: calc(var(--giant-size) * 0.62); }
+.footer-inner {
+  position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; min-height: 0;
+  padding-bottom: max(0px, calc(var(--giant-h) - clamp(16px, 3svh, 32px) + clamp(14px, 2.5svh, 24px)));
+}
 
 .footer-hero { display: flex; align-items: center; gap: clamp(24px, 4vw, 56px); }
 /* the line-art original, never under 128 px (DESIGN.md Logo) */
-.footer-mark { width: clamp(128px, 22svh, 208px); height: auto; flex-shrink: 0; opacity: 0.92; }
+.footer-mark { width: clamp(128px, 20svh, 208px); height: auto; flex-shrink: 0; opacity: 0.92; }
 .footer-hero-text { display: grid; gap: clamp(6px, 1.2svh, 12px); min-width: 0; }
 .footer-claim {
   font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 1rem + 2.4vw, 3rem);
@@ -822,7 +848,7 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .footer-guide-link:hover { color: var(--signal); }
 
 .footer-grid {
-  margin-top: clamp(16px, 4svh, 64px);
+  margin-top: clamp(14px, 3svh, 56px);
   display: grid; grid-template-columns: minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.4fr);
   gap: 24px 44px; align-items: start;
 }
@@ -855,18 +881,18 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 }
 .footer-wink { font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
 
-/* giant cropped wordmark — a faint watermark behind the content, pinned to
-   the bottom; absolute, so it adds no height */
+/* giant cropped wordmark — a faint watermark pinned to the bottom, alone:
+   .footer-inner keeps its content above it (padding-bottom = --giant-h) */
 .footer-giant {
   position: absolute; z-index: 0; left: 0; right: 0; bottom: 0;
   pointer-events: none; user-select: none;
   height: 0.62em; overflow: hidden;
   font-family: var(--font-display); font-weight: 700;
-  font-size: min(16vw, 30svh, 300px);
+  font-size: var(--giant-size);
   line-height: 0.76; letter-spacing: -0.03em;
   text-align: center; white-space: nowrap;
-  /* solid faint amber, no gradient text (One Accent Rule) */
-  color: color-mix(in srgb, var(--signal) 7%, transparent);
+  /* solid faint gold, no gradient text (One Accent Rule) */
+  color: color-mix(in srgb, var(--signal-mark) 22%, transparent);
 }
 
 /* back to top: round Ink icon button, fixed bottom-right above the tmux bar
@@ -1153,6 +1179,8 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 :root[data-crt] {
   --on-signal:   #0a0c10;
   --signal:      #33ff66;
+  --signal-fill: #33ff66;
+  --signal-mark: #33ff66;
   --signal-hi:   #7dffa1;
   --signal-soft: rgba(51,255,102,0.12);
   --signal-glow: rgba(51,255,102,0.30);
@@ -1201,23 +1229,34 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   pointer-events: none; background: linear-gradient(to bottom, transparent, var(--bg));
 }
 .th-terminal { position: relative; z-index: 1; max-width: 100%; min-width: 0; }
-/* v2.9 (ADR-0060): an Ink window on the Bone hero, sized to its content —
-   no inner scroll. 14 px mono, full-opacity text (every colour clears 4.5:1
+/* v2.9 (ADR-0060): an Ink window on the Bone hero; v2.10 (ADR-0066): its
+   size never changes — the log (.th-scroll) has a fixed height and scrolls
+   inside, the prompt stays pinned below it. 14 px mono, full-opacity text (every colour clears 4.5:1
    on --surface). From 1024 px the body is two columns under the h1, so the
    whole window fits a 1366×768 laptop screen; narrower, it stacks. */
 .th-body {
   padding: 20px 26px 22px; font-size: 0.875rem; cursor: text;
   overflow-x: hidden;
 }
-.th-main, .th-side { display: contents; }
+.th-main { display: contents; }
+/* the scrollback (ADR-0066): a fixed height that scrolls inside, the prompt
+   pinned below it, so commands never grow the hero */
+.th-side { display: flex; flex-direction: column; min-width: 0; --th-log-h: min(60svh, 30rem); }
+.th-scroll {
+  height: var(--th-log-h, auto); overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--border-2) transparent;
+  border-radius: 3px;
+}
+.th-scroll:focus-visible { outline: 2px solid var(--signal); outline-offset: 4px; }
 @media (min-width: 1024px) {
   .th-body {
     display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     column-gap: clamp(28px, 3vw, 48px); align-items: start;
   }
   .th-body > :not(.th-main, .th-side) { grid-column: 1 / -1; }
-  .th-main, .th-side { display: block; min-width: 0; }
-  .th-side { padding-top: 10px; }
+  .th-main { display: block; min-width: 0; }
+  /* the boot log fills 260 px at 1366/1440 px: the window keeps its size */
+  .th-side { padding-top: 10px; --th-log-h: 16.5rem; }
   .th-side .th-log { border-top: none; padding-top: 0; }
   /* laptop height budget: the decorative extras stay on wider-than-tall
      phones/tablets only — "Last login", and the resolving / watchdog /
@@ -1265,7 +1304,7 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   border: 1px solid var(--signal-line); color: var(--signal); background: transparent;
 }
 .th-btn:hover { background: var(--signal-soft); border-color: var(--signal); }
-.th-btn.primary { background: var(--signal); color: var(--on-signal); border-color: var(--signal); font-weight: 600; }
+.th-btn.primary { background: var(--signal-fill); color: var(--on-signal); border-color: var(--signal-fill); font-weight: 600; }
 .th-btn.primary:hover { background: var(--signal-hi); border-color: var(--signal-hi); box-shadow: 0 10px 28px -6px var(--signal-glow); }
 
 .th-cmd { margin-top: 4px; }
@@ -1325,13 +1364,8 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
    goes on the prompt line instead, so keyboard focus is always visible */
 .th-prompt:focus-within { outline: 2px solid var(--signal); outline-offset: 4px; }
 .th-prompt .t-prompt { white-space: pre; }
-/* idle block caret after the prompt; hidden once the visitor focuses or types.
-   Reduced motion: the safety net above ends the blink on its visible frame. */
-.th-caret {
-  flex-shrink: 0; width: 8px; height: 1.1em; margin-right: 6px; background: var(--signal);
-  animation: blink 1.1s step-end infinite;
-}
-.th-prompt:focus-within .th-caret, .th-prompt:has(.th-input:not(:placeholder-shown)) .th-caret { display: none; }
+/* one caret only: the input's own (gold), never a drawn block in front of
+   the placeholder (ADR-0066) */
 .th-input {
   flex: 1; min-width: 0; background: transparent; border: none; outline: none;
   font-family: var(--font-mono); font-size: inherit; color: var(--text);
@@ -1356,7 +1390,7 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   color: var(--text-dim); transition: color 0.15s, background 0.15s;
 }
 .tmux-windows a:hover { color: var(--text); text-decoration: none; }
-.tmux-windows a.active { background: var(--signal); color: var(--on-signal); font-weight: 600; }
+.tmux-windows a.active { background: var(--signal-fill); color: var(--on-signal); font-weight: 600; }
 .tmux-right { display: flex; align-items: center; gap: 8px; color: var(--text-dim); white-space: nowrap; }
 .tmux-shield { color: var(--signal); }
 .tmux-sep { opacity: 0.4; }
@@ -1496,7 +1530,7 @@ a { text-underline-offset: 3px; }
 .skip-link {
   position: fixed; top: 10px; left: 10px; z-index: 1000;
   display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 18px;
-  background: var(--signal); color: var(--on-signal); border-radius: var(--radius);
+  background: var(--signal-fill); color: var(--on-signal); border-radius: var(--radius);
   font-family: var(--font-mono); font-weight: 600; font-size: 0.8rem; letter-spacing: 0.03em;
   box-shadow: 0 10px 28px -8px rgba(0,0,0,0.5);
   transform: translateY(-200%);
@@ -1507,7 +1541,7 @@ main:focus { outline: none; }
 
 /* browser surfaces carry the palette too: form controls, scrollbars and
    autofill follow the active theme, not the OS one */
-html { accent-color: var(--signal); color-scheme: light; }
+html { accent-color: var(--signal-fill); color-scheme: light; }
 
 /* OS selector (radio group): selected state also readable without color */
 .os-tab[aria-checked='true'] { box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--on-signal) 45%, transparent); }
