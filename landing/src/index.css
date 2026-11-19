@@ -1521,6 +1521,13 @@ a { text-underline-offset: 3px; }
   body:has(.lang-suggest) { padding-bottom: calc(var(--tap) + 8px); }
 }
 .lang-suggest button:hover, .lang-suggest button:focus-visible { background: var(--surface-2, rgba(127,127,127,0.15)); }
+/* never under the back-to-top button: while the suggestion shows, the round
+   button rises above it (chip: 44px from the bottom + its 54px height; phone
+   strip: 45px + safe area), 12px apart; both stay in the tab order */
+body:has(.lang-suggest) .to-top { bottom: calc(44px + var(--tap) + 10px + 12px); }
+@media (max-width: 720px) {
+  body:has(.lang-suggest) .to-top { bottom: calc(var(--tap) + 1px + env(safe-area-inset-bottom, 0px) + 12px); }
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    v2.3 · 2026-11-18 — accessibility + polish (ADR-0024)
