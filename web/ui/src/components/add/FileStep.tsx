@@ -185,7 +185,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
           aria-hidden="true"
           onChange={(e) => pick(e.target.files)}
         />
-        <Button variant={chosen ? 'outlined' : 'filled'} icon={<UploadIcon />} onClick={() => input.current?.click()} data-autofocus="">
+        <Button variant={chosen ? 'outlined' : 'tonal'} icon={<UploadIcon />} onClick={() => input.current?.click()} data-autofocus="">
           {chosen ? t('add.file.change') : t('add.file.choose')}
         </Button>
         <p className="k-add__muted k-add__small">{drag ? t('add.file.drop') : t('add.file.what')}</p>
@@ -258,13 +258,12 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
             <summary>{t('add.more')}</summary>
             <div className="k-add-more__body">
               {chosen.type === 'openvpn' && (
-                <SelectField label={t('profiles.field.authMethod')} value={authMethod} onChange={(e) => setAuthMethod(e.target.value as AuthMethod)}>
-                  {AUTH_METHODS.map((m) => (
-                    <option key={m} value={m}>
-                      {t(AUTH_LABEL[m])}
-                    </option>
-                  ))}
-                </SelectField>
+                <SelectField
+                  label={t('profiles.field.authMethod')}
+                  value={authMethod}
+                  onChange={setAuthMethod}
+                  options={AUTH_METHODS.map((m) => ({ value: m, label: t(AUTH_LABEL[m]) }))}
+                />
               )}
               <p className="k-add__muted k-add__small">{t('add.file.where')}</p>
               {stored && (

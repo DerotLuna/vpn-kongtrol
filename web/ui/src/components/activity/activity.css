@@ -1,4 +1,4 @@
-/* Kongtrol UI — Actividad: notices timeline + audit log · v1.1.0 · 2026-11-18
+/* Kongtrol UI — Actividad: notices timeline + audit log · v1.2.0 · 2026-11-19
    Operate mode: flat surface, hairlines, mono for machine data (times,
    actions, profiles), states as word + icon + color (Four States Rule). */
 
@@ -42,23 +42,32 @@
 }
 
 /* ── Audit log ────────────────────────────────────────────────────────── */
+/* Sized by the section, not the window (container queries): the filters are
+   one row (Perfil · Nivel · Fechas) when there is room, and the log turns
+   into one card per entry before its message column gets squeezed. */
+.k-act { container: act / inline-size; }
 .k-audit__filters {
   display: grid; gap: 16px; align-items: start;
   padding: 16px 0; border-block: 1px solid var(--border);
 }
-@media (min-width: 720px) { .k-audit__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1080px) {
-  .k-audit__filters { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 0.9fr); }
-}
-.k-audit__live { align-self: center; }
-@media (min-width: 720px) { .k-audit__live { grid-column: 1 / -1; } }
+@container act (min-width: 560px) { .k-audit__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container act (min-width: 820px) { .k-audit__filters { grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1fr); } }
+.k-audit__live { align-self: center; grid-column: 1 / -1; }
 
 .k-audit__time { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 13px; }
-.k-audit__msg { display: block; max-width: 56ch; overflow-wrap: anywhere; }
-.k-act .k-datalist { overflow-x: auto; }
-@media (max-width: 639px) {
-  .k-act .k-datalist { overflow-x: visible; }
-  .k-audit__msg { text-align: left; }
+.k-audit__msg { display: block; min-width: 22ch; max-width: 56ch; overflow-wrap: break-word; }
+@container act (max-width: 899px) {
+  .k-act .k-datalist thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .k-act .k-datalist table, .k-act .k-datalist tbody, .k-act .k-datalist tr, .k-act .k-datalist th, .k-act .k-datalist td { display: block; }
+  .k-act .k-datalist tr { padding: 10px 14px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .k-act .k-datalist tbody tr:hover { background: var(--surface); }
+  .k-act .k-datalist th, .k-act .k-datalist td {
+    border: 0; padding: 3px 0; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: right;
+  }
+  .k-act .k-datalist td[data-label]::before, .k-act .k-datalist th[data-label]::before {
+    content: attr(data-label); color: var(--text-muted); font: 500 12px/1.6 var(--font-mono); text-align: left; flex: none;
+  }
+  .k-audit__msg { min-width: 0; text-align: right; }
 }
 
 /* Signature: icon + word; "sin comprobar" is neutral, never green. */

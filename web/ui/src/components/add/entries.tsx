@@ -1,4 +1,4 @@
-// Kongtrol UI — "＋ Agregar" entry points used across pages · v1.0.0 · 2026-11-19
+// Kongtrol UI — "＋ Agregar" entry points used across pages · v1.1.0 · 2026-11-19
 //
 // Every page that offers "add" opens the shell's one sheet (ADR-0055)
 // through the deep link (app/addLink.ts), prefilled from where it was
@@ -20,12 +20,14 @@ export function AddButton({ req, children, ...rest }: { req: AddRequest; childre
   )
 }
 
-/** "＋" on a tunnel row: "Hacer que un sitio salga por {vpn}" (name + tooltip). */
+/** "＋" beside a notice: "Hacer que un sitio salga por {vpn}" (name + tooltip; 36px, next to a small button). */
 export function AddRuleIcon({ via }: { via: string }) {
   const { t } = usePreferences()
   const { open } = useAddSheet()
   return (
     <IconButton
+      size="sm"
+      variant="outlined"
       label={t('add.siteVia', { vpn: via })}
       icon={<PlusIcon />}
       aria-haspopup="dialog"

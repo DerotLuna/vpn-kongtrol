@@ -1,10 +1,11 @@
-// Grupos (/profiles/groups) — connect several VPNs at once · v1.0.0 · 2026-11-18
+// Grupos (/profiles/groups) — connect several VPNs at once · v1.1.0 · 2026-11-19
 //
 // Parity contract: docs/dashboard-parity.md §3.2 "Tab: Groups". Group CRUD
 // (optimistic, rolled back on refusal) and connect / disconnect / reload a
 // whole group. Every answer is read, not assumed (legacy bug §5.1 item 3):
 // profiles the running daemon could not start are named, with "Reiniciar
 // ahora" when a restart is what they need.
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import type { Group, TunnelMetrics } from '../api/types'
@@ -21,6 +22,7 @@ import '../components/profiles/profiles.css'
 import { Button, IconButton } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { DataList, type Column } from '../components/ui/DataList'
+import { Menu } from '../components/ui/Menu'
 import { PlugIcon, PlusIcon, RefreshIcon } from '../components/ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { StatusPill } from '../components/ui/StatusPill'
@@ -33,7 +35,9 @@ import {
   type GroupAction,
   type GroupActionResult,
 } from '../data/profiles'
+import { connectedMembers, trackGroupMembers, useSlowActionNotice } from '../data/home'
 import { useTunnelsQuery } from '../data/resources'
+import { usePendingAny } from '../data/transition'
 import { toasts } from '../data/toast'
 
 interface Row {
@@ -53,6 +57,8 @@ export function GroupsPage() {
   const [editor, setEditor] = useState<EditorState>({ mode: 'closed' })
   const [toDelete, setToDelete] = useState<Group | null>(null)
   const [busy, setBusy] = useState<string>('')
+  const client = useQueryClient()
+  const onTimeout = useSlowActionNotice()
 
   const localize = useCallback((err: unknown) => localizeError(err, t), [t])
   const save = useSaveGroup(
@@ -106,10 +112,16 @@ export function GroupsPage() {
   const run = useCallback(
     (group: Group, kind: GroupAction) => {
       setBusy(`${group.name}:${kind}`)
+      // Members up now: the ones a disconnect takes down (shown in progress until they are).
+      const up = connectedMembers(client, group.profiles)
       action.mutate(
         { name: group.name, action: kind },
         {
-          onSuccess: (res) => report(group.name, group.profiles, res),
+          onSuccess: (res) => {
+            if (res.action === 'connect') trackGroupMembers(client, res.result.started ?? [], 'connect', onTimeout)
+            if (res.action === 'disconnect') trackGroupMembers(client, up, 'disconnect', onTimeout)
+            report(group.name, group.profiles, res)
+          },
           onError: (err) => {
             const failed = kind === 'connect' ? 'groups.alert.connectFailed' : kind === 'disconnect' ? 'groups.alert.disconnectFailed' : 'groups.alert.reloadFailed'
             const { message, fix } = describeError(localizeError(err, t), t)
@@ -119,7 +131,7 @@ export function GroupsPage() {
         },
       )
     },
-    [action, report, t],
+    [action, report, t, client, onTimeout],
   )
 
   const rows = useMemo<Row[]>(() => {
@@ -159,28 +171,15 @@ export function GroupsPage() {
         id: 'actions',
         header: t('profiles.col.actions'),
         hideHeader: true,
-        cell: ({ group }) => (
-          <span className="kp-actions kp-actions--group">
-            <Button variant="tonal" icon={<PlugIcon />} loading={busy === `${group.name}:connect`} onClick={() => run(group, 'connect')}>
-              {t('groups.action.connect')}
-            </Button>
-            <Button variant="outlined" icon={<PowerIcon />} loading={busy === `${group.name}:disconnect`} onClick={() => run(group, 'disconnect')}>
-              {t('groups.action.disconnect')}
-            </Button>
-            <IconButton
-              label={t('groups.action.reloadName', { name: group.name })}
-              icon={<RefreshIcon />}
-              disabled={busy === `${group.name}:reload`}
-              onClick={() => run(group, 'reload')}
-            />
-            <IconButton label={t('profiles.action.editName', { name: group.name })} icon={<EditIcon />} onClick={() => setEditor({ mode: 'edit', group, seq: Date.now() })} />
-            <IconButton
-              label={t('profiles.action.deleteName', { name: group.name })}
-              icon={<TrashIcon />}
-              className="kp-danger-icon"
-              onClick={() => setToDelete(group)}
-            />
-          </span>
+        cell: ({ group, connected }) => (
+          <GroupActions
+            group={group}
+            connected={connected}
+            busy={busy}
+            onRun={run}
+            onEdit={() => setEditor({ mode: 'edit', group, seq: Date.now() })}
+            onDelete={() => setToDelete(group)}
+          />
         ),
       },
     ],
@@ -261,5 +260,81 @@ export function GroupsPage() {
         }}
       />
     </div>
+  )
+}
+
+/**
+ * One group's actions in the kit's order (DESIGN.md: one primary per row):
+ * the main action as a small button — Conectar in amber while a member is
+ * down, else Desconectar outlined — then 36px icon buttons with tooltips
+ * (Desconectar while the main one is Conectar and something is up,
+ * Recargar, Editar, Borrar; the last three fold into "⋯" on narrow lists).
+ * The main action stays in progress until every
+ * member it touched reached its end state (data/transition.ts).
+ */
+function GroupActions({
+  group,
+  connected,
+  busy,
+  onRun,
+  onEdit,
+  onDelete,
+}: {
+  group: Group
+  connected: number
+  busy: string
+  onRun: (g: Group, a: GroupAction) => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const { t } = usePreferences()
+  const moving = usePendingAny(group.profiles)
+  const main: GroupAction = connected < group.profiles.length ? 'connect' : 'disconnect'
+  const is = (a: GroupAction) => busy === `${group.name}:${a}`
+  const mainBusy = is(main) || moving
+  const word = t(main === 'connect' ? (mainBusy ? 'groups.action.connecting' : 'groups.action.connect') : mainBusy ? 'groups.action.disconnecting' : 'groups.action.disconnect')
+  return (
+    <span className="kp-actions kp-actions--group">
+      <Button
+        variant={main === 'connect' ? 'filled' : 'outlined'}
+        size="sm"
+        icon={main === 'connect' ? <PlugIcon /> : <PowerIcon />}
+        loading={mainBusy}
+        aria-label={`${word} ${group.name}`}
+        onClick={() => onRun(group, main)}
+      >
+        {word}
+      </Button>
+      {main === 'connect' && connected > 0 && (
+        <IconButton
+          size="sm"
+          label={t('groups.action.disconnectName', { name: group.name })}
+          icon={<PowerIcon />}
+          loading={is('disconnect')}
+          onClick={() => onRun(group, 'disconnect')}
+        />
+      )}
+      <span className="kp-actions__inline">
+        <IconButton
+          size="sm"
+          label={t('groups.action.reloadName', { name: group.name })}
+          icon={<RefreshIcon />}
+          loading={is('reload')}
+          onClick={() => onRun(group, 'reload')}
+        />
+        <IconButton size="sm" label={t('profiles.action.editName', { name: group.name })} icon={<EditIcon />} onClick={onEdit} />
+        <IconButton size="sm" label={t('profiles.action.deleteName', { name: group.name })} icon={<TrashIcon />} className="kp-danger-icon" onClick={onDelete} />
+      </span>
+      <Menu
+        className="kp-actions__more"
+        size="sm"
+        label={t('kit.more', { name: group.name })}
+        items={[
+          { id: 'reload', label: t('groups.action.reloadName', { name: group.name }), icon: <RefreshIcon />, onSelect: () => onRun(group, 'reload'), disabled: is('reload') },
+          { id: 'edit', label: t('profiles.action.editName', { name: group.name }), icon: <EditIcon />, onSelect: onEdit },
+          { id: 'delete', label: t('profiles.action.deleteName', { name: group.name }), icon: <TrashIcon />, onSelect: onDelete, danger: true },
+        ]}
+      />
+    </span>
   )
 }

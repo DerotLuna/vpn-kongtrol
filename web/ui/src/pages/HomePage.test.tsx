@@ -20,6 +20,7 @@ import {
   type SecuritySummary,
 } from '../data/home'
 import { toasts } from '../data/toast'
+import { SETTLE_TIMEOUT_MS, resetTransitions } from '../data/transition'
 import { FakeSocket, helperMissing, helperReady, json, stubFetch, tunnel, type Routes } from '../test/fakes'
 
 const security = (extra: Partial<SecuritySummary> = {}): SecuritySummary => ({
@@ -112,7 +113,7 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'languages', { value: ['es-AR'], configurable: true })
   sessionStorage.clear()
   latencyHistory.set({})
-  pendingActions.set({})
+  resetTransitions()
   routesOpen.set({})
   recentNotices.set([])
   FakeSocket.reset()
@@ -301,14 +302,68 @@ describe('Inicio: tunnel actions', () => {
     expect(await within(row).findByText('Desconectada')).toBeInTheDocument()
   })
 
-  it('a connect already in progress (409) is not an error', async () => {
-    stubApi(base([tunnel('work', 'disconnected')], { 'POST /api/v1/tunnels/work/connect': () => json({ error: 'connect already in progress for work' }, 409) }))
+  it('a connect already in progress (409) is not an error: it stays "Conectando" until the feed says connected', async () => {
+    stubApi(base([tunnel('work', 'disconnected')], { 'POST /api/v1/tunnels/work/connect': () => json({ error: 'connect already in progress for work' }, 409) }), FakeSocket)
     render(<App />)
-    await userEvent.click(within(await rowOf('work')).getByRole('button', { name: 'Conectar work' }))
+    const row = await rowOf('work')
+    await userEvent.click(within(row).getByRole('button', { name: 'Conectar work' }))
+    expect(await within(row).findByRole('button', { name: 'Conectando… work' })).toHaveAttribute('aria-busy', 'true')
+    expect(pendingActions.get()).toEqual({ work: 'connect' })
+    const ws = FakeSocket.last()
+    act(() => ws.open())
+    act(() => ws.push({ work: tunnel('work', 'connected') }))
     await waitFor(() => expect(pendingActions.get()).toEqual({}))
     expect(screen.queryByText(/already in progress/)).toBeNull()
   })
 
+  it('connect accepted (202): the spinner stays while the daemon works, shows the app phase, and ends on the live state', async () => {
+    stubApi(base([tunnel('nord', 'disconnected')], { 'POST /api/v1/tunnels/nord/connect': () => json({ status: 'connecting', tunnel: 'nord' }, 202) }), FakeSocket)
+    render(<App />)
+    const row = await rowOf('nord')
+    await userEvent.click(within(row).getByRole('button', { name: 'Conectar nord' }))
+    await waitFor(() => expect(pendingActions.get()).toEqual({ nord: 'connect' }))
+    const ws = FakeSocket.last()
+    act(() => ws.open())
+    // A stale frame (still disconnected) does not end it: the row keeps "Conectando…".
+    act(() => ws.push({ nord: tunnel('nord', 'disconnected') }))
+    expect(within(row).getByRole('button', { name: 'Conectando… nord' })).toHaveAttribute('aria-busy', 'true')
+    expect(within(row).getByText('Conectando', { selector: '.pill' })).toBeInTheDocument()
+    // A connect in progress can be cancelled.
+    expect(within(row).getByRole('button', { name: 'Cancelar nord' })).not.toHaveAttribute('aria-disabled')
+    // The daemon's phase: the provider app waits for the user. That ends our wait; the row says what to do.
+    act(() => ws.push({ nord: tunnel('nord', 'connecting', { attach: { phase: 'waiting_user', app: 'NordVPN', since: '' } }) }))
+    await waitFor(() => expect(pendingActions.get()).toEqual({}))
+    expect(within(row).getByText(/NordVPN/, { selector: '.home-line' })).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Cancelar nord' })).toBeInTheDocument()
+  })
+
+  it('connect that fails in the background ends on last_error; a stuck one times out with what to do', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      stubApi(
+        base([tunnel('a', 'disconnected'), tunnel('b', 'disconnected')], {
+          'POST /api/v1/tunnels/a/connect': () => json({ status: 'connecting' }, 202),
+          'POST /api/v1/tunnels/b/connect': () => json({ status: 'connecting' }, 202),
+        }),
+        FakeSocket,
+      )
+      render(<App />)
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await user.click(within(await rowOf('a')).getByRole('button', { name: 'Conectar a' }))
+      await user.click(within(await rowOf('b')).getByRole('button', { name: 'Conectar b' }))
+      await waitFor(() => expect(pendingActions.get()).toEqual({ a: 'connect', b: 'connect' }))
+      const ws = FakeSocket.last()
+      act(() => ws.open())
+      act(() => ws.push({ a: tunnel('a', 'disconnected', { last_error: 'handshake timeout', last_error_key: 'vpn.err.timeout' }), b: tunnel('b', 'connecting') }))
+      await waitFor(() => expect(pendingActions.get()).toEqual({ b: 'connect' }))
+      act(() => vi.advanceTimersByTime(SETTLE_TIMEOUT_MS.connect + 10))
+      await waitFor(() => expect(pendingActions.get()).toEqual({}))
+      expect(await screen.findByText('b todavía no termina de conectar.')).toBeInTheDocument()
+      expect(screen.getByText(/pulsa «Cancelar» y vuelve a intentarlo/)).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it('disconnect of a provider app without CLI (202 waiting_user) explains what to do', async () => {
     stubApi(base([work], { 'POST /api/v1/tunnels/work/disconnect': () => json({ status: 'waiting_user', tunnel: 'work' }, 202) }))
     render(<App />)
@@ -320,7 +375,7 @@ describe('Inicio: tunnel actions', () => {
 
   it('disconnect in flight: row buttons inert, spinner + "Desconectando…", pill in transition, one request on double click', async () => {
     let resolve!: (r: Response) => void
-    const fetchMock = stubApi(base([work], { 'POST /api/v1/tunnels/work/disconnect': () => new Promise<Response>((r) => (resolve = r)) }))
+    const fetchMock = stubApi(base([work], { 'POST /api/v1/tunnels/work/disconnect': () => new Promise<Response>((r) => (resolve = r)) }), FakeSocket)
     render(<App />)
     const row = await rowOf('work')
     await userEvent.dblClick(within(row).getByRole('button', { name: 'Desconectar work' }))
@@ -339,13 +394,20 @@ describe('Inicio: tunnel actions', () => {
     await userEvent.click(other)
     expect(posts(fetchMock)).toEqual(['/api/v1/tunnels/work/disconnect'])
 
+    // The daemon answered, but the feed still shows it up: keep "Desconectando…".
     resolve(new Response(JSON.stringify({ status: 'disconnected', tunnel: 'work' }), { status: 200 }))
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => String(u) === '/api/v1/tunnels').length).toBeGreaterThan(1))
+    expect(pendingActions.get()).toEqual({ work: 'disconnect' })
+    const ws = FakeSocket.last()
+    act(() => ws.open())
+    act(() => ws.push({ work: { ...work, Status: 'disconnected' } }))
     await waitFor(() => expect(pendingActions.get()).toEqual({}))
+    expect(within(row).getByRole('button', { name: 'Conectar work' })).not.toHaveAttribute('aria-disabled')
   })
 
-  it('reconnect in flight: the icon button spins, the pill says "Reconectando", Desconectar waits', async () => {
+  it('reconnect in flight: the icon button spins, the pill says "Reconectando", Desconectar waits until the tunnel is back', async () => {
     let resolve!: (r: Response) => void
-    const fetchMock = stubApi(base([work], { 'POST /api/v1/tunnels/work/reload': () => new Promise<Response>((r) => (resolve = r)) }))
+    const fetchMock = stubApi(base([{ ...work, ConnectedAt: 't1' }], { 'POST /api/v1/tunnels/work/reload': () => new Promise<Response>((r) => (resolve = r)) }), FakeSocket)
     render(<App />)
     const row = await rowOf('work')
     const icon = within(row).getByRole('button', { name: 'Reconectar work' })
@@ -361,9 +423,13 @@ describe('Inicio: tunnel actions', () => {
     expect(posts(fetchMock)).toEqual(['/api/v1/tunnels/work/reload'])
 
     resolve(new Response(JSON.stringify({ status: 'restarting', tunnel: 'work' }), { status: 202 }))
+    await screen.findByText('Reconectando work con su configuración guardada…')
+    expect(pendingActions.get()).toEqual({ work: 'reload' })
+    const ws = FakeSocket.last()
+    act(() => ws.open())
+    act(() => ws.push({ work: { ...work, ConnectedAt: 't2' } }))
     await waitFor(() => expect(within(row).getByRole('button', { name: 'Desconectar work' })).not.toHaveAttribute('aria-disabled'))
   })
-
   it('provider app waiting for the user to disconnect (waiting_disconnect): in transition, with what to do', async () => {
     const waiting = tunnel('nord', 'connected', { attach: { phase: 'waiting_disconnect', app: 'NordVPN', since: '' } })
     const fetchMock = stubApi(base([waiting]))
@@ -392,6 +458,8 @@ describe('Inicio: tunnel actions', () => {
 
     await userEvent.click(within(row).getByRole('button', { name: 'Reconectar work' }))
     expect(await screen.findByText('Reconectando work con su configuración guardada…')).toBeInTheDocument()
+    expect(pendingActions.get()).toEqual({ work: 'reload' })
+    act(() => resetTransitions()) // as if the feed showed it back up
 
     act(() => toasts.clear())
     answer = () => json({ status: 'skipped_not_connected', tunnel: 'work' }, 202)

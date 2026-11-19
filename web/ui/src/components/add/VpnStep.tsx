@@ -110,7 +110,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
                       {existing && <span className="k-add__muted">{t('add.vpn.already', { name: existing.name })}</span>}
                     </span>
                     <Button
-                      variant={i === 0 ? 'filled' : 'tonal'}
+                      variant={i === 0 ? 'filled' : 'outlined'}
                       size="sm"
                       aria-label={t('add.vpn.useApp', { app: d.label || spec.label })}
                       data-autofocus={i === 0 || undefined}
@@ -128,10 +128,10 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
           )}
         </div>
         <footer className="k-dialog__actions k-add__actions">
-          <Button variant="outlined" icon={<ArrowLeftIcon />} onClick={onBack}>
+          <Button variant="text" className="k-add__back" icon={<ArrowLeftIcon />} onClick={onBack}>
             {t('add.back')}
           </Button>
-          <Button variant="tonal" onClick={() => setSub({ k: 'pick' })} data-autofocus={(!detected.isPending && apps.length === 0) || undefined}>
+          <Button variant="outlined" onClick={() => setSub({ k: 'pick' })} data-autofocus={(!detected.isPending && apps.length === 0) || undefined}>
             {t('add.vpn.other')}
           </Button>
         </footer>
@@ -145,7 +145,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
         <p className="k-add__muted">{t('add.vpn.pickLead')}</p>
         <TypePicker detected={detected.data ?? []} onPick={(type) => startForm(type)} />
         <footer className="k-dialog__actions k-add__actions">
-          <Button variant="outlined" icon={<ArrowLeftIcon />} onClick={() => setSub({ k: 'list' })} data-autofocus="">
+          <Button variant="text" className="k-add__back" icon={<ArrowLeftIcon />} onClick={() => setSub({ k: 'list' })} data-autofocus="">
             {t('add.back')}
           </Button>
         </footer>

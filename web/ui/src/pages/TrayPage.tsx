@@ -27,10 +27,11 @@ import {
   type Pending,
   type Tone,
 } from '../tray/model'
+import { SETTLE_TIMEOUT_MS } from '../data/transition'
 import '../theme/tray.css'
 
 /** A request the feed never confirmed stops showing as pending after this. */
-const PENDING_MS = 60_000
+const PENDING_MS = SETTLE_TIMEOUT_MS.connect
 
 /**
  * Groups, protection state and version from the shared cache (src/data,
@@ -156,9 +157,24 @@ export function TrayPage() {
     )
   }
 
+  // A group action shows each member it touches in progress until the feed
+  // confirms it (same rule as a single row), not just while the request runs.
   const toggleGroup = (g: Group, allUp: boolean) => {
+    const want: Pending = allUp ? 'disconnect' : 'connect'
+    const members = (tunnels ?? []).filter(
+      (tn) => g.profiles.includes(tn.Name) && (want === 'disconnect' ? tn.Status === 'connected' : tn.Status !== 'connected'),
+    )
+    const at = Date.now()
+    setPending((p) => ({ ...p, ...Object.fromEntries(members.map((tn) => [tn.Name, { want, at }])) }))
     const call = allUp ? api.disconnectGroup(g.name) : api.connectGroup(g.name)
-    call.then(reload, reload)
+    call.then(reload, () => {
+      setPending((p) => {
+        const next = { ...p }
+        for (const tn of members) delete next[tn.Name]
+        return next
+      })
+      reload()
+    })
   }
 
   const sorted = tunnels ? [...tunnels].sort((a, b) => a.Name.localeCompare(b.Name)) : []

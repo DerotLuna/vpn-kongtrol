@@ -22,6 +22,7 @@ import {
 } from '../../data/security'
 import { Button, IconButton } from '../ui/Button'
 import { CloseIcon, PlusIcon } from '../ui/icons'
+import { Select } from '../ui/Select'
 import { isIP } from './model'
 
 const PROBLEM = {
@@ -84,24 +85,18 @@ export function ExpectedIPs({ stored }: { stored: Record<string, string> | undef
             const options = r.profile && !names.includes(r.profile) ? [r.profile, ...names] : names
             return (
               <li key={i} className="sec-expected__row">
-                <label className="visually-hidden" htmlFor={`${id}-profile-${i}`}>
-                  {t('security.expected.profile')}
-                </label>
-                <select
+                <Select
                   id={`${id}-profile-${i}`}
-                  className="k-input k-select sec-select"
+                  className="sec-select"
+                  aria-label={t('security.expected.profile')}
+                  mono
                   value={r.profile}
+                  placeholder={t('security.expected.choose')}
                   aria-invalid={pp ? true : undefined}
                   aria-describedby={pp ? errId : undefined}
-                  onChange={(e) => edit(i, { profile: e.target.value })}
-                >
-                  <option value="">{t('security.expected.choose')}</option>
-                  {options.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(profile) => edit(i, { profile })}
+                  options={options.map((n) => ({ value: n, label: n }))}
+                />
                 <label className="visually-hidden" htmlFor={`${id}-ip-${i}`}>
                   {t('security.expected.ip', { name: r.profile || '—' })}
                 </label>

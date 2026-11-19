@@ -74,7 +74,7 @@ describe('Rules page', () => {
 
     await userEvent.type(within(sheet).getByRole('textbox', { name: /Site, IP or program/ }), 'https://git.acme.test/x')
     // "Goes through" starts on the connected profile.
-    expect(within(sheet).getByRole('combobox', { name: /Goes through/ })).toHaveValue('office')
+    expect(within(sheet).getByRole('combobox', { name: /Goes through/ })).toHaveTextContent(/office/)
     await userEvent.click(within(sheet).getByRole('radio', { name: 'Block it' }))
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save rule' }))
 

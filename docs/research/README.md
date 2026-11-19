@@ -59,6 +59,7 @@ reasoned but unverified.
 | [2026-11-19-landing-single-theme-and-page-transitions](2026-11-19-landing-single-theme-and-page-transitions.md) | Cross-document View Transitions (`@view-transition`, Chrome 126, `rel=expect blocking=render`), keeping the section on a language switch, back-to-top pattern, WCAG AA of the Signal-amber band | ADR-0060 |
 | [2026-11-19-landing-guide-accuracy](2026-11-19-landing-guide-accuracy.md) | Stale statements on the landing guide checked against the code (installers, wizard, labels, firewall names, `warp-cli registration new`) and the step-by-step instruction format (Microsoft Writing Style Guide) | ADR-0061 |
 | [2026-11-19-loopback-cookies-and-listener-owner](2026-11-19-loopback-cookies-and-listener-owner.md) | Cookies are not port-isolated (RFC 6265 §8.5), sessionStorage per origin, Secure cookies on loopback per browser, CSP `'self'` and `ws:`, owner of a loopback listener without admin (Windows, Linux, macOS) | ADR-0062 |
+| [2026-11-19-floating-layers-and-own-controls](2026-11-19-floating-layers-and-own-controls.md) | Floating UI vs. alternatives (license, size, maintenance), the Popover API top layer above a modal dialog, CSP `style-src` vs. CSSOM writes (measured in Chromium), WAI-ARIA APG patterns for tooltip, menu button, select-only and editable combobox, date grid; week start per language; the asynchronous connect in the daemon | ADR-0067 |
 
 ## Template
 

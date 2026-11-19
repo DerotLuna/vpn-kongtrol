@@ -1,4 +1,4 @@
-/* KONGTROL UI — component kit (src/components/ui) · v0.2.0 · 2026-11-18
+/* KONGTROL UI — component kit (src/components/ui) · v0.3.0 · 2026-11-19
    Operate mode (DESIGN.md "Sesión en la Torre"): precise and quiet. Amber
    is the one accent (primary action, selection, focus); states use the
    Four States colors with a word. Flat by default: no shadows except the
@@ -61,20 +61,7 @@
 .k-icon-btn[aria-pressed='true'] { background: var(--state-select); color: var(--text); }
 .k-icon-btn svg { width: 20px; height: 20px; }
 
-/* ── Tooltip ──────────────────────────────────────────────────────────── */
-.k-tooltip-anchor { position: relative; display: inline-flex; }
-/* Closed = display:none, so a tooltip near the edge never widens the page
-   (still read through aria-describedby). Opens with a short fade. */
-.k-tooltip {
-  position: absolute; left: 50%; top: calc(100% + 6px); z-index: 30;
-  padding: 6px 10px; border-radius: var(--radius); white-space: nowrap; pointer-events: auto;
-  background: var(--text); color: var(--bg); font: 500 12px/1.3 var(--font-body);
-  display: none; transform: translateX(-50%);
-}
-.k-tooltip[data-open] { display: block; animation: k-tip-in var(--dur-fast) var(--ease-standard); }
-@keyframes k-tip-in { from { opacity: 0; } }
-/* Header actions sit at the right edge: align their tooltips to it. */
-.k-topbar__actions .k-tooltip { left: auto; right: 0; transform: none; }
+/* Tooltip, Menu, Select, Combobox, DateRangePicker: kit-controls.css. */
 
 /* ── Switch ───────────────────────────────────────────────────────────── */
 .k-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: var(--tap); }
@@ -113,7 +100,9 @@
 .k-card__title { font: 600 17px/1.3 var(--font-display); }
 
 /* ── DataList ─────────────────────────────────────────────────────────── */
-.k-datalist { width: 100%; }
+/* Cards when the list itself is narrow (container query), not the window:
+   with the sidebar, a 768px window leaves ~600px to a table. */
+.k-datalist { width: 100%; container: datalist / inline-size; }
 .k-datalist table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .k-datalist th, .k-datalist td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .k-datalist thead th { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.04em; color: var(--text-muted); }
@@ -123,7 +112,7 @@
 @keyframes k-row-in { from { opacity: 0; transform: translateY(calc(var(--rise) * -1)); } }
 .k-datalist .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 .k-datalist tbody tr:hover { background: var(--state-hover); }
-@media (max-width: 639px) {
+@container datalist (max-width: 679px) {
   .k-datalist thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .k-datalist table, .k-datalist tbody, .k-datalist tr, .k-datalist th, .k-datalist td { display: block; }
   .k-datalist tr { padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -235,9 +224,6 @@
 .k-input[aria-invalid='true'] { border-color: var(--danger); }
 .k-input::placeholder { color: var(--text-dim); }
 .k-textarea { min-height: 96px; resize: vertical; }
-.k-select { appearance: none; padding-right: 36px; cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
-  background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
 
 /* ── Skeleton / Empty / Error / Banner / Kbd ──────────────────────────── */
 .k-skeleton { display: flex; flex-direction: column; gap: 10px; }
@@ -299,6 +285,9 @@
 /* Kit review page (dev only) */
 .kit-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
 .kit-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.kit-edge { margin-left: auto; }
+.kit-check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; }
+.kit-radios { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; }
 
 /* ── Browser surfaces ─────────────────────────────────────────────────── */
 ::selection { background: var(--signal-soft); color: var(--text); }

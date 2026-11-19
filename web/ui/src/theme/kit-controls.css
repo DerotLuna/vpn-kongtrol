@@ -1,0 +1,155 @@
+/* KONGTROL UI — kit controls that float or replace a native control · v1.0.0 · 2026-11-19
+   Tooltip, Menu (⋯), Select, Combobox, DateRangePicker, check boxes and
+   radios (src/components/ui, ADR-0067). Same rules as kit.css: amber is the
+   selection and focus, Four States colors only for states, targets ≥ 36px
+   (rows of a list 40px), text ≥ 11px, motion only as state feedback. */
+
+/* ── Floating layers (floating.ts) ────────────────────────────────────────
+   Shown with the Popover API (top layer) and placed by Floating UI, which
+   writes left/top through CSSOM (allowed by the CSP). Reset the UA box. */
+.k-pop, .k-tooltip {
+  margin: 0; inset: auto; padding: 0; border: 0; overflow: visible; color: var(--text); background: transparent;
+}
+.k-pop {
+  min-width: var(--k-pop-min-w, 0); max-width: min(var(--k-pop-max-w, 360px), calc(100vw - 16px));
+  max-height: var(--k-pop-max-h, 320px); overflow: auto; overscroll-behavior: contain;
+  background: var(--surface); border: 1px solid var(--border-2); border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28); padding: 4px;
+  animation: k-pop-in var(--dur-fast) var(--ease-enter);
+}
+@keyframes k-pop-in { from { opacity: 0; transform: translateY(-2px); } }
+
+/* ── Tooltip ──────────────────────────────────────────────────────────── */
+.k-tooltip-anchor { display: inline-flex; }
+.k-tooltip {
+  max-width: min(280px, calc(100vw - 16px)); padding: 6px 10px; border-radius: var(--radius);
+  background: var(--text); color: var(--bg); font: 500 12px/1.35 var(--font-body); text-align: left;
+  white-space: normal; overflow-wrap: anywhere; pointer-events: auto;
+  animation: k-tip-in var(--dur-fast) var(--ease-standard);
+}
+@keyframes k-tip-in { from { opacity: 0; } }
+
+/* ── IconButton sizes (Button.tsx) ────────────────────────────────────── */
+.k-icon-btn--sm { width: 36px; height: 36px; }
+.k-icon-btn--sm svg { width: 18px; height: 18px; }
+.k-icon-btn:disabled { cursor: not-allowed; opacity: 0.55; background: transparent; }
+.k-icon-btn[aria-busy='true'] { cursor: progress; }
+.k-icon-btn .k-spinner { width: 16px; height: 16px; }
+.k-icon-btn--sm .k-spinner { width: 14px; height: 14px; }
+
+/* ── Menu (⋯) ─────────────────────────────────────────────────────────── */
+.k-menu { display: inline-flex; }
+.k-menu__list { min-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+.k-menu__item {
+  display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px; width: 100%;
+  border: 0; border-radius: 4px; background: none; color: var(--text); cursor: pointer;
+  font: 500 14px/1.3 var(--font-body); text-align: left; white-space: nowrap;
+}
+.k-menu__item:hover { background: var(--state-hover); }
+.k-menu__item:focus-visible { background: var(--state-hover); outline: none; box-shadow: inset 0 0 0 2px var(--signal); }
+.k-menu__item[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; }
+.k-menu__item--danger { color: var(--danger); }
+.k-menu__icon { display: inline-flex; color: var(--text-muted); }
+.k-menu__item--danger .k-menu__icon { color: var(--danger); }
+.k-menu__icon svg { width: 18px; height: 18px; }
+
+/* ── Select / Combobox / DateRangePicker triggers (the input's box) ───── */
+.k-select { display: flex; align-items: center; gap: 8px; text-align: left; cursor: pointer; padding-right: 10px; }
+.k-select:disabled { cursor: not-allowed; opacity: 0.55; }
+.k-select[aria-expanded='true'] { border-color: var(--signal); }
+.k-select__value { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-select__placeholder { color: var(--text-dim); }
+.k-select__chevron { display: inline-flex; flex: none; color: var(--text-muted); transition: transform var(--dur-fast) var(--ease-standard); }
+.k-select__chevron svg { width: 18px; height: 18px; }
+.k-select[aria-expanded='true'] .k-select__chevron { transform: rotate(180deg); }
+.k-combobox { position: relative; display: flex; }
+.k-combobox .k-input { padding-right: 36px; }
+.k-combobox__chevron { position: absolute; right: 10px; top: 50%; translate: 0 -50%; pointer-events: none; }
+.k-combobox:has([aria-expanded='true']) .k-combobox__chevron { transform: rotate(180deg); }
+
+/* ── Listbox (Select, Combobox) ───────────────────────────────────────── */
+.k-listbox { list-style: none; display: flex; flex-direction: column; gap: 1px; }
+.k-listbox__option {
+  display: flex; align-items: flex-start; gap: 8px; min-height: 40px; padding: 10px 10px 10px 6px;
+  border-radius: 4px; cursor: pointer; font: 400 14px/1.35 var(--font-body);
+}
+.k-listbox.mono .k-listbox__option { font-family: var(--font-mono); font-size: 13px; }
+.k-listbox__option[data-active] { background: var(--state-hover); box-shadow: inset 2px 0 0 var(--signal); }
+.k-listbox__option[aria-selected='true'] { font-weight: 600; }
+.k-listbox__option[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; }
+.k-listbox__check { flex: none; width: 18px; height: 18px; color: var(--signal); }
+.k-listbox__check svg { width: 18px; height: 18px; }
+.k-listbox__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.k-listbox__hint { font: 400 12px/1.35 var(--font-body); color: var(--text-muted); }
+.k-listbox__group {
+  padding: 10px 10px 4px 32px; font: 500 11px/1.2 var(--font-mono); letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.k-listbox__empty { padding: 10px 12px; color: var(--text-muted); font-size: 14px; }
+
+/* ── DateRangePicker ──────────────────────────────────────────────────── */
+.k-drp__trigger { justify-content: flex-start; }
+.k-drp__icon { display: inline-flex; color: var(--text-muted); }
+.k-drp__icon svg { width: 18px; height: 18px; }
+.k-drp { display: grid; grid-template-columns: auto auto; gap: 8px 12px; padding: 8px; max-width: min(560px, calc(100vw - 16px)); }
+.k-drp__presets { display: flex; flex-direction: column; gap: 2px; min-width: 150px; }
+.k-drp__preset {
+  display: flex; align-items: center; min-height: 40px; padding: 0 12px; border: 0; border-radius: 4px;
+  background: none; color: var(--text); cursor: pointer; font: 500 14px/1.2 var(--font-body); text-align: left; white-space: nowrap;
+}
+.k-drp__preset:hover { background: var(--state-hover); }
+.k-drp__preset[aria-pressed='true'] { background: var(--signal-soft); box-shadow: inset 2px 0 0 var(--signal); font-weight: 600; }
+.k-drp__cal { display: flex; flex-direction: column; gap: 6px; padding-left: 12px; border-left: 1px solid var(--border); }
+.k-drp__month { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.k-drp__title { font: 600 15px/1.2 var(--font-display); }
+.k-drp__title::first-letter { text-transform: uppercase; }
+.k-drp__grid { border-collapse: collapse; }
+.k-drp__grid th { width: 36px; height: 28px; font: 500 12px/1 var(--font-mono); color: var(--text-muted); text-transform: uppercase; text-align: center; }
+.k-drp__grid td { padding: 1px 0; text-align: center; }
+.k-drp__day {
+  width: 36px; height: 36px; border: 0; border-radius: 4px; background: none; color: var(--text); cursor: pointer;
+  font: 500 13px/1 var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.k-drp__day:hover { background: var(--state-hover); }
+.k-drp__day[aria-current='date'] { box-shadow: inset 0 0 0 1px var(--border-2); }
+.k-drp__day[data-range] { background: var(--signal-soft); border-radius: 0; }
+.k-drp__day[data-start], .k-drp__day[data-end] { background: var(--signal); color: var(--on-signal); border-radius: 4px; }
+.k-drp__day[aria-disabled='true'] { color: var(--text-dim); opacity: 0.5; cursor: not-allowed; background: none; }
+.k-drp__status { font-size: 13px; font-weight: 600; }
+.k-drp__keys { font: 400 11px/1.4 var(--font-mono); color: var(--text-dim); max-width: 260px; }
+.k-drp__foot { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+.k-drp__foot:empty { display: none; }
+@media (max-width: 559px) {
+  .k-drp { grid-template-columns: 1fr; }
+  .k-drp__presets { flex-direction: row; flex-wrap: wrap; }
+  .k-drp__preset { flex: 1 1 40%; justify-content: center; border: 1px solid var(--border); }
+  .k-drp__cal { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); padding-top: 8px; align-items: center; }
+}
+
+/* ── Check boxes and radios: the kit's box (amber when on) ───────────── */
+input[type='checkbox'], input[type='radio'] {
+  appearance: none; flex: none; width: 18px; height: 18px; margin: 0; display: inline-grid; place-content: center;
+  border: 1.5px solid var(--text-muted); border-radius: 4px; background: var(--bg); cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard), border-color var(--dur-fast) var(--ease-standard);
+}
+input[type='radio'] { border-radius: 50%; }
+input[type='checkbox']:hover, input[type='radio']:hover { border-color: var(--text); }
+input[type='checkbox']:checked { background: var(--signal); border-color: var(--signal); }
+input[type='checkbox']::before {
+  content: ''; width: 10px; height: 5px; margin-top: -2px; border: solid var(--on-signal); border-width: 0 0 2px 2px;
+  transform: rotate(-45deg) scale(0); transition: transform var(--dur-fast) var(--ease-standard);
+}
+input[type='checkbox']:checked::before { transform: rotate(-45deg) scale(1); }
+input[type='radio']:checked { border-color: var(--signal); }
+input[type='radio']::before {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--signal);
+  transform: scale(0); transition: transform var(--dur-fast) var(--ease-standard);
+}
+input[type='radio']:checked::before { transform: scale(1); }
+input[type='checkbox']:disabled, input[type='radio']:disabled { opacity: 0.55; cursor: not-allowed; }
+input[type='checkbox']:focus-visible, input[type='radio']:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .k-pop, .k-tooltip { animation: none; }
+  .k-select__chevron, input[type='checkbox'], input[type='checkbox']::before, input[type='radio']::before { transition: none; }
+}

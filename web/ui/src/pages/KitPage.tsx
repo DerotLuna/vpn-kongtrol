@@ -1,4 +1,4 @@
-// Kongtrol UI — component kit review page (/_kit) · v0.1.0 · 2026-11-18
+// Kongtrol UI — component kit review page (/_kit) · v0.2.0 · 2026-11-19
 //
 // Development builds only (App.tsx loads it behind import.meta.env.DEV), so
 // it never ships and its sample text lives here, not in messages.ts. Shows
@@ -11,8 +11,10 @@ import { Button, IconButton } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { DataList, type Column } from '../components/ui/DataList'
 import { Dialog } from '../components/ui/Dialog'
-import { SelectField, TextAreaField, TextField } from '../components/ui/Field'
+import { ComboboxField, DateRangeField, SelectField, TextAreaField, TextField } from '../components/ui/Field'
+import { Menu } from '../components/ui/Menu'
 import { PlusIcon, RefreshIcon, SettingsIcon } from '../components/ui/icons'
+import { TrashIcon } from '../components/profiles/icons'
 import { Banner, EmptyState, ErrorState, Kbd, Skeleton } from '../components/ui/States'
 import { StatusPill } from '../components/ui/StatusPill'
 import { Switch } from '../components/ui/Switch'
@@ -39,6 +41,9 @@ const TEXT = {
     newRule: 'Nueva regla', bannerT: 'Falta el ayudante del sistema', bannerB: 'Sin él, Kongtrol no puede conectar tus VPN.', install: 'Instalar ayudante',
     infoT: 'Hay una versión nueva', infoB: 'Kongtrol 0.7.0 está disponible.', tabs: 'Pestañas', t1: 'General', t2: 'Avanzado', p1: 'Panel general.', p2: 'Panel avanzado.',
     kbd: 'Atajos', kbdLine: 'Cierra con', tip: 'Ajustes del perfil',
+    controls: 'Selección, menú y fechas', level: 'Nivel', levelAll: 'Todos', profileF: 'Perfil', profileAll: 'Todos los perfiles',
+    dates: 'Fechas', more: 'Más acciones para oficina', reconnect: 'Reconectar', addSite: 'Hacer que un sitio salga por oficina', remove: 'Borrar',
+    edge: 'Tooltip junto al borde: se corre para no salirse de la pantalla.', checks: 'Casillas y opciones', check: 'Incluir subdominios', r1: 'Usar internet normal', r2: 'Bloquear',
   },
   en: {
     title: 'Component kit',
@@ -57,6 +62,9 @@ const TEXT = {
     newRule: 'New rule', bannerT: 'The system helper is missing', bannerB: 'Without it, Kongtrol cannot connect your VPNs.', install: 'Install helper',
     infoT: 'A new version is out', infoB: 'Kongtrol 0.7.0 is available.', tabs: 'Tabs', t1: 'General', t2: 'Advanced', p1: 'General panel.', p2: 'Advanced panel.',
     kbd: 'Shortcuts', kbdLine: 'Close with', tip: 'Profile settings',
+    controls: 'Select, menu and dates', level: 'Level', levelAll: 'All', profileF: 'Profile', profileAll: 'All profiles',
+    dates: 'Dates', more: 'More actions for office', reconnect: 'Reconnect', addSite: 'Send a site through office', remove: 'Delete',
+    edge: 'Tooltip at the edge: it shifts to stay on screen.', checks: 'Check boxes and radios', check: 'Include subdomains', r1: 'Use the normal internet', r2: 'Block',
   },
 } as const
 
@@ -75,6 +83,12 @@ export default function KitPage() {
   const [dialog, setDialog] = useState(false)
   const [sheet, setSheet] = useState(false)
   const [tab, setTab] = useState('a')
+  const [type, setType] = useState('wireguard')
+  const [level, setLevel] = useState('')
+  const [profile, setProfile] = useState('')
+  const [range, setRange] = useState({ from: '', to: '' })
+  const [sub, setSub] = useState(true)
+  const [down, setDown] = useState('allow')
   const [rows, setRows] = useState<Row[]>([
     { name: 'oficina', state: 'ok', mb: 412.4 },
     { name: 'casa-wg', state: 'connecting', mb: 0 },
@@ -165,11 +179,68 @@ export default function KitPage() {
         <Card title={x.fields}>
           <TextField label={x.profile} hint={x.profileHint} defaultValue="oficina" required />
           <TextField label={x.cidr} mono defaultValue="10.0.0/8" error={{ message: x.cidrErr, fix: x.cidrFix }} />
-          <SelectField label={x.type} defaultValue="wireguard">
-            <option value="wireguard">WireGuard</option>
-            <option value="openvpn">OpenVPN</option>
-          </SelectField>
+          <SelectField
+            label={x.type}
+            value={type}
+            onChange={setType}
+            options={[
+              { value: 'wireguard', label: 'WireGuard', group: 'Directa' },
+              { value: 'openvpn', label: 'OpenVPN', group: 'Directa' },
+              { value: 'nordvpn', label: 'NordVPN', group: 'App', hint: 'Usa la app oficial' },
+            ]}
+          />
           <TextAreaField label={x.notes} rows={2} />
+        </Card>
+
+        <Card title={x.controls}>
+          <SelectField
+            label={x.level}
+            value={level}
+            onChange={setLevel}
+            options={[{ value: '', label: x.levelAll }, ...['INFO', 'WARN', 'ERROR', 'SECURITY'].map((l) => ({ value: l, label: l }))]}
+          />
+          <ComboboxField
+            label={x.profileF}
+            mono
+            allowCustom
+            value={profile}
+            onChange={setProfile}
+            placeholder={x.profileAll}
+            options={[{ value: '', label: x.profileAll }, ...['oficina', 'casa-wg', 'proton', 'cliente-a'].map((p) => ({ value: p, label: p }))]}
+          />
+          <DateRangeField label={x.dates} value={range} onChange={setRange} />
+          <div className="kit-row">
+            <Button size="sm">{x.connect}</Button>
+            <IconButton size="sm" variant="outlined" label={x.reconnect} icon={<RefreshIcon />} />
+            <IconButton size="sm" variant="outlined" label={x.addSite} icon={<PlusIcon />} />
+            <Menu
+              size="sm"
+              label={x.more}
+              items={[
+                { id: 'r', label: x.reconnect, icon: <RefreshIcon />, onSelect: () => {} },
+                { id: 'a', label: x.addSite, icon: <PlusIcon />, onSelect: () => {} },
+                { id: 'd', label: x.remove, icon: <TrashIcon />, danger: true, onSelect: () => {} },
+              ]}
+            />
+            <span className="kit-edge">
+              <IconButton label={x.edge} icon={<SettingsIcon />} />
+            </span>
+          </div>
+        </Card>
+
+        <Card title={x.checks}>
+          <label className="kit-check">
+            <input type="checkbox" checked={sub} onChange={(e) => setSub(e.target.checked)} />
+            <span>{x.check}</span>
+          </label>
+          <fieldset className="kit-radios">
+            {(['allow', 'block'] as const).map((v) => (
+              <label key={v} className="kit-check">
+                <input type="radio" name="kit-down" checked={down === v} onChange={() => setDown(v)} />
+                <span>{v === 'allow' ? x.r1 : x.r2}</span>
+              </label>
+            ))}
+          </fieldset>
         </Card>
 
         <Card title={x.feedback}>

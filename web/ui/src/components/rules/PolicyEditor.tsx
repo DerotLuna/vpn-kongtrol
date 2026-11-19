@@ -112,17 +112,13 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
               label={t('rules.field.via')}
               hint={t('rules.field.via.hint')}
               value={draft.via}
-              onChange={(e) => set('via', e.target.value)}
+              onChange={(v) => set('via', v)}
               error={err('via')}
               required
-            >
-              <option value="">{t('rules.field.via.pick')}</option>
-              {profiles.map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </SelectField>
+              mono
+              placeholder={t('rules.field.via.pick')}
+              options={profiles.map((p) => ({ value: p, label: p }))}
+            />
           )}
           <TextAreaField
             name="domains"

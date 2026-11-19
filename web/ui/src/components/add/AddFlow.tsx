@@ -337,15 +337,15 @@ function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; c
       </Banner>
       <div aria-live="polite">{tested && <p className="k-add-preview">{tested}</p>}</div>
       <footer className="k-dialog__actions k-add__actions">
-        <Button variant="outlined" icon={<PlusIcon />} onClick={onAnother}>
+        <Button variant="text" className="k-add__back" icon={<PlusIcon />} onClick={onAnother}>
           {t('add.done.another')}
         </Button>
         {!connected && (
-          <Button variant="tonal" icon={<PlugIcon />} onClick={() => run(rule.via, 'connect')}>
+          <Button variant="outlined" icon={<PlugIcon />} onClick={() => run(rule.via, 'connect')}>
             {t('add.done.connect', { name: rule.via })}
           </Button>
         )}
-        <Button variant="tonal" icon={<CheckIcon />} loading={asked && result.isFetching} onClick={() => (asked ? void result.refetch() : setAsked(true))} data-autofocus="">
+        <Button variant="outlined" icon={<CheckIcon />} loading={asked && result.isFetching} onClick={() => (asked ? void result.refetch() : setAsked(true))} data-autofocus="">
           {t('add.done.test')}
         </Button>
         <Button onClick={onFinish}>{t('add.finish')}</Button>

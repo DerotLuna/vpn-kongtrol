@@ -83,14 +83,9 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
         label={t('profiles.field.authMethod')}
         hint={t('profiles.hint.authMethod')}
         value={draft.authMethod}
-        onChange={(e) => onChange({ authMethod: e.target.value as AuthMethod })}
-      >
-        {AUTH_METHODS.map((m) => (
-          <option key={m} value={m}>
-            {t(AUTH_LABEL[m])}
-          </option>
-        ))}
-      </SelectField>
+        onChange={(authMethod: AuthMethod) => onChange({ authMethod })}
+        options={AUTH_METHODS.map((m) => ({ value: m, label: t(AUTH_LABEL[m]) }))}
+      />
       {hasCert && (
         <>
           <TextField label={t('profiles.field.cert')} hint={t('profiles.hint.cert')} mono autoComplete="off" spellCheck={false} placeholder="~/.kongtrol/certs/client.crt" {...text('cert')} />
@@ -137,23 +132,15 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
         <SelectField
           label={t('profiles.field.type')}
           value={draft.type}
-          onChange={(e) => onTypeChange(e.target.value as AdapterType)}
-        >
-          <optgroup label={t('profiles.picker.attach')}>
-            {CATALOG.filter((s) => s.group === 'attach').map((s) => (
-              <option key={s.type} value={s.type}>
-                {s.label}
-              </option>
-            ))}
-          </optgroup>
-          <optgroup label={t('profiles.picker.direct')}>
-            {CATALOG.filter((s) => s.group === 'direct').map((s) => (
-              <option key={s.type} value={s.type}>
-                {s.label}
-              </option>
-            ))}
-          </optgroup>
-        </SelectField>
+          onChange={(type: AdapterType) => onTypeChange(type)}
+          options={(['attach', 'direct'] as const).flatMap((g) =>
+            CATALOG.filter((s) => s.group === g).map((s) => ({
+              value: s.type,
+              label: s.label,
+              group: t(g === 'attach' ? 'profiles.picker.attach' : 'profiles.picker.direct'),
+            })),
+          )}
+        />
         <TextField
           label={t('profiles.field.name')}
           required

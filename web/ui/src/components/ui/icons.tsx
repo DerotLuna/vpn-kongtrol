@@ -132,3 +132,28 @@ export const RefreshIcon = () => (
     <path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7" />
   </Icon>
 )
+
+export const ChevronDownIcon = () => (
+  <Icon>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+)
+
+export const ChevronLeftIcon = () => (
+  <Icon>
+    <path d="m15 6-6 6 6 6" />
+  </Icon>
+)
+
+export const ChevronRightIcon = () => (
+  <Icon>
+    <path d="m9 6 6 6-6 6" />
+  </Icon>
+)
+
+export const CalendarIcon = () => (
+  <Icon>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" />
+  </Icon>
+)

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Kongtrol UI — Perfiles + Grupos · v1.1.0 · 2026-11-18
+   Kongtrol UI — Perfiles + Grupos · v1.2.0 · 2026-11-19
    Page-local styles on top of the kit (tokens.css, kit.css). Provider
    groups follow DESIGN.md: "con la app que ya usas" = amber, "conecta
    directo" = steel; green stays for connected only. Monograms are our own
@@ -55,8 +55,18 @@
 .kp-ks { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kp-ks a { color: var(--signal); min-height: 24px; display: inline-flex; align-items: center; }
 .kp-actions { display: inline-flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap; }
-.kp-actions--group { gap: 8px; flex-wrap: wrap; }
-@media (min-width: 640px) and (max-width: 1099px) { .kp-actions:not(.kp-actions--group) { flex-direction: column; } }
+/* Group rows: main action + 36px icon buttons on one line; when the list is
+   narrow (cards) Recargar / Editar / Borrar fold into "⋯" (GroupsPage). */
+.kp-actions--group { gap: 6px; flex-wrap: nowrap; align-items: center; }
+.kp-actions__inline { display: inline-flex; gap: 4px; align-items: center; }
+.kp-actions--group .kp-actions__more { display: none; }
+@container datalist (max-width: 679px) {
+  .kp-actions--group .kp-actions__inline { display: none; }
+  .kp-actions--group .kp-actions__more { display: inline-flex; }
+  .kp-actions--group .k-icon-btn--sm { width: var(--tap); height: var(--tap); }
+}
+/* A tight table stacks the two icons; cards keep them on one line. */
+@container datalist (min-width: 680px) and (max-width: 899px) { .kp-actions:not(.kp-actions--group) { flex-direction: column; } }
 .kp-danger-icon:hover { color: var(--danger); background: var(--danger-soft); }
 .k-datalist td:last-child { text-align: right; }
 .kp-names { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -64,10 +74,9 @@
   padding: 2px 8px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border);
   font-size: 12px;
 }
-@media (max-width: 639px) {
+@container datalist (max-width: 679px) {
   .kp-vpn { justify-content: flex-start; }
   .kp-actions { justify-content: flex-start; }
-  .kp-actions--group .k-btn { flex: 1 1 auto; }
   .k-datalist td:last-child { justify-content: flex-start; }
   .kp-names { justify-content: flex-end; }
 }
