@@ -88,7 +88,7 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   Or {"path":"/abs/file.conf","elevate":false} instead of content: a file only root can read
                                              #   answers 403 config.err.file_root_only; "elevate":true reads it after the OS permission
                                              #   window (pkexec, Linux) → 201, or 403 api.err.import_elevated_failed (ADR-0058)
-                                             #   The path must be absolute, without "..", a regular file (no link, folder, device, \\.\ or UNC share);
+                                             #   The path must be absolute (Windows: drive letter only, no \\.\, \??\ or UNC share), without "..", a regular file (no link, folder, device);
                                              #   else 400 api.err.import_protected_path. The read (and the permission window, up to 3 min) runs
                                              #   without the config lock; only storing the file takes it (ADR-0062)
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}

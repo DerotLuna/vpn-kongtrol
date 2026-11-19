@@ -2,7 +2,7 @@
 
 # ADR-0062: Origin-bound browser sessions, a new API token on every daemon start, and a listener-owner check before sending it
 
-Version 1.0.0 · 2026-11-19
+Version 1.1.0 · 2026-11-19
 
 Status: Accepted · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
 
@@ -85,7 +85,7 @@ very connection (falling back to the LISTEN row of the port):
 
 | OS | How (no admin) | Verdict |
 |---|---|---|
-| Windows | `GetExtendedTcpTable(TCP_TABLE_OWNER_PID_ALL)` → owning PID → `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` + `OpenProcessToken(TOKEN_QUERY)` → user SID | same SID → send; other SID → refuse; access denied → send only if the PID is the one in `~/.kongtrol/run/kongtrol.pid` (this user's elevated daemon), else refuse |
+| Windows | `GetExtendedTcpTable(TCP_TABLE_OWNER_PID_ALL)` for IPv4 **and** IPv6 (merged, `::ffff:` unmapped, so a dual-mode `[::]` listener is found) → owning PID → `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` + `OpenProcessToken(TOKEN_QUERY)` → user SID | same SID → send; other SID → refuse; token denied → send only if the process itself opened, its PID is the one in `~/.kongtrol/run/kongtrol.pid` and it was created (`GetProcessTimes`) no later than 2 s after that file was written (this user's elevated daemon, not a reused PID from a stale file); process not openable → refuse |
 | Linux | `/proc/net/tcp{,6}` uid column | own uid or root → send; other uid → refuse |
 | macOS | none verified (`lsof` lists only this user's processes without root; libproc needs cgo) | unknown → send; rotation covers it |
 
@@ -95,6 +95,10 @@ Kongtrol's port (`kongtrol config dashboard set-port`). `Spawner.Base` makes `up
 the tray report it instead of starting a daemon that cannot bind. When the lookup fails (table
 unreadable, row not found) the client proceeds and logs at debug level: the app keeps working and
 the token still rotates on the next start.
+
+**Cookies planted from another port.** A program on another port can set `kongtrol_session=junk; Path=/api`, which the browser sends before the real cookie; every `kongtrol_session` value is tried (`r.CookiesNamed`), only one with its page token authenticates, the exchange keeps the first live session and logout ends only the proven one.
+
+**Import paths.** Absolute and clean; on Windows only drive-letter paths (`filepath.VolumeName` is `X:`), never `\\`, `//`, `\\?\`, `\\.\`, `\??\UNC\…`, `\??\GLOBALROOT\…` or volume GUID paths (those reach SMB, which would send the user's credentials, or devices); a regular file read through the checked descriptor.
 
 **Low findings.** CSP `connect-src 'self' ws://<Host>` (Host already checked to be loopback with
 the daemon's port) instead of `ws: wss:`: CSP3 says `'self'` covers the `wss:` variant, but
@@ -135,7 +139,7 @@ reload, guidance in a new tab without `#k=`, and the token changing on every sta
 
 - Not verified: macOS has no owner check; another user's listener on Windows that this user may
   inspect is compared by SID, but a same-user elevated daemon is only recognized through the PID
-  file, which the daemon writes right after it starts listening (a non-elevated client asking in
+  file plus the process creation time, and the file is written right after the daemon starts listening (a non-elevated client asking in
   that instant is refused for that request). Whether a standard user can open a same-user
   elevated process with `PROCESS_QUERY_LIMITED_INFORMATION` + `TOKEN_QUERY` was not tested here.
 - Code: `internal/api/session.go`, `internal/api/server.go`, `internal/api/handlers_vpn_import.go`,

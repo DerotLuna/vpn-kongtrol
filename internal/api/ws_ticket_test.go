@@ -178,6 +178,33 @@ func TestWebSocketNeedsOneTimeTicket(t *testing.T) {
 	}
 }
 
+// A planted cookie sent before the real one blocks neither the ticket nor
+// the upgrade (ADR-0062).
+func TestWebSocketWithPlantedCookie(t *testing.T) {
+	_, ts, origin := wsTicketServer(t)
+	c, tok := browserSessionFor(t, ts, origin)
+	junk := &http.Cookie{Name: sessionCookieName, Value: "junk"}
+	resp := post(t, ts, origin, wsTicketPath, "", func(r *http.Request) {
+		r.AddCookie(junk)
+		r.AddCookie(c)
+		r.Header.Set(sessionHeader, tok)
+	})
+	var out struct{ Ticket string }
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	if resp.StatusCode != http.StatusOK || out.Ticket == "" {
+		t.Fatalf("ticket with planted cookie: %d", resp.StatusCode)
+	}
+	u := "ws" + strings.TrimPrefix(ts.URL, "http") + wsPath + "?" + wsTicketParam + "=" + url.QueryEscape(out.Ticket)
+	conn, _, err := websocket.DefaultDialer.Dial(u, http.Header{
+		"Origin": {origin},
+		"Cookie": {junk.String() + "; " + c.String()},
+	})
+	if err != nil {
+		t.Fatalf("upgrade with planted cookie: %v", err)
+	}
+	conn.Close()
+}
+
 // Native clients (CLI live view) keep using the file token, no Origin.
 func TestWebSocketFileTokenStillWorks(t *testing.T) {
 	_, ts, _ := wsTicketServer(t)

@@ -14,6 +14,7 @@ package sockowner
 import (
 	"errors"
 	"net/netip"
+	"time"
 )
 
 // Verdict is who owns the server end of a connection.
@@ -27,9 +28,10 @@ const (
 	Self
 	// Other: a different user, read from the OS.
 	Other
-	// Denied: the owning process exists but this user may not inspect it
-	// (Windows: another user's or an elevated process). PID is set so the
-	// caller can compare it with its own daemon's PID file.
+	// Denied: the owning process exists but this user may not read its
+	// owner (Windows: another user's, an elevated or a service process).
+	// PID, ProcessOpened and Created let the caller recognize its own
+	// elevated daemon.
 	Denied
 )
 
@@ -52,6 +54,12 @@ type Result struct {
 	PID uint32
 	// Owner is the owner's id as the OS shows it (SID or uid), for logs.
 	Owner string
+	// ProcessOpened (Windows, Denied only): the process itself could be
+	// opened and only its token was refused, as for this user's own
+	// elevated process; another user's process is not even opened.
+	ProcessOpened bool
+	// Created is the owning process's creation time when ProcessOpened.
+	Created time.Time
 }
 
 // ErrUnsupported is returned with Unknown on systems without a check.

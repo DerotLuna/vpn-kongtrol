@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/sockowner"
@@ -38,8 +39,19 @@ func fakeOwner(t *testing.T, res sockowner.Result, err error, pid uint32, pidOK 
 		transport.CloseIdleConnections()
 	})
 	checkOwner = func(netip.AddrPort, netip.AddrPort) (sockowner.Result, error) { return res, err }
-	daemonPID = func() (uint32, bool) { return pid, pidOK }
+	daemonPID = func() (uint32, time.Time, bool) { return pid, pidWritten, pidOK }
 	transport.CloseIdleConnections() // every case dials anew
+}
+
+// pidWritten is when the fake PID file was written; before is earlier.
+var (
+	pidWritten = time.Unix(1_700_000_000, 0)
+	before     = pidWritten.Add(-time.Minute)
+)
+
+// elevated is a Denied owner whose process opened but whose token did not.
+func elevated(pid uint32, created time.Time) sockowner.Result {
+	return sockowner.Result{Verdict: sockowner.Denied, PID: pid, ProcessOpened: true, Created: created}
 }
 
 // The token never reaches a listener another user owns (ADR-0062).
@@ -57,9 +69,16 @@ func TestClientRefusesForeignListener(t *testing.T) {
 	}{
 		{"same user", sockowner.Result{Verdict: sockowner.Self}, nil, 0, false, false},
 		{"another user", sockowner.Result{Verdict: sockowner.Other}, nil, 0, false, true},
-		{"not inspectable, not our daemon", sockowner.Result{Verdict: sockowner.Denied, PID: 77}, nil, 12, true, true},
-		{"not inspectable, no PID file", sockowner.Result{Verdict: sockowner.Denied, PID: 77}, nil, 0, false, true},
-		{"our elevated daemon (PID file)", sockowner.Result{Verdict: sockowner.Denied, PID: 77}, nil, 77, true, false},
+		{"not inspectable, not our daemon", elevated(77, before), nil, 12, true, true},
+		{"not inspectable, no PID file", elevated(77, before), nil, 0, false, true},
+		{"our elevated daemon (PID file)", elevated(77, before), nil, 77, true, false},
+		// Another user's process cannot even be opened: never ours, even
+		// when a stale PID file names its (reused) PID.
+		{"process not openable, PID matches", sockowner.Result{Verdict: sockowner.Denied, PID: 77}, nil, 77, true, true},
+		// Stale PID file (crash, reboot): the PID now belongs to a process
+		// created after the file was written.
+		{"stale PID file, newer process", elevated(77, pidWritten.Add(time.Minute)), nil, 77, true, true},
+		{"opened but no creation time", sockowner.Result{Verdict: sockowner.Denied, PID: 77, ProcessOpened: true}, nil, 77, true, true},
 		{"unknown (macOS) proceeds", sockowner.Result{}, sockowner.ErrUnsupported, 0, false, false},
 		{"lookup failed proceeds", sockowner.Result{}, errors.New("table"), 0, false, false},
 	}

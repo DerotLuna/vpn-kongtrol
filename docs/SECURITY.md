@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.10.0 · 2026-11-19
+Version 2.10.1 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -104,8 +104,10 @@ The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refu
   ([ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)).
 - **Listener-owner check.** Before the first byte of a request that carries the token, the CLI
   and the tray check who owns the other end of the loopback connection: Windows reads the owning
-  process from `GetExtendedTcpTable` and compares its user SID with yours (a process you may not
-  inspect passes only if it is the daemon in your `~/.kongtrol/run/kongtrol.pid`); Linux compares
+  process from `GetExtendedTcpTable` (IPv4 and IPv6 tables) and compares its user SID with
+  yours (a process whose owner you may not read passes only if the process itself opens, it is the
+  PID in your `~/.kongtrol/run/kongtrol.pid` and it started before that file was written: your own
+  elevated daemon, not a PID reused after a crash); Linux compares
   the uid in `/proc/net/tcp`. Another user's program gets nothing and you see "Otro usuario de
   este equipo tiene un programa en la dirección de Kongtrol … Qué hacer: …". macOS has no
   verified no-root check: the token is sent and relies on the rotation above. If the OS table

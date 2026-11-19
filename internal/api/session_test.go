@@ -221,6 +221,41 @@ func TestSecondPageKeepsFirstSignedIn(t *testing.T) {
 	}
 }
 
+// A program on another port can plant `kongtrol_session=junk; Path=/api`,
+// which the browser sends before the real cookie: the user must not be
+// locked out, and the junk value never authenticates on its own.
+func TestPlantedSessionCookieDoesNotLockOut(t *testing.T) {
+	_, h := sessionTestServer()
+	real, tok := sessionFrom(t, exchangeNonce(h, mintNonce(t, h)))
+	junk := &http.Cookie{Name: sessionCookieName, Value: "junk"}
+	both := func(r *http.Request) {
+		r.AddCookie(junk) // more specific path: sent first
+		r.AddCookie(real)
+		r.Header.Set(sessionHeader, tok)
+		r.Header.Set("Origin", testOrigin)
+	}
+	if rec := doReq(h, http.MethodPost, "/api/v1/data/purge", `{"confirm":true}`, both); rec.Code != http.StatusNoContent {
+		t.Fatalf("api with planted cookie first: %d", rec.Code)
+	}
+	if code := purgeWith(h, junk, tok); code != http.StatusUnauthorized {
+		t.Fatalf("junk cookie alone: %d", code)
+	}
+	// A new page keeps the real session, not the junk value.
+	rec := doReq(h, http.MethodPost, sessionPath, `{"nonce":"`+mintNonce(t, h)+`"}`, func(r *http.Request) {
+		r.Header.Set("Origin", testOrigin)
+		r.AddCookie(junk)
+		r.AddCookie(real)
+	})
+	if c, _ := sessionFrom(t, rec); c.Value != real.Value {
+		t.Fatalf("exchange replaced the live session: %q", c.Value)
+	}
+	// Logout ends the proven session even with the junk cookie first.
+	doReq(h, http.MethodDelete, sessionPath, "", both)
+	if code := purgeWith(h, real, tok); code != http.StatusUnauthorized {
+		t.Fatalf("after logout: %d", code)
+	}
+}
+
 func TestPageTokensPerSessionAreBounded(t *testing.T) {
 	a := &sessionAuth{}
 	n, _ := a.issueNonce()

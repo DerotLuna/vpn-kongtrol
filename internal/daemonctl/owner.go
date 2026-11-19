@@ -59,20 +59,44 @@ var (
 // PIDPath returns ~/.kongtrol/run/kongtrol.pid, written by the daemon.
 func PIDPath() string { return filepath.Join(StateDir(), "run", "kongtrol.pid") }
 
-func readDaemonPID() (uint32, bool) {
-	b, err := os.ReadFile(PIDPath())
+// readDaemonPID returns the PID in the daemon's PID file and when the file
+// was written.
+func readDaemonPID() (uint32, time.Time, bool) {
+	path := PIDPath()
+	fi, err := os.Stat(path)
 	if err != nil {
-		return 0, false
+		return 0, time.Time{}, false
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return 0, time.Time{}, false
 	}
 	n, err := strconv.ParseUint(strings.TrimSpace(string(b)), 10, 32)
-	return uint32(n), err == nil
+	return uint32(n), fi.ModTime(), err == nil
+}
+
+// pidFileSlack covers file-time granularity between the daemon starting
+// and writing its PID file.
+const pidFileSlack = 2 * time.Second
+
+// ownElevatedDaemon reports whether a Denied owner is this user's own
+// elevated daemon: the process itself could be opened (only its token was
+// refused; another user's process is not even opened), its PID is the one
+// in this user's PID file, and it was created before that file was written
+// (a stale file after a crash or reboot names a PID the OS may have given
+// to another user's process created later).
+func ownElevatedDaemon(res sockowner.Result) bool {
+	if !res.ProcessOpened || res.Created.IsZero() {
+		return false
+	}
+	pid, written, ok := daemonPID()
+	return ok && pid == res.PID && !res.Created.After(written.Add(pidFileSlack))
 }
 
 // verifyListener decides whether c (already connected, nothing sent yet)
 // may carry the token. A different user → *ForeignListenerError. A process
-// this user may not inspect (Windows: another user's, or this user's own
-// elevated daemon) passes only when it is the daemon of this user's PID
-// file, which only this user can write. Unknown (macOS, table not
+// whose owner this user may not read (Windows) passes only when it is this
+// user's own elevated daemon (ownElevatedDaemon). Unknown (macOS, table not
 // readable) proceeds: the token rotates on every daemon start.
 func verifyListener(c net.Conn) error {
 	la, ok1 := c.LocalAddr().(*net.TCPAddr)
@@ -87,7 +111,7 @@ func verifyListener(c net.Conn) error {
 	case sockowner.Other:
 		return &ForeignListenerError{Addr: ra.String()}
 	case sockowner.Denied:
-		if pid, ok := daemonPID(); ok && pid == res.PID {
+		if ownElevatedDaemon(res) {
 			return nil
 		}
 		return &ForeignListenerError{Addr: ra.String()}

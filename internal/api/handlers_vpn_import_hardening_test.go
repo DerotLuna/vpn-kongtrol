@@ -60,9 +60,22 @@ func TestCleanImportPath(t *testing.T) {
 	if got, ok := cleanImportPath("  " + abs + " "); !ok || got != abs {
 		t.Fatalf("clean absolute: %q %v", got, ok)
 	}
-	for _, p := range []string{"", "a.conf", "./a.conf", `..\a.conf`, "/dev", "/sys/x.conf"} {
+	for _, p := range []string{"", "a.conf", "./a.conf", `..\a.conf`, "/dev", "/sys/x.conf",
+		// NT object paths: absolute for Windows, and they reach SMB or devices.
+		`\??\UNC\srv\sh\a.ovpn`, `\??\C:\x\a.conf`, `\??\GLOBALROOT\Device\Mup\srv\sh\a.conf`,
+		`/??/UNC/srv/sh/a.conf`, `\\?\C:\x\a.conf`, `\\.\C:\x\a.conf`, `\\srv\sh\a.conf`,
+		`//srv/sh/a.conf`, `\\?\Volume{0b1c2d3e-0000-0000-0000-000000000000}\a.conf`,
+	} {
 		if _, ok := cleanImportPath(p); ok {
 			t.Errorf("%q accepted", p)
+		}
+	}
+	if runtime.GOOS == "windows" {
+		if _, ok := cleanImportPath(`C:\Users\x\wg0.conf`); !ok {
+			t.Error("a drive-letter path must be accepted")
+		}
+		if _, ok := cleanImportPath(`\Users\x\wg0.conf`); ok {
+			t.Error("a path without a drive letter must be refused")
 		}
 	}
 }

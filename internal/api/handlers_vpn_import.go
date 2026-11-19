@@ -101,7 +101,14 @@ func cleanImportPath(raw string) (string, bool) {
 			return "", false
 		}
 	}
-	if strings.HasPrefix(p, `\\`) || strings.HasPrefix(p, "//") || strings.HasPrefix(p, `/\`) || strings.HasPrefix(p, `\/`) {
+	// NT object paths (\??\UNC\…, \??\GLOBALROOT\…) reach SMB or devices
+	// too, and Windows treats them as absolute.
+	for _, prefix := range []string{`\\`, "//", `/\`, `\/`, `\??\`, `/??/`} {
+		if strings.HasPrefix(p, prefix) {
+			return "", false
+		}
+	}
+	if !plainLocalVolume(p) {
 		return "", false
 	}
 	p = filepath.Clean(p)

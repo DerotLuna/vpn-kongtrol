@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/netip"
 	"os"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -28,15 +29,25 @@ var (
 )
 
 func check(local, remote netip.AddrPort) (Result, error) {
-	af := uint32(windows.AF_INET)
-	if remote.Addr().Is6() {
-		af = windows.AF_INET6
+	// Both tables, merged (IPv4-mapped addresses unmapped): a dual-mode
+	// [::] listener answers 127.0.0.1 from the IPv6 table, and reading only
+	// one would end in Unknown (fail-open).
+	var rows []row
+	var firstErr error
+	for _, af := range []uint32{windows.AF_INET, windows.AF_INET6} {
+		buf, err := readTable(af)
+		if err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			continue
+		}
+		rows = append(rows, parseTable(buf, af == windows.AF_INET6)...)
 	}
-	buf, err := readTable(af)
-	if err != nil {
-		return Result{}, err
+	if len(rows) == 0 && firstErr != nil {
+		return Result{}, firstErr
 	}
-	r, ok := match(parseTable(buf, af == windows.AF_INET6), local, remote)
+	r, ok := match(rows, local, remote)
 	if !ok || r.PID == 0 {
 		return Result{}, ErrNotFound
 	}
@@ -45,16 +56,18 @@ func check(local, remote netip.AddrPort) (Result, error) {
 		res.Verdict = Self
 		return res, nil
 	}
-	owner, err := pidUser(r.PID)
+	info, err := pidUser(r.PID)
 	if err != nil {
 		if errors.Is(err, windows.ERROR_ACCESS_DENIED) {
-			// Another user's process, an elevated one or a service: the
-			// caller decides (its own daemon's PID file, ADR-0062).
+			// Another user's process, an elevated one or a service. The
+			// caller decides with ProcessOpened and Created (ADR-0062).
 			res.Verdict = Denied
+			res.ProcessOpened, res.Created = info.opened, info.created
 			return res, nil
 		}
 		return Result{}, err
 	}
+	owner := info.sid
 	me, err := selfUser()
 	if err != nil {
 		return Result{}, err
@@ -128,25 +141,41 @@ func tcpTable(af uint32) ([]byte, error) {
 	return nil, windows.ERROR_INSUFFICIENT_BUFFER
 }
 
-// processUserSID is the user SID of process pid's token
+// procInfo is what processUserSID learned about a process.
+type procInfo struct {
+	sid     string    // user SID of its token ("" when the token was denied)
+	opened  bool      // OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION) worked
+	created time.Time // creation time (GetProcessTimes), when opened
+}
+
+// processUserSID reads the user SID of process pid's token
 // (PROCESS_QUERY_LIMITED_INFORMATION + TOKEN_QUERY, no admin needed for
-// this user's own processes).
-func processUserSID(pid uint32) (string, error) {
+// this user's own processes). When the token is denied but the process
+// could be opened, the error is ERROR_ACCESS_DENIED and info still says
+// opened and when the process was created.
+func processUserSID(pid uint32) (procInfo, error) {
+	var info procInfo
 	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
 	if err != nil {
-		return "", err
+		return info, err
 	}
 	defer windows.CloseHandle(h)
+	info.opened = true
+	var creation, exit, kernel, user windows.Filetime
+	if windows.GetProcessTimes(h, &creation, &exit, &kernel, &user) == nil {
+		info.created = time.Unix(0, creation.Nanoseconds())
+	}
 	var tok windows.Token
 	if err := windows.OpenProcessToken(h, windows.TOKEN_QUERY, &tok); err != nil {
-		return "", err
+		return info, err
 	}
 	defer tok.Close()
 	u, err := tok.GetTokenUser()
 	if err != nil {
-		return "", err
+		return info, err
 	}
-	return u.User.Sid.String(), nil
+	info.sid = u.User.Sid.String()
+	return info, nil
 }
 
 func currentUserSID() (string, error) {

@@ -146,8 +146,10 @@ const (
 // exchange consumes nonce (once) and returns the session id for the cookie
 // and a new page token. A browser that already holds a live session cookie
 // keeps it and gets one more page token, so a second tab (or the tray
-// flyout) does not sign out the first one.
-func (a *sessionAuth) exchange(nonce, cookie string) (id, token string, res exchangeResult) {
+// flyout) does not sign out the first one. cookies are every
+// kongtrol_session value the browser sent (another port may have planted
+// more); the first live one is kept.
+func (a *sessionAuth) exchange(nonce string, cookies ...string) (id, token string, res exchangeResult) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	now := a.clock()
@@ -174,8 +176,8 @@ func (a *sessionAuth) exchange(nonce, cookie string) (id, token string, res exch
 		a.sessions = make(map[[32]byte]sessionEntry)
 	}
 	a.pruneSessionsLocked(now)
-	if cookie != "" {
-		if e, ok := a.sessions[digest(cookie)]; ok {
+	for _, cookie := range cookies {
+		if e, ok := a.sessions[digest(cookie)]; ok && cookie != "" {
 			e.tokens = append(e.tokens, digest(token))
 			if len(e.tokens) > maxPageTokens {
 				e.tokens = e.tokens[len(e.tokens)-maxPageTokens:]
@@ -286,10 +288,11 @@ func (a *sessionAuth) issueTicket(id string) (string, bool) {
 	return ticket, true
 }
 
-// consumeTicket uses ticket up (valid or not) and reports whether it was
-// live and issued to the session of cookie id, which must still be live.
-func (a *sessionAuth) consumeTicket(ticket, id string) bool {
-	if ticket == "" || id == "" {
+// consumeTicket uses ticket up (valid or not, once) and reports whether it
+// was live and issued to the session of one of the cookie ids sent, which
+// must still be live.
+func (a *sessionAuth) consumeTicket(ticket string, ids ...string) bool {
+	if ticket == "" || len(ids) == 0 {
 		return false
 	}
 	a.mu.Lock()
@@ -301,12 +304,44 @@ func (a *sessionAuth) consumeTicket(ticket, id string) bool {
 		return false
 	}
 	delete(a.tickets, key)
-	sess := digest(id)
-	if !now.Before(t.expires) || subtle.ConstantTimeCompare(t.session[:], sess[:]) != 1 {
+	if !now.Before(t.expires) {
 		return false
 	}
-	_, live := a.liveLocked(id, now)
-	return live
+	for _, id := range ids {
+		sess := digest(id)
+		if id == "" || subtle.ConstantTimeCompare(t.session[:], sess[:]) != 1 {
+			continue
+		}
+		if _, live := a.liveLocked(id, now); live {
+			return true
+		}
+	}
+	return false
+}
+
+// sessionCookies returns every kongtrol_session value of r. A program on
+// another port of 127.0.0.1 can plant extra ones (e.g. Path=/api), which
+// are sent first; any of them may be the real session (ADR-0062).
+func sessionCookies(r *http.Request) []string {
+	var out []string
+	for _, c := range r.CookiesNamed(sessionCookieName) {
+		if c.Value != "" {
+			out = append(out, c.Value)
+		}
+	}
+	return out
+}
+
+// validSessionCookie returns the cookie id of r that is a live session
+// with the page token of X-Kongtrol-Session.
+func (s *Server) validSessionCookie(r *http.Request) (string, bool) {
+	token := strings.TrimSpace(r.Header.Get(sessionHeader))
+	for _, id := range sessionCookies(r) {
+		if s.sessions.valid(id, token) {
+			return id, true
+		}
+	}
+	return "", false
 }
 
 // handleSessionNonce answers POST /api/v1/session/nonce. secureHandler
@@ -337,11 +372,7 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
-	cookie := ""
-	if c, err := r.Cookie(sessionCookieName); err == nil {
-		cookie = c.Value
-	}
-	id, token, res := s.sessions.exchange(strings.TrimSpace(body.Nonce), cookie)
+	id, token, res := s.sessions.exchange(strings.TrimSpace(body.Nonce), sessionCookies(r)...)
 	switch res {
 	case exchangeRateLimited:
 		w.Header().Set("Retry-After", "60")
@@ -368,8 +399,10 @@ func (s *Server) handleSessionCreate(w http.ResponseWriter, r *http.Request) {
 // handleSessionDelete answers DELETE /api/v1/session: ends the browser
 // session of the cookie sent (logout, every page of that browser).
 func (s *Server) handleSessionDelete(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie(sessionCookieName); err == nil {
-		s.sessions.revoke(c.Value)
+	// Only the session the page proved (cookie + its page token, checked
+	// by secureHandler) ends; a planted cookie value is not trusted.
+	if id, ok := s.validSessionCookie(r); ok {
+		s.sessions.revoke(id)
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name: sessionCookieName, Value: "", Path: "/", MaxAge: -1,
@@ -383,12 +416,12 @@ func (s *Server) handleSessionDelete(w http.ResponseWriter, r *http.Request) {
 // ticket for GET /api/v1/ws/metrics?ticket=… within ticketTTL. Native
 // clients send the file token on the WebSocket itself.
 func (s *Server) handleWSTicket(w http.ResponseWriter, r *http.Request) {
-	c, err := r.Cookie(sessionCookieName)
-	if err != nil {
+	id, ok := s.validSessionCookie(r)
+	if !ok {
 		writeError(w, http.StatusBadRequest, "browser sessions only")
 		return
 	}
-	ticket, ok := s.sessions.issueTicket(c.Value)
+	ticket, ok := s.sessions.issueTicket(id)
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
@@ -403,19 +436,12 @@ func (s *Server) handleWSTicket(w http.ResponseWriter, r *http.Request) {
 // browserSession reports whether r carries a live session cookie plus one
 // of its page tokens in X-Kongtrol-Session.
 func (s *Server) browserSession(r *http.Request) bool {
-	c, err := r.Cookie(sessionCookieName)
-	if err != nil {
-		return false
-	}
-	return s.sessions.valid(c.Value, strings.TrimSpace(r.Header.Get(sessionHeader)))
+	_, ok := s.validSessionCookie(r)
+	return ok
 }
 
 // wsTicketAuthenticated checks a browser WebSocket upgrade: the Origin of
 // this daemon, the session cookie and a one-time ticket issued to it.
 func (s *Server) wsTicketAuthenticated(r *http.Request) bool {
-	c, err := r.Cookie(sessionCookieName)
-	if err != nil {
-		return false
-	}
-	return s.sessions.consumeTicket(r.URL.Query().Get(wsTicketParam), c.Value)
+	return s.sessions.consumeTicket(r.URL.Query().Get(wsTicketParam), sessionCookies(r)...)
 }
