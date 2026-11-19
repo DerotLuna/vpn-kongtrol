@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.7 · 2026-11-19
+Version 1.8 · 2026-11-19
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -394,6 +394,22 @@ kongtrol config update-check off
 kongtrol config update-check status
 ```
 
+### `kongtrol config recent-connections`
+
+On by default. Kongtrol notes which addresses this computer connected to in the last hour, which VPN each one went through and which program opened it. The list lives only in Kongtrol's memory: it is never saved to disk or logs, never leaves this computer, and is erased when you turn it off or close Kongtrol.
+
+```text
+kongtrol config recent-connections <on|off|status> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol config recent-connections status
+kongtrol config recent-connections off
+kongtrol config recent-connections on
+```
+
 ### `kongtrol profile`
 
 Creates VPN profiles without questions (for scripts), imports WireGuard or OpenVPN files and finds the VPN apps on this computer. Step by step with questions: kongtrol init or the dashboard (kongtrol dashboard).
@@ -687,6 +703,42 @@ kongtrol ip [flags]
 ```bash
 kongtrol ip
 kongtrol ip --json
+```
+
+### `kongtrol traffic`
+
+Commands to see where your traffic goes.
+
+```text
+kongtrol traffic [command]
+```
+
+**Examples**
+
+```bash
+kongtrol traffic recent
+```
+
+### `kongtrol traffic recent`
+
+Lists the destinations of the last hour: name (when a policy resolved it) or IP, port, program, which VPN it went through (or direct) and how many connections there were. Needs Kongtrol open. The data lives only in memory and never leaves this computer. Turn it off with: kongtrol config recent-connections off
+
+```text
+kongtrol traffic recent [flags]
+```
+
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--limit int` | How many destinations to show (0 = all) |
+
+**Examples**
+
+```bash
+kongtrol traffic recent
+kongtrol traffic recent --limit 20
+kongtrol traffic recent --json
 ```
 
 ### `kongtrol logs`

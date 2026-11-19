@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.12.0 · 2026-11-19
+Version 1.13.0 · 2026-11-19
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -50,6 +50,7 @@ reasoned but unverified.
 | [2026-11-19-installer-upgrade-detection](2026-11-19-installer-upgrade-detection.md) | Detecting an existing install: Inno Setup uninstall key, `UsePrevious*`, `ShouldSkipPage`, SemVer precedence | ADR-0046 |
 | [2026-11-19-installer-resume-and-postinstall](2026-11-19-installer-resume-and-postinstall.md) | Inno [Run] order and `postinstall` defaults, `ExtractTemporaryFile` before the copy; reconnect after update | ADR-0050 |
 | [2026-11-19-product-name-and-logo-sizes](2026-11-19-product-name-and-logo-sizes.md) | Dropping "VPN" from the name (site name, alternateName, what must not be renamed), SVG favicon, logo sizes | ADR-0047 |
+| [2026-11-19-recent-connections](2026-11-19-recent-connections.md) | Per-connection data without admin (GetExtendedTcpTable, /proc/net/tcp, ss), privacy precedent (Little Snitch, GlassWire) | ADR-0054 |
 
 ## Template
 

@@ -199,8 +199,15 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
   you close the terminal, the tray or the panel). Closing a window **never** disconnects.
 - Only `kongtrol down` or the tray's "Quit and disconnect all" disconnects your VPNs; "Close icon
   (VPNs keep running)" only hides the tray icon.
-- Edited `kongtrol.yaml`? `kongtrol reload` applies it without disconnecting. Added a profile?
-  `kongtrol restart` (or Restart in the panel).
+<!-- feature:profile_live -->
+- Added, renamed or deleted a profile (panel, `kongtrol profile add` or by hand + `kongtrol reload`)?
+  It works at once, no restart. Edited a VPN that is connected? It keeps its old settings until you
+  reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other VPNs are never
+  touched.
+<!-- feature:recent_connections -->
+- Where did my traffic go? `kongtrol traffic recent` lists the destinations of the last hour, the
+  program and which VPN each went through (Windows and Linux). Memory only, never saved or sent;
+  `kongtrol config recent-connections off` turns it off.
 - Something wrong? `kongtrol doctor`, then `kongtrol logs`.
 
 ## Commands
@@ -225,11 +232,13 @@ explains it with the next step and examples. Full reference: [docs/CLI.en.md](do
 | `kongtrol config killswitch\|dns-guard <on\|off\|status>` | Kill switch and DNS guard | since v0.6.0 |
 | `kongtrol config public-ip <on\|off>` | Optional public IP lookup | same |
 | `kongtrol config update-check <on\|off\|status>` | Optional new version notice | since v0.6.0 |
+| `kongtrol config recent-connections <on\|off\|status>` | Recent destinations list (memory only) | new |
 | `kongtrol config lang <es\|en>` · `config favorites` · `config dashboard` | Language, favorites, panel address on this computer | same |
 | `kongtrol reload [profile]` | Apply `kongtrol.yaml` changes without disconnecting | without `[profile]` |
 | `kongtrol restart` | Restart Kongtrol and reconnect what was connected | since v0.6.0 |
 | `kongtrol export` | Print your config without passwords to share it | same |
 | `kongtrol doctor [--fix]` | Check your computer and say how to fix each problem | same |
+| `kongtrol traffic recent [--limit n]` | Destinations of the last hour: program, VPN or direct | new |
 | `kongtrol ip` | Look up your public IP now and check for leaks | `check` |
 | `kongtrol logs` | Show Kongtrol's events | same |
 | `kongtrol service install\|uninstall\|status` | Network helper (no admin terminal) | same |

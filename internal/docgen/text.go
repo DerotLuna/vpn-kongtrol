@@ -146,6 +146,7 @@ var fieldText = map[i18n.Lang]map[string]string{
 		"monitor.alerts.on_vpn_drop.actions":      "Acciones al caerse una VPN: `notify`, `log`, `kill_switch`.",
 		"monitor.alerts.on_leak_detected.actions": "Acciones al detectar una fuga: `notify`, `log`, `kill_switch`.",
 		"monitor.alerts.on_high_latency_ms":       "Alerta cuando la latencia supera estos milisegundos.",
+		"monitor.recent_connections.enabled":      "Lista de destinos recientes (`kongtrol traffic recent`): solo en memoria, nunca en disco ni fuera del equipo; 500 destinos, cada uno se olvida 1 h después de verlo. Encendida por defecto (Windows y Linux); `false` la apaga y la borra.",
 		"monitor.alerts.on_reconnect_attempts":    "Alerta tras este número de intentos de reconexión.",
 	},
 	i18n.EN: {
@@ -224,6 +225,7 @@ var fieldText = map[i18n.Lang]map[string]string{
 		"monitor.alerts.on_vpn_drop.actions":      "Actions when a VPN drops: `notify`, `log`, `kill_switch`.",
 		"monitor.alerts.on_leak_detected.actions": "Actions when a leak is detected: `notify`, `log`, `kill_switch`.",
 		"monitor.alerts.on_high_latency_ms":       "Alert when latency exceeds these milliseconds.",
+		"monitor.recent_connections.enabled":      "Recent destinations list (`kongtrol traffic recent`): memory only, never on disk or off this computer; 500 destinations, each forgotten 1 h after last seen. On by default (Windows and Linux); `false` turns it off and erases it.",
 		"monitor.alerts.on_reconnect_attempts":    "Alert after this many reconnect attempts.",
 	},
 }

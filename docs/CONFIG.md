@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.4 · 2026-11-18
+Versión 1.5 · 2026-11-19
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -111,6 +111,7 @@ Monitoreo, dashboard, programador y alertas.
 | `monitor.alerts.on_leak_detected.actions` | lista de texto | — | Acciones al detectar una fuga: `notify`, `log`, `kill_switch`. |
 | `monitor.alerts.on_high_latency_ms` | entero | — | Alerta cuando la latencia supera estos milisegundos. |
 | `monitor.alerts.on_reconnect_attempts` | entero | — | Alerta tras este número de intentos de reconexión. |
+| `monitor.recent_connections.enabled` | booleano | — | Lista de destinos recientes (`kongtrol traffic recent`): solo en memoria, nunca en disco ni fuera del equipo; 500 destinos, cada uno se olvida 1 h después de verlo. Encendida por defecto (Windows y Linux); `false` la apaga y la borra. |
 
 ## `updates`
 

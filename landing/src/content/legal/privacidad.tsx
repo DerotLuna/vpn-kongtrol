@@ -1,4 +1,6 @@
-// Privacy policy — version 1.3.0 · 2026-11-18.
+// Privacy policy — version 1.4.0 · 2026-11-19.
+// 1.4.0: recent destinations list (ADR-0054): memory only, 500 entries, 1 h, on by default, switch
+//   `kongtrol config recent-connections off` (internal/monitor/recent.go).
 // 1.3.0: opt-in new version notice (GitHub releases API, off by default; ADR-0034); uninstall and
 //   "delete all my data" keep/erase local data; fixed a repeated sentence in the ES summary.
 // 1.2.1: the on-demand public IP lookup command is now `kongtrol ip` (`kongtrol check` still works).
@@ -24,8 +26,8 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.3.0'
-const UPDATED = '2026-11-18'
+const VERSION = '1.4.0'
+const UPDATED = '2026-11-19'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
 
@@ -59,6 +61,12 @@ const es: LegalDocContent = {
         <>Historial de métricas, registros del servicio en segundo plano y el token del panel local (<IC c="~/.kongtrol/api-token" />).</>,
         <>Contraseñas y la clave de firma del registro: en el almacén de credenciales del sistema (Windows Credential
           Manager, Llavero de macOS, Secret Service/GNOME Keyring en Linux).</>,
+        // feature:recent_connections
+        <>Destinos recientes (Windows y Linux): a qué direcciones se conectó este equipo en la última hora, por qué VPN salió cada una
+          y qué programa la abrió (<IC c="kongtrol traffic recent" />). Vive solo en la memoria de Kongtrol: nunca se
+          guarda en disco ni en los registros, no sale del equipo, guarda como mucho 500 destinos y olvida cada uno una
+          hora después de verlo por última vez. Se borra al apagarlo o al cerrar Kongtrol. Viene encendido porque es lo
+          mismo que ya muestra <IC c="netstat" /> en tu equipo.</>,
       ],
       after: [<>Al desinstalar, estos datos se quedan, salvo que pidas borrarlos. Para borrar todo: en el panel,
         Ajustes › «Borrar todos mis datos», o <IC c="kongtrol uninstall --data-only" />. Para desinstalar y
@@ -121,6 +129,8 @@ const es: LegalDocContent = {
         <>El aviso de versión nueva viene apagado. Actívalo o apágalo en el panel (Ajustes › «Aviso de versión
           nueva»), en <IC c="kongtrol init" /> o con <IC c="kongtrol config update-check on|off" />{' '}
           (<IC c="updates.check_enabled" />).</>,
+        <>La lista de destinos recientes viene encendida y solo vive en memoria. Apágala con{' '}
+          <IC c="kongtrol config recent-connections off" /> (<IC c="monitor.recent_connections.enabled" />): se borra al momento.</>,
         <>La comprobación previa al conectar solo se hace en perfiles que tienen un host configurado.</>,
       ],
     },
@@ -162,6 +172,12 @@ const en: LegalDocContent = {
         <>Metrics history, background-service logs and the local dashboard token (<IC c="~/.kongtrol/api-token" />).</>,
         <>Passwords and the log signing key: in the operating system's credential store (Windows Credential Manager,
           macOS Keychain, Secret Service/GNOME Keyring on Linux).</>,
+        // feature:recent_connections
+        <>Recent destinations (Windows and Linux): which addresses this computer connected to in the last hour, which VPN each one went
+          through and which program opened it (<IC c="kongtrol traffic recent" />). It lives only in Kongtrol's memory:
+          never saved to disk or logs, never leaves this computer, holds at most 500 destinations and forgets each one an
+          hour after it was last seen. It is erased when you turn it off or close Kongtrol. On by default because it is
+          the same thing <IC c="netstat" /> already shows on your computer.</>,
       ],
       after: [<>When you uninstall, this data stays unless you ask to delete it. To erase everything: in the
         dashboard, Settings › "Delete all my data", or <IC c="kongtrol uninstall --data-only" />. To uninstall and
@@ -224,6 +240,8 @@ const en: LegalDocContent = {
         <>The new version notice is off by default. Turn it on or off in the dashboard (Settings › "New version
           notice"), in <IC c="kongtrol init" /> or with <IC c="kongtrol config update-check on|off" />{' '}
           (<IC c="updates.check_enabled" />).</>,
+        <>The recent destinations list is on by default and lives only in memory. Turn it off with{' '}
+          <IC c="kongtrol config recent-connections off" /> (<IC c="monitor.recent_connections.enabled" />): it is erased at once.</>,
         <>The pre-connect check only runs for profiles that have a host set.</>,
       ],
     },

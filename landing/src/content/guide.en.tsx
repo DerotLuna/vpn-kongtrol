@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 2.6.1 · 2026-11-19.
+// Version 2.6.2 · 2026-11-19.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -327,7 +327,8 @@ kongtrol down --group work`,
     groups5: <>If Kongtrol is already working in the background and you hand-edit the group, you don't need
                 to restart it: <IC c="kongtrol reload --group work" /> re-reads <IC c="kongtrol.yaml" /> from disk and
                 reconnects only that group's active tunnels. For a single tunnel, <IC c="kongtrol reload office" />;
-                with no arguments, <IC c="kongtrol reload" /> applies everything and, if you added profiles, offers to restart Kongtrol.</>,
+                with no arguments, <IC c="kongtrol reload" /> applies everything without a restart: new profiles can connect right
+                away and, if you changed a VPN that is connected, it asks whether to reconnect it (the others are not touched).</>,
     // feature:policies feature:routes
     policies1: <>Routing policies</>,
     policies2: <>When you have several tunnels active at once, how does your machine know

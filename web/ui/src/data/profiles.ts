@@ -1,10 +1,11 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.1.0 · 2026-11-18
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.1.1 · 2026-11-19
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
-// kongtrol.yaml + the OS keychain; a profile change needs a daemon restart
-// before it can connect (`restart_required`, AGENTS.md "Dashboard REST API"),
-// so this module also owns the restart flow the banner and first run use.
+// kongtrol.yaml + the OS keychain; the daemon applies them live (ADR-0053)
+// and answers `restart_required: true` only when a restart is still needed
+// (setup mode), so this module also owns the restart flow the banner and
+// first run use.
 //
 // Cache keys live here, not in keys.ts, so parallel phase-2 work never edits
 // the same file; they are plain resource names, so another page reading
@@ -91,6 +92,10 @@ export interface ProfileChangeResult {
   /** The old name, when status is "renamed". */
   previous?: string
   restart_required?: boolean
+  /** A connected VPN keeps its old settings until reconnected (ADR-0053). */
+  reconnect_required?: boolean
+  /** PUT ?reconnect=true: the tunnel was disconnected and is reconnecting. */
+  reconnected?: boolean
 }
 
 /** POST /api/v1/vpns/import body (handlers_vpn_import.go importReq). */
@@ -279,7 +284,8 @@ export function useDeleteProfile(
     mutationFn: (name) =>
       localized(async () => {
         const res = await profilesApi.remove(name)
-        markRestartPending()
+        // Applied live (ADR-0053) unless the daemon says otherwise.
+        if (res?.restart_required !== false) markRestartPending()
         return res
       }, localize),
     apply: (list, name) => list.filter((p) => p.name !== name),

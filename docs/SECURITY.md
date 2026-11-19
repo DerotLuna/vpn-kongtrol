@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.7.0 · 2026-11-18
+Version 2.8.0 · 2026-11-19
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -64,6 +64,26 @@ plain-text service you can list in `endpoints` is `https://icanhazip.com` (run b
 creator: https://major.io/p/a-new-future-for-icanhazip/). Any HTTPS endpoint that answers with just
 an IP works. Each one sees your public IP; pick the one you trust. See
 `docs/research/2026-11-17-public-ip-services.md`.
+
+<!-- feature:recent_connections -->
+## Data Kongtrol keeps about your traffic (local, not outbound)
+
+The recent destinations list ([ADR-0054](adr/0054-recent-destinations-memory-only.md),
+`internal/monitor/recent.go`) is **not** a network connection: it reads the same OS table
+`netstat`/`ss` read (Windows `GetExtendedTcpTable`, Linux `/proc/net/tcp`; macOS not supported),
+without admin, every 15 s. Per destination it keeps host (only a name a policy domain already
+resolved to; no reverse DNS), remote IP, port, program name when the OS gives it to a standard
+user, the tunnel or "direct" and the local interface, first/last seen and a count.
+
+| Property | Value |
+|---|---|
+| Where | Only in the daemon's memory. Never written to disk, logs or the audit log; never sent anywhere. |
+| How much | At most 500 destinations; each forgotten 1 h after it was last seen. |
+| Who can read it | The authenticated loopback API (`GET /api/v1/connections/recent`: token or session cookie, like every route): the dashboard and `kongtrol traffic recent`. |
+| Off | `monitor.recent_connections.enabled: false` (default on), `kongtrol config recent-connections off` or the dashboard settings: the list is emptied at once and nothing is read. It is also emptied when Kongtrol stops. |
+
+On by default because nothing leaves the machine and the same user can already read this table
+with `netstat -ano` / `ss -tnp`; the opt-in rule above is for data that leaves the machine.
 
 Loopback only: the OpenVPN management interface (`internal/vpn/openvpn/management.go`) and the
 privileged helper's socket or named pipe (below). Your VPN clients (NordVPN, FortiClient, OpenVPN,

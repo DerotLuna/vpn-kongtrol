@@ -283,6 +283,14 @@ monitor:
     on_high_latency_ms: 500
     on_reconnect_attempts: 3
 
+  # Recent destinations (ADR-0054): which hosts this computer connected to in the last hour,
+  # through which tunnel and program (kongtrol traffic recent, GET /api/v1/connections/recent).
+  # Memory only: never written to disk or logs, never sent anywhere; at most 500 entries, each
+  # forgotten 1 h after last seen. On by default (Windows and Linux; macOS not supported).
+  # Toggle: kongtrol config recent-connections on|off.
+  recent_connections:
+    enabled: true
+
 # New version notice (ADR-0034). Off by default: with check_enabled false Kongtrol never
 # contacts GitHub. When true it asks api.github.com at most once a day (GitHub sees your IP
 # and "kongtrol/<version>") and only tells you how to update; it never downloads anything.

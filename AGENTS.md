@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.19 · 2026-11-19
+Version 1.20 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -251,10 +251,10 @@ ProfileService.Disconnect(name)
 
 | Package | Responsibility |
 |---|---|
-| `internal/vpn` | `VPNAdapter` interface, `Status` type, registry |
+| `internal/vpn` | `VPNAdapter` interface, `Status` type, registry, `Set` (the daemon's live adapter set, ADR-0053) |
 | `internal/config` | YAML schema (`Config`, `VPNConfig`), loader (env expansion, `~/` paths), keychain access |
 | `internal/policy` | IP longest-prefix match + domain glob → VPN profile name |
-| `internal/app` | `ProfileService` (connect/disconnect lifecycle), `KillSwitchService` |
+| `internal/app` | `ProfileService` (connect/disconnect lifecycle), `KillSwitchService`, `AdapterSync` (profiles applied without a restart) |
 | `internal/routing` | Route manager (writes via privops) and no-admin route listing per OS |
 | `internal/security` | Kill switch, DNS guard, blocked destinations (via privops), leak tester, HMAC-signed audit log |
 | `internal/privops` | Closed list of privileged operations: `Local` (elevated) or `Client` (to the helper); per-OS `sys_*.go` |
@@ -267,7 +267,7 @@ ProfileService.Disconnect(name)
 | `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
 | `internal/configexport` | `Write(w, cfg, lang, Style)`: the config as YAML that loads back unchanged (no secrets: passwords live in the keychain); `kongtrol export` and `GET /api/v1/config/export` |
 | `internal/netstats` | No-admin per-interface traffic counters |
-| `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard) |
+| `internal/monitor` | `Collector` (metrics snapshot), `Watchdog` (auto-reconnect with backoff), `DNSManager` (reference-counted DNS guard), `RecentConnections` (memory-only recent destinations, ADR-0054) |
 | `internal/api` | Embedded HTTP server + REST handlers (tunnels, routes, policies, VPN profiles, groups, security toggles, settings, scheduler rules, audit) + WebSocket live feed; imports `web` package for `//go:embed` |
 | `web/` | the dashboard `web/ui/` (see below), embedded by `web/ui_embed.go` and served at `/` |
 | `assets/` | `assets/brand/` is the single source of logos (regenerate with `go run -tags brandgen assets/brand/generate.go`); `assets/embed.go`; tray / menu bar icons come from `brand/tray-<px>.png` (transparent masks that `generate.go` rasterizes from `source/logo-kong-solid.svg`, the solid glyph it derives from `source/logo-kong.svg`, ADR-0044), tinted and badged at run time by `TrayMark`/`TrayICO`/`TrayPNG` in `assets/icon.go` and `assets/state_icons.go` (dot size and gap: `BadgeGeometry`) |
@@ -363,11 +363,29 @@ API handlers and the CLI with no daemon (`kongtrol policy add|remove`, `kongtrol
 is the "＋ Agregar" input classifier (URL → host, `*.host` unless `--no-subdomains`, IP/CIDR,
 `app:`); web/ui mirrors it. `kongtrol profile detect` = `GET /api/v1/vpns/detect` (vpndetect).
 
-VPN profile CRUD writes `kongtrol.yaml` + the OS keychain only — it does **not** hot-register the
-adapter (the `adapters` map in `cmd/kongtrol/main.go` is built once at boot and shared,
-unsynchronized, with the collector/watchdog goroutines), so responses include a
-`restart_required` flag; the dashboard then offers "Reiniciar ahora" (`POST /api/v1/restart`,
-CLI `kongtrol restart`), which reconnects the tunnels that were up.
+<!-- feature:profile_live -->
+VPN profile CRUD (and `POST /api/v1/policies/reload` after a hand edit) applies live (ADR-0053):
+the daemon's adapters are a `vpn.Set` (copy-on-write map behind `atomic.Pointer`; readers never
+lock, never index a raw map) and `app.AdapterSync.Sync(cfg)` runs after every save
+(`commitRuntimeConfig` → `configedit.Save`): new profiles get an adapter (`app.NewProfileAdapter`),
+removed ones are dropped (`Watchdog.Forget`), an edited one gets a new adapter only when its
+adapter seed changed **and** it is disconnected. A busy profile is never replaced, renamed or
+deleted (409 `api.err.vpn_rename_busy` / `vpn_delete_busy`); editing a connected one answers
+`reconnect_required: true` and is applied by `Resync()` after its next disconnect.
+`PUT /api/v1/vpns/{name}?reconnect=true` reconnects only that tunnel (`restartProfilesInPlace`);
+never reconnect without the client asking. `kongtrol reload` asks per changed connected profile.
+Responses carry `restart_required` (true only in setup mode or when an adapter cannot be built);
+`POST /api/v1/restart` / `kongtrol restart` stay. `GET /api/v1/vpns/detect` and `profile detect`
+add `active`/`interface` from `appattach.ActiveTunnel` (provider matchers registered with
+`appattach.RegisterMatcher`; others `null`).
+
+<!-- feature:recent_connections -->
+Recent destinations (ADR-0054): `monitor.RecentConnections` reads the OS TCP table every 15 s
+(`tcpConnections`, shared with PolicyWatch; macOS `supported:false`), memory only (500 entries,
+1 h, emptied when off and on shutdown; never on disk, in logs or the audit log), host only from
+`PolicyResolver.HostOf` (no reverse DNS). `GET /api/v1/connections/recent`, `kongtrol traffic
+recent`, setting `monitor.recent_connections.enabled` (default on; `config recent-connections`,
+settings API `recent_connections_enabled`).
 
 Settings that are genuinely local to one machine — not the shared `kongtrol.yaml` — live in
 `~/.kongtrol/preferences.json` instead (`cmd/kongtrol/preferences.go`): CLI display language,

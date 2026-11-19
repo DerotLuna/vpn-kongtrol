@@ -1,4 +1,4 @@
-# Change-impact map — version 1.8 · 2026-11-19
+# Change-impact map — version 1.9 · 2026-11-19
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -182,6 +182,38 @@ features:
       - docs/SETUP.md#daemon_lifecycle
       - landing/src/content/guide.es.tsx#daemon_lifecycle
       - landing/src/content/guide.en.tsx#daemon_lifecycle
+
+  profile_live:
+    code:
+      - internal/vpn/set.go
+      - internal/app/adapter_sync.go
+      - internal/api/profile_sync.go
+      - internal/api/handlers_vpn.go
+      - internal/vpn/appattach/registry.go
+      - internal/api/handlers_detect.go
+    surfaces:
+      - README.md#profile_live
+      - AGENTS.md#profile_live
+      - docs/API.md#profile_live
+      - landing/src/content/guide.es.tsx
+      - landing/src/content/guide.en.tsx
+
+  recent_connections:
+    code:
+      - internal/monitor/recent.go
+      - internal/monitor/conns_*.go
+      - internal/monitor/procnet.go
+      - internal/api/handlers_connections.go
+      - internal/daemonctl/recent.go
+      - internal/config/recentconns.go
+      - cmd/kongtrol/cmd_traffic.go
+    surfaces:
+      - README.md#recent_connections
+      - AGENTS.md#recent_connections
+      - docs/API.md#recent_connections
+      - docs/SECURITY.md#recent_connections
+      - landing/src/content/legal/privacidad.tsx#recent_connections
+      - configs/example.yaml
 
   tray_exits:
     code:
