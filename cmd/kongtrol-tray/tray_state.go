@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/assets"
+	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -189,7 +190,7 @@ func trayHeader(d daemonState, views []tunnelView) (string, assets.TrayBadge) {
 	if up == 0 {
 		return trayT("tray.header.none"), badge
 	}
-	return trayF("tray.status_active", up), badge
+	return i18n.N(trayLang, "tray.status_active", up), badge
 }
 
 // trayVersionLabel is the "Kongtrol v0.6.0" line: the daemon's version

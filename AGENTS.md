@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.21 · 2026-11-19
+Version 1.22 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -476,7 +476,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 
 <!-- feature:i18n -->
 <!-- feature:tray_flyout -->
-### Tray flyout (ADR-0036)
+### Tray flyout (ADR-0036, ADR-0056)
 
 - Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
   window next to the icon showing `web/ui` `/tray`; right click, macOS, Linux and a missing
@@ -489,6 +489,12 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
   (`web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
 - The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
   Escape) appear only when the bridge exists, so `/tray` also works in a browser tab.
+- ADR-0056: the WebView2 controller's `IsVisible` follows the window on every show/hide
+  (a window created hidden never paints otherwise: the empty flyout of #40). `ready` means
+  "on screen" (`announceReady`: visible + one painted frame), sent after load and after every
+  `kongtrol:shown`; a show without it in 3 s (`flyoutWatch`) closes the flyout, opens the
+  native menu, logs the cause in `tray.log`, and keeps the left click on the native menu
+  until the tray restarts.
 
 ## Internationalization (i18n)
 

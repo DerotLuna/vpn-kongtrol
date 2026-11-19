@@ -239,3 +239,30 @@ func TestRunFlyoutActionClose(t *testing.T) {
 		t.Errorf("hide called %d times, want 1 (only for close)", hidden)
 	}
 }
+
+func TestFlyoutWatch(t *testing.T) {
+	var w flyoutWatch
+	first := w.show()
+	if !w.unanswered(first) {
+		t.Fatal("a fresh show must wait for the page")
+	}
+	w.ack()
+	if w.unanswered(first) {
+		t.Fatal("ready answered the show")
+	}
+	second := w.show()
+	if !w.unanswered(second) {
+		t.Fatal("an older ready must not answer a new show")
+	}
+	third := w.show()
+	if w.unanswered(second) {
+		t.Error("a superseded show must not trigger the fallback")
+	}
+	if !w.unanswered(third) {
+		t.Error("the latest show still waits")
+	}
+	w.ack()
+	if w.unanswered(third) {
+		t.Error("ready answers the latest show")
+	}
+}

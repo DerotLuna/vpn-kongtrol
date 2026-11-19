@@ -2,12 +2,18 @@
 
 package main
 
-// Tray flyout on Windows (v1.0.0 · 2026-11-18, ADR-0036): a frameless,
-// topmost tool window next to the tray icon hosting Microsoft Edge WebView2
-// through github.com/jchv/go-webview2/pkg/edge (pure Go, no cgo: the tray
-// keeps cross-compiling with CGO_ENABLED=0). The window lives on its own
-// locked OS thread with its own message loop, created on the first left
-// click and then only shown/hidden, so later opens are instant.
+// Tray flyout on Windows (v1.1.0 · 2026-11-19, ADR-0036, ADR-0056): a
+// frameless, topmost tool window next to the tray icon hosting Microsoft
+// Edge WebView2 through github.com/jchv/go-webview2/pkg/edge (pure Go, no
+// cgo: the tray keeps cross-compiling with CGO_ENABLED=0). The window lives
+// on its own locked OS thread with its own message loop, created on the
+// first left click and then only shown/hidden, so later opens are instant.
+//
+// The WebView2 controller's visibility (IsVisible) follows the window on
+// every show and hide. The window is created hidden, and without
+// PutIsVisible(true) after showing it the page stays document.visibilityState
+// "hidden" and never paints: the flyout opened as an empty frame (#40,
+// measured on WebView2 157 / Windows 11).
 
 import (
 	"crypto/rand"
@@ -38,7 +44,10 @@ const (
 	wmApp        = 0x8000
 	wmFlyoutShow = wmApp + 0x4B1
 	wmFlyoutHide = wmApp + 0x4B2
-	waInactive   = 0
+	// wmFlyoutCheck: flyoutReadyTimeout after a show (wParam = show number).
+	wmFlyoutCheck = wmApp + 0x4B3
+	waInactive    = 0
+	wmRButtonUp   = 0x0205
 
 	wsPopup        = 0x80000000
 	wsClipChildren = 0x02000000
@@ -67,6 +76,10 @@ const (
 	// back to the cursor position.
 	systrayWindowClass = "SystrayClass"
 	systrayIconID      = 100
+	// fyne.io/systray's notification callback message (WM_USER + 1,
+	// systray_windows.go); posting it with lParam WM_RBUTTONUP runs its
+	// right-click path, which opens the native menu (ADR-0056 fallback).
+	systrayCallbackMsg = 0x0400 + 1
 
 	// A click on the icon while the flyout is open first deactivates it (it
 	// hides on blur) and then arrives as a tray click: that click must not
@@ -163,6 +176,9 @@ type winFlyout struct {
 	ready       atomic.Bool
 	pendingShow atomic.Bool
 	hiddenAt    atomic.Int64 // UnixNano of the last hide
+	watch       flyoutWatch  // each show waits for the page's "ready"
+	gaveUp      atomic.Bool  // fallback ran: left click = native menu
+	navigated   atomic.Bool  // a navigation completed (for the fallback's log)
 
 	chromium    *edge.Chromium // window thread
 	embedded    bool           // window thread
@@ -272,6 +288,9 @@ func (f *winFlyout) run() {
 	ch.DataPath = flyoutDataDir()
 	ch.MessageCallback = f.onMessage
 	ch.WebResourceRequestedCallback = f.onRequest
+	ch.NavigationCompletedCallback = func(*edge.ICoreWebView2, *edge.ICoreWebView2NavigationCompletedEventArgs) {
+		f.navigated.Store(true)
+	}
 	ch.AcceleratorKeyCallback = func(vk uint) bool {
 		if vk == vkEscape {
 			f.hideNow()
@@ -312,6 +331,33 @@ func (f *winFlyout) fail(err error) {
 	// a single pointer write, done once.
 	systray.SetOnTapped(nil)
 	notifyError(trayT("tray.flyout_failed"), err)
+}
+
+// giveUp is the fallback of ADR-0056 (window thread): the page did not say
+// it was on screen within flyoutReadyTimeout of a show. It closes the empty
+// flyout, opens the native menu in its place, logs why, and leaves the left
+// click on the native menu until the tray restarts, so the user never gets
+// the empty window twice.
+func (f *winFlyout) giveUp() {
+	var cause string
+	switch {
+	case !f.navigated.Load():
+		cause = "the page never finished loading; is the daemon answering?"
+	case !f.ready.Load():
+		cause = "navigation finished (maybe as an error page) but the page never reported being on screen: not painted, daemon error or script error"
+	default:
+		cause = "the page stopped answering after it was shown again"
+	}
+	log.Printf("kongtrol-tray: flyout gave no sign of life within %s (%s); closed it and opened the native menu; left click opens the native menu until the tray restarts", flyoutReadyTimeout, cause)
+	f.hideNow()
+	if f.gaveUp.Swap(true) {
+		return
+	}
+	// Same single pointer write as fail(); later clicks go to the menu.
+	systray.SetOnTapped(nil)
+	if h := f.trayHwnd.Load(); h != 0 {
+		_, _, _ = procPostMessageW.Call(h, systrayCallbackMsg, 0, wmRButtonUp)
+	}
 }
 
 // configure locks the browser down: no dev tools, context menu, zoom,
@@ -380,6 +426,7 @@ func (f *winFlyout) onMessage(msg string) {
 	switch a := parseFlyoutMessage(msg, f.nonce); a {
 	case flyoutReady:
 		f.ready.Store(true)
+		f.watch.ack()
 	case flyoutNone:
 	default:
 		runFlyoutAction(a, f.hideNow)
@@ -400,9 +447,21 @@ func (f *winFlyout) showNow() {
 
 	_, _, _ = procSetWindowPos.Call(hwnd, hwndTopmost, uintptr(x), uintptr(y), uintptr(w), uintptr(h), swpShowWindow)
 	f.chromium.Resize()
+	// The page paints only while the controller is visible (see the file
+	// comment); the window is hidden in between.
+	if err := f.chromium.Show(); err != nil {
+		log.Printf("kongtrol-tray: flyout could not make its page visible: %v", err)
+	}
 	_, _, _ = procSetForegroundWindow.Call(hwnd)
 	f.chromium.Focus()
 	f.visible.Store(true)
+
+	// The page answers "ready" once it is on screen; without that answer the
+	// window would stay an empty frame (ADR-0056).
+	seq := f.watch.show()
+	time.AfterFunc(flyoutReadyTimeout, func() {
+		_, _, _ = procPostMessageW.Call(hwnd, wmFlyoutCheck, uintptr(seq), 0)
+	})
 
 	switch {
 	case f.ready.Load():
@@ -417,6 +476,10 @@ func (f *winFlyout) showNow() {
 func (f *winFlyout) hideNow() {
 	if h := f.hwnd.Load(); h != 0 {
 		_, _, _ = procShowWindow.Call(h, swHide)
+	}
+	if f.embedded {
+		// Hidden page: WebView2 stops rendering it (document "hidden").
+		_ = f.chromium.Hide()
 	}
 	if f.visible.Swap(false) {
 		f.hiddenAt.Store(time.Now().UnixNano())
@@ -433,6 +496,11 @@ func flyoutWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 		return 0
 	case wmFlyoutHide:
 		fly.hideNow()
+		return 0
+	case wmFlyoutCheck:
+		if fly.visible.Load() && fly.watch.unanswered(uint64(wParam)) {
+			fly.giveUp()
+		}
 		return 0
 	case wmActivate:
 		if wParam&0xFFFF == waInactive && fly.visible.Load() {

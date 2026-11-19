@@ -1,6 +1,6 @@
 package main
 
-// Tray flyout — portable rules (v1.0.0 · 2026-11-18, ADR-0036).
+// Tray flyout — portable rules (v1.1.0 · 2026-11-19, ADR-0036, ADR-0056).
 //
 // The flyout is a small branded window that opens next to the tray icon on a
 // left click (like the Windows 11 network flyout, Tailscale or Docker
@@ -21,6 +21,8 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"fyne.io/systray"
 
@@ -249,7 +251,8 @@ type flyoutAction int
 
 const (
 	flyoutNone flyoutAction = iota
-	// flyoutReady: the page loaded.
+	// flyoutReady: the page is on screen (sent after it loads and after
+	// every show; flyoutWatch).
 	flyoutReady
 	// flyoutClose: Escape, or an action that ends the flyout's job.
 	flyoutClose
@@ -313,4 +316,28 @@ func runFlyoutAction(a flyoutAction, hide func()) {
 		hide()
 		go stopKongtrol()
 	}
+}
+
+// flyoutReadyTimeout is how long a shown flyout may wait for the page's
+// "ready" before the tray gives up on it (ADR-0056): enough for a cold
+// WebView2 start (the page answered in under 1 s on one Windows 11 machine;
+// slower machines no verificado), short enough that nobody stares at an
+// empty window.
+const flyoutReadyTimeout = 3 * time.Second
+
+// flyoutWatch pairs every show of the flyout with the page's "ready"
+// (ADR-0056). The page answers only while it is visible and painting, so a
+// show without an answer means the user is looking at an empty window.
+type flyoutWatch struct{ shown, acked atomic.Uint64 }
+
+// show starts waiting for a new answer and returns the show's number.
+func (w *flyoutWatch) show() uint64 { return w.shown.Add(1) }
+
+// ack records the page's "ready" for the latest show.
+func (w *flyoutWatch) ack() { w.acked.Store(w.shown.Load()) }
+
+// unanswered reports whether show seq is still the latest one and the page
+// has not answered it.
+func (w *flyoutWatch) unanswered(seq uint64) bool {
+	return w.shown.Load() == seq && w.acked.Load() < seq
 }
