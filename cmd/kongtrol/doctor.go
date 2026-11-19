@@ -104,7 +104,7 @@ func applyDoctorFixes() (int, error) {
 		if !outputJSON {
 			fmt.Println(tuiInfo(ct("cli.doctor.fix.helper")))
 		}
-		if err := installHelperFn(); err != nil {
+		if err := installHelperFn(need == helperOutdated); err != nil {
 			if !outputJSON {
 				fmt.Println(tuiWarn(err.Error()))
 			}

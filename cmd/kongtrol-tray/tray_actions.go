@@ -297,6 +297,9 @@ func helperState() helperNeed {
 	defer cancel()
 	res, err := pingHelper(ctx)
 	switch {
+	case errors.Is(err, privops.ErrHelperOutdated):
+		// The client reports a reply with another protocol as this error.
+		return helperOutdated
 	case err != nil:
 		return helperMissing
 	case res.Protocol != privops.ProtocolVersion:

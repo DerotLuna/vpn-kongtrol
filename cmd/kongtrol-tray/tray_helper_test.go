@@ -45,6 +45,9 @@ func TestHelperState(t *testing.T) {
 		{"no daemon, no helper", false, false, false, missing, helperMissing},
 		{"no daemon, helper answers", false, false, false, ok, helperOK},
 		{"no daemon, outdated helper", false, false, false, old, helperOutdated},
+		{"no daemon, client reports outdated", false, false, false, func() (privops.PingResult, error) {
+			return privops.PingResult{}, privops.ErrHelperOutdated
+		}, helperOutdated},
 		{"no daemon, elevated", false, false, true, missing, helperOK},
 	}
 	for _, c := range cases {

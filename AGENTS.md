@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.17 · 2026-11-18
+Version 1.18 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -123,6 +123,12 @@ archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, H
 `optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
 Upgrades in place keep `~/.kongtrol`, keychain entries and the helper. `install.sh`/`install.ps1` are
 release assets too; the landing pins its one-liner base in `landing/src/links.ts` (ADR-0035).
+Every installer detects an existing install (Inno: HKCU `{AppId}_is1` `DisplayVersion` in
+`InitializeSetup`; scripts: `install.manifest` + `kongtrol version`) and presents itself as
+update / reinstall / older version (SemVer precedence, same table in all three), skipping
+license/folder/tasks and reusing previous folders and choices; an older version is confirmed
+only interactively (ADR-0045). Plain `kongtrol service install` leaves a current helper alone
+(no UAC/sudo) and says "Actualizando" for another version.
 
 <!-- feature:uninstall -->
 **Uninstall keeps data unless asked (ADR-0034).** `internal/uninstall`: `Detect` picks the channel

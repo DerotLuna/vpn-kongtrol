@@ -128,33 +128,84 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 		return privhelper.Install(opts)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	res, pingErr := privops.NewClient().Ping(ctx)
+	cancel()
+	var mode helperInstallMode
 	if svcIfOutdated {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		res, err := privops.NewClient().Ping(ctx)
-		cancel()
-		if install, key := outdatedHelperAction(res, err); !install {
+		install, key := outdatedHelperAction(res, pingErr)
+		if !install {
 			say(tuiInfo(ct(key)))
 			return nil
 		}
+		mode = helperModeUpdate
+	} else {
+		changed, unusable, _ := privhelper.CheckTools()
+		mode = helperInstallAction(res, pingErr, version, len(changed)+len(unusable) > 0)
+	}
+	if mode == helperModeCurrent {
+		if outputJSON {
+			return emitJSON(map[string]any{"installed": true, "running": true, "helper_version": res.Version, "changed": false})
+		}
+		say(tuiOK(ct("service.install.current")))
+		say(tuiInfo(ct("service.install.current_next")))
+		return nil
 	}
 
-	res, err := installHelper()
+	installed, err := installHelper(mode == helperModeUpdate)
 	if err != nil {
 		return err
 	}
 	if outputJSON {
-		return emitJSON(map[string]any{"installed": true, "running": true, "helper_version": res.Version})
+		return emitJSON(map[string]any{"installed": true, "running": true, "helper_version": installed.Version, "changed": true})
 	}
-	say(tuiOK(ct("service.install.ok")))
+	if mode == helperModeUpdate {
+		say(tuiOK(ct("service.install.updated")))
+	} else {
+		say(tuiOK(ct("service.install.ok")))
+	}
 	say(tuiInfo(ct("service.install.next")))
 	return nil
 }
 
+// helperInstallMode is what a plain `service install` does (ADR-0045).
+type helperInstallMode int
+
+const (
+	helperModeInstall helperInstallMode = iota // missing, stopped, refuses this user, or tools to re-copy
+	helperModeUpdate                           // answers with another protocol or version
+	helperModeCurrent                          // same protocol and version, nothing to re-copy: no prompt
+)
+
+// helperInstallAction decides a plain `service install` from a ping: a
+// helper that is already current is left alone (no UAC / sudo prompt);
+// one from another version is updated; anything else (missing, stopped,
+// installed by another account, Homebrew tools changed or unusable) is
+// (re)installed, so every "what to do: kongtrol service install" hint
+// still repairs.
+func helperInstallAction(res privops.PingResult, pingErr error, cliVersion string, toolIssues bool) helperInstallMode {
+	switch {
+	case errors.Is(pingErr, privops.ErrHelperOutdated):
+		return helperModeUpdate
+	case pingErr != nil:
+		return helperModeInstall
+	case res.Protocol != privops.ProtocolVersion || res.Version != cliVersion:
+		return helperModeUpdate
+	case toolIssues:
+		return helperModeInstall
+	}
+	return helperModeCurrent
+}
+
 // outdatedHelperAction decides `service install --if-outdated` from a
-// ping: reinstall only a helper that answers with another protocol
-// (privops.ProtocolVersion); otherwise the message key to print.
+// ping: reinstall only a helper that speaks another protocol — either it
+// answers with another privops.ProtocolVersion, or the client already
+// reports privops.ErrHelperOutdated (its reply carried another protocol);
+// otherwise the message key to print.
 func outdatedHelperAction(res privops.PingResult, pingErr error) (install bool, key string) {
 	switch {
+	case errors.Is(pingErr, privops.ErrHelperOutdated):
+		return true, ""
 	case pingErr != nil:
 		return false, "service.install.nothing_to_update"
 	case res.Protocol == privops.ProtocolVersion:
@@ -163,12 +214,16 @@ func outdatedHelperAction(res privops.PingResult, pingErr error) (install bool, 
 	return true, ""
 }
 
-// installHelper installs (or updates) the helper from this executable,
-// asking for permission with the OS prompt when not elevated (UAC, sudo),
-// and waits until it answers. Shared by service install, doctor --fix,
-// init and up. Errors are translated, with a "what to do" line.
-func installHelper() (privops.PingResult, error) {
-	say(tuiInfo(ct("service.install.start")))
+// installHelper installs (or, with update, updates) the helper from this
+// executable, asking for permission with the OS prompt when not elevated
+// (UAC, sudo), and waits until it answers. Shared by service install,
+// doctor --fix, init and up. Errors are translated, with a "what to do" line.
+func installHelper(update bool) (privops.PingResult, error) {
+	if update {
+		say(tuiInfo(ct("service.install.updating")))
+	} else {
+		say(tuiInfo(ct("service.install.start")))
+	}
 	if privops.IsElevated() {
 		exe, err := currentExecutable()
 		if err != nil {

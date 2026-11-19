@@ -1,4 +1,4 @@
-<!-- README version 2.1.0 · 2026-11-18.
+<!-- README version 2.2.0 · 2026-11-19.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -258,7 +258,10 @@ Privacy policy: [kongtrol.app/en/privacy](https://kongtrol.app/en/privacy).
 
 Install the new version the same way you installed it: run the one-line script or the Windows
 installer again, or install the new `.deb`/`.rpm`. Your settings in `~/.kongtrol`, passwords in the
-keychain and the network helper stay. Then run `kongtrol restart` (or Restart in the panel) to
+keychain and the network helper stay. If you already have it, the Windows installer and the
+scripts detect it and say "Update Kongtrol <old> → <new>" (or reinstall, or warn before an older
+version) without asking again what you already chose; the helper asks for permission only if it
+is out of date. Then run `kongtrol restart` (or Restart in the panel) to
 switch to the new version with your VPNs reconnected. The new version notice
 <sub>since v0.6.0 (pre-release)</sub> is off by default: turn it on in the panel (Settings) or with
 `kongtrol config update-check on`. It never downloads or installs anything.
