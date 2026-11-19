@@ -1,6 +1,6 @@
 //go:build brandgen
 
-// Brand asset generator — version 1.2.0 · 2026-11-18.
+// Brand asset generator — version 1.3.0 · 2026-11-18.
 //
 // Regenerates the raster fallbacks in assets/brand/ from the masters in
 // assets/brand/source/. The SVGs (logo.svg, logo-kong.svg, favicon.svg, plus
@@ -13,7 +13,7 @@
 // build tag is "brandgen", not "ignore", because go mod tidy skips files
 // tagged ignore and would drop the dependency). Run from the repo root:
 //
-//	go run assets/brand/generate.go
+//	go run -tags brandgen assets/brand/generate.go
 //
 // Encoding choices:
 //   - The logo is black line art on white, so logo rasters are converted to
@@ -22,15 +22,17 @@
 //   - The Open Graph card is a photo-like gradient, so it is emitted as JPEG,
 //     which every OG/Twitter consumer accepts (https://ogp.me/#structured).
 //   - WebP is not emitted: golang.org/x/image/webp only decodes.
-//   - Tray / menu bar masks (tray-<px>.png) are rasterized straight from the
-//     vector master source/logo-kong.svg (golang.org/x/image/vector), cropped
-//     to the mark, as black line art on a TRANSPARENT background: the tray
-//     tints them for the taskbar theme (Windows, Linux) or hands them to
-//     macOS as a template image, and draws state badges on top at run time.
-//     One file per tray size, so small sizes are rendered, not downscaled.
-//   - source/logo-kong-solid.svg (the same head, solid instead of lines) is
-//     derived from source/logo-kong.svg here, and tray-candidates/ holds its
-//     tray masks for review; see deriveSolid.
+//   - source/logo-kong-solid.svg (the same head, solid instead of lines, the
+//     face as negative space) is derived from source/logo-kong.svg here; see
+//     deriveSolid. It is the tray / menu bar glyph (ADR-0044): at 16–24 px
+//     the concentric lines of the full mark blur into grey.
+//   - Tray / menu bar masks (tray-<px>.png) are rasterized straight from that
+//     vector (golang.org/x/image/vector), cropped to the mark, as black on a
+//     TRANSPARENT background, with an edge-contrast hint at ≤32 px (see
+//     hint): the tray tints them for the taskbar theme (Windows, Linux) or
+//     hands them to macOS as a template image, and draws the state badge on
+//     top at run time (assets.BadgeGeometry). One file per tray size, so
+//     small sizes are rendered, not downscaled.
 package main
 
 import (
@@ -109,33 +111,34 @@ func main() {
 		}
 		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", j.out, j.w, j.h, n)
 	}
-	paths, err := loadSVGPaths(filepath.Join(dir, "source", "logo-kong.svg"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, px := range traySizes {
-		out := fmt.Sprintf("tray-%d.png", px)
-		var buf bytes.Buffer
-		if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, rasterMask(paths, px)); err != nil {
-			log.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, out), buf.Bytes(), 0o644); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", out, px, px, buf.Len())
-	}
 	if err := deriveSolid(); err != nil {
 		log.Fatal(err)
 	}
-	if err := renderSolidCandidates(); err != nil {
+	if err := renderTrayMasks(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// candidateSizes: Windows small-icon sizes at 100, 125, 150, 200, 250 and
-// 300 % scaling (16, 20, 24, 32, 40, 48), which also cover the macOS menu
-// bar (16 pt @1x/@2x) and Linux panels.
-var candidateSizes = []int{16, 20, 24, 32, 40, 48}
+// renderTrayMasks rasterizes source/logo-kong-solid.svg to tray-<px>.png for
+// every traySizes entry: black + alpha, cropped to the mark, hinted.
+func renderTrayMasks() error {
+	paths, err := loadSVGPaths(filepath.Join(dir, solidOut))
+	if err != nil {
+		return err
+	}
+	for _, px := range traySizes {
+		out := fmt.Sprintf("tray-%d.png", px)
+		var buf bytes.Buffer
+		if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, hint(rasterMask(paths, px), px)); err != nil {
+			return err
+		}
+		if err := os.WriteFile(filepath.Join(dir, out), buf.Bytes(), 0o644); err != nil {
+			return err
+		}
+		fmt.Printf("%-20s %4dx%-4d %7d bytes\n", out, px, px, buf.Len())
+	}
+	return nil
+}
 
 // ── Solid mark: derived from the line-art master ────────────────────────────
 //
@@ -585,65 +588,6 @@ func bezierPath(p []pt, xf func(pt) pt) string {
 // 1/5000 of the mark), dropping a trailing ".0".
 func num(v float64) string {
 	return strconv.FormatFloat(math.Round(v*10)/10, 'f', -1, 64)
-}
-
-// renderSolidCandidates rasterizes source/logo-kong-solid.svg to the tray
-// candidate masks tray-candidates/solid-<px>.png (black + alpha, cropped to
-// the mark like tray-<px>.png) and solid-badge-<px>.png, the same with a
-// transparent gap cut bottom-right for a smaller status dot (radius 17 % of
-// the icon instead of the 20 % assets/state_icons.go draws today), so the
-// dot stays off the face. Not wired into the tray yet.
-func renderSolidCandidates() error {
-	paths, err := loadSVGPaths(filepath.Join(dir, solidOut))
-	if err != nil {
-		return err
-	}
-	outDir := filepath.Join(dir, "tray-candidates")
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return err
-	}
-	for _, px := range candidateSizes {
-		for _, badge := range []bool{false, true} {
-			img := hint(rasterMask(paths, px), px)
-			name := fmt.Sprintf("solid-%d.png", px)
-			if badge {
-				cutBadgeGap(img, px)
-				name = fmt.Sprintf("solid-badge-%d.png", px)
-			}
-			var buf bytes.Buffer
-			if err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&buf, img); err != nil {
-				return err
-			}
-			if err := os.WriteFile(filepath.Join(outDir, name), buf.Bytes(), 0o644); err != nil {
-				return err
-			}
-			fmt.Printf("%-34s %4dx%-4d %7d bytes\n", "tray-candidates/"+name, px, px, buf.Len())
-		}
-	}
-	return nil
-}
-
-// badgeGeometry is the smaller status dot: radius 17 % of the icon (at
-// least 2.5 px), a transparent gap of size/16 (at least 1 px) around it,
-// tucked into the bottom-right corner.
-func badgeGeometry(px int) (cx, cy, r, gap float64) {
-	size := float64(px)
-	r = math.Max(2.5, size*0.17)
-	gap = math.Max(1, size/16)
-	return size - r - 0.5, size - r - 0.5, r, gap
-}
-
-// cutBadgeGap clears the glyph where the dot and its gap go.
-func cutBadgeGap(img *image.NRGBA, px int) {
-	cx, cy, r, gap := badgeGeometry(px)
-	for y := 0; y < px; y++ {
-		for x := 0; x < px; x++ {
-			d := math.Hypot(float64(x)+0.5-cx, float64(y)+0.5-cy)
-			cut := math.Max(0, math.Min(1, r+gap-d+0.5))
-			i := img.PixOffset(x, y) + 3
-			img.Pix[i] = uint8(math.Round(float64(img.Pix[i]) * (1 - cut)))
-		}
-	}
 }
 
 var svgViewBoxRe = regexp.MustCompile(`viewBox="([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)[ ,]+([-\d.]+)"`)

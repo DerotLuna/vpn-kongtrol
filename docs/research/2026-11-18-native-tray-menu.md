@@ -2,7 +2,7 @@
 
 # Research: what a native tray menu can show with fyne.io/systray
 
-Version 1.1.0 · 2026-11-18 (1.1.0: simplified tray glyph)
+Version 1.2.0 · 2026-11-18 (1.1.0: simplified tray glyph; 1.2.0: solid glyph adopted, ADR-0044)
 
 ## Question
 
@@ -94,18 +94,23 @@ from prior reading, to re-open before the final ADR):
   image (black + alpha) so the system tints it; keep it simple, about 16 pt tall.
 
 A first round of three redrawn glyphs (silhouette, ring, face) was rejected: they did not look
-like the real logo. The current candidate is `assets/brand/source/logo-kong-solid.svg`, the
+like the real logo. The adopted glyph (ADR-0044) is `assets/brand/source/logo-kong-solid.svg`, the
 same head **derived** from `logo-kong.svg` by `generate.go` (rasterize at 2048 px,
 morphological closing with a 30 px disc on exact distance transforms — Felzenszwalb &
 Huttenlocher, "Distance Transforms of Sampled Functions", Theory of Computing 8, 2012 —, flood
 fill from outside, face plate kept as a hole, marching-squares tracing, Douglas–Peucker, cubic
 Béziers). Checked at 512 px: its outer edge lies on average 0.36 px (max 5 px, where the
 closing bridges notches between line ends) from the original ink, and 0.15 % of the original
-ink falls outside it (anti-aliased edge pixels), so the silhouette is the original's. Masks at 16/20/24/32/40/48 px are in `assets/brand/tray-candidates/`
-(`solid-<px>.png`, and `solid-badge-<px>.png` with a gap for a smaller status dot, radius
-17 % instead of 20 %, which covers no face pixel at any size), with the same edge-contrast
-"hint" at ≤32 px (an approximation, not true grid-fitting). Not wired into the tray yet; the
-full line-art logo stays for large sizes (installer, about, dashboard).
+ink falls outside it (anti-aliased edge pixels), so the silhouette is the original's. The
+owner approved it from review masks at 16/20/24/32/40/48 px (since deleted), with a smaller
+status dot (radius 17 % instead of 20 %) and an edge-contrast "hint" at ≤32 px (an
+approximation, not true grid-fitting). It is now the tray glyph: `generate.go` rasterizes
+`assets/brand/tray-<px>.png` (16, 20, 24, 32, 48, 64) from it, and the run-time badge uses
+`assets.BadgeGeometry`. Measured on the shipped masks (`TestBadgeOffFace`): the dot covers no
+face-plate pixel at any size (the old 20 % covers one at 16 px); its gap ring does thin the
+plate's 1 px rim at the chin's lower right, opening the plate to the gap at every size; a 15 %
+radius keeps the rim closed at every size. The full line-art logo stays for large sizes
+(installer, app icons, about, dashboard).
 
 ### Another copy of the CLI earlier in PATH
 
@@ -121,3 +126,4 @@ PATH task changes new installs; an upgrade keeps what the user chose before.
 ## Decision input
 
 - ADR-0037
+- ADR-0044 (solid tray glyph)

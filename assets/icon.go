@@ -10,9 +10,10 @@ import (
 	"image/png"
 )
 
-// trayMaskFS holds the tray / menu bar masks rasterized from the vector
-// master by brand/generate.go: black line art, transparent background, one
-// file per size (MaskSizes).
+// trayMaskFS holds the tray / menu bar masks rasterized by brand/generate.go
+// from the solid glyph brand/source/logo-kong-solid.svg (ADR-0044): black,
+// transparent background, the face as negative space, one file per size
+// (MaskSizes).
 //
 //go:embed brand/tray-*.png
 var trayMaskFS embed.FS

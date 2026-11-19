@@ -3,6 +3,7 @@ package assets
 import (
 	"bytes"
 	"encoding/binary"
+	"image"
 	"image/png"
 	"testing"
 )
@@ -75,15 +76,98 @@ func TestTrayBadges(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c := img.RGBAAt(25, 25) // badge center: 32 - 0.2*32 - 0.5 ≈ 25
+		c := img.RGBAAt(26, 26) // badge center: 32 - 0.17*32 - 0.5 ≈ 26
 		if [3]uint8{c.R, c.G, c.B} != want || c.A != 0xff {
 			t.Fatalf("badge %d center = %v, want %v", badge, c, want)
 		}
 	}
 	stopped, _ := TrayMark(32, InkOnLight, BadgeStopped)
-	if a := stopped.RGBAAt(25, 25).A; a != 0 {
+	if a := stopped.RGBAAt(26, 26).A; a != 0 {
 		t.Fatalf("stopped badge center alpha = %d, want a hollow ring", a)
 	}
+}
+
+func TestBadgeGeometryInsideIcon(t *testing.T) {
+	for _, s := range MaskSizes {
+		cx, cy, r, gap := BadgeGeometry(s)
+		if r < 2.5 || gap < 1 {
+			t.Fatalf("%dpx: r=%.2f gap=%.2f, want r ≥ 2.5 and gap ≥ 1", s, r, gap)
+		}
+		if cx+r > float64(s) || cy+r > float64(s) || cx-r < float64(s)/2 || cy-r < float64(s)/2 {
+			t.Fatalf("%dpx: dot (%.2f, %.2f) r=%.2f leaves the bottom-right quadrant", s, cx, cy, r)
+		}
+	}
+}
+
+// TestBadgeOffFace checks that the badge never covers the face: the face
+// plate is the transparent region the solid glyph encloses (eyes, nose and
+// mouth are ink inside it, ADR-0044). With any badge, every face pixel must
+// stay transparent. (The gap ring may thin the plate's 1 px rim at the
+// chin's lower right; it never paints over the plate.)
+func TestBadgeOffFace(t *testing.T) {
+	for _, s := range MaskSizes {
+		plain, err := TrayMark(s, InkTemplate, BadgeNone)
+		if err != nil {
+			t.Fatal(err)
+		}
+		face := enclosedClear(plain, s)
+		n := 0
+		for _, in := range face {
+			if in {
+				n++
+			}
+		}
+		if n < s { // at least a few rows' worth: the face plate is there
+			t.Fatalf("%dpx: enclosed face region has %d px, the glyph lost its face", s, n)
+		}
+		for _, badge := range []TrayBadge{BadgeLive, BadgeCaution, BadgeStopped} {
+			img, err := TrayMark(s, InkTemplate, badge)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, in := range face {
+				if in && img.Pix[i*4+3] > plain.Pix[i*4+3] {
+					t.Fatalf("%dpx badge %d: face pixel (%d,%d) covered by the badge", s, badge, i%s, i/s)
+				}
+			}
+		}
+	}
+}
+
+// enclosedClear returns the mostly transparent pixels (alpha < 50 %) that a
+// 4-connected flood from the icon border cannot reach.
+func enclosedClear(img *image.RGBA, s int) []bool {
+	clear := func(i int) bool { return img.Pix[i*4+3] < 0x80 }
+	outside := make([]bool, s*s)
+	var stack []int
+	for i := 0; i < s; i++ {
+		for _, j := range []int{i, (s-1)*s + i, i * s, i*s + s - 1} {
+			if clear(j) && !outside[j] {
+				outside[j] = true
+				stack = append(stack, j)
+			}
+		}
+	}
+	for len(stack) > 0 {
+		i := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		x, y := i%s, i/s
+		for _, d := range [][2]int{{-1, 0}, {1, 0}, {0, -1}, {0, 1}} {
+			nx, ny := x+d[0], y+d[1]
+			if nx < 0 || ny < 0 || nx >= s || ny >= s {
+				continue
+			}
+			if j := ny*s + nx; clear(j) && !outside[j] {
+				outside[j] = true
+				stack = append(stack, j)
+			}
+		}
+	}
+	face := make([]bool, s*s)
+	for i := range face {
+		face[i] = clear(i) && !outside[i]
+	}
+	return face
 }
 
 func TestTrayICO(t *testing.T) {

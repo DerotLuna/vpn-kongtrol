@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.13.0 · 2026-11-18
+Version 1.14.0 · 2026-11-18
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -56,6 +56,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0041](0041-dashboard-data-router-and-unsaved-guard.md) | New dashboard: data router (`createBrowserRouter`), "Tienes cambios sin guardar" guard with `useBlocker` + `beforeunload`, pages loaded on demand; supersedes ADR-0038 decision 1 | Accepted | 2026-11-18 |
 | [0042](0042-dashboard-api-completeness.md) | Dashboard API completeness: audit verified/rotated by size/retention/date query, leak action removed (leak only notifies, connected profiles only), profile rename + delete with references + file import, localized group/scheduler errors, scheduler hot reload + rule `enabled`, stable policy order, manual-reconnect notice, gzip for `/app/` | Accepted | 2026-11-18 |
 | [0043](0043-new-dashboard-replaces-classic.md) | The new dashboard replaces the classic one and moves to `/`: parity gate closed, `/app/*` and classic pages redirect (308), `/tray`, classic dashboard + `/brand/` deleted, CSP without `unsafe-inline`; supersedes ADR-0011 | Accepted | 2026-11-18 |
+| [0044](0044-tray-glyph-relleno.md) | Tray glyph relleno: the tray / menu bar icon is the solid mark derived from the logo (`source/logo-kong-solid.svg`), status dot 17 % with a gap ring (`assets.BadgeGeometry`); refines ADR-0037 §3 | Accepted | 2026-11-18 |
 
 ## Statuses
 
