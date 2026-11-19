@@ -1,43 +1,101 @@
+import { MouseEvent } from 'react'
+import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
 import { GITHUB_REPO } from '../../links'
 import { PageId, pathFor, SITE_UPDATED, SITE_VERSION } from '../../site'
-
+import { downloadHref, FOOTER_ID, PRIMARY_COPY, PrimaryDownload } from './downloadCta'
+import SendToComputer from './SendToComputer'
 
 interface Props {
   lang: Lang
   page?: PageId
 }
 
-export default function Footer({ lang }: Props) {
+// Full-height footer (2026-11-19): the large line-art mark with the tagline,
+// the primary download (same component as the hero and the download section),
+// the site and legal links, a "back to top" link, the version line and the
+// giant wordmark. The header hides while it is on screen (Nav.tsx, FOOTER_ID).
+export default function Footer({ lang, page = 'home' }: Props) {
+  const os = useDetectedOS()
+  const mobile = useIsMobile()
   const copy = lang === 'es'
     ? {
-      tagline: 'Todas tus VPN bajo Kongtrol. Panel web y CLI completa.',
+      claim: 'Todas tus VPN bajo Kongtrol',
+      tagline: 'Panel web y CLI completa. Local, gratis y de código abierto.',
       facts: ['beta', '10 VPN', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
+      siteTitle: 'Kongtrol',
+      site: [['Inicio', pathFor('home', 'es')], ['Guía', pathFor('guia', 'es')], ['Descargas', downloadHref(page, 'es')]] as [string, string][],
+      legalTitle: 'Legal',
       legal: [['privacidad', 'Privacidad'], ['seguridad', 'Seguridad'], ['terminos', 'Términos']] as [PageId, string][],
       license: 'Licencia (Apache-2.0)',
+      top: 'Inicio',
+      topLabel: 'Volver al inicio de la página',
     }
     : {
-      tagline: 'All your VPNs under Kongtrol. Web panel and a full CLI.',
+      claim: 'All your VPNs under Kongtrol',
+      tagline: 'Web panel and a full CLI. Local, free and open source.',
       facts: ['beta', '10 VPNs', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
+      siteTitle: 'Kongtrol',
+      site: [['Home', pathFor('home', 'en')], ['Guide', pathFor('guia', 'en')], ['Downloads', downloadHref(page, 'en')]] as [string, string][],
+      legalTitle: 'Legal',
       legal: [['privacidad', 'Privacy'], ['seguridad', 'Security'], ['terminos', 'Terms']] as [PageId, string][],
       license: 'License (Apache-2.0)',
+      top: 'Top',
+      topLabel: 'Back to the top of the page',
     }
 
+  // Back to top: scroll (smooth unless reduced motion) and move focus to the
+  // page's <main> (tabIndex -1), so keyboard and screen-reader users land at
+  // the top too. Without JS the link still jumps to #main.
+  const toTop = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' })
+    document.getElementById('main')?.focus({ preventScroll: true })
+  }
+
   return (
-    <footer className="footer">
-      <div className="container">
-        <div className="footer-grid">
-          <div className="footer-brand-col">
-            <div className="footer-brand">
-              <img src={`${import.meta.env.BASE_URL}logo.svg`} alt="Kongtrol" width={96} height={96} loading="lazy" decoding="async" />
-            </div>
+    <footer id={FOOTER_ID} className="footer">
+      <div className="container footer-inner">
+        <div className="footer-hero">
+          <img
+            className="footer-mark"
+            src={`${import.meta.env.BASE_URL}logo-kong.svg`}
+            alt="Kongtrol"
+            width={176}
+            height={176}
+            loading="lazy"
+            decoding="async"
+          />
+          <div className="footer-hero-text">
+            <p className="footer-claim">{copy.claim}</p>
             <p className="footer-tagline">{copy.tagline}</p>
-            <ul className="footer-facts">
-              {copy.facts.map(f => <li key={f}>{f}</li>)}
-            </ul>
+            <div className="footer-cta">
+              {mobile ? <SendToComputer lang={lang} /> : <PrimaryDownload lang={lang} os={os} page={page} />}
+              <a className="footer-guide-link" href={pathFor('guia', lang)}>{PRIMARY_COPY[lang].guide}</a>
+            </div>
           </div>
+        </div>
+
+        <div className="footer-grid">
+          <nav className="footer-col" aria-label={copy.siteTitle}>
+            <p className="footer-col-title">{copy.siteTitle}</p>
+            <ul>
+              {copy.site.map(([label, href]) => <li key={label}><a href={href} className="footer-legal-link">{label}</a></li>)}
+              <li><a href={GITHUB_REPO} className="footer-legal-link" target="_blank" rel="noreferrer">GitHub</a></li>
+            </ul>
+          </nav>
+          <nav className="footer-col" aria-label={copy.legalTitle}>
+            <p className="footer-col-title">{copy.legalTitle}</p>
+            <ul>
+              {copy.legal.map(([id, label]) => (
+                <li key={id}><a href={pathFor(id, lang)} className="footer-legal-link">{label}</a></li>
+              ))}
+              <li><a href={`${GITHUB_REPO}/blob/main/LICENSE`} className="footer-legal-link" target="_blank" rel="noreferrer">{copy.license}</a></li>
+            </ul>
+          </nav>
 
           <div className="footer-term mono">
             <div>
@@ -62,14 +120,15 @@ export default function Footer({ lang }: Props) {
           </div>
         </div>
 
-        <div className="footer-meta has-legal">
-          <ul className="footer-legal">
-            {copy.legal.map(([id, label]) => (
-              <li key={id}><a href={pathFor(id, lang)} className="footer-legal-link">{label}</a></li>
-            ))}
-            <li><a href={`${GITHUB_REPO}/blob/main/LICENSE`} className="footer-legal-link" target="_blank" rel="noreferrer">{copy.license}</a></li>
-          </ul>
+        <ul className="footer-facts">
+          {copy.facts.map(f => <li key={f}>{f}</li>)}
+        </ul>
+
+        <div className="footer-meta">
           <span className="footer-wink mono">{copy.wink}</span>
+          <a href="#main" className="footer-top" onClick={toTop} aria-label={copy.topLabel}>
+            <span aria-hidden="true">↑</span> {copy.top}
+          </a>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-// Hydration check for the built landing — version 1.2.0 · 2026-11-18.
+// Hydration check for the built landing — version 1.3.0 · 2026-11-19.
 //
 // Every entry hydrates the HTML that scripts/prerender.mjs wrote (hydrateRoot,
 // ADR-0026). React requires the first client render to match that HTML
@@ -134,8 +134,10 @@ try {
       }
       const theme = window.document.documentElement.getAttribute('data-theme')
       if (theme !== visitor.theme) record('theme', [`data-theme=${theme} after hydration, expected ${visitor.theme}`])
-      if (page === 'home' && !container.querySelector('.th-body')?.textContent.includes(`kongtrol-${visitor.os}-`)) {
-        record('os', [`hero does not show the ${visitor.os} binary after hydration`])
+      // Windows gets the installer (links.ts WINDOWS_INSTALLER_FILE), the others their binary
+      const osFile = visitor.os === 'windows' ? 'Kongtrol-Setup-windows-' : `kongtrol-${visitor.os}-`
+      if (page === 'home' && !container.querySelector('.th-body')?.textContent.includes(osFile)) {
+        record('os', [`hero does not show the ${visitor.os} file (${osFile}…) after hydration`])
       }
       if (page === 'home') {
         // The hero carries both variants; CSS shows one by <html data-device>,

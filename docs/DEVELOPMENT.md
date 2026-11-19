@@ -58,6 +58,9 @@ Release checklist:
   Until then the landing stays pinned to the v0.5.0 tag (the scripts on `main` need v0.6.0 assets).
   Also remove the "desde v0.6.0" note (`sinceV060` in `landing/src/content/guide.*.tsx`, its two
   uses in `Guide.tsx` and the `.guide-since` rule in `landing/src/index.css`).
+  And switch `WINDOWS_INSTALLER_URL` in `landing/src/links.ts` (pinned to the
+  `v0.6.0-rc.5` pre-release installer, the "Descargar para Windows" buttons of the hero,
+  download section and footer) to `releases/latest/download/Kongtrol-Setup-windows-amd64.exe`.
 
 Every channel is optional: its step skips itself while its secret is missing. To turn them on
 (all free; create once):

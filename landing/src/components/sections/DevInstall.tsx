@@ -12,8 +12,9 @@ const LABEL: Record<Shell, string> = { unix: 'macOS / Linux', windows: 'Windows'
 // header (WAI-ARIA APG Tabs, automatic activation:
 // https://www.w3.org/WAI/ARIA/apg/patterns/tabs/): one tab stop, arrows /
 // Home / End move and select. The prerender shows macOS / Linux; after
-// hydration a Windows visitor gets Windows until they pick. Both commands are
-// one line in a scrolling <pre>, so switching never moves the layout.
+// hydration a Windows visitor gets Windows until they pick. Each command is
+// one line that wraps on screen with a hanging indent (CodeBlock wrap), so
+// nothing scrolls sideways; copy gives the exact single line.
 export default function DevInstall({ lang }: { lang: Lang }) {
   const detected = useDetectedOS()
   const [picked, setPicked] = useState<Shell | null>(null)
@@ -66,6 +67,7 @@ export default function DevInstall({ lang }: { lang: Lang }) {
       // a new key only once the visitor picks: the panel cross-fades on a
       // click, never on load (hydration may switch to Windows silently)
       swapKey={picked ?? undefined}
+      wrap
       panel={{ id: panelId, role: 'tabpanel', 'aria-labelledby': tabId(shell), tabIndex: 0 }}
     >
       {`$ ${INSTALL_CMD[shell]}`}

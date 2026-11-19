@@ -5,7 +5,7 @@ import { GITHUB_REPO } from '../../links'
 import { PageId, pathFor } from '../../site'
 import { chooseLang } from '../../hooks/usePreferences'
 import { useIsMobile } from '../../hooks/useVisitor'
-import { CTA_COPY, DOWNLOAD_SECTION_ID, downloadHref, DownloadIcon, GitHubIcon } from './downloadCta'
+import { CTA_COPY, DOWNLOAD_SECTION_ID, downloadHref, DownloadIcon, FOOTER_ID, GitHubIcon } from './downloadCta'
 import SendToComputer from './SendToComputer'
 import './download-cta.css'
 
@@ -21,10 +21,14 @@ type DocumentWithViewTransition = Document & {
 }
 
 export default function Nav({ page, lang, theme, setTheme }: Props) {
-  const logoSrc = `${import.meta.env.BASE_URL}logo-kong.svg`
+  // small mark = the solid silhouette (DESIGN.md "Logo", ADR-0051)
+  const logoSrc = `${import.meta.env.BASE_URL}logo-kong-solid.svg`
   const [langPulse, setLangPulse] = useState<string | null>(null)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  // the header steps aside while the full-height footer is on screen (it
+  // carries its own logo, download button and links) and comes back on leaving
+  const [footerInView, setFooterInView] = useState(false)
   const langPulseTimer = useRef<number | null>(null)
   const themeTransitioning = useRef(false)
   const navRef = useRef<HTMLElement>(null)
@@ -119,6 +123,16 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   }, [page])
 
   useEffect(() => {
+    const footer = document.getElementById(FOOTER_ID)
+    if (!footer || typeof IntersectionObserver === 'undefined') return
+    // "in view" once the footer's top passes the middle of the viewport, so
+    // the header does not vanish while the last section is still being read
+    const io = new IntersectionObserver(([e]) => setFooterInView(e.isIntersecting), { rootMargin: '0px 0px -50% 0px' })
+    io.observe(footer)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
     return () => {
       if (langPulseTimer.current != null) {
         window.clearTimeout(langPulseTimer.current)
@@ -160,7 +174,7 @@ export default function Nav({ page, lang, theme, setTheme }: Props) {
   }
 
   return (
-    <nav ref={navRef} className={`nav${scrolled ? ' is-sticky' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
+    <nav ref={navRef} className={`nav${scrolled ? ' is-sticky' : ''}${footerInView && !menuOpen ? ' is-away' : ''}`} aria-label={lang === 'es' ? 'Principal' : 'Main'}>
       <div className="nav-inner">
         <a href={page === 'home' ? '#motd' : pathFor('home', lang)} className="nav-logo">
           <img src={logoSrc} alt="Kongtrol" width={40} height={40} />

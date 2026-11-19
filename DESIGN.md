@@ -135,7 +135,7 @@ components:
 
 # Design System: Kongtrol
 
-Versión 1.1.0 · 2026-11-19
+Versión 1.2.0 · 2026-11-19
 
 ## Overview
 
@@ -204,7 +204,7 @@ One warm accent against cool neutrals in the dark theme and warm neutrals in the
 
 ## Layout
 
-Single column, max width 1160px, fluid gutter `clamp(16px, 3vw, 24px)`, section rhythm `clamp(72px, 6vw + 40px, 120px)`. Spacing follows a 4px base scale (4 → 64). A fixed 66px header and a fixed 32px tmux bar frame the scroll; anchored sections offset for both. Main breakpoints: 1080, 960, 720, 640, 520 and 420px. Grids collapse 4 → 3 → 2 → 1; the routing diagram swaps to an HTML list under 768px so text never scales below the floor. Interactive targets are 44px (24px minimum for dense inline controls).
+Single column, max width 1160px, fluid gutter `clamp(16px, 3vw, 24px)`, section rhythm `clamp(72px, 6vw + 40px, 120px)`. Spacing follows a 4px base scale (4 → 64). A fixed 66px header and a fixed 32px tmux bar frame the scroll; anchored sections offset for both. Main breakpoints: 1080, 960, 720, 640, 520 and 420px. Grids collapse 4 → 3 → 2 → 1; the routing patch panel stacks under 768px (destinations, a text-free panel strip, exits) so text never scales below the floor. Interactive targets are 44px (24px minimum for dense inline controls).
 
 ## Elevation & Depth
 
@@ -241,13 +241,14 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 - **Internal Padding:** 14–24px.
 
 ### Navigation
-- **Header:** logo + letter-spaced "KONGTROL" + BETA badge; links written as CLI flags in mono (`--inicio`, `--guia`) whose dashes stay dim until hover; icon buttons for GitHub, theme and language. The download CTA hides while the hero CTA or the download section is on screen.
-- **tmux bar:** fixed bottom bar, `[kongtrol]` session in amber, numbered windows mapped to sections with the active one in solid amber, right side shows kill-switch state and clock. Between 721 and 960px the right side keeps only the clock; under 720px the bar is hidden and a "Ir a" jump menu replaces it.
+- **Header:** logo + letter-spaced "KONGTROL" + BETA badge; links written as CLI flags in mono (`--inicio`, `--guia`) whose dashes stay dim until hover; icon buttons for GitHub, theme and language. The download CTA hides while the hero CTA or the download section is on screen; the whole header slides away while the footer is on screen and returns on leaving it.
+- **tmux bar:** fixed bottom bar, `[kongtrol]` session in amber, numbered windows mapped to sections with the active one in solid amber, right side shows kill-switch state and clock. Between 721 and 960px the right side keeps only the clock; under 720px the bar is hidden and a "Ir a" jump menu replaces it. On the home page a last window `8:guía` (EN `8:guide`) opens the guide.
+- **Footer:** fills the viewport once reached: the large line-art mark (≥ 160 px) with the tagline, one primary "Descargar para <sistema>" (the same component as the hero and the download section) with its note and "Otras formas de instalar" link, a "Guía de instalación" link, link columns, the `kongtrol version` lines, an "↑ Inicio" link that scrolls to the top and focuses `<main>`, and the giant faint wordmark.
 
 ### Logo (name and sizes)
 - **Name:** the product is just **Kongtrol** (ADR-0047). "VPN" lives only in the tagline ("Todas tus VPN bajo Kongtrol" / "All your VPNs under Kongtrol", a play on "control", ADR-0048), never in the name or the lockup.
-- **Solid silhouette up to 32 px** (`assets/brand/source/logo-kong-solid.svg`, derived by `assets/brand/generate.go`): favicon (`favicon.svg`, transparent, black or white by `prefers-color-scheme`; `logo-kong-32.png` fallback), tray / menu bar, the panel's 32 px header mark and the 28 px tray flyout mark. At that size the concentric lines blur into grey.
-- **Line-art original from 36 px up** (`logo-kong.svg`, lockup `logo.svg`): landing header 40 px (36 px under 960 px, next to the 37 px header buttons), footer lockup 96 px, README, app icons ≥ 180 px. Always give `<img>` its width and height (no layout shift).
+- **Solid silhouette up to ~64 px** (`assets/brand/source/logo-kong-solid.svg`, derived by `assets/brand/generate.go`; ADR-0051 refines the cutoff of ADR-0047): favicon (`favicon.svg`, transparent, black or white by `prefers-color-scheme`; `logo-kong-32.png` fallback), tray / menu bar, the panel's 32 px header mark, the 28 px tray flyout mark, the landing header 40 px (36 px under 960 px, next to the 37 px header buttons) and the routing patch panel's badge. At these sizes the concentric lines blur into grey.
+- **Line-art original from ~128 px up** (`logo-kong.svg`, lockup `logo.svg`): landing footer mark ≥ 160 px, README, app icons ≥ 180 px. Sizes between ~64 and ~128 px are avoided. Always give `<img>` its width and height (no layout shift).
 
 ### Terminal Window (signature)
 macOS-style title bar with three dots and a centered mono title (`ssh guest@kongtrol.tower`), body in `surface`, 12px corners, the only floating element. Content boots on a CSS timeline already present in the prerendered HTML (no layout shift); visitors can type `help`.

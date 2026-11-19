@@ -1,4 +1,4 @@
-# Change-impact map — version 1.7 · 2026-11-18
+# Change-impact map — version 1.8 · 2026-11-19
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -309,6 +309,7 @@ features:
       - docs/SETUP.md#distribution
       - docs/DEVELOPMENT.md#distribution
       - docs/SECURITY.md#distribution
+      - landing/src/components/ui/downloadCta.tsx#distribution
 
   update_check:
     code:

@@ -1,6 +1,11 @@
-/* "Para todos" (#start) and "Cómo empezar" (#steps) — version 1.0.0 · 2026-11-18.
-   Only .path-pair*, .path-who, .path-setup and .how-cmd rules live here;
+/* "Para todos" (#start) and "Cómo empezar" (#steps) — version 1.1.0 · 2026-11-19.
+   Only .promise-section spacing, .path-pair*, .path-who, .path-setup and .how-cmd rules live here;
    tokens and the shared .path / .how-step frames come from index.css. */
+
+/* The attach demo continues the hero: no section-sized gap above it, so the
+   hero's background runs on and no section cut shows (2026-11-19). */
+.section.promise-section { padding-top: var(--space-5); }
+.section.promise-section[id] { scroll-margin-top: calc(12px - var(--space-5)); }
 
 /* Tú / Kongtrol pairs: what the person does, then what Kongtrol does. The
    "who" word is visible text (not colour alone); people text stays Inter. */
