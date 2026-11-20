@@ -55,14 +55,13 @@
 .kp-ks { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kp-ks a { color: var(--signal); min-height: 24px; display: inline-flex; align-items: center; }
 .kp-actions { display: inline-flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap; }
-/* Group rows: main action + 36px icon buttons on one line; when the list is
-   narrow (cards) Recargar / Editar / Borrar fold into "⋯" (GroupsPage). */
+/* Group rows: one line of 36px squares (GroupsPage: connect / disconnect,
+   Recargar, Editar, Borrar); 44px when the list becomes cards. */
 .kp-actions--group { gap: 6px; flex-wrap: nowrap; align-items: center; }
-.kp-actions__inline { display: inline-flex; gap: 4px; align-items: center; }
-.kp-actions--group .kp-actions__more { display: none; }
+.kp-actions--group [aria-disabled='true'] { cursor: not-allowed; opacity: 0.55; }
+.kp-actions--group [aria-busy='true'] { cursor: progress; opacity: 1; }
 @container datalist (max-width: 679px) {
-  .kp-actions--group .kp-actions__inline { display: none; }
-  .kp-actions--group .kp-actions__more { display: inline-flex; }
+  .kp-actions--group { flex-wrap: wrap; }
   .kp-actions--group .k-icon-btn--sm { width: var(--tap); height: var(--tap); }
 }
 /* A tight table stacks the two icons; cards keep them on one line. */

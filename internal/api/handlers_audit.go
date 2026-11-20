@@ -32,6 +32,7 @@ const auditMoreHeader = "X-Kongtrol-Audit-More"
 // `kongtrol logs`: security.QueryAuditEvents).
 //
 //   - limit: 1–1000 (default 200)
+//   - profile: may repeat; an event of any of them matches
 //   - from / to: a local day YYYY-MM-DD (to = end of that day) or RFC 3339
 //   - before: RFC 3339 cursor, exclusive (the last timestamp of a page)
 //
@@ -72,9 +73,14 @@ func (s *Server) handleAuditLog(w http.ResponseWriter, r *http.Request) {
 func parseAuditQuery(r *http.Request) (security.AuditQuery, error) {
 	v := r.URL.Query()
 	q := security.AuditQuery{
-		Profile: strings.TrimSpace(v.Get("profile")),
-		Level:   strings.TrimSpace(v.Get("level")),
-		Limit:   security.DefaultAuditQueryLimit,
+		Level: strings.TrimSpace(v.Get("level")),
+		Limit: security.DefaultAuditQueryLimit,
+	}
+	// profile may repeat (the dashboard's multi-select): any of them matches.
+	for _, p := range v["profile"] {
+		if p = strings.TrimSpace(p); p != "" {
+			q.Profiles = append(q.Profiles, p)
+		}
 	}
 	if raw := strings.TrimSpace(v.Get("limit")); raw != "" {
 		n, err := strconv.Atoi(raw)

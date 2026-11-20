@@ -17,12 +17,12 @@ import (
 )
 
 var (
-	logsFollow  bool
-	logsTail    int
-	logsProfile string
-	logsLevel   string
-	logsSince   string
-	logsUntil   string
+	logsFollow   bool
+	logsTail     int
+	logsProfiles []string
+	logsLevel    string
+	logsSince    string
+	logsUntil    string
 )
 
 var logsCmd = &cobra.Command{
@@ -72,7 +72,7 @@ var logsCmd = &cobra.Command{
 func init() {
 	logsCmd.Flags().BoolVarP(&logsFollow, "follow", "f", false, ct("cli.logs.flag.follow"))
 	logsCmd.Flags().IntVar(&logsTail, "tail", 100, ct("cli.logs.flag.tail"))
-	logsCmd.Flags().StringVar(&logsProfile, "profile", "", ct("cli.logs.flag.profile"))
+	logsCmd.Flags().StringSliceVar(&logsProfiles, "profile", nil, ct("cli.logs.flag.profile"))
 	logsCmd.Flags().StringVar(&logsLevel, "level", "", ct("cli.logs.flag.level"))
 	logsCmd.Flags().StringVar(&logsSince, "since", "", ct("cli.logs.flag.since"))
 	logsCmd.Flags().StringVar(&logsUntil, "until", "", ct("cli.logs.flag.until"))
@@ -91,7 +91,7 @@ type auditEntry struct {
 // (0 = as many as one page allows), --since/--until as local days
 // (YYYY-MM-DD, --until inclusive).
 func logsQuery() (security.AuditQuery, error) {
-	q := security.AuditQuery{Profile: logsProfile, Level: logsLevel, Limit: logsTail}
+	q := security.AuditQuery{Profiles: logsProfiles, Level: logsLevel, Limit: logsTail}
 	if q.Limit <= 0 || q.Limit > security.MaxAuditQueryLimit {
 		q.Limit = security.MaxAuditQueryLimit
 	}
@@ -133,7 +133,7 @@ func filterAuditEvents(in []security.AuditEvent) []security.AuditEvent {
 	out := make([]security.AuditEvent, 0, len(in))
 	level := strings.ToUpper(strings.TrimSpace(logsLevel))
 	for _, ev := range in {
-		if logsProfile != "" && ev.Profile != logsProfile {
+		if len(logsProfiles) > 0 && !slices.Contains(logsProfiles, ev.Profile) {
 			continue
 		}
 		if level != "" && strings.ToUpper(ev.Level) != level {

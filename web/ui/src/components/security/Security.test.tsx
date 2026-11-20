@@ -145,7 +145,7 @@ describe('Seguridad page', () => {
 
   it('per-profile override saves at once and rolls back if refused', async () => {
     const fetchMock = setup({ 'PUT /api/v1/vpns/oficina/killswitch': () => json({ error: 'vpn profile not found' }, 404) })
-    const select = await screen.findByRole('combobox', { name: 'Kill switch de oficina' })
+    const select = await screen.findByRole('button', { name: /Kill switch de oficina/ })
     await pickOption(userEvent.setup(), select, 'Siempre apagado')
     const call = posts(fetchMock, '/api/v1/vpns/oficina/killswitch')[0]
     expect(JSON.parse(String(call?.[1]?.body))).toEqual({ override: 'off' })

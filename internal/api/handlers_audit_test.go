@@ -29,6 +29,9 @@ func TestAuditLog_VerifiedPagingAndDates(t *testing.T) {
 		l.Info("vpn.connect", "office", "n")
 		time.Sleep(2 * time.Millisecond)
 	}
+	l.Info("vpn.connect", "home", "n")
+	time.Sleep(2 * time.Millisecond)
+	l.Info("vpn.connect", "cafe", "n")
 	_ = l.Close()
 	// One entry edited after it was written.
 	tampered := ""
@@ -61,13 +64,21 @@ func TestAuditLog_VerifiedPagingAndDates(t *testing.T) {
 	if strings.Contains(string(mustJSON(t, page)), string(key)) {
 		t.Fatal("key leaked")
 	}
-	rest, res := get("?limit=3&before=" + page[2].Timestamp.Format(time.RFC3339Nano))
-	if len(rest) != 2 || res.Header.Get(auditMoreHeader) != "false" {
+	rest, res := get("?limit=4&before=" + page[2].Timestamp.Format(time.RFC3339Nano))
+	if len(rest) != 4 || res.Header.Get(auditMoreHeader) != "false" {
 		t.Fatalf("page 2: %d entries, more=%q", len(rest), res.Header.Get(auditMoreHeader))
 	}
 
+	// profile repeats: an entry of any of them matches (case-insensitive).
+	if got, _ := get("?profile=HOME&profile=cafe&profile=%20"); len(got) != 2 {
+		t.Fatalf("two profiles: %d entries", len(got))
+	}
+	if got, _ := get("?profile=office"); len(got) != 5 {
+		t.Fatalf("one profile: %d entries", len(got))
+	}
+
 	today := time.Now().Format("2006-01-02")
-	if got, _ := get("?from=" + today + "&to=" + today); len(got) != 5 {
+	if got, _ := get("?from=" + today + "&to=" + today); len(got) != 7 {
 		t.Fatalf("today range: %d", len(got))
 	}
 	if got, _ := get("?to=2001-01-01"); len(got) != 0 {

@@ -236,7 +236,7 @@ describe('TrafficPage', () => {
     expect(await screen.findByText('2 de 2 rutas')).toBeInTheDocument()
     expect(screen.getByText('Wi-Fi (métrica 25)')).toBeInTheDocument()
     expect(screen.getByText('Desactivada (actívala en Seguridad)')).toBeInTheDocument()
-    await pickOption(user, screen.getByRole('combobox', { name: 'Mostrar' }), /work/)
+    await pickOption(user, screen.getByRole('button', { name: /Mostrar/ }), /work/)
     expect(screen.getByText('1 de 2 rutas')).toBeInTheDocument()
     expect(screen.getByText('work · tun0')).toBeInTheDocument()
   })

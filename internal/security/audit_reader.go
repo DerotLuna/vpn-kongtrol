@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -51,7 +52,7 @@ func ReadAuditEvents(path string) ([]AuditEvent, error) {
 type AuditQuery struct {
 	From, To time.Time // inclusive bounds on Timestamp
 	Before   time.Time // exclusive upper bound: the page cursor
-	Profile  string    // case-insensitive exact match
+	Profiles []string  // any of them, case-insensitive exact match (none: every profile)
 	Level    string    // case-insensitive exact match
 	Limit    int       // max events returned (≤ 0: DefaultAuditQueryLimit)
 }
@@ -128,7 +129,7 @@ func QueryAuditEvents(basePath string, q AuditQuery) ([]AuditEvent, bool, error)
 }
 
 func (q AuditQuery) matches(ev AuditEvent) bool {
-	if q.Profile != "" && !strings.EqualFold(ev.Profile, q.Profile) {
+	if len(q.Profiles) > 0 && !slices.ContainsFunc(q.Profiles, func(p string) bool { return strings.EqualFold(ev.Profile, p) }) {
 		return false
 	}
 	if q.Level != "" && !strings.EqualFold(ev.Level, q.Level) {

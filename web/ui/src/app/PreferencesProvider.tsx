@@ -2,6 +2,7 @@
 // in ~/.kongtrol/preferences.json via /api/v1/preferences, which is
 // authoritative once loaded.
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { I18nProvider } from 'react-aria-components'
 import { api, setApiLang } from '../api/client'
 import { browserLang, initialLang, isLang, storeLang, storedLang } from '../i18n/lang'
 import { format, messages, type Lang, type MessageKey } from '../i18n/messages'
@@ -91,5 +92,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     [lang, setLang, t, theme, toggleTheme],
   )
 
-  return <PreferencesContext.Provider value={value}>{children}</PreferencesContext.Provider>
+  // React Aria (kit controls, ADR-0068) reads the locale for calendars, week
+  // start and its own screen reader strings: the panel's language, not the browser's.
+  return (
+    <PreferencesContext.Provider value={value}>
+      <I18nProvider locale={lang === 'es' ? 'es-ES' : 'en-US'}>{children}</I18nProvider>
+    </PreferencesContext.Provider>
+  )
 }

@@ -2,6 +2,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
+import { NAV_KEY, NAV_WIDE_QUERY } from './navCollapse'
 import { FakeSocket, helperMissing, helperReady, json, stubFetch, tunnel } from '../test/fakes'
 
 beforeEach(() => {
@@ -155,5 +156,93 @@ describe('shell and routes', () => {
     expect(alert).toHaveTextContent('This page reconnects by itself as soon as Kongtrol starts.')
     expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Your VPNs status: Kongtrol is not answering/ })).toBeInTheDocument()
+  })
+})
+
+describe('header and side menu', () => {
+  const wide = (matches: boolean) =>
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === NAV_WIDE_QUERY ? matches : false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }))
+
+  it('the header has no language or theme switch (they live in Settings)', async () => {
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    render(<App />)
+    const toolbar = await screen.findByRole('group', { name: 'Add and help' })
+    expect(within(toolbar).queryByRole('button', { name: /language|Spanish|ES|EN/ })).toBeNull()
+    expect(within(toolbar).queryByRole('button', { name: /theme/i })).toBeNull()
+  })
+
+  it('wide window: "Collapse menu" turns the sidebar into an icon rail, keeps focus, and is remembered', async () => {
+    wide(true)
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    const app = document.querySelector('.k-app')!
+    expect(app).toHaveAttribute('data-nav', 'expanded')
+    const toggle = screen.getByRole('button', { name: 'Collapse menu' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(toggle).toHaveAttribute('aria-controls', document.querySelector('.k-sidenav ul')!.id)
+    await user.click(toggle)
+    expect(app).toHaveAttribute('data-nav', 'collapsed')
+    const expand = screen.getByRole('button', { name: 'Expand menu' })
+    expect(expand).toBe(toggle)
+    expect(expand).toHaveFocus()
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    // Links keep their names (the label is only visually hidden).
+    const nav = screen.getAllByRole('navigation', { name: 'Sections' })[0]!
+    expect(within(nav).getByRole('link', { name: 'Security' })).toBeInTheDocument()
+    expect(localStorage.getItem(NAV_KEY)).toBe('collapsed')
+    unmount()
+    render(<App />)
+    expect(document.querySelector('.k-app')).toHaveAttribute('data-nav', 'collapsed')
+  })
+
+  it('collapsed: keyboard focus on an icon shows its name as a tooltip', async () => {
+    wide(true)
+    localStorage.setItem(NAV_KEY, 'collapsed')
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    render(<App />)
+    const nav = screen.getAllByRole('navigation', { name: 'Sections' })[0]!
+    const link = within(nav).getByRole('link', { name: 'Rules' })
+    act(() => link.focus())
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}{Tab}')
+    expect(link).toHaveFocus()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Rules')
+    // The name is not announced twice.
+    expect(link).toHaveAccessibleDescription('')
+  })
+
+  it('narrow window (< 1100px): starts collapsed; expanding lasts this visit only', async () => {
+    wide(false)
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    const user = userEvent.setup()
+    render(<App />)
+    const app = document.querySelector('.k-app')!
+    expect(app).toHaveAttribute('data-nav', 'collapsed')
+    await user.click(screen.getByRole('button', { name: 'Expand menu' }))
+    expect(app).toHaveAttribute('data-nav', 'expanded')
+    expect(localStorage.getItem(NAV_KEY)).toBeNull()
+  })
+
+  it('storage blocked: the menu still toggles', async () => {
+    wide(true)
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked')
+    })
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    render(<App />)
+    await userEvent.click(screen.getByRole('button', { name: 'Collapse menu' }))
+    expect(document.querySelector('.k-app')).toHaveAttribute('data-nav', 'collapsed')
   })
 })

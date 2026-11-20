@@ -163,7 +163,7 @@ func TestQueryAuditEvents_RangeAndPaging(t *testing.T) {
 	}
 
 	// Filters.
-	got, _, _ = QueryAuditEvents(base, AuditQuery{Level: "warn", Profile: "HOME"})
+	got, _, _ = QueryAuditEvents(base, AuditQuery{Level: "warn", Profiles: []string{"HOME"}})
 	if len(got) != 5 {
 		t.Fatalf("level+profile filter: %d, want 5", len(got))
 	}

@@ -1,4 +1,4 @@
-// Grupos (/profiles/groups) — connect several VPNs at once · v1.1.0 · 2026-11-19
+// Grupos (/profiles/groups) — connect several VPNs at once · v1.2.0 · 2026-11-19
 //
 // Parity contract: docs/dashboard-parity.md §3.2 "Tab: Groups". Group CRUD
 // (optimistic, rolled back on refusal) and connect / disconnect / reload a
@@ -15,15 +15,14 @@ import { ProfilesHeader } from '../components/profiles/Bits'
 import { ConfirmDelete } from '../components/profiles/ConfirmDelete'
 import { localizeError } from '../components/profiles/errors'
 import { GroupEditor } from '../components/profiles/GroupEditor'
-import { EditIcon, PowerIcon, TrashIcon } from '../components/profiles/icons'
+import { EditIcon, TrashIcon } from '../components/profiles/icons'
 import { RestartBanner } from '../components/profiles/Restart'
 import { useRestartAction } from '../components/profiles/useRestartAction'
 import '../components/profiles/profiles.css'
 import { Button, IconButton } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { DataList, type Column } from '../components/ui/DataList'
-import { Menu } from '../components/ui/Menu'
-import { PlugIcon, PlusIcon, RefreshIcon } from '../components/ui/icons'
+import { PlusIcon, RefreshIcon } from '../components/ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { StatusPill } from '../components/ui/StatusPill'
 import {
@@ -37,7 +36,8 @@ import {
 } from '../data/profiles'
 import { connectedMembers, trackGroupMembers, useSlowActionNotice } from '../data/home'
 import { useTunnelsQuery } from '../data/resources'
-import { usePendingAny } from '../data/transition'
+import { usePendingGroupAction } from '../data/transition'
+import { GroupConnect } from '../components/home/GroupConnect'
 import { toasts } from '../data/toast'
 
 interface Row {
@@ -264,13 +264,11 @@ export function GroupsPage() {
 }
 
 /**
- * One group's actions in the kit's order (DESIGN.md: one primary per row):
- * the main action as a small button — Conectar in amber while a member is
- * down, else Desconectar outlined — then 36px icon buttons with tooltips
- * (Desconectar while the main one is Conectar and something is up,
- * Recargar, Editar, Borrar; the last three fold into "⋯" on narrow lists).
- * The main action stays in progress until every
- * member it touched reached its end state (data/transition.ts).
+ * One group's actions, all 36px squares with tooltips (owner feedback
+ * 2026-11-19): connect / disconnect as on Inicio (GroupConnect: both, with
+ * "las que faltan", when only part of the group is up), then Recargar,
+ * Editar and Borrar. Connect / disconnect stay in progress until every
+ * member they touched reached its end state (data/transition.ts).
  */
 function GroupActions({
   group,
@@ -288,53 +286,21 @@ function GroupActions({
   onDelete: () => void
 }) {
   const { t } = usePreferences()
-  const moving = usePendingAny(group.profiles)
-  const main: GroupAction = connected < group.profiles.length ? 'connect' : 'disconnect'
+  const moving = usePendingGroupAction(group.profiles)
   const is = (a: GroupAction) => busy === `${group.name}:${a}`
-  const mainBusy = is(main) || moving
-  const word = t(main === 'connect' ? (mainBusy ? 'groups.action.connecting' : 'groups.action.connect') : mainBusy ? 'groups.action.disconnecting' : 'groups.action.disconnect')
+  const running = is('connect') ? 'connect' : is('disconnect') ? 'disconnect' : moving
   return (
     <span className="kp-actions kp-actions--group">
-      <Button
-        variant={main === 'connect' ? 'filled' : 'outlined'}
+      <GroupConnect name={group.name} total={group.profiles.length} up={connected} busy={running} onRun={(a) => onRun(group, a)} />
+      <IconButton
         size="sm"
-        icon={main === 'connect' ? <PlugIcon /> : <PowerIcon />}
-        loading={mainBusy}
-        aria-label={`${word} ${group.name}`}
-        onClick={() => onRun(group, main)}
-      >
-        {word}
-      </Button>
-      {main === 'connect' && connected > 0 && (
-        <IconButton
-          size="sm"
-          label={t('groups.action.disconnectName', { name: group.name })}
-          icon={<PowerIcon />}
-          loading={is('disconnect')}
-          onClick={() => onRun(group, 'disconnect')}
-        />
-      )}
-      <span className="kp-actions__inline">
-        <IconButton
-          size="sm"
-          label={t('groups.action.reloadName', { name: group.name })}
-          icon={<RefreshIcon />}
-          loading={is('reload')}
-          onClick={() => onRun(group, 'reload')}
-        />
-        <IconButton size="sm" label={t('profiles.action.editName', { name: group.name })} icon={<EditIcon />} onClick={onEdit} />
-        <IconButton size="sm" label={t('profiles.action.deleteName', { name: group.name })} icon={<TrashIcon />} className="kp-danger-icon" onClick={onDelete} />
-      </span>
-      <Menu
-        className="kp-actions__more"
-        size="sm"
-        label={t('kit.more', { name: group.name })}
-        items={[
-          { id: 'reload', label: t('groups.action.reloadName', { name: group.name }), icon: <RefreshIcon />, onSelect: () => onRun(group, 'reload'), disabled: is('reload') },
-          { id: 'edit', label: t('profiles.action.editName', { name: group.name }), icon: <EditIcon />, onSelect: onEdit },
-          { id: 'delete', label: t('profiles.action.deleteName', { name: group.name }), icon: <TrashIcon />, onSelect: onDelete, danger: true },
-        ]}
+        label={t('groups.action.reloadName', { name: group.name })}
+        icon={<RefreshIcon />}
+        loading={is('reload')}
+        onClick={() => onRun(group, 'reload')}
       />
+      <IconButton size="sm" label={t('profiles.action.editName', { name: group.name })} icon={<EditIcon />} onClick={onEdit} />
+      <IconButton size="sm" label={t('profiles.action.deleteName', { name: group.name })} icon={<TrashIcon />} className="kp-danger-icon" onClick={onDelete} />
     </span>
   )
 }

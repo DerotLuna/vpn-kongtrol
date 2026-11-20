@@ -108,7 +108,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
     const input = await within(sheet).findByRole('textbox', { name: /Site, IP or program/ })
     expect(input).toHaveValue('https://claude.ai/chat')
-    expect(within(sheet).getByRole('combobox', { name: /Goes through/ })).toHaveTextContent(/home/)
+    expect(within(sheet).getByRole('button', { name: /Goes through/ })).toHaveTextContent(/home/)
     expect(within(sheet).getByRole('radio', { name: 'Use my normal connection' })).toBeChecked()
     expect(within(sheet).getByRole('checkbox', { name: /Include subdomains/ })).toBeChecked()
     expect(within(sheet).getByRole('textbox', { name: /Rule name/ })).toHaveValue('claude.ai via home')
@@ -142,7 +142,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Send a site through home' }))
     const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
     expect(new URLSearchParams(window.location.search).get('via')).toBe('home')
-    expect(await within(sheet).findByRole('combobox', { name: /Goes through/ })).toHaveTextContent(/home/)
+    expect(await within(sheet).findByRole('button', { name: /Goes through/ })).toHaveTextContent(/home/)
   })
 
   it('Profiles: "New VPN" opens the sheet on "Connect a VPN I already use"', async () => {
@@ -273,7 +273,7 @@ describe('C with no profile: add the VPN first, then back to the rule with the d
 
     expect(await within(sheet).findByText('Done: “Surfshark” is added. Go on with your rule.')).toBeInTheDocument()
     expect(within(sheet).getByRole('textbox', { name: /Site, IP or program/ })).toHaveValue('claude.ai')
-    expect(within(sheet).getByRole('combobox', { name: /Goes through/ })).toHaveTextContent(/Surfshark/)
+    expect(within(sheet).getByRole('button', { name: /Goes through/ })).toHaveTextContent(/Surfshark/)
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save rule' }))
     expect(await within(sheet).findByText('The rule “claude.ai via Surfshark” is saved.')).toBeInTheDocument()
     expect(bodyOf(fetchMock, 'POST /api/v1/policies')).toMatchObject({ via: 'Surfshark', match: { domains: ['claude.ai', '*.claude.ai'] } })
@@ -312,7 +312,7 @@ describe('B: import a VPN file', () => {
     expect(chooser).toHaveTextContent('Choose another file')
     expect(within(sheet).getByText('This file asks for a username and password.')).toBeInTheDocument()
     expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue('Oficina')
-    expect(within(sheet).getByRole('combobox', { name: 'How it signs in' })).toHaveTextContent('Username and password')
+    expect(within(sheet).getByRole('button', { name: /How it signs in/ })).toHaveTextContent('Username and password')
     await userEvent.type(within(sheet).getByRole('textbox', { name: 'Username' }), 'ana')
     await userEvent.type(within(sheet).getByLabelText('Password'), 's3cret')
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))

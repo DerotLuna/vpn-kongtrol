@@ -1,4 +1,4 @@
-// Kongtrol UI kit — form fields · v0.2.0 · 2026-11-19
+// Kongtrol UI kit — form fields · v0.3.0 · 2026-11-19
 //
 // Visible label above the control (never placeholder-only), optional hint,
 // and an inline error that names the problem plus one "what to do" line
@@ -8,7 +8,8 @@
 import { useId, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import type { DateRange } from './dates'
 import { DateRangePicker } from './DateRangePicker'
-import { Combobox, Select, type SelectOption } from './Select'
+import { MultiSelect } from './MultiSelect'
+import { Select, type SelectOption } from './Select'
 
 export interface FieldError {
   message: string
@@ -98,28 +99,26 @@ export function SelectField<V extends string>({
   )
 }
 
-/** The kit Combobox (type to filter a list) with label, hint and error. */
-export function ComboboxField({
+/** The kit MultiSelect (search a list, pick several, chips) with label, hint and error. */
+export function MultiSelectField({
   label,
   hint,
   error,
-  required,
   mono,
   ...rest
-}: Shared & {
-  value: string
-  onChange: (value: string) => void
+}: Omit<Shared, 'required'> & {
+  value: readonly string[]
+  onChange: (value: string[]) => void
   options: readonly SelectOption[]
-  placeholder?: string
-  allowCustom?: boolean
+  placeholder: string
+  searchLabel: string
+  chipsLabel: string
   emptyText?: string
   className?: string
 }) {
   return (
-    <FieldShell label={label} hint={hint} error={error ?? null} {...(required ? { required } : {})}>
-      {({ id, labelId, describedBy, invalid }) => (
-        <Combobox id={id} aria-labelledby={labelId} aria-describedby={describedBy} aria-invalid={invalid || undefined} mono={mono} {...rest} />
-      )}
+    <FieldShell label={label} hint={hint} error={error ?? null}>
+      {({ id, labelId, describedBy }) => <MultiSelect id={id} aria-labelledby={labelId} aria-describedby={describedBy} mono={mono} {...rest} />}
     </FieldShell>
   )
 }

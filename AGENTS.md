@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.24 · 2026-11-19
+Version 1.25 · 2026-11-19
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -342,11 +342,15 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   `policy.ClassifyTargets` (shared table `internal/policy/testdata/classify_targets.json`).
 - UI kit in `src/components/ui` (review at `/_kit`, dev builds only); shell in
   `src/components/layout`. Brand images are SVG/CSS only, theme-adaptive.
-- No native `<select>`, `<datalist>` or date input: the kit's `Select`, `Combobox`,
-  `DateRangePicker`, `Menu` ("⋯") and `Tooltip` (every IconButton). Anything that floats goes
-  through `components/ui/floating.ts` (Floating UI + Popover API top layer; positions are CSSOM
-  writes, allowed by the CSP, ADR-0067). One amber primary per row or step; tables switch to
-  cards by their container's width (container queries), never by window width.
+- No native `<select>`, `<datalist>` or date input: the kit's `Select`, `MultiSelect`
+  (search + chips), `DateRangePicker` and `Tooltip` (every IconButton), built on React Aria
+  Components (ADR-0068: behaviour and a11y from the library, look in `theme/kit-controls.css`;
+  overlays portal to `<body>` or into the open kit `Dialog` via `UNSAFE_PortalProvider`;
+  positions are CSSOM writes, allowed by the CSP; `lib/ariaStyleGuard.ts` keeps React Aria from
+  injecting a `<style>` the CSP would block; `I18nProvider` follows the panel language; the
+  build keeps only es-ES/en-US strings). Row actions are 36px icon squares with tooltips (only
+  the state's own action carries weight). Tables switch to cards by their container's width
+  (container queries), never by window width.
 - A tunnel action stays pending until the live state ends it (`src/data/transition.ts`:
   connected / error / provider app waiting for the user / timeout with what to do), not just
   while the HTTP request runs; Inicio, Grupos and the tray flyout share that rule.

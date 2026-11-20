@@ -1,18 +1,18 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { PreferencesProvider } from '../../app/PreferencesProvider'
 import { toasts } from '../../data/toast'
+import { ARIA_PRESS_STYLE_ID, guardAriaStyle } from '../../lib/ariaStyleGuard'
 import { json, pickOption, stubFetch } from '../../test/fakes'
-import { addDays, addMonths, matchPreset, monthGrid, presetRange, weekStart, type DateRange } from './dates'
+import { addDays, matchPreset, presetRange, type DateRange } from './dates'
 import { DateRangePicker } from './DateRangePicker'
-import { Menu } from './Menu'
 import { TOOLTIP_DELAY_MS } from './Tooltip'
 import { Button, IconButton } from './Button'
 import { DataList } from './DataList'
 import { Dialog } from './Dialog'
-import { ComboboxField, SelectField, TextField } from './Field'
+import { MultiSelectField, SelectField, TextField } from './Field'
 import { CloseIcon } from './icons'
 import { Banner } from './States'
 import { Switch } from './Switch'
@@ -37,109 +37,49 @@ describe('Button', () => {
   })
 })
 
-describe('IconButton + Tooltip', () => {
+describe('IconButton + Tooltip (React Aria)', () => {
   const bubble = () => document.querySelector('.k-tooltip')
 
-  it('is named by its label; the tooltip shows on keyboard focus and hides with Esc', async () => {
+  it('opens on hover only after the delay', async () => {
+    const user = userEvent.setup()
+    withPrefs(<IconButton label="Refresh" icon={<CloseIcon />} />)
+    const b = screen.getByRole('button', { name: 'Refresh' })
+    // React Aria opens hover tooltips only in pointer modality (and right away
+    // for a while after another one closed, so this runs first).
+    await user.click(document.body)
+    const start = performance.now()
+    await user.hover(b)
+    expect(bubble()).toBeNull()
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Refresh')
+    expect(performance.now() - start).toBeGreaterThanOrEqual(TOOLTIP_DELAY_MS - 20)
+    await user.unhover(b)
+    await waitFor(() => expect(bubble()).toBeNull())
+  })
+  it('is named by its label; the tooltip shows on keyboard focus, hides with Esc, and is not read twice', async () => {
     withPrefs(<IconButton label="Close panel" icon={<CloseIcon />} />)
     const b = screen.getByRole('button', { name: 'Close panel' })
     expect(bubble()).toBeNull()
     await userEvent.tab()
     expect(b).toHaveFocus()
-    expect(bubble()).toHaveTextContent('Close panel')
-    // Visual only: screen readers already have the name.
-    expect(bubble()).toHaveAttribute('aria-hidden', 'true')
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Close panel')
+    // The tooltip repeats the name: it does not describe the button again.
+    expect(b).toHaveAccessibleDescription('')
     await userEvent.keyboard('{Escape}')
-    expect(bubble()).toBeNull()
+    await waitFor(() => expect(bubble()).toBeNull())
     expect(b).toHaveFocus()
   })
 
-  it('a longer tip describes the button (aria-describedby on a node that is always there)', () => {
+  it('a longer tip describes the button while it shows', async () => {
     withPrefs(<IconButton label="Reconnect office" tip="Reconnect: re-reads its configuration" icon={<CloseIcon />} />)
+    await userEvent.tab()
     const b = screen.getByRole('button', { name: 'Reconnect office' })
+    await screen.findByRole('tooltip')
     expect(b).toHaveAccessibleDescription('Reconnect: re-reads its configuration')
   })
 
-  it('opens on hover only after the delay', async () => {
-    vi.useFakeTimers()
-    try {
-      withPrefs(<IconButton label="Refresh" icon={<CloseIcon />} />)
-      const anchor = screen.getByRole('button', { name: 'Refresh' }).parentElement!
-      fireEvent.pointerEnter(anchor, { pointerType: 'mouse' })
-      act(() => vi.advanceTimersByTime(TOOLTIP_DELAY_MS - 50))
-      expect(bubble()).toBeNull()
-      act(() => vi.advanceTimersByTime(60))
-      expect(bubble()).toHaveTextContent('Refresh')
-      fireEvent.pointerLeave(anchor, { pointerType: 'mouse' })
-      act(() => vi.advanceTimersByTime(200))
-      expect(bubble()).toBeNull()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
-
-  it('touch: a long press shows it and does not press the button', () => {
-    vi.useFakeTimers()
-    try {
-      const onClick = vi.fn()
-      withPrefs(<IconButton label="Delete" icon={<CloseIcon />} onClick={onClick} />)
-      const b = screen.getByRole('button', { name: 'Delete' })
-      fireEvent.pointerDown(b, { pointerType: 'touch' })
-      act(() => vi.advanceTimersByTime(600))
-      expect(bubble()).toHaveTextContent('Delete')
-      fireEvent.pointerUp(b, { pointerType: 'touch' })
-      fireEvent.click(b)
-      expect(onClick).not.toHaveBeenCalled()
-      // A normal tap still presses it.
-      fireEvent.pointerDown(b, { pointerType: 'touch' })
-      fireEvent.pointerUp(b, { pointerType: 'touch' })
-      fireEvent.click(b)
-      expect(onClick).toHaveBeenCalledTimes(1)
-    } finally {
-      vi.useRealTimers()
-    }
-  })
 })
 
-describe('Menu (⋯)', () => {
-  it('APG menu button: opens on the first item, arrows wrap, Esc returns focus, choosing runs the item', async () => {
-    const user = userEvent.setup()
-    const reload = vi.fn()
-    const add = vi.fn()
-    withPrefs(
-      <Menu
-        label="More actions for office"
-        items={[
-          { id: 'r', label: 'Reconnect', onSelect: reload },
-          { id: 'a', label: 'Add a site', onSelect: add },
-        ]}
-      />,
-    )
-    const button = screen.getByRole('button', { name: 'More actions for office' })
-    expect(button).toHaveAttribute('aria-haspopup', 'menu')
-    await user.click(button)
-    expect(button).toHaveAttribute('aria-expanded', 'true')
-    const items = within(screen.getByRole('menu')).getAllByRole('menuitem')
-    expect(items[0]).toHaveFocus()
-    await user.keyboard('{ArrowUp}')
-    expect(items[1]).toHaveFocus()
-    await user.keyboard('{ArrowDown}')
-    expect(items[0]).toHaveFocus()
-    await user.keyboard('a')
-    expect(items[1]).toHaveFocus()
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('menu')).toBeNull()
-    expect(button).toHaveFocus()
-    await user.keyboard('{ArrowUp}')
-    expect(within(screen.getByRole('menu')).getAllByRole('menuitem')[1]).toHaveFocus()
-    await user.keyboard('{Enter}')
-    expect(add).toHaveBeenCalledTimes(1)
-    expect(reload).not.toHaveBeenCalled()
-    expect(screen.queryByRole('menu')).toBeNull()
-  })
-})
-
-describe('Select', () => {
+describe('Select (React Aria)', () => {
   function Demo() {
     const [v, setV] = useState('INFO')
     return (
@@ -149,7 +89,7 @@ describe('Select', () => {
         onChange={setV}
         options={[
           { value: '', label: 'All' },
-          { value: 'INFO', label: 'Info' },
+          { value: 'INFO', label: 'Info', hint: 'Normal activity' },
           { value: 'WARN', label: 'Warning' },
           { value: 'ERROR', label: 'Error' },
         ]}
@@ -157,89 +97,109 @@ describe('Select', () => {
     )
   }
 
-  it('select-only combobox: named by its label, keyboard, type-ahead, Esc keeps the value', async () => {
+  it('listbox pattern: named by its label, opens on the chosen option, arrows + Enter, type-ahead, Esc keeps the value', async () => {
     const user = userEvent.setup()
     withPrefs(<Demo />)
-    const box = screen.getByRole('combobox', { name: 'Level' })
+    const box = screen.getByRole('button', { name: /Level/ })
     expect(box).toHaveTextContent('Info')
+    expect(box).toHaveAttribute('aria-haspopup', 'listbox')
     box.focus()
     await user.keyboard('{ArrowDown}')
-    const list = screen.getByRole('listbox')
+    const list = await screen.findByRole('listbox')
     expect(box).toHaveAttribute('aria-expanded', 'true')
-    // Opens on the chosen option.
-    expect(box.getAttribute('aria-activedescendant')).toBe(within(list).getByRole('option', { name: 'Info' }).id)
+    const info = within(list).getByRole('option', { name: /Info/ })
+    await waitFor(() => expect(info).toHaveFocus())
+    // Chosen = a check + the selected state; the hint is the option's description.
+    expect(info).toHaveAttribute('aria-selected', 'true')
+    expect(info).toHaveAccessibleDescription('Normal activity')
     await user.keyboard('{ArrowDown}{Enter}')
     expect(box).toHaveTextContent('Warning')
-    expect(screen.queryByRole('listbox')).toBeNull()
-    // Type-ahead while closed opens on the match; Esc closes without choosing.
-    await user.keyboard('e')
-    expect(box.getAttribute('aria-activedescendant')).toBe(within(screen.getByRole('listbox')).getByRole('option', { name: 'Error' }).id)
-    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
+    expect(box).toHaveFocus()
+    // Esc closes without choosing.
+    await user.keyboard('{Enter}')
+    await screen.findByRole('listbox')
+    await user.keyboard('{ArrowDown}{Escape}')
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
     expect(box).toHaveTextContent('Warning')
-    await user.keyboard('{End}{Enter}')
+    // Type-ahead inside the open list.
+    await user.keyboard('{Enter}')
+    await screen.findByRole('listbox')
+    await user.keyboard('e')
+    await user.keyboard('{Enter}')
     expect(box).toHaveTextContent('Error')
     await pickOption(user, box, 'All')
     expect(box).toHaveTextContent('All')
   })
 })
 
-describe('Combobox', () => {
-  function Demo({ onChange }: { onChange: (v: string) => void }) {
-    const [v, setV] = useState('')
+describe('MultiSelect (React Aria)', () => {
+  function Demo({ onChange }: { onChange: (v: string[]) => void }) {
+    const [v, setV] = useState<string[]>([])
     return (
-      <ComboboxField
+      <MultiSelectField
         label="Profile"
         value={v}
         placeholder="All profiles"
-        allowCustom
-        emptyText="No matches"
+        searchLabel="Search profile"
+        chipsLabel="Chosen profiles"
         onChange={(x) => {
           setV(x)
           onChange(x)
         }}
-        options={[
-          { value: '', label: 'All profiles' },
-          { value: 'office', label: 'office' },
-          { value: 'home', label: 'home' },
-          { value: 'office-2', label: 'office-2' },
-        ]}
+        options={['office', 'home', 'office-2', 'café'].map((p) => ({ value: p, label: p }))}
       />
     )
   }
 
-  it('filters as you type, Enter picks the active option, "All" clears, free text is kept', async () => {
+  it('searches (case and accents ignored), toggles several, shows chips, removes and clears', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     withPrefs(<Demo onChange={onChange} />)
-    const input = screen.getByRole('combobox', { name: 'Profile' })
-    await user.type(input, 'off')
-    const list = screen.getByRole('listbox')
+    const field = screen.getByRole('button', { name: /^Profile/ })
+    expect(field).toHaveTextContent('All profiles')
+    await user.click(field)
+    const search = screen.getByRole('searchbox', { name: 'Search profile' })
+    await waitFor(() => expect(search).toHaveFocus())
+    await user.keyboard('OFF')
+    const list = screen.getByRole('listbox', { name: 'Search profile' })
+    expect(list).toHaveAttribute('aria-multiselectable', 'true')
     expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['office', 'office-2'])
+    // Arrows move in the list while focus stays in the search field.
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    expect(onChange).toHaveBeenLastCalledWith(['office-2'])
+    expect(search).toHaveFocus()
+    await user.clear(search)
+    await user.keyboard('cafe')
+    expect(within(screen.getByRole('listbox')).getAllByRole('option').map((o) => o.textContent)).toEqual(['café'])
     await user.keyboard('{ArrowDown}{Enter}')
-    expect(onChange).toHaveBeenLastCalledWith('office-2')
-    expect(input).toHaveValue('office-2')
-    await user.clear(input)
-    await user.type(input, 'zzz')
-    expect(within(screen.getByRole('listbox')).getByText('No matches')).toBeInTheDocument()
-    await user.keyboard('{Enter}')
-    expect(onChange).toHaveBeenLastCalledWith('zzz')
-    await user.clear(input)
-    await user.keyboard('{ArrowDown}')
-    await user.click(within(screen.getByRole('listbox')).getByRole('option', { name: 'All profiles' }))
-    expect(onChange).toHaveBeenLastCalledWith('')
-    expect(input).toHaveValue('')
+    // The list's order, not the click order.
+    expect(onChange).toHaveBeenLastCalledWith(['office-2', 'café'])
+    await user.clear(search)
+    await user.keyboard('zzz')
+    expect(screen.getByText('No matches')).toBeInTheDocument()
+    // Esc clears the search first, then closes the list.
+    await user.keyboard('{Escape}')
+    expect(search).toHaveValue('')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(field).toHaveTextContent('2 selected')
+    const chips = screen.getByRole('grid', { name: 'Chosen profiles' })
+    expect(within(chips).getAllByRole('row').map((r) => r.textContent)).toEqual(['office-2', 'café'])
+    await user.click(within(chips).getByRole('button', { name: /Remove office-2/ }))
+    expect(onChange).toHaveBeenLastCalledWith(['café'])
+    expect(field).toHaveTextContent('café')
+    await user.click(screen.getByRole('button', { name: 'Clear all' }))
+    expect(onChange).toHaveBeenLastCalledWith([])
+    expect(field).toHaveTextContent('All profiles')
+    expect(screen.queryByRole('grid', { name: 'Chosen profiles' })).toBeNull()
   })
 })
 
-describe('DateRangePicker', () => {
-  it('local-day helpers: months clamp, grids start on Monday (es) or Sunday (en), presets', () => {
-    expect(addMonths('2026-01-31', 1)).toBe('2026-02-28')
+describe('DateRangePicker (React Aria RangeCalendar)', () => {
+  it('local-day helpers: presets', () => {
     expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
-    expect(weekStart('es')).toBe(1)
-    expect(weekStart('en')).toBe(0)
-    // 1 Nov 2026 is a Sunday: last cell of the first week in ES, first in EN.
-    expect(monthGrid('2026-11-19', 1)[0]).toEqual(['', '', '', '', '', '', '2026-11-01'])
-    expect(monthGrid('2026-11-19', 0)[0]?.[0]).toBe('2026-11-01')
     expect(presetRange('last7', '2026-11-19')).toEqual({ from: '2026-11-13', to: '2026-11-19' })
     expect(matchPreset({ from: '2026-10-21', to: '2026-11-19' }, '2026-11-19')).toBe('last30')
     expect(matchPreset({ from: '2026-11-01', to: '2026-11-19' }, '2026-11-19')).toBeNull()
@@ -260,41 +220,87 @@ describe('DateRangePicker', () => {
     )
   }
 
-  it('one control: presets apply at once; a custom range by keyboard (arrows, Enter twice, Apply)', async () => {
+  const day = (n: number) => screen.getByRole('button', { name: new RegExp(`November ${n}, 2026`) })
+  const highlighted = () =>
+    Array.from(document.querySelectorAll('.k-drp__day[data-selected]')).map((el) => Number(el.textContent))
+
+  it('presets apply at once; a custom range paints live while choosing, by pointer and by keyboard', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()
     withPrefs(<Demo onChange={onChange} />)
     const trigger = screen.getByRole('button', { name: /Dates/ })
     expect(trigger).toHaveTextContent('Any date')
     await user.click(trigger)
-    const dialog = screen.getByRole('dialog', { name: 'Choose dates' })
+    const dialog = await screen.findByRole('dialog', { name: 'Choose dates' })
     await user.click(within(dialog).getByRole('button', { name: 'Last 7 days' }))
     expect(onChange).toHaveBeenLastCalledWith({ from: '2026-11-13', to: '2026-11-19' })
     expect(trigger).toHaveTextContent('Last 7 days')
-    expect(trigger).toHaveFocus()
+    await waitFor(() => expect(trigger).toHaveFocus())
 
     await user.click(trigger)
-    await user.click(screen.getByRole('button', { name: 'Custom' }))
+    await user.click(await screen.findByRole('button', { name: 'Custom' }))
     const grid = screen.getByRole('grid')
-    // The calendar opens on the range's end day, focused.
-    expect(document.activeElement).toHaveAttribute('data-day', '2026-11-19')
+    // Week starts on Sunday in English.
+    expect(grid.querySelector('thead th')).toHaveTextContent('S')
     // Future days cannot be picked.
-    expect(within(grid).getByRole('button', { name: /November 20, 2026/ })).toHaveAttribute('aria-disabled', 'true')
-    await user.keyboard('{ArrowLeft}{ArrowLeft}{Enter}')
+    expect(day(20)).toHaveAttribute('aria-disabled', 'true')
+    // First click = start; hovering paints the range up to the pointer
+    // before the second click.
+    await user.click(day(10))
     expect(screen.getByText('Now pick the last day (it can be the same one).')).toBeInTheDocument()
-    await user.keyboard('{ArrowUp}{Enter}')
-    // The second pick was earlier: the range is put in order.
+    await user.hover(day(14))
+    expect(highlighted()).toEqual([10, 11, 12, 13, 14])
+    await user.click(day(17))
+    expect(highlighted()).toEqual([10, 11, 12, 13, 14, 15, 16, 17])
     expect(screen.getByText('Nov 10 to Nov 17')).toBeInTheDocument()
-    await user.keyboard('{PageUp}')
-    expect(document.activeElement).toHaveAttribute('data-day', '2026-10-10')
     await user.click(screen.getByRole('button', { name: 'Apply' }))
     expect(onChange).toHaveBeenLastCalledWith({ from: '2026-11-10', to: '2026-11-17' })
     expect(trigger).toHaveTextContent(/Nov 10.*17, 2026/)
 
     await user.click(trigger)
-    await user.click(screen.getByRole('button', { name: 'Clear dates' }))
+    await user.click(await screen.findByRole('button', { name: 'Clear dates' }))
     expect(onChange).toHaveBeenLastCalledWith({ from: '', to: '' })
     expect(trigger).toHaveTextContent('Any date')
+  })
+
+  it('keyboard: Enter starts, arrows paint the range as they move, Enter ends, PageUp changes month', async () => {
+    const user = userEvent.setup()
+    withPrefs(<Demo onChange={() => {}} />)
+    await user.click(screen.getByRole('button', { name: /Dates/ }))
+    await user.click(await screen.findByRole('button', { name: 'Custom' }))
+    // The calendar opens on today, focused.
+    await waitFor(() => expect(document.activeElement).toHaveAccessibleName(/November 19, 2026/))
+    await user.keyboard('{Enter}')
+    await user.keyboard('{ArrowLeft}')
+    await user.keyboard('{ArrowLeft}')
+    // The painted range follows the focused day (end = today).
+    await waitFor(() => expect(highlighted().length).toBeGreaterThan(2))
+    const twoBack = highlighted()
+    expect(twoBack.at(-1)).toBe(19)
+    await user.keyboard('{ArrowUp}')
+    await waitFor(() => expect(highlighted().length).toBe(twoBack.length + 7))
+    await user.keyboard('{Enter}')
+    expect(screen.getByText(`Nov ${twoBack[0]! - 7} to Nov 19`)).toBeInTheDocument()
+    await user.keyboard('{PageUp}')
+    await waitFor(() => expect(document.activeElement).toHaveAccessibleName(/October/))
+  })
+})
+
+describe('React Aria under the CSP', () => {
+  it('the <style> guard id still matches the installed react-aria', async () => {
+    // Node built-ins, typed by hand: the app's tsconfig has no Node types.
+    const fsName: string = 'node:fs'
+    const moduleName: string = 'node:module'
+    const { readFileSync } = (await import(/* @vite-ignore */ fsName)) as { readFileSync: (p: string, enc: string) => string }
+    const { createRequire } = (await import(/* @vite-ignore */ moduleName)) as {
+      createRequire: (url: string) => { resolve: (id: string) => string }
+    }
+    const pkg = createRequire(import.meta.url).resolve('react-aria/package.json')
+    const src = readFileSync(pkg.replace(/package\.json$/, 'dist/private/interactions/usePress.mjs'), 'utf8')
+    expect(src).toContain(`'${ARIA_PRESS_STYLE_ID}'`)
+    guardAriaStyle()
+    guardAriaStyle()
+    expect(document.querySelectorAll(`#${ARIA_PRESS_STYLE_ID}`)).toHaveLength(1)
   })
 })
 
@@ -373,6 +379,33 @@ describe('Dialog', () => {
       dialog.dispatchEvent(new Event('cancel', { cancelable: true }))
     })
     expect(dialog).not.toHaveAttribute('open')
+  })
+
+  it('sheet: a Select inside lists into the <dialog> (top layer); only a real backdrop click closes it', async () => {
+    const onClose = vi.fn()
+    function Sheet() {
+      const [v, setV] = useState('a')
+      return (
+        <Dialog open onClose={onClose} title="Add" variant="sheet">
+          <SelectField label="Through" value={v} onChange={setV} options={[{ value: 'a', label: 'office' }, { value: 'b', label: 'home' }]} />
+        </Dialog>
+      )
+    }
+    const user = userEvent.setup()
+    withPrefs(<Sheet />)
+    const dialog = document.querySelector('dialog')!
+    await user.click(screen.getByRole('button', { name: /Through/ }))
+    const list = await screen.findByRole('listbox')
+    expect(dialog.contains(list)).toBe(true)
+    // A press that started on a control and ended elsewhere is not a backdrop click.
+    fireEvent.pointerDown(screen.getByRole('option', { name: 'home' }))
+    fireEvent.click(dialog)
+    expect(onClose).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('option', { name: 'home' }))
+    expect(screen.getByRole('button', { name: /Through/ })).toHaveTextContent('home')
+    fireEvent.pointerDown(dialog)
+    fireEvent.click(dialog)
+    expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
 

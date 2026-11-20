@@ -1,4 +1,4 @@
-// Kongtrol UI — one tunnel's status and actions (Inicio) · v1.2.0 · 2026-11-19
+// Kongtrol UI — one tunnel's status and actions (Inicio) · v1.3.0 · 2026-11-19
 //
 // The status cell says, in this order: the state (Four States Rule: word +
 // color + dot shape), how a provider app's tunnel came up or what the user
@@ -7,17 +7,17 @@
 // what goes through the tunnel. The actions cell offers exactly the actions
 // the state allows and shows the one in progress in place until the daemon
 // reports that it ended (data/transition.ts).
-import { memo } from 'react'
+import { memo, type ReactNode } from 'react'
 import type { TunnelMetrics } from '../../api/types'
 import { useAddSheet } from '../../app/addLink'
 import { usePreferences } from '../../app/preferences-context'
 import { usePendingAction, useTunnelActions, useTunnelReload, type TunnelAction } from '../../data/home'
 import { tunnelState, type TunnelState } from '../../data/resources'
 import type { MessageKey } from '../../i18n/messages'
-import { Button, IconButton } from '../ui/Button'
-import { Menu, type MenuItem } from '../ui/Menu'
+import { PowerIcon } from '../profiles/icons'
+import { IconButton } from '../ui/Button'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
-import { PlusIcon, RefreshIcon } from '../ui/icons'
+import { CloseIcon, PlugIcon, PlusIcon, RefreshIcon } from '../ui/icons'
 import { formatClock } from './format'
 import { ERROR_KEYS, attachKey, attachWaiting } from './model'
 import { TunnelRoutesToggle } from './TunnelRoutes'
@@ -121,18 +121,24 @@ function mainAction(tn: TunnelMetrics, busy: TunnelAction | undefined): TunnelAc
   return tn.Status === 'connected' ? 'disconnect' : tn.Status === 'connecting' ? 'cancel' : 'connect'
 }
 
-// One layout for every row (DESIGN.md: one primary per row, owner feedback
-// 2026-11-19): the main action as a small button — Conectar in amber (the
-// next step), Desconectar / Cancelar outlined (neutral; never amber) — then
-// the secondary actions as 36px icon buttons with tooltips: Reconectar
-// (connected only) and "＋" (send a site through this VPN). When the table
-// is narrow the secondary ones fold into a "⋯" menu (CSS container query in
-// home.css: the inline set and the menu are both rendered, one is hidden),
-// so the row never wraps. Accessible names carry the tunnel ("Conectar
-// trabajo"); the visible word stays first (WCAG 2.5.3). While an action runs
-// the buttons stay in place but inert (aria-disabled keeps focus where the
-// user pressed) and the pressed one shows a spinner and "…ando"; a connect
-// in progress also offers Cancelar.
+const MAIN_ICON: Record<Exclude<TunnelAction, 'reload'>, ReactNode> = {
+  connect: <PlugIcon />,
+  disconnect: <PowerIcon />,
+  cancel: <CloseIcon />,
+}
+
+// One layout for every row (owner feedback 2026-11-19): only 36px square
+// icon buttons, each with a tooltip and an accessible name that carries the
+// tunnel ("Conectar trabajo"), with the same icons as the card's "Conectar
+// todas" (plug) / "Desconectar todas" (power). The state's own action comes
+// first and alone carries weight: Conectar filled amber when it is down,
+// Desconectar with the ink outline when it is up (never amber, DESIGN.md);
+// Cancelar while a provider app is still bringing it up. Then Reconectar
+// (connected only) and "＋" (send a site through this VPN), outlined. While
+// an action runs the squares stay in place but inert (aria-disabled keeps
+// focus where the user pressed); the pressed one shows a spinner inside
+// the same square until the daemon reports the end state, and a connect in
+// progress adds a Cancelar square.
 export const TunnelActionsCell = memo(function TunnelActionsCell({ tn }: { tn: TunnelMetrics }) {
   const { t } = usePreferences()
   const run = useTunnelActions()
@@ -140,54 +146,47 @@ export const TunnelActionsCell = memo(function TunnelActionsCell({ tn }: { tn: T
   const { open: openAdd } = useAddSheet()
   const busy = busyAction(tn, usePendingAction(tn.Name))
   const name = tn.Name
-  const main = mainAction(tn, busy)
+  const main = mainAction(tn, busy) as Exclude<TunnelAction, 'reload'>
   const pressed = busy === main
   const word = t(pressed ? PENDING[main] : LABEL[main])
   const canReload = tn.Status === 'connected' || busy === 'reload'
   const reloadWord = t(busy === 'reload' ? PENDING.reload : LABEL.reload)
-  const addLabel = t('add.siteVia', { vpn: name })
-  const doReload = () => reload(name)
-  const doAdd = () => openAdd({ mode: 'rule', via: name })
-
-  const menu: MenuItem[] = [
-    ...(canReload ? [{ id: 'reload', label: reloadWord, icon: <RefreshIcon />, onSelect: doReload, disabled: !!busy }] : []),
-    { id: 'add', label: addLabel, icon: <PlusIcon />, onSelect: doAdd },
-  ]
 
   return (
     <div className="home-actions">
-      <Button
-        variant={main === 'connect' ? 'filled' : 'outlined'}
+      <IconButton
         size="sm"
+        variant={main === 'connect' ? 'filled' : main === 'disconnect' ? 'strong' : 'outlined'}
         className="home-main-act"
-        icon={pressed ? <span className="k-spinner" aria-hidden="true" /> : undefined}
-        aria-label={`${word} ${name}`}
+        label={`${word} ${name}`}
+        icon={MAIN_ICON[main]}
+        loading={pressed}
         aria-disabled={busy ? true : undefined}
-        aria-busy={pressed || undefined}
-        onClick={busy ? undefined : () => run(name, main as Exclude<TunnelAction, 'reload'>)}
-      >
-        {word}
-      </Button>
+        onClick={busy ? undefined : () => run(name, main)}
+      />
       {busy === 'connect' && (
-        <Button variant="text" size="sm" aria-label={`${t('home.action.cancel')} ${name}`} onClick={() => run(name, 'cancel')}>
-          {t('home.action.cancel')}
-        </Button>
+        <IconButton size="sm" variant="outlined" label={`${t('home.action.cancel')} ${name}`} icon={<CloseIcon />} onClick={() => run(name, 'cancel')} />
       )}
-      <span className="home-actions__inline">
-        {canReload && (
-          <IconButton
-            size="sm"
-            label={`${reloadWord} ${name}`}
-            tip={t('home.action.reload.tip')}
-            icon={<RefreshIcon />}
-            loading={busy === 'reload'}
-            aria-disabled={busy ? true : undefined}
-            onClick={busy ? undefined : doReload}
-          />
-        )}
-        <IconButton size="sm" label={addLabel} icon={<PlusIcon />} aria-haspopup="dialog" onClick={doAdd} />
-      </span>
-      <Menu className="home-actions__more" size="sm" label={t('kit.more', { name })} items={menu} />
+      {canReload && (
+        <IconButton
+          size="sm"
+          variant="outlined"
+          label={`${reloadWord} ${name}`}
+          tip={t('home.action.reload.tip')}
+          icon={<RefreshIcon />}
+          loading={busy === 'reload'}
+          aria-disabled={busy ? true : undefined}
+          onClick={busy ? undefined : () => reload(name)}
+        />
+      )}
+      <IconButton
+        size="sm"
+        variant="outlined"
+        label={t('add.siteVia', { vpn: name })}
+        icon={<PlusIcon />}
+        aria-haspopup="dialog"
+        onClick={() => openAdd({ mode: 'rule', via: name })}
+      />
     </div>
   )
 })

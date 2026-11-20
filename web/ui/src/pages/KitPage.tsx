@@ -11,10 +11,9 @@ import { Button, IconButton } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { DataList, type Column } from '../components/ui/DataList'
 import { Dialog } from '../components/ui/Dialog'
-import { ComboboxField, DateRangeField, SelectField, TextAreaField, TextField } from '../components/ui/Field'
-import { Menu } from '../components/ui/Menu'
-import { PlusIcon, RefreshIcon, SettingsIcon } from '../components/ui/icons'
-import { TrashIcon } from '../components/profiles/icons'
+import { DateRangeField, MultiSelectField, SelectField, TextAreaField, TextField } from '../components/ui/Field'
+import { PlugIcon, PlusIcon, RefreshIcon, SettingsIcon } from '../components/ui/icons'
+import { PowerIcon, TrashIcon } from '../components/profiles/icons'
 import { Banner, EmptyState, ErrorState, Kbd, Skeleton } from '../components/ui/States'
 import { StatusPill } from '../components/ui/StatusPill'
 import { Switch } from '../components/ui/Switch'
@@ -41,8 +40,8 @@ const TEXT = {
     newRule: 'Nueva regla', bannerT: 'Falta el ayudante del sistema', bannerB: 'Sin él, Kongtrol no puede conectar tus VPN.', install: 'Instalar ayudante',
     infoT: 'Hay una versión nueva', infoB: 'Kongtrol 0.7.0 está disponible.', tabs: 'Pestañas', t1: 'General', t2: 'Avanzado', p1: 'Panel general.', p2: 'Panel avanzado.',
     kbd: 'Atajos', kbdLine: 'Cierra con', tip: 'Ajustes del perfil',
-    controls: 'Selección, menú y fechas', level: 'Nivel', levelAll: 'Todos', profileF: 'Perfil', profileAll: 'Todos los perfiles',
-    dates: 'Fechas', more: 'Más acciones para oficina', reconnect: 'Reconectar', addSite: 'Hacer que un sitio salga por oficina', remove: 'Borrar',
+    controls: 'Selección, filtros y fechas', search: 'Buscar perfil', chosen: 'Perfiles elegidos', disconnect: 'Desconectar oficina', level: 'Nivel', levelAll: 'Todos', profileF: 'Perfil', profileAll: 'Todos los perfiles',
+    dates: 'Fechas', reconnect: 'Reconectar', addSite: 'Hacer que un sitio salga por oficina', remove: 'Borrar',
     edge: 'Tooltip junto al borde: se corre para no salirse de la pantalla.', checks: 'Casillas y opciones', check: 'Incluir subdominios', r1: 'Usar internet normal', r2: 'Bloquear',
   },
   en: {
@@ -62,8 +61,8 @@ const TEXT = {
     newRule: 'New rule', bannerT: 'The system helper is missing', bannerB: 'Without it, Kongtrol cannot connect your VPNs.', install: 'Install helper',
     infoT: 'A new version is out', infoB: 'Kongtrol 0.7.0 is available.', tabs: 'Tabs', t1: 'General', t2: 'Advanced', p1: 'General panel.', p2: 'Advanced panel.',
     kbd: 'Shortcuts', kbdLine: 'Close with', tip: 'Profile settings',
-    controls: 'Select, menu and dates', level: 'Level', levelAll: 'All', profileF: 'Profile', profileAll: 'All profiles',
-    dates: 'Dates', more: 'More actions for office', reconnect: 'Reconnect', addSite: 'Send a site through office', remove: 'Delete',
+    controls: 'Select, filters and dates', search: 'Search profile', chosen: 'Chosen profiles', disconnect: 'Disconnect office', level: 'Level', levelAll: 'All', profileF: 'Profile', profileAll: 'All profiles',
+    dates: 'Dates', reconnect: 'Reconnect', addSite: 'Send a site through office', remove: 'Delete',
     edge: 'Tooltip at the edge: it shifts to stay on screen.', checks: 'Check boxes and radios', check: 'Include subdomains', r1: 'Use the normal internet', r2: 'Block',
   },
 } as const
@@ -85,7 +84,7 @@ export default function KitPage() {
   const [tab, setTab] = useState('a')
   const [type, setType] = useState('wireguard')
   const [level, setLevel] = useState('')
-  const [profile, setProfile] = useState('')
+  const [profiles, setProfiles] = useState<string[]>(['oficina'])
   const [range, setRange] = useState({ from: '', to: '' })
   const [sub, setSub] = useState(true)
   const [down, setDown] = useState('allow')
@@ -199,29 +198,24 @@ export default function KitPage() {
             onChange={setLevel}
             options={[{ value: '', label: x.levelAll }, ...['INFO', 'WARN', 'ERROR', 'SECURITY'].map((l) => ({ value: l, label: l }))]}
           />
-          <ComboboxField
+          <MultiSelectField
             label={x.profileF}
             mono
-            allowCustom
-            value={profile}
-            onChange={setProfile}
+            value={profiles}
+            onChange={setProfiles}
             placeholder={x.profileAll}
-            options={[{ value: '', label: x.profileAll }, ...['oficina', 'casa-wg', 'proton', 'cliente-a'].map((p) => ({ value: p, label: p }))]}
+            searchLabel={x.search}
+            chipsLabel={x.chosen}
+            options={['oficina', 'casa-wg', 'proton', 'cliente-a', 'cliente-b', 'laboratorio'].map((p) => ({ value: p, label: p }))}
           />
           <DateRangeField label={x.dates} value={range} onChange={setRange} />
           <div className="kit-row">
-            <Button size="sm">{x.connect}</Button>
+            <IconButton size="sm" variant="filled" label={x.connect} icon={<PlugIcon />} />
+            <IconButton size="sm" variant="strong" label={x.disconnect} icon={<PowerIcon />} />
+            <IconButton size="sm" variant="filled" label={x.connect} icon={<PlugIcon />} loading />
             <IconButton size="sm" variant="outlined" label={x.reconnect} icon={<RefreshIcon />} />
             <IconButton size="sm" variant="outlined" label={x.addSite} icon={<PlusIcon />} />
-            <Menu
-              size="sm"
-              label={x.more}
-              items={[
-                { id: 'r', label: x.reconnect, icon: <RefreshIcon />, onSelect: () => {} },
-                { id: 'a', label: x.addSite, icon: <PlusIcon />, onSelect: () => {} },
-                { id: 'd', label: x.remove, icon: <TrashIcon />, danger: true, onSelect: () => {} },
-              ]}
-            />
+            <IconButton size="sm" label={x.remove} icon={<TrashIcon />} className="kp-danger-icon" />
             <span className="kit-edge">
               <IconButton label={x.edge} icon={<SettingsIcon />} />
             </span>

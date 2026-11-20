@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.7.0 · 2026-11-19
+Version 1.8.0 · 2026-11-19
 
 **Complete.** Every row is ticked or justified (`replaced`, `dropped: ADR-0043`, `n/a`). The legacy
 dashboard was deleted and the new UI moved to `/` ([ADR-0043](adr/0043-new-dashboard-replaces-classic.md)).
@@ -383,7 +383,7 @@ Table / states / notices
 - [x] Update notice opt-in — legacy none (only `update.event.available` notice, notices.js:22) — API GET/POST /api/v1/updates (handlers_lifecycle.go:52, :63) — target `/settings` — status: done (pages/SettingsPage.tsx (UpdatesCard))
 - [x] Delete all my data (confirm dialog) — legacy none — API POST /api/v1/data/purge (handlers_lifecycle.go:92; `confirm:true` required) — target `/settings` — status: done (pages/SettingsPage.tsx (DataCard))
 - [x] Helper status + install — legacy app.js:346-415 (banner) — API GET /api/v1/helper/status, POST /api/v1/helper/install — target `/settings` — status: done (components/settings/SystemSection.tsx: shared install flow)
-- [x] Language + theme controls — legacy shell.js:79-83 — API GET/PUT /api/v1/preferences — target `/settings` (also header) — status: done (components/settings/SettingsGroups.tsx: segmented language + theme)
+- [x] Language + theme controls — legacy shell.js:79-83 — API GET/PUT /api/v1/preferences — target `/settings` — status: done (components/settings/SettingsGroups.tsx: segmented language + theme); the header copies were removed as duplicates (owner, 2026-11-19, ADR-0068)
 - [x] Shutdown ("quit and disconnect all") — legacy none — API POST /api/v1/shutdown (handlers_tunnels.go:21) — target `/settings` — status: done (components/settings/SystemSection.tsx: confirm dialog, then guidance to reopen Kongtrol)
 
 ### 3.5 `audit.html` + `audit.js` → `/activity`
@@ -406,7 +406,7 @@ Table / states / notices
 
 - [x] Sidebar nav: Overview, Studio, Security, Audit Log, Settings, active item — legacy shell.js:11-17, 47-52 — target app router nav (8 routes, §2) — status: done (components/layout/AppShell.tsx `SideNav` + app/sections.ts: seven sections, active item)
 - [x] Brand logo top-left + name + BETA badge — legacy shell.js:43-46 — target shell — status: done for logo + name (components/layout/AppShell.tsx); BETA badge dropped: ADR-0043 (the version tag shows the build)
-- [x] Desktop collapse rail, remembered (`kongtrol-dashboard-sidebar-collapsed`), tooltips mirror labels — legacy shell.js:59-67, 257-289 — target shell — status: replaced by the width-based rail 600–839px (ADR-0038, components/layout/AppShell.tsx + theme/shell.css); manual collapse memory dropped: ADR-0043
+- [x] Desktop collapse rail, remembered (`kongtrol-dashboard-sidebar-collapsed`), tooltips mirror labels — legacy shell.js:59-67, 257-289 — target shell — status: done again: "Contraer menú" collapses the side menu to an icon rail with tooltips, remembered on this device, collapsed by default under 1100px (ADR-0068, app/navCollapse.ts, components/layout/AppShell.tsx + theme/shell.css); ADR-0043 had dropped the manual collapse
 - [x] Mobile drawer + scrim, closes on nav click — legacy shell.js:73-75, 90-95, 232-252 — target shell — status: replaced by the bottom bar + "Más" sheet (components/layout/AppShell.tsx `BottomBar`, closes on navigation)
 - [x] Page title in top bar (`page.*.title`) — legacy shell.js:76 — target shell — status: done as each page's focusable h1 (components/layout/PageHeader.tsx)
 - [x] Theme: explicit choice persisted (localStorage + preferences), choosing the system theme clears it, follows `prefers-color-scheme` live — legacy shell.js:103-160 — API PUT /api/v1/preferences (handlers_security.go:199) `theme` — target shell — status: done (app/PreferencesProvider.tsx)
@@ -447,7 +447,7 @@ Table / states / notices
 
 #### `select.js`
 
-- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: done by the kit `Select` (components/ui/Select.tsx, APG select-only combobox; listeners only while open, so the legacy leak cannot return), used by `SelectField` and every former `<select>`; ADR-0043 first kept the native `<select>`, ADR-0067 replaced it at the owner's request (2026-11-19)
+- [x] Themed select replacement (keeps native `<select>` as source of truth) — legacy select.js:13-109 — target shared `Select` component — status: done by the kit `Select` (components/ui/Select.tsx, React Aria Components Select + ListBox since ADR-0068; ADR-0067 had an own APG implementation), used by `SelectField` and every former `<select>`; ADR-0043 first kept the native `<select>`
 - [x] Keyboard: ArrowDown/Enter/Space opens, arrows move, Enter/Space selects, Escape closes, focus returns to trigger — legacy select.js:47-56, 69, 81-85 — target shared component — status: done by the kit `Select` (plus Home/End, PageUp/PageDown, type-ahead; tests in components/ui/kit.test.tsx)
 
 #### `i18n.js`
@@ -580,4 +580,4 @@ Rows = checkbox rows in §3, counted on the first target route named in the row 
 Final gate (phase 3, 2026-11-18): 244 of 244 rows ticked. Of those, 5 rows drop a cosmetic part
 (`dropped: ADR-0043`: BETA badge, manual rail collapse memory, theme reveal animation, language
 toggle flash, custom select widget replaced by the native `<select>`), 5 are met by a different,
-standard pattern (`replaced` / `done as`), and 1 is `n/a`. No capability is lost.
+standard pattern (`replaced` / `done as`), and 1 is `n/a`. No capability is lost. Two of those dropped parts came back at the owner's request on 2026-11-19: own selects (ADR-0067, on React Aria since ADR-0068) and the manual menu collapse (ADR-0068).

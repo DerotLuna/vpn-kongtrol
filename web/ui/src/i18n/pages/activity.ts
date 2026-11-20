@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Actividad (/activity): notices + audit log · v1.2.0 · 2026-11-18
+// Kongtrol UI strings — Actividad (/activity): notices + audit log · v1.3.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -53,7 +53,9 @@ const es = {
   'activity.audit.clear': 'Quitar filtros',
   'activity.audit.filters': 'Filtros del registro',
   'activity.audit.profile': 'Perfil',
-  'activity.audit.profile.hint': 'Elige uno de la lista o escribe el nombre exacto.',
+  'activity.audit.profile.hint': 'Elige uno o varios; muestra lo de cualquiera de ellos.',
+  'activity.audit.profile.search': 'Buscar perfil',
+  'activity.audit.profile.chosen': 'Perfiles elegidos',
   'activity.audit.profile.any': 'Todos los perfiles',
   'activity.audit.level': 'Nivel',
   'activity.audit.level.all': 'Todos',
@@ -155,7 +157,9 @@ const en: Strings<typeof es> = {
   'activity.audit.clear': 'Clear filters',
   'activity.audit.filters': 'Log filters',
   'activity.audit.profile': 'Profile',
-  'activity.audit.profile.hint': 'Pick one from the list or type the exact name.',
+  'activity.audit.profile.hint': 'Pick one or more; shows entries of any of them.',
+  'activity.audit.profile.search': 'Search profile',
+  'activity.audit.profile.chosen': 'Chosen profiles',
   'activity.audit.profile.any': 'All profiles',
   'activity.audit.level': 'Level',
   'activity.audit.level.all': 'All',

@@ -138,7 +138,7 @@ components:
 
 # Design System: Kongtrol
 
-Versión 1.4.0 · 2026-11-19
+Versión 1.5.0 · 2026-11-19
 
 ## Overview
 
@@ -235,14 +235,17 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 - **Hover / Focus:** the fill brightens (`landing-gold-hi`; the dashboard's amber deepens), lifts 1px, soft accent glow; press scales to 0.98; 2px focus ring in `--signal` (gold on Ink, Ink on Bone and on the gold band).
 - **Secondary:** transparent with a `border-2` hairline and text color; on hover the border, text and a 12% accent wash turn to the accent (`--signal`). One primary per section.
 
-### Panel controls (dashboard `web/ui`, ADR-0067)
+### Panel controls (dashboard `web/ui`, ADR-0067, ADR-0068)
+- **Behaviour from React Aria Components** (Adobe, Apache-2.0): Select, MultiSelect (search + ListBox + chips), DateRangePicker (RangeCalendar), Tooltip; the look below is ours.
 - **Button ladder:** filled amber = the one primary per row, card or step (Conectar, Guardar, Aplicar); tonal = secondary emphasis (Conectar todas); outlined = neutral (Desconectar, Cancelar, Probar); text = lowest (Volver, Agregar otro, Borrar fechas; "Volver" in muted text at the footer's start). Desconectar and Cancelar are never amber. Small buttons are 36px; icon buttons beside them are 36px too (44px in phone cards).
-- **Row actions:** main action first (fixed minimum width so "Conectando…" does not shift the row), then icon buttons with tooltips; when the list is narrow the icon actions fold into a "⋯" menu. A row never wraps its actions. An action in progress keeps its spinner until the live state ends it.
-- **Tooltip:** Ink-on-light inverse bubble (`text` on `bg`), 12px, ≤ 280px, 6px from the trigger; flips and shifts to stay 8px inside the viewport; shows after 350ms on hover, at once on keyboard focus, on long press on touch.
-- **Floating layers** (menu, listbox, calendar): `surface` with a `border-2` hairline, 6px corners and the one floating shadow the panel allows besides dialog and toast (`0 12px 32px rgba(0,0,0,.28)`); 40px rows; the active row gets a 2px amber left mark, the chosen one a check.
-- **Select / Combobox / DateRangePicker:** the input's box (`bg`, `border-2`, 44px) with a chevron or calendar glyph; open = amber border. The date range is one control with presets (Hoy, Últimos 7 días, Últimos 30 días, Personalizado) and a month grid (Monday first in Spanish); range ends solid amber, days between `signal-soft`.
+- **Row actions (VPN and group rows):** icon-only 36px squares, all the same size, each with a tooltip and an accessible name that carries the row ("Conectar trabajo"); the same icons as "Conectar todas" (plug) / "Desconectar todas" (power), Reconectar = refresh, add rule = plus. Only the state's own action carries weight: Conectar filled amber when it is down, Desconectar with an ink outline on `surface-2` when it is up (never amber); the rest are outlined. A group partly up shows both, "Conectar las que faltan" (filled) and "Desconectar todas" (outlined), and its count says how many are up. An action in progress shows a spinner inside the same square until the live state ends it; the other squares stay in place, inert. A row never wraps its actions (44px squares in phone cards).
+- **Tooltip:** Ink-on-light inverse bubble (`text` on `bg`), 12px, ≤ 280px, 6px from the trigger; flips and shifts to stay 8px inside the viewport; shows after 350ms on hover, at once on keyboard focus.
+- **Floating layers** (listbox, multi-select, calendar): `surface` with a `border-2` hairline, 6px corners and the one floating shadow the panel allows besides dialog and toast (`0 12px 32px rgba(0,0,0,.28)`); they open and close at once (no animation); 40px rows; the focused row gets the hover background, the chosen one a check plus a subtle amber wash (`state-select`); never a side bar.
+- **Select / MultiSelect / DateRangePicker:** the input's box (`bg`, `border-2`, 44px) with a chevron or calendar glyph; open = amber border. The multi-select lists what is chosen as chips under the field (× on each, "Quitar todos"); nothing chosen reads "Todos los …". The date range is one control with presets (Hoy, Últimos 7 días, Últimos 30 días, Personalizado) and a month grid (Monday first in Spanish); range ends solid amber, days between `signal-soft`, painted live up to the pointer before the second click.
 - **Check boxes and radios:** the kit's 18px box, amber when on, 2px amber focus ring.
-- **Tables:** become one card per row by the width of their own container (DataList 680px; Inicio 980px with "⋯" up to 1079px; Actividad 900px). Chips in a detail panel read left to right and are sized to their text.
+- **Tables:** become one card per row by the width of their own container (DataList 680px; Inicio 980px; Actividad 900px). Chips in a detail panel read left to right and are sized to their text.
+- **Inicio layout:** "Tus VPN" full width, then two independent columns (Protección + Avisos, Grupos + Tu salida a internet) so a short card never leaves a hole; one column when the page is under 760px. DOM order = reading order.
+- **Header and side menu:** the header holds logo, status, "＋ Agregar", Guía and version only (language and theme live in Ajustes). The side menu collapses to a 64px icon rail ("Contraer menú" at its foot, tooltips on the icons), remembered on this device and collapsed by default under 1100px.
 
 ### Chips
 - **OS chips:** pill, mono 11px, hairline border; "auto" support with a gold border and wash (landing), "parcial" with a short mono qualifier. No green.

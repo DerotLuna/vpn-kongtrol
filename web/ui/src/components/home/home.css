@@ -1,4 +1,4 @@
-/* KONGTROL UI — Inicio (/) · v1.2.0 · 2026-11-19
+/* KONGTROL UI — Inicio (/) · v1.3.0 · 2026-11-19
    Operate mode, DESIGN.md "Sesión en la Torre": flat cards, amber only for
    the primary action and focus, Four States colors with words, machine
    values (names, IPs, routes, numbers) in Plex Mono, people sentences in
@@ -6,9 +6,14 @@
 
 .home-banner { margin-bottom: 16px; }
 .home-tunnels { margin-bottom: 16px; }
-.home-grid {
-  display: grid; gap: 16px; align-items: start;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+/* Two independent columns (each stacks its own cards), so unequal heights
+   never leave a hole; one column when the page is narrow. Sized by the room the page has (container), not the window: the side
+   menu may be expanded or collapsed. */
+.home-lower { container: homelower / inline-size; }
+.home-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.home-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@container homelower (min-width: 760px) {
+  .home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .home-count {
@@ -65,22 +70,15 @@
 .home-spark { color: var(--steel); flex: none; }
 .home-spark--empty { font: 400 11px/1 var(--font-mono); color: var(--text-dim); min-width: 72px; text-align: right; }
 
-/* Row actions: one line, main action first, then 36px icon buttons. */
+/* Row actions: one line of 36px squares (44px in phone cards), the
+   state's own action first. */
 .home-actions { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-end; }
-.home-actions__inline { display: inline-flex; gap: 6px; align-items: center; }
-.home-actions .home-actions__more { display: none; }
-.home-main-act { min-width: 9.5rem; }
-/* While an action runs: every button stays in place, inert (aria-disabled);
+/* While an action runs: every square stays in place, inert (aria-disabled);
    the pressed one keeps full color with its spinner (aria-busy). */
 .home-actions [aria-disabled='true'] { cursor: not-allowed; opacity: 0.55; }
-.home-actions .k-btn[aria-disabled='true']:is(:hover, :active)::after { background: transparent; }
-.home-actions .k-btn[aria-disabled='true']:active { transform: none; }
 .home-actions [aria-busy='true'] { cursor: progress; opacity: 1; }
 @container tunnels (min-width: 980px) and (max-width: 1079px) {
   .home-tunnels .home-spark, .home-tunnels .home-spark--empty { display: none; }
-  .home-tunnels .home-actions__inline { display: none; }
-  .home-tunnels .home-actions .home-actions__more { display: inline-flex; }
-  .home-tunnels .home-main-act { min-width: 8.5rem; }
 }
 
 /* "Rutas" disclosure: one-line toggle in the status cell… */

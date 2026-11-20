@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-// Kongtrol UI — Vite config · v0.3.0 · 2026-11-19
+// Kongtrol UI — Vite config · v0.4.0 · 2026-11-19
 //
 // Build: `pnpm build` writes web/ui/dist, which web/ui_embed.go embeds into the
 // Go binary and internal/api serves at / (ADR-0043).
@@ -7,6 +7,7 @@
 //        proxies /api (REST + WebSocket) to the running daemon.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
+import optimizeLocales from '@react-aria/optimize-locales-plugin'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type Plugin } from 'vite'
 
@@ -41,7 +42,14 @@ function keepDistMarker(): Plugin {
 
 export default defineConfig({
   base: '/',
-  plugins: [react(), keepDistMarker()],
+  plugins: [
+    react(),
+    keepDistMarker(),
+    // React Aria ships its built-in strings (calendar announcements,
+    // "Remove", …) for ~34 locales; the panel speaks only Spanish and
+    // English (ADR-0068). Adobe's own plugin drops the rest at build time.
+    { ...optimizeLocales.vite({ locales: ['es-ES', 'en-US'] }), apply: 'build' },
+  ],
   resolve: {
     alias: {
       // Single-source brand assets (assets/brand, shared with landing/).

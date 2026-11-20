@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Inicio (/) · v2.1.0 · 2026-11-19
+// Kongtrol UI strings — Inicio (/) · v2.2.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -105,7 +105,13 @@ const es = {
   'home.groups.empty.title': 'Todavía no tienes grupos',
   'home.groups.empty.body': 'Un grupo junta varias VPN para conectarlas con un clic.',
   'home.groups.empty.action': 'Crear un grupo',
-  'home.groups.disconnect': 'Desconectar {name}',
+  'home.groups.count.partial': '{up} de {n} conectadas',
+  'home.groups.act.connect': 'Conectar {name}',
+  'home.groups.act.connectRest': 'Conectar las que faltan en {name} ({missing} de {total})',
+  'home.groups.act.connecting': 'Conectando {name}…',
+  'home.groups.act.disconnect': 'Desconectar {name}',
+  'home.groups.act.disconnectAll': 'Desconectar todas en {name} ({up} de {total} conectadas)',
+  'home.groups.act.disconnecting': 'Desconectando {name}…',
   'home.groups.toast.connecting': 'Conectando el grupo {name}: {n} VPN.',
   'home.groups.toast.allConnected': 'Las VPN del grupo {name} ya estaban conectadas.',
   'home.groups.toast.skipped': 'Sin conectar porque Kongtrol todavía no las conoce (reinícialo): {names}',
@@ -279,7 +285,13 @@ const en: Strings<typeof es> = {
   'home.groups.empty.title': 'No groups yet',
   'home.groups.empty.body': 'A group bundles several VPNs so you can connect them in one click.',
   'home.groups.empty.action': 'Create a group',
-  'home.groups.disconnect': 'Disconnect {name}',
+  'home.groups.count.partial': '{up} of {n} connected',
+  'home.groups.act.connect': 'Connect {name}',
+  'home.groups.act.connectRest': 'Connect the rest of {name} ({missing} of {total})',
+  'home.groups.act.connecting': 'Connecting {name}…',
+  'home.groups.act.disconnect': 'Disconnect {name}',
+  'home.groups.act.disconnectAll': 'Disconnect all of {name} ({up} of {total} connected)',
+  'home.groups.act.disconnecting': 'Disconnecting {name}…',
   'home.groups.toast.connecting': 'Connecting group {name}: {n} VPN(s).',
   'home.groups.toast.allConnected': 'The VPNs of group {name} were already connected.',
   'home.groups.toast.skipped': 'Not connected because Kongtrol does not know them yet (restart it): {names}',

@@ -1,12 +1,13 @@
-// Kongtrol UI — Actividad data: audit log + daemon notices · v1.1.0 · 2026-11-18
+// Kongtrol UI — Actividad data: audit log + daemon notices · v1.2.0 · 2026-11-19
 //
 // Two resources, one cache entry each (ADR-0038):
-// - GET /api/v1/audit?limit&profile&level&from&to&before (internal/api/
+// - GET /api/v1/audit?limit&profile…&level&from&to&before (internal/api/
 //   handlers_audit.go, ADR-0042): the signed log, newest first, across every
 //   retained day, with `signed` / `verified` per entry. Pages by cursor:
 //   `before` = the last timestamp of a page; the X-Kongtrol-Audit-More
 //   header says whether an older page exists ("Cargar más"). Dates filter
-//   on the daemon (`from` / `to`, local days). "En vivo" re-reads every 5 s;
+//   on the daemon (`from` / `to`, local days); `profile` repeats, one per
+//   chosen profile (any of them matches). "En vivo" re-reads every 5 s;
 //   unchanged rows keep their identity (structural sharing).
 // - GET /api/v1/events?after=<seq> (handlers_events.go): the notices the
 //   daemon keeps in memory (last 100, cmd/kongtrol/main.go). The first read
@@ -45,7 +46,8 @@ export const LIVE_MS = 5_000
 export const AUDIT_MORE_HEADER = 'X-Kongtrol-Audit-More'
 
 export interface AuditQuery {
-  profile: string
+  /** Chosen profiles; none = every profile. */
+  profiles: readonly string[]
   level: AuditLevel | ''
   /** Local day YYYY-MM-DD, or '' (no bound). */
   from: string
@@ -62,9 +64,9 @@ export const activityKeys = {
   events: ['events', 'history'] as const,
 }
 
-export function auditURL({ profile, level, from, to }: AuditQuery, before = ''): string {
+export function auditURL({ profiles, level, from, to }: AuditQuery, before = ''): string {
   const params = new URLSearchParams({ limit: String(AUDIT_PAGE) })
-  if (profile.trim()) params.set('profile', profile.trim())
+  for (const p of profiles) if (p.trim()) params.append('profile', p.trim())
   if (level) params.set('level', level)
   if (from) params.set('from', from)
   if (to) params.set('to', to)

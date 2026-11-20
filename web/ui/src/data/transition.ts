@@ -35,6 +35,16 @@ export function usePendingAny(names: readonly string[]): boolean {
   return names.some((n) => all[n] !== undefined)
 }
 
+/** The connect / disconnect still settling on any of `names` (a group's members), if any. */
+export function usePendingGroupAction(names: readonly string[]): 'connect' | 'disconnect' | undefined {
+  const all = useStore(pendingActions)
+  for (const n of names) {
+    const a = all[n]
+    if (a === 'connect' || a === 'disconnect') return a
+  }
+  return undefined
+}
+
 /** How long an accepted action may stay in progress before we say so. */
 export const SETTLE_TIMEOUT_MS: Record<TunnelAction, number> = {
   // A provider app may take a while to start; waiting for the user ends

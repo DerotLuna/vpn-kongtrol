@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Perfiles (/profiles) and Grupos (/profiles/groups) · v2.2.0 · 2026-11-19
+// Kongtrol UI strings — Perfiles (/profiles) and Grupos (/profiles/groups) · v2.3.0 · 2026-11-19
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -283,11 +283,6 @@ const es = {
   'groups.state.some': '{n} de {total} conectadas',
   'groups.action.new': 'Nuevo grupo',
   'groups.action.create': 'Crear grupo',
-  'groups.action.connect': 'Conectar',
-  'groups.action.disconnect': 'Desconectar',
-  'groups.action.connecting': 'Conectando…',
-  'groups.action.disconnecting': 'Desconectando…',
-  'groups.action.disconnectName': 'Desconectar {name}',
   'groups.action.reloadName': 'Recargar {name}',
   'groups.empty.title': 'Aún no tienes grupos',
   'groups.empty.body': 'Crea uno para conectar, por ejemplo, todas las VPN del trabajo con un solo botón.',
@@ -591,11 +586,6 @@ const en: Strings<typeof es> = {
   'groups.state.some': '{n} of {total} connected',
   'groups.action.new': 'New group',
   'groups.action.create': 'Create group',
-  'groups.action.connect': 'Connect',
-  'groups.action.disconnect': 'Disconnect',
-  'groups.action.connecting': 'Connecting…',
-  'groups.action.disconnecting': 'Disconnecting…',
-  'groups.action.disconnectName': 'Disconnect {name}',
   'groups.action.reloadName': 'Reload {name}',
   'groups.empty.title': 'No groups yet',
   'groups.empty.body': 'Create one to connect, for example, all your work VPNs with one button.',

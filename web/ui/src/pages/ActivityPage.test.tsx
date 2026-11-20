@@ -140,7 +140,7 @@ describe('Actividad · registro de auditoría', () => {
     // translated level names, never raw INFO/WARN
     expect(screen.getAllByText('Seguridad').length).toBeGreaterThan(0)
 
-    await pickOption(userEvent.setup(), screen.getByRole('combobox', { name: 'Nivel' }), 'Aviso')
+    await pickOption(userEvent.setup(), screen.getByRole('button', { name: /Nivel/ }), 'Aviso')
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&level=WARN')).toBe(true)
   })
@@ -183,14 +183,41 @@ describe('Actividad · registro de auditoría', () => {
     expect(await screen.findByText('Mostrando 3 entradas')).toBeInTheDocument()
   })
 
-  it('filters by profile: type to filter the list, Enter picks', async () => {
-    stubFetch(auditRoutes)
+  it('filters by several profiles: search, pick, chips, clear', async () => {
+    const user = userEvent.setup()
+    const fetchMock = stubFetch({
+      ...auditRoutes,
+      'GET /api/v1/audit?limit=200&profile=casa&profile=trabajo': () => page(all),
+    })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
     await screen.findByText('Mostrando 3 entradas')
-    await userEvent.type(screen.getByLabelText('Perfil'), 'casa{Enter}')
+    const field = screen.getByRole('button', { name: /^Perfil/ })
+    expect(field).toHaveTextContent('Todos los perfiles')
+    await user.click(field)
+    // The search field takes focus; typing filters the list.
+    const search = screen.getByRole('searchbox', { name: 'Buscar perfil' })
+    await waitFor(() => expect(search).toHaveFocus())
+    await user.keyboard('cas')
+    const list = screen.getByRole('listbox', { name: 'Buscar perfil' })
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual(['casa'])
+    await user.keyboard('{ArrowDown}{Enter}')
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
     expect(screen.getByText('entry 3')).toBeInTheDocument()
+    // A second profile: an entry of any of them matches (profile repeats).
+    await user.clear(search)
+    await user.click(within(screen.getByRole('listbox', { name: 'Buscar perfil' })).getByRole('option', { name: 'trabajo' }))
+    expect(await screen.findByText('Mostrando 3 entradas')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&profile=casa&profile=trabajo')).toBe(true)
+    await user.keyboard('{Escape}')
+    expect(field).toHaveTextContent('2 elegidos')
+    const chips = screen.getByRole('grid', { name: 'Perfiles elegidos' })
+    expect(within(chips).getAllByRole('row').map((r) => r.textContent)).toEqual(['casa', 'trabajo'])
+    await user.click(within(chips).getByRole('button', { name: /Quitar trabajo/ }))
+    expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Quitar todos' }))
+    expect(await screen.findByText('Mostrando 3 entradas')).toBeInTheDocument()
+    expect(field).toHaveTextContent('Todos los perfiles')
   })
 
   it('explains an unconfigured log instead of "no events"', async () => {
@@ -267,9 +294,9 @@ describe('Actividad · registro de auditoría', () => {
 
 describe('activity data helpers', () => {
   it('builds the audit URL with only the filters in use', () => {
-    expect(auditURL({ profile: ' ', level: '', from: '', to: '' })).toBe('/api/v1/audit?limit=200')
-    expect(auditURL({ profile: 'a b', level: 'ERROR', from: '2026-11-01', to: '2026-11-02' }, '2026-11-02T10:00:00Z')).toBe(
-      '/api/v1/audit?limit=200&profile=a+b&level=ERROR&from=2026-11-01&to=2026-11-02&before=2026-11-02T10%3A00%3A00Z',
+    expect(auditURL({ profiles: [' '], level: '', from: '', to: '' })).toBe('/api/v1/audit?limit=200')
+    expect(auditURL({ profiles: ['a b', 'c'], level: 'ERROR', from: '2026-11-01', to: '2026-11-02' }, '2026-11-02T10:00:00Z')).toBe(
+      '/api/v1/audit?limit=200&profile=a+b&profile=c&level=ERROR&from=2026-11-01&to=2026-11-02&before=2026-11-02T10%3A00%3A00Z',
     )
   })
 

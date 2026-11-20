@@ -143,6 +143,23 @@ describe('Inicio: states', () => {
     expect(within(off).getAllByText('—').length).toBeGreaterThanOrEqual(5)
     expect(within(off).getByRole('button', { name: 'Conectar home' })).toBeEnabled()
 
+    // Row actions are icon-only 36px squares (name = tooltip); only the
+    // state's own action carries weight: amber Conectar when down, the ink
+    // outline on Desconectar when up; the rest are outlined.
+    const squares = (r: HTMLElement) => within(r).getAllByRole('button').filter((b) => b.closest('.home-actions'))
+    for (const r of [row, off]) {
+      for (const b of squares(r)) {
+        expect(b).toHaveClass('k-icon-btn', 'k-icon-btn--sm')
+        expect(b.textContent).toBe('')
+      }
+    }
+    expect(within(row).getByRole('button', { name: 'Desconectar work' })).toHaveClass('k-icon-btn--strong')
+    expect(within(row).getByRole('button', { name: 'Reconectar work' })).toHaveClass('k-icon-btn--outlined')
+    expect(within(row).getByRole('button', { name: 'Hacer que un sitio salga por work' })).toHaveClass('k-icon-btn--outlined')
+    expect(within(off).getByRole('button', { name: 'Conectar home' })).toHaveClass('k-icon-btn--filled')
+    expect(within(off).queryByRole('button', { name: 'Reconectar home' })).toBeNull()
+    expect(squares(row).filter((b) => b.matches('.k-icon-btn--filled, .k-icon-btn--strong'))).toHaveLength(1)
+
     expect(screen.getByText('1 de 2 conectadas', { selector: '.home-count' })).toBeInTheDocument()
     // No helper banner when the helper is ready.
     expect(screen.queryByRole('button', { name: 'Instalar ayudante' })).toBeNull()
@@ -503,14 +520,15 @@ describe('Inicio: groups, egress, protection, notices', () => {
     render(<App />)
     const card = (await screen.findByRole('heading', { name: 'Grupos' })).closest('section')!
     expect(await within(card).findByText('oficina')).toBeInTheDocument()
-    expect(within(card).getByText('3 VPN')).toBeInTheDocument()
+    // work is up: the count says so and both squares explain themselves.
+    expect(within(card).getByText('1 de 3 conectadas')).toBeInTheDocument()
 
-    await userEvent.click(within(card).getByRole('button', { name: 'Conectar oficina' }))
+    await userEvent.click(within(card).getByRole('button', { name: 'Conectar las que faltan en oficina (2 de 3)' }))
     expect(await screen.findByText('Conectando el grupo oficina: 1 VPN.')).toBeInTheDocument()
     expect(screen.getByText(/todavía no las conoce \(reinícialo\): nueva/)).toBeInTheDocument()
 
     act(() => toasts.clear()) // one toast at a time: let the error show now
-    await userEvent.click(within(card).getByRole('button', { name: 'Desconectar oficina' }))
+    await userEvent.click(within(card).getByRole('button', { name: /^Desconectar todas en oficina/ }))
     expect(await screen.findByText('No se pudo completar la acción sobre el grupo oficina.')).toBeInTheDocument()
   })
 

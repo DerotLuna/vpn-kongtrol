@@ -1,4 +1,4 @@
-// Kongtrol UI — Inicio (/) · v1.0.1 · 2026-11-18
+// Kongtrol UI — Inicio (/) · v1.1.0 · 2026-11-19
 //
 // The full Home of docs/dashboard-parity.md (section "/ Inicio"): helper
 // banner, every VPN with its state, traffic and actions (live), notices
@@ -34,11 +34,21 @@ export function HomePage() {
         error={tunnels.error}
         onRefresh={tunnels.reload}
       />
-      <div className="home-grid">
-        <NoticesCard />
-        <SecurityCard />
-        <NetworkCard />
-        <GroupsCard />
+      {/* By importance (owner feedback 2026-11-19), in two independent
+          columns so a short card never leaves a hole under it: Protección
+          then Avisos, Grupos then Tu salida a internet. DOM order = reading
+          order = the single column on narrow screens. */}
+      <div className="home-lower">
+        <div className="home-grid">
+          <div className="home-col">
+            <SecurityCard />
+            <NoticesCard />
+          </div>
+          <div className="home-col">
+            <GroupsCard />
+            <NetworkCard />
+          </div>
+        </div>
       </div>
     </>
   )

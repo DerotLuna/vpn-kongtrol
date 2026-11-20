@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-19
 
-Status: Accepted · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
+Status: Accepted; refined by [ADR-0068](0068-dashboard-kit-on-react-aria-components.md) (positioning and kit controls) · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
 
 Number: 0062 and 0063 are taken by work in other branches (0063 seen in the repository's refs);
 0067 (renumbered at merge: 0064–0066 were taken by other branches).

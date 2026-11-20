@@ -1,7 +1,7 @@
-// Kongtrol UI — Actividad: signed audit log viewer · v1.1.0 · 2026-11-18
+// Kongtrol UI — Actividad: signed audit log viewer · v1.2.0 · 2026-11-19
 //
 // GET /api/v1/audit (same reader as `kongtrol logs`, ADR-0042). Level,
-// profile and dates filter on the daemon (from / to = local days, across
+// profiles (any of the chosen ones) and dates filter on the daemon (from / to = local days, across
 // every retained day); "Cargar más" asks for the next older page with the
 // `before` cursor while X-Kongtrol-Audit-More says there is one. Level
 // names are translated; an unconfigured log is explained (the API answers
@@ -25,7 +25,7 @@ import { toasts } from '../../data/toast'
 import type { MessageKey } from '../../i18n/messages'
 import { Button, IconButton } from '../ui/Button'
 import { DataList, type Column } from '../ui/DataList'
-import { ComboboxField, DateRangeField, SelectField } from '../ui/Field'
+import { DateRangeField, MultiSelectField, SelectField } from '../ui/Field'
 import { useProfilesQuery } from '../../data/profiles'
 import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon } from '../ui/icons'
 import { Banner, EmptyState, ErrorState, Skeleton } from '../ui/States'
@@ -68,7 +68,7 @@ function Signature({ ev }: { ev: AuditEvent }) {
 
 export function AuditPanel({ settings, settingsError }: { settings: Settings | undefined; settingsError: unknown }) {
   const { t, lang } = usePreferences()
-  const [profile, setProfile] = useState('')
+  const [profiles, setProfiles] = useState<string[]>([])
   const [level, setLevel] = useState<AuditLevel | ''>('')
   const [range, setRange] = useState({ from: '', to: '' })
   const { from, to } = range
@@ -79,17 +79,22 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
   const showLog = configured === true || (settingsError != null && !settings)
 
   const query = useAuditLog(
-    { profile, level, from, to },
+    { profiles, level, from, to },
     live && configured !== false,
     configured !== false,
   )
   const rows = useMemo(() => query.data?.pages.flatMap((p) => p.events), [query.data])
-  // Configured profiles plus any name the log mentions (a profile renamed or deleted since).
-  const profiles = useMemo(
-    () => [...new Set([...(known ?? []).map((p) => p.name), ...(rows ?? []).map((e) => e.profile)].filter(Boolean))].sort(),
-    [known, rows],
+  // Configured profiles plus any name the log has mentioned on this visit (a
+  // profile renamed or deleted since): kept once seen, so filtering by one
+  // never hides the others from the list.
+  const [seen, setSeen] = useState<readonly string[]>([])
+  const fresh = (rows ?? []).map((e) => e.profile).filter((p) => p && !seen.includes(p))
+  if (fresh.length > 0) setSeen([...new Set([...seen, ...fresh])])
+  const names = useMemo(
+    () => [...new Set([...(known ?? []).map((p) => p.name), ...seen, ...profiles].filter(Boolean))].sort(),
+    [known, seen, profiles],
   )
-  const filtered = profile !== '' || level !== '' || from !== '' || to !== ''
+  const filtered = profiles.length > 0 || level !== '' || from !== '' || to !== ''
 
   const fmt = useMemo(() => new Intl.DateTimeFormat(lang, { dateStyle: 'short', timeStyle: 'medium' }), [lang])
   const columns = useMemo<Column<AuditEvent>[]>(
@@ -113,7 +118,7 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
   )
 
   const clear = () => {
-    setProfile('')
+    setProfiles([])
     setLevel('')
     setRange({ from: '', to: '' })
   }
@@ -208,16 +213,16 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
 
       {showLog && (
         <div className="k-audit__filters" role="group" aria-label={t('activity.audit.filters')}>
-          <ComboboxField
+          <MultiSelectField
             label={t('activity.audit.profile')}
             hint={t('activity.audit.profile.hint')}
             mono
-            allowCustom
-            value={profile}
-            onChange={setProfile}
+            value={profiles}
+            onChange={setProfiles}
             placeholder={t('activity.audit.profile.any')}
-            emptyText={t('kit.select.empty')}
-            options={[{ value: '', label: t('activity.audit.profile.any') }, ...profiles.map((p) => ({ value: p, label: p }))]}
+            searchLabel={t('activity.audit.profile.search')}
+            chipsLabel={t('activity.audit.profile.chosen')}
+            options={names.map((p) => ({ value: p, label: p }))}
           />
           <SelectField<AuditLevel | ''>
             label={t('activity.audit.level')}

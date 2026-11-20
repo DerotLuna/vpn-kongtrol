@@ -82,10 +82,12 @@ describe('GroupsPage', () => {
       }),
     )
     render(<App />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Connect office' }))
+    // a is up, b and c are not: "connect the rest" (and "disconnect all") both show.
+    await userEvent.click(await screen.findByRole('button', { name: 'Connect the rest of office (2 of 3)' }))
+    expect(screen.getByRole('button', { name: 'Disconnect all of office (1 of 3 connected)' })).toBeInTheDocument()
     expect(await screen.findByText('“office”: could not start c.')).toBeInTheDocument()
     // The member it started stays in progress until the feed shows it up: the group says so.
-    expect(screen.getByRole('button', { name: 'Connecting… office' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: 'Connecting office…' })).toHaveAttribute('aria-busy', 'true')
     expect(screen.getByRole('button', { name: 'Restart now' })).toBeInTheDocument()
   })
 

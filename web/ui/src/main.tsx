@@ -1,4 +1,4 @@
-// Kongtrol UI entry · v0.3.0 · 2026-11-19
+// Kongtrol UI entry · v0.4.0 · 2026-11-19
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 // Self-hosted fonts (assets/brand/fonts, shared with the dashboard and the
@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client'
 import '@brand/fonts/fonts.css'
 import { App } from './App'
 import { startAuth } from './api/auth'
+import { guardAriaStyle } from './lib/ariaStyleGuard'
 import { applyTheme, initialTheme } from './theme/theme'
 import './theme/global.css'
 import './theme/kit.css'
@@ -14,6 +15,8 @@ import './theme/shell.css'
 
 // Set the theme before the first render to avoid a flash.
 applyTheme(initialTheme())
+// React Aria must not inject a <style> the CSP blocks (lib/ariaStyleGuard.ts).
+guardAriaStyle()
 // Take a one-time `#k=` bootstrap code out of the URL before anything else
 // runs (api/auth.ts); requests wait for the session exchange.
 void startAuth()
