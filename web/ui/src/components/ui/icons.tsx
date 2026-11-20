@@ -25,11 +25,12 @@ export const SearchIcon = () => (
   </Icon>
 )
 
-/** Sidebar collapse / expand (a panel with its left column). */
-export const SidebarIcon = () => (
+/** Side menu collapse: an arrow to the left against the menu's edge; the
+ * shell turns it to the right while collapsed (#44). */
+export const CollapseIcon = () => (
   <Icon>
-    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
-    <path d="M9.5 4.5v15" />
+    <path d="M4.5 4.5v15" />
+    <path d="M18.5 12h-10M13 7.5L8.5 12l4.5 4.5" />
   </Icon>
 )
 

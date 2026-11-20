@@ -15,11 +15,9 @@ interface Props {
   session?: string
   windows: TmuxWindow[]
   showStatus?: boolean // security + tunnel counters (landing demo)
-  /** one more window that opens another page (home: `8:guía` → the guide) */
-  link?: { n: number; name: string; href: string }
 }
 
-export default function TmuxBar({ lang, session = 'kongtrol', windows, showStatus = true, link }: Props) {
+export default function TmuxBar({ lang, session = 'kongtrol', windows, showStatus = true }: Props) {
   const [active] = useActiveSection(windows.map(w => w.id), '-40% 0px -55% 0px')
   const [clock, setClock] = useState('')
 
@@ -44,11 +42,6 @@ export default function TmuxBar({ lang, session = 'kongtrol', windows, showStatu
             </a>
           </li>
         ))}
-        {link && (
-          <li>
-            <a href={link.href}>{link.n}:{link.name}</a>
-          </li>
-        )}
       </ul>
       <span className="tmux-right" aria-hidden="true">
         {showStatus && (

@@ -1,4 +1,4 @@
-// Kongtrol UI — Tráfico (/traffic) · v1.0.0 · 2026-11-18
+// Kongtrol UI — Tráfico (/traffic) · v1.1.0 · 2026-11-20
 //
 // Where each destination goes out and how much each VPN carries
 // (docs/dashboard-parity.md §3.1 traffic rows). Three blocks, plain words
@@ -75,9 +75,6 @@ export function TrafficPage({ onCardRender }: TrafficPageProps = {}) {
     <>
       <PageHeader title={t('nav.traffic')} lead={t('page.traffic.lead')} />
       <div className="tr-page">
-        <LookupCard tunnels={list} routes={tunnelRoutes.data} />
-        <RecentCard />
-
         <section className="tr-tunnels" aria-labelledby="tr-tunnels-title" aria-busy={tunnels.isPending || undefined}>
           <h2 id="tr-tunnels-title" className="tr-section-title">
             {t('traffic.tunnels.title')}
@@ -118,6 +115,12 @@ export function TrafficPage({ onCardRender }: TrafficPageProps = {}) {
             <p className="tr-note">{t('traffic.tunnels.off', { names: down.map((tn) => tn.Name).join(', ') })}</p>
           )}
         </section>
+
+        {/* Order of importance: what goes through each VPN now, then the
+            lookup tool, then recent destinations, then the technical routes
+            (folded). */}
+        <LookupCard tunnels={list} routes={tunnelRoutes.data} />
+        <RecentCard />
 
         <SystemRoutes policies={policies.data ?? []} tunnelRoutes={tunnelRoutes.data} />
       </div>

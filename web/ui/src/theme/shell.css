@@ -1,4 +1,4 @@
-/* KONGTROL UI — app shell (header, navigation, page frame) · v0.4.0 · 2026-11-19
+/* KONGTROL UI — app shell (header, navigation, page frame) · v0.5.0 · 2026-11-20
    Navigation by width (ADR-0038): bottom bar < 600px · side menu ≥ 600px,
    collapsible to an icon rail. The header and nav are tonal (surface),
    flat, with 1px hairlines; the active section is the gold selection. */
@@ -118,6 +118,11 @@
 @media (min-width: 600px) {
   .k-app { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); grid-template-areas: 'top top' 'nav main'; }
   .k-app[data-nav='collapsed'] { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
+  /* Collapse / expand slides the column (#44): the icons never move (same
+     padding in both states), the labels fade and the column clips them.
+     Off with reduced motion (global.css). */
+  .k-app { transition: grid-template-columns var(--dur-med) var(--ease-standard); }
+  .k-navcol { overflow: clip; } /* clip, not hidden: keeps the menu sticky */
   .k-bottombar { display: none; }
   /* The column carries the surface and the hairline for the whole page
      height (a long page never shows it ending); the menu inside stays in
@@ -126,17 +131,19 @@
   .k-navcol { display: block; grid-area: nav; min-width: 0; background: var(--surface); border-right: 1px solid var(--border); }
   .k-sidenav {
     display: flex; flex-direction: column; gap: 8px; position: sticky; top: var(--topbar-h);
-    height: calc(100dvh - var(--topbar-h)); overflow-y: auto; overscroll-behavior: contain; padding: 16px 12px;
+    height: calc(100dvh - var(--topbar-h)); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 16px 10px;
   }
   .k-sidenav ul { display: flex; flex-direction: column; gap: 4px; }
-  .k-sidenav .k-nav-item { white-space: nowrap; }
+  /* 11px side padding: a 22px icon sits centred in the 44px rail item and
+     at the same x when expanded */
+  .k-sidenav .k-nav-item { white-space: nowrap; overflow: hidden; padding: 0 11px; }
+  .k-sidenav .k-nav-item__label { transition: opacity var(--dur-fast) var(--ease-standard); }
   .k-nav-toggle { display: flex; margin-top: auto; color: var(--text-muted); }
-  .k-nav-toggle .k-nav-item__icon svg { width: 20px; height: 20px; }
-  .k-app[data-nav='collapsed'] .k-sidenav { padding: 16px 10px; }
-  .k-app[data-nav='collapsed'] .k-sidenav .k-nav-item { justify-content: center; padding: 0; }
-  .k-app[data-nav='collapsed'] .k-nav-item__label {
-    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
-  }
+  .k-nav-toggle .k-nav-item__icon svg { width: 20px; height: 20px; transition: transform var(--dur-med) var(--ease-standard); }
+  /* the arrow points where the menu goes: left to collapse, right to expand */
+  .k-app[data-nav='collapsed'] .k-nav-toggle .k-nav-item__icon svg { transform: rotate(180deg); }
+  /* collapsed: the label stays in the link for screen readers, invisible */
+  .k-app[data-nav='collapsed'] .k-sidenav .k-nav-item__label { opacity: 0; }
   .k-main { padding: 28px 24px 48px; }
   .k-toaster { bottom: 20px; }
 }

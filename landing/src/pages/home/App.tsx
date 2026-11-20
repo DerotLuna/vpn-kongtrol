@@ -2,7 +2,6 @@ import { Suspense, useMemo } from 'react'
 import { useOS } from '../../hooks/useOS'
 import { useLangRouting } from '../../hooks/usePreferences'
 import { Lang } from '../../i18n'
-import { pathFor } from '../../site'
 import LangSuggest from '../../components/ui/LangSuggest'
 import { useKonami } from '../../hooks/useKonami'
 import { useActiveSection } from '../../hooks/useActiveSection'
@@ -102,7 +101,7 @@ export default function App({ lang }: { lang: Lang }) {
         </div>
       </main>
       {footer}
-      <TmuxBar lang={lang} windows={windows} link={{ n: 8, name: lang === 'es' ? 'guía' : 'guide', href: pathFor('guia', lang) }} />
+      <TmuxBar lang={lang} windows={windows} />
       <LangSuggest page="home" suggest={suggest} onDismiss={dismiss} />
     </>
   )

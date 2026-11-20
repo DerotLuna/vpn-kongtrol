@@ -1,4 +1,4 @@
-// Kongtrol UI — app shell · v0.6.0 · 2026-11-19
+// Kongtrol UI — app shell · v0.7.0 · 2026-11-20
 //
 // Layout route for every page (ADR-0038):
 // - Header: logo top-left, aggregate VPN status, "＋ Agregar" (the add
@@ -28,7 +28,7 @@ import { AddSheet } from '../add/AddSheet'
 import { useNavCollapse } from '../../app/navCollapse'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
-import { BookIcon, MoreIcon, PlusIcon, SidebarIcon } from '../ui/icons'
+import { BookIcon, CollapseIcon, MoreIcon, PlusIcon } from '../ui/icons'
 import { Tooltip } from '../ui/Tooltip'
 import { Logo } from '../ui/Logo'
 import { Toaster } from '../ui/Toaster'
@@ -61,7 +61,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
       <Tooltip content={toggleLabel} placement="right" disabled={!collapsed}>
         <button type="button" className="k-nav-item k-nav-toggle" aria-expanded={!collapsed} aria-controls={listId} aria-label={toggleLabel} onClick={onToggle}>
           <span className="k-nav-item__icon">
-            <SidebarIcon />
+            <CollapseIcon />
           </span>
           <span className="k-nav-item__label" aria-hidden="true">
             {toggleLabel}

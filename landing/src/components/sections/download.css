@@ -155,7 +155,7 @@
 
 /* beta: a state worth knowing, not an error (Four States Rule: caution) */
 .callout.dl-beta {
-  margin-top: 32px;
+  margin-top: 32px; max-width: none; /* as wide as the cards around it */
   border-color: color-mix(in srgb, var(--caution) 45%, transparent);
   background: var(--caution-soft);
 }
