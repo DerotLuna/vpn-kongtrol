@@ -2,7 +2,7 @@ import { Fragment } from 'react'
 import { OS, OS_LABELS } from '../../hooks/useOS'
 import { useDetectedOS, useIsMobile } from '../../hooks/useVisitor'
 import { Lang } from '../../i18n'
-import { GITHUB_RELEASES, GITHUB_REPO, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset, WINDOWS_INSTALLER_FILE, WINDOWS_INSTALLER_URL } from '../../links'
+import { GITHUB_RELEASES, GITHUB_REPO, MACOS_APP_FILE, MACOS_APP_URL, RELEASE_ASSETS, ReleaseAssetKey, releaseAsset, WINDOWS_INSTALLER_FILE, WINDOWS_INSTALLER_URL } from '../../links'
 import CodeBlock from '../ui/CodeBlock'
 import DevInstall from './DevInstall'
 import { DOWNLOAD_SECTION_ID, DownloadIcon, DownloadNote, OTHER_WAYS_ID, PRIMARY_COPY } from '../ui/downloadCta'
@@ -26,37 +26,41 @@ const asset = (key: ReleaseAssetKey) => ({ file: RELEASE_ASSETS[key], href: rele
 // Every downloadable file, once, per OS (filenames come from links.ts). The
 // featured card shows the best option for the detected OS (FEATURED); every
 // other file appears exactly once in "Otras formas de instalar" (2026-11-19:
-// no file is listed twice). Windows on ARM has no installer yet, so its best
-// option is the standalone terminal program, listed once under Windows.
+// no file is listed twice). The app (tray + panel + command) comes first on
+// every system; the bare binaries are "only the command" (ADR-0077). Windows
+// on ARM has no installer yet: its option is the command, listed once.
 const FILES: Record<OS, FileItem[]> = {
   windows: [
     { file: WINDOWS_INSTALLER_FILE, href: WINDOWS_INSTALLER_URL, name: { es: 'Instalador · 64-bit', en: 'Installer · 64-bit' }, tag: { es: '64-bit', en: '64-bit' } },
-    { ...asset('windows-amd64'), name: { es: '64-bit · sin instalador', en: '64-bit · no installer' }, tag: { es: '64-bit', en: '64-bit' } },
-    { ...asset('windows-arm64'), name: { es: 'ARM 64-bit · sin instalador', en: 'ARM 64-bit · no installer' }, tag: { es: 'ARM', en: 'ARM' } },
+    { ...asset('windows-amd64'), name: { es: 'Solo el comando · 64-bit', en: 'Command only · 64-bit' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('windows-arm64'), name: { es: 'Solo el comando · ARM 64-bit', en: 'Command only · ARM 64-bit' }, tag: { es: 'ARM', en: 'ARM' } },
   ],
   macos: [
-    { ...asset('macos-arm64'), name: { es: 'Apple Silicon (M1 o posterior)', en: 'Apple Silicon (M1 or later)' }, tag: { es: 'Apple Silicon', en: 'Apple Silicon' } },
-    { ...asset('macos-amd64'), name: { es: 'Procesador Intel', en: 'Intel processor' }, tag: { es: 'Intel', en: 'Intel' } },
+    { file: MACOS_APP_FILE, href: MACOS_APP_URL, name: { es: 'App · Apple Silicon e Intel', en: 'App · Apple Silicon and Intel' }, tag: { es: 'App', en: 'App' } },
+    { ...asset('macos-arm64'), name: { es: 'Solo el comando · Apple Silicon (M1 o posterior)', en: 'Command only · Apple Silicon (M1 or later)' }, tag: { es: 'Apple Silicon', en: 'Apple Silicon' } },
+    { ...asset('macos-amd64'), name: { es: 'Solo el comando · procesador Intel', en: 'Command only · Intel processor' }, tag: { es: 'Intel', en: 'Intel' } },
   ],
   linux: [
-    { ...asset('linux-amd64'), name: { es: '64-bit (x86_64)', en: '64-bit (x86_64)' }, tag: { es: '64-bit', en: '64-bit' } },
-    { ...asset('linux-arm64'), name: { es: 'ARM 64-bit (p. ej. Raspberry Pi 4)', en: 'ARM 64-bit (e.g. Raspberry Pi 4)' }, tag: { es: 'ARM', en: 'ARM' } },
+    { ...asset('linux-amd64'), name: { es: 'Solo el comando · 64-bit (x86_64)', en: 'Command only · 64-bit (x86_64)' }, tag: { es: '64-bit', en: '64-bit' } },
+    { ...asset('linux-arm64'), name: { es: 'Solo el comando · ARM 64-bit (p. ej. Raspberry Pi 4)', en: 'Command only · ARM 64-bit (e.g. Raspberry Pi 4)' }, tag: { es: 'ARM', en: 'ARM' } },
   ],
 }
 
-// The featured files per detected OS: the installer on Windows; both Mac
-// files (the browser cannot tell Apple Silicon from Intel); 64-bit on Linux.
+// The featured file per detected OS: the app. Windows: the installer; macOS:
+// the universal app (no chip to choose); Linux: no single file fits every
+// distribution, so the card shows the one-line install (app + command) and
+// points to the .deb/.rpm packages, whose names carry the version.
 const FEATURED: Record<OS, string[]> = {
   windows: [WINDOWS_INSTALLER_FILE],
-  macos: [RELEASE_ASSETS['macos-arm64'], RELEASE_ASSETS['macos-amd64']],
-  linux: [RELEASE_ASSETS['linux-amd64']],
+  macos: [MACOS_APP_FILE],
+  linux: [],
 }
 
 // Featured-card title per OS (macOS covers both chips: the browser can't tell them apart).
 const FEATURED_TITLE: Record<OS, Record<Lang, string>> = {
   windows: { es: 'Windows 10/11 · 64-bit', en: 'Windows 10/11 · 64-bit' },
   macos: { es: 'macOS · Apple Silicon o Intel', en: 'macOS · Apple Silicon or Intel' },
-  linux: { es: 'Linux · 64-bit', en: 'Linux · 64-bit' },
+  linux: { es: 'Linux', en: 'Linux' },
 }
 
 interface Props {
@@ -92,12 +96,19 @@ export default function Download({ lang }: Props) {
       download: 'Descargar',
       recommended: 'Tu equipo',
       macWhichShort: '¿Cuál? Menú Apple → Acerca de este Mac.',
-      macWhich: '¿Apple Silicon o Intel? Tu navegador no puede saberlo. En tu Mac abre el menú Apple → Acerca de este Mac: si dice «Chip», es Apple Silicon; si dice «Procesador» Intel, es Intel.',
       allReleases: 'Ver todos los releases en GitHub',
-      keepNote: <>Si desinstalas, tus datos se quedan (salvo que pidas borrarlos). El aviso de versión nueva es
+      keepNote: <>Si desinstalas, tus datos y contraseñas se quedan en tu equipo (en ningún otro lugar), salvo que pidas borrarlos. El aviso de versión nueva es
         opcional y viene apagado. Ver cómo <a href={`${pathFor('guia', 'es')}#update`}>actualizar</a> y{' '}
         <a href={`${pathFor('guia', 'es')}#uninstall`}>desinstalar</a>.</>,
       otherTitle: 'Otras formas de instalar',
+      whatTitle: '¿Qué descargo?',
+      what: [
+        ['La app', 'El ícono junto al reloj, el panel y el comando kongtrol. Es lo que necesita casi todo el mundo: el botón de arriba.'],
+        ['Solo el comando', 'Para servidores y scripts, sin ícono ni panel: los archivos «Solo el comando» o el script: en Windows antes escribe $env:KONGTROL_CLI_ONLY=1; en macOS y Linux termina la línea en | sh -s -- --cli-only.'],
+        ['El ícono necesita el comando', 'La app siempre lo trae; el comando funciona solo. Tus datos se quedan en tu equipo en los dos casos.'],
+      ] as [string, string][],
+      linuxPackages: 'También hay paquetes .deb (Ubuntu, Debian) y .rpm (Fedora) con la app y el comando, en',
+      linuxPackagesLink: 'la página del release',
       allTitle: 'Todas las descargas',
       scriptTitle: 'Script de instalación',
       terminalText: 'Una línea en la terminal: detecta tu sistema, verifica el SHA256 y lo deja en el PATH.',
@@ -152,12 +163,19 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
       download: 'Download',
       recommended: 'Your computer',
       macWhichShort: 'Which one? Apple menu → About This Mac.',
-      macWhich: "Apple Silicon or Intel? Your browser can't tell. On your Mac open the Apple menu → About This Mac: if it says \"Chip\", it's Apple Silicon; if it says \"Processor\" with Intel, it's Intel.",
       allReleases: 'View all releases on GitHub',
-      keepNote: <>If you uninstall, your data stays (unless you ask to delete it). The new version notice is
+      keepNote: <>If you uninstall, your data and passwords stay on your computer (nowhere else), unless you ask to delete them. The new version notice is
         optional and off by default. See how to <a href={`${pathFor('guia', 'en')}#update`}>update</a> and{' '}
         <a href={`${pathFor('guia', 'en')}#uninstall`}>uninstall</a>.</>,
       otherTitle: 'Other ways to install',
+      whatTitle: 'Which file do I download?',
+      what: [
+        ['The app', 'The icon next to the clock, the panel and the kongtrol command. It is what almost everyone needs: the button above.'],
+        ['Command only', 'For servers and scripts, no icon or panel: the "Command only" files or the script: on Windows type $env:KONGTROL_CLI_ONLY=1 first; on macOS and Linux end the line with | sh -s -- --cli-only.'],
+        ['The icon needs the command', 'The app always includes it; the command works alone. Your data stays on your computer either way.'],
+      ] as [string, string][],
+      linuxPackages: 'There are also .deb (Ubuntu, Debian) and .rpm (Fedora) packages with the app and the command, on',
+      linuxPackagesLink: 'the release page',
       allTitle: 'All downloads',
       scriptTitle: 'Install script',
       terminalText: 'One line in the terminal: it detects your system, verifies the SHA256 and puts it on your PATH.',
@@ -241,13 +259,21 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
                     <div key={v.file} className="dl-featured-item">
                       <a href={v.href} className="btn-download dl-btn-lg" download>
                         <DownloadIcon size={18} />
-                        {featured === 'macos' ? `${copy.download} · ${v.tag[lang]}` : PRIMARY_COPY[lang].forOS[featured]}
+                        {PRIMARY_COPY[lang].forOS[featured]}
                       </a>
                       <FileName file={v.file} />
                     </div>
                   ))}
                 </div>
-                {featured === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
+                {featured === 'linux' && (
+                  <>
+                    <DevInstall lang={lang} />
+                    <p className="dl-mac-which">
+                      {copy.linuxPackages}{' '}
+                      <a href={GITHUB_RELEASES} target="_blank" rel="noreferrer">{copy.linuxPackagesLink}</a>.
+                    </p>
+                  </>
+                )}
                 <DownloadNote lang={lang} os={featured} page="home" className="dl-featured-note" />
               </div>
             </div>
@@ -263,6 +289,19 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
 
         {/* feature:distribution — every other file and the one-line script,
             each exactly once */}
+        {/* ADR-0077: which file is for whom, in one glance */}
+        <div className="dl-what">
+          <h3 className="dl-others-title">{copy.whatTitle}</h3>
+          <dl className="dl-what-list">
+            {copy.what.map(([term, desc]) => (
+              <div key={term}>
+                <dt>{term}</dt>
+                <dd>{desc}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+
         <div id={OTHER_WAYS_ID} className="dl-other">
           <h3 className="dl-others-title">{featured ? copy.otherTitle : copy.allTitle}</h3>
           <div className="dl-ways">

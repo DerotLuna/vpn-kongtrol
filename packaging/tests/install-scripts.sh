@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Version 1.2.0 · 2026-11-20 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md
+# Version 1.3.0 · 2026-11-20 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0075-install-scripts-install-cli-and-tray.md
 #
 # Offline regression checks for install.sh and install.ps1 (CI packaging job):
 #   1. A folder read back from ~/.kongtrol/install.manifest is reused when it
@@ -12,6 +12,11 @@
 #      before the installed copy is touched, never says "updated"; an
 #      installed binary that cannot say its version falls back to the
 #      manifest's version= line, so an older download is still a downgrade.
+#   4. CLI + tray by default, only the CLI with --cli-only / -CliOnly or with
+#      no desktop session (Linux) / on Server Core (Windows), an update keeps
+#      the choice, and install.ps1 refuses a second copy next to the Windows
+#      installer. The install.ps1 install/update cases run the fake programs,
+#      so they run only on PowerShell for Linux/macOS (CI), never on Windows.
 # curl serves a fake release from a local folder (or fails); nothing is
 # fetched, and nothing is written outside a temp folder.
 #
@@ -67,7 +72,7 @@ new_home() {
 # run_sh HOME [VAR=value…] SCRIPT: install.sh offline, quiet extras off.
 run_sh() {
   local h="$1"; shift
-  env HOME="$h" XDG_DATA_HOME="$h/share" XDG_CONFIG_HOME="$h/config" PATH="$t/stub:$PATH" \
+  env -u DISPLAY -u WAYLAND_DISPLAY -u XDG_CURRENT_DESKTOP HOME="$h" XDG_DATA_HOME="$h/share" XDG_CONFIG_HOME="$h/config" PATH="$t/stub:$PATH" \
     KONGTROL_SKIP_SIGNATURE=1 KONGTROL_NO_LAUNCH=1 KONGTROL_NO_AUTOSTART=1 KT_LOG="$h/calls.log" \
     "$@" 2>&1 </dev/null || true
 }
@@ -154,6 +159,55 @@ else
   bad "install.sh lost the previous version: $out / $out2"
 fi
 
+# 4. CLI + tray or only the CLI (ADR-0075). run_sh starts with no desktop
+# session; XDG_CURRENT_DESKTOP=GNOME stands for one.
+# 4a. Fresh install with no desktop session: only the CLI, said in one line,
+# not remembered as a choice.
+mkdir -p "$t/h5/.kongtrol" "$t/c5"
+out="$(run_sh "$t/h5" env KT_FIX="$t/fix" KONGTROL_INSTALL_DIR="$t/c5" sh "$root/install.sh")"
+if grep -q "No desktop session found" <<<"$out" && [ -x "$t/c5/kongtrol" ] && [ ! -e "$t/c5/kongtrol-tray" ] \
+  && grep -q "^components=auto-cli\$" "$t/h5/.kongtrol/install.manifest" && grep -q "Installed: only the command line" <<<"$out" \
+  && grep -q -- "--with-tray" <<<"$out"; then
+  pass "install.sh installs only the CLI when there is no desktop session"
+else
+  bad "install.sh headless install: $out"
+fi
+# 4b. The same home on a desktop: the tray is added (auto is not a choice).
+out="$(run_sh "$t/h5" env XDG_CURRENT_DESKTOP=GNOME KT_FIX="$t/fix" KONGTROL_INSTALL_DIR="$t/c5" sh "$root/install.sh")"
+if [ -x "$t/c5/kongtrol-tray" ] && grep -q "^components=cli,tray\$" "$t/h5/.kongtrol/install.manifest" \
+  && grep -q "^file=$t/c5/kongtrol-tray\$" "$t/h5/.kongtrol/install.manifest" && [ -f "$t/h5/share/applications/kongtrol.desktop" ] \
+  && grep -q "Installed: the Kongtrol app (tray icon) and the command line" <<<"$out"; then
+  pass "install.sh installs CLI + tray on a desktop"
+else
+  bad "install.sh desktop install: $out"
+fi
+# 4c. Updating over SSH (no desktop session) keeps the tray installed before.
+out="$(run_sh "$t/h5" env KT_FIX="$t/fix" KONGTROL_INSTALL_DIR="$t/c5" sh "$root/install.sh")"
+if [ -x "$t/c5/kongtrol-tray" ] && ! grep -q "No desktop session found" <<<"$out" && grep -q "^components=cli,tray\$" "$t/h5/.kongtrol/install.manifest"; then
+  pass "install.sh update without a desktop session keeps the tray"
+else
+  bad "install.sh dropped the tray on a headless update: $out"
+fi
+# 4d. --cli-only removes the tray parts installed earlier and is remembered…
+out="$(run_sh "$t/h5" env XDG_CURRENT_DESKTOP=GNOME KT_FIX="$t/fix" KONGTROL_INSTALL_DIR="$t/c5" sh "$root/install.sh" --cli-only)"
+out2="$(run_sh "$t/h5" env XDG_CURRENT_DESKTOP=GNOME KT_FIX="$t/fix" KONGTROL_INSTALL_DIR="$t/c5" sh "$root/install.sh")"
+if [ ! -e "$t/c5/kongtrol-tray" ] && [ ! -e "$t/h5/share/applications/kongtrol.desktop" ] && grep -q "Removed the Kongtrol tray app" <<<"$out" \
+  && grep -q "^components=cli\$" "$t/h5/.kongtrol/install.manifest" && [ ! -e "$t/c5/kongtrol-tray" ] \
+  && grep -q "Installed: only the command line" <<<"$out2"; then
+  pass "install.sh --cli-only removes the tray and an update keeps the choice"
+else
+  bad "install.sh --cli-only choice: $out / $out2"
+fi
+# 4e. … until KONGTROL_CLI_ONLY=0 (or --with-tray) adds the tray back.
+out="$(run_sh "$t/h5" env KONGTROL_CLI_ONLY=0 KT_FIX="$t/fix" KONGTROL_INSTALL_DIR="$t/c5" sh "$root/install.sh")"
+if [ -x "$t/c5/kongtrol-tray" ] && grep -q "^components=cli,tray\$" "$t/h5/.kongtrol/install.manifest"; then
+  pass "install.sh KONGTROL_CLI_ONLY=0 adds the tray back"
+else
+  bad "install.sh did not add the tray back: $out"
+fi
+out="$(run_sh "$t/h5" sh "$root/install.sh" --cli-only --with-tray)"
+if grep -q "not both" <<<"$out"; then pass "install.sh refuses --cli-only with --with-tray"; else bad "install.sh took both flags: $out"; fi
+
 # 2. Truncated download.
 head -c "$(( $(wc -c <"$root/install.sh") * 6 / 10 ))" "$root/install.sh" > "$t/cut.sh"
 out="$(run_sh "$t/h1" sh "$t/cut.sh")"
@@ -164,11 +218,27 @@ if command -v pwsh >/dev/null 2>&1; then
   w="$t"; r="$root"
   if command -v cygpath >/dev/null 2>&1; then r="$(cygpath -w "$root")"; w="$(cygpath -w "$t")"; fi
   mkdir -p "$t/lad" "$t/pw/.kongtrol"
+  # Downloads and the registry are stubbed (the real HKCU may hold a
+  # Kongtrol from the Windows installer): KT_FIX = folder serving the fake
+  # release (unset: offline), KT_INNO = the Windows installer's uninstall
+  # key exists, KT_CORE = Server Core.
+  # shellcheck disable=SC2016 # PowerShell code, expanded by pwsh
+  ps_stubs='function Invoke-WebRequest { param($Uri, $OutFile, [switch]$UseBasicParsing) if (-not $env:KT_FIX) { throw "offline" }; Copy-Item -LiteralPath (Join-Path $env:KT_FIX (Split-Path -Leaf $Uri)) -Destination $OutFile }
+function Get-ItemProperty { [CmdletBinding()] param([string]$LiteralPath, [string]$Path)
+  if ($env:KT_INNO -and $LiteralPath -like "*_is1") { return [pscustomobject]@{ DisplayVersion = "0.6.0"; InstallLocation = "C:\Users\u\AppData\Local\Programs\Kongtrol\" } }
+  if ($env:KT_CORE -and $LiteralPath -like "*ServerLevels") { return [pscustomobject]@{ ServerCore = 1 } } }'
+  # ps_go HOME [VAR=value…]: install.ps1 with the stubs.
+  ps_go() {
+    local h="$1"; shift
+    mkdir -p "$t/pwtmp"
+    env HOME="$h" USERPROFILE="$h" LOCALAPPDATA="$w/lad" TEMP="$w/pwtmp" PROCESSOR_ARCHITECTURE=AMD64 \
+      KONGTROL_SKIP_SIGNATURE=1 KONGTROL_NO_LAUNCH=1 ROOT="$r" PS_STUBS="$ps_stubs" "$@" \
+      pwsh -NoProfile -Command '. ([scriptblock]::Create($env:PS_STUBS)); & (Join-Path $env:ROOT "install.ps1")' 2>&1 || true
+  }
   # ps_run DIR: install.ps1 with a manifest naming DIR; downloads fail.
   ps_run() {
     printf 'file=%s/kongtrol.exe\n' "$1" > "$t/pw/.kongtrol/install.manifest"
-    env HOME="$w/pw" USERPROFILE="$w/pw" LOCALAPPDATA="$w/lad" PROCESSOR_ARCHITECTURE=AMD64 \
-      pwsh -NoProfile -Command "function Invoke-WebRequest { throw 'offline' }; & '$r/install.ps1'" 2>&1 || true
+    ps_go "$w/pw"
   }
   out="$(ps_run "$w/custom")"
   if grep -q "not reused" <<<"$out"; then bad "install.ps1 dropped a writable custom folder: $out"; else pass "install.ps1 reuses a folder you can write"; fi
@@ -177,21 +247,80 @@ if command -v pwsh >/dev/null 2>&1; then
   # 3. A downloaded kongtrol.exe that cannot start (here: not a program at
   # all; a Defender block fails the same way, with Windows error 225): stop,
   # the installed copy is untouched, nothing says "updated".
-  mkdir -p "$t/fixps" "$t/custom5" "$t/pwtmp"
+  mkdir -p "$t/fixps" "$t/custom5"
   printf 'not a program' > "$t/fixps/kongtrol-windows-amd64.exe"
   printf '%s  kongtrol-windows-amd64.exe\n' "$(sha256sum "$t/fixps/kongtrol-windows-amd64.exe" | awk '{print $1}')" > "$t/fixps/checksums.txt"
   printf 'old' > "$t/custom5/kongtrol.exe"
   printf 'file=%s/kongtrol.exe\n' "$w/custom5" > "$t/pw/.kongtrol/install.manifest"
-  # shellcheck disable=SC2016 # PowerShell code, expanded by pwsh
-  out="$(env HOME="$w/pw" USERPROFILE="$w/pw" LOCALAPPDATA="$w/lad" TEMP="$w/pwtmp" PROCESSOR_ARCHITECTURE=AMD64 \
-    KONGTROL_SKIP_SIGNATURE=1 KT_FIX="$w/fixps" ROOT="$r" \
-    pwsh -NoProfile -Command 'function Invoke-WebRequest { param($Uri, $OutFile, [switch]$UseBasicParsing) Copy-Item -LiteralPath (Join-Path $env:KT_FIX (Split-Path -Leaf $Uri)) -Destination $OutFile }; & (Join-Path $env:ROOT "install.ps1")' 2>&1 || true)"
+  out="$(ps_go "$w/pw" KT_FIX="$w/fixps" KONGTROL_CLI_ONLY=1)"
   if grep -q "did not let the Kongtrol it just downloaded\|blocked the Kongtrol it just downloaded" <<<"$out" && grep -q "nothing was installed: your current Kongtrol was not changed" <<<"$out" \
     && grep -q "could not read\|What to do:" <<<"$out" && ! grep -qi "updated\|Updating" <<<"$out" \
     && [ "$(cat "$t/custom5/kongtrol.exe")" = old ] && [ ! -e "$t/custom5/kongtrol.exe.old" ]; then
     pass "install.ps1 stops before replacing when the new kongtrol.exe cannot start"
   else
     bad "install.ps1 went on with a kongtrol.exe that cannot start: $out"
+  fi
+  # 4. CLI + tray or only the CLI (ADR-0075).
+  # 4a. Installed with the Windows installer: nothing installed, what to do.
+  out="$(ps_go "$w/pw" KT_INNO=1)"
+  if grep -q "already installed with the Windows installer (Kongtrol-Setup)" <<<"$out" && grep -q "Kongtrol-Setup-windows-amd64.exe" <<<"$out" \
+    && ! grep -q "Downloading" <<<"$out"; then
+    pass "install.ps1 refuses a second copy next to the Windows installer"
+  else
+    bad "install.ps1 next to the Windows installer: $out"
+  fi
+  # 4b. Server Core (no desktop): only the CLI, said in one line.
+  out="$(ps_go "$w/pw" KT_CORE=1)"
+  if grep -q "No desktop on this Windows (Server Core)" <<<"$out" && grep -q "Downloading kongtrol-windows-amd64.exe" <<<"$out"; then
+    pass "install.ps1 picks only the CLI on Server Core"
+  else
+    bad "install.ps1 on Server Core: $out"
+  fi
+  # Success paths run the fake programs, so only where the "exe" can be a
+  # script and nothing outside the temp folder is written (PowerShell on
+  # Linux/macOS, as in CI): on Windows they would touch the real user PATH.
+  if [ "$(pwsh -NoProfile -Command '$IsWindows')" = "True" ]; then
+    skip "install.ps1 install/update cases (they need PowerShell on Linux or macOS; CI runs them)"
+  elif ! command -v zip >/dev/null 2>&1; then
+    skip "install.ps1 install/update cases (zip not found)"
+  else
+    # A fake release 0.9.0 (newer than 0.7.0-rc.3, so the tray is started
+    # with --version): the zip with both programs and the plain CLI .exe.
+    mkdir -p "$t/relps" "$t/fixok"
+    # shellcheck disable=SC2016 # the stub's own variables
+    printf '#!/bin/sh\necho "kongtrol $*" >> "$KT_LOG"\n[ "${1:-}" = version ] && echo 0.9.0\nexit 0\n' > "$t/relps/kongtrol.exe"
+    # shellcheck disable=SC2016
+    printf '#!/bin/sh\necho "tray $*" >> "$KT_LOG"\n[ "${1:-}" = --version ] && echo 0.9.0\nexit 0\n' > "$t/relps/kongtrol-tray.exe"
+    chmod +x "$t/relps/kongtrol.exe" "$t/relps/kongtrol-tray.exe"
+    (cd "$t/relps" && zip -q "$t/fixok/kongtrol_windows_amd64.zip" kongtrol.exe kongtrol-tray.exe)
+    cp "$t/relps/kongtrol.exe" "$t/fixok/kongtrol-windows-amd64.exe"
+    (cd "$t/fixok" && sha256sum kongtrol_windows_amd64.zip kongtrol-windows-amd64.exe > checksums.txt)
+    mkdir -p "$t/p6/.kongtrol"
+    mf="$t/p6/.kongtrol/install.manifest"
+    # 4c. Default: CLI + tray from the zip, the tray probed with --version.
+    out="$(ps_go "$w/p6" KT_FIX="$w/fixok" KT_LOG="$w/p6/calls.log")"
+    if [ -x "$t/lad/kongtrol/bin/kongtrol.exe" ] && [ -x "$t/lad/kongtrol/bin/kongtrol-tray.exe" ] && grep -q "^components=cli,tray" "$mf" \
+      && grep -q "kongtrol-tray.exe" "$mf" && grep -q "^tray --version" "$t/p6/calls.log" \
+      && grep -q "Installed: the Kongtrol app (tray icon) and the command line" <<<"$out"; then
+      pass "install.ps1 installs CLI + tray by default"
+    else
+      bad "install.ps1 default install: $out"
+    fi
+    # 4d. -CliOnly: only the CLI (plain .exe asset); the earlier tray goes.
+    out="$(ps_go "$w/p6" KT_FIX="$w/fixok" KT_LOG="$w/p6/calls.log" KONGTROL_CLI_ONLY=1)"
+    if grep -q "Downloading kongtrol-windows-amd64.exe" <<<"$out" && [ ! -e "$t/lad/kongtrol/bin/kongtrol-tray.exe" ] \
+      && grep -q "^components=cli" "$mf" && ! grep -q "kongtrol-tray.exe" "$mf" && grep -q "Installed: only the command line" <<<"$out"; then
+      pass "install.ps1 -CliOnly installs only the CLI"
+    else
+      bad "install.ps1 -CliOnly: $out"
+    fi
+    # 4e. Updating with no flag keeps the CLI-only choice.
+    out="$(ps_go "$w/p6" KT_FIX="$w/fixok" KT_LOG="$w/p6/calls.log")"
+    if grep -q "Downloading kongtrol-windows-amd64.exe" <<<"$out" && [ ! -e "$t/lad/kongtrol/bin/kongtrol-tray.exe" ] && grep -q "^components=cli" "$mf"; then
+      pass "install.ps1 update keeps the CLI-only choice"
+    else
+      bad "install.ps1 update lost the CLI-only choice: $out"
+    fi
   fi
   # shellcheck disable=SC2016 # PowerShell code, expanded by pwsh
   out="$(env ROOT="$r" pwsh -NoProfile -Command '$s = Get-Content -Raw (Join-Path $env:ROOT "install.ps1"); $e = $null; $null = [System.Management.Automation.Language.Parser]::ParseInput($s.Substring(0, [int]($s.Length * 0.6)), [ref]$null, [ref]$e); $e.Count')"

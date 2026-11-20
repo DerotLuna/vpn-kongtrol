@@ -1,6 +1,6 @@
 import { OS } from '../../hooks/useOS'
 import { Lang } from '../../i18n'
-import { WINDOWS_INSTALLER_URL } from '../../links'
+import { MACOS_APP_URL, WINDOWS_INSTALLER_URL } from '../../links'
 import { PageId, pathFor } from '../../site'
 
 // Shared by every "download" entry point (hero, header, Para todos, the
@@ -83,8 +83,8 @@ export const PRIMARY_COPY: Record<Lang, {
     forOS: { windows: 'Descargar para Windows', macos: 'Descargar para Mac', linux: 'Descargar para Linux' },
     note: {
       windows: 'Instalador · se actualiza sin perder nada',
-      macos: 'Programa de terminal · un solo archivo',
-      linux: 'Programa de terminal · un solo archivo',
+      macos: 'La app (ícono + panel + comando) · Apple Silicon e Intel',
+      linux: 'La app y el comando · se instala con una línea',
     },
     noteGeneric: 'Windows, macOS y Linux · gratis, sin cuenta',
     otherWays: '¿Usas la terminal? Otras formas de instalar',
@@ -95,8 +95,8 @@ export const PRIMARY_COPY: Record<Lang, {
     forOS: { windows: 'Download for Windows', macos: 'Download for Mac', linux: 'Download for Linux' },
     note: {
       windows: 'Installer · updates without losing anything',
-      macos: 'Terminal program · a single file',
-      linux: 'Terminal program · a single file',
+      macos: 'The app (icon + panel + command) · Apple Silicon and Intel',
+      linux: 'The app and the command · installs with one line',
     },
     noteGeneric: 'Windows, macOS and Linux · free, no account',
     otherWays: 'Use the terminal? Other ways to install',
@@ -104,9 +104,11 @@ export const PRIMARY_COPY: Record<Lang, {
   },
 }
 
-/** Where the primary button goes: the installer on Windows, else the download section. */
+/** Where the primary button goes: the app's file on Windows and macOS, else the download section (ADR-0077). */
 export function primaryDownloadHref(os: OS | null, page: PageId, lang: Lang): string {
-  return os === 'windows' ? WINDOWS_INSTALLER_URL : downloadHref(page, lang)
+  if (os === 'windows') return WINDOWS_INSTALLER_URL
+  if (os === 'macos') return MACOS_APP_URL
+  return downloadHref(page, lang)
 }
 
 export function otherWaysHref(page: PageId, lang: Lang): string {
@@ -127,7 +129,7 @@ export function DownloadNote({ lang, os, page, className = '' }: { lang: Lang; o
 /** Button + note: the footer's call to action (the hero styles its own button). */
 export function PrimaryDownload({ lang, os, page }: { lang: Lang; os: OS | null; page: PageId }) {
   const t = PRIMARY_COPY[lang]
-  const direct = os === 'windows'
+  const direct = os === 'windows' || os === 'macos'
   return (
     <div className="pd">
       <a href={primaryDownloadHref(os, page, lang)} className="btn-download pd-btn" download={direct ? '' : undefined}>

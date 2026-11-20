@@ -175,7 +175,11 @@ function Charts({ series, name }: { series: TrafficSeries; name: string }) {
         <div className="tr-chart tr-chart--empty">
           <span className="tr-chart__title">{t('traffic.tunnel.latency')}</span>
           <span className="tr-chart__now">{lat.length === 1 ? ms(latMs[0]!) : '—'}</span>
-          <p className="muted small">{t('traffic.tunnel.noLatency')}</p>
+          {/* still measuring: a loader, with the words for screen readers */}
+          <span className="tr-chart__wait" role="status">
+            <span className="k-spinner" aria-hidden="true" />
+            <span className="visually-hidden">{t('traffic.tunnel.noLatency')}</span>
+          </span>
         </div>
       )}
     </div>

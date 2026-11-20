@@ -1,4 +1,6 @@
-// Terms & conditions — version 1.5.0 · 2026-11-19.
+// Terms & conditions — version 1.5.1 · 2026-11-20.
+// 1.5.1: the privacy section names both optional lookups (public IP and new version notice, both off
+//   by default) and says the configuration and passwords stay only on this computer (ADR-0076).
 // 1.5.0: plain-language summary in points and shorter sentences (legal meaning unchanged: Apache-2.0
 //   "AS IS" and sections 7-8 kept verbatim in substance). "Unsigned binaries" now says what IS
 //   signed: from v0.6.0 checksums.txt carries a keyless Sigstore signature and every file a GitHub
@@ -18,8 +20,8 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.5.0'
-const UPDATED = '2026-11-19'
+const VERSION = '1.5.1'
+const UPDATED = '2026-11-20'
 const issues = <a href={`${GITHUB_REPO}/issues`} target="_blank" rel="noreferrer">github.com/DerotLuna/vpn-kongtrol/issues</a>
 const license = <a href={`${GITHUB_REPO}/blob/main/LICENSE`} target="_blank" rel="noreferrer">Apache 2.0</a>
 const verify = (text: string) => <a href={`${GITHUB_REPO}/blob/main/docs/SECURITY.md#verifying-releases`} target="_blank" rel="noreferrer">{text}</a>
@@ -95,9 +97,9 @@ const es: LegalDocContent = {
     },
     {
       id: 'privacidad', num: '6', label: 'Privacidad', tmux: 'privacidad', title: 'Privacidad',
-      body: [<>Kongtrol no envía telemetría ni analíticas. Tu configuración y tus contraseñas se quedan en tu equipo.
-        Sí hace algunas conexiones propias, como comprobar que tu servidor VPN responde. Consultar tu IP pública es
-        opcional y viene apagado. El detalle completo (qué sale de tu equipo, hacia quién y cómo apagarlo) está en
+      body: [<>Kongtrol no envía telemetría ni analíticas. Tu configuración y tus contraseñas se quedan solo en tu equipo.
+        Sí hace algunas conexiones propias, como comprobar que tu servidor VPN responde. Consultar tu IP pública y el
+        aviso de versión nueva son opcionales y vienen apagados. El detalle completo (qué sale de tu equipo, hacia quién y cómo apagarlo) está en
         la <a href={pathFor('privacidad', 'es')}>política de privacidad</a>.</>],
     },
     {
@@ -177,9 +179,9 @@ const en: LegalDocContent = {
     },
     {
       id: 'privacidad', num: '6', label: 'Privacy', tmux: 'privacy', title: 'Privacy',
-      body: [<>Kongtrol sends no telemetry and no analytics. Your configuration and passwords stay on your computer.
+      body: [<>Kongtrol sends no telemetry and no analytics. Your configuration and passwords stay only on your computer.
         It does make a few connections of its own, such as checking that your VPN server answers. Looking up your
-        public IP is optional and off by default. The full detail (what leaves your computer, to whom, and how to
+        public IP and the new version notice are optional and off by default. The full detail (what leaves your computer, to whom, and how to
         turn it off) is in the <a href={pathFor('privacidad', 'en')}>privacy policy</a>.</>],
     },
     {

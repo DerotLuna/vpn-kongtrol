@@ -134,6 +134,7 @@ export default function Hero({ os, lang }: Props) {
       hint: 'escribe "help" y presiona Enter ↵',
       osHint: { windows: 'para Windows', macos: 'para Mac', linux: 'para Linux' } as Record<OS, string>,
       osHintGeneric: 'para tu equipo',
+      facts: ['Gratis', 'Código abierto', 'Sin cuenta', 'Tus datos no salen de tu equipo'],
     }
     : {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
@@ -149,6 +150,7 @@ export default function Hero({ os, lang }: Props) {
       hint: 'type "help" and press Enter ↵',
       osHint: { windows: 'for Windows', macos: 'for Mac', linux: 'for Linux' } as Record<OS, string>,
       osHintGeneric: 'for your OS',
+      facts: ['Free', 'Open source', 'No account', 'Your data never leaves your computer'],
     }
 
   const runCommand = (raw: string): ShellEntry[] => {
@@ -306,6 +308,10 @@ export default function Hero({ os, lang }: Props) {
                   <GitHubIcon />{cta.github}
                 </a>
                 <DownloadNote lang={lang} os={detectedOS} page="home" className="th-note" />
+                {/* what a visitor wants to know before downloading (ADR-0079) */}
+                <ul className="th-facts">
+                  {copy.facts.map(f => <li key={f}>{f}</li>)}
+                </ul>
               </div>
               <SendToComputer lang={lang} className="th-stc th-ctas-mobile">
                 <a href={GITHUB_REPO} className="th-btn" target="_blank" rel="noreferrer">

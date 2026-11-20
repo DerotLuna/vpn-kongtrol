@@ -144,6 +144,8 @@
 .tr-chart__tip--left { transform: translateX(calc(-100% - 8px)); }
 .tr-chart--empty { min-height: 132px; }
 .tr-chart--empty .tr-chart__head { display: contents; }
+.tr-chart__wait { display: flex; align-items: center; min-height: 40px; }
+.tr-chart__wait .k-spinner { width: 18px; height: 18px; }
 
 .tr-table summary {
   display: inline-flex; align-items: center; min-height: 44px; cursor: pointer; font-size: 14px; color: var(--text-muted);

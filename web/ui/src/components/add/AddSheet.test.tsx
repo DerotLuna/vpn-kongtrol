@@ -446,7 +446,7 @@ describe('Traffic › Recent', () => {
     )
     render(<App />)
     const sw = await screen.findByRole('switch', { name: /Recent connections \(Traffic\)/ })
-    expect(screen.getByText('Kept in memory only, cleared when Kongtrol closes.')).toBeInTheDocument()
+    expect(screen.getByText("Only in this computer's memory: never saved to disk or sent off it; cleared when Kongtrol closes.")).toBeInTheDocument()
     await userEvent.click(sw)
     await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/settings')).toEqual({ recent_connections_enabled: true }))
   })

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.7.0 · 2026-11-20 · docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 2.8.0 · 2026-11-20 · docs/adr/0075-install-scripts-install-cli-and-tray.md, docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://kongtrol.app/install.sh | sh
 #
@@ -9,6 +9,11 @@
 #   and the ad-hoc signed app opens without a Gatekeeper prompt.
 # Linux: kongtrol + kongtrol-tray go to the install dir, plus a menu entry and
 #   (unless KONGTROL_NO_AUTOSTART=1) an autostart entry for your user.
+# Only the command line: ... | sh -s -- --cli-only (or KONGTROL_CLI_ONLY=1).
+#   Linux with no desktop session (no DISPLAY, WAYLAND_DISPLAY or
+#   XDG_CURRENT_DESKTOP: a server, SSH) gets only the command line by itself
+#   and says so. Updates keep the choice; --with-tray (or KONGTROL_CLI_ONLY=0)
+#   adds the tray later (docs/adr/0075-install-scripts-install-cli-and-tray.md).
 # Uninstall: ... | sh -s -- --uninstall   (add --purge to also delete your data)
 # Run it again to upgrade: your settings in ~/.kongtrol are never touched, and
 # a running Kongtrol is stopped and the VPNs that were connected reconnect on the new version.
@@ -27,6 +32,7 @@
 #   KONGTROL_NO_AUTOSTART  1 = no autostart entry (Linux)
 #   KONGTROL_NO_LAUNCH     1 = don't open Kongtrol at the end
 #   KONGTROL_YES           1 = same as --yes
+#   KONGTROL_CLI_ONLY      1 = same as --cli-only, 0 = same as --with-tray
 #   KONGTROL_SKIP_SIGNATURE 1 = don't check the cosign signature of checksums.txt
 #                          (only for releases before v0.6.0, which were not signed)
 #
@@ -93,6 +99,28 @@ bin_probe() {
   case "$v" in [0-9]*) probe_ver="$v" ;; esac
 }
 
+# tray_probe FILE: the same check for kongtrol-tray. Only a tray that
+# knows --version (releases after 0.7.0-rc.3: tray_can_run=1) is started
+# with it; an older one ignores the flag and would open, so then it only
+# has to be an executable file (docs/adr/0075-install-scripts-install-cli-and-tray.md).
+# A Linux 126 (noexec temp folder) is retried once from ~/.kongtrol.
+tray_probe() {
+  probe_ok=0; probe_ver=""; probe_rc=0
+  if [ ! -e "$1" ]; then probe_rc=127; return 0; fi
+  if [ "$tray_can_run" != 1 ]; then
+    if [ -x "$1" ]; then probe_ok=1; else probe_rc=126; fi
+    return 0
+  fi
+  if "$1" --version >/dev/null 2>&1; then probe_ok=1; return 0; else probe_rc=$?; fi
+  if [ "$probe_rc" = 126 ] && [ "$goos" = linux ]; then
+    mkdir -p "${HOME}/.kongtrol"
+    alt="${HOME}/.kongtrol/.install-check-tray-$$"
+    cp "$1" "$alt" && chmod +x "$alt"
+    if "$alt" --version >/dev/null 2>&1; then probe_ok=1; probe_rc=0; else probe_rc=$?; fi
+    rm -f "$alt"
+  fi
+}
+
 # cannot_run WHAT prints what happened (from probe_rc) and what to do when
 # the system does not let a kongtrol binary run. It never turns protection
 # off: the user decides, after checking the file.
@@ -152,13 +180,16 @@ main() {
 do_uninstall=0
 do_purge=0
 assume_yes=0
+flag_tray=""
 [ "${KONGTROL_YES:-0}" = "1" ] && assume_yes=1
 for arg in "$@"; do
   case "$arg" in
     --uninstall) do_uninstall=1 ;;
     --purge) do_purge=1 ;;
     --yes|-y) assume_yes=1 ;;
-    *) die "unknown option: $arg (use --yes, or --uninstall optionally with --purge)" ;;
+    --cli-only) [ "$flag_tray" = 1 ] && die "use --cli-only or --with-tray, not both"; flag_tray=0 ;;
+    --with-tray) [ "$flag_tray" = 0 ] && die "use --cli-only or --with-tray, not both"; flag_tray=1 ;;
+    *) die "unknown option: $arg (use --yes, --cli-only, --with-tray, or --uninstall optionally with --purge)" ;;
   esac
 done
 if [ "$do_purge" = 1 ] && [ "$do_uninstall" = 0 ]; then
@@ -193,12 +224,6 @@ case "$arch" in
   *) die "unsupported architecture: $arch" ;;
 esac
 
-if [ "$goos" = "darwin" ]; then
-  asset="Kongtrol-macos-universal.zip"
-else
-  asset="kongtrol_linux_${goarch}.tar.gz"
-fi
-
 # Existing install (docs/adr/0046-installers-detect-existing-install.md): the
 # manifest an earlier run wrote says where it put things, so an update reuses
 # those folders and the autostart choice instead of asking again or leaving
@@ -211,7 +236,16 @@ prev_bin=""
 prev_dir=""
 prev_app_dir=""
 prev_no_autostart=""
+prev_components=""
+prev_tray=""
+prev_tray_files=""
 if [ -f "$manifest" ]; then
+  prev_components="$(sed -n 's/^components=//p' "$manifest" | head -n 1)"
+  # The tray parts an earlier run installed (removed when switching to
+  # --cli-only, so nothing stale stays).
+  prev_tray_files="$(sed -n -e 's|^file=\(.*/kongtrol-tray\)$|\1|p' -e 's|^file=\(.*/Kongtrol\.app\)$|\1|p' \
+    -e 's|^file=\(.*/kongtrol\.desktop\)$|\1|p' -e 's|^file=\(.*/kongtrol\.png\)$|\1|p' -e 's|^autostart=\(.*/kongtrol\.desktop\)$|\1|p' "$manifest")"
+  if grep -q -e '/kongtrol-tray$' -e '/Kongtrol\.app$' "$manifest"; then prev_tray=1; fi
   prev_bin="$(sed -n 's|^file=\(.*\)/kongtrol$|\1/kongtrol|p' "$manifest" | head -n 1)"
   [ -n "$prev_bin" ] && prev_dir="$(dirname "$prev_bin")"
   if [ -n "$prev_dir" ] && ! reusable_dir "$prev_dir"; then
@@ -245,6 +279,39 @@ if [ -n "$prev_bin" ]; then
   fi
 fi
 no_autostart="${KONGTROL_NO_AUTOSTART:-${prev_no_autostart:-0}}"
+
+# CLI + tray (default) or only the CLI (docs/adr/0075-install-scripts-install-cli-and-tray.md):
+# a flag or KONGTROL_CLI_ONLY decides; otherwise an update keeps what the
+# manifest says the user chose ("components=cli"), an earlier install with
+# the tray keeps it, and a fresh Linux install with no desktop session gets
+# only the CLI (decided again on every run, never remembered).
+case "${KONGTROL_CLI_ONLY:-}" in
+  1) [ -n "$flag_tray" ] || flag_tray=0 ;;
+  0) [ -n "$flag_tray" ] || flag_tray=1 ;;
+esac
+choice=default
+with_tray=1
+if [ -n "$flag_tray" ]; then
+  with_tray="$flag_tray"; choice=flag
+elif [ "$prev_components" = cli ]; then
+  with_tray=0; choice=kept
+elif [ -n "$prev_tray" ]; then
+  choice=kept
+elif [ "$goos" = linux ] && [ -z "${DISPLAY:-}${WAYLAND_DISPLAY:-}${XDG_CURRENT_DESKTOP:-}" ]; then
+  with_tray=0; choice=auto
+fi
+add_tray_hint="To add the Kongtrol app (tray icon) later: curl -fsSL https://kongtrol.app/install.sh | sh -s -- --with-tray"
+if [ "$choice" = auto ]; then
+  info "No desktop session found (no DISPLAY, WAYLAND_DISPLAY or XDG_CURRENT_DESKTOP): installing only the command line (kongtrol). ${add_tray_hint}"
+fi
+
+if [ "$goos" = "darwin" ] && [ "$with_tray" = 1 ]; then
+  asset="Kongtrol-macos-universal.zip"
+elif [ "$goos" = "darwin" ]; then
+  asset="kongtrol-darwin-${goarch}"
+else
+  asset="kongtrol_linux_${goarch}.tar.gz"
+fi
 
 if [ "$VERSION" = "latest" ]; then
   base_url="https://github.com/${REPO}/releases/latest/download"
@@ -295,14 +362,20 @@ fi
 
 # Unpack first: the new binary says which version this is, so an update can
 # be told apart from a reinstall or an older version before anything changes.
-if [ "$goos" = "darwin" ]; then
+new_tray=""
+if [ "$goos" = "darwin" ] && [ "$with_tray" = 1 ]; then
   ditto -x -k "${tmp_dir}/${asset}" "${tmp_dir}/app"
   new_bin="${tmp_dir}/app/Kongtrol.app/Contents/MacOS/kongtrol"
+  new_tray="${tmp_dir}/app/Kongtrol.app/Contents/MacOS/kongtrol-tray"
+elif [ "$goos" = "darwin" ]; then
+  new_bin="${tmp_dir}/${asset}"
+  chmod +x "$new_bin"
 else
   mkdir -p "${tmp_dir}/x"
   tar -xzf "${tmp_dir}/${asset}" -C "${tmp_dir}/x"
   new_bin="${tmp_dir}/x/kongtrol"
   chmod +x "$new_bin"
+  if [ "$with_tray" = 1 ]; then new_tray="${tmp_dir}/x/kongtrol-tray"; chmod +x "$new_tray"; fi
 fi
 # It must also start: when the system refuses it (antivirus, Gatekeeper,
 # noexec), stop here, before the installed copy is touched (ADR-0073).
@@ -321,6 +394,18 @@ if [ "$probe_ok" != 1 ]; then
   die "nothing was installed."
 fi
 new_ver="$probe_ver"
+# The tray must run too (ADR-0073 for the tray, ADR-0075).
+tray_can_run=0
+if [ -n "$new_ver" ] && [ "$(ver_cmp "$new_ver" 0.7.0-rc.3)" = 1 ]; then tray_can_run=1; fi
+if [ -n "$new_tray" ]; then
+  tray_probe "$new_tray"
+  if [ "$probe_ok" != 1 ]; then
+    cannot_run "the Kongtrol tray app it just downloaded (kongtrol-tray)"
+    printf '%s\n' "Meanwhile you can install only the command line: run the same command with: sh -s -- --cli-only" >&2
+    if [ -n "$prev_bin" ]; then die "nothing was installed: your current Kongtrol${prev_ver:+ ${prev_ver}} was not changed."; fi
+    die "nothing was installed."
+  fi
+fi
 
 kind=install
 if [ -n "$prev_bin" ]; then
@@ -371,65 +456,86 @@ SUDO=""
 [ -w "$install_dir" ] || { info "sudo required to write to ${install_dir}"; SUDO="sudo"; }
 
 
-if [ "$goos" = "darwin" ]; then
+# Quit the old tray (the daemon keeps running until the stop below).
+pkill -x kongtrol-tray 2>/dev/null || true
+placed_bins="kongtrol"
+new_tray_placed=""
+if [ "$goos" = "darwin" ] && [ "$with_tray" = 1 ]; then
   app_dir="${KONGTROL_APP_DIR:-${prev_app_dir:-${HOME}/Applications}}"
   mkdir -p "$app_dir"
-  # Quit the old tray (the daemon keeps running until the stop below).
-  pkill -x kongtrol-tray 2>/dev/null || true
   rm -rf "${app_dir}/Kongtrol.app.old"
   [ -d "${app_dir}/Kongtrol.app" ] && mv "${app_dir}/Kongtrol.app" "${app_dir}/Kongtrol.app.old"
   mv "${tmp_dir}/app/Kongtrol.app" "${app_dir}/Kongtrol.app"
   # Kongtrol.app.old stays until the new one is known to run (rollback below).
+  if [ -e "${install_dir}/kongtrol" ] || [ -L "${install_dir}/kongtrol" ]; then $SUDO mv -f "${install_dir}/kongtrol" "${install_dir}/kongtrol.old"; fi
   $SUDO ln -sfn "${app_dir}/Kongtrol.app/Contents/MacOS/kongtrol" "${install_dir}/kongtrol"
   info "Installed ${app_dir}/Kongtrol.app and ${install_dir}/kongtrol"
 else
-  pkill -x kongtrol-tray 2>/dev/null || true
-  for b in kongtrol kongtrol-tray; do
-    chmod +x "${tmp_dir}/x/${b}"
+  [ "$with_tray" = 1 ] && placed_bins="kongtrol kongtrol-tray"
+  src_dir="${tmp_dir}/x"
+  [ "$goos" = "darwin" ] && { mkdir -p "$src_dir"; mv "$new_bin" "${src_dir}/kongtrol"; }
+  for b in $placed_bins; do
+    chmod +x "${src_dir}/${b}"
     # The old copy is moved aside (a running daemon keeps it until restarted)
     # and stays until the new one is known to run (rollback below).
-    if [ -e "${install_dir}/${b}" ]; then $SUDO mv -f "${install_dir}/${b}" "${install_dir}/${b}.old"; fi
-    $SUDO mv -f "${tmp_dir}/x/${b}" "${install_dir}/${b}"
+    if [ -e "${install_dir}/${b}" ] || [ -L "${install_dir}/${b}" ]; then
+      $SUDO mv -f "${install_dir}/${b}" "${install_dir}/${b}.old"
+    elif [ "$b" = kongtrol-tray ]; then
+      new_tray_placed=1
+    fi
+    $SUDO mv -f "${src_dir}/${b}" "${install_dir}/${b}"
   done
-  apps="${XDG_DATA_HOME:-${HOME}/.local/share}"
-  mkdir -p "${apps}/applications" "${apps}/icons/hicolor/512x512/apps"
-  cp "${tmp_dir}/x/kongtrol.png" "${apps}/icons/hicolor/512x512/apps/kongtrol.png"
-  sed "s|^Exec=kongtrol-tray|Exec=${install_dir}/kongtrol-tray|" "${tmp_dir}/x/kongtrol.desktop" \
-    > "${apps}/applications/kongtrol.desktop"
-  if [ "$no_autostart" != "1" ]; then
-    autostart="${XDG_CONFIG_HOME:-${HOME}/.config}/autostart"
-    mkdir -p "$autostart"
-    cp "${apps}/applications/kongtrol.desktop" "${autostart}/kongtrol.desktop"
+  if [ "$with_tray" = 1 ]; then
+    apps="${XDG_DATA_HOME:-${HOME}/.local/share}"
+    mkdir -p "${apps}/applications" "${apps}/icons/hicolor/512x512/apps"
+    cp "${tmp_dir}/x/kongtrol.png" "${apps}/icons/hicolor/512x512/apps/kongtrol.png"
+    sed "s|^Exec=kongtrol-tray|Exec=${install_dir}/kongtrol-tray|" "${tmp_dir}/x/kongtrol.desktop" \
+      > "${apps}/applications/kongtrol.desktop"
+    if [ "$no_autostart" != "1" ]; then
+      autostart="${XDG_CONFIG_HOME:-${HOME}/.config}/autostart"
+      mkdir -p "$autostart"
+      cp "${apps}/applications/kongtrol.desktop" "${autostart}/kongtrol.desktop"
+    fi
+    info "Installed ${install_dir}/kongtrol and ${install_dir}/kongtrol-tray (+ menu entry)"
+  else
+    info "Installed ${install_dir}/kongtrol"
   fi
-  info "Installed ${install_dir}/kongtrol and ${install_dir}/kongtrol-tray (+ menu entry)"
 fi
 
-# restore_previous puts the old copy back when the new one cannot run;
-# drop_previous removes it once the new one does (ADR-0073).
+# restore_previous puts the old copies back when the new ones cannot run
+# (a tray that was not there before is removed); drop_previous removes
+# them once the new ones do (ADR-0073).
 restore_previous() {
-  if [ "$goos" = "darwin" ]; then
+  if [ "$goos" = "darwin" ] && [ "$with_tray" = 1 ]; then
     [ -d "${app_dir}/Kongtrol.app.old" ] || return 1
     rm -rf "${app_dir}/Kongtrol.app"
     mv "${app_dir}/Kongtrol.app.old" "${app_dir}/Kongtrol.app"
-  else
-    [ -e "${install_dir}/kongtrol.old" ] || return 1
-    for b in kongtrol kongtrol-tray; do
-      if [ -e "${install_dir}/${b}.old" ]; then $SUDO mv -f "${install_dir}/${b}.old" "${install_dir}/${b}"; fi
-    done
+    if [ -e "${install_dir}/kongtrol.old" ] || [ -L "${install_dir}/kongtrol.old" ]; then $SUDO mv -f "${install_dir}/kongtrol.old" "${install_dir}/kongtrol"; fi
+    return 0
   fi
+  [ -e "${install_dir}/kongtrol.old" ] || [ -L "${install_dir}/kongtrol.old" ] || return 1
+  for b in $placed_bins; do
+    if [ -e "${install_dir}/${b}.old" ] || [ -L "${install_dir}/${b}.old" ]; then $SUDO mv -f "${install_dir}/${b}.old" "${install_dir}/${b}"; fi
+  done
+  if [ -n "$new_tray_placed" ]; then $SUDO rm -f "${install_dir}/kongtrol-tray"; fi
 }
 drop_previous() {
-  if [ "$goos" = "darwin" ]; then
-    rm -rf "${app_dir}/Kongtrol.app.old"
-  else
-    $SUDO rm -f "${install_dir}/kongtrol.old" "${install_dir}/kongtrol-tray.old"
-  fi
+  if [ "$goos" = "darwin" ] && [ "$with_tray" = 1 ]; then rm -rf "${app_dir}/Kongtrol.app.old"; fi
+  $SUDO rm -f "${install_dir}/kongtrol.old" "${install_dir}/kongtrol-tray.old"
 }
 bin_probe "${install_dir}/kongtrol"
 if [ "$probe_ok" != 1 ]; then
   cannot_run "the new ${install_dir}/kongtrol"
   if restore_previous; then die "nothing was installed: your previous Kongtrol${prev_ver:+ ${prev_ver}} is back in place."; fi
   die "Kongtrol cannot be used until the system lets it run."
+fi
+if [ "$with_tray" = 1 ] && [ "$goos" = linux ]; then
+  tray_probe "${install_dir}/kongtrol-tray"
+  if [ "$probe_ok" != 1 ]; then
+    cannot_run "the new ${install_dir}/kongtrol-tray"
+    if restore_previous; then die "nothing was installed: your previous Kongtrol${prev_ver:+ ${prev_ver}} is back in place."; fi
+    die "the Kongtrol tray app cannot be used until the system lets it run. Meanwhile: run the same command with: sh -s -- --cli-only"
+  fi
 fi
 
 # What this script installed, so `kongtrol uninstall` removes exactly that
@@ -440,9 +546,13 @@ mkdir -p "${HOME}/.kongtrol"
   echo "file=${install_dir}/kongtrol"
   # The installed version, read back when that binary cannot say it (ADR-0073).
   if [ -n "$new_ver" ]; then echo "version=${new_ver}"; fi
-  if [ "$goos" = "darwin" ]; then
+  # The user's choice, kept by updates (ADR-0075): "cli" only when asked for.
+  if [ "$with_tray" = 1 ]; then echo "components=cli,tray"
+  elif [ "$choice" = auto ]; then echo "components=auto-cli"
+  else echo "components=cli"; fi
+  if [ "$with_tray" = 1 ] && [ "$goos" = "darwin" ]; then
     echo "file=${app_dir}/Kongtrol.app"
-  else
+  elif [ "$with_tray" = 1 ]; then
     echo "file=${install_dir}/kongtrol-tray"
     echo "file=${apps}/applications/kongtrol.desktop"
     echo "file=${apps}/icons/hicolor/512x512/apps/kongtrol.png"
@@ -496,7 +606,23 @@ fi
 drop_previous
 final_ver="$probe_ver"
 
-if [ "${KONGTROL_NO_LAUNCH:-0}" != "1" ]; then
+# Switched to the command line only: the tray parts this script installed
+# earlier go, so nothing stale stays. Only Kongtrol's own names (as
+# `kongtrol uninstall` does with the same manifest lines); sudo only for
+# the CLI folder this run already uses.
+if [ "$with_tray" = 0 ] && [ -n "$prev_tray_files" ]; then
+  printf '%s\n' "$prev_tray_files" | while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    case "$f" in
+      /*/Kongtrol.app) rm -rf "$f" ;;
+      "${install_dir}/kongtrol-tray") $SUDO rm -f "$f" ;;
+      /*/kongtrol-tray|/*/kongtrol.desktop|/*/kongtrol.png) rm -f "$f" 2>/dev/null || true ;;
+    esac
+  done
+  info "Removed the Kongtrol tray app installed earlier (you chose only the command line)."
+fi
+
+if [ "$with_tray" = 1 ] && [ "${KONGTROL_NO_LAUNCH:-0}" != "1" ]; then
   if [ "$goos" = "darwin" ]; then
     open "${app_dir}/Kongtrol.app" || true
   elif [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
@@ -504,11 +630,23 @@ if [ "${KONGTROL_NO_LAUNCH:-0}" != "1" ]; then
   fi
   info "Kongtrol is open: look for its icon in the menu bar / system tray."
 fi
+if [ "$with_tray" = 1 ]; then
+  next="Next: connect from the Kongtrol icon (or: kongtrol up)."
+else
+  next="Next: kongtrol up"
+fi
 case "$kind" in
-  downgrade) info "Kongtrol ${new_ver} installed: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
-  update) info "Kongtrol updated to ${new_ver:-the new version}: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
-  repair) info "Kongtrol ${new_ver} reinstalled: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
+  downgrade) info "Kongtrol ${new_ver} installed: your VPNs and settings are kept. ${next}" ;;
+  update) info "Kongtrol updated to ${new_ver:-the new version}: your VPNs and settings are kept. ${next}" ;;
+  repair) info "Kongtrol ${new_ver} reinstalled: your VPNs and settings are kept. ${next}" ;;
+  *) info "Kongtrol ${new_ver:-${VERSION}} installed. ${next}" ;;
 esac
+# Every run ends by saying what is installed and how to get the other part.
+if [ "$with_tray" = 1 ]; then
+  info "Installed: the Kongtrol app (tray icon) and the command line (kongtrol). Only the command line? Run the same command with: sh -s -- --cli-only"
+else
+  info "Installed: only the command line (kongtrol). ${add_tray_hint}"
+fi
 if [ -n "$final_ver" ]; then printf '%s\n' "$final_ver"; fi
 }
 

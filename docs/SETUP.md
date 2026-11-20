@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.14 · 2026-11-19
+Versión 1.15 · 2026-11-20
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -107,11 +107,24 @@ Si antes copiaste `kongtrol.exe` a mano en otra carpeta del PATH (por ejemplo `C
 terminal puede seguir usando esa copia vieja: `kongtrol doctor` lo avisa en «kongtrol en la
 terminal». Bórrala o quita esa carpeta del PATH y abre una terminal nueva.
 
-Solo el comando `kongtrol`, sin la app, en una línea de PowerShell:
+Sin el instalador, en una línea de PowerShell (sin administrador):
 
 ```powershell
 iwr https://kongtrol.app/install.ps1 -useb | iex
 ```
+
+Instala lo mismo que el instalador: la app con su ícono de bandeja (`kongtrol-tray.exe`) y el
+comando `kongtrol` en `%LOCALAPPDATA%\kongtrol\bin`, el acceso "Kongtrol" en el menú Inicio, el
+inicio automático al entrar en Windows (`$env:KONGTROL_NO_AUTOSTART=1` para no ponerlo) y abre
+Kongtrol. Solo el comando, sin la bandeja: `$env:KONGTROL_CLI_ONLY=1` antes de la línea (o
+`-CliOnly` con `& ([scriptblock]::Create((iwr https://kongtrol.app/install.ps1 -useb))) -CliOnly`).
+En Windows Server Core (sin escritorio) instala solo el comando y lo dice. Al actualizar respeta
+lo que elegiste; `$env:KONGTROL_CLI_ONLY=0` agrega la bandeja después. Al terminar dice qué
+instaló y cómo agregar la otra parte.
+
+Si ya instalaste Kongtrol con `Kongtrol-Setup`, el script no instala una segunda copia: te dice
+que actualices con el `Kongtrol-Setup` nuevo (o, para usar el script, que primero desinstales
+Kongtrol en Configuración > Aplicaciones; tus datos se quedan).
 
 winget y Scoop: pendientes (todavía no publicados).
 
@@ -141,7 +154,12 @@ y seguridad → **Abrir igualmente**.
 
 Descarga el `.deb` (Ubuntu, Debian) o el `.rpm` (Fedora) de
 [Releases](https://github.com/DerotLuna/vpn-kongtrol/releases/latest) y ábrelo con doble clic,
-o usa el mismo `install.sh` de macOS. Para actualizar, instala el paquete nuevo igual y luego
+o usa el mismo `install.sh` de macOS (instala `kongtrol` y `kongtrol-tray`, la entrada del menú
+y el inicio automático). Sin sesión de escritorio (sin `DISPLAY`, `WAYLAND_DISPLAY` ni
+`XDG_CURRENT_DESKTOP`: un servidor, SSH) instala solo el comando `kongtrol` y lo dice en una
+línea. Solo el comando a propósito: `curl -fsSL https://kongtrol.app/install.sh | sh -s -- --cli-only`
+(o `KONGTROL_CLI_ONLY=1`); una actualización respeta esa elección y `--with-tray` agrega la
+bandeja después. Para actualizar el `.deb`/`.rpm`, instala el paquete nuevo igual y luego
 `kongtrol restart` aplica la versión nueva. AUR (Arch): pendiente (todavía no publicado).
 
 En GNOME el ícono de bandeja necesita la extensión AppIndicator (Ubuntu ya la trae; en otras
@@ -347,7 +365,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 ### Opciones de seguridad y políticas
 
 ```
-¿Activar kill switch? (bloquea todo el tráfico si cae la VPN) [S/n]:    ← Enter = sí
+¿Activar kill switch? (si una VPN se cae sola, bloquea lo que iba por ella) [S/n]:    ← Enter = sí
 ¿Activar DNS guard? (previene fugas de DNS) [S/n]:
 ¿Activar log de auditoría firmado? [S/n]:
 ¿Activar panel web? (http://127.0.0.1:9741) [S/n]:
@@ -1054,7 +1072,7 @@ instalador de Windows y los scripts detectan la versión que tienes y dicen "Act
 `kongtrol/<versión>`. Nunca descarga ni instala. `kongtrol config update-check status` muestra la
 última revisión.
 
-**Desinstalar (tus datos se quedan):**
+**Desinstalar (tus datos siguen en este equipo; `--purge` los borra):**
 
 ```bash
 kongtrol uninstall --dry-run   # muestra qué haría, sin cambiar nada

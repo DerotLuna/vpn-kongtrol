@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.2.0 · 2026-11-20.
+// Version 3.3.0 · 2026-11-20.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -106,11 +106,14 @@ export default function guideEN(os: OS): GuideContent {
         ]) as GuideStep[],
       scriptNote: os === 'macos'
         ? <>Installed this way, macOS shows no unverified-app warning. If you download from the browser, the first time:
-          right-click → <strong>Open</strong>, or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.</>
+          right-click → <strong>Open</strong>, or System Settings → Privacy &amp; Security → <strong>Open Anyway</strong>.
+          {' '}Only the <IC c="kongtrol" /> command, without the app? End the line with <IC c="| sh -s -- --cli-only" />.</>
         : os === 'linux'
           ? <>Another option: the <IC c=".deb" /> (Ubuntu, Debian) or <IC c=".rpm" /> (Fedora) package from{' '}
-            <a href="/en/#install">downloads</a>, with a double click. On GNOME the icon needs the AppIndicator extension (Ubuntu ships it).</>
-          : <>Only the <IC c="kongtrol" /> command, without the app? This line in PowerShell (no administrator):</>,
+            <a href="/en/#install">downloads</a>, with a double click. On GNOME the icon needs the AppIndicator extension (Ubuntu ships it).
+            {' '}Only the <IC c="kongtrol" /> command? End the line with <IC c="| sh -s -- --cli-only" />; with no desktop (a server, SSH) it does that by itself and tells you.</>
+          : <>No installer? This line in PowerShell (no administrator) installs the same: the app with its icon and the <IC c="kongtrol" /> command.
+            {' '}Only the command: type <IC c="$env:KONGTROL_CLI_ONLY=1" /> first. If you used the installer, update with the new installer.</>,
       winScript: INSTALL_CMD.windows,
       helper: <><strong>One permission, once.</strong> After that no step needs an administrator terminal or{' '}
         <IC c="sudo" />. If the helper is missing, the panel says so with a <strong>Fix</strong> button; in the terminal:{' '}
@@ -366,15 +369,16 @@ $ kongtrol config update-check status`,
     // feature:uninstall
     uninstall: {
       title: <>Uninstall</>,
-      keep: <><strong>Your data stays:</strong> the configuration and saved passwords. If you reinstall, everything is still there.
-        It's deleted only if you ask.</>,
+      keep: <><strong>Your data stays on this computer:</strong> the <IC c="~/.kongtrol" /> folder (configuration, logs) and the
+        passwords in the system keychain. Kongtrol keeps nothing off your computer. If you reinstall, everything is still there.
+        It's deleted only if you ask, and that cannot be undone.</>,
       how: os === 'windows'
         ? <>Settings → Apps → Kongtrol → <strong>Uninstall</strong>. It asks whether to delete your data too (default No).
           It disconnects your VPNs, closes Kongtrol and removes the helper.</>
         : <>In the terminal. It disconnects your VPNs, closes Kongtrol and removes the helper. With a <IC c=".deb" />/<IC c=".rpm" /> package,
           it tells you how to finish (<IC c="sudo apt remove kongtrol" /> or <IC c="sudo dnf remove kongtrol" />).</>,
-      code: `$ kongtrol uninstall                    # removes the app; your data stays
-$ kongtrol uninstall --purge            # also deletes data and passwords (asks)
+      code: `$ kongtrol uninstall                    # removes the app; your data stays on this computer
+$ kongtrol uninstall --purge            # also deletes data and passwords from this computer (asks)
 $ kongtrol uninstall --purge --dry-run  # shows what it would do, touches nothing`,
       scriptLead: <>With the install script (add <IC c={os === 'windows' ? '-Purge' : '--purge'} /> to delete your data too):</>,
       script: os === 'windows'

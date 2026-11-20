@@ -844,6 +844,8 @@ details[open] > summary .disclosure-mark::after { rotate: 180deg; opacity: 0; }
    so it never adds height. The header steps aside while the footer shows
    (Nav.tsx). Phones and short windows keep the natural flow (min-height). */
 body:has(.tmux-bar) { --tmux-h: 34px; }
+/* under 720px the tmux bar is hidden (a jump menu replaces it): no room to keep */
+@media (max-width: 720px) { body:has(.tmux-bar) { --tmux-h: 0px; } }
 .footer {
   position: relative; overflow: hidden;
   min-height: calc(100vh - var(--tmux-h, 0px));
@@ -853,6 +855,10 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 }
 @media (min-width: 721px) and (min-height: 600px) {
   .footer { height: calc(100svh - var(--tmux-h, 0px)); }
+}
+/* phones: exactly one screen too when it fits (ADR-0079); shorter phones scroll */
+@media (max-width: 720px) and (min-height: 760px) {
+  .footer { height: 100svh; }
 }
 /* the giant wordmark's visible height; the content stops above it (ADR-0066) */
 .footer { --giant-size: min(16vw, 30svh, 300px); --giant-h: calc(var(--giant-size) * 0.62); }
@@ -950,6 +956,9 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
    slides up, then hides, so it is neither seen nor focusable */
 .nav { transition: background 0.28s ease, backdrop-filter 0.28s ease, border-color 0.28s ease, transform 0.28s var(--ease-standard), visibility 0s; }
 .nav.is-away { transform: translateY(-100%); visibility: hidden; transition: transform 0.28s var(--ease-standard), visibility 0s linear 0.28s; }
+/* the phone "Ir a" menu sits under the header: it steps aside with it */
+.home-jump { transition: transform 0.28s var(--ease-standard), visibility 0s; }
+body:has(.nav.is-away) .home-jump { transform: translateY(calc(-100% - var(--nav-h))); visibility: hidden; transition: transform 0.28s var(--ease-standard), visibility 0s linear 0.28s; }
 
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 
@@ -1099,8 +1108,22 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .jump-select-list .guide-num { color: var(--text-dim); margin-right: 2px; }
 
 @media (max-width: 640px) {
-  .footer-hero { flex-direction: column; align-items: flex-start; }
-  .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 20px; }
+  /* one phone screen too (ADR-0079): the mark beside the claim, the links in
+     rows, no chips (beta, systems and license are in the header, the tagline
+     and the links) */
+  .footer-hero { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 16px; row-gap: 10px; align-items: center; }
+  .footer-hero-text { display: contents; }
+  .footer-mark { width: 128px; grid-row: 1; }
+  .footer-claim { grid-column: 2; font-size: 1.6rem; }
+  .footer-tagline, .footer-cta { grid-column: 1 / -1; }
+  .footer-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 14px; }
+  .footer-col { display: flex; align-items: baseline; gap: 12px; }
+  .footer-col-title { flex: none; min-width: 6.5em; margin: 0; }
+  .footer-col ul { display: flex; flex-wrap: wrap; gap: 0 14px; }
+  .footer-legal-link { min-height: 32px; }
+  .footer-term-cmd { margin-top: 8px; }
+  .footer-facts { display: none; }
+  .footer-meta { padding-top: 12px; }
   .footer-term { grid-column: 1 / -1; }
   .footer-cta, .footer-cta .pd { justify-items: stretch; width: 100%; }
   .footer-cta .pd-btn { justify-content: center; }
@@ -1337,6 +1360,22 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
 .th-btn:hover { background: var(--signal-soft); border-color: var(--signal); }
 .th-btn.primary { background: var(--signal-fill); color: var(--on-signal); border-color: var(--signal-fill); font-weight: 600; }
 .th-btn.primary:hover { background: var(--signal-hi); border-color: var(--signal-hi); box-shadow: 0 10px 28px -6px var(--signal-glow); }
+/* the hero's call to action is the page's strongest (ADR-0079): bigger
+   buttons, then the facts a visitor checks before downloading */
+.th-facts {
+  list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px;
+  font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted);
+}
+.th-facts li { display: inline-flex; align-items: center; gap: 8px; }
+.th-facts li::before { content: '✓'; color: var(--live); font-weight: 700; }
+@media (min-width: 1024px) {
+  .th-ctas { margin-top: 28px; gap: 14px; }
+  .th-btn { min-height: 60px; padding: 12px 26px; font-size: 0.95rem; }
+  .th-btn svg { width: 20px; height: 20px; }
+  .th-btn-stack { line-height: 1.25; }
+  .th-btn-os { font-size: 0.78rem; }
+  .th-note { width: 100%; }
+}
 
 .th-cmd { margin-top: 4px; }
 

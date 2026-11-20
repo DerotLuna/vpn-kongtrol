@@ -210,8 +210,18 @@ release:
   prerelease: auto
   # First line of every release body: on Windows the installer is the app;
   # the bare .exe is the terminal command (double click only shows a notice).
+  # Which file is for whom (ADR-0077): the app (tray + panel) always comes
+  # with the `kongtrol` command it needs; the bare binaries are the command only.
   header: |
-    **Windows:** download `Kongtrol-Setup-windows-amd64.exe` (installer). `kongtrol-windows-amd64.exe` is the terminal command.
+    **Which file do I download?** · [Guía en español](https://kongtrol.app/guia) · [English guide](https://kongtrol.app/en/guide)
+
+    | You want | Windows | macOS | Linux |
+    |---|---|---|---|
+    | **The app** (tray icon + panel + `kongtrol` command) — most people | `Kongtrol-Setup-windows-amd64.exe` | `Kongtrol-macos-universal.zip` | `.deb` / `.rpm`, or `curl -fsSL https://kongtrol.app/install.sh \| sh` |
+    | **Only the `kongtrol` command** (servers, scripts) | `$env:KONGTROL_CLI_ONLY=1` then `iwr https://kongtrol.app/install.ps1 -useb \| iex`, or `kongtrol-windows-amd64.exe` | `curl -fsSL https://kongtrol.app/install.sh \| sh -s -- --cli-only`, or `kongtrol-darwin-arm64` / `-amd64` | the same line with `--cli-only` (automatic with no desktop), or `kongtrol-linux-amd64` / `-arm64` |
+    | Archives for package managers and portable use (app + command) | `kongtrol_windows_*.zip` | `kongtrol_darwin_*.tar.gz` | `kongtrol_linux_*.tar.gz` |
+
+    The tray needs the command (it runs `kongtrol daemon`); the command works alone. Verify any file with `checksums.txt` (SHA256), its Sigstore bundle or `gh attestation verify`. All your data stays on your computer.
   extra_files:
     - glob: ./dist-extra/*
     # This tag's install scripts (ADR-0035): releases/latest/download/install.sh

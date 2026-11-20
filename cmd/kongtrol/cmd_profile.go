@@ -54,7 +54,8 @@ var profileImportCmd = &cobra.Command{
 }
 
 // runProfileImport reads file and imports it under name (default: the
-// file name without its extension); the type comes from the extension.
+// file name without its extension); the type comes from the extension and,
+// for a .conf, from its content (OpenVPN GUI's .conf files, ADR-0080).
 // A file only root can read (e.g. /etc/wireguard/wg0.conf) is read with
 // one permission prompt after asking (importRootOnly, ADR-0058).
 func runProfileImport(file, name string, overwrite bool) (profileimport.Result, error) {
@@ -79,7 +80,7 @@ func runProfileImport(file, name string, overwrite bool) (profileimport.Result, 
 	if err != nil {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.read", file))
 	}
-	return storeImport(file, name, typ, content, overwrite)
+	return storeImport(file, name, profileimport.TypeForContent(file, content), content, overwrite)
 }
 
 // absPath is p made absolute (the elevated read takes absolute paths only).

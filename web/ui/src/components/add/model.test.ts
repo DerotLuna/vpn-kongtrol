@@ -15,6 +15,7 @@ import {
   ovpnNeedsCredentials,
   probeOf,
   profileNameFromFile,
+  typeForContent,
   typeForFile,
   uniqueName,
 } from './model'
@@ -104,6 +105,12 @@ describe('files', () => {
     expect(typeForFile('A.OVPN')).toBe('openvpn')
     expect(typeForFile('a.txt')).toBeNull()
     expect(typeForFile('conf')).toBeNull()
+    // a .conf is decided by its content (OpenVPN GUI on Windows uses .conf)
+    expect(typeForContent('wg0.conf', '[Interface]\nPrivateKey = x\n')).toBe('wireguard')
+    expect(typeForContent('aws.conf', 'client\r\ndev tun\r\nremote vpn 1194\r\nca ca.crt\r\n')).toBe('openvpn')
+    expect(typeForContent('x.conf', '[Interface]\nremote = no\n')).toBe('wireguard')
+    expect(typeForContent('x.ovpn', '[Interface]')).toBe('openvpn')
+    expect(typeForContent('x.txt', 'client')).toBeNull()
   })
 
   it('auth-user-pass outside a comment asks for credentials', () => {

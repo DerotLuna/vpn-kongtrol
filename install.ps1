@@ -1,7 +1,19 @@
-# Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.7.0 · 2026-11-20 · docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Installs or updates Kongtrol (tray app + kongtrol CLI) from the latest GitHub release.
+# Version 1.8.0 · 2026-11-20 · docs/adr/0075-install-scripts-install-cli-and-tray.md, docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://kongtrol.app/install.ps1 -useb | iex
+#
+# What it installs (docs/adr/0075-install-scripts-install-cli-and-tray.md):
+# kongtrol.exe and kongtrol-tray.exe in %LOCALAPPDATA%\kongtrol\bin, a
+# "Kongtrol" Start menu shortcut and the per-user autostart (HKCU Run value
+# "Kongtrol", the same one the Windows installer uses), then opens Kongtrol.
+# Only the command line: -CliOnly (or $env:KONGTROL_CLI_ONLY=1); Windows
+# Server Core (no desktop) gets only the command line by itself. Updates keep
+# that choice; -WithTray (or $env:KONGTROL_CLI_ONLY=0) adds the tray later.
+# With flags, run it as:
+#   & ([scriptblock]::Create((iwr https://kongtrol.app/install.ps1 -useb))) -CliOnly
+# When Kongtrol was installed with the Windows installer (Kongtrol-Setup),
+# this script installs nothing and says how to update that copy instead.
 #
 # Run it again to update: an existing install is detected and the script says
 # "Updating <old> -> <new>" (or "Reinstalling", or warns before an older
@@ -19,6 +31,9 @@
 #   $env:KONGTROL_INSTALL_DIR   install directory (default: the previous one, else $env:LOCALAPPDATA\kongtrol\bin)
 #   $env:KONGTROL_VERSION       release tag to install, e.g. v1.2.3 (default: latest)
 #   $env:KONGTROL_YES           1 = same as -Yes
+#   $env:KONGTROL_CLI_ONLY      1 = same as -CliOnly, 0 = same as -WithTray
+#   $env:KONGTROL_NO_AUTOSTART  1 = no autostart for the tray (remembered on updates)
+#   $env:KONGTROL_NO_LAUNCH     1 = don't open Kongtrol at the end
 #   $env:KONGTROL_SKIP_SIGNATURE 1 = don't check the cosign signature of checksums.txt
 #                               (only for releases before v0.6.0, which were not signed)
 #
@@ -26,7 +41,7 @@
 # is installed, the Sigstore signature of checksums.txt is checked first (it
 # must come from this repo's release workflow) and a bad signature stops the
 # install. Without cosign the script says so and how to verify by hand.
-param([switch]$Uninstall, [switch]$Purge, [switch]$Yes)
+param([switch]$Uninstall, [switch]$Purge, [switch]$Yes, [switch]$CliOnly, [switch]$WithTray)
 
 $ErrorActionPreference = "Stop"
 
@@ -80,13 +95,17 @@ function Compare-KongtrolVersion([string]$A, [string]$B) {
 # Ran (started and exited 0), Version (or $null), Blocked (an antivirus
 # stopped it: Win32 error 225 ERROR_VIRUS_INFECTED or 226 ERROR_VIRUS_DELETED,
 # or the file was gone right after the attempt, i.e. quarantined) and Reason.
-function Test-KongtrolExe([string]$Exe) {
+# The tray answers the same way to `kongtrol-tray.exe --version` ($Arg).
+function Test-KongtrolExe([string]$Exe, [string]$Arg = "version") {
   $r = [pscustomobject]@{ Ran = $false; Version = $null; Blocked = $false; Reason = "" }
   if (-not (Test-Path -LiteralPath $Exe)) {
     $r.Blocked = $true; $r.Reason = "the file is gone (moved to quarantine?)"; return $r
   }
   try {
-    $out = (& $Exe version 2>$null | Select-Object -First 1)
+    # Pipeline form (it gives the Win32 error code, ADR-0073), read to the
+    # end: Select-Object -First 1 here stopped the program before its exit
+    # code was set (PowerShell 7 on Linux, measured).
+    $out = @(& $Exe $Arg 2>$null | ForEach-Object { "$_" }) | Select-Object -First 1
     if ($LASTEXITCODE -eq 0) { $r.Ran = $true } else { $r.Reason = "it exited with code $LASTEXITCODE" }
     if ($out) { $v = ($out.ToString().Trim() -replace '^[vV]', ''); if ($v -match '^[0-9]') { $r.Version = $v } }
   } catch {
@@ -101,6 +120,48 @@ function Test-KongtrolExe([string]$Exe) {
   }
   if (-not $r.Ran -and -not (Test-Path -LiteralPath $Exe)) { $r.Blocked = $true }
   return $r
+}
+
+# Test-KongtrolTray: the same check for kongtrol-tray.exe. Reading the file
+# back (its SHA256 must still be $Hash) makes the antivirus scan it without
+# starting it; a blocked read is Win32 error 225/226 like a blocked start.
+# Only a tray that knows --version (releases after 0.7.0-rc.3, $CanRun) is
+# also started with it: an older tray ignores the flag and would open
+# (docs/adr/0075-install-scripts-install-cli-and-tray.md).
+function Test-KongtrolTray([string]$Exe, [string]$Hash, [bool]$CanRun) {
+  $r = [pscustomobject]@{ Ran = $false; Version = $null; Blocked = $false; Reason = "" }
+  if (-not (Test-Path -LiteralPath $Exe)) {
+    $r.Blocked = $true; $r.Reason = "the file is gone (moved to quarantine?)"; return $r
+  }
+  try {
+    $h = (Get-FileHash -LiteralPath $Exe -Algorithm SHA256).Hash.ToLower()
+    if ($h -ne $Hash) { $r.Reason = "the file changed after it was checked"; return $r }
+  } catch {
+    $r.Reason = ($_.Exception.Message -replace '(?s)\s*At line:.*$', '')
+    for ($e = $_.Exception; $e; $e = $e.InnerException) {
+      if ($e -is [ComponentModel.Win32Exception] -or $e -is [IO.IOException]) {
+        $code = if ($e -is [ComponentModel.Win32Exception]) { $e.NativeErrorCode } else { $e.HResult -band 0xFFFF }
+        if ($code -in 225, 226) { $r.Blocked = $true; $r.Reason = "$($e.Message) (Windows error $code)"; break }
+      }
+    }
+    if (-not (Test-Path -LiteralPath $Exe)) { $r.Blocked = $true }
+    return $r
+  }
+  if ($CanRun) { return Test-KongtrolExe $Exe "--version" }
+  $r.Ran = $true
+  return $r
+}
+
+# Test-ServerCore: Windows Server without the desktop shell (Server Core or
+# Nano Server), where a tray icon has nowhere to show. Microsoft's
+# documented check for Windows Server 2012 and later: the ServerLevels
+# registry values (ServerCore=1 without Server-Gui-Shell=1, or NanoServer=1).
+# Absent on Windows 10/11, so every desktop gets the tray.
+function Test-ServerCore {
+  $l = Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Server\ServerLevels' -ErrorAction SilentlyContinue
+  if (-not $l) { return $false }
+  if ($l.NanoServer -eq 1) { return $true }
+  return ($l.ServerCore -eq 1 -and $l.'Server-Gui-Shell' -ne 1)
 }
 
 # Write-CannotRun: what happened and what to do when Windows does not let a
@@ -145,14 +206,31 @@ if ($Uninstall -or $env:KONGTROL_UNINSTALL -eq "1") {
   exit $LASTEXITCODE
 }
 if ($Purge) { Die "-Purge only works with -Uninstall" }
+if ($CliOnly -and $WithTray) { Die "use -CliOnly or -WithTray, not both" }
+
+# Kongtrol from the Windows installer (Kongtrol-Setup) owns its folder, its
+# shortcut, the autostart value and its own uninstaller: a second copy from
+# this script would fight it over the same daemon, autostart value and PATH.
+# Its uninstall key is the one kongtrol.iss reads in InitializeSetup
+# (Inno names it "<AppId>_is1"; PrivilegesRequired=lowest puts it in HKCU).
+$innoKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{BA277280-D8B2-4309-8620-BCEECBAA4B41}_is1'
+$inno = Get-ItemProperty -LiteralPath $innoKey -ErrorAction SilentlyContinue
+if ($inno) {
+  $where = if ($inno.InstallLocation) { " in $($inno.InstallLocation.TrimEnd('\'))" } else { "" }
+  Write-Host "error: Kongtrol $($inno.DisplayVersion) is already installed with the Windows installer (Kongtrol-Setup)$where, so this script installs nothing (it would be a second copy)." -ForegroundColor Red
+  Write-Host "What to do: to update it, download and run the new Kongtrol-Setup-windows-amd64.exe from https://kongtrol.app or https://github.com/$Repo/releases/latest (your VPNs and settings are kept; for scripts add /VERYSILENT). To use this script instead, first uninstall Kongtrol in Windows Settings > Apps (your data stays), then run this command again." -ForegroundColor Yellow
+  exit 1
+}
+
+# Windows-only steps (Start menu, autostart, PATH, opening the tray) are
+# skipped when PowerShell runs on another OS, as the offline tests do.
+$onWindows = ($PSVersionTable.PSEdition -ne 'Core') -or $IsWindows
 
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
   "AMD64" { "amd64" }
   "ARM64" { "arm64" }
   default { Die "unsupported architecture: $($env:PROCESSOR_ARCHITECTURE)" }
 }
-
-$binary = "kongtrol-windows-$arch.exe"
 
 $baseUrl = if ($Version -eq "latest") {
   "https://github.com/$Repo/releases/latest/download"
@@ -202,13 +280,43 @@ if ($prevExe) {
   }
 }
 
+# CLI + tray (default) or only the CLI (docs/adr/0075-install-scripts-install-cli-and-tray.md):
+# a flag or KONGTROL_CLI_ONLY decides; otherwise an update keeps what the
+# manifest says the user chose ("components=cli"), and an earlier install
+# with the tray keeps it; a fresh install on Server Core gets only the CLI.
+# Manifests from before 1.8.0 list only kongtrol.exe (there was no choice),
+# so those updates add the tray like a new install.
+$prevComponents = $previous | Where-Object { $_ -match '^components=' } | ForEach-Object { $_.Substring(11).Trim() } | Select-Object -First 1
+$prevTray = $previous | Where-Object { $_ -like "file=*kongtrol-tray.exe" } | ForEach-Object { $_.Substring(5) } | Select-Object -First 1
+$prevLnk = $previous | Where-Object { $_ -like "file=*Kongtrol.lnk" } | ForEach-Object { $_.Substring(5) } | Select-Object -First 1
+$choice = "default"
+if ($CliOnly -or $env:KONGTROL_CLI_ONLY -eq "1") { $withTray = $false; $choice = "flag" }
+elseif ($WithTray -or $env:KONGTROL_CLI_ONLY -eq "0") { $withTray = $true; $choice = "flag" }
+elseif ($prevComponents -eq "cli") { $withTray = $false; $choice = "kept" }
+elseif ($prevTray) { $withTray = $true; $choice = "kept" }
+elseif (Test-ServerCore) { $withTray = $false; $choice = "auto" }
+else { $withTray = $true }
+# Autostart: KONGTROL_NO_AUTOSTART, else the previous choice (an install
+# with the tray but no runvalue= line had it off).
+$prevNoAutostart = if ($prevTray -and -not ($previous | Where-Object { $_ -like "runvalue=*" })) { "1" } else { "0" }
+$noAutostart = if ($env:KONGTROL_NO_AUTOSTART) { $env:KONGTROL_NO_AUTOSTART } else { $prevNoAutostart }
+$addTrayHint = "To add the Kongtrol app (tray icon) later: `$env:KONGTROL_CLI_ONLY=0; iwr https://kongtrol.app/install.ps1 -useb | iex"
+if ($choice -eq "auto") {
+  Write-Info "No desktop on this Windows (Server Core): installing only the command line (kongtrol). $addTrayHint"
+}
+
+# The tray ships only inside the release zip (kongtrol.exe + kongtrol-tray.exe);
+# the CLI alone is also a plain .exe asset.
+$asset = if ($withTray) { "kongtrol_windows_$arch.zip" } else { "kongtrol-windows-$arch.exe" }
+$binary = "kongtrol-windows-$arch.exe"
+
 $tmpDir = Join-Path $env:TEMP "kongtrol-install-$(Get-Random)"
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
 try {
-  $binaryPath = Join-Path $tmpDir $binary
-  Write-Info "Downloading $binary ($Version)..."
+  $assetPath = Join-Path $tmpDir $asset
+  Write-Info "Downloading $asset ($Version)..."
   try {
-    Invoke-WebRequest -Uri "$baseUrl/$binary" -OutFile $binaryPath -UseBasicParsing
+    Invoke-WebRequest -Uri "$baseUrl/$asset" -OutFile $assetPath -UseBasicParsing
   } catch {
     Die "download failed - check that a release has been published: https://github.com/$Repo/releases"
   }
@@ -268,12 +376,33 @@ try {
     }
   }
 
-  $expectedLine = Select-String -Path $checksumsPath -Pattern "  $binary$" | Select-Object -First 1
-  if (-not $expectedLine) { Die "no checksum entry found for $binary" }
+  $expectedLine = Select-String -Path $checksumsPath -SimpleMatch -Pattern "  $asset" | Where-Object { $_.Line.EndsWith("  $asset") } | Select-Object -First 1
+  if (-not $expectedLine) { Die "no checksum entry found for $asset" }
   $expected = ($expectedLine.Line -split '\s+')[0]
 
-  $actual = (Get-FileHash -Path $binaryPath -Algorithm SHA256).Hash.ToLower()
+  $actual = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLower()
   if ($expected -ne $actual) { Die "checksum mismatch: expected $expected, got $actual" }
+
+  # The zip is trusted now (its SHA256 matched): take exactly the two
+  # programs out of it, by name, nothing else.
+  $binaryPath = $assetPath
+  $trayPath = $null
+  if ($withTray) {
+    $xDir = Join-Path $tmpDir "x"
+    New-Item -ItemType Directory -Path $xDir -Force | Out-Null
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zip = [IO.Compression.ZipFile]::OpenRead($assetPath)
+    try {
+      foreach ($name in @("kongtrol.exe", "kongtrol-tray.exe")) {
+        $entry = $zip.Entries | Where-Object { $_.FullName -eq $name } | Select-Object -First 1
+        if (-not $entry) { Die "the release archive $asset has no $name, so nothing was installed. Report it: https://github.com/$Repo/issues" }
+        [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, (Join-Path $xDir $name), $true)
+      }
+    } finally { $zip.Dispose() }
+    $binaryPath = Join-Path $xDir "kongtrol.exe"
+    $trayPath = Join-Path $xDir "kongtrol-tray.exe"
+    $trayHash = (Get-FileHash -LiteralPath $trayPath -Algorithm SHA256).Hash.ToLower()
+  }
 
   # The new binary says which version this is: update, reinstall or older.
   # It must also start: when Windows blocks it (an antivirus false positive
@@ -286,6 +415,17 @@ try {
     Die "nothing was installed."
   }
   $newVersion = $newProbe.Version
+  # The tray must not be blocked either (ADR-0073 for the tray, ADR-0075).
+  $trayCanRun = [bool]($newVersion -and (Compare-KongtrolVersion $newVersion "0.7.0-rc.3") -gt 0)
+  if ($withTray) {
+    $trayProbe = Test-KongtrolTray $trayPath $trayHash $trayCanRun
+    if (-not $trayProbe.Ran) {
+      Write-CannotRun $trayProbe "the Kongtrol tray app it just downloaded (kongtrol-tray.exe)"
+      Write-Host "Meanwhile you can install only the command line: `$env:KONGTROL_CLI_ONLY=1, then the same command." -ForegroundColor Yellow
+      if ($prevExe) { Die "nothing was installed: your current Kongtrol$(if ($prevVersion) { " $prevVersion" }) was not changed." }
+      Die "nothing was installed."
+    }
+  }
   $kind = "install"
   if ($prevExe) {
     $kind = "update"
@@ -325,20 +465,37 @@ try {
   New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 
   $destPath = Join-Path $installDir "kongtrol.exe"
+  $trayDest = Join-Path $installDir "kongtrol-tray.exe"
+  # Close this copy's running tray (it would keep the old file in use and
+  # restart the old daemon); it is opened again at the end.
+  Get-Process -Name kongtrol-tray -ErrorAction SilentlyContinue |
+    Where-Object { $_.Path -and $_.Path -ieq $trayDest } |
+    Stop-Process -Force -ErrorAction SilentlyContinue
   # A running daemon locks kongtrol.exe against overwriting, not renaming:
   # move the old copy aside, put the new one in place, then stop and resume below.
-  $oldPath = "$destPath.old"
-  if (Test-Path $destPath) {
-    Remove-Item $oldPath -Force -ErrorAction SilentlyContinue
-    Move-Item -Path $destPath -Destination $oldPath -Force
+  $payload = @(@{ Src = $binaryPath; Dest = $destPath })
+  if ($withTray) { $payload += @{ Src = $trayPath; Dest = $trayDest } }
+  foreach ($p in $payload) {
+    if (Test-Path $p.Dest) {
+      Remove-Item "$($p.Dest).old" -Force -ErrorAction SilentlyContinue
+      Move-Item -Path $p.Dest -Destination "$($p.Dest).old" -Force
+    }
+    Move-Item -Path $p.Src -Destination $p.Dest -Force
   }
-  Move-Item -Path $binaryPath -Destination $destPath -Force
+  $oldPath = "$destPath.old"
 
-  # Restore-Previous: put the old copy back when the new one cannot run.
+  # Restore-Previous: put the old copies (and the old manifest) back when
+  # the new ones cannot run; a tray that was not there before is removed.
   function Restore-Previous {
     if (-not (Test-Path $oldPath)) { return $false }
-    Remove-Item $destPath -Force -ErrorAction SilentlyContinue
-    try { Move-Item -Path $oldPath -Destination $destPath -Force; return $true } catch { return $false }
+    foreach ($p in $payload) {
+      Remove-Item $p.Dest -Force -ErrorAction SilentlyContinue
+      if (Test-Path "$($p.Dest).old") {
+        try { Move-Item -Path "$($p.Dest).old" -Destination $p.Dest -Force } catch { return $false }
+      }
+    }
+    if ($previous.Count) { Set-Content -Path $manifest -Value $previous -Encoding UTF8 }
+    return $true
   }
   $placed = Test-KongtrolExe $destPath
   if (-not $placed.Ran) {
@@ -346,13 +503,34 @@ try {
     if (Restore-Previous) { Die "nothing was installed: your previous Kongtrol$(if ($prevVersion) { " $prevVersion" }) is back in place." }
     Die "Kongtrol cannot be used until Windows lets it run."
   }
-
-  Write-Info "Installed to $destPath"
+  if ($withTray) {
+    $placedTray = Test-KongtrolTray $trayDest $trayHash $trayCanRun
+    if (-not $placedTray.Ran) {
+      Write-CannotRun $placedTray "the new kongtrol-tray.exe in $installDir"
+      if (Restore-Previous) { Die "nothing was installed: your previous Kongtrol$(if ($prevVersion) { " $prevVersion" }) is back in place." }
+      Remove-Item $trayDest -Force -ErrorAction SilentlyContinue
+      Die "the Kongtrol tray app cannot be used until Windows lets it run. Meanwhile: `$env:KONGTROL_CLI_ONLY=1, then the same command, installs only the command line."
+    }
+    Write-Info "Installed to $destPath and $trayDest"
+  } else {
+    Write-Info "Installed to $destPath"
+  }
 
   # What this script installed, so `kongtrol uninstall` removes exactly that.
   $lines = @("# Written by install.ps1: files kongtrol uninstall may remove.", "file=$destPath")
   # The installed version, read back when that exe cannot say it (ADR-0073).
   if ($newVersion) { $lines += "version=$newVersion" }
+  # The user's choice, kept by updates (ADR-0075): "cli" only when asked for.
+  $lines += if ($withTray) { "components=cli,tray" } elseif ($choice -eq "auto") { "components=auto-cli" } else { "components=cli" }
+  $lnkPath = $null
+  if ($withTray) {
+    $lines += "file=$trayDest"
+    if ($onWindows) {
+      $lnkPath = Join-Path ([Environment]::GetFolderPath('Programs')) "Kongtrol.lnk"
+      $lines += "file=$lnkPath"
+      if ($noAutostart -ne "1") { $lines += "runvalue=$trayDest" }
+    }
+  }
 
   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
   if ($userPath -notlike "*$installDir*") {
@@ -395,12 +573,63 @@ try {
     Die "Kongtrol cannot be used until Windows lets it run."
   }
   # Gone once the old daemon exited; a leftover is harmless and replaced next time.
-  Remove-Item $oldPath -Force -ErrorAction SilentlyContinue
+  foreach ($p in $payload) { Remove-Item "$($p.Dest).old" -Force -ErrorAction SilentlyContinue }
 
+  if ($withTray -and $onWindows) {
+    # Start menu shortcut and autostart, like the Windows installer
+    # ({autoprograms}\Kongtrol and HKCU Run "Kongtrol", kongtrol.iss).
+    try {
+      $ws = New-Object -ComObject WScript.Shell
+      $sc = $ws.CreateShortcut($lnkPath)
+      $sc.TargetPath = $trayDest
+      $sc.WorkingDirectory = $installDir
+      $sc.Description = "Kongtrol"
+      $sc.Save()
+    } catch { Write-Warn "the Start menu shortcut was not created ($($_.Exception.Message)); open Kongtrol with: $trayDest" }
+    $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+    if ($noAutostart -ne "1") {
+      try {
+        if (-not (Test-Path $runKey)) { New-Item -Path $runKey -Force | Out-Null }
+        New-ItemProperty -Path $runKey -Name "Kongtrol" -Value "`"$trayDest`"" -PropertyType String -Force | Out-Null
+      } catch { Write-Warn "Kongtrol will not start by itself when you sign in ($($_.Exception.Message)); open it from the Start menu." }
+    }
+  }
+  if (-not $withTray -and $prevTray) {
+    # Switched to the command line only: the tray this script installed
+    # earlier goes, so nothing stale stays (its shortcut and autostart too).
+    Get-Process -Name kongtrol-tray -ErrorAction SilentlyContinue |
+      Where-Object { $_.Path -and $_.Path -ieq $prevTray } |
+      Stop-Process -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $prevTray -Force -ErrorAction SilentlyContinue
+    if ($prevLnk) { Remove-Item -LiteralPath $prevLnk -Force -ErrorAction SilentlyContinue }
+    if ($onWindows) {
+      $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
+      $run = (Get-ItemProperty -LiteralPath $runKey -ErrorAction SilentlyContinue).Kongtrol
+      if ($run -and ($run.Trim('"') -ieq $prevTray)) { Remove-ItemProperty -LiteralPath $runKey -Name "Kongtrol" -ErrorAction SilentlyContinue }
+    }
+    Write-Info "Removed the Kongtrol tray app installed earlier (you chose only the command line)."
+  }
+  if ($withTray -and $onWindows -and $env:KONGTROL_NO_LAUNCH -ne "1") {
+    # Opens Kongtrol: on a first install the tray starts it and opens the
+    # page to add your first VPN (ADR-0025).
+    try {
+      Start-Process -FilePath $trayDest -WorkingDirectory $installDir
+      Write-Info "Kongtrol is open: look for its icon next to the clock (in the ^ overflow if hidden)."
+    } catch { Write-Warn "Kongtrol did not open ($($_.Exception.Message)); open it from the Start menu." }
+  }
+
+  $next = if ($withTray) { "Next: open Kongtrol from the Start menu or its icon (or: kongtrol up)" } else { "Next: kongtrol up" }
   switch ($kind) {
-    "update" { Write-Info "Kongtrol updated to ${shownNew}: your VPNs and settings are kept. Next: kongtrol up" }
-    "repair" { Write-Info "Kongtrol $newVersion reinstalled: your VPNs and settings are kept. Next: kongtrol up" }
-    "downgrade" { Write-Info "Kongtrol $newVersion installed: your VPNs and settings are kept. Next: kongtrol up" }
+    "update" { Write-Info "Kongtrol updated to ${shownNew}: your VPNs and settings are kept. $next" }
+    "repair" { Write-Info "Kongtrol $newVersion reinstalled: your VPNs and settings are kept. $next" }
+    "downgrade" { Write-Info "Kongtrol $newVersion installed: your VPNs and settings are kept. $next" }
+    default { Write-Info "Kongtrol $shownNew installed. $next" }
+  }
+  # Every run ends by saying what is installed and how to get the other part.
+  if ($withTray) {
+    Write-Info "Installed: the Kongtrol app (tray icon) and the command line (kongtrol). Only the command line? `$env:KONGTROL_CLI_ONLY=1, then the same command."
+  } else {
+    Write-Info "Installed: only the command line (kongtrol). $addTrayHint"
   }
   if ($final.Version) { Write-Host $final.Version }
 } finally {

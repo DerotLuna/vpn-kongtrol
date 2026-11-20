@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.12.0 · 2026-11-20
+Version 2.13.0 · 2026-11-20
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -180,6 +180,14 @@ The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refu
   after 12 h without use and after 7 days in any case, and only SHA-256 digests of ids, page
   tokens, nonces and tickets are stored. A second tab or the tray flyout gets its own page token
   on the same cookie (up to 16). `DELETE /api/v1/session` signs out.
+- After a daemon restart the hidden tray flyout's session is gone (401): the page hides its last
+  states and posts `reauth` (closed message list); the tray reloads it with a fresh one-time nonce,
+  at most once per 5 s, through the same loopback-origin check as the first load. The tray also
+  reloads it when the api-token changed; it compares a truncated SHA-256 of the token and never
+  stores the token ([ADR-0072](adr/0072-live-settings-changes-and-flyout-reauth.md),
+  [ADR-0074](adr/0074-tray-flyout-prewarm-and-reauth.md)).
+- With `?events=1` the WebSocket also sends `{"type":"changed","rev":N}` after a successful
+  mutating request; the frame carries no data (clients refetch through the authenticated API).
 
 Pages (`/` and every dashboard route; `/app/*` only redirects there) never set credentials. Every route, pages included, checks that the Host
 header is a loopback name with the daemon's port (DNS rebinding); API requests with an `Origin`
@@ -396,6 +404,17 @@ has rejected Secure cookies over HTTP even on loopback (https://flaviocopes.com/
 https://bugs.webkit.org/show_bug.cgi?id=281149), which would lock Safari users out. The related
 CodeQL alerts are dismissed with this justification; a captured cookie is useless without the
 page token.
+
+CodeQL `go/path-injection` on `POST /api/v1/vpns/import` with `"path"`
+(`internal/api/handlers_vpn_import.go`) is dismissed as a false positive (2026-11-20): the signed-in
+local user picks one of their own `.conf`/`.ovpn` files and the daemon runs as that same user, so no
+trust boundary is crossed; the path must still be absolute and clean (no `..`, no UNC, NT object,
+`/dev`, `/proc` or `/sys`), a regular file opened without following links and checked to be the
+file inspected (`os.SameFile`), within the size cap and with a `.conf`/`.ovpn` name. A root-only
+file is never read through the helper (ADR-0058, ADR-0063).
+
+Repository protections: CodeQL (GitHub default setup) on every push and pull request, Renovate for dependency updates, secret scanning
+with push protection (enabled 2026-11-20).
 
 ## DNS guard recovery
 

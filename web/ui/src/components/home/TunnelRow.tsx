@@ -132,9 +132,10 @@ const MAIN_ICON: Record<Exclude<TunnelAction, 'reload'>, ReactNode> = {
 // tunnel ("Conectar trabajo"), with the same icons as the card's "Conectar
 // todas" (plug) / "Desconectar todas" (power). The state's own action comes
 // first and alone carries weight: Conectar filled gold when it is down,
-// Desconectar with the ink outline when it is up (never gold, DESIGN.md);
-// Cancelar while a provider app is still bringing it up. Then Reconectar
-// (connected only) and "＋" (send a site through this VPN), outlined. While
+// Desconectar with the ink outline when it is up (never gold, DESIGN.md).
+// Fixed slots so the main square never moves (owner feedback 2026-11-20):
+// [Cancelar while connecting | Reconectar while connected | empty] [main]
+// ["＋" send a site through this VPN]. While
 // an action runs the squares stay in place but inert (aria-disabled keeps
 // focus where the user pressed); the pressed one shows a spinner inside
 // the same square until the daemon reports the end state, and a connect in
@@ -154,20 +155,9 @@ export const TunnelActionsCell = memo(function TunnelActionsCell({ tn }: { tn: T
 
   return (
     <div className="home-actions">
-      <IconButton
-        size="sm"
-        variant={main === 'connect' ? 'filled' : main === 'disconnect' ? 'strong' : 'outlined'}
-        className="home-main-act"
-        label={`${word} ${name}`}
-        icon={MAIN_ICON[main]}
-        loading={pressed}
-        aria-disabled={busy ? true : undefined}
-        onClick={busy ? undefined : () => run(name, main)}
-      />
-      {busy === 'connect' && (
+      {busy === 'connect' ? (
         <IconButton size="sm" variant="outlined" label={`${t('home.action.cancel')} ${name}`} icon={<CloseIcon />} onClick={() => run(name, 'cancel')} />
-      )}
-      {canReload && (
+      ) : canReload ? (
         <IconButton
           size="sm"
           variant="outlined"
@@ -178,7 +168,19 @@ export const TunnelActionsCell = memo(function TunnelActionsCell({ tn }: { tn: T
           aria-disabled={busy ? true : undefined}
           onClick={busy ? undefined : () => reload(name)}
         />
+      ) : (
+        <span className="home-act-slot" aria-hidden="true" />
       )}
+      <IconButton
+        size="sm"
+        variant={main === 'connect' ? 'filled' : main === 'disconnect' ? 'strong' : 'outlined'}
+        className="home-main-act"
+        label={`${word} ${name}`}
+        icon={MAIN_ICON[main]}
+        loading={pressed}
+        aria-disabled={busy ? true : undefined}
+        onClick={busy ? undefined : () => run(name, main)}
+      />
       <IconButton
         size="sm"
         variant="outlined"

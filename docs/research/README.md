@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.20.0 · 2026-11-19
+Version 1.21.0 · 2026-11-20
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -65,6 +65,7 @@ reasoned but unverified.
 | [2026-11-20-landing-style-and-contour-edges](2026-11-20-landing-style-and-contour-edges.md) | Which known style the landing is (Terminal/CLI UI, Cassette Futurism, FUI; not neubrutalism); accent dose; section-edge techniques (gradients, clip-path, SVG masks), a11y, reduced motion, CSP | ADR-0070 |
 | [2026-11-20-tray-flyout-open-latency](2026-11-20-tray-flyout-open-latency.md) | Where the flyout open time goes (lazy WebView2 creation, daemon probe on every click), WebView2 pre-warming and reuse guidance, measurements of one smoke run | ADR-0074 |
 | [2026-11-20-antivirus-blocked-binary-in-installers](2026-11-20-antivirus-blocked-binary-in-installers.md) | Windows errors 225/226 when an antivirus blocks a start, the PowerShell exception shape (measured), Defender Protection history actions and false-positive submission, what `!ml` means (no official definition), shell exit codes 126/127/128+N | ADR-0073 |
+| [2026-11-20-install-scripts-cli-and-tray](2026-11-20-install-scripts-cli-and-tray.md) | How rustup, Tailscale and Docker Desktop install everything by default with an opt-out; Inno Setup uninstall key and silent upgrade flags; Microsoft's Server Core check (ServerLevels); freedesktop desktop-session variables; what the Windows release assets contain; GUI-subsystem exe output to a pipe (measured) | ADR-0075 |
 
 ## Template
 

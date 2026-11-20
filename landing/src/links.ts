@@ -38,6 +38,12 @@ export type ReleaseAssetKey = keyof typeof RELEASE_ASSETS
 export const WINDOWS_INSTALLER_FILE = 'Kongtrol-Setup-windows-amd64.exe'
 export const WINDOWS_INSTALLER_URL = `${GITHUB_REPO}/releases/latest/download/${WINDOWS_INSTALLER_FILE}`
 
+// The macOS app (Kongtrol.app: tray + panel + the kongtrol command,
+// universal for Apple Silicon and Intel), zipped by release.yml — the ONLY
+// place its name and URL are written (ADR-0077).
+export const MACOS_APP_FILE = 'Kongtrol-macos-universal.zip'
+export const MACOS_APP_URL = `${GITHUB_REPO}/releases/latest/download/${MACOS_APP_FILE}`
+
 // GitHub's "latest" alias resolves against the most recently published
 // (non-draft, non-prerelease) release, so this always serves the current build
 // without any API call or CORS issue.

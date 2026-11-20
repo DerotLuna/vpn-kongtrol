@@ -1,4 +1,8 @@
-// Privacy policy — version 1.6.1 · 2026-11-19.
+// Privacy policy — version 1.7.0 · 2026-11-20.
+// 1.7.0: uninstall/delete wording says the data stays on this computer, with no copy anywhere
+//   else; what each way of deleting removes (the dashboard keeps daemon.log, tray.log, api-token
+//   and run/ while Kongtrol runs: internal/uninstall runtimeFiles) and that it cannot be undone
+//   (ADR-0076). VERSION const realigned (1.6.1 had left it at 1.6.0).
 // 1.6.0: the dashboard tab also keeps a session key (sessionStorage kongtrol.session, sent only to
 //   the daemon on this computer; ADR-0062).
 // 1.6.1: the audit log keeps 30 days by default and at most 500 MB in total, oldest deleted first
@@ -47,8 +51,8 @@ import { pathFor } from '../../site'
 import { GITHUB_REPO } from '../../links'
 import IC from '../../components/ui/InlineCode'
 
-const VERSION = '1.6.0'
-const UPDATED = '2026-11-19'
+const VERSION = '1.7.0'
+const UPDATED = '2026-11-20'
 const ext = (href: string, text: string) => <a href={href} target="_blank" rel="noreferrer">{text}</a>
 const issues = ext(`${GITHUB_REPO}/issues`, 'github.com/DerotLuna/vpn-kongtrol/issues')
 const GITHUB_PRIVACY = 'https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement'
@@ -101,9 +105,12 @@ const es: LegalDocContent = {
           destinos y olvida cada uno una hora después de verlo. Se borra al apagarlo o al cerrar Kongtrol. Viene
           encendido porque muestra lo mismo que <IC c="netstat" /> en tu equipo.</>,
       ],
-      after: [<>Al desinstalar, estos datos se quedan, salvo que pidas borrarlos. Para borrar todo: en el panel,
-        Ajustes › «Borrar todos mis datos», o <IC c="kongtrol uninstall --data-only" />. Para desinstalar y
-        borrarlos a la vez: <IC c="kongtrol uninstall --purge" />. Más en la{' '}
+      after: [<>Al desinstalar, estos datos se quedan en este equipo, salvo que pidas borrarlos. No hay copia en
+        ningún otro lugar, así que borrarlos no se puede deshacer. <IC c="kongtrol uninstall --data-only" /> borra
+        la carpeta y las entradas de Kongtrol en el almacén de credenciales; la app queda instalada. En el panel,
+        Ajustes › «Borrar todos mis datos» borra lo mismo, salvo los registros del programa y el token del panel,
+        que Kongtrol usa mientras está abierto. Para desinstalar y borrarlo todo a la vez:{' '}
+        <IC c="kongtrol uninstall --purge" />. Más en la{' '}
         <a href={`${pathFor('guia', 'es')}#uninstall`}>guía</a>.</>],
     },
     {
@@ -226,9 +233,12 @@ const en: LegalDocContent = {
           500 destinations and forgets each one an hour after it was last seen. It is erased when you turn it off or
           close Kongtrol. On by default because it shows the same thing as <IC c="netstat" /> on your computer.</>,
       ],
-      after: [<>When you uninstall, this data stays unless you ask to delete it. To erase everything: in the
-        dashboard, Settings › "Delete all my data", or <IC c="kongtrol uninstall --data-only" />. To uninstall and
-        delete it at once: <IC c="kongtrol uninstall --purge" />. More in the{' '}
+      after: [<>When you uninstall, this data stays on this computer unless you ask to delete it. There is no copy
+        anywhere else, so deleting it cannot be undone. <IC c="kongtrol uninstall --data-only" /> deletes the
+        folder and Kongtrol's entries in the credential store; the app stays installed. In the dashboard,
+        Settings › "Delete all my data" deletes the same, except the program's logs and the dashboard token,
+        which Kongtrol uses while it runs. To uninstall and delete everything at once:{' '}
+        <IC c="kongtrol uninstall --purge" />. More in the{' '}
         <a href={`${pathFor('guia', 'en')}#uninstall`}>guide</a>.</>],
     },
     {

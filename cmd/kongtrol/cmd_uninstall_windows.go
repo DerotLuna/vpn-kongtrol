@@ -62,6 +62,22 @@ func deleteAfterExitCmd(path string) *exec.Cmd {
 	return cmd
 }
 
+// removeRunValue deletes HKCU\...\Run "Kongtrol" (written by install.ps1)
+// only while it still starts this tray: the Windows installer writes the
+// same value for its own copy, and that one is never removed here.
+func removeRunValue(tray string) error {
+	k, err := registry.OpenKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.QUERY_VALUE|registry.SET_VALUE)
+	if err != nil {
+		return err
+	}
+	defer k.Close()
+	data, _, err := k.GetStringValue("Kongtrol")
+	if err != nil || !runValueIsFor(data, tray) {
+		return errRunValueNotOurs
+	}
+	return k.DeleteValue("Kongtrol")
+}
+
 // removeUserPathEntry removes dir from HKCU\Environment\Path (the entry
 // install.ps1 added).
 func removeUserPathEntry(dir string) error {

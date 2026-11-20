@@ -557,7 +557,7 @@ describe('Inicio: groups, egress, protection, notices', () => {
     expect(await within(card).findByText('Armado')).toHaveClass('pill', 'on')
     expect(within(card).getByText('Protege 2 VPN conectadas.')).toBeInTheDocument()
     expect(within(card).getByText('Activa')).toHaveClass('pill', 'on')
-    expect(within(card).getByText(/nada sale de tu equipo/)).toBeInTheDocument()
+    expect(within(card).getByText(/no consulta ningún servicio externo/)).toBeInTheDocument()
     expect(within(card).queryByRole('button', { name: 'Revisar IP pública' })).toBeNull()
     expect(within(card).getByRole('link', { name: 'Gestionar en Seguridad' })).toHaveAttribute('href', '/security')
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/publicip/check'))).toBe(false)

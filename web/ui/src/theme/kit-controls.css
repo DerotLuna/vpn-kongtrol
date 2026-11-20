@@ -35,11 +35,12 @@
 .k-icon-btn--sm .k-spinner { width: 14px; height: 14px; }
 /* filled = the row's one primary (gold: Conectar). */
 .k-icon-btn--filled { background: var(--signal-fill); border-color: var(--signal-fill); color: var(--on-signal); }
-.k-icon-btn--filled:hover { background: var(--signal-hi); border-color: var(--signal-hi); color: var(--on-signal); }
+.k-icon-btn--filled:hover { background: var(--signal-hi); border-color: var(--signal-edge); color: var(--on-signal); box-shadow: 0 6px 16px -6px var(--signal-glow); }
 .k-icon-btn--filled:active { background: var(--signal-fill); }
 /* strong = the state's action that is never gold (Desconectar): ink outline. */
 .k-icon-btn--strong { border-color: var(--text-muted); color: var(--text); background: var(--surface-2); }
-.k-icon-btn--strong:hover { border-color: var(--text); }
+/* hover says what the click does: it ends the connection (danger red) */
+.k-icon-btn--strong:hover { border-color: var(--danger); color: var(--danger); background: var(--danger-soft); }
 
 /* ── Select / MultiSelect / DateRangePicker triggers (the input's box) ── */
 .k-select-root { display: flex; flex-direction: column; min-width: 0; }

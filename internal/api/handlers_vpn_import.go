@@ -205,8 +205,17 @@ func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, er
 	if typ == "" {
 		return nil, refuse
 	}
-	if req.Type == "" {
+	// The type the caller left empty comes from the extension now and, once
+	// the file is read, from its content (a .conf may be OpenVPN, ADR-0080).
+	derived := req.Type == ""
+	if derived {
 		req.Type = typ
+	}
+	detect := func(b []byte) []byte {
+		if derived {
+			req.Type = profileimport.TypeForContent(path, b)
+		}
+		return b
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		req.Name = profileimport.CleanName(path)
@@ -221,7 +230,7 @@ func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, er
 		}
 		var b []byte
 		if b, err = importReadFile(path); err == nil {
-			return b, nil
+			return detect(b), nil
 		}
 		var ve *config.ValidationError
 		if errors.As(err, &ve) {
@@ -242,7 +251,7 @@ func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, er
 		}
 		return nil, &config.ValidationError{Key: ErrKeyElevatedReadFailed, Args: []any{path}}
 	}
-	return b, nil
+	return detect(b), nil
 }
 
 // importStatus: 409 for a name already taken, 413 for a file too big, 403

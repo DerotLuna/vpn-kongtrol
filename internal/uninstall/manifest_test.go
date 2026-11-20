@@ -31,6 +31,31 @@ func TestReadManifest_BOM(t *testing.T) {
 	}
 }
 
+// install.ps1 with the tray (ADR-0075): tray exe, Start menu shortcut and
+// the Run value are listed; a runvalue= that is not a kongtrol-tray.exe and
+// keys only the scripts read (version=, components=) are ignored.
+func TestReadManifest_WindowsTray(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "bin")
+	exe, tray := filepath.Join(bin, "kongtrol.exe"), filepath.Join(bin, "kongtrol-tray.exe")
+	lnk := filepath.Join(dir, "Programs", "Kongtrol.lnk")
+	body := "file=" + exe + "\nfile=" + tray + "\nfile=" + lnk + "\nfile=" + filepath.Join(dir, "Programs", "Other.lnk") +
+		"\nrunvalue=" + tray + "\nrunvalue=" + filepath.Join(bin, "evil.exe") + "\nrunvalue=relative\\kongtrol-tray.exe" +
+		"\ncomponents=cli,tray\nversion=0.8.0\npath=" + bin + "\n"
+	write(t, filepath.Join(dir, ManifestName), body)
+	m, ok := ReadManifest(dir)
+	if !ok || len(m.Files) != 3 || m.Files[2] != lnk {
+		t.Fatalf("files = %v", m.Files)
+	}
+	if len(m.RunValues) != 1 || m.RunValues[0] != tray {
+		t.Fatalf("run values = %v", m.RunValues)
+	}
+	p := Detect(Env{GOOS: "windows", Exe: exe, DataDir: dir, Exists: func(string) bool { return false }}, false, false)
+	if p.Channel != ChannelScript || len(p.RunValues) != 1 || len(p.PathEntries) != 1 {
+		t.Fatalf("plan = %+v", p)
+	}
+}
+
 // Regression: a manifest line "file=/" or "file=$HOME" made the uninstall
 // own (and delete) a parent folder. Only Kongtrol's own names are kept, and
 // only Kongtrol.app may contain the executable.

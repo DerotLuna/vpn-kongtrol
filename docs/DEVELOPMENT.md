@@ -40,6 +40,10 @@ Windows tray, archives, `.deb`/`.rpm`, SBOMs, `checksums.txt` + Sigstore signatu
 release, Scoop, winget, AUR), build provenance attestations, the Homebrew formula and the npm
 packages. Tags with a `-` (`v1.2.0-rc.1`) are prereleases: no package manager is updated and npm
 gets the `next` tag. `make release-snapshot` builds everything locally without publishing.
+To promote a tested rc, tag the stable version on the same commit (`v1.2.0` on `v1.2.0-rc.3`):
+GoReleaser gets `GORELEASER_CURRENT_TAG` (the tag that started the run) and, for stable tags,
+`GORELEASER_PREVIOUS_TAG` (the previous stable), so it never uploads into the rc's release and the
+changelog covers the whole version ([ADR-0071](adr/0071-panel-navigation-polish-traffic-order-and-release-tag-pinning.md)).
 
 Every release also attaches `install.sh` and `install.ps1` (listed in `checksums.txt`), so
 `releases/latest/download/install.sh` always matches the latest assets; `https://kongtrol.app/install.sh`
@@ -52,7 +56,8 @@ Release checklist:
 - [ ] Final (non-prerelease) tags only: `curl -sI https://kongtrol.app/install.sh` and
   `/install.ps1` answer 302 → the release asset, and the landing's "Descargar para Windows"
   buttons (`WINDOWS_INSTALLER_URL` in `landing/src/links.ts`, `releases/latest/download/…`)
-  download the new installer.
+  download the new installer, and the macOS "Descargar para Mac" button (`MACOS_APP_URL`)
+  downloads `Kongtrol-macos-universal.zip` ([ADR-0077](adr/0077-which-file-for-whom-app-first-downloads.md)).
 - [ ] A package manager whose secret was just added (table below) published the release; only
   then list it in `README.md`, `docs/SETUP.md` and the landing guide (today `README.md` says
   "not published yet", `docs/SETUP.md` "pendiente", and the landing does not mention them).

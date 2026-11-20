@@ -66,8 +66,56 @@ func DefaultDir() (string, error) {
 	return filepath.Join(home, ".kongtrol", "configs"), nil
 }
 
-// TypeForFile is the profile type a file name implies (.conf → wireguard,
-// .ovpn → openvpn), or "" for any other extension.
+// TypeForContent is the profile type of a file read from path (ADR-0080):
+// .ovpn is OpenVPN; a .conf is WireGuard when it has an [Interface]
+// section and OpenVPN when it has OpenVPN directives (OpenVPN GUI on
+// Windows keeps its profiles as .conf in %USERPROFILE%\OpenVPN\config),
+// else WireGuard (the validators then say what is wrong). "" for any other
+// extension.
+func TypeForContent(path string, content []byte) string {
+	typ := TypeForFile(path)
+	if typ != "wireguard" {
+		return typ
+	}
+	if !hasWireGuardInterface(content) && looksLikeOpenVPN(content) {
+		return "openvpn"
+	}
+	return typ
+}
+
+func hasWireGuardInterface(content []byte) bool {
+	for _, line := range strings.Split(string(content), "\n") {
+		if strings.EqualFold(strings.TrimSpace(line), "[Interface]") {
+			return true
+		}
+	}
+	return false
+}
+
+// looksLikeOpenVPN: a line that starts with a directive every client
+// profile carries (client, remote, dev tun/tap, proto, tls-client) or an
+// inline <ca> block.
+func looksLikeOpenVPN(content []byte) bool {
+	for _, line := range strings.Split(string(content), "\n") {
+		f := strings.Fields(strings.ToLower(strings.TrimSpace(line)))
+		if len(f) == 0 {
+			continue
+		}
+		switch f[0] {
+		case "client", "remote", "proto", "tls-client", "<ca>":
+			return true
+		case "dev":
+			if len(f) > 1 && (strings.HasPrefix(f[1], "tun") || strings.HasPrefix(f[1], "tap")) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// TypeForFile is the profile type a file name suggests before it is read
+// (.conf → wireguard, .ovpn → openvpn), or "" for any other extension. Once
+// the content is known, TypeForContent decides.
 func TypeForFile(path string) string {
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".conf":

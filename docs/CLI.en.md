@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.10 · 2026-11-19
+Version 1.13 · 2026-11-20
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -491,7 +491,7 @@ kongtrol profile add <type> [flags]
 | `--auth-method string` | certificate, credentials or certificate+credentials (default: the usual one for the type) |
 | `--cert string` | client certificate file |
 | `--city string` | server city (NordVPN, Proton VPN) |
-| `--config-file string` | the profile's .conf (WireGuard) or .ovpn (OpenVPN) file |
+| `--config-file string` | the profile's WireGuard .conf, or OpenVPN .ovpn / .conf file |
 | `--country string` | server country (NordVPN, Proton VPN) |
 | `--group string` | NordVPN server group |
 | `--host string` | VPN server address (FortiClient, Cisco, GlobalProtect) or exit node (Tailscale) |
@@ -677,7 +677,7 @@ kongtrol restart
 
 ### `kongtrol export`
 
-Prints a kongtrol.yaml template without passwords to share with your team. To save it: kongtrol export > team.yaml.
+Prints a kongtrol.yaml template without passwords in the terminal, to use on another computer or hand to your colleagues. Kongtrol sends it nowhere: you decide where to keep it. To save it to a file: kongtrol export > template.yaml.
 
 ```text
 kongtrol export [flags]
@@ -687,7 +687,7 @@ kongtrol export [flags]
 
 ```bash
 kongtrol export
-kongtrol export > team.yaml
+kongtrol export > template.yaml
 ```
 
 ## Diagnostics
@@ -855,7 +855,7 @@ kongtrol service status
 
 ### `kongtrol uninstall`
 
-Disconnects your VPNs, closes Kongtrol, removes the network helper, the autostart entry and the PATH entry its installer added. It deletes the app only when install.sh or install.ps1 installed it; if it came from a package manager (Homebrew, npm…) or the Windows installer, it tells you how to finish. Your settings and passwords stay, so everything comes back if you reinstall; --purge deletes them too.
+Disconnects your VPNs, closes Kongtrol, removes the network helper, the autostart entry and the PATH entry its installer added. It deletes the app only when install.sh or install.ps1 installed it; if it came from a package manager (Homebrew, npm…) or the Windows installer, it tells you how to finish. Your data is only on this computer: Kongtrol keeps nothing online or anywhere else. With no options it stays here, so everything comes back if you reinstall: the ~/.kongtrol folder (VPNs, settings, imported files, logs) and your passwords in this computer's system keychain. --purge deletes them too: the ~/.kongtrol folder, Kongtrol's passwords in the keychain and the key that signs the audit log (plus the audit log or the --config file if you keep them in another folder); it cannot be undone. --data-only deletes the same, but leaves the app installed.
 
 ```text
 kongtrol uninstall [flags]
@@ -865,17 +865,17 @@ kongtrol uninstall [flags]
 
 | Flags | Description |
 |---|---|
-| `--data-only` | only delete your data and passwords; the app stays installed |
+| `--data-only` | delete the same as --purge, but keep the app installed |
 | `--dry-run` | show what it would do, change nothing |
-| `--purge` | also delete your settings (~/.kongtrol) and saved passwords |
+| `--purge` | also delete the ~/.kongtrol folder and the passwords saved in the keychain from this computer (cannot be undone) |
 | `-y, --yes` | do not ask (for scripts) |
 
 **Examples**
 
 ```bash
 kongtrol uninstall --dry-run      # shows what it would do, changes nothing
-kongtrol uninstall                # removes the app, keeps your data
-kongtrol uninstall --purge        # removes the app and deletes your data and passwords
+kongtrol uninstall                # removes the app; your data stays on this computer
+kongtrol uninstall --purge        # removes the app and deletes your data and passwords from this computer
 ```
 
 ### `kongtrol version`

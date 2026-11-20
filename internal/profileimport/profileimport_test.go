@@ -101,3 +101,25 @@ func TestTypeForFile(t *testing.T) {
 		}
 	}
 }
+
+// TestTypeForContent: a .conf is WireGuard or OpenVPN by its content
+// (OpenVPN GUI on Windows uses .conf, ADR-0080); .ovpn is always OpenVPN.
+func TestTypeForContent(t *testing.T) {
+	cases := []struct {
+		path, content, want string
+	}{
+		{"wg0.conf", "[Interface]\nPrivateKey = x\n[Peer]\nPublicKey = y\n", "wireguard"},
+		{"aws.conf", "client\ndev tun\nproto udp\nremote vpn.example.com 1194\nca ca-aws.crt\n", "openvpn"},
+		{"inline.conf", "dev tap\n<ca>\n-----BEGIN CERTIFICATE-----\n</ca>\n", "openvpn"},
+		{"CRLF.conf", "client\r\nremote x 1194\r\n", "openvpn"},
+		{"mixed.conf", "# remote in a comment\n[Interface]\nremote = nothing\n", "wireguard"},
+		{"empty.conf", "", "wireguard"},
+		{"x.ovpn", "[Interface]\n", "openvpn"},
+		{"x.txt", "client\n", ""},
+	}
+	for _, c := range cases {
+		if got := TypeForContent(c.path, []byte(c.content)); got != c.want {
+			t.Errorf("TypeForContent(%q) = %q, want %q", c.path, got, c.want)
+		}
+	}
+}

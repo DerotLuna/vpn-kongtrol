@@ -172,6 +172,9 @@ func printUninstallPlan(p uninstall.Plan, profiles int) {
 			for _, a := range p.Autostart {
 				step(cf("cli.uninstall.step.autostart", a))
 			}
+			if len(p.RunValues) > 0 {
+				step(cf("cli.uninstall.step.autostart", runValueLabel))
+			}
 			for _, d := range p.PathEntries {
 				step(cf("cli.uninstall.step.path", d))
 			}
@@ -213,6 +216,11 @@ func confirmUninstall(purge bool) (bool, error) {
 func removeScriptInstall(p uninstall.Plan) {
 	for _, a := range p.Autostart {
 		removeListed(a)
+	}
+	for _, tray := range p.RunValues {
+		if err := removeRunValue(tray); err == nil {
+			say(tuiOK(cf("cli.uninstall.removed", runValueLabel)))
+		}
 	}
 	for _, d := range p.PathEntries {
 		if err := removeUserPathEntry(d); err == nil {
@@ -268,3 +276,22 @@ func removeListed(path string) {
 
 // errNotInPath: the directory was not in the user PATH.
 var errNotInPath = errors.New("not in PATH")
+
+// runValueLabel names the per-user autostart value install.ps1 writes (the
+// same value the Windows installer uses, ADR-0075).
+const runValueLabel = `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Kongtrol`
+
+// errRunValueNotOurs: the Run value is missing or points to another copy.
+var errRunValueNotOurs = errors.New("run value missing or not ours")
+
+// runValueIsFor reports whether a Run value's data starts the given tray
+// executable: `"C:\...\kongtrol-tray.exe"` or the bare path, any case.
+func runValueIsFor(data, tray string) bool {
+	d := strings.TrimSpace(data)
+	if strings.HasPrefix(d, `"`) {
+		if end := strings.Index(d[1:], `"`); end >= 0 {
+			d = d[1 : end+1]
+		}
+	}
+	return d != "" && strings.EqualFold(filepath.Clean(d), filepath.Clean(tray))
+}

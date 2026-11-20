@@ -38,6 +38,11 @@ type Plan struct {
 	Files []string `json:"files,omitempty"`
 	// Autostart entries Kongtrol's script created.
 	Autostart []string `json:"autostart,omitempty"`
+	// RunValues are tray executables install.ps1 registered under the
+	// per-user Run key (value "Kongtrol", the same name the Windows
+	// installer uses). The value is removed only while it still points to
+	// that executable, so another copy's autostart is never touched.
+	RunValues []string `json:"run_values,omitempty"`
 	// PathEntries are directories the script added to the user PATH
 	// (Windows); removed from HKCU\Environment\Path.
 	PathEntries []string `json:"path_entries,omitempty"`
@@ -47,10 +52,12 @@ type Plan struct {
 }
 
 // Manifest is the parsed install.manifest ("key=value" lines: file=,
-// autostart=, path=).
+// autostart=, runvalue=, path=; version= and components= are read by the
+// install scripts only).
 type Manifest struct {
 	Files       []string
 	Autostart   []string
+	RunValues   []string
 	PathEntries []string
 }
 
@@ -81,6 +88,10 @@ func ReadManifest(dataDir string) (Manifest, bool) {
 		case "autostart":
 			if filepath.Base(v) == "kongtrol.desktop" {
 				m.Autostart = append(m.Autostart, filepath.Clean(v))
+			}
+		case "runvalue":
+			if filepath.Base(v) == "kongtrol-tray.exe" {
+				m.RunValues = append(m.RunValues, filepath.Clean(v))
 			}
 		case "path":
 			m.PathEntries = append(m.PathEntries, filepath.Clean(v))
@@ -118,7 +129,7 @@ func Detect(env Env, purge, dataOnly bool) Plan {
 
 	if m, ok := ReadManifest(env.DataDir); ok && manifestOwns(m, exe) {
 		p.Channel = ChannelScript
-		p.Files, p.Autostart, p.PathEntries = m.Files, m.Autostart, m.PathEntries
+		p.Files, p.Autostart, p.RunValues, p.PathEntries = m.Files, m.Autostart, m.RunValues, m.PathEntries
 		return p
 	}
 	if env.GOOS == "windows" {
@@ -149,6 +160,7 @@ func Detect(env Env, purge, dataOnly bool) Plan {
 var ScriptFileNames = map[string]bool{
 	"kongtrol": true, "kongtrol-tray": true, "kongtrol.exe": true, "kongtrol-tray.exe": true,
 	AppBundleName: true, "kongtrol.desktop": true, "kongtrol.png": true,
+	"Kongtrol.lnk": true, // install.ps1's Start menu shortcut
 }
 
 // AppBundleName is the macOS app folder; the only manifest entry that is

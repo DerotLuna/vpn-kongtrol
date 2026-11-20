@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.27 · 2026-11-20
+Version 1.28 · 2026-11-20
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -134,7 +134,11 @@ Inno finished-page checkbox depends on profiles existing; "crear mi primera VPN"
 release assets too, served as `https://kongtrol.app/install.sh` / `install.ps1` (302 to releases/latest,
 `landing/public/_redirects`); the one-liner base lives only in `landing/src/links.ts` (ADR-0035). They
 check `checksums.txt` and, only when `cosign` 2.4+ is installed, its Sigstore bundle first (bad or
-missing signature stops; never download cosign; ADR-0057).
+missing signature stops; never download cosign; ADR-0057). Every path gives the same product (ADR-0075):
+the scripts install CLI + tray by default (`install.ps1`: from `kongtrol_windows_<arch>.zip`, Start
+menu shortcut, HKCU Run "Kongtrol"); `--cli-only` / `-CliOnly` / `KONGTROL_CLI_ONLY=1` (or no desktop:
+Linux without DISPLAY/WAYLAND_DISPLAY/XDG_CURRENT_DESKTOP, Windows Server Core) installs only the CLI;
+updates keep the manifest `components=` choice; `install.ps1` refuses next to an Inno install.
 The release body starts with the Windows installer line (`.goreleaser.yaml` `release.header`); a
 double-clicked `kongtrol.exe` (Explorer, no arguments) prints `cli.explorer_notice` and waits for
 Enter — cobra's own mousetrap is off because it adds an English-only line (ADR-0045).

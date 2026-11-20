@@ -56,6 +56,14 @@ h1, h2, h3 { text-wrap: balance; }
    idle = hollow, unknown = dashed ring, on = filled neutral. Amber (the
    brand) is never a state. */
 .pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+/* A state change reads as one motion (owner feedback 2026-11-20): colours
+   blend, the connecting ring breathes, the connected dot settles in. Off
+   with reduced motion (rule below). */
+.pill { transition: background-color var(--dur-med) var(--ease-standard), color var(--dur-med) var(--ease-standard); }
+.pill.connecting::before { animation: pill-breathe 1.2s ease-in-out infinite; }
+.pill.ok::before { animation: pill-settle var(--dur-med) var(--ease-enter); }
+@keyframes pill-breathe { 50% { opacity: 0.35; transform: scale(0.8); } }
+@keyframes pill-settle { from { transform: scale(0.3); opacity: 0.4; } }
 .pill { font-variant-numeric: tabular-nums; }
 .pill.ok { background: var(--live-soft); color: var(--live); }
 .pill.connecting { background: var(--steel-soft); color: var(--steel); }

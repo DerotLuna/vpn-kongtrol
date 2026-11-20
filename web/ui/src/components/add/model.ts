@@ -82,6 +82,24 @@ export function typeForFile(fileName: string): 'wireguard' | 'openvpn' | null {
   return null
 }
 
+/**
+ * The type once the file is read, like profileimport.TypeForContent
+ * (ADR-0080): a .conf with an [Interface] section is WireGuard, one with
+ * OpenVPN directives (client, remote, dev tun/tap, proto, tls-client, <ca>)
+ * is OpenVPN — OpenVPN GUI on Windows keeps its profiles as .conf.
+ */
+export function typeForContent(fileName: string, text: string): 'wireguard' | 'openvpn' | null {
+  const byName = typeForFile(fileName)
+  if (byName !== 'wireguard') return byName
+  const lines = text.split('\n').map((l) => l.trim().toLowerCase())
+  if (lines.includes('[interface]')) return 'wireguard'
+  const openvpn = lines.some((l) => {
+    const [first = '', second = ''] = l.split(/\s+/)
+    return ['client', 'remote', 'proto', 'tls-client', '<ca>'].includes(first) || (first === 'dev' && /^(tun|tap)/.test(second))
+  })
+  return openvpn ? 'openvpn' : 'wireguard'
+}
+
 /** A profile name from the file name, valid for both the profile and the stored copy, never taken. */
 export function profileNameFromFile(fileName: string, taken: readonly string[]): string {
   return uniqueName(importName('', fileName), taken, '-')

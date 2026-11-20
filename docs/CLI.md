@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.11 · 2026-11-19
+Versión 2.14 · 2026-11-20
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -491,7 +491,7 @@ kongtrol profile add <tipo> [opciones]
 | `--auth-method string` | certificate, credentials o certificate+credentials (por defecto, el habitual del tipo) |
 | `--cert string` | archivo del certificado de cliente |
 | `--city string` | ciudad del servidor (NordVPN, Proton VPN) |
-| `--config-file string` | archivo .conf (WireGuard) u .ovpn (OpenVPN) del perfil |
+| `--config-file string` | archivo .conf de WireGuard, o .ovpn / .conf de OpenVPN, del perfil |
 | `--country string` | país del servidor (NordVPN, Proton VPN) |
 | `--group string` | grupo de servidores de NordVPN |
 | `--host string` | dirección del servidor VPN (FortiClient, Cisco, GlobalProtect) o nodo de salida (Tailscale) |
@@ -677,7 +677,7 @@ kongtrol restart
 
 ### `kongtrol export`
 
-Imprime una plantilla de kongtrol.yaml sin contraseñas para compartir con tu equipo. Para guardarla: kongtrol export > equipo.yaml.
+Muestra en la terminal una plantilla de kongtrol.yaml sin contraseñas, para usarla en otro equipo o pasársela a tus compañeros. Kongtrol no la envía a ningún lado: tú decides dónde la guardas. Para guardarla en un archivo: kongtrol export > plantilla.yaml.
 
 ```text
 kongtrol export [opciones]
@@ -687,7 +687,7 @@ kongtrol export [opciones]
 
 ```bash
 kongtrol export
-kongtrol export > equipo.yaml
+kongtrol export > plantilla.yaml
 ```
 
 ## Diagnóstico
@@ -855,7 +855,7 @@ kongtrol service status
 
 ### `kongtrol uninstall`
 
-Desconecta tus VPN, cierra Kongtrol, quita el ayudante de red, el inicio automático y el PATH que agregó su instalador. Borra la app solo si la instaló install.sh o install.ps1; si vino de un gestor de paquetes (Homebrew, npm…) o del instalador de Windows, te dice cómo terminar. Tu configuración y tus contraseñas se quedan, para que todo vuelva al reinstalar; --purge también las borra.
+Desconecta tus VPN, cierra Kongtrol, quita el ayudante de red, el inicio automático y el PATH que agregó su instalador. Borra la app solo si la instaló install.sh o install.ps1; si vino de un gestor de paquetes (Homebrew, npm…) o del instalador de Windows, te dice cómo terminar. Tus datos están solo en este equipo: Kongtrol no guarda nada en internet ni en otro lugar. Sin opciones se quedan aquí, para que todo vuelva si reinstalas: la carpeta ~/.kongtrol (VPN, ajustes, archivos importados, registros) y tus contraseñas en el llavero del sistema de este equipo. --purge también los borra: la carpeta ~/.kongtrol, las contraseñas de Kongtrol del llavero y la clave que firma el registro de auditoría (y el registro de auditoría o el --config si los tienes en otra carpeta); no se puede deshacer. --data-only borra lo mismo, pero deja la app instalada.
 
 ```text
 kongtrol uninstall [opciones]
@@ -865,17 +865,17 @@ kongtrol uninstall [opciones]
 
 | Opciones | Descripción |
 |---|---|
-| `--data-only` | solo borra tus datos y contraseñas; la app queda instalada |
+| `--data-only` | borra lo mismo que --purge, pero la app queda instalada |
 | `--dry-run` | muestra qué haría, sin cambiar nada |
-| `--purge` | también borra tu configuración (~/.kongtrol) y las contraseñas guardadas |
+| `--purge` | también borra de este equipo la carpeta ~/.kongtrol y las contraseñas guardadas en el llavero (no se puede deshacer) |
 | `-y, --yes` | no pregunta (para scripts) |
 
 **Ejemplos**
 
 ```bash
 kongtrol uninstall --dry-run      # muestra qué haría, sin cambiar nada
-kongtrol uninstall                # quita la app, guarda tus datos
-kongtrol uninstall --purge        # quita la app y borra tus datos y contraseñas
+kongtrol uninstall                # quita la app; tus datos siguen en este equipo
+kongtrol uninstall --purge        # quita la app y borra tus datos y contraseñas de este equipo
 ```
 
 ### `kongtrol version`

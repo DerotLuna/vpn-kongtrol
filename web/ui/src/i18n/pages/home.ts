@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Inicio (/) · v2.2.0 · 2026-11-19
+// Kongtrol UI strings — Inicio (/) · v2.2.1 · 2026-11-20
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -8,7 +8,7 @@
 import type { Strings } from '../module'
 
 const es = {
-  'home.lead': 'Tus VPN de un vistazo: qué está conectado, por dónde sale tu tráfico y qué hacer si algo falla. Se actualiza solo.',
+  'home.lead': 'Tus VPN en vivo: qué está conectado y qué hacer si algo falla.',
   'home.firstRun.title': 'Agrega tu primera VPN',
   'home.firstRun.body': 'Kongtrol usa la app de tu VPN o su archivo WireGuard/OpenVPN. Crea un perfil y conéctalo desde aquí.',
   'home.firstRun.action': 'Agregar VPN',
@@ -159,7 +159,7 @@ const es = {
   'home.sec.leak.pending': 'Sin revisar',
   'home.sec.leak.unavailable': 'No disponible',
   'home.sec.leak.disabled': 'Apagada',
-  'home.sec.leak.offHint': 'Está apagada: nada sale de tu equipo. Actívala en Seguridad para ver tu IP pública.',
+  'home.sec.leak.offHint': 'Está apagada: Kongtrol no consulta ningún servicio externo. Actívala en Seguridad para ver tu IP pública.',
   'home.sec.publicIp': 'IP pública',
   'home.sec.lastChecked': 'Última revisión',
   'home.sec.check': 'Revisar IP pública',
@@ -188,7 +188,7 @@ const es = {
 } as const
 
 const en: Strings<typeof es> = {
-  'home.lead': 'Your VPNs at a glance: what is connected, where your traffic goes and what to do if something fails. Updates by itself.',
+  'home.lead': 'Your VPNs live: what is connected and what to do if something fails.',
   'home.firstRun.title': 'Add your first VPN',
   'home.firstRun.body': 'Kongtrol uses your VPN’s app or its WireGuard/OpenVPN file. Create a profile and connect it from here.',
   'home.firstRun.action': 'Add VPN',
@@ -339,7 +339,7 @@ const en: Strings<typeof es> = {
   'home.sec.leak.pending': 'Not checked',
   'home.sec.leak.unavailable': 'Unavailable',
   'home.sec.leak.disabled': 'Off',
-  'home.sec.leak.offHint': 'It is off: nothing leaves your computer. Turn it on in Security to see your public IP.',
+  'home.sec.leak.offHint': 'It is off: Kongtrol contacts no external service. Turn it on in Security to see your public IP.',
   'home.sec.publicIp': 'Public IP',
   'home.sec.lastChecked': 'Last check',
   'home.sec.check': 'Check public IP',

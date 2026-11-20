@@ -159,9 +159,9 @@ var messages = map[Lang]map[string]string{
 		"help.kongtrol.restart.short":                     "Reinicia Kongtrol para usar perfiles VPN nuevos o editados",
 		"help.kongtrol.restart.long":                      "Detiene Kongtrol y lo vuelve a iniciar con kongtrol.yaml releído; reconecta las VPN que estaban conectadas. Es lo mismo que el botón Reiniciar del panel. Después: kongtrol status.",
 		"help.kongtrol.restart.example":                   "  kongtrol restart",
-		"help.kongtrol.export.short":                      "Imprime tu configuración sin secretos para compartirla",
-		"help.kongtrol.export.long":                       "Imprime una plantilla de kongtrol.yaml sin contraseñas para compartir con tu equipo. Para guardarla: kongtrol export > equipo.yaml.",
-		"help.kongtrol.export.example":                    "  kongtrol export\n  kongtrol export > equipo.yaml",
+		"help.kongtrol.export.short":                      "Muestra tu configuración sin contraseñas, para usarla en otro equipo",
+		"help.kongtrol.export.long":                       "Muestra en la terminal una plantilla de kongtrol.yaml sin contraseñas, para usarla en otro equipo o pasársela a tus compañeros. Kongtrol no la envía a ningún lado: tú decides dónde la guardas. Para guardarla en un archivo: kongtrol export > plantilla.yaml.",
+		"help.kongtrol.export.example":                    "  kongtrol export\n  kongtrol export > plantilla.yaml",
 		"help.kongtrol.profile.short":                     "Agrega perfiles VPN y busca las apps de VPN instaladas",
 		"help.kongtrol.profile.long":                      "Crea perfiles VPN sin preguntas (para scripts), importa archivos de WireGuard u OpenVPN y busca las apps de VPN de este equipo. Con preguntas paso a paso: kongtrol init o el panel (kongtrol dashboard).",
 		"help.kongtrol.profile.example":                   "  kongtrol profile detect\n  kongtrol profile add nordvpn --name casa --country Spain\n  kongtrol profile import oficina.conf --create",
@@ -175,7 +175,7 @@ var messages = map[Lang]map[string]string{
 		"cli.profile.add.flag.name":                       "nombre del perfil (obligatorio), por ejemplo oficina",
 		"cli.profile.add.flag.host":                       "dirección del servidor VPN (FortiClient, Cisco, GlobalProtect) o nodo de salida (Tailscale)",
 		"cli.profile.add.flag.port":                       "puerto del servidor VPN",
-		"cli.profile.add.flag.config_file":                "archivo .conf (WireGuard) u .ovpn (OpenVPN) del perfil",
+		"cli.profile.add.flag.config_file":                "archivo .conf de WireGuard, o .ovpn / .conf de OpenVPN, del perfil",
 		"cli.profile.add.flag.auth_method":                "certificate, credentials o certificate+credentials (por defecto, el habitual del tipo)",
 		"cli.profile.add.flag.cert":                       "archivo del certificado de cliente",
 		"cli.profile.add.flag.key":                        "archivo de la clave privada del certificado",
@@ -250,7 +250,7 @@ var messages = map[Lang]map[string]string{
 		// Banner
 		"banner.subtitle": "Orquestación Multi-VPN",
 		"banner.yaml":     "Este asistente crea o actualiza ~/.kongtrol/kongtrol.yaml.",
-		"banner.keychain": "Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.",
+		"banner.keychain": "Las contraseñas se guardan en el llavero del sistema de este equipo — nunca en el YAML.",
 
 		// VPN detection
 		"detected.scanning": "Buscando clientes VPN instalados",
@@ -303,7 +303,7 @@ var messages = map[Lang]map[string]string{
 		"policy.yaml_hint":       "    También puedes editar políticas directamente en kongtrol.yaml → sección 'policies'.",
 
 		// Security prompts
-		"security.kill_switch": "¿Activar kill switch? (bloquea todo el tráfico si cae la VPN)",
+		"security.kill_switch": "¿Activar kill switch? (si una VPN se cae sola, bloquea lo que iba por ella)",
 		"security.dns_guard":   "¿Activar DNS guard? (previene fugas de DNS)",
 		"security.audit_log":   "¿Activar log de auditoría firmado?",
 		"security.public_ip":   "¿Mostrar tu IP pública? (consulta un servicio externo)",
@@ -413,9 +413,9 @@ var messages = map[Lang]map[string]string{
 		"hint.priority":                 "    Solo desempata políticas que cubren el mismo destino: gana el número mayor. Nunca conecta otro perfil. Ej: 10",
 		"hint.type":                     "    ✓ = instalada en este equipo.",
 		"nextsteps.profile_placeholder": "<perfil>",
-		"hint.killswitch":               "    Corta internet si la VPN se cae. Ej: nada sale sin cifrar.",
-		"hint.dnsguard":                 "    Las búsquedas de nombres van por la VPN. Ej: tu proveedor no ve qué webs abres.",
-		"hint.auditlog":                 "    Guarda un registro firmado de conexiones. Ej: ~/.kongtrol/audit.log",
+		"hint.killswitch":               "    Si la VPN se cae sin que la apagues, bloquea su tráfico hasta que vuelva. Ej: si llevaba todo tu tráfico, se corta internet.",
+		"hint.dnsguard":                 "    Con la VPN conectada, las búsquedas de nombres van por ella. Ej: tu proveedor de internet no ve qué nombres de sitios buscas.",
+		"hint.auditlog":                 "    Guarda en este equipo un registro firmado de conexiones. Ej: ~/.kongtrol/audit.log",
 		"hint.dashboard":                "    Panel en tu navegador para ver y editar. Ej: http://127.0.0.1:9741",
 
 		// Config validation (config.ValidationError): message + ".fix" line
@@ -558,8 +558,8 @@ var messages = map[Lang]map[string]string{
 		"api.err.import_directive.fix":          "Borra esa línea del archivo (Kongtrol ya se ocupa de rutas, DNS y registro) y vuelve a importarlo.",
 		"api.err.import_script_security":        "El archivo pide script-security 2 o más (línea %[1]d), que deja ejecutar scripts: Kongtrol no lo permite por seguridad.",
 		"api.err.import_script_security.fix":    "Borra esa línea o déjala en script-security 1 y vuelve a importarlo.",
-		"api.err.import_file_ref":               "El archivo apunta a otro archivo (%[1]q) y al importar solo se acepta un .ovpn completo.",
-		"api.err.import_file_ref.fix":           "Usa el .ovpn «todo en uno» de tu proveedor (certificados dentro, entre <ca>…</ca>), o pon la ruta del .ovpn en el perfil (campo «Archivo .ovpn», config:) en vez de importarlo.",
+		"api.err.import_file_ref":               "El archivo apunta a otro archivo (%[1]q), por ejemplo un certificado: al importar solo se acepta un archivo completo.",
+		"api.err.import_file_ref.fix":           "Mejor: usa el archivo donde está. Crea el perfil OpenVPN y pon su ruta en «Archivo de OpenVPN» (config:); Kongtrol lo abre desde su carpeta, así encuentra los certificados (como OpenVPN GUI). O usa el archivo «todo en uno» de tu proveedor (certificados dentro, entre <ca>…</ca>).",
 		"api.err.import_not_wireguard":          "No parece un archivo de WireGuard: necesita una sola sección [Interface] con PrivateKey.",
 		"api.err.import_not_wireguard.fix":      "Elige el .conf que te dio tu proveedor o tu servidor WireGuard.",
 
@@ -1397,9 +1397,9 @@ var messages = map[Lang]map[string]string{
 		"help.kongtrol.restart.short":                     "Restart Kongtrol to use new or edited VPN profiles",
 		"help.kongtrol.restart.long":                      "Stops Kongtrol and starts it again with kongtrol.yaml re-read; reconnects the VPNs that were connected. Same as the dashboard's Restart button. Next: kongtrol status.",
 		"help.kongtrol.restart.example":                   "  kongtrol restart",
-		"help.kongtrol.export.short":                      "Print your config without secrets to share it",
-		"help.kongtrol.export.long":                       "Prints a kongtrol.yaml template without passwords to share with your team. To save it: kongtrol export > team.yaml.",
-		"help.kongtrol.export.example":                    "  kongtrol export\n  kongtrol export > team.yaml",
+		"help.kongtrol.export.short":                      "Print your config without passwords, to use on another computer",
+		"help.kongtrol.export.long":                       "Prints a kongtrol.yaml template without passwords in the terminal, to use on another computer or hand to your colleagues. Kongtrol sends it nowhere: you decide where to keep it. To save it to a file: kongtrol export > template.yaml.",
+		"help.kongtrol.export.example":                    "  kongtrol export\n  kongtrol export > template.yaml",
 		"help.kongtrol.profile.short":                     "Add VPN profiles and find the VPN apps installed",
 		"help.kongtrol.profile.long":                      "Creates VPN profiles without questions (for scripts), imports WireGuard or OpenVPN files and finds the VPN apps on this computer. Step by step with questions: kongtrol init or the dashboard (kongtrol dashboard).",
 		"help.kongtrol.profile.example":                   "  kongtrol profile detect\n  kongtrol profile add nordvpn --name home --country Spain\n  kongtrol profile import office.conf --create",
@@ -1413,7 +1413,7 @@ var messages = map[Lang]map[string]string{
 		"cli.profile.add.flag.name":                       "profile name (required), for example office",
 		"cli.profile.add.flag.host":                       "VPN server address (FortiClient, Cisco, GlobalProtect) or exit node (Tailscale)",
 		"cli.profile.add.flag.port":                       "VPN server port",
-		"cli.profile.add.flag.config_file":                "the profile's .conf (WireGuard) or .ovpn (OpenVPN) file",
+		"cli.profile.add.flag.config_file":                "the profile's WireGuard .conf, or OpenVPN .ovpn / .conf file",
 		"cli.profile.add.flag.auth_method":                "certificate, credentials or certificate+credentials (default: the usual one for the type)",
 		"cli.profile.add.flag.cert":                       "client certificate file",
 		"cli.profile.add.flag.key":                        "the certificate's private key file",
@@ -1488,7 +1488,7 @@ var messages = map[Lang]map[string]string{
 		// Banner
 		"banner.subtitle": "Multi-VPN Orchestration",
 		"banner.yaml":     "This wizard creates or updates ~/.kongtrol/kongtrol.yaml.",
-		"banner.keychain": "Passwords are stored in your OS keychain — never in the YAML file.",
+		"banner.keychain": "Passwords are stored in this computer's OS keychain — never in the YAML file.",
 
 		// VPN detection
 		"detected.scanning": "Scanning for installed VPN clients",
@@ -1541,7 +1541,7 @@ var messages = map[Lang]map[string]string{
 		"policy.yaml_hint":       "    You can also edit policies directly in kongtrol.yaml → 'policies' section.",
 
 		// Security prompts
-		"security.kill_switch": "Enable kill switch? (blocks all traffic if VPN drops)",
+		"security.kill_switch": "Enable kill switch? (if a VPN drops on its own, blocks what went through it)",
 		"security.public_ip":   "Show your public IP? (asks an external service)",
 		"security.dns_guard":   "Enable DNS guard? (prevents DNS leaks)",
 		"security.audit_log":   "Enable signed audit log?",
@@ -1651,9 +1651,9 @@ var messages = map[Lang]map[string]string{
 		"hint.priority":                 "    Only breaks ties between policies for the same destination: the higher number wins. It never connects another profile. E.g. 10",
 		"hint.type":                     "    ✓ = installed on this computer.",
 		"nextsteps.profile_placeholder": "<profile>",
-		"hint.killswitch":               "    Cuts internet if the VPN drops. E.g. nothing leaves unencrypted.",
-		"hint.dnsguard":                 "    Name lookups go through the VPN. E.g. your ISP can't see which sites you open.",
-		"hint.auditlog":                 "    Keeps a signed record of connections. E.g. ~/.kongtrol/audit.log",
+		"hint.killswitch":               "    If the VPN drops without you turning it off, blocks its traffic until it is back. E.g. if it carried all your traffic, internet stops.",
+		"hint.dnsguard":                 "    With the VPN connected, name lookups go through it. E.g. your ISP can't see which site names you look up.",
+		"hint.auditlog":                 "    Keeps a signed record of connections on this computer. E.g. ~/.kongtrol/audit.log",
 		"hint.dashboard":                "    A page in your browser to view and edit. E.g. http://127.0.0.1:9741",
 
 		// Config validation (config.ValidationError): message + ".fix" line
@@ -1796,8 +1796,8 @@ var messages = map[Lang]map[string]string{
 		"api.err.import_directive.fix":          "Delete that line from the file (Kongtrol already handles routes, DNS and logging) and import it again.",
 		"api.err.import_script_security":        "the file asks for script-security 2 or higher (line %[1]d), which lets it run scripts: Kongtrol does not allow that, for safety",
 		"api.err.import_script_security.fix":    "Delete that line or set it to script-security 1 and import it again.",
-		"api.err.import_file_ref":               "the file points to another file (%[1]q); an import only accepts a self-contained .ovpn",
-		"api.err.import_file_ref.fix":           "Use your provider's all-in-one .ovpn (certificates inside, between <ca>…</ca>), or put the .ovpn path in the profile (“.ovpn file” field, config:) instead of importing it.",
+		"api.err.import_file_ref":               "the file points to another file (%[1]q), such as a certificate; an import only accepts a self-contained file",
+		"api.err.import_file_ref.fix":           "Better: use the file where it is. Create the OpenVPN profile and put its path in “OpenVPN file” (config:); Kongtrol opens it from its folder, so it finds the certificates (like OpenVPN GUI). Or use your provider's all-in-one file (certificates inside, between <ca>…</ca>).",
 		"api.err.import_not_wireguard":          "this does not look like a WireGuard file: it needs exactly one [Interface] section with a PrivateKey",
 		"api.err.import_not_wireguard.fix":      "Pick the .conf your provider or your WireGuard server gave you.",
 

@@ -1,6 +1,7 @@
 // Kongtrol UI — B: "Importar un archivo de VPN" · v1.0.0 · 2026-11-19
 //
-// The type comes from the extension (profileimport.TypeForFile), the name
+// The type comes from the extension and, for a .conf, from its content
+// (profileimport.TypeForContent, ADR-0080: OpenVPN GUI uses .conf), the name
 // from the file name (cleaned to a valid, unused name). Saving stores the
 // file with POST /api/v1/vpns/import (checked with the helper's own rules)
 // and then creates the profile with POST /api/v1/vpns, then restarts. An
@@ -22,7 +23,7 @@ import { localizeError } from '../profiles/errors'
 import { UploadIcon } from '../profiles/icons'
 import { MAX_IMPORT_BYTES, importName, toBase64 } from '../profiles/importModel'
 import { useSaveAndActivate } from './activate'
-import { isValidName, ovpnNeedsCredentials, profileNameFromFile, typeForFile } from './model'
+import { isValidName, ovpnNeedsCredentials, profileNameFromFile, typeForContent, typeForFile } from './model'
 import { ActivateFooter, ErrorBanner } from './parts'
 
 interface Props {
@@ -72,8 +73,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const take = async (file: File) => {
     setRefusal(null)
     setStored(null)
-    const type = typeForFile(file.name)
-    if (!type) {
+    if (!typeForFile(file.name)) {
       setFileError({ message: t('add.file.wrongExt', { file: file.name }), fix: t('add.file.wrongExt.fix') })
       return
     }
@@ -89,7 +89,9 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
       setFileError({ message: t('add.file.readFail', { file: file.name }), fix: t('add.file.readFail.fix') })
       return
     }
-    const needsCreds = type === 'openvpn' && ovpnNeedsCredentials(new TextDecoder().decode(bytes))
+    const text = new TextDecoder().decode(bytes)
+    const type = typeForContent(file.name, text) ?? 'wireguard'
+    const needsCreds = type === 'openvpn' && ovpnNeedsCredentials(text)
     setFileError(null)
     setChosen({ file, type, content: toBase64(bytes), needsCreds })
     setName(profileNameFromFile(file.name, names))

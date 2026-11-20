@@ -116,6 +116,14 @@
 
 .dl-mobile { margin-top: 24px; }
 
+/* "¿Qué descargo?" (ADR-0077): three short definitions, no cards */
+.dl-what { margin-bottom: 8px; }
+.dl-what-list { display: grid; gap: 8px 24px; margin: 0; }
+@media (min-width: 900px) { .dl-what-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.dl-what-list dt { font-family: var(--font-display); font-weight: 600; font-size: 0.98rem; color: var(--text); }
+.dl-what-list dd { margin: 2px 0 0; font-size: 0.88rem; line-height: 1.5; color: var(--text-muted); text-wrap: pretty; }
+.dl-featured .code-block { width: 100%; }
+
 /* after download: what the OS may show (unsigned binaries) and the one
    admin prompt, in plain words. Collapsed by default so the cards stay first. */
 .dl-after { margin-top: 40px; }

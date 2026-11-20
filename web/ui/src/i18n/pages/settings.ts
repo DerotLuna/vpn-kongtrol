@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Ajustes (/settings): diagnostics, export, update notice, delete my data, system, health · v1.2.0 · 2026-11-19
+// Kongtrol UI strings — Ajustes (/settings): diagnostics, export, update notice, delete my data, system, health · v1.3.0 · 2026-11-20
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -26,7 +26,7 @@ const es = {
   'diag.fixed': 'Listo: el ayudante quedó instalado. Revisamos otra vez.',
   'diag.okList': 'Ver las {count} comprobaciones correctas',
   'diag.export': 'Exportar configuración',
-  'diag.export.what': 'Descarga tu configuración para usarla en otro equipo. No lleva contraseñas.',
+  'diag.export.what': 'Guarda en este equipo un archivo con tu configuración, para usarla en otro. No lleva contraseñas y Kongtrol no lo envía a ningún lado.',
   'diag.export.busy': 'Preparando…',
   'diag.export.done': 'Listo: se descargó kongtrol-export.yaml.',
   'settings.title': 'Ajustes',
@@ -47,9 +47,9 @@ const es = {
   'data.dialog.title': '¿Borrar todos tus datos?',
   'data.dialog.body': 'Se desconectan tus VPN y se borra:',
   'data.dialog.item.profiles': 'tus perfiles de VPN y sus ajustes (kongtrol.yaml)',
-  'data.dialog.item.passwords': 'las contraseñas guardadas en el llavero del sistema',
+  'data.dialog.item.passwords': 'las contraseñas guardadas en el llavero del sistema y la clave que firma el registro de auditoría',
   'data.dialog.item.prefs': 'tus preferencias, historial y registro de auditoría',
-  'data.dialog.keep': 'Kongtrol sigue instalado y después te guía para crear tu primera VPN. No se puede deshacer.',
+  'data.dialog.keep': 'Todo esto está solo en este equipo, sin copia en otro lugar: no se puede deshacer. Quedan solo los registros técnicos de Kongtrol (daemon.log, tray.log); kongtrol uninstall --purge también los borra. Kongtrol sigue instalado y te guía para crear tu primera VPN.',
   'data.dialog.confirm': 'Sí, borrar todo',
   'data.dialog.cancel': 'Cancelar',
   'data.busy': 'Borrando…',
@@ -114,14 +114,14 @@ const es = {
   'settings.err.sizeFix': 'Usa un número entero de 1 a 1024, sin decimales.',
 
   'settings.privacy.title': 'Privacidad',
-  'settings.privacy.what': 'Kongtrol no envía nada fuera de este equipo salvo lo que actives aquí.',
+  'settings.privacy.what': 'Tus datos se guardan solo en este equipo y Kongtrol no los envía a nadie. Solo dos consultas opcionales salen a internet, y vienen apagadas: la IP pública (en Seguridad) y el aviso de versión nueva.',
   'settings.publicip': 'Consulta de IP pública',
   'settings.publicip.what': 'Pregunta a un servicio externo qué IP ve internet. Se activa y se revisa en Seguridad.',
   'settings.publicip.on': 'Activada',
   'settings.publicip.off': 'Apagada',
   'settings.publicip.link': 'Abrir Seguridad',
   'settings.recent': 'Conexiones recientes (Tráfico)',
-  'settings.recent.what': 'Se guarda solo en memoria, se borra al cerrar Kongtrol.',
+  'settings.recent.what': 'Solo en la memoria de este equipo: no se guarda en disco ni sale de él; se borra al cerrar Kongtrol.',
 
   'settings.about.title': 'Ayuda y documentos',
   'settings.about.guide': 'Guía de uso',
@@ -151,7 +151,7 @@ const en: Strings<typeof es> = {
   'diag.fixed': 'Done: the helper is installed. Checking again.',
   'diag.okList': 'Show the {count} checks that passed',
   'diag.export': 'Export configuration',
-  'diag.export.what': 'Downloads your configuration to use on another computer. No passwords inside.',
+  'diag.export.what': 'Saves a file with your configuration on this computer, to use on another one. No passwords inside, and Kongtrol sends it nowhere.',
   'diag.export.busy': 'Preparing…',
   'diag.export.done': 'Done: kongtrol-export.yaml was downloaded.',
   'settings.title': 'Settings',
@@ -172,9 +172,9 @@ const en: Strings<typeof es> = {
   'data.dialog.title': 'Delete all your data?',
   'data.dialog.body': 'Your VPNs are disconnected and this is deleted:',
   'data.dialog.item.profiles': 'your VPN profiles and their settings (kongtrol.yaml)',
-  'data.dialog.item.passwords': 'the passwords saved in the system keychain',
+  'data.dialog.item.passwords': 'the passwords saved in the system keychain and the key that signs the audit log',
   'data.dialog.item.prefs': 'your preferences, history and audit log',
-  'data.dialog.keep': 'Kongtrol stays installed and then guides you to create your first VPN. This cannot be undone.',
+  'data.dialog.keep': "All of this is only on this computer, with no copy anywhere else: this cannot be undone. Only Kongtrol's technical logs remain (daemon.log, tray.log); kongtrol uninstall --purge deletes them too. Kongtrol stays installed and guides you to create your first VPN.",
   'data.dialog.confirm': 'Yes, delete everything',
   'data.dialog.cancel': 'Cancel',
   'data.busy': 'Deleting…',
@@ -239,14 +239,14 @@ const en: Strings<typeof es> = {
   'settings.err.sizeFix': 'Use a whole number from 1 to 1024, no decimals.',
 
   'settings.privacy.title': 'Privacy',
-  'settings.privacy.what': 'Kongtrol sends nothing off this computer except what you turn on here.',
+  'settings.privacy.what': 'Your data is kept only on this computer and Kongtrol sends it to no one. Only two optional lookups go out to the internet, both off by default: the public IP (in Security) and the new version notice.',
   'settings.publicip': 'Public IP lookup',
   'settings.publicip.what': 'Asks an external service which IP the internet sees. Turned on and checked in Security.',
   'settings.publicip.on': 'On',
   'settings.publicip.off': 'Off',
   'settings.publicip.link': 'Open Security',
   'settings.recent': 'Recent connections (Traffic)',
-  'settings.recent.what': 'Kept in memory only, cleared when Kongtrol closes.',
+  'settings.recent.what': "Only in this computer's memory: never saved to disk or sent off it; cleared when Kongtrol closes.",
 
   'settings.about.title': 'Help and documents',
   'settings.about.guide': 'User guide',

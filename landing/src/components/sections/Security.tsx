@@ -8,10 +8,10 @@ export default function Security({ lang }: Props) {
   const copy = lang === 'es'
     ? {
       label: '$ kongtrol ip',
-      title: 'Si un túnel cae, nada se fuga.',
+      title: 'Si un túnel cae, su tráfico no se fuga.',
       sub: 'Kongtrol activa cada protección según el estado real de tus VPN. No tienes que tocar el firewall.',
       defenses: [
-        { name: 'Kill switch', desc: 'Si una VPN cae, bloquea el tráfico para que nada salga sin protección. Lo activas o lo apagas desde el panel o con kongtrol config killswitch.' },
+        { name: 'Kill switch', desc: 'Si una VPN se cae sin que la apagues, bloquea lo que iba por ella hasta que vuelva (si llevaba todo tu tráfico, se corta internet). Lo activas o lo apagas desde el panel o con kongtrol config killswitch.' },
         { name: 'Protección de DNS', desc: 'Tus consultas DNS van por la VPN activa y vuelven solas a la normalidad al desconectar.' },
         { name: 'Detector de fugas (opcional)', desc: 'Si lo activas, consulta tu IP pública al conectar o desconectar y cuando lo pides, y te avisa si no es la IP que configuraste como esperada para esa VPN. Viene apagado: usa un servicio externo que ve tu IP.' },
         { name: 'Registro firmado', desc: 'Cada evento queda anotado y firmado. Si alguien lo altera, se nota.' },
@@ -26,10 +26,10 @@ export default function Security({ lang }: Props) {
     }
     : {
       label: '$ kongtrol ip',
-      title: 'If a tunnel drops, nothing leaks.',
+      title: "If a tunnel drops, its traffic doesn't leak.",
       sub: 'Kongtrol turns each protection on and off based on the real state of your VPNs. You never touch the firewall.',
       defenses: [
-        { name: 'Kill switch', desc: 'If a VPN drops, it blocks traffic so nothing leaves unprotected. Turn it on or off from the panel or with kongtrol config killswitch.' },
+        { name: 'Kill switch', desc: 'If a VPN drops without you turning it off, it blocks what went through it until it is back (if it carried all your traffic, internet stops). Turn it on or off from the panel or with kongtrol config killswitch.' },
         { name: 'DNS protection', desc: 'Your DNS lookups go through the active VPN and return to normal on their own when you disconnect.' },
         { name: 'Leak detector (optional)', desc: 'If you turn it on, it looks up your public IP when you connect or disconnect and when you ask, and warns you if it is not the IP you set as expected for that VPN. Off by default: it uses an external service that sees your IP.' },
         { name: 'Signed log', desc: 'Every event is recorded and signed. If anyone tampers with it, it shows.' },

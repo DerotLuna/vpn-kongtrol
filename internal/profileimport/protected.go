@@ -69,6 +69,7 @@ func ReadProtected(path string) ([]byte, error) {
 	if err != nil || int64(len(data)) > MaxSize {
 		return nil, refuse
 	}
+	typ = TypeForContent(path, data)
 	if err := Validate(typ, data); err != nil {
 		return nil, refuse
 	}

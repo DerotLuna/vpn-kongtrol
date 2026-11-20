@@ -1,4 +1,4 @@
-<!-- README version 2.3.1 · 2026-11-20.
+<!-- README version 2.3.2 · 2026-11-20.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -143,7 +143,7 @@ Proton VPN also works without its app as `type: wireguard` / `type: openvpn` wit
 | macOS | `Kongtrol-macos-universal.zip` — the app is not notarized (Apple charges $99/year): open it once with right-click › Open |
 | Linux | `.deb` / `.rpm` for amd64 and arm64 |
 
-**Or one line** (macOS/Linux: the app and the `kongtrol` command; Windows: only the `kongtrol` command, the installer above adds the app; run it again to update):
+**Or one line** (the app with its tray icon and the `kongtrol` command, on every system; run it again to update):
 
 ```bash
 # macOS / Linux
@@ -154,6 +154,13 @@ curl -fsSL https://kongtrol.app/install.sh | sh
 # Windows (PowerShell)
 iwr https://kongtrol.app/install.ps1 -useb | iex
 ```
+
+Only the `kongtrol` command, without the tray: `sh -s -- --cli-only` (macOS/Linux) or
+`$env:KONGTROL_CLI_ONLY=1` before the PowerShell line (or `-CliOnly`). A Linux machine with no
+desktop session (a server, SSH) and Windows Server Core get only the command by themselves, and
+the script says so. Updates keep your choice; `--with-tray` / `$env:KONGTROL_CLI_ONLY=0` adds the
+tray later. If Kongtrol was installed with `Kongtrol-Setup`, `install.ps1` installs nothing and
+tells you to update with the new `Kongtrol-Setup` instead (one copy, one updater).
 
 The scripts check the download against `checksums.txt` and verify the
 Sigstore signature of `checksums.txt` when [cosign](https://github.com/sigstore/cosign) 2.4+ is
@@ -248,7 +255,7 @@ explains it with the next step and examples. Full reference: [docs/CLI.en.md](do
 | `kongtrol ip` | Look up your public IP now and check for leaks |
 | `kongtrol logs` | Show Kongtrol's events |
 | `kongtrol service install\|uninstall\|status` | Network helper (no admin terminal) |
-| `kongtrol uninstall [--purge\|--data-only]` | Uninstall Kongtrol (your data stays unless you ask) |
+| `kongtrol uninstall [--purge\|--data-only]` | Uninstall Kongtrol (your data stays on this computer unless you ask to delete it) |
 | `kongtrol version` | Show the version |
 
 ## Privacy: local only
@@ -285,8 +292,8 @@ is off by default: turn it on in the panel (Settings) or with
 ## Uninstalling
 
 Your settings and saved passwords **stay** unless you ask, so a reinstall brings everything back.
-Windows: Settings › Apps › Kongtrol › Uninstall (it asks whether to delete your data; default No).
-Elsewhere: `kongtrol uninstall` (`--purge` also deletes `~/.kongtrol` and the saved passwords,
+Windows installer: Settings › Apps › Kongtrol › Uninstall (it asks whether to delete your data; default No).
+Elsewhere (including `install.ps1`, whose tray, shortcut and autostart it removes too): `kongtrol uninstall` (`--purge` also deletes `~/.kongtrol` and the saved passwords,
 `--dry-run` shows the plan). To only wipe your data and keep the app: panel › Settings › "Delete all
 my data", or `kongtrol uninstall --data-only`.
 

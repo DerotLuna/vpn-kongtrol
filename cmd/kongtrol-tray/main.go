@@ -11,9 +11,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"fyne.io/systray"
@@ -35,6 +37,14 @@ func trayT(key string) string { return i18n.T(trayLang, key) }
 func trayF(key string, args ...any) string { return i18n.F(trayLang, key, args...) }
 
 func main() {
+	// `kongtrol-tray --version` prints the version and exits before
+	// anything else (no log file, no single-instance lock, no daemon): the
+	// install scripts run it to check that the system lets the new tray
+	// start (ADR-0073, ADR-0075).
+	if wantsVersion(os.Args[1:]) {
+		fmt.Println(versionText())
+		return
+	}
 	setupLogging()
 	open := parseOpenRequest(os.Args[1:])
 	if !acquireSingleInstance() {
@@ -48,6 +58,27 @@ func main() {
 	}
 	setOpenRequest(open)
 	systray.Run(onReady, onExit)
+}
+
+// wantsVersion reports a --version (or -version) argument.
+func wantsVersion(args []string) bool {
+	for _, a := range args {
+		if a == "--version" || a == "-version" {
+			return true
+		}
+	}
+	return false
+}
+
+// versionText is the build version without a leading "v" ("dev" when the
+// build set none), the plain form `kongtrol version` prints when its
+// output is redirected.
+func versionText() string {
+	v := strings.TrimPrefix(strings.TrimPrefix(version, "v"), "V")
+	if v == "" {
+		return "dev"
+	}
+	return v
 }
 
 // setupLogging redirects the standard `log` package (used both by our own

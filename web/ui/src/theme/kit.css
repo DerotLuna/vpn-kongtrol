@@ -31,7 +31,9 @@
 .k-btn svg { width: 18px; height: 18px; flex: none; }
 .k-btn--sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
 .k-btn--filled { background: var(--signal-fill); color: var(--on-signal); }
-.k-btn--filled:hover:not(:disabled) { background: var(--signal-hi); color: var(--on-signal); }
+/* hover: brighter gold plus the accent glow (DESIGN.md) — the lighter gold
+   alone barely shows on Bone */
+.k-btn--filled:hover:not(:disabled) { background: var(--signal-hi); color: var(--on-signal); box-shadow: 0 6px 16px -6px var(--signal-glow); }
 .k-btn--tonal { background: var(--signal-soft); color: var(--text); border-color: var(--signal-line); }
 .k-btn--outlined { background: transparent; color: var(--text); border-color: var(--border-2); }
 .k-btn--outlined:hover:not(:disabled) { color: var(--text); }
@@ -210,6 +212,15 @@
   content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px;
   background: var(--signal-mark); border-radius: 2px 2px 0 0;
 }
+/* One mark that slides to the chosen tab (Tabs.tsx useInk, ADR-0078); the
+   per-tab ::after stays only where no ink is drawn. */
+.k-tabs__list--ink { position: relative; }
+.k-tabs__list--ink .k-tab::after { display: none; }
+.k-tabs__ink {
+  position: absolute; left: 0; bottom: 0; height: 2px; width: 0; opacity: 0; pointer-events: none;
+  background: var(--signal-mark); border-radius: 2px 2px 0 0;
+}
+.k-tabs__ink[data-ready] { transition: transform var(--dur-med) var(--ease-standard), width var(--dur-med) var(--ease-standard); }
 .k-tabs__panel { padding-top: 16px; }
 .k-tabs__panel:focus-visible { border-radius: var(--radius); }
 

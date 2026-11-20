@@ -73,6 +73,8 @@
 /* Row actions: one line of 36px squares (44px in phone cards), the
    state's own action first. */
 .home-actions { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-end; }
+/* the empty secondary slot keeps the main square in place */
+.home-act-slot { flex: none; width: 36px; height: 36px; }
 /* While an action runs: every square stays in place, inert (aria-disabled);
    the pressed one keeps full color with its spinner (aria-busy). */
 .home-actions [aria-disabled='true'] { cursor: not-allowed; opacity: 0.55; }
@@ -140,6 +142,7 @@
   .home-tunnels .home-actions { justify-content: flex-start; flex-wrap: wrap; width: 100%; }
   .home-tunnels .home-actions .k-btn { min-height: var(--tap); }
   .home-tunnels .home-actions .k-icon-btn--sm { width: var(--tap); height: var(--tap); }
+  .home-tunnels .home-act-slot { width: var(--tap); height: var(--tap); }
   /* The routes panel joins its tunnel's card; everything in it reads left to right. */
   .home-tunnels .k-datalist tr:has(+ .home-routes-row) {
     margin-bottom: 0; border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0;

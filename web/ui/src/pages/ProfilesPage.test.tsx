@@ -135,11 +135,11 @@ describe('ProfilesPage', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Edit home' })
     await userEvent.clear(within(dialog).getByLabelText(/^Name/))
     await userEvent.type(within(dialog).getByLabelText(/^Name/), 'work')
-    await userEvent.clear(within(dialog).getByLabelText(/\.ovpn file/))
+    await userEvent.clear(within(dialog).getByLabelText(/OpenVPN file/))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     expect(await within(dialog).findByText('You already have a VPN called “work”.')).toBeInTheDocument()
-    expect(within(dialog).getByText('The .ovpn file is missing.')).toBeInTheDocument()
+    expect(within(dialog).getByText('The OpenVPN file is missing.')).toBeInTheDocument()
     await waitFor(() => expect(within(dialog).getByLabelText(/^Name/)).toHaveFocus())
     expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(false)
 
