@@ -9,6 +9,7 @@
 // transparent SVG, so the dark theme's invert filter leaves only the head.
 import logoUrl from '@brand/source/logo-kong-solid.svg'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useAuthState } from '../api/auth'
 import { api } from '../api/client'
 import { useTunnels } from '../api/hooks'
 import type { Group, TunnelMetrics } from '../api/types'
@@ -73,17 +74,30 @@ export function TrayPage() {
   // Row order, taken on each show and when profiles come or go (trayOrder).
   const [order, setOrder] = useState<{ tick: number; names: string[] } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
+  // The daemon restarted (upgrade, restart): this hidden page's session died
+  // with it and every request answers 401. Inside the tray, ask it once per
+  // show to reload the page with a fresh sign-in (ADR-0072); in a tab, say
+  // how to reopen it. Never show the stale states as if they were live.
+  const auth = useAuthState()
+  const reauthAsked = useRef(false)
+  useEffect(() => {
+    if (auth !== 'unauthorized' || !host || reauthAsked.current) return
+    reauthAsked.current = true
+    host.post('reauth')
+  }, [auth, host])
 
   useEffect(() => {
     document.title = t('tray.pageTitle')
   }, [t, lang])
 
+  // A control that asks for it (quit choices, Reintentar, Agregar VPN) gets
+  // focus; otherwise the window itself does, so opening the flyout never
+  // paints a focus ring on the first switch (#41) and Tab still starts at
+  // the first control.
   const focusFirst = useCallback(() => {
     const root = rootRef.current
-    const target =
-      root?.querySelector<HTMLElement>('[data-autofocus]') ??
-      root?.querySelector<HTMLElement>('button:not(:disabled), a[href]')
-    target?.focus()
+    const target = root?.querySelector<HTMLElement>('[data-autofocus]') ?? root
+    target?.focus({ preventScroll: true })
   }, [])
 
   // Opening or closing the quit choices moves focus into / back to them.
@@ -102,6 +116,7 @@ export function TrayPage() {
         cancel = announceReady(host)
       }
       setQuitOpen(false)
+      reauthAsked.current = false
       reload()
       setShownTick((n) => n + 1)
       requestAnimationFrame(focusFirst)
@@ -140,6 +155,20 @@ export function TrayPage() {
         }
       }
       return changed ? next : prev
+    })
+    // A "No se pudo" note ends as soon as the feed shows the profile up or
+    // on its way up (the request failed but the tunnel came up anyway, e.g.
+    // during a daemon restart), so it never sits next to a connected row.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setFailed((prev) => {
+      const stale = Object.keys(prev).filter((name) => {
+        const s = byName.get(name)?.Status
+        return prev[name] && (s === 'connected' || s === 'connecting')
+      })
+      if (stale.length === 0) return prev
+      const next = { ...prev }
+      for (const name of stale) next[name] = false
+      return next
     })
   }, [tunnels])
 
@@ -199,6 +228,7 @@ export function TrayPage() {
   const rows = sorted.map((tn) => ({ tn, st: rowState(tn, pending[tn.Name]?.want) }))
   const agg = aggregate(rows.map((r) => r.st))
   const offline = error && !tunnels
+  const unauthorized = auth === 'unauthorized'
   const blocking = security?.kill_switch_state === 'active'
   // one primary per view: with no VPN it is "Agregar VPN", not "Abrir panel"
   const noVPNs = !!tunnels && tunnels.length === 0
@@ -209,7 +239,7 @@ export function TrayPage() {
     : security.leak_check?.public_ip || t('tray.publicip.unknown')
 
   return (
-    <div className="tray" ref={rootRef}>
+    <div className="tray" ref={rootRef} tabIndex={-1}>
       <header className="tray-head">
         <img className="tray-logo" src={logoUrl} alt="" width="28" height="28" />
         <div className="tray-head-text">
@@ -231,6 +261,18 @@ export function TrayPage() {
           </div>
         )}
 
+        {unauthorized && (
+          <div className="tray-notice" role="alert">
+            {host ? (
+              <p>{t('tray.reauth')}</p>
+            ) : (
+              <p>
+                <strong>{t('tray.unauth')}</strong> {t('tray.unauth.fix')}
+              </p>
+            )}
+          </div>
+        )}
+
         {blocking && (
           <div className="tray-notice caution" role="status">
             <p>
@@ -239,7 +281,7 @@ export function TrayPage() {
           </div>
         )}
 
-        {tunnels && (
+        {tunnels && !unauthorized && (
           <section aria-labelledby="tray-vpns">
             <h2 id="tray-vpns" className="tray-label">
               {t('tray.vpns')}

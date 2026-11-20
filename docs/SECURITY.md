@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.11.0 · 2026-11-19
+Version 2.12.0 · 2026-11-20
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -248,11 +248,29 @@ Kongtrol does not currently ship with a CA-issued code-signing certificate — t
 SmartScreen and Defender lean heavily on binary reputation (hash + publisher trust), and a
 freshly-built, unsigned Go binary that manipulates routing tables, DNS, and firewall rules is
 exactly the profile their ML heuristics flag — commonly as a generic detection like
-`Trojan:Win32/Bearfoos.A!ml`. That `!ml` suffix means it was flagged by a cloud ML model on
-low-prevalence/no-reputation files, not a signature match against known malware. It's a known,
-common false positive for this class of tool, not evidence of anything malicious.
+`Trojan:Win32/Bearfoos.A!ml`. Microsoft only documents that a `!` suffix is an internal
+indicator; its own blog uses `!ml` on machine-learning detections, so it is usually a
+machine-learning verdict on a file with no reputation yet, not a signature match against known
+malware (no official definition: see
+[research](research/2026-11-20-antivirus-blocked-binary-in-installers.md)). It's a known, common
+false positive for this class of tool, not evidence of anything malicious.
+
+**What it looks like.** Windows Security says it found a threat and quarantined `kongtrol.exe`;
+starting it fails with "Operation did not complete successfully because the file contains a virus
+or potentially unwanted software" (Windows error 225). The install scripts and the Windows
+installer check that the new binary runs before calling the install done
+([ADR-0073](adr/0073-installers-stop-when-the-new-binary-cannot-run.md)): `install.ps1` /
+`install.sh` stop before touching the installed copy (or put it back) and print what to do; the
+Windows installer runs nothing more and says so on its last page. None of them ever turns
+Defender off or adds an exclusion.
 
 What to do about it:
+
+- **Restore it only after checking it** (next point): Windows Security > Virus & threat
+  protection > Protection history, open the Kongtrol entry and choose **Allow on device** (or
+  **Restore**, then Allow on device), then run the installer again. Microsoft's own advice is to
+  quarantine when unsure, and every exclusion lowers your protection, so prefer reporting the
+  false positive over excluding folders.
 
 - **Verify the download.** Every GitHub release includes a `checksums.txt` (SHA256). It's produced
   automatically — pushing a `v*` tag triggers `.github/workflows/release.yml`, which runs

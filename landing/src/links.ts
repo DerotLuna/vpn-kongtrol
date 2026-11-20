@@ -44,3 +44,7 @@ export const WINDOWS_INSTALLER_URL = `${GITHUB_REPO}/releases/latest/download/${
 export function releaseAsset(key: ReleaseAssetKey): string {
   return `${GITHUB_REPO}/releases/latest/download/${RELEASE_ASSETS[key]}`
 }
+
+// Microsoft's form to report a Defender false positive (the guide's Windows
+// install step, ADR-0073).
+export const DEFENDER_FALSE_POSITIVE_URL = 'https://www.microsoft.com/wdsi/filesubmission'

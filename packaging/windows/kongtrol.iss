@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.6.1 · 2026-11-19
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.7.0 · 2026-11-20
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
@@ -126,6 +126,12 @@ es.FinishedUpdate=Kongtrol se actualizó a %2. Tus VPN y ajustes siguen ahí; la
 en.FinishedUpdate=Kongtrol was updated to %2. Your VPNs and settings are still there; any VPN you had connected reconnects by itself.%n%nNext: open Kongtrol to see its status.
 es.FinishedRepair=Kongtrol %2 se reinstaló. Tus VPN y ajustes siguen ahí; las que tenías conectadas vuelven a conectarse solas.%n%nSiguiente: abre Kongtrol para ver su estado.
 en.FinishedRepair=Kongtrol %2 was reinstalled. Your VPNs and settings are still there; any VPN you had connected reconnects by itself.%n%nNext: open Kongtrol to see its status.
+; kongtrol.exe does not start after copying (docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md):
+; usually Microsoft Defender flagging a new unsigned program by mistake. %1 = Windows' own reason.
+es.BinaryBlocked=Windows no deja abrir kongtrol.exe: %1%n%nSuele ser Microsoft Defender marcando por error un programa nuevo sin firma (por ejemplo «Trojan:Win32/Bearfoos.A!ml»).%n%nQué hacer: en Seguridad de Windows > Protección antivirus y contra amenazas > Historial de protección, abre la entrada de Kongtrol y elige «Permitir en el dispositivo» (o «Restaurar») solo si confías en el archivo; luego abre este instalador otra vez. Reporta el falso positivo en https://www.microsoft.com/wdsi/filesubmission
+en.BinaryBlocked=Windows does not let kongtrol.exe start: %1%n%nThis is usually Microsoft Defender flagging a new unsigned program by mistake (for example "Trojan:Win32/Bearfoos.A!ml").%n%nWhat to do: in Windows Security > Virus & threat protection > Protection history, open the Kongtrol entry and choose "Allow on device" (or "Restore") only if you trust the file; then open this installer again. Report the false positive at https://www.microsoft.com/wdsi/filesubmission
+es.FinishedBlocked=Kongtrol se copió, pero Windows no deja abrir kongtrol.exe, así que todavía no se puede usar.%n%nSiguiente: sigue los pasos del aviso anterior y abre este instalador otra vez.
+en.FinishedBlocked=Kongtrol was copied, but Windows does not let kongtrol.exe start, so it cannot be used yet.%n%nNext: follow the steps in the previous message and open this installer again.
 es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nSi piensas reinstalar, elige No.
 en.PurgeAsk=Also delete your settings and saved passwords?%n%nIf you plan to reinstall, choose No.
 
@@ -152,27 +158,29 @@ Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; Value
 
 [Run]
 ; `service install` asks for elevation itself (one UAC prompt).
-Filename: "{app}\kongtrol.exe"; Parameters: "service install --quiet"; StatusMsg: "{cm:RunHelper}"; Tasks: helper; Check: IsFirstInstall; Flags: runhidden waituntilterminated
+; Every entry also checks BinaryRuns: when Windows blocks the copied
+; kongtrol.exe nothing more is run and the finished page says so (ADR-0073).
+Filename: "{app}\kongtrol.exe"; Parameters: "service install --quiet"; StatusMsg: "{cm:RunHelper}"; Tasks: helper; Check: IsFirstInstall and BinaryRuns; Flags: runhidden waituntilterminated
 ; Upgrade (also silent): update a helper that speaks an older protocol, so
 ; it never stays outdated. A missing or current helper is left alone and
 ; no UAC prompt appears (`--if-outdated`, cmd/kongtrol/cmd_service.go).
-Filename: "{app}\kongtrol.exe"; Parameters: "service install --if-outdated --quiet"; StatusMsg: "{cm:RunHelperUpdate}"; Check: IsUpgrade; Flags: runhidden waituntilterminated
+Filename: "{app}\kongtrol.exe"; Parameters: "service install --if-outdated --quiet"; StatusMsg: "{cm:RunHelperUpdate}"; Check: IsUpgrade and BinaryRuns; Flags: runhidden waituntilterminated
 ; Upgrade (also silent): reconnect the VPNs that were up before
 ; PrepareToInstall stopped Kongtrol (`down --all --remember` saved them). After
 ; the helper entry above, so they reconnect through a current helper. It only
 ; waits until Kongtrol answers; the VPNs connect in the background
 ; (docs/adr/0050-installer-resume-tunnels-and-open-request.md).
-Filename: "{app}\kongtrol.exe"; Parameters: "resume --quiet"; StatusMsg: "{cm:RunResume}"; Check: IsUpgrade; Flags: runhidden waituntilterminated
+Filename: "{app}\kongtrol.exe"; Parameters: "resume --quiet"; StatusMsg: "{cm:RunResume}"; Check: IsUpgrade and BinaryRuns; Flags: runhidden waituntilterminated
 ; The checkbox depends on whether VPN profiles exist (not on whether the
 ; program files did: data survives an uninstall). "Create my first VPN"
 ; passes --open, so the tray opens the Perfiles page every time it is
 ; checked, also when a tray is already running (ADR-0050).
-Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /profiles"; Description: "{cm:LaunchTray}"; Check: NoProfiles; Flags: postinstall nowait skipifsilent
+Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /profiles"; Description: "{cm:LaunchTray}"; Check: NoProfiles and BinaryRuns; Flags: postinstall nowait skipifsilent
 ; Profiles exist: "open" = the tray plus the panel's Inicio, so the user sees
 ; their VPNs come back (the tray icon alone can sit hidden behind ^).
-Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /"; Description: "{cm:LaunchTrayOpen}"; Check: HasProfiles; Flags: postinstall nowait skipifsilent
+Filename: "{app}\kongtrol-tray.exe"; Parameters: "--open /"; Description: "{cm:LaunchTrayOpen}"; Check: HasProfiles and BinaryRuns; Flags: postinstall nowait skipifsilent
 ; Silent upgrade: bring the tray back (it was closed above).
-Filename: "{app}\kongtrol-tray.exe"; Check: SilentUpgrade; Flags: nowait
+Filename: "{app}\kongtrol-tray.exe"; Check: SilentUpgrade and BinaryRuns; Flags: nowait
 
 [UninstallRun]
 ; Disconnect everything and stop the daemon, close the tray, remove the helper.
@@ -205,6 +213,8 @@ var
   WasInstalled: Boolean;
   InstallKind: Integer;
   PrevVersion: string;
+  BinaryChecked: Boolean;  // BinaryRuns ran once
+  BinaryOK: Boolean;
 
 // ── Version compare (SemVer 2.0.0 §11 precedence, https://semver.org) ──
 // Rules: an optional leading "v" is ignored and so is build metadata
@@ -392,8 +402,42 @@ begin
     Below.Top := Below.Top + Delta;
 end;
 
+// BinaryRuns: the copied kongtrol.exe starts (`kongtrol version` exits 0).
+// Checked once, after the files are in place, by every [Run] entry. When
+// Windows does not let it start (Exec fails, e.g. error 225
+// ERROR_VIRUS_INFECTED from a Defender false positive on an unsigned
+// binary, or 2 once it was quarantined) nothing more is run, an interactive
+// install says why and what to do, and the finished page does not say
+// "updated" (docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md).
+// The installer never turns Defender off or adds exclusions.
+// https://jrsoftware.org/ishelp/topic_isxfunc_exec.htm
+function BinaryRuns: Boolean;
+var
+  Code: Integer;
+begin
+  if not BinaryChecked then
+  begin
+    BinaryChecked := True;
+    Code := 0;
+    BinaryOK := Exec(ExpandConstant('{app}\kongtrol.exe'), 'version', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+    if not BinaryOK then
+    begin
+      Log('Kongtrol: kongtrol.exe did not start, code ' + IntToStr(Code) + ': ' + SysErrorMessage(Code));
+      if not WizardSilent then
+        MsgBox(FmtMessage(CustomMessage('BinaryBlocked'), [SysErrorMessage(Code)]), mbError, MB_OK);
+    end;
+  end;
+  Result := BinaryOK;
+end;
+
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  if (CurPageID = wpFinished) and not BinaryRuns then
+  begin
+    WizardForm.FinishedLabel.Caption := CustomMessage('FinishedBlocked');
+    FitLabel(WizardForm.FinishedLabel, WizardForm.RunList, False);
+    exit;
+  end;
   if InstallKind = ikFirst then
     exit;
   if CurPageID = wpReady then

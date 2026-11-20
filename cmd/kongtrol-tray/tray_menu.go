@@ -327,6 +327,9 @@ func updateTrayStatus(m *trayMenu) {
 		refreshHelperItem()
 		return
 	}
+	// The daemon answered: the flyout may skip its own probe and is
+	// pre-warmed the first time (flyout.go, ADR-0074).
+	noteDaemonAnswered()
 	refreshHelperItem()
 	pollPolicyEvents(states)
 	refreshKillSwitchItem()

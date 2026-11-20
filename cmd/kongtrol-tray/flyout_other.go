@@ -15,3 +15,6 @@ func setupFlyout() {
 	_, reason := trayLeftClick(runtime.GOOS, false)
 	log.Printf("kongtrol-tray: %s", reason)
 }
+
+// prewarmFlyout: there is no flyout to pre-warm outside Windows.
+func prewarmFlyout() {}

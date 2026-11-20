@@ -4,6 +4,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { I18nProvider } from 'react-aria-components'
 import { api, setApiLang } from '../api/client'
+import { CHANGED_EVENT } from '../data/live'
+import { SHOWN_EVENT } from '../tray/bridge'
 import { browserLang, initialLang, isLang, storeLang, storedLang } from '../i18n/lang'
 import { format, messages, type Lang, type MessageKey } from '../i18n/messages'
 import {
@@ -45,7 +47,20 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('languagechange', onLanguageChange)
   }, [])
 
-  // Server copy wins: empty there clears a stale browser copy.
+  // Server copy wins: empty there clears a stale browser copy. Read again
+  // when the daemon reports a settings change and when the tray shows the
+  // flyout again (it is hidden, never reloaded), so a theme or language
+  // picked elsewhere applies here at once (ADR-0072).
+  const [prefsTick, setPrefsTick] = useState(0)
+  useEffect(() => {
+    const again = () => setPrefsTick((n) => n + 1)
+    window.addEventListener(CHANGED_EVENT, again)
+    window.addEventListener(SHOWN_EVENT, again)
+    return () => {
+      window.removeEventListener(CHANGED_EVENT, again)
+      window.removeEventListener(SHOWN_EVENT, again)
+    }
+  }, [])
   useEffect(() => {
     let cancelled = false
     api.preferences().then(
@@ -65,7 +80,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [prefsTick])
 
   const setLang = useCallback((next: Lang) => {
     storeLang(next)

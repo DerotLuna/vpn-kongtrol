@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFlyoutURL(t *testing.T) {
@@ -159,6 +160,8 @@ func TestParseFlyoutMessage(t *testing.T) {
 		"abc123 quit-tray":      flyoutQuitTray,
 		"abc123 quit-all":       flyoutQuitAll,
 		"abc123 open-add":       flyoutOpenAdd,
+		"abc123 reauth":         flyoutReauth,
+		"reauth":                flyoutNone, // no nonce
 		"abc123 rm -rf":         flyoutNone, // closed set
 		"quit-all":              flyoutNone, // no nonce
 		"wrong quit-all":        flyoutNone,
@@ -295,5 +298,120 @@ func TestFlyoutWatch(t *testing.T) {
 	w.ack()
 	if w.unanswered(third) {
 		t.Error("ready answers the latest show")
+	}
+}
+
+func TestFlyoutNeedsDaemonCheck(t *testing.T) {
+	t.Cleanup(func() { daemonAnsweredAt.Store(0) })
+	now := time.Now()
+
+	daemonAnsweredAt.Store(0)
+	if !flyoutNeedsDaemonCheck(true, now) {
+		t.Error("no poll ever answered: probe the daemon")
+	}
+	daemonAnsweredAt.Store(now.Add(-time.Second).UnixNano())
+	if flyoutNeedsDaemonCheck(true, now) {
+		t.Error("loaded page and a fresh poll: show at once")
+	}
+	if !flyoutNeedsDaemonCheck(false, now) {
+		t.Error("page not loaded yet: the load needs the daemon")
+	}
+	daemonAnsweredAt.Store(now.Add(-flyoutDaemonFresh - time.Second).UnixNano())
+	if !flyoutNeedsDaemonCheck(true, now) {
+		t.Error("stale poll (daemon may be stopped): probe it")
+	}
+	daemonAnsweredAt.Store(now.Add(time.Minute).UnixNano())
+	if !flyoutNeedsDaemonCheck(true, now) {
+		t.Error("a poll time in the future (clock change) is not fresh")
+	}
+}
+
+func TestFlyoutReauthAllowed(t *testing.T) {
+	t0 := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
+	if !flyoutReauthAllowed(time.Time{}, t0) {
+		t.Error("the first reauth is allowed")
+	}
+	if flyoutReauthAllowed(t0, t0.Add(flyoutReauthEvery-time.Millisecond)) {
+		t.Error("a second reauth inside the window must wait")
+	}
+	if !flyoutReauthAllowed(t0, t0.Add(flyoutReauthEvery)) {
+		t.Error("a reauth after the window is allowed")
+	}
+	if !flyoutReauthAllowed(t0, t0.Add(-time.Hour)) {
+		t.Error("a clock that went back must not block reauth forever")
+	}
+}
+
+func TestRunFlyoutActionReauthIsNotGeneric(t *testing.T) {
+	// reauth is handled by the window (reload with a fresh nonce), never by
+	// runFlyoutAction: it must not hide the flyout.
+	hidden := 0
+	runFlyoutAction(flyoutReauth, func() { hidden++ })
+	if hidden != 0 {
+		t.Error("reauth must not hide the flyout")
+	}
+}
+
+func TestTokenTag(t *testing.T) {
+	if tokenTag("") != "" {
+		t.Error("empty token must give an empty tag")
+	}
+	a, b := tokenTag("token-a"), tokenTag("token-b")
+	if a == "" || a == b || a != tokenTag("token-a") {
+		t.Errorf("tags must be stable and differ per token: %q %q", a, b)
+	}
+	if strings.Contains(a, "token") {
+		t.Error("the tag must not contain the token")
+	}
+}
+
+func TestFlyoutOnShow(t *testing.T) {
+	cases := []struct {
+		name          string
+		loaded        bool
+		loadedTag     string
+		currentTag    string
+		sinceNavigate time.Duration
+		want          flyoutShowStep
+	}{
+		{"warm, same daemon", true, "a", "a", time.Hour, showRefresh},
+		{"warm, daemon restarted", true, "a", "b", time.Hour, showNavigate},
+		{"warm, token unreadable now", true, "a", "", time.Hour, showRefresh},
+		{"warm, no token at load", true, "", "b", time.Hour, showRefresh},
+		{"still loading", false, "a", "a", time.Second, showWait},
+		{"load failed", false, "a", "a", flyoutRetryLoad + time.Millisecond, showNavigate},
+	}
+	for _, c := range cases {
+		if got := flyoutOnShow(c.loaded, c.loadedTag, c.currentTag, c.sinceNavigate); got != c.want {
+			t.Errorf("%s: got %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+func TestFlyoutOpenLogLine(t *testing.T) {
+	t0 := time.Date(2026, 11, 20, 10, 0, 0, 0, time.UTC)
+	cold := flyoutOpen{Click: t0, Shown: t0.Add(900 * time.Millisecond), Ready: t0.Add(1200 * time.Millisecond)}
+	line, ok := cold.logLine()
+	if !ok {
+		t.Error("cold opens are always logged")
+	}
+	for _, want := range []string{"(cold)", "click to shown 900ms", "shown to ready 300ms", "total 1.2s"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("cold line %q lacks %q", line, want)
+		}
+	}
+
+	fast := flyoutOpen{Warm: true, Click: t0, Shown: t0.Add(20 * time.Millisecond), Ready: t0.Add(60 * time.Millisecond)}
+	if _, ok := fast.logLine(); ok {
+		t.Error("a warm open under the target is not logged")
+	}
+	slow := flyoutOpen{Warm: true, Click: t0, Shown: t0.Add(20 * time.Millisecond), Ready: t0.Add(400 * time.Millisecond)}
+	if line, ok := slow.logLine(); !ok || !strings.Contains(line, "(warm)") {
+		t.Errorf("a slow warm open is logged: %q %v", line, ok)
+	}
+
+	noClick := flyoutOpen{Shown: t0, Ready: t0.Add(50 * time.Millisecond)}
+	if line, _ := noClick.logLine(); !strings.Contains(line, "click to shown 0s") || !strings.Contains(line, "total 50ms") {
+		t.Errorf("a show without a click measures from the show: %q", line)
 	}
 }

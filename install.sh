@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.6.0 · 2026-11-19 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 2.7.0 · 2026-11-20 · docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://kongtrol.app/install.sh | sh
 #
@@ -16,6 +16,9 @@
 # (or "Reinstalling", or warns before an older version, asking only on a
 # terminal; --yes answers for scripts). It reuses the previous folders and
 # autostart choice and updates the network helper only when it is outdated.
+# When the system does not let the downloaded kongtrol run (antivirus,
+# Gatekeeper, a noexec folder) it stops before touching the installed copy
+# and says what to do.
 #
 # Env overrides:
 #   KONGTROL_INSTALL_DIR   CLI directory (default: /usr/local/bin, falls back to ~/.local/bin)
@@ -76,17 +79,43 @@ ver_cmp() {
     }'
 }
 
-# bin_version BIN prints the version BIN reports (`kongtrol version` prints
-# only the version when its output is not a terminal), or nothing.
-bin_version() {
-  v="$("$1" version 2>/dev/null | head -n 1 | tr -d '\r' | sed 's/^[vV]//')" || v=""
-  case "$v" in [0-9]*) printf '%s' "$v" ;; esac
+# bin_probe BIN runs `BIN version` (it prints only the version when its
+# output is not a terminal) and tells "it ran" apart from "it could not
+# start" (docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md):
+# probe_ok=1 when it started and exited 0, probe_ver = the version or empty,
+# probe_rc = the exit status otherwise (126 not allowed to run, 127 missing,
+# above 128 killed by a signal, e.g. macOS code signing: 137).
+bin_probe() {
+  probe_ok=0; probe_ver=""; probe_rc=0; out=""
+  if [ ! -e "$1" ]; then probe_rc=127; return 0; fi
+  if out="$("$1" version 2>/dev/null)"; then probe_ok=1; else probe_rc=$?; fi
+  v="$(printf '%s\n' "$out" | head -n 1 | tr -d '\r' | sed 's/^[vV]//')"
+  case "$v" in [0-9]*) probe_ver="$v" ;; esac
+}
+
+# cannot_run WHAT prints what happened (from probe_rc) and what to do when
+# the system does not let a kongtrol binary run. It never turns protection
+# off: the user decides, after checking the file.
+cannot_run() {
+  case "$probe_rc" in
+    126) why="the system refused to run it: the folder may be mounted noexec, or security software stopped it" ;;
+    127) why="the file is missing or cannot be loaded (moved to quarantine?)" ;;
+    *) if [ "$probe_rc" -gt 128 ]; then
+         why="it was stopped by signal $((probe_rc - 128)) (macOS stops a program whose code signature it rejects with signal 9)"
+       else
+         why="it exited with code ${probe_rc}"
+       fi ;;
+  esac
+  printf '\033[1;31merror:\033[0m %s\n' "the system did not let ${1} run: ${why}." >&2
+  printf '%s\n' "It is the official Kongtrol file: its SHA256 matches the release's checksums.txt, so the download is complete and unchanged." >&2
+  printf '%s\n' "What to do: check the release yourself (gh attestation verify checksums.txt --repo ${REPO}, or cosign: ${SECURITY_DOC}); on macOS see System Settings > Privacy & Security and choose Open Anyway only if you trust it; on Linux, if /tmp is mounted noexec, run again with TMPDIR set to a folder that allows programs. Then run the same command again. Still failing? Report it: https://github.com/${REPO}/issues" >&2
 }
 
 # Sigstore identity of a genuine release (docs/adr/0057-installers-verify-release-signature.md):
 # checksums.txt is signed keyless by .github/workflows/release.yml on a v* tag.
 COSIGN_IDENTITY='^https://github\.com/DerotLuna/vpn-kongtrol/\.github/workflows/release\.yml@refs/tags/v'
 COSIGN_ISSUER='https://token.actions.githubusercontent.com'
+SECURITY_DOC="https://github.com/${REPO}/blob/main/docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives"
 
 # cosign_bundle_flag prints the flag `cosign verify-blob` needs to read a
 # Sigstore bundle (.sigstore.json): none on cosign 3+, --new-bundle-format on
@@ -202,8 +231,19 @@ if [ -z "$prev_bin" ] || [ ! -x "$prev_bin" ]; then
     if [ -n "$d" ] && [ -x "$d/kongtrol" ]; then prev_bin="$d/kongtrol"; break; fi
   done
 fi
+# The previous version: from the old binary, else from the manifest (a
+# binary the system now refuses cannot say it), so an older download is
+# still seen as one (ADR-0073).
 prev_ver=""
-[ -n "$prev_bin" ] && prev_ver="$(bin_version "$prev_bin")"
+prev_unreadable=""
+if [ -n "$prev_bin" ]; then
+  bin_probe "$prev_bin"
+  prev_ver="$probe_ver"
+  if [ -z "$prev_ver" ]; then
+    [ -f "$manifest" ] && prev_ver="$(sed -n 's/^version=\([0-9].*\)$/\1/p' "$manifest" | head -n 1)"
+    if [ "$probe_ok" = 1 ]; then prev_unreadable="it printed no version"; else prev_unreadable="exit status ${probe_rc}"; fi
+  fi
+fi
 no_autostart="${KONGTROL_NO_AUTOSTART:-${prev_no_autostart:-0}}"
 
 if [ "$VERSION" = "latest" ]; then
@@ -264,7 +304,23 @@ else
   new_bin="${tmp_dir}/x/kongtrol"
   chmod +x "$new_bin"
 fi
-new_ver="$(bin_version "$new_bin")"
+# It must also start: when the system refuses it (antivirus, Gatekeeper,
+# noexec), stop here, before the installed copy is touched (ADR-0073).
+bin_probe "$new_bin"
+if [ "$probe_ok" != 1 ] && [ "$probe_rc" = 126 ] && [ "$goos" = linux ]; then
+  # /tmp mounted noexec is common on hardened Linux: try once from ~/.kongtrol.
+  mkdir -p "${HOME}/.kongtrol"
+  alt="${HOME}/.kongtrol/.install-check-$$"
+  cp "$new_bin" "$alt" && chmod +x "$alt"
+  bin_probe "$alt"
+  rm -f "$alt"
+fi
+if [ "$probe_ok" != 1 ]; then
+  cannot_run "the Kongtrol it just downloaded (${asset})"
+  if [ -n "$prev_bin" ]; then die "nothing was installed: your current Kongtrol${prev_ver:+ ${prev_ver}} was not changed."; fi
+  die "nothing was installed."
+fi
+new_ver="$probe_ver"
 
 kind=install
 if [ -n "$prev_bin" ]; then
@@ -276,8 +332,16 @@ if [ -n "$prev_bin" ]; then
     esac
   fi
 fi
+if [ -n "$prev_bin" ] && [ -n "$prev_unreadable" ]; then
+  warn "could not read the installed version from ${prev_bin} (${prev_unreadable})${prev_ver:+; the last install recorded ${prev_ver}}."
+fi
 case "$kind" in
-  update) info "Updating Kongtrol ${prev_ver:-} → ${new_ver:-${VERSION}} (your VPNs and settings are kept)..." ;;
+  update)
+    if [ -n "$prev_ver" ]; then
+      info "Updating Kongtrol ${prev_ver} → ${new_ver:-${VERSION}} (your VPNs and settings are kept)..."
+    else
+      info "Updating Kongtrol to ${new_ver:-${VERSION}} (your VPNs and settings are kept)..."
+    fi ;;
   repair) info "Reinstalling Kongtrol ${new_ver} (repair: your VPNs and settings are kept)..." ;;
   downgrade)
     warn "This installs an OLDER version (${prev_ver} → ${new_ver}). Your VPNs and settings are kept."
@@ -315,14 +379,16 @@ if [ "$goos" = "darwin" ]; then
   rm -rf "${app_dir}/Kongtrol.app.old"
   [ -d "${app_dir}/Kongtrol.app" ] && mv "${app_dir}/Kongtrol.app" "${app_dir}/Kongtrol.app.old"
   mv "${tmp_dir}/app/Kongtrol.app" "${app_dir}/Kongtrol.app"
-  rm -rf "${app_dir}/Kongtrol.app.old"
+  # Kongtrol.app.old stays until the new one is known to run (rollback below).
   $SUDO ln -sfn "${app_dir}/Kongtrol.app/Contents/MacOS/kongtrol" "${install_dir}/kongtrol"
   info "Installed ${app_dir}/Kongtrol.app and ${install_dir}/kongtrol"
 else
   pkill -x kongtrol-tray 2>/dev/null || true
   for b in kongtrol kongtrol-tray; do
     chmod +x "${tmp_dir}/x/${b}"
-    # mv replaces the file: a running daemon keeps its old copy until restarted.
+    # The old copy is moved aside (a running daemon keeps it until restarted)
+    # and stays until the new one is known to run (rollback below).
+    if [ -e "${install_dir}/${b}" ]; then $SUDO mv -f "${install_dir}/${b}" "${install_dir}/${b}.old"; fi
     $SUDO mv -f "${tmp_dir}/x/${b}" "${install_dir}/${b}"
   done
   apps="${XDG_DATA_HOME:-${HOME}/.local/share}"
@@ -338,12 +404,42 @@ else
   info "Installed ${install_dir}/kongtrol and ${install_dir}/kongtrol-tray (+ menu entry)"
 fi
 
+# restore_previous puts the old copy back when the new one cannot run;
+# drop_previous removes it once the new one does (ADR-0073).
+restore_previous() {
+  if [ "$goos" = "darwin" ]; then
+    [ -d "${app_dir}/Kongtrol.app.old" ] || return 1
+    rm -rf "${app_dir}/Kongtrol.app"
+    mv "${app_dir}/Kongtrol.app.old" "${app_dir}/Kongtrol.app"
+  else
+    [ -e "${install_dir}/kongtrol.old" ] || return 1
+    for b in kongtrol kongtrol-tray; do
+      if [ -e "${install_dir}/${b}.old" ]; then $SUDO mv -f "${install_dir}/${b}.old" "${install_dir}/${b}"; fi
+    done
+  fi
+}
+drop_previous() {
+  if [ "$goos" = "darwin" ]; then
+    rm -rf "${app_dir}/Kongtrol.app.old"
+  else
+    $SUDO rm -f "${install_dir}/kongtrol.old" "${install_dir}/kongtrol-tray.old"
+  fi
+}
+bin_probe "${install_dir}/kongtrol"
+if [ "$probe_ok" != 1 ]; then
+  cannot_run "the new ${install_dir}/kongtrol"
+  if restore_previous; then die "nothing was installed: your previous Kongtrol${prev_ver:+ ${prev_ver}} is back in place."; fi
+  die "Kongtrol cannot be used until the system lets it run."
+fi
+
 # What this script installed, so `kongtrol uninstall` removes exactly that
 # and nothing a package manager owns (docs/adr/0034-uninstall-and-update-notice.md).
 mkdir -p "${HOME}/.kongtrol"
 {
   echo "# Written by install.sh: files kongtrol uninstall may remove."
   echo "file=${install_dir}/kongtrol"
+  # The installed version, read back when that binary cannot say it (ADR-0073).
+  if [ -n "$new_ver" ]; then echo "version=${new_ver}"; fi
   if [ "$goos" = "darwin" ]; then
     echo "file=${app_dir}/Kongtrol.app"
   else
@@ -388,6 +484,18 @@ if [ "$kind" != install ]; then
   fi
 fi
 
+# Success only when the installed copy still runs: security software can
+# quarantine it after its first start (ADR-0073). Checked before Kongtrol
+# is opened, so a failed update never opens a broken app.
+bin_probe "${install_dir}/kongtrol"
+if [ "$probe_ok" != 1 ]; then
+  cannot_run "the installed ${install_dir}/kongtrol"
+  if restore_previous; then die "the update was undone: your previous Kongtrol${prev_ver:+ ${prev_ver}} is back in place. Next: kongtrol up"; fi
+  die "Kongtrol cannot be used until the system lets it run."
+fi
+drop_previous
+final_ver="$probe_ver"
+
 if [ "${KONGTROL_NO_LAUNCH:-0}" != "1" ]; then
   if [ "$goos" = "darwin" ]; then
     open "${app_dir}/Kongtrol.app" || true
@@ -401,7 +509,7 @@ case "$kind" in
   update) info "Kongtrol updated to ${new_ver:-the new version}: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
   repair) info "Kongtrol ${new_ver} reinstalled: your VPNs and settings are kept. Next: connect from the Kongtrol icon (or: kongtrol up)." ;;
 esac
-"${install_dir}/kongtrol" version 2>/dev/null || true
+if [ -n "$final_ver" ]; then printf '%s\n' "$final_ver"; fi
 }
 
 main "$@"

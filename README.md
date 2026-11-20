@@ -1,4 +1,4 @@
-<!-- README version 2.3.0 · 2026-11-19.
+<!-- README version 2.3.1 · 2026-11-20.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -171,7 +171,10 @@ Package managers (winget, Scoop, Homebrew, AUR, npm) are not published yet.
 > Foundation application is pending), and programs that change routes, DNS and firewall get
 > flagged on sight. It is a known false positive. Check the download
 > ([checksums, Sigstore, build provenance](docs/SECURITY.md#verifying-releases)) or build from
-> source. More in [docs/SECURITY.md](docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives).
+> source. If Defender quarantines `kongtrol.exe` (for example `Trojan:Win32/Bearfoos.A!ml`), the
+> installers stop and keep your current version; restore it in Windows Security > Protection
+> history only after checking it, and report it at https://www.microsoft.com/wdsi/filesubmission.
+> More in [docs/SECURITY.md](docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives).
 
 Build from source (Go 1.27+): `git clone https://github.com/DerotLuna/vpn-kongtrol && cd vpn-kongtrol && make build`
 (output: `build/dist/kongtrol`). More in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).

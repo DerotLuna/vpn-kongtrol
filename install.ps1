@@ -1,5 +1,5 @@
 # Installs or updates the kongtrol CLI from the latest GitHub release.
-# Version 1.6.0 · 2026-11-19 · docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 1.7.0 · 2026-11-20 · docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   iwr https://kongtrol.app/install.ps1 -useb | iex
 #
@@ -7,7 +7,9 @@
 # "Updating <old> -> <new>" (or "Reinstalling", or warns before an older
 # version, asking only in an interactive session; -Yes or $env:KONGTROL_YES=1
 # answers for scripts). It reuses the previous folder, keeps ~/.kongtrol, and
-# updates the network helper only when it is outdated.
+# updates the network helper only when it is outdated. When Windows does not
+# let the downloaded kongtrol.exe start (an antivirus false positive), it
+# stops before touching the installed copy and says what to do.
 #
 # Uninstall (your data stays unless you add -Purge):
 #   & ([scriptblock]::Create((iwr https://kongtrol.app/install.ps1 -useb))) -Uninstall [-Purge]
@@ -31,6 +33,7 @@ $ErrorActionPreference = "Stop"
 $Repo = "DerotLuna/vpn-kongtrol"
 $Version = if ($env:KONGTROL_VERSION) { $env:KONGTROL_VERSION } else { "latest" }
 $AssumeYes = $Yes -or $env:KONGTROL_YES -eq "1"
+$SecurityDoc = "https://github.com/$Repo/blob/main/docs/SECURITY.md#unsigned-binaries-and-antivirus-false-positives"
 
 function Write-Info($msg) { Write-Host "==> $msg" -ForegroundColor Cyan }
 function Write-Warn($msg) { Write-Host "warning: $msg" -ForegroundColor Yellow }
@@ -71,15 +74,47 @@ function Compare-KongtrolVersion([string]$A, [string]$B) {
   return 0
 }
 
-# Get-KongtrolVersion: the version an exe reports (`kongtrol version` prints
-# only the version when its output is redirected), or $null.
-function Get-KongtrolVersion([string]$Exe) {
+# Test-KongtrolExe: runs `<exe> version` (it prints only the version when its
+# output is redirected) and tells "it ran" apart from "it could not start"
+# (docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md). Returns
+# Ran (started and exited 0), Version (or $null), Blocked (an antivirus
+# stopped it: Win32 error 225 ERROR_VIRUS_INFECTED or 226 ERROR_VIRUS_DELETED,
+# or the file was gone right after the attempt, i.e. quarantined) and Reason.
+function Test-KongtrolExe([string]$Exe) {
+  $r = [pscustomobject]@{ Ran = $false; Version = $null; Blocked = $false; Reason = "" }
+  if (-not (Test-Path -LiteralPath $Exe)) {
+    $r.Blocked = $true; $r.Reason = "the file is gone (moved to quarantine?)"; return $r
+  }
   try {
-    $v = (& $Exe version 2>$null | Select-Object -First 1)
-    if ($v) { $v = ($v.ToString().Trim() -replace '^[vV]', '') }
-    if ($v -match '^[0-9]') { return $v }
-  } catch {}
-  return $null
+    $out = (& $Exe version 2>$null | Select-Object -First 1)
+    if ($LASTEXITCODE -eq 0) { $r.Ran = $true } else { $r.Reason = "it exited with code $LASTEXITCODE" }
+    if ($out) { $v = ($out.ToString().Trim() -replace '^[vV]', ''); if ($v -match '^[0-9]') { $r.Version = $v } }
+  } catch {
+    $r.Reason = ($_.Exception.Message -replace '(?s)\s*At line:.*$', '')
+    for ($e = $_.Exception; $e; $e = $e.InnerException) {
+      if ($e -is [ComponentModel.Win32Exception]) {
+        $r.Reason = "$($e.Message) (Windows error $($e.NativeErrorCode))"
+        if ($e.NativeErrorCode -in 225, 226) { $r.Blocked = $true }
+        break
+      }
+    }
+  }
+  if (-not $r.Ran -and -not (Test-Path -LiteralPath $Exe)) { $r.Blocked = $true }
+  return $r
+}
+
+# Write-CannotRun: what happened and what to do when Windows does not let a
+# kongtrol.exe start. It never turns Defender off or adds exclusions: the
+# user decides, in Windows Security, after checking the file.
+function Write-CannotRun($Probe, [string]$What) {
+  if ($Probe.Blocked) {
+    Write-Host "error: Windows blocked $What (Microsoft Defender or another antivirus reported it as a threat): $($Probe.Reason)" -ForegroundColor Red
+    Write-Host "It is the official Kongtrol file: its SHA256 matches the release's checksums.txt. New programs without a paid code-signing certificate are a known false positive (for example Trojan:Win32/Bearfoos.A!ml)." -ForegroundColor Yellow
+  } else {
+    Write-Host "error: Windows did not let $What start: $($Probe.Reason)" -ForegroundColor Red
+    Write-Host "Its SHA256 matches the release's checksums.txt, so the download is complete and unchanged. Security software or a policy (Smart App Control, AppLocker) may be stopping it." -ForegroundColor Yellow
+  }
+  Write-Host "What to do: check the release yourself (gh attestation verify checksums.txt --repo $Repo, or cosign: $SecurityDoc), then in Windows Security > Virus & threat protection > Protection history open the Kongtrol entry and choose Allow on device (or Restore) only if you trust it, and run the same command again. Please report the false positive: https://www.microsoft.com/wdsi/filesubmission" -ForegroundColor Yellow
 }
 
 # Test-UserWritableDir: this user can create a file in $Dir (no elevation).
@@ -153,7 +188,19 @@ if (-not $prevExe -or -not (Test-Path $prevExe)) {
     if ($d -and (Test-Path (Join-Path $d "kongtrol.exe"))) { $prevExe = Join-Path $d "kongtrol.exe"; break }
   }
 }
-$prevVersion = if ($prevExe) { Get-KongtrolVersion $prevExe } else { $null }
+# The previous version: from the old exe, else from the manifest (an exe an
+# antivirus now blocks cannot say it), so an older download is still seen
+# as one (ADR-0073).
+$prevVersion = $null
+$prevUnreadable = ""
+if ($prevExe) {
+  $prevProbe = Test-KongtrolExe $prevExe
+  $prevVersion = $prevProbe.Version
+  if (-not $prevVersion) {
+    $prevVersion = $previous | Where-Object { $_ -match '^version=[0-9]' } | ForEach-Object { $_.Substring(8).Trim() } | Select-Object -First 1
+    $prevUnreadable = if ($prevProbe.Reason) { $prevProbe.Reason } else { "it printed no version" }
+  }
+}
 
 $tmpDir = Join-Path $env:TEMP "kongtrol-install-$(Get-Random)"
 New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
@@ -229,7 +276,16 @@ try {
   if ($expected -ne $actual) { Die "checksum mismatch: expected $expected, got $actual" }
 
   # The new binary says which version this is: update, reinstall or older.
-  $newVersion = Get-KongtrolVersion $binaryPath
+  # It must also start: when Windows blocks it (an antivirus false positive
+  # on an unsigned binary, ADR-0073) stop here, before the installed copy is
+  # touched, instead of installing a file that cannot run.
+  $newProbe = Test-KongtrolExe $binaryPath
+  if (-not $newProbe.Ran) {
+    Write-CannotRun $newProbe "the Kongtrol it just downloaded ($binary)"
+    if ($prevExe) { Die "nothing was installed: your current Kongtrol$(if ($prevVersion) { " $prevVersion" }) was not changed." }
+    Die "nothing was installed."
+  }
+  $newVersion = $newProbe.Version
   $kind = "install"
   if ($prevExe) {
     $kind = "update"
@@ -241,8 +297,14 @@ try {
     }
   }
   $shownNew = if ($newVersion) { $newVersion } else { $Version }
+  if ($prevExe -and $prevUnreadable) {
+    Write-Warn "could not read the installed version from $prevExe ($prevUnreadable)$(if ($prevVersion) { "; the last install recorded $prevVersion" })."
+  }
   switch ($kind) {
-    "update" { Write-Info "Updating Kongtrol $prevVersion -> $shownNew (your VPNs and settings are kept)..." }
+    "update" {
+      if ($prevVersion) { Write-Info "Updating Kongtrol $prevVersion -> $shownNew (your VPNs and settings are kept)..." }
+      else { Write-Info "Updating Kongtrol to $shownNew (your VPNs and settings are kept)..." }
+    }
     "repair" { Write-Info "Reinstalling Kongtrol $newVersion (repair: your VPNs and settings are kept)..." }
     "downgrade" {
       Write-Warn "This installs an OLDER version ($prevVersion -> $newVersion). Your VPNs and settings are kept."
@@ -272,10 +334,25 @@ try {
   }
   Move-Item -Path $binaryPath -Destination $destPath -Force
 
+  # Restore-Previous: put the old copy back when the new one cannot run.
+  function Restore-Previous {
+    if (-not (Test-Path $oldPath)) { return $false }
+    Remove-Item $destPath -Force -ErrorAction SilentlyContinue
+    try { Move-Item -Path $oldPath -Destination $destPath -Force; return $true } catch { return $false }
+  }
+  $placed = Test-KongtrolExe $destPath
+  if (-not $placed.Ran) {
+    Write-CannotRun $placed "the new kongtrol.exe in $installDir"
+    if (Restore-Previous) { Die "nothing was installed: your previous Kongtrol$(if ($prevVersion) { " $prevVersion" }) is back in place." }
+    Die "Kongtrol cannot be used until Windows lets it run."
+  }
+
   Write-Info "Installed to $destPath"
 
   # What this script installed, so `kongtrol uninstall` removes exactly that.
   $lines = @("# Written by install.ps1: files kongtrol uninstall may remove.", "file=$destPath")
+  # The installed version, read back when that exe cannot say it (ADR-0073).
+  if ($newVersion) { $lines += "version=$newVersion" }
 
   $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
   if ($userPath -notlike "*$installDir*") {
@@ -309,6 +386,14 @@ try {
       else { Write-Warn "your VPNs were not reconnected: open Kongtrol and connect them, or run: kongtrol up" }
     } catch {}
   }
+  # Success only when the installed copy still runs: an antivirus can
+  # quarantine it after its first start (ADR-0073).
+  $final = Test-KongtrolExe $destPath
+  if (-not $final.Ran) {
+    Write-CannotRun $final "the installed kongtrol.exe"
+    if (Restore-Previous) { Die "the update was undone: your previous Kongtrol$(if ($prevVersion) { " $prevVersion" }) is back in place. Next: kongtrol up" }
+    Die "Kongtrol cannot be used until Windows lets it run."
+  }
   # Gone once the old daemon exited; a leftover is harmless and replaced next time.
   Remove-Item $oldPath -Force -ErrorAction SilentlyContinue
 
@@ -317,7 +402,7 @@ try {
     "repair" { Write-Info "Kongtrol $newVersion reinstalled: your VPNs and settings are kept. Next: kongtrol up" }
     "downgrade" { Write-Info "Kongtrol $newVersion installed: your VPNs and settings are kept. Next: kongtrol up" }
   }
-  & $destPath version 2>$null
+  if ($final.Version) { Write-Host $final.Version }
 } finally {
   Remove-Item -Recurse -Force $tmpDir -ErrorAction SilentlyContinue
 }

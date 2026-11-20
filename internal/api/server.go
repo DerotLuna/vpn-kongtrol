@@ -56,6 +56,7 @@ type Server struct {
 	apiToken          string
 	sessions          sessionAuth // browser sessions + one-time nonces (session.go)
 	upgrader          websocket.Upgrader
+	changes           changeHub // settings changed: wakes WebSocket clients (changes.go, ADR-0072)
 	srv               *http.Server
 	onShutdown        func()
 	// helperInstall backs POST /api/v1/helper/install; version (this
@@ -332,7 +333,7 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 			}
 			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 		}
-		s.serveAudited(next, w, r)
+		s.serveAnnounced(next, w, r)
 	})
 }
 

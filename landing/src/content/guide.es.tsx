@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 3.1.0 · 2026-11-19.
+// Version 3.2.0 · 2026-11-20.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -12,7 +12,7 @@ import type { ReactNode } from 'react'
 import type { OS } from '../hooks/useOS'
 import IC from '../components/ui/InlineCode'
 import { pathFor } from '../site'
-import { INSTALL_CMD, UNINSTALL_SCRIPT_BASE, WINDOWS_INSTALLER_FILE } from '../links'
+import { DEFENDER_FALSE_POSITIVE_URL, INSTALL_CMD, UNINSTALL_SCRIPT_BASE, WINDOWS_INSTALLER_FILE } from '../links'
 
 /** One step: what to do, and what the user sees when it worked. */
 export interface GuideStep { t: ReactNode; d: ReactNode; see: ReactNode; code?: string }
@@ -99,7 +99,9 @@ export default function guideES(os: OS) {
       steps: (os === 'windows'
         ? [
           { t: <>Descarga el instalador</>, d: <>En <a href="/#install">descargas</a>, el botón de Windows baja <IC c={WINDOWS_INSTALLER_FILE} />.</>, see: <>El archivo en tu carpeta Descargas.</> },
-          { t: <>Ábrelo</>, d: <>Si sale un aviso azul de Windows (SmartScreen), pulsa <strong>Más información</strong> y luego <strong>Ejecutar de todos modos</strong>. Sale porque el archivo aún no está firmado.</>, see: <>El asistente de instalación de Kongtrol.</> },
+          { t: <>Ábrelo</>, d: <>Si sale un aviso azul de Windows (SmartScreen), pulsa <strong>Más información</strong> y luego <strong>Ejecutar de todos modos</strong>. Sale porque el archivo aún no está firmado.
+            {' '}Si Microsoft Defender lo marca como amenaza (por ejemplo <IC c="Trojan:Win32/Bearfoos.A!ml" />) y lo pone en cuarentena, es un falso positivo de los programas nuevos sin firma: compruébalo en <a href="/seguridad">Seguridad</a>, permítelo en Seguridad de Windows → Historial de protección solo si confías en él y repórtalo en{' '}
+            <a href={DEFENDER_FALSE_POSITIVE_URL}>microsoft.com/wdsi/filesubmission</a>.</>, see: <>El asistente de instalación de Kongtrol.</> },
           { t: <>Deja las opciones recomendadas</>, d: <>Abrir al iniciar sesión, instalar el ayudante de red y agregar el comando <IC c="kongtrol" />. No pide ser administrador, salvo el ayudante (una vez).</>, see: <>Un aviso de Windows para el ayudante: pulsa <strong>Sí</strong>.</> },
           { t: <>Termina</>, d: <>Con «Abrir Kongtrol y crear mi primera VPN» marcado, sigue en <a href="#wizard">Tu primera VPN</a>.</>, see: <>El ícono en la bandeja y el panel en tu navegador.</> },
         ]

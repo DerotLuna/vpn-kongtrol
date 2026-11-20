@@ -1,4 +1,4 @@
-// Kongtrol UI — the daemon's live feed · v0.2.0 · 2026-11-19
+// Kongtrol UI — the daemon's live feed · v0.3.0 · 2026-11-20
 //
 // One WebSocket per page (GET /api/v1/ws/metrics, internal/api/ws.go), each
 // open with a fresh one-time ticket from api/auth.ts (browsers cannot add
@@ -12,6 +12,12 @@
 // instead. Reconnects use jittered exponential backoff; a reopened socket
 // after an outage also refreshes every other resource (the daemon may have
 // restarted with a new config).
+//
+// The page asks for events (?events=1, ADR-0072): frames are envelopes,
+// {"type":"metrics","tunnels":{…}} or {"type":"changed","rev":N} after a
+// settings change made anywhere (another tab, the CLI, the tray). A change
+// refetches every other resource and announces CHANGED_EVENT so the
+// preferences (theme, language) are read again too.
 import type { QueryClient } from '@tanstack/react-query'
 import { liveTicket } from '../api/auth'
 import { sortTunnels } from '../api/client'
@@ -31,20 +37,30 @@ export interface LiveFeedOptions {
 
 export function liveFeedURL(): string {
   const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
-  return `${scheme}://${location.host}/api/v1/ws/metrics`
+  return `${scheme}://${location.host}/api/v1/ws/metrics?events=1`
 }
+
+/** Window event fired when the daemon reports a settings change. */
+export const CHANGED_EVENT = 'kongtrol:changed'
 
 /** The feed URL with its one-time ticket. */
 export function withTicket(url: string, ticket: string): string {
   return `${url}${url.includes('?') ? '&' : '?'}ticket=${encodeURIComponent(ticket)}`
 }
 
-/** Parses one frame: a name-keyed map of TunnelMetrics. Null if malformed. */
-export function parseFrame(data: string): TunnelMetrics[] | null {
+export type LiveFrame = { type: 'metrics'; tunnels: TunnelMetrics[] } | { type: 'changed' }
+
+/**
+ * Parses one frame: an envelope ({"type":"metrics","tunnels":{…}} or
+ * {"type":"changed"}). Null if malformed or of an unknown type.
+ */
+export function parseFrame(data: string): LiveFrame | null {
   try {
-    const map = JSON.parse(data) as Record<string, TunnelMetrics> | null
-    if (map !== null && typeof map !== 'object') return null
-    return sortTunnels(Object.values(map ?? {}))
+    const msg = JSON.parse(data) as { type?: unknown; tunnels?: Record<string, TunnelMetrics> | null } | null
+    if (msg === null || typeof msg !== 'object') return null
+    if (msg.type === 'changed') return { type: 'changed' }
+    if (msg.type !== 'metrics' || (msg.tunnels !== null && typeof msg.tunnels !== 'object')) return null
+    return { type: 'metrics', tunnels: sortTunnels(Object.values(msg.tunnels ?? {})) }
   } catch {
     return null
   }
@@ -89,8 +105,12 @@ export function startLiveFeed(client: QueryClient, opts: LiveFeedOptions = {}): 
       }
     }
     socket.onmessage = (event: MessageEvent<string>) => {
-      const list = parseFrame(event.data)
-      if (list) client.setQueryData(keys.tunnels, list)
+      const frame = parseFrame(event.data)
+      if (frame?.type === 'metrics') client.setQueryData(keys.tunnels, frame.tunnels)
+      if (frame?.type === 'changed') {
+        void client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== keys.tunnels[0] })
+        window.dispatchEvent(new Event(CHANGED_EVENT))
+      }
     }
     socket.onclose = retry
   }

@@ -1,6 +1,6 @@
 package main
 
-// Tray flyout — portable rules (v1.1.0 · 2026-11-19, ADR-0036, ADR-0056).
+// Tray flyout — portable rules (v1.2.0 · 2026-11-20, ADR-0036, ADR-0056, ADR-0074).
 //
 // The flyout is a small branded window that opens next to the tray icon on a
 // left click (like the Windows 11 network flyout, Tailscale or Docker
@@ -15,9 +15,12 @@ package main
 // native menu (flyout_other.go).
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -280,7 +283,22 @@ const (
 	// flyoutOpenAdd: "Agregar VPN" when there is none yet: the panel's
 	// "＋ Agregar" sheet on the VPN step (ADR-0055 deep link).
 	flyoutOpenAdd
+	// flyoutReauth: the page's session is gone (401; sessions live in the
+	// daemon's memory, so a daemon restart ends them). The tray loads the
+	// page again with a fresh one-time nonce (ADR-0074), at most once per
+	// flyoutReauthEvery, without hiding the window.
+	flyoutReauth
 )
+
+// flyoutReauthEvery rate-limits "reauth" so a daemon that keeps refusing
+// the sign-in cannot make the flyout reload in a loop.
+const flyoutReauthEvery = 5 * time.Second
+
+// flyoutReauthAllowed reports whether a "reauth" at now may reload the page
+// after the previous one at last (zero = never).
+func flyoutReauthAllowed(last, now time.Time) bool {
+	return last.IsZero() || now.Sub(last) >= flyoutReauthEvery || now.Before(last)
+}
 
 // addVPNPath is the panel deep link that opens the "＋ Agregar" sheet on
 // the VPN step (web/ui src/app/addLink.ts).
@@ -294,6 +312,7 @@ var flyoutMessages = map[string]flyoutAction{
 	"quit-tray":      flyoutQuitTray,
 	"quit-all":       flyoutQuitAll,
 	"open-add":       flyoutOpenAdd,
+	"reauth":         flyoutReauth,
 }
 
 // parseFlyoutMessage returns the action of a page message, which must be
@@ -366,4 +385,127 @@ func (w *flyoutWatch) ack() { w.acked.Store(w.shown.Load()) }
 // has not answered it.
 func (w *flyoutWatch) unanswered(seq uint64) bool {
 	return w.shown.Load() == seq && w.acked.Load() < seq
+}
+
+// ── Pre-warming and open timing (ADR-0074, issue #41) ─────────────────────
+
+const (
+	// flyoutSlowOpen is the target for a warm open, click to "ready"
+	// (issue #41: almost instant, under ~150 ms). Warm opens slower than
+	// this are logged; cold ones always are.
+	flyoutSlowOpen = 150 * time.Millisecond
+	// flyoutDaemonFresh: a tray status poll (every 3 s, tray_menu.go) that
+	// answered this recently proves the daemon is up, so a click on a
+	// loaded flyout shows it at once instead of probing the daemon first.
+	flyoutDaemonFresh = 5 * time.Second
+	// flyoutRetryLoad: a show that finds the page not loaded this long
+	// after its last navigation started (the load failed) loads it again.
+	flyoutRetryLoad = 3 * time.Second
+)
+
+// daemonAnsweredAt is the UnixNano of the last tray status poll the daemon
+// answered (0 = never).
+var daemonAnsweredAt atomic.Int64
+
+// noteDaemonAnswered is called after every status poll the daemon
+// answered. It records the time and pre-warms the flyout (OS-specific; a
+// no-op where there is no flyout or it is already started).
+func noteDaemonAnswered() {
+	daemonAnsweredAt.Store(time.Now().UnixNano())
+	prewarmFlyout()
+}
+
+// daemonAnsweredWithin reports whether the daemon answered a status poll
+// in the last d before now.
+func daemonAnsweredWithin(now time.Time, d time.Duration) bool {
+	at := daemonAnsweredAt.Load()
+	if at == 0 {
+		return false
+	}
+	ago := now.Sub(time.Unix(0, at))
+	return ago >= 0 && ago <= d
+}
+
+// flyoutNeedsDaemonCheck says whether a left click must first make sure the
+// daemon answers (ensureDaemon: a probe, and a spawn after `kongtrol down`).
+// A loaded page and a fresh status poll skip it: that probe was the only
+// network round trip left on a warm click.
+func flyoutNeedsDaemonCheck(pageLoaded bool, now time.Time) bool {
+	return !pageLoaded || !daemonAnsweredWithin(now, flyoutDaemonFresh)
+}
+
+// tokenTag identifies the daemon the page signed in to without keeping
+// another copy of its token: the token is rewritten on every daemon start
+// (AGENTS.md "Daemon lifecycle"), so another tag means another daemon, and
+// the page's session died with the old one. Empty token, empty tag.
+func tokenTag(token string) string {
+	if token == "" {
+		return ""
+	}
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:8])
+}
+
+// flyoutShowStep is what a show does with the page besides showing it.
+type flyoutShowStep int
+
+const (
+	// showRefresh: the page is loaded; send kongtrol:shown (refresh data,
+	// focus, announce "ready" again).
+	showRefresh flyoutShowStep = iota
+	// showNavigate: load the page again (fresh one-time sign-in nonce).
+	showNavigate
+	// showWait: a load is still running; the page says "ready" once it is
+	// visible (announceReady listens to visibilitychange).
+	showWait
+)
+
+// flyoutOnShow picks the show's step. loadedTag and currentTag are the
+// tokenTag of the token when the page loaded and now: a page signed in to a
+// daemon that has since restarted is loaded again instead of shown signed
+// out.
+func flyoutOnShow(loaded bool, loadedTag, currentTag string, sinceNavigate time.Duration) flyoutShowStep {
+	switch {
+	case loaded && loadedTag != "" && currentTag != "" && loadedTag != currentTag:
+		return showNavigate
+	case loaded:
+		return showRefresh
+	case sinceNavigate > flyoutRetryLoad:
+		return showNavigate
+	default:
+		return showWait
+	}
+}
+
+// flyoutOpen is one open of the flyout, for tray.log.
+type flyoutOpen struct {
+	Warm  bool      // the page was already loaded when the window showed
+	Click time.Time // tray icon clicked (zero: shown without a click)
+	Shown time.Time // window on screen
+	Ready time.Time // page said "ready"
+}
+
+// logLine returns the tray.log line for a finished open and whether to
+// write it: cold opens always, warm ones only above flyoutSlowOpen, so the
+// log does not grow with every click.
+func (o flyoutOpen) logLine() (string, bool) {
+	start := o.Click
+	if start.IsZero() || start.After(o.Shown) {
+		start = o.Shown
+	}
+	total := o.Ready.Sub(start)
+	kind := "cold"
+	if o.Warm {
+		kind = "warm"
+	}
+	line := fmt.Sprintf("kongtrol-tray: flyout open (%s): click to shown %s, shown to ready %s, total %s",
+		kind, roundMS(o.Shown.Sub(start)), roundMS(o.Ready.Sub(o.Shown)), roundMS(total))
+	return line, !o.Warm || total > flyoutSlowOpen
+}
+
+func roundMS(d time.Duration) time.Duration {
+	if d < 0 {
+		d = 0
+	}
+	return d.Round(time.Millisecond)
 }

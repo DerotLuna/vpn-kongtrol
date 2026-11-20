@@ -2,6 +2,7 @@ import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../App'
+import { authState } from '../api/auth'
 import type { SecurityStatus, TunnelMetrics } from '../api/types'
 
 function tunnel(name: string, status: TunnelMetrics['Status']): TunnelMetrics {
@@ -75,6 +76,7 @@ describe('TrayPage (/tray)', () => {
   afterEach(() => {
     delete window.kongtrolTray
     vi.unstubAllGlobals()
+    authState.set('ok')
   })
 
   it('shows each VPN with its state word, the aggregate, protection and version', async () => {
@@ -140,6 +142,19 @@ describe('TrayPage (/tray)', () => {
     expect(screen.getByRole('link', { name: 'Abrir panel' })).not.toHaveClass('primary')
     expect(screen.getByRole('link', { name: 'Abrir panel' })).toHaveAttribute('href', '/')
     expect(screen.queryByRole('button', { name: 'Salir' })).toBeNull()
+  })
+
+  it('after a daemon restart (401) asks the tray once to reload, and hides stale rows', async () => {
+    const post = vi.fn()
+    window.kongtrolTray = { post }
+    // every request: the new daemon does not know this page's session
+    const routes = Object.fromEntries(Object.keys(baseRoutes([])).map((k) => [k, () => json({ error: 'unauthorized' }, 401)]))
+    stubApi(routes)
+    render(<App />)
+    expect(await screen.findByText(/Kongtrol se reinició/)).toBeInTheDocument()
+    await waitFor(() => expect(post).toHaveBeenCalledWith('reauth'))
+    expect(post.mock.calls.filter(([m]) => m === 'reauth')).toHaveLength(1)
+    expect(screen.queryByRole('switch')).toBeNull()
   })
 
   it('inside the flyout: talks to the tray only through the bridge', async () => {

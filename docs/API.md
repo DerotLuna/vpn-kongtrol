@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.13 · 2026-11-19
+Version 1.14 · 2026-11-20
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -38,6 +38,13 @@ Clients open pages with `daemonctl.(*Client).PanelURL(path)`, which returns
 the nonce for the cookie and its page token (kept in `sessionStorage`). The cookie alone gets
 401: browsers send it to every port of 127.0.0.1. Pages never set credentials; a 401 means "open
 it from Kongtrol".
+
+The WebSocket sends the whole tunnel map on every state change and on a 5 s heartbeat. Without
+parameters each frame is that map, keyed by profile name (`kongtrol up`'s live view). With
+`?events=1` (the panel and the tray flyout, ADR-0072) every frame is an envelope:
+`{"type":"metrics","tunnels":{…}}` for the map, and `{"type":"changed","rev":N}` after any
+successful mutating request (profiles, groups, rules, security, settings, preferences, reload),
+so clients refetch what they show. A change frame carries no data.
 
 Commands: [CLI.en.md](CLI.en.md) (Español: [CLI.md](CLI.md)).
 

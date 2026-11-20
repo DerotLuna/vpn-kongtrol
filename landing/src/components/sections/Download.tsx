@@ -110,7 +110,7 @@ export default function Download({ lang }: Props) {
         <>Pulsa <strong>Más información</strong>.</>,
         <>Pulsa <strong>Ejecutar de todos modos</strong>.</>,
       ],
-      winWhy: 'Sale porque el archivo es nuevo y no está firmado con un certificado de pago, no porque tenga un virus.',
+      winWhy: 'Sale porque el archivo es nuevo y no está firmado con un certificado de pago, no porque tenga un virus. Si Microsoft Defender lo marca como amenaza (por ejemplo «Trojan:Win32/Bearfoos.A!ml»), es un falso positivo de un archivo sin firma: compara su SHA256 con checksums.txt, restáuralo en Seguridad de Windows › Historial de protección y repórtalo a Microsoft (la guía tiene los pasos).',
       macTitle: 'Si tu Mac dice que no puede abrir kongtrol',
       macSteps: [
         <>Cierra el aviso. No lo muevas a la papelera.</>,
@@ -170,7 +170,7 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
         <>Click <strong>More info</strong>.</>,
         <>Click <strong>Run anyway</strong>.</>,
       ],
-      winWhy: "It shows up because the file is new and isn't signed with a paid certificate, not because it has a virus.",
+      winWhy: "It shows up because the file is new and isn't signed with a paid certificate, not because it has a virus. If Microsoft Defender flags it as a threat (for example \"Trojan:Win32/Bearfoos.A!ml\"), it is a false positive on an unsigned file: compare its SHA256 with checksums.txt, restore it in Windows Security › Protection history and report it to Microsoft (the guide has the steps).",
       macTitle: "If your Mac says it can't open kongtrol",
       macSteps: [
         <>Close the warning. Don't move it to the Trash.</>,

@@ -52,8 +52,13 @@ export class FakeSocket {
   open() {
     this.onopen?.()
   }
+  /** A metrics frame, in the ?events=1 envelope (ADR-0072). */
   push(map: Record<string, TunnelMetrics>) {
-    this.onmessage?.({ data: JSON.stringify(map) })
+    this.onmessage?.({ data: JSON.stringify({ type: 'metrics', tunnels: map }) })
+  }
+  /** A "settings changed" frame. */
+  pushChanged() {
+    this.onmessage?.({ data: JSON.stringify({ type: 'changed', rev: 1 }) })
   }
   drop() {
     this.onclose?.()

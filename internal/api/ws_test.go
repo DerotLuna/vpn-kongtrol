@@ -117,3 +117,71 @@ func TestHandleWebSocket_PayloadShape(t *testing.T) {
 		t.Fatalf("Status=%v, want connected", tm.Status)
 	}
 }
+
+// TestHandleWebSocket_EventsEnvelope: with ?events=1 the snapshot comes in
+// a {"type":"metrics"} envelope and a settings change arrives as
+// {"type":"changed"} (ADR-0072); kongtrol up's bare map stays unchanged.
+func TestHandleWebSocket_EventsEnvelope(t *testing.T) {
+	ad := newWSTestAdapter(vpn.StatusConnected)
+	col := monitor.NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
+	col.Start(time.Hour)
+	defer col.Stop()
+
+	srv := &Server{collector: col}
+	ts := httptest.NewServer(http.HandlerFunc(srv.handleWebSocket))
+	defer ts.Close()
+
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(ts.URL, "http")+"?events=1", nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+
+	var first struct {
+		Type    string                           `json:"type"`
+		Tunnels map[string]monitor.TunnelMetrics `json:"tunnels"`
+	}
+	if err := conn.ReadJSON(&first); err != nil {
+		t.Fatalf("read snapshot: %v", err)
+	}
+	if first.Type != "metrics" || first.Tunnels["office"].Name != "office" {
+		t.Fatalf("snapshot envelope = %+v", first)
+	}
+
+	srv.changes.bump()
+	var changed struct {
+		Type string `json:"type"`
+		Rev  uint64 `json:"rev"`
+	}
+	if err := conn.ReadJSON(&changed); err != nil {
+		t.Fatalf("read change: %v", err)
+	}
+	if changed.Type != "changed" || changed.Rev != 1 {
+		t.Fatalf("change frame = %+v", changed)
+	}
+}
+
+// TestServeAnnounced: only a mutating request that succeeded announces a
+// change; reads and failures do not.
+func TestServeAnnounced(t *testing.T) {
+	srv := &Server{}
+	ok := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	bad := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusBadRequest) })
+	cases := []struct {
+		method string
+		h      http.Handler
+		want   uint64
+	}{
+		{http.MethodGet, ok, 0},
+		{http.MethodPost, bad, 0},
+		{http.MethodPut, ok, 1},
+		{http.MethodDelete, ok, 2},
+	}
+	for _, c := range cases {
+		srv.serveAnnounced(c.h, httptest.NewRecorder(), httptest.NewRequest(c.method, "/api/v1/x", nil))
+		if got := srv.changes.revision(); got != c.want {
+			t.Errorf("%s: revision %d, want %d", c.method, got, c.want)
+		}
+	}
+}

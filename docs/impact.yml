@@ -236,6 +236,7 @@ features:
       - AGENTS.md#tray_flyout
       - docs/adr/0036-tray-flyout-window.md
       - docs/adr/0056-tray-flyout-ready-fallback.md
+      - docs/adr/0074-tray-flyout-prewarm-and-reauth.md
 
   i18n:
     code:

@@ -7,7 +7,7 @@
 // normal browser tab there is no bridge and the page works as a compact
 // status view without the window-only controls.
 
-export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'open-add' | 'quit-tray' | 'quit-all'
+export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'open-add' | 'reauth' | 'quit-tray' | 'quit-all'
 
 interface TrayHost {
   post: (message: TrayMessage) => void
@@ -27,7 +27,7 @@ export function trayHost(): TrayHost | null {
 // The flyout page is the `tray` route at /tray (App.tsx; flyoutPath in
 // cmd/kongtrol-tray/flyout.go).
 
-/** Sent by the tray every time the flyout is shown again (not the first time). */
+/** Sent by the tray every time it shows the flyout (a pre-warmed page gets it on the first show too, ADR-0074). */
 export const SHOWN_EVENT = 'kongtrol:shown'
 
 /**

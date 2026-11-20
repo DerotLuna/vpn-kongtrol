@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.26 · 2026-11-20
+Version 1.27 · 2026-11-20
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -142,7 +142,11 @@ Every installer detects an existing install (Inno: HKCU `{AppId}_is1` `DisplayVe
 `InitializeSetup`; scripts: `install.manifest` + `kongtrol version`) and presents itself as
 update / reinstall / older version (SemVer precedence, same table in all three), skipping
 license/folder/tasks and reusing previous folders and choices; an older version is confirmed
-only interactively (ADR-0046). Plain `kongtrol service install` leaves a current helper alone
+only interactively (ADR-0046). Every installer first runs the new binary's `kongtrol version`: one the
+system will not start (Defender false positive, Gatekeeper, noexec) stops the install before the
+old copy is touched, a failed installed copy is rolled back, and "updated" is printed only after it
+runs; the scripts keep the installed version in `install.manifest` (`version=`) so the downgrade
+check works when the old binary cannot answer (ADR-0073). Plain `kongtrol service install` leaves a current helper alone
 (no UAC/sudo) and says "Actualizando" for another version.
 
 <!-- feature:uninstall -->
@@ -325,7 +329,8 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
 - A form with edits calls `useUnsavedChanges(dirty)` (`src/app/unsaved.ts`): the tab-close prompt
   and the shell's "Tienes cambios sin guardar" dialog (`useBlocker`) follow from it.
 - Data only via `src/data` (TanStack Query, cache keyed by resource in `keys.ts` or a
-  per-domain `src/data/<domain>.ts`); the one WebSocket (`live.ts`) writes into the same cache.
+  per-domain `src/data/<domain>.ts`); the one WebSocket (`live.ts`, `?events=1` envelopes) writes into the same cache,
+  and a `changed` frame (any successful API change, ADR-0072) refetches the rest and the preferences.
   Pages never fetch on their own; changes use `useOptimisticMutation` (rollback + toast with the
   "what to do" line); errors render through `describeError` (on screen: kit `ErrorState`).
   Requests only through `http.get/post/put/delete` in `src/api/client.ts` (language header,
@@ -505,7 +510,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 
 <!-- feature:i18n -->
 <!-- feature:tray_flyout -->
-### Tray flyout (ADR-0036, ADR-0056, ADR-0069)
+### Tray flyout (ADR-0036, ADR-0056, ADR-0069, ADR-0072, ADR-0074)
 
 - Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
   window next to the icon showing `web/ui` `/tray`; right click, macOS, Linux and a missing
@@ -515,7 +520,8 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 - Only `http://<loopback>:<port>/tray` loads (`flyoutURL`); requests outside the daemon's
   origin get 403; an injected script pins the page and exposes `window.kongtrolTray.post` with
   a per-launch nonce. Page → tray messages are the closed list in `flyoutMessages`
-  (`web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
+  (`ready`, `close`, `open-dashboard`, `open-add`, `quit-tray`, `quit-all`, `reauth`;
+  `web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
 - The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
   Escape) appear only when the bridge exists, so `/tray` also works in a browser tab.
 - ADR-0056: the WebView2 controller's `IsVisible` follows the window on every show/hide
@@ -528,6 +534,18 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
   a blocking kill switch shows a caution notice on top; with no VPN the one primary is
   "Agregar VPN" (message `open-add` → panel `/?add=vpn`); failed connects show the panel's
   "what to do" line (`ERROR_KEYS`), never the raw error.
+- ADR-0072: the page asks for WebSocket events; a `changed` frame refetches it and re-reads the
+  preferences (also on every `kongtrol:shown`). After a daemon restart its session is gone (401):
+  it hides the rows, says it is reconnecting and posts `reauth` once per show. On open the window
+  itself takes focus (no ring on the first switch).
+- ADR-0074: the flyout is pre-warmed: after the first status poll the daemon answers
+  (`noteDaemonAnswered`) the tray creates the window hidden and loads `/tray`; clicks only
+  show/hide. A click on a loaded page with a poll answered in the last 5 s shows it with no
+  daemon probe (otherwise `ensureDaemon` as before). The page is reloaded with a fresh
+  one-time nonce when the api-token changed (daemon restarted; compared by `tokenTag`, never
+  stored) and when it posts `reauth` (session gone), at most once per 5 s, without hiding the
+  window. `tray.log` gets one timing line per open (cold always, warm above 150 ms) plus the
+  WebView2 start and each page load.
 
 ## Internationalization (i18n)
 

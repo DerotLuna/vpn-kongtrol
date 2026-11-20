@@ -84,10 +84,36 @@ describe('cache', () => {
 
 describe('live feed', () => {
   it('parses frames and rejects malformed ones', () => {
-    expect(parseFrame('{"b":{"Name":"b"},"a":{"Name":"a"}}')?.map((t) => t.Name)).toEqual(['a', 'b'])
-    expect(parseFrame('null')).toEqual([])
+    const metrics = parseFrame('{"type":"metrics","tunnels":{"b":{"Name":"b"},"a":{"Name":"a"}}}')
+    expect(metrics?.type === 'metrics' && metrics.tunnels.map((t) => t.Name)).toEqual(['a', 'b'])
+    expect(parseFrame('{"type":"metrics","tunnels":null}')).toEqual({ type: 'metrics', tunnels: [] })
+    expect(parseFrame('{"type":"changed","rev":3}')).toEqual({ type: 'changed' })
+    expect(parseFrame('{"b":{"Name":"b"}}')).toBeNull() // bare map: not for the page
+    expect(parseFrame('{"type":"other"}')).toBeNull()
+    expect(parseFrame('null')).toBeNull()
     expect(parseFrame('not json')).toBeNull()
     expect(parseFrame('42')).toBeNull()
+  })
+
+  it('a settings change refetches everything but tunnels and tells the page', async () => {
+    const client = createQueryClient()
+    const invalidate = vi.spyOn(client, 'invalidateQueries')
+    const heard = vi.fn()
+    window.addEventListener('kongtrol:changed', heard)
+    const stop = startLiveFeed(client, {
+      WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
+      url: 'ws://x',
+      ticket: () => Promise.resolve('t'),
+    })
+    await vi.waitFor(() => expect(FakeSocket.instances).toHaveLength(1))
+    act(() => FakeSocket.last().open())
+    act(() => FakeSocket.last().pushChanged())
+    expect(heard).toHaveBeenCalledTimes(1)
+    const filters = invalidate.mock.calls[0]?.[0] as { predicate: (q: { queryKey: readonly unknown[] }) => boolean }
+    expect(filters.predicate({ queryKey: keys.tunnels })).toBe(false)
+    expect(filters.predicate({ queryKey: ['groups'] })).toBe(true)
+    window.removeEventListener('kongtrol:changed', heard)
+    stop()
   })
 
   it('opens each socket with a fresh one-time ticket', async () => {

@@ -2,12 +2,15 @@
 
 package main
 
-// Tray flyout on Windows (v1.1.0 · 2026-11-19, ADR-0036, ADR-0056): a
-// frameless, topmost tool window next to the tray icon hosting Microsoft
+// Tray flyout on Windows (v1.2.0 · 2026-11-20, ADR-0036, ADR-0056, ADR-0074):
+// a frameless, topmost tool window next to the tray icon hosting Microsoft
 // Edge WebView2 through github.com/jchv/go-webview2/pkg/edge (pure Go, no
 // cgo: the tray keeps cross-compiling with CGO_ENABLED=0). The window lives
-// on its own locked OS thread with its own message loop, created on the
-// first left click and then only shown/hidden, so later opens are instant.
+// on its own locked OS thread with its own message loop. It is pre-warmed
+// (ADR-0074): created hidden, with the page loaded, as soon as the daemon
+// first answers the tray's status poll (or on the first left click if that
+// comes earlier), and then only shown/hidden. A click on a loaded page does
+// no network round trip before showing it.
 //
 // The WebView2 controller's visibility (IsVisible) follows the window on
 // every show and hide. The window is created hidden, and without
@@ -26,6 +29,7 @@ import (
 	"runtime"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 	"unsafe"
 
@@ -46,8 +50,10 @@ const (
 	wmFlyoutHide = wmApp + 0x4B2
 	// wmFlyoutCheck: flyoutReadyTimeout after a show (wParam = show number).
 	wmFlyoutCheck = wmApp + 0x4B3
-	waInactive    = 0
-	wmRButtonUp   = 0x0205
+	// wmFlyoutDaemon: a tray status poll answered (checkDaemon).
+	wmFlyoutDaemon = wmApp + 0x4B4
+	waInactive     = 0
+	wmRButtonUp    = 0x0205
 
 	wsPopup        = 0x80000000
 	wsClipChildren = 0x02000000
@@ -170,6 +176,9 @@ type winFlyout struct {
 	nonce string
 
 	startOnce   sync.Once
+	enabled     atomic.Bool  // setupFlyout chose the flyout; fail() clears it
+	loaded      atomic.Bool  // the last navigation succeeded (page in memory)
+	clickAt     atomic.Int64 // UnixNano of the click waiting for its show
 	hwnd        atomic.Uintptr
 	trayHwnd    atomic.Uintptr // read by the window thread, found on systray's
 	visible     atomic.Bool
@@ -183,6 +192,10 @@ type winFlyout struct {
 	chromium    *edge.Chromium // window thread
 	embedded    bool           // window thread
 	navigatedAt time.Time      // window thread
+	loadedTag   string         // window thread: tokenTag at the last navigation
+	open1       flyoutOpen     // window thread: the show waiting for "ready"
+	openPending bool           // window thread: open1 is waiting
+	lastReauth  time.Time      // window thread: last "reauth" reload
 }
 
 var (
@@ -228,14 +241,36 @@ func setupFlyout() {
 			return
 		}
 		fly.url, fly.nonce = pageURL, hex.EncodeToString(nonce)
+		fly.enabled.Store(true)
 		systray.SetOnTapped(fly.onTrayClick)
 		log.Printf("kongtrol-tray: left click opens the flyout (WebView2 %s)", version)
+	})
+}
+
+// prewarmFlyout starts the flyout window hidden and loads its page, once,
+// so the first click only shows it (ADR-0074). Called after every status
+// poll the daemon answered (noteDaemonAnswered); cheap after the first.
+func prewarmFlyout() {
+	if !fly.enabled.Load() || fly.gaveUp.Load() {
+		return
+	}
+	fly.start("pre-warm")
+	// Once running: reload a hidden page whose daemon restarted.
+	fly.post(wmFlyoutDaemon)
+}
+
+// start runs the window thread once; why ("pre-warm" or "click") is logged.
+func (f *winFlyout) start(why string) {
+	f.startOnce.Do(func() {
+		log.Printf("kongtrol-tray: flyout starting WebView2 (%s)", why)
+		go f.run()
 	})
 }
 
 // onTrayClick runs on systray's thread (inside its window procedure): it
 // must not block.
 func (f *winFlyout) onTrayClick() {
+	now := time.Now()
 	if f.trayHwnd.Load() == 0 {
 		trayWindowFound = 0
 		_, _, _ = procEnumThreadWindows.Call(uintptr(windows.GetCurrentThreadId()), trayEnumProc, 0)
@@ -248,17 +283,22 @@ func (f *winFlyout) onTrayClick() {
 	if time.Since(time.Unix(0, f.hiddenAt.Load())) < flyoutReopenGuard {
 		return
 	}
-	go f.open()
+	go f.open(now)
 }
 
-func (f *winFlyout) open() {
-	// Same as the menu items: the page needs the daemon.
-	if err := ensureDaemon(); err != nil {
-		notifyError(trayT("tray.err_start"), err)
-		return
+func (f *winFlyout) open(clicked time.Time) {
+	// Same as the menu items: the page needs the daemon. A loaded page with
+	// a fresh status poll skips the probe (ADR-0074); after `kongtrol down`
+	// the poll fails, so the click still starts the daemon as before.
+	if flyoutNeedsDaemonCheck(f.loaded.Load(), time.Now()) {
+		if err := ensureDaemon(); err != nil {
+			notifyError(trayT("tray.err_start"), err)
+			return
+		}
 	}
+	f.clickAt.Store(clicked.UnixNano())
 	f.pendingShow.Store(true)
-	f.startOnce.Do(func() { go f.run() })
+	f.start("click")
 	f.post(wmFlyoutShow)
 }
 
@@ -288,8 +328,11 @@ func (f *winFlyout) run() {
 	ch.DataPath = flyoutDataDir()
 	ch.MessageCallback = f.onMessage
 	ch.WebResourceRequestedCallback = f.onRequest
-	ch.NavigationCompletedCallback = func(*edge.ICoreWebView2, *edge.ICoreWebView2NavigationCompletedEventArgs) {
+	ch.NavigationCompletedCallback = func(_ *edge.ICoreWebView2, args *edge.ICoreWebView2NavigationCompletedEventArgs) {
+		ok := navigationSucceeded(args)
+		f.loaded.Store(ok)
 		f.navigated.Store(true)
+		log.Printf("kongtrol-tray: flyout page load finished in %s (success %t)", roundMS(time.Since(f.navigatedAt)), ok)
 	}
 	ch.AcceleratorKeyCallback = func(vk uint) bool {
 		if vk == vkEscape {
@@ -299,13 +342,19 @@ func (f *winFlyout) run() {
 		return false
 	}
 	f.chromium = ch
+	embedStart := time.Now()
 	if !ch.Embed(hwnd) {
 		_, _, _ = procDestroyWindow.Call(hwnd)
 		f.hwnd.Store(0)
 		f.fail(errors.New("WebView2 did not start"))
 		return
 	}
+	log.Printf("kongtrol-tray: flyout WebView2 ready in %s (environment + controller)", roundMS(time.Since(embedStart)))
 	f.configure(ch)
+	// The window is hidden until a show: the controller follows it
+	// (ADR-0056), so a pre-warmed page loads without painting and says
+	// "ready" only once it is shown (announceReady waits for "visible").
+	_ = ch.Hide()
 	f.embedded = true
 	f.navigate()
 	if f.pendingShow.Swap(false) {
@@ -327,6 +376,7 @@ func (f *winFlyout) run() {
 // native menu again.
 func (f *winFlyout) fail(err error) {
 	log.Printf("kongtrol-tray: flyout unavailable, using the native menu: %v", err)
+	f.enabled.Store(false)
 	// fyne.io/systray reads this handler on its own thread without a lock;
 	// a single pointer write, done once.
 	systray.SetOnTapped(nil)
@@ -389,12 +439,41 @@ func (f *winFlyout) configure(ch *edge.Chromium) {
 // flyoutLoadURL (one-time auth step lives there, never the file token).
 func (f *winFlyout) navigate() {
 	f.navigatedAt = time.Now()
+	f.loaded.Store(false)
+	f.loadedTag = currentTokenTag()
 	target, err := flyoutLoadURL(f.url)
 	if err != nil {
 		log.Printf("kongtrol-tray: flyout could not prepare its page: %v", err)
 		return
 	}
 	f.chromium.Navigate(target)
+}
+
+// currentTokenTag is tokenTag of the daemon's current file token (read
+// per call; rewritten on every daemon start).
+func currentTokenTag() string {
+	if client == nil {
+		return ""
+	}
+	return tokenTag(client.CurrentToken())
+}
+
+// navigationSucceeded reads ICoreWebView2NavigationCompletedEventArgs::
+// get_IsSuccess, which github.com/jchv/go-webview2 declares in its vtable
+// but does not wrap. Layout: IUnknown (3 slots), then IsSuccess (BOOL*).
+// Any error counts as a failed load (the next show loads the page again).
+func navigationSucceeded(args *edge.ICoreWebView2NavigationCompletedEventArgs) bool {
+	if args == nil {
+		return false
+	}
+	type vtbl struct{ queryInterface, addRef, release, getIsSuccess uintptr }
+	obj := (*struct{ v *vtbl })(unsafe.Pointer(args))
+	if obj.v == nil || obj.v.getIsSuccess == 0 {
+		return false
+	}
+	var ok int32
+	hr, _, _ := syscall.SyscallN(obj.v.getIsSuccess, uintptr(unsafe.Pointer(args)), uintptr(unsafe.Pointer(&ok)))
+	return hr == 0 && ok != 0
 }
 
 // onRequest answers 403 to anything outside the daemon's origin. Only the
@@ -427,10 +506,58 @@ func (f *winFlyout) onMessage(msg string) {
 	case flyoutReady:
 		f.ready.Store(true)
 		f.watch.ack()
+		if f.openPending {
+			f.openPending = false
+			f.open1.Ready = time.Now()
+			if line, ok := f.open1.logLine(); ok {
+				log.Print(line)
+			}
+		}
+	case flyoutReauth:
+		f.reauth()
 	case flyoutNone:
 	default:
 		runFlyoutAction(a, f.hideNow)
 	}
+}
+
+// reauth reloads the page with a fresh one-time nonce after the page said
+// its session is gone (window thread, ADR-0074). The window stays as it is;
+// a visible one must hear "ready" from the new page within
+// flyoutReadyTimeout like any show (ADR-0056).
+func (f *winFlyout) reauth() {
+	now := time.Now()
+	if !flyoutReauthAllowed(f.lastReauth, now) {
+		log.Println("kongtrol-tray: flyout asked to sign in again too soon; ignored")
+		return
+	}
+	f.lastReauth = now
+	log.Println("kongtrol-tray: flyout session expired (daemon restarted?); loading the page with a new sign-in")
+	f.navigate()
+	if f.visible.Load() {
+		f.armWatch(f.hwnd.Load())
+	}
+}
+
+// checkDaemon runs on the window thread after a status poll answered
+// (wmFlyoutDaemon): a hidden page signed in to a daemon that has since
+// restarted is loaded again now, so the next click is still warm.
+func (f *winFlyout) checkDaemon() {
+	if !f.embedded || f.visible.Load() || !f.loaded.Load() {
+		return
+	}
+	if flyoutOnShow(true, f.loadedTag, currentTokenTag(), 0) == showNavigate {
+		log.Println("kongtrol-tray: daemon restarted; reloading the hidden flyout page with a new sign-in")
+		f.navigate()
+	}
+}
+
+// armWatch starts waiting for the page's "ready" for a new show number.
+func (f *winFlyout) armWatch(hwnd uintptr) {
+	seq := f.watch.show()
+	time.AfterFunc(flyoutReadyTimeout, func() {
+		_, _, _ = procPostMessageW.Call(hwnd, wmFlyoutCheck, uintptr(seq), 0)
+	})
 }
 
 // showNow places the window next to the tray icon and shows it (window
@@ -456,20 +583,32 @@ func (f *winFlyout) showNow() {
 	f.chromium.Focus()
 	f.visible.Store(true)
 
+	// Timing for tray.log (ADR-0074): from the click (if any) to "ready".
+	var clicked time.Time
+	if at := f.clickAt.Swap(0); at != 0 {
+		clicked = time.Unix(0, at)
+	}
+	loaded := f.loaded.Load()
+	f.open1 = flyoutOpen{Warm: loaded, Click: clicked, Shown: time.Now()}
+	f.openPending = true
+
 	// The page answers "ready" once it is on screen; without that answer the
 	// window would stay an empty frame (ADR-0056).
-	seq := f.watch.show()
-	time.AfterFunc(flyoutReadyTimeout, func() {
-		_, _, _ = procPostMessageW.Call(hwnd, wmFlyoutCheck, uintptr(seq), 0)
-	})
+	f.armWatch(hwnd)
 
-	switch {
-	case f.ready.Load():
-		// Refresh data and move focus into the page (web/ui/src/tray).
+	switch flyoutOnShow(loaded, f.loadedTag, currentTokenTag(), time.Since(f.navigatedAt)) {
+	case showRefresh:
+		// Refresh data and move focus into the page (web/ui/src/tray). A
+		// pre-warmed page that was never shown handles it too: it re-arms
+		// its "ready" announcement and refreshes its data.
 		f.chromium.Eval("window.dispatchEvent(new Event('kongtrol:shown'))")
-	case time.Since(f.navigatedAt) > 3*time.Second:
-		// The first load failed (daemon was starting): try again.
+	case showNavigate:
+		// The load failed (daemon was starting) or the daemon restarted
+		// since (its sign-in is gone): load the page again.
+		f.open1.Warm = false
 		f.navigate()
+	case showWait:
+		// Still loading; the page says "ready" when it is visible.
 	}
 }
 
@@ -496,6 +635,9 @@ func flyoutWndProc(hwnd, msg, wParam, lParam uintptr) uintptr {
 		return 0
 	case wmFlyoutHide:
 		fly.hideNow()
+		return 0
+	case wmFlyoutDaemon:
+		fly.checkDaemon()
 		return 0
 	case wmFlyoutCheck:
 		if fly.visible.Load() && fly.watch.unanswered(uint64(wParam)) {

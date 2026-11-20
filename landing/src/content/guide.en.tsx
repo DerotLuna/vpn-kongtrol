@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.1.0 · 2026-11-19.
+// Version 3.2.0 · 2026-11-20.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -10,7 +10,7 @@
 import type { OS } from '../hooks/useOS'
 import IC from '../components/ui/InlineCode'
 import { pathFor } from '../site'
-import { INSTALL_CMD, UNINSTALL_SCRIPT_BASE, WINDOWS_INSTALLER_FILE } from '../links'
+import { DEFENDER_FALSE_POSITIVE_URL, INSTALL_CMD, UNINSTALL_SCRIPT_BASE, WINDOWS_INSTALLER_FILE } from '../links'
 import type { GuideContent, GuideFix, GuideStep } from './guide.es'
 
 const tray = (os: OS) => os === 'windows'
@@ -93,7 +93,9 @@ export default function guideEN(os: OS): GuideContent {
       steps: (os === 'windows'
         ? [
           { t: <>Download the installer</>, d: <>In <a href="/en/#install">downloads</a>, the Windows button gets <IC c={WINDOWS_INSTALLER_FILE} />.</>, see: <>The file in your Downloads folder.</> },
-          { t: <>Open it</>, d: <>If a blue Windows warning (SmartScreen) shows up, click <strong>More info</strong>, then <strong>Run anyway</strong>. It shows because the file isn't signed yet.</>, see: <>The Kongtrol setup wizard.</> },
+          { t: <>Open it</>, d: <>If a blue Windows warning (SmartScreen) shows up, click <strong>More info</strong>, then <strong>Run anyway</strong>. It shows because the file isn't signed yet.
+            {' '}If Microsoft Defender flags it as a threat (for example <IC c="Trojan:Win32/Bearfoos.A!ml" />) and quarantines it, it's a false positive common for new unsigned programs: check it on the <a href="/en/security">Security</a> page, allow it in Windows Security → Protection history only if you trust it, and report it at{' '}
+            <a href={DEFENDER_FALSE_POSITIVE_URL}>microsoft.com/wdsi/filesubmission</a>.</>, see: <>The Kongtrol setup wizard.</> },
           { t: <>Keep the recommended options</>, d: <>Open at sign-in, install the network helper and add the <IC c="kongtrol" /> command. No administrator needed, except for the helper (once).</>, see: <>A Windows prompt for the helper: click <strong>Yes</strong>.</> },
           { t: <>Finish</>, d: <>With "Open Kongtrol and create my first VPN" checked, go on to <a href="#wizard">Your first VPN</a>.</>, see: <>The icon in the tray and the panel in your browser.</> },
         ]
