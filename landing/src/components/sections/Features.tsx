@@ -135,7 +135,7 @@ export default function Features({ lang }: Props) {
     `${extra}${i === active ? ' active' : ''}${routes[i].direct ? ' direct' : ''}`
 
   return (
-    <section id="map" className="section features-section tone-ink">
+    <section id="map" className="section features-section tone-ink edge edge-b edge-b-drift">
       <div className="container">
         <div className="section-label cmd-label">{copy.label}</div>
         <h2 className="section-title">{copy.title}</h2>

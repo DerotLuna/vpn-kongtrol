@@ -1,6 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    KONGTROL CLI — "Signal Contour" design system
-   v2.10 · 2026-11-19
+   v2.11 · 2026-11-20
+   v2.11: style "Terminal de instrumentos" (ADR-0070): tone bands end on
+   contour-line edges (.edge), the gold band holds only the download call.
    Visual language borrowed from the brand mark: concentric contour rings
    (radar / topographic signal). Cool instrument room; gold = the live signal.
    v2: multi-page (landing + /guia), amber-phosphor terminal aesthetic,
@@ -94,6 +96,7 @@
   --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px;
   /* v2.9: tighter, so key sections fit one laptop screen (ADR-0060) */
   --section-y: clamp(48px, 2.5vw + 32px, 88px);
+  --edge-h: clamp(28px, 4.5vw, 72px);   /* contour edge depth (ADR-0070) */
   --gutter: clamp(16px, 3vw, 24px);
 
   /* fluid type scale (1.25 ratio, clamped; display ≤ 6rem) */
@@ -122,7 +125,7 @@
 /* Ink — the dark band tone: header, tmux bar and alternating sections
    (ADR-0060). Every colour token is redefined here, so anything inside reads
    the ink palette; the contrast pairs are the ones the old dark theme verified. */
-.tone-ink, .tone-signal .code-block {
+.tone-ink, .tone-signal .code-block, .dl-rest .code-block {
   /* surfaces — cool ink so the one warm accent reads as "signal" */
   --bg:          #0a0c10;
   --surface:     #12151b;
@@ -553,6 +556,34 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
    (.tone-ink), so the change of tone is the divider — no hairlines. The hero
    and the attach demo share one Ink band (the demo continues the hero). */
 .section.tone-ink { isolation: isolate; }
+
+/* Contour edges (ADR-0070, "Terminal de instrumentos"): a tone band (Ink or
+   gold) ends on a line of a topographic map instead of a ruler line — the
+   rings of the mark, cut. Bone is the page itself (transparent sections), so
+   only the band is shaped: a mask makes the part past the curve transparent
+   and the Bone page shows through. One family, varied per boundary (swell,
+   dune, drift, ring; some mirrored) and some boundaries stay straight on
+   purpose, as rests. Static: no motion, nothing to reduce. */
+.edge {
+  --edge-t: linear-gradient(#000 0 0);
+  --edge-b: linear-gradient(#000 0 0);
+  -webkit-mask:
+    var(--edge-t) top / 100% var(--edge-h) no-repeat,
+    linear-gradient(#000 0 0) center / 100% calc(100% - 2 * var(--edge-h) + 2px) no-repeat,
+    var(--edge-b) bottom / 100% var(--edge-h) no-repeat;
+  mask:
+    var(--edge-t) top / 100% var(--edge-h) no-repeat,
+    linear-gradient(#000 0 0) center / 100% calc(100% - 2 * var(--edge-h) + 2px) no-repeat,
+    var(--edge-b) bottom / 100% var(--edge-h) no-repeat;
+}
+/* the content keeps its rhythm: the curve takes room from the padding */
+.section.edge-t { padding-top: calc(var(--section-y) + var(--edge-h) * 0.6); }
+.section.edge-b { padding-bottom: calc(var(--section-y) + var(--edge-h) * 0.6); }
+.edge-t-swell { --edge-t: url('./assets/edges/swell-top.svg'); }
+.edge-t-dune-flip { --edge-t: url('./assets/edges/dune-top-flip.svg'); }
+.edge-b-dune { --edge-b: url('./assets/edges/dune-bottom.svg'); }
+.edge-b-drift { --edge-b: url('./assets/edges/drift-bottom.svg'); }
+.edge-b-ring { --edge-b: url('./assets/edges/ring-bottom.svg'); }
 
 .section-label {
   display: inline-flex; align-items: center;

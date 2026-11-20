@@ -1,9 +1,17 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   KONGTROL UI — design tokens · v0.4.0 · 2026-11-18
+   KONGTROL UI — design tokens · v0.5.0 · 2026-11-20
    Copied from the landing's "Signal Contour" system (landing/src/index.css,
    v2.6.0 · 2026-11-18, palette "Sesión en la Torre" in DESIGN.md) so both
    read as one brand. Keep values in sync until
    phase 2 moves them to one shared file both builds import.
+   One gold #ffb020 on both themes (ADR-0069, the landing's ADR-0066 roles):
+     --signal       accent text / lines / focus (gold on Ink, Ink on Bone)
+     --signal-fill  solid fills (primary buttons, switch on, checked boxes)
+                    with --on-signal (Ink) text on them, 10.70:1
+     --signal-edge  1px edge + mark of a filled control: gold fails 3:1 on
+                    Bone (1.57:1), so on Bone the state reads from Ink
+     --signal-mark  decorative gold only (underlines, dots), never the only
+                    carrier of meaning
    Dark is the base; [data-theme='light'] overrides. The page sets
    data-theme before first paint (main.tsx) from: explicit choice, else
    prefers-color-scheme.
@@ -18,7 +26,10 @@
   --border-2:    #313847;
 
   --signal:      #ffb020;
-  --signal-hi:   #ffc456;
+  --signal-fill: #ffb020;
+  --signal-hi:   #ffc456;   /* fill hover */
+  --signal-edge: #ffb020;
+  --signal-mark: #ffb020;
   --signal-soft: rgba(255,176,32,0.12);
   --signal-glow: rgba(255,176,32,0.28);
   --signal-line: rgba(255,176,32,0.30);
@@ -87,11 +98,14 @@
   --border:      #ddd5c4;
   --border-2:    #c9bfa8;
 
-  --signal:      #904f00;
-  --signal-hi:   #7a4300;
-  --signal-soft: rgba(144,79,0,0.10);
-  --signal-glow: rgba(144,79,0,0.20);
-  --signal-line: rgba(144,79,0,0.28);
+  --signal:      #1b1813;   /* Ink: gold text on Bone is 1.57:1 */
+  --signal-fill: #ffb020;
+  --signal-hi:   #ffc456;
+  --signal-edge: #1b1813;
+  --signal-mark: #ffb020;
+  --signal-soft: rgba(255,176,32,0.20);   /* Ink text on it 13.78:1 */
+  --signal-glow: rgba(255,176,32,0.45);
+  --signal-line: #ffb020;
 
   --steel:       #2f6a8f;
   --steel-soft:  rgba(47,106,143,0.12);
@@ -105,7 +119,8 @@
   --live-soft:   rgba(18,111,57,0.14);
   --caution:      #a54006;
   --caution-soft: rgba(165,64,6,0.12);
-  --on-signal:   #fbf9f4;
+  --on-signal:   #0a0c10;
+  --focus:       0 0 0 2px var(--signal);
   --logo-filter: none;
 
   --contour: repeating-radial-gradient(circle at var(--cx, 50%) var(--cy, 50%),

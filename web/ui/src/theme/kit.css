@@ -30,13 +30,13 @@
 .k-btn[aria-busy='true'] { cursor: progress; opacity: 1; }
 .k-btn svg { width: 18px; height: 18px; flex: none; }
 .k-btn--sm { min-height: 36px; padding: 0 12px; font-size: 13px; }
-.k-btn--filled { background: var(--signal); color: var(--on-signal); }
+.k-btn--filled { background: var(--signal-fill); color: var(--on-signal); }
 .k-btn--filled:hover:not(:disabled) { background: var(--signal-hi); color: var(--on-signal); }
 .k-btn--tonal { background: var(--signal-soft); color: var(--text); border-color: var(--signal-line); }
 .k-btn--outlined { background: transparent; color: var(--text); border-color: var(--border-2); }
 .k-btn--outlined:hover:not(:disabled) { color: var(--text); }
 .k-btn--text { background: transparent; color: var(--signal); padding: 0 10px; }
-.k-btn--text:hover:not(:disabled) { color: var(--signal-hi); }
+.k-btn--text:hover:not(:disabled) { color: var(--signal); }
 .k-btn--danger { background: transparent; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 60%, transparent); }
 .k-btn--danger:hover:not(:disabled) { background: var(--danger-soft); }
 
@@ -81,7 +81,7 @@
   position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
   background: var(--text-muted); transition: transform var(--dur-med) var(--ease-standard), background-color var(--dur-fast);
 }
-.k-switch[aria-checked='true'] .k-switch__track { background: var(--signal); box-shadow: none; }
+.k-switch[aria-checked='true'] .k-switch__track { background: var(--signal-fill); box-shadow: inset 0 0 0 1px var(--signal-edge); }
 .k-switch[aria-checked='true'] .k-switch__thumb { transform: translateX(18px); background: var(--on-signal); }
 .k-switch__state { font: 500 13px/1 var(--font-mono); color: var(--text-muted); min-width: 9ch; text-align: left; }
 .k-switch[data-pending] .k-switch__thumb { opacity: 0.7; }
@@ -202,7 +202,7 @@
 .k-tab[aria-selected='true'], .k-tab[aria-current='page'] { color: var(--text); }
 .k-tab[aria-selected='true']::after, .k-tab[aria-current='page']::after {
   content: ''; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px;
-  background: var(--signal); border-radius: 2px 2px 0 0;
+  background: var(--signal-mark); border-radius: 2px 2px 0 0;
 }
 .k-tabs__panel { padding-top: 16px; }
 .k-tabs__panel:focus-visible { border-radius: var(--radius); }

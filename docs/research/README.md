@@ -62,6 +62,7 @@ reasoned but unverified.
 | [2026-11-19-loopback-cookies-and-listener-owner](2026-11-19-loopback-cookies-and-listener-owner.md) | Cookies are not port-isolated (RFC 6265 §8.5), sessionStorage per origin, Secure cookies on loopback per browser, CSP `'self'` and `ws:`, owner of a loopback listener without admin (Windows, Linux, macOS) | ADR-0062 |
 | [2026-11-19-floating-layers-and-own-controls](2026-11-19-floating-layers-and-own-controls.md) | Floating UI vs. alternatives (license, size, maintenance), the Popover API top layer above a modal dialog, CSP `style-src` vs. CSSOM writes (measured in Chromium), WAI-ARIA APG patterns for tooltip, menu button, select-only and editable combobox, date grid; week start per language; the asynchronous connect in the daemon | ADR-0067 |
 | [2026-11-19-react-aria-components](2026-11-19-react-aria-components.md) | React Aria Components vs. Radix, Ariakit, Headless UI (controls, license); CSP: CSSOM positions, the `<style>` React Aria injects and how it is avoided; portals inside a modal dialog; bundle before/after; locales plugin | ADR-0068 |
+| [2026-11-20-landing-style-and-contour-edges](2026-11-20-landing-style-and-contour-edges.md) | Which known style the landing is (Terminal/CLI UI, Cassette Futurism, FUI; not neubrutalism); accent dose; section-edge techniques (gradients, clip-path, SVG masks), a11y, reduced motion, CSP | ADR-0070 |
 
 ## Template
 

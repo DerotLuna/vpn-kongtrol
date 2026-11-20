@@ -1,7 +1,7 @@
-/* KONGTROL UI — tray flyout (/app/tray) · v1.0.0 · 2026-11-18 · ADR-0036
+/* KONGTROL UI — tray flyout (/tray) · v1.1.0 · 2026-11-20 · ADR-0036, ADR-0069
    A 360×520 window next to the tray icon: the control tower seen through a
    small hatch. Title bar in surface-2 (like the terminal window), rows on
-   hairlines, state colors only for states (Four States Rule), amber only for
+   hairlines, state colors only for states (Four States Rule), gold only for
    the one primary action and focus. */
 
 .tray {
@@ -24,9 +24,11 @@
   border-bottom: 1px solid var(--border);
 }
 .tray-head::after {
-  /* the contour rings of the mark, faint, behind the corner */
+  /* the contour rings of the mark in faint gold (--signal-mark, decorative
+     only), behind the corner — the landing's signature (ADR-0069) */
   content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: var(--contour);
+  background: repeating-radial-gradient(circle at var(--cx) var(--cy),
+    transparent 0 15px, color-mix(in srgb, var(--signal-mark) 30%, transparent) 15px 16px);
   mask-image: radial-gradient(circle at 100% 0%, #000 0, transparent 70%);
 }
 .tray-head > * { position: relative; z-index: 1; }
@@ -65,7 +67,7 @@
   font: 500 11.5px/1.2 var(--font-mono); letter-spacing: 0.04em;
   color: var(--text-dim); text-transform: uppercase;
 }
-.tray-empty { padding: 4px 16px 8px; color: var(--text-muted); }
+.tray-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 4px 16px 8px; color: var(--text-muted); }
 
 .tray-list { list-style: none; }
 .tray-row {
@@ -136,6 +138,9 @@
   background: var(--danger-soft); color: var(--text);
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
 }
+/* the kill switch holding traffic: needs attention, not broken (caution) */
+.tray-notice.caution { background: var(--caution-soft); border-color: color-mix(in srgb, var(--caution) 45%, transparent); }
+.tray-notice strong { font-weight: 600; }
 
 /* ── Footer and buttons ────────────────────────────────────────────────── */
 .tray-foot {
@@ -152,7 +157,7 @@
   transition: background-color 140ms var(--expo-out), border-color 140ms var(--expo-out), color 140ms var(--expo-out), transform 140ms var(--expo-out);
 }
 .tray-btn:active:not(:disabled) { transform: scale(0.98); }
-.tray-btn.primary { background: var(--signal); color: var(--on-signal); text-transform: uppercase; }
+.tray-btn.primary { background: var(--signal-fill); color: var(--on-signal); text-transform: uppercase; }
 .tray-btn.primary:hover { background: var(--signal-hi); color: var(--on-signal); }
 .tray-btn.ghost { background: none; color: var(--text); border-color: var(--border-2); }
 .tray-btn.ghost:hover:not(:disabled) { border-color: var(--signal); color: var(--signal); background: var(--signal-soft); }

@@ -144,7 +144,7 @@ describe('Inicio: states', () => {
     expect(within(off).getByRole('button', { name: 'Conectar home' })).toBeEnabled()
 
     // Row actions are icon-only 36px squares (name = tooltip); only the
-    // state's own action carries weight: amber Conectar when down, the ink
+    // state's own action carries weight: gold Conectar when down, the ink
     // outline on Desconectar when up; the rest are outlined.
     const squares = (r: HTMLElement) => within(r).getAllByRole('button').filter((b) => b.closest('.home-actions'))
     for (const r of [row, off]) {

@@ -1,5 +1,5 @@
 /* KONGTROL UI — Inicio (/) · v1.3.0 · 2026-11-19
-   Operate mode, DESIGN.md "Sesión en la Torre": flat cards, amber only for
+   Operate mode, DESIGN.md "Sesión en la Torre": flat cards, gold only for
    the primary action and focus, Four States colors with words, machine
    values (names, IPs, routes, numbers) in Plex Mono, people sentences in
    Inter. Text ≥ 11px; targets ≥ 36px dense / 44px primary. */
@@ -87,7 +87,7 @@
   border: 0; background: none; cursor: pointer; border-radius: var(--radius);
   color: var(--signal); font: 500 13px/1.3 var(--font-body); text-align: left; white-space: nowrap;
 }
-.home-routes__toggle:hover { color: var(--signal-hi); background: var(--state-hover); }
+.home-routes__toggle:hover { color: var(--signal); background: var(--state-hover); }
 .home-routes__chevron { width: 12px; height: 12px; flex: none; transition: transform var(--dur-fast) var(--ease-standard); }
 .home-routes__toggle[aria-expanded='true'] .home-routes__chevron { transform: rotate(90deg); }
 /* …and the panel in a full-width row under the tunnel: left-aligned,

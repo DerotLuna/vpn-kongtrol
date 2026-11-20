@@ -1,9 +1,10 @@
-// Kongtrol UI — tray flyout state rules · v1.1.0 · 2026-11-19
+// Kongtrol UI — tray flyout state rules · v1.2.0 · 2026-11-20
 //
 // Pure functions so the Four States rule (DESIGN.md) is tested without
 // rendering: connected = live, connecting = steel, no response = caution,
 // error = danger; every state also has a word.
 import type { Group, SecurityStatus, TunnelMetrics } from '../api/types'
+import { ERROR_KEYS } from '../components/home/model'
 import { transitionSettled } from '../data/transition'
 import type { MessageKey } from '../i18n/messages'
 
@@ -47,10 +48,35 @@ export function rowState(tn: TunnelMetrics, pending?: Pending): RowState {
       note: attach?.phase === 'waiting_user' ? { key: 'tray.note.waitingUser', vars: { app: attach.app } } : null,
     }
   }
+  // The daemon's "what to do" line for the last failure when we know it
+  // (the same table as the panel); never the raw English error.
+  const fix = tn.last_error_key ? ERROR_KEYS[tn.last_error_key] : undefined
   if (tn.Status === 'error') {
-    return { tone: 'danger', word: 'tray.status.error', on: false, busy: false, note: { key: 'tray.note.error' } }
+    return { tone: 'danger', word: 'tray.status.error', on: false, busy: false, note: { key: fix ?? 'tray.note.error' } }
+  }
+  if (tn.last_error || tn.last_error_key) {
+    return { tone: 'idle', word: 'tray.status.disconnected', on: false, busy: false, note: { key: fix ?? 'tray.note.lastError' } }
   }
   return { tone: 'idle', word: 'tray.status.disconnected', on: false, busy: false, note: null }
+}
+
+/**
+ * The list order, like the native menu (ADR-0037): connected first, then by
+ * name. Taken when the flyout is shown (and when profiles come or go), not
+ * on every update, so a row never jumps away under the pointer mid-toggle.
+ */
+export function trayOrder(tunnels: TunnelMetrics[]): string[] {
+  return [...tunnels]
+    .sort((a, b) => Number(b.Status === 'connected') - Number(a.Status === 'connected') || a.Name.localeCompare(b.Name))
+    .map((tn) => tn.Name)
+}
+
+/** Rows in the remembered order; profiles not in it yet go last, by name. */
+export function applyOrder(tunnels: TunnelMetrics[], order: string[]): TunnelMetrics[] {
+  const rank = new Map(order.map((n, i) => [n, i]))
+  return [...tunnels].sort(
+    (a, b) => (rank.get(a.Name) ?? order.length) - (rank.get(b.Name) ?? order.length) || a.Name.localeCompare(b.Name),
+  )
 }
 
 /**

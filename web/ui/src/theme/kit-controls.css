@@ -33,11 +33,11 @@
 .k-icon-btn[aria-busy='true'] { cursor: progress; }
 .k-icon-btn .k-spinner { width: 16px; height: 16px; }
 .k-icon-btn--sm .k-spinner { width: 14px; height: 14px; }
-/* filled = the row's one primary (amber: Conectar). */
-.k-icon-btn--filled { background: var(--signal); border-color: var(--signal); color: var(--on-signal); }
+/* filled = the row's one primary (gold: Conectar). */
+.k-icon-btn--filled { background: var(--signal-fill); border-color: var(--signal-fill); color: var(--on-signal); }
 .k-icon-btn--filled:hover { background: var(--signal-hi); border-color: var(--signal-hi); color: var(--on-signal); }
-.k-icon-btn--filled:active { background: var(--signal); }
-/* strong = the state's action that is never amber (Desconectar): ink outline. */
+.k-icon-btn--filled:active { background: var(--signal-fill); }
+/* strong = the state's action that is never gold (Desconectar): ink outline. */
 .k-icon-btn--strong { border-color: var(--text-muted); color: var(--text); background: var(--surface-2); }
 .k-icon-btn--strong:hover { border-color: var(--text); }
 
@@ -55,7 +55,7 @@
 
 /* ── Listbox (Select, MultiSelect) ────────────────────────────────────────
    Focused row (pointer or keyboard) = hover background; chosen = a check
-   and a subtle amber wash; never a side bar. */
+   and a subtle gold wash; never a side bar. */
 .k-listbox { display: flex; flex-direction: column; gap: 1px; outline: none; }
 .k-listbox__option {
   display: flex; align-items: flex-start; gap: 8px; min-height: 40px; padding: 10px 10px 10px 8px;
@@ -133,10 +133,10 @@
 }
 .k-drp__day[data-outside-month] { visibility: hidden; }
 .k-drp__day[data-hovered] { background: var(--state-hover); }
-/* The range: ends solid amber, days between (also while choosing: React
-   Aria marks the days up to the pointer as selected) the amber wash. */
+/* The range: ends solid gold, days between (also while choosing: React
+   Aria marks the days up to the pointer as selected) the gold wash. */
 .k-drp__day[data-selected] { background: var(--signal-soft); border-radius: 0; }
-.k-drp__day:is([data-selection-start], [data-selection-end]) { background: var(--signal); color: var(--on-signal); border-radius: 4px; }
+.k-drp__day:is([data-selection-start], [data-selection-end]) { background: var(--signal-fill); color: var(--on-signal); border-radius: 4px; }
 .k-drp__day[data-focus-visible] { box-shadow: inset 0 0 0 2px var(--signal); }
 .k-drp__day:is([data-disabled], [data-unavailable]) { color: var(--text-dim); opacity: 0.5; cursor: not-allowed; background: none; }
 /* Two lines reserved: the text changes on the first pick, and a calendar
@@ -153,7 +153,7 @@
   .k-drp__cal { padding-left: 0; border-left: 0; border-top: 1px solid var(--border); padding-top: 8px; align-items: center; }
 }
 
-/* ── Check boxes and radios: the kit's box (amber when on) ───────────── */
+/* ── Check boxes and radios: the kit's box (gold fill, Ink edge + mark when on: ADR-0069) ───────────── */
 input[type='checkbox'], input[type='radio'] {
   appearance: none; flex: none; width: 18px; height: 18px; margin: 0; display: inline-grid; place-content: center;
   border: 1.5px solid var(--text-muted); border-radius: 4px; background: var(--bg); cursor: pointer;
@@ -161,15 +161,15 @@ input[type='checkbox'], input[type='radio'] {
 }
 input[type='radio'] { border-radius: 50%; }
 input[type='checkbox']:hover, input[type='radio']:hover { border-color: var(--text); }
-input[type='checkbox']:checked { background: var(--signal); border-color: var(--signal); }
+input[type='checkbox']:checked { background: var(--signal-fill); border-color: var(--signal-edge); }
 input[type='checkbox']::before {
   content: ''; width: 10px; height: 5px; margin-top: -2px; border: solid var(--on-signal); border-width: 0 0 2px 2px;
   transform: rotate(-45deg) scale(0); transition: transform var(--dur-fast) var(--ease-standard);
 }
 input[type='checkbox']:checked::before { transform: rotate(-45deg) scale(1); }
-input[type='radio']:checked { border-color: var(--signal); }
+input[type='radio']:checked { background: var(--signal-fill); border-color: var(--signal-edge); }
 input[type='radio']::before {
-  content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--signal);
+  content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--on-signal);
   transform: scale(0); transition: transform var(--dur-fast) var(--ease-standard);
 }
 input[type='radio']:checked::before { transform: scale(1); }

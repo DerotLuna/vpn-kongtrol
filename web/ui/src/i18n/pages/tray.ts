@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Tray flyout (/tray, ADR-0036) · v1.0.0 · 2026-11-18
+// Kongtrol UI strings — Tray flyout (/tray, ADR-0036) · v1.1.0 · 2026-11-20
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -14,7 +14,8 @@ const es = {
   'tray.agg.error': '{count} con error',
   'tray.agg.noResponse': '{count} sin respuesta',
   'tray.vpns': 'Tus VPN',
-  'tray.vpns.none': 'Todavía no tienes VPN. Agrégala desde el panel.',
+  'tray.vpns.none': 'Todavía no tienes VPN. Agrega la primera en un minuto.',
+  'tray.vpns.add': 'Agregar VPN',
   'tray.status.connected': 'Conectada',
   'tray.status.connecting': 'Conectando…',
   'tray.status.disconnecting': 'Desconectando…',
@@ -28,6 +29,9 @@ const es = {
   'tray.note.waitingUser': 'Termina de conectar en {app}.',
   'tray.note.waitingDisconnect': 'Desconéctala en {app}; Kongtrol espera.',
   'tray.note.failed': 'No se pudo. Inténtalo otra vez o abre el panel.',
+  'tray.note.lastError': 'El último intento no funcionó. Abre el panel para ver qué pasó.',
+  'tray.ks.blocking': 'El kill switch está bloqueando el tráfico de una VPN caída.',
+  'tray.ks.blocking.fix': 'Qué hacer: vuelve a conectarla, o apaga el kill switch en el panel.',
   'tray.groups': 'Grupos',
   'tray.group.count': '{connected} de {total}',
   'tray.group.connect': 'Conectar',
@@ -69,7 +73,8 @@ const en: Strings<typeof es> = {
   'tray.agg.error': '{count} with errors',
   'tray.agg.noResponse': '{count} not answering',
   'tray.vpns': 'Your VPNs',
-  'tray.vpns.none': 'You have no VPNs yet. Add one from the panel.',
+  'tray.vpns.none': 'You have no VPNs yet. Add the first one in a minute.',
+  'tray.vpns.add': 'Add a VPN',
   'tray.status.connected': 'Connected',
   'tray.status.connecting': 'Connecting…',
   'tray.status.disconnecting': 'Disconnecting…',
@@ -83,6 +88,9 @@ const en: Strings<typeof es> = {
   'tray.note.waitingUser': 'Finish connecting in {app}.',
   'tray.note.waitingDisconnect': 'Disconnect it in {app}; Kongtrol is waiting.',
   'tray.note.failed': 'That did not work. Try again or open the panel.',
+  'tray.note.lastError': 'The last try did not work. Open the panel to see what happened.',
+  'tray.ks.blocking': 'The kill switch is blocking traffic from a dropped VPN.',
+  'tray.ks.blocking.fix': 'What to do: connect it again, or turn the kill switch off in the panel.',
   'tray.groups': 'Groups',
   'tray.group.count': '{connected} of {total}',
   'tray.group.connect': 'Connect',

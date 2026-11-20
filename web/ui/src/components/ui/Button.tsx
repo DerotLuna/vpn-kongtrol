@@ -1,7 +1,7 @@
 // Kongtrol UI kit — Button / IconButton · v0.3.0 · 2026-11-19
 //
 // Variants follow Material 3's emphasis ladder mapped to DESIGN.md:
-// filled = the one primary action (amber), tonal = secondary emphasis,
+// filled = the one primary action (gold), tonal = secondary emphasis,
 // outlined = neutral, text = lowest, danger = destructive (outlined red).
 // Loading keeps the label (and width) and adds a spinner + aria-busy, so the
 // layout never jumps and screen readers hear the same name.
@@ -43,8 +43,8 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   icon: ReactNode
   /**
    * standard = ghost, outlined = hairline, filled = the row's one primary
-   * action (amber: Conectar), strong = the state-relevant action that must
-   * not be amber (Desconectar: ink outline, DESIGN.md).
+   * action (gold: Conectar), strong = the state-relevant action that must
+   * not be gold (Desconectar: ink outline, DESIGN.md).
    */
   variant?: 'standard' | 'outlined' | 'filled' | 'strong'
   /** md = 44px (default), sm = 36px: the same height as a small Button beside it. */

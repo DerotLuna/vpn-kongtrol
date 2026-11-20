@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.25 · 2026-11-19
+Version 1.26 · 2026-11-20
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -505,7 +505,7 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
 
 <!-- feature:i18n -->
 <!-- feature:tray_flyout -->
-### Tray flyout (ADR-0036, ADR-0056)
+### Tray flyout (ADR-0036, ADR-0056, ADR-0069)
 
 - Left click on the tray icon (Windows, WebView2 Runtime present) opens a frameless topmost
   window next to the icon showing `web/ui` `/tray`; right click, macOS, Linux and a missing
@@ -524,6 +524,10 @@ The user decides which tunnels are up; a policy whose tunnel is off uses the nor
   `kongtrol:shown`; a show without it in 3 s (`flyoutWatch`) closes the flyout, opens the
   native menu, logs the cause in `tray.log`, and keeps the left click on the native menu
   until the tray restarts.
+- ADR-0069: rows list connected profiles first (order taken on each show, never mid-toggle);
+  a blocking kill switch shows a caution notice on top; with no VPN the one primary is
+  "Agregar VPN" (message `open-add` → panel `/?add=vpn`); failed connects show the panel's
+  "what to do" line (`ERROR_KEYS`), never the raw error.
 
 ## Internationalization (i18n)
 

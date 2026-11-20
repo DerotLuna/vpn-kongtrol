@@ -1,9 +1,39 @@
-/* Download section — version 2.1.0 · 2026-11-19 (ADR-0027, ADR-0060, ADR-0066).
-   The one gold Signal band of the page (.tone-signal, index.css). The
-   visitor's best file in one compact featured card (the band's only filled
-   button), then ONE "Otras formas de instalar" row: every other file once,
-   grouped by system, plus the install script with a tab and its own copy
-   button per shell. Header + featured + other ways fit one laptop screen. */
+/* Download section — version 2.2.0 · 2026-11-20 (ADR-0027, ADR-0060, ADR-0066, ADR-0070).
+   The one gold Signal band of the page (.tone-signal, index.css) holds only
+   the call to action: heading + the visitor's best file (the band's only
+   filled button). It ends on a contour edge (ring) echoed by two contour
+   lines; then, on the Bone page, ONE "Otras formas de instalar" row: every
+   other file once, grouped by system, plus the install script with a tab and
+   its own copy button per shell. Header + featured + other ways fit one
+   laptop screen. */
+
+.section.dl-section { padding-top: 0; }
+.dl-band { padding: var(--section-y) 0 calc(var(--section-y) * 0.5 + var(--edge-h)); }
+/* the echo: two contour lines under the ring edge, gold marks on Bone
+   (decorative, never meaning); drawn in as the edge scrolls into view where
+   CSS scroll-driven animations exist, otherwise simply there */
+.dl-echo {
+  display: block; width: 100%; height: var(--edge-h);
+  margin-top: calc(-1 * var(--edge-h)); overflow: visible; pointer-events: none;
+}
+.dl-echo path {
+  fill: none; stroke: var(--signal-mark); stroke-width: 1.5; vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1; stroke-dashoffset: 0;
+  transform: translateY(16px);
+}
+.dl-echo path + path { stroke-width: 1; opacity: 0.55; transform: translateY(34px); }
+@keyframes dlEchoDraw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    .dl-echo path {
+      animation: dlEchoDraw auto linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 45%;
+    }
+    .dl-echo path + path { animation-range: entry 25% cover 55%; }
+  }
+}
+.dl-rest { padding-top: clamp(16px, 2vw, 28px); }
 
 /* heading + recommended file: one row from 1080 px, stacked below */
 @media (min-width: 1080px) {
@@ -135,7 +165,3 @@
   .dl-more-body { padding-left: 16px; }
   .dl-featured-item, .dl-featured-item > a { width: 100%; }
 }
-
-/* the beta notice inside the gold Signal band: Ink outline, no caution orange
-   (orange on gold would fail contrast; it is a notice, not an error) */
-.tone-signal .callout.dl-beta { border-color: var(--signal-line); background: var(--signal-soft); }

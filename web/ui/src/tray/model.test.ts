@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TunnelMetrics } from '../api/types'
-import { aggregate, groupState, pendingDone, rowState } from './model'
+import { aggregate, applyOrder, groupState, pendingDone, rowState, trayOrder } from './model'
 
 function tn(name: string, Status: TunnelMetrics['Status'], extra: Partial<TunnelMetrics> = {}): TunnelMetrics {
   return {
@@ -69,5 +69,27 @@ describe('groupState', () => {
     expect(groupState({ name: 'g', profiles: ['a', 'b', 'gone'] }, tunnels)).toEqual({ connected: 2, total: 2, allUp: true })
     expect(groupState({ name: 'g', profiles: ['a', 'c'] }, tunnels)).toEqual({ connected: 1, total: 2, allUp: false })
     expect(groupState({ name: 'g', profiles: [] }, tunnels).allUp).toBe(false)
+  })
+})
+
+describe('last failure note', () => {
+  it('uses the panel "what to do" line when the daemon names the cause, never the raw error', () => {
+    expect(rowState(tn('a', 'error', { last_error_key: 'service.error.not_installed' })).note).toEqual({
+      key: 'home.lastError.notInstalled',
+    })
+    expect(rowState(tn('a', 'error')).note).toEqual({ key: 'tray.note.error' })
+    expect(rowState(tn('a', 'disconnected', { last_error: 'dial tcp: refused' })).note).toEqual({ key: 'tray.note.lastError' })
+    expect(rowState(tn('a', 'disconnected')).note).toBeNull()
+  })
+})
+
+describe('trayOrder / applyOrder — connected first, like the native menu', () => {
+  const list = [tn('b', 'disconnected'), tn('z', 'connected'), tn('a', 'disconnected'), tn('m', 'connected')]
+  it('puts connected first, then by name', () => {
+    expect(trayOrder(list)).toEqual(['m', 'z', 'a', 'b'])
+  })
+  it('keeps a remembered order while states change, new profiles last', () => {
+    const later = [tn('b', 'connected'), tn('z', 'disconnected'), tn('a', 'disconnected'), tn('m', 'connected'), tn('c', 'connected')]
+    expect(applyOrder(later, ['m', 'z', 'a', 'b']).map((x) => x.Name)).toEqual(['m', 'z', 'a', 'b', 'c'])
   })
 })

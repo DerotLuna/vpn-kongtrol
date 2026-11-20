@@ -60,7 +60,7 @@
   display: inline-flex; align-items: center; min-height: var(--tap); color: var(--signal);
   text-underline-offset: 3px; font-weight: 600; font-size: 14px;
 }
-.k-set__link:hover { color: var(--signal-hi); }
+.k-set__link:hover { color: var(--signal); text-decoration: underline; text-decoration-color: var(--signal-mark); }
 .k-set__link:focus-visible { outline: none; box-shadow: var(--focus); border-radius: 3px; }
 @media (max-width: 639px) {
   .k-set__row { grid-template-columns: minmax(0, 1fr); }

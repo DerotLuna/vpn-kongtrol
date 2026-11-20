@@ -23,12 +23,13 @@ colors:
   surface-2-light: "#f4f0e6"
   border-light: "#ddd5c4"
   border-2-light: "#c9bfa8"
-  signal-light: "#904f00"
+  signal-light: "#1b1813"
+  signal-fill-light: "#ffb020"
   landing-gold: "#ffb020"
   landing-gold-hi: "#ffc456"
   on-landing-gold: "#0a0c10"
-  signal-hi-light: "#7a4300"
-  on-signal-light: "#fbf9f4"
+  signal-hi-light: "#ffc456"
+  on-signal-light: "#0a0c10"
   steel-light: "#2f6a8f"
   live-light: "#126f39"
   caution-light: "#a54006"
@@ -138,19 +139,21 @@ components:
 
 # Design System: Kongtrol
 
-Versión 1.5.0 · 2026-11-19
+Versión 1.6.0 · 2026-11-20
 
 ## Overview
 
 **Creative North Star: "Sesión en la Torre"**
 
+**Style: "Terminal de instrumentos" (ADR-0070).** Terminal/CLI UI (the page is a session) plus an instrument-panel layer (radar, routing patch panel), warm (Bone paper, one gold), with the topographic contour lines of the monkey mark as its structural signature. It is neither neubrutalism (no thick borders, no hard offset shadows) nor a "hacker" look (no green Matrix clichés outside the CRT easter egg). The landing is where this style is expressive; the dashboard and tray share its tokens and gold but stay plain product UI: an admin panel any non-technical person can run.
+
 The site is not a page about Kongtrol; it is a guest session inside Kongtrol's control tower (window title `kongtrol — terminal`). Everything a visitor reads arrives as terminal output: a "Last login" line, a block-letter ASCII banner, `#` comments, commands with `$`, tunnel rows with `✔`, navigation written as CLI flags (`--inicio`, `--guia`) and a tmux status bar pinned to the bottom with numbered windows (`0:motd`, `1:empezar`…), the kill-switch state (`armed`) and a clock. Plain-language sentences (Inter) sit inside that session so non-technical visitors are never left decoding jargon; the terminal is the frame, not a test.
 
-The landing has **one designed theme** (ADR-0060): bone paper for the page, Tower Night (Ink) bands that alternate with it section by section, and one gold Signal band for the download section; terminal windows are always Ink. The landing has one accent, gold `#ffb020`, on every tone (ADR-0066). A faint field of concentric contour rings echoes the monkey mark's line art. Density is calm: one terminal window per screen, each key section fits one laptop screen, no decorative imagery. Motion is reserved for things that explain: the boot timeline, the routing diagram, the attach demo, and the cross-fade of a page change. Components themselves stay precise and quiet.
+The landing has **one designed theme** (ADR-0060): bone paper for the page, Tower Night (Ink) bands that alternate with it section by section, and one short gold Signal band for the download call to action (ADR-0070); terminal windows are always Ink. The landing has one accent, gold `#ffb020`, on every tone (ADR-0066). A faint field of concentric contour rings echoes the monkey mark's line art. Density is calm: one terminal window per screen, each key section fits one laptop screen, no decorative imagery. Motion is reserved for things that explain: the boot timeline, the routing diagram, the attach demo, and the cross-fade of a page change. Components themselves stay precise and quiet.
 
 **Key Characteristics:**
 - Terminal session as the page frame (window chrome, ASCII banner, tmux bar, CLI-flag navigation).
-- One brand accent (gold signal on the landing, amber signal in the dashboard); every other color is a state.
+- One brand accent, gold `#ffb020`, on the landing, the dashboard and the tray flyout; every other color is a state.
 - Three type voices: Space Grotesk headings, Inter prose, IBM Plex Mono for everything machine-like.
 - Precise components, expressive demos.
 - Landing: one theme, sections in bands (Bone, Ink, one Signal band), no theme switch; plus a hidden green-phosphor CRT mode (↑↑↓↓←→←→BA). The dashboard (`web/ui`) keeps two complete themes that follow the OS until the user picks one.
@@ -159,10 +162,12 @@ The landing has **one designed theme** (ADR-0060): bone paper for the page, Towe
 
 One warm accent against warm Bone neutrals and cool Ink neutrals; color carries meaning, never decoration. On the landing the `-light` neutrals are the Bone tone (`:root`) and the plain values the Ink tone (`.tone-ink`), set per section.
 
-**Landing accent (ADR-0066, refines ADR-0060).** One gold, `landing-gold` `#ffb020` (hover `landing-gold-hi` `#ffc456`), on every tone; no deep amber anywhere on the landing. The accent has three roles in `landing/src/index.css`: `--signal-fill` (solid fills: primary buttons, active tmux window and tabs; gold with Ink text `on-landing-gold`, 10.70:1), `--signal` (accent text, lines and focus rings: gold on Ink 10.70:1; on Bone it is Ink `#1b1813`, 15.15:1, because gold text on Bone is 1.57:1) and `--signal-mark` (decorative gold only: link underlines in running text, rings, dots, washes, the footer wordmark; never the only carrier of meaning). The one `.tone-signal` band (the download section) is gold: Ink text (10.70:1; 12.38:1 on the `#ffc456` cards), muted Ink 82 % (7.67 / 8.57), dim Ink 70 % (5.59 / 6.02), card borders Ink 18 %, outlines Ink 55 % (3.65 / 3.82), an inverted primary button (Ink fill, gold text, 10.70:1) and Ink-inset code blocks. The dashboard (`web/ui`) keeps `signal` / `signal-light` unchanged.
+**Landing accent (ADR-0066, refines ADR-0060).** One gold, `landing-gold` `#ffb020` (hover `landing-gold-hi` `#ffc456`), on every tone; no deep amber anywhere on the landing. The accent has three roles in `landing/src/index.css`: `--signal-fill` (solid fills: primary buttons, active tmux window and tabs; gold with Ink text `on-landing-gold`, 10.70:1), `--signal` (accent text, lines and focus rings: gold on Ink 10.70:1; on Bone it is Ink `#1b1813`, 15.15:1, because gold text on Bone is 1.57:1) and `--signal-mark` (decorative gold only: link underlines in running text, rings, dots, washes, the footer wordmark; never the only carrier of meaning). The one `.tone-signal` band (the download section) is gold: Ink text (10.70:1; 12.38:1 on the `#ffc456` cards), muted Ink 82 % (7.67 / 8.57), dim Ink 70 % (5.59 / 6.02), card borders Ink 18 %, outlines Ink 55 % (3.65 / 3.82), an inverted primary button (Ink fill, gold text, 10.70:1) and Ink-inset code blocks.
+
+**Dashboard and tray accent (ADR-0069, refines ADR-0066).** `web/ui` (and so the tray flyout `/tray`) uses the same gold and the same roles on both themes in `web/ui/src/theme/tokens.css`: `--signal` (gold on Ink, Ink on Bone), `--signal-fill` (gold, Ink text `--on-signal`), `--signal-mark` (decorative gold) and `--signal-edge`, the 1px edge and the mark of a filled control (switch on, checked check box or radio): gold on Ink, Ink on Bone, because there the fill alone is the state and gold on Bone is 1.57:1. Light-theme focus is a 2px Ink ring; text hovers keep `--signal` and add a gold underline. The dark theme is unchanged.
 
 ### Primary
-- **Phosphor Amber** (`signal`; light `signal-light`): the single brand accent of the dashboard. Primary actions, links, focus rings. Hover deepens to `signal-hi`.
+- **Signal Gold in the dashboard** (`signal`, `signal-fill`; light `signal-light` Ink, `signal-fill-light` gold): the single brand accent of the dashboard and tray flyout (ADR-0069). Gold fills with Ink text for primary actions; accent text, links and focus are gold on Ink and Ink on Bone. Hover brightens to `signal-hi`.
 - **Landing Gold** (`landing-gold`): the single brand accent of the landing (ADR-0066). Primary buttons (gold fill, Ink text) on every surface, the active tmux window and tabs, the ASCII banner, the `$` prompt on Ink, the "se adjunta" provider group and "auto" OS chips (gold border and wash, Ink text on Bone). On Bone, accent text is Ink with a gold mark.
 
 ### Secondary
@@ -180,7 +185,9 @@ One warm accent against warm Bone neutrals and cool Ink neutrals; color carries 
 - **Ink** (`text`, `text-muted`, `text-dim` and light pairs): primary, secondary and tertiary text. `text-dim` keeps ≥ 4.5:1 on every surface.
 
 ### Named Rules
-**The One Accent Rule.** The accent (gold on the landing, amber in the dashboard) is the only brand color. If something is the accent color, it is the brand or the action; it is never a state.
+**The One Accent Rule.** The accent (gold, on the landing, the dashboard and the tray) is the only brand color. If something is the accent color, it is the brand or the action; it is never a state. Gold is a dose, not a background: on the landing only one short band is gold (ADR-0070).
+
+**The Contour Edge Rule.** A tone band never ends on a ruler line by default: it ends on a contour line from the mark (ADR-0070), never the same shape twice in a row, with an occasional straight edge as a rest. Edges are decoration: no meaning, no motion.
 
 **The Green Means Up Rule.** Green means up or OK: a connected or healthy tunnel, a passed check (`✔` in terminal output), the attach demo's "Conectado". Groups, categories, "auto" support and decoration never use green.
 
@@ -210,7 +217,7 @@ One warm accent against warm Bone neutrals and cool Ink neutrals; color carries 
 
 ## Layout
 
-Single column, max width 1160px, fluid gutter `clamp(16px, 3vw, 24px)`, section rhythm `clamp(48px, 2.5vw + 32px, 88px)`; sections alternate Bone and Ink bands with no hairline between them (the tone change divides; ADR-0060). On laptops (1366×768, 1440×900, 1920×1080) each key section fits one screen under the header and above the tmux bar: the hero terminal (two columns from 1024px; a fixed-height scrollback with the prompt pinned below it, so commands never grow the window, ADR-0066), the attach demo, the routing map (heading beside the board from 1200px) and the download section (heading beside the recommended file from 1080px); phones keep the natural flow. Spacing follows a 4px base scale (4 → 64). A fixed 66px header and a fixed 32px tmux bar frame the scroll; anchored sections offset for both. Main breakpoints: 1080, 960, 720, 640, 520 and 420px. Grids collapse 4 → 3 → 2 → 1; the routing patch panel stacks under 768px (destinations, a text-free panel strip, exits) so text never scales below the floor. Interactive targets are 44px (24px minimum for dense inline controls).
+Single column, max width 1160px, fluid gutter `clamp(16px, 3vw, 24px)`, section rhythm `clamp(48px, 2.5vw + 32px, 88px)`; sections alternate Bone and Ink bands with no hairline between them (the tone change divides; ADR-0060). Bands end on contour-line edges (ADR-0070, `.edge` in `landing/src/index.css`): a CSS mask cuts the band along one line of a topographic map (swell, dune, drift, ring; mirrored where it helps), a different shape at each boundary, depth `clamp(28px, 4.5vw, 72px)`, and some boundaries stay straight on purpose as rests. Static, no motion. On laptops (1366×768, 1440×900, 1920×1080) each key section fits one screen under the header and above the tmux bar: the hero terminal (two columns from 1024px; a fixed-height scrollback with the prompt pinned below it, so commands never grow the window, ADR-0066), the attach demo, the routing map (heading beside the board from 1200px) and the download section (heading beside the recommended file from 1080px); phones keep the natural flow. Spacing follows a 4px base scale (4 → 64). A fixed 66px header and a fixed 32px tmux bar frame the scroll; anchored sections offset for both. Main breakpoints: 1080, 960, 720, 640, 520 and 420px. Grids collapse 4 → 3 → 2 → 1; the routing patch panel stacks under 768px (destinations, a text-free panel strip, exits) so text never scales below the floor. Interactive targets are 44px (24px minimum for dense inline controls).
 
 ## Elevation & Depth
 
@@ -232,17 +239,17 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 ### Buttons
 - **Shape:** gently squared (6px).
 - **Primary:** solid accent (gold on the landing on every tone, inverted to Ink with gold text on the gold band), ink text, IBM Plex Mono 600 uppercase, 12px × 22px, 44px tall, download icon on the left.
-- **Hover / Focus:** the fill brightens (`landing-gold-hi`; the dashboard's amber deepens), lifts 1px, soft accent glow; press scales to 0.98; 2px focus ring in `--signal` (gold on Ink, Ink on Bone and on the gold band).
+- **Hover / Focus:** the fill brightens (`landing-gold-hi`; `signal-hi` in the dashboard), lifts 1px, soft accent glow; press scales to 0.98; 2px focus ring in `--signal` (gold on Ink, Ink on Bone and on the gold band).
 - **Secondary:** transparent with a `border-2` hairline and text color; on hover the border, text and a 12% accent wash turn to the accent (`--signal`). One primary per section.
 
 ### Panel controls (dashboard `web/ui`, ADR-0067, ADR-0068)
 - **Behaviour from React Aria Components** (Adobe, Apache-2.0): Select, MultiSelect (search + ListBox + chips), DateRangePicker (RangeCalendar), Tooltip; the look below is ours.
-- **Button ladder:** filled amber = the one primary per row, card or step (Conectar, Guardar, Aplicar); tonal = secondary emphasis (Conectar todas); outlined = neutral (Desconectar, Cancelar, Probar); text = lowest (Volver, Agregar otro, Borrar fechas; "Volver" in muted text at the footer's start). Desconectar and Cancelar are never amber. Small buttons are 36px; icon buttons beside them are 36px too (44px in phone cards).
-- **Row actions (VPN and group rows):** icon-only 36px squares, all the same size, each with a tooltip and an accessible name that carries the row ("Conectar trabajo"); the same icons as "Conectar todas" (plug) / "Desconectar todas" (power), Reconectar = refresh, add rule = plus. Only the state's own action carries weight: Conectar filled amber when it is down, Desconectar with an ink outline on `surface-2` when it is up (never amber); the rest are outlined. A group partly up shows both, "Conectar las que faltan" (filled) and "Desconectar todas" (outlined), and its count says how many are up. An action in progress shows a spinner inside the same square until the live state ends it; the other squares stay in place, inert. A row never wraps its actions (44px squares in phone cards).
+- **Button ladder:** filled gold = the one primary per row, card or step (Conectar, Guardar, Aplicar); tonal = secondary emphasis (Conectar todas); outlined = neutral (Desconectar, Cancelar, Probar); text = lowest (Volver, Agregar otro, Borrar fechas; "Volver" in muted text at the footer's start). Desconectar and Cancelar are never gold. Small buttons are 36px; icon buttons beside them are 36px too (44px in phone cards).
+- **Row actions (VPN and group rows):** icon-only 36px squares, all the same size, each with a tooltip and an accessible name that carries the row ("Conectar trabajo"); the same icons as "Conectar todas" (plug) / "Desconectar todas" (power), Reconectar = refresh, add rule = plus. Only the state's own action carries weight: Conectar filled gold when it is down, Desconectar with an ink outline on `surface-2` when it is up (never gold); the rest are outlined. A group partly up shows both, "Conectar las que faltan" (filled) and "Desconectar todas" (outlined), and its count says how many are up. An action in progress shows a spinner inside the same square until the live state ends it; the other squares stay in place, inert. A row never wraps its actions (44px squares in phone cards).
 - **Tooltip:** Ink-on-light inverse bubble (`text` on `bg`), 12px, ≤ 280px, 6px from the trigger; flips and shifts to stay 8px inside the viewport; shows after 350ms on hover, at once on keyboard focus.
-- **Floating layers** (listbox, multi-select, calendar): `surface` with a `border-2` hairline, 6px corners and the one floating shadow the panel allows besides dialog and toast (`0 12px 32px rgba(0,0,0,.28)`); they open and close at once (no animation); 40px rows; the focused row gets the hover background, the chosen one a check plus a subtle amber wash (`state-select`); never a side bar.
-- **Select / MultiSelect / DateRangePicker:** the input's box (`bg`, `border-2`, 44px) with a chevron or calendar glyph; open = amber border. The multi-select lists what is chosen as chips under the field (× on each, "Quitar todos"); nothing chosen reads "Todos los …". The date range is one control with presets (Hoy, Últimos 7 días, Últimos 30 días, Personalizado) and a month grid (Monday first in Spanish); range ends solid amber, days between `signal-soft`, painted live up to the pointer before the second click.
-- **Check boxes and radios:** the kit's 18px box, amber when on, 2px amber focus ring.
+- **Floating layers** (listbox, multi-select, calendar): `surface` with a `border-2` hairline, 6px corners and the one floating shadow the panel allows besides dialog and toast (`0 12px 32px rgba(0,0,0,.28)`); they open and close at once (no animation); 40px rows; the focused row gets the hover background, the chosen one a check plus a subtle gold wash (`state-select`); never a side bar.
+- **Select / MultiSelect / DateRangePicker:** the input's box (`bg`, `border-2`, 44px) with a chevron or calendar glyph; open = accent border (`--signal`). The multi-select lists what is chosen as chips under the field (× on each, "Quitar todos"); nothing chosen reads "Todos los …". The date range is one control with presets (Hoy, Últimos 7 días, Últimos 30 días, Personalizado) and a month grid (Monday first in Spanish); range ends solid gold (Ink text), days between `signal-soft`, painted live up to the pointer before the second click.
+- **Check boxes, radios and switches:** the kit's 18px box; when on, gold fill with an edge and mark in `--signal-edge` (Ink on Bone, ADR-0069); 2px `--signal` focus ring.
 - **Tables:** become one card per row by the width of their own container (DataList 680px; Inicio 980px; Actividad 900px). Chips in a detail panel read left to right and are sized to their text.
 - **Inicio layout:** "Tus VPN" full width, then two independent columns (Protección + Avisos, Grupos + Tu salida a internet) so a short card never leaves a hole; one column when the page is under 760px. DOM order = reading order.
 - **Header and side menu:** the header holds logo, status, "＋ Agregar", Guía and version only (language and theme live in Ajustes). The side menu collapses to a 64px icon rail ("Contraer menú" at its foot, tooltips on the icons), remembered on this device and collapsed by default under 1100px.
@@ -263,7 +270,7 @@ Mostly squared and technical: 6px corners on buttons, cards and code blocks; 12p
 - **tmux bar:** fixed bottom bar, always Ink, `[kongtrol]` session in gold, numbered windows mapped to sections with the active one in solid gold (Ink text), right side shows kill-switch state and clock. Between 721 and 960px the right side keeps only the clock; under 720px the bar is hidden and a "Ir a" jump menu replaces it. On the home page a last window `8:guía` (EN `8:guide`) opens the guide.
 - **Footer:** exactly one screen above the tmux bar on laptops (sizes clamped by `svh`, nothing cut): the large line-art mark (≥ 128 px) with the tagline, one primary "Descargar para <sistema>" (the same component as the hero and the download section) with its note and "Otras formas de instalar" link, a "Guía de instalación" link, link columns, the `kongtrol version` lines, the facts, and then the facts row and the `no place like 127.0.0.1` wink, and the giant faint gold wordmark alone at the bottom (absolute, no extra height; the content keeps above it, ADR-0066). GitHub appears once, as the `$ git clone` line (no column link).
 - **Back to top:** a round 48px Ink icon button (up arrow), fixed bottom-right above the tmux bar on every page, shown after about one screen of scrolling; accessible name and tooltip "Volver al inicio" / "Back to top", 2px focus ring; it scrolls to the top (instantly under reduced motion) and focuses `<main>`.
-- **Download section:** the one Signal band, gold with Ink text (ADR-0066). The recommended file is not a boxed card: a terminal comment `# Tu equipo: <sistema>`, the filled button (Ink, gold text) and the file line, set off by an Ink hairline; the other files sit on lighter gold cards. Then one "Otras formas de instalar" row: every other file exactly once, grouped by system, and the install script with a tab and a copy button per shell.
+- **Download section:** a short Signal band, gold with Ink text (ADR-0066), holding only the call to action (ADR-0070): heading, then not a boxed card but a terminal comment `# Tu equipo: <sistema>`, the filled button (Ink, gold text) and the file line, set off by an Ink hairline. The band ends on the `ring` contour edge, echoed by two thin gold contour lines that draw in on scroll (static with reduced motion). Then, on Bone, one "Otras formas de instalar" row: every other file exactly once, grouped by system, and the install script with a tab and a copy button per shell.
 
 ### Logo (name and sizes)
 - **Name:** the product is just **Kongtrol** (ADR-0047). "VPN" lives only in the tagline ("Todas tus VPN bajo Kongtrol" / "All your VPNs under Kongtrol", a play on "control", ADR-0048), never in the name or the lockup.

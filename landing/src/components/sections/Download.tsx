@@ -207,48 +207,59 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
     }
 
   return (
-    <section id={DOWNLOAD_SECTION_ID} className="section dl-section tone-signal">
-      <div className="container">
-        {/* laptops: heading left, the recommended file right (one row) */}
-        <div className="dl-lead">
-        <div className="dl-lead-text">
-          <div className="section-label cmd-label">{copy.section}</div>
-          <h2 className="section-title">{copy.title}</h2>
-          <p className="section-sub">{copy.sub}</p>
-        </div>
-
-        {mobile && <SendToComputer lang={lang} className="dl-mobile" />}
-
-        {featured && (
-          // Not a boxed card: a terminal comment naming the detected system,
-          // the band's one filled button and the file line, set off from
-          // the heading by a hairline (owner feedback 2026-11-19: the boxed
-          // "eyebrow + title" card read as generic).
-          <div className="dl-featured">
-            <div className="dl-featured-head">
-              <h3 className="dl-featured-title">
-                <span className="dl-featured-hash" aria-hidden="true"># </span>
-                {copy.recommended}: <span className="dl-featured-os">{FEATURED_TITLE[featured][lang]}</span>
-              </h3>
-            </div>
-            <div className="dl-featured-body">
-              <div className="dl-featured-actions">
-                {featuredFiles.map(v => (
-                  <div key={v.file} className="dl-featured-item">
-                    <a href={v.href} className="btn-download dl-btn-lg" download>
-                      <DownloadIcon size={18} />
-                      {featured === 'macos' ? `${copy.download} · ${v.tag[lang]}` : PRIMARY_COPY[lang].forOS[featured]}
-                    </a>
-                    <FileName file={v.file} />
-                                      </div>
-                ))}
-              </div>
-              {featured === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
-              <DownloadNote lang={lang} os={featured} page="home" className="dl-featured-note" />
-            </div>
+    <section id={DOWNLOAD_SECTION_ID} className="section dl-section">
+      {/* ADR-0070: gold only for the call to action (heading + the visitor's
+          file); it ends on a contour edge and everything after it is
+          reference on the Bone page. Two contour lines echo the edge. */}
+      <div className="dl-band tone-signal edge edge-b-ring">
+        <div className="container">
+          {/* laptops: heading left, the recommended file right (one row) */}
+          <div className="dl-lead">
+          <div className="dl-lead-text">
+            <div className="section-label cmd-label">{copy.section}</div>
+            <h2 className="section-title">{copy.title}</h2>
+            <p className="section-sub">{copy.sub}</p>
           </div>
-        )}
+
+          {mobile && <SendToComputer lang={lang} className="dl-mobile" />}
+
+          {featured && (
+            // Not a boxed card: a terminal comment naming the detected system,
+            // the band's one filled button and the file line, set off from
+            // the heading by a hairline (owner feedback 2026-11-19: the boxed
+            // "eyebrow + title" card read as generic).
+            <div className="dl-featured">
+              <div className="dl-featured-head">
+                <h3 className="dl-featured-title">
+                  <span className="dl-featured-hash" aria-hidden="true"># </span>
+                  {copy.recommended}: <span className="dl-featured-os">{FEATURED_TITLE[featured][lang]}</span>
+                </h3>
+              </div>
+              <div className="dl-featured-body">
+                <div className="dl-featured-actions">
+                  {featuredFiles.map(v => (
+                    <div key={v.file} className="dl-featured-item">
+                      <a href={v.href} className="btn-download dl-btn-lg" download>
+                        <DownloadIcon size={18} />
+                        {featured === 'macos' ? `${copy.download} · ${v.tag[lang]}` : PRIMARY_COPY[lang].forOS[featured]}
+                      </a>
+                      <FileName file={v.file} />
+                    </div>
+                  ))}
+                </div>
+                {featured === 'macos' && <p className="dl-mac-which">{copy.macWhich}</p>}
+                <DownloadNote lang={lang} os={featured} page="home" className="dl-featured-note" />
+              </div>
+            </div>
+          )}
+          </div>
         </div>
+      </div>
+      <svg className="dl-echo" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <path pathLength={1} d="M0 12 C380 98 1060 98 1440 12" />
+        <path pathLength={1} d="M0 12 C380 98 1060 98 1440 12" />
+      </svg>
+      <div className="container dl-rest">
 
         {/* feature:distribution — every other file and the one-line script,
             each exactly once */}

@@ -1,4 +1,4 @@
-// Kongtrol UI — tray flyout page (/tray) · v1.3.0 · 2026-11-19 (ADR-0036, ADR-0038, ADR-0047, ADR-0056)
+// Kongtrol UI — tray flyout page (/tray) · v1.4.0 · 2026-11-20 (ADR-0036, ADR-0038, ADR-0047, ADR-0056, ADR-0069)
 //
 // The compact window that opens next to the tray icon on a left click
 // (cmd/kongtrol-tray/flyout_windows.go). Same data as the dashboard, from the
@@ -19,11 +19,13 @@ import { useAppVersion, useGroupsQuery, useSecurityQuery } from '../data/resourc
 import { SHOWN_EVENT, announceReady, trayHost } from '../tray/bridge'
 import {
   aggregate,
+  applyOrder,
   dnsGuardWord,
   groupState,
   killSwitchWord,
   pendingDone,
   rowState,
+  trayOrder,
   type Pending,
   type Tone,
 } from '../tray/model'
@@ -68,6 +70,8 @@ export function TrayPage() {
   const [pending, setPending] = useState<Record<string, { want: Pending; at: number }>>({})
   const [failed, setFailed] = useState<Record<string, boolean>>({})
   const [quitOpen, setQuitOpen] = useState(false)
+  // Row order, taken on each show and when profiles come or go (trayOrder).
+  const [order, setOrder] = useState<{ tick: number; names: string[] } | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -177,10 +181,28 @@ export function TrayPage() {
     })
   }
 
-  const sorted = tunnels ? [...tunnels].sort((a, b) => a.Name.localeCompare(b.Name)) : []
+  useEffect(() => {
+    if (!tunnels) return
+    const key = tunnels
+      .map((tn) => tn.Name)
+      .sort()
+      .join('\n')
+    // oxlint-disable-next-line react/set-state-in-effect
+    setOrder((prev) =>
+      prev && prev.tick === shownTick && [...prev.names].sort().join('\n') === key
+        ? prev
+        : { tick: shownTick, names: trayOrder(tunnels) },
+    )
+  }, [tunnels, shownTick])
+
+  const sorted = tunnels ? applyOrder(tunnels, order?.names ?? trayOrder(tunnels)) : []
   const rows = sorted.map((tn) => ({ tn, st: rowState(tn, pending[tn.Name]?.want) }))
   const agg = aggregate(rows.map((r) => r.st))
   const offline = error && !tunnels
+  const blocking = security?.kill_switch_state === 'active'
+  // one primary per view: with no VPN it is "Agregar VPN", not "Abrir panel"
+  const noVPNs = !!tunnels && tunnels.length === 0
+  const openAdd = () => (host ? host.post('open-add') : window.location.assign('/?add=vpn'))
 
   const publicIP = !security?.public_ip_check_enabled
     ? t('tray.publicip.off')
@@ -209,13 +231,26 @@ export function TrayPage() {
           </div>
         )}
 
+        {blocking && (
+          <div className="tray-notice caution" role="status">
+            <p>
+              <strong>{t('tray.ks.blocking')}</strong> {t('tray.ks.blocking.fix')}
+            </p>
+          </div>
+        )}
+
         {tunnels && (
           <section aria-labelledby="tray-vpns">
             <h2 id="tray-vpns" className="tray-label">
               {t('tray.vpns')}
             </h2>
             {rows.length === 0 ? (
-              <p className="tray-empty">{t('tray.vpns.none')}</p>
+              <div className="tray-empty">
+                <p>{t('tray.vpns.none')}</p>
+                <button type="button" className="tray-btn primary" onClick={openAdd} data-autofocus>
+                  {t('tray.vpns.add')}
+                </button>
+              </div>
             ) : (
               <ul className="tray-list">
                 {rows.map(({ tn, st }, i) => {
@@ -332,11 +367,11 @@ export function TrayPage() {
         ) : (
           <div className="tray-actions">
             {host ? (
-              <button type="button" className="tray-btn primary" onClick={() => host.post('open-dashboard')}>
+              <button type="button" className={`tray-btn ${noVPNs ? 'ghost' : 'primary'}`} onClick={() => host.post('open-dashboard')}>
                 {t('tray.open')}
               </button>
             ) : (
-              <a className="tray-btn primary" href="/">
+              <a className={`tray-btn ${noVPNs ? 'ghost' : 'primary'}`} href="/">
                 {t('tray.open')}
               </a>
             )}

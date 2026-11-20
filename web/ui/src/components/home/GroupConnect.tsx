@@ -3,7 +3,7 @@
 // The same icons and sizes as a tunnel row (owner feedback 2026-11-19):
 // 36px squares with a tooltip and an accessible name that carries the group.
 // What shows depends on how many members are up, and the tooltip says why:
-// - none up: Conectar (plug, filled amber);
+// - none up: Conectar (plug, filled gold);
 // - all up: Desconectar (power, ink outline);
 // - some up: both — "Conectar las que faltan" (filled: the group is not
 //   complete yet) and "Desconectar todas" (outlined), with the counts.

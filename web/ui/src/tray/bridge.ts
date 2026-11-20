@@ -1,4 +1,4 @@
-// Kongtrol UI — tray flyout bridge · v1.1.0 · 2026-11-19 (ADR-0036, ADR-0056)
+// Kongtrol UI — tray flyout bridge · v1.2.0 · 2026-11-20 (ADR-0036, ADR-0056)
 //
 // Inside the tray flyout (cmd/kongtrol-tray/flyout_windows.go) the tray
 // injects `window.kongtrolTray` before any page script, only on this exact
@@ -7,7 +7,7 @@
 // normal browser tab there is no bridge and the page works as a compact
 // status view without the window-only controls.
 
-export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'quit-tray' | 'quit-all'
+export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'open-add' | 'quit-tray' | 'quit-all'
 
 interface TrayHost {
   post: (message: TrayMessage) => void

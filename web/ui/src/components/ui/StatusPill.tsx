@@ -4,7 +4,7 @@
 // connecting = steel, caution (up but not answering, degraded) = orange,
 // bad (error) = red. Plus idle (off, neutral), unknown (dashed, not loaded
 // or not verifiable) and on (a setting that is switched on: neutral, never
-// green or amber — amber is the brand, not a state). Every pill carries its
+// green or gold — gold is the brand, not a state). Every pill carries its
 // word; the dot shape differs per state too, so color is never the only cue.
 import type { ReactNode } from 'react'
 

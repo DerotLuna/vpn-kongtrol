@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-19
 
-Status: Accepted · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
+Status: Accepted; refined by [ADR-0069](0069-dashboard-and-tray-use-the-landing-gold.md) (dashboard and tray use the same gold), [ADR-0070](0070-landing-instrument-terminal-style-contour-edges-and-short-gold-band.md) (short gold band) · Date: 2026-11-19 · Decision-makers: project maintainer (owner)
 
 ## Context and Problem Statement
 

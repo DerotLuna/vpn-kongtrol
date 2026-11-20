@@ -277,7 +277,14 @@ const (
 	flyoutQuitTray
 	// flyoutQuitAll: "Salir y desconectar todo" (daemon shutdown + quit).
 	flyoutQuitAll
+	// flyoutOpenAdd: "Agregar VPN" when there is none yet: the panel's
+	// "＋ Agregar" sheet on the VPN step (ADR-0055 deep link).
+	flyoutOpenAdd
 )
+
+// addVPNPath is the panel deep link that opens the "＋ Agregar" sheet on
+// the VPN step (web/ui src/app/addLink.ts).
+const addVPNPath = "/?add=vpn"
 
 // flyoutMessages maps the names web/ui/src/tray/bridge.ts sends.
 var flyoutMessages = map[string]flyoutAction{
@@ -286,6 +293,7 @@ var flyoutMessages = map[string]flyoutAction{
 	"open-dashboard": flyoutOpenDashboard,
 	"quit-tray":      flyoutQuitTray,
 	"quit-all":       flyoutQuitAll,
+	"open-add":       flyoutOpenAdd,
 }
 
 // parseFlyoutMessage returns the action of a page message, which must be
@@ -330,6 +338,9 @@ func runFlyoutAction(a flyoutAction, hide func()) {
 	case flyoutQuitAll:
 		hide()
 		go stopKongtrol()
+	case flyoutOpenAdd:
+		hide()
+		go openDashboardPage(addVPNPath)
 	}
 }
 

@@ -158,6 +158,7 @@ func TestParseFlyoutMessage(t *testing.T) {
 		"abc123 open-dashboard": flyoutOpenDashboard,
 		"abc123 quit-tray":      flyoutQuitTray,
 		"abc123 quit-all":       flyoutQuitAll,
+		"abc123 open-add":       flyoutOpenAdd,
 		"abc123 rm -rf":         flyoutNone, // closed set
 		"quit-all":              flyoutNone, // no nonce
 		"wrong quit-all":        flyoutNone,

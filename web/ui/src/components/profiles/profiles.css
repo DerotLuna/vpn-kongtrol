@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    Kongtrol UI — Perfiles + Grupos · v1.2.0 · 2026-11-19
    Page-local styles on top of the kit (tokens.css, kit.css). Provider
-   groups follow DESIGN.md: "con la app que ya usas" = amber, "conecta
+   groups follow DESIGN.md: "con la app que ya usas" = gold, "conecta
    directo" = steel; green stays for connected only. Monograms are our own
    marks (ADR-0023). Text never below 11px; targets 44px.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -132,7 +132,7 @@
 .kp-found {
   display: inline-flex; align-items: center; gap: 5px; font: 500 11px/1.3 var(--font-mono); color: var(--text);
 }
-.kp-found::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--signal); }
+.kp-found::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--signal-mark); }
 
 /* ── Editor sheet ──────────────────────────────────────────────────────── */
 .k-dialog:has(.kp-editor) { width: min(680px, calc(100vw - 32px)); overflow: auto; overscroll-behavior: contain; }

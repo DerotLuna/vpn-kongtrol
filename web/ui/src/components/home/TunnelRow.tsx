@@ -131,8 +131,8 @@ const MAIN_ICON: Record<Exclude<TunnelAction, 'reload'>, ReactNode> = {
 // icon buttons, each with a tooltip and an accessible name that carries the
 // tunnel ("Conectar trabajo"), with the same icons as the card's "Conectar
 // todas" (plug) / "Desconectar todas" (power). The state's own action comes
-// first and alone carries weight: Conectar filled amber when it is down,
-// Desconectar with the ink outline when it is up (never amber, DESIGN.md);
+// first and alone carries weight: Conectar filled gold when it is down,
+// Desconectar with the ink outline when it is up (never gold, DESIGN.md);
 // Cancelar while a provider app is still bringing it up. Then Reconectar
 // (connected only) and "＋" (send a site through this VPN), outlined. While
 // an action runs the squares stay in place but inert (aria-disabled keeps

@@ -1,7 +1,7 @@
 /* KONGTROL UI — app shell (header, navigation, page frame) · v0.4.0 · 2026-11-19
    Navigation by width (ADR-0038): bottom bar < 600px · side menu ≥ 600px,
    collapsible to an icon rail. The header and nav are tonal (surface),
-   flat, with 1px hairlines; the active section is the amber selection. */
+   flat, with 1px hairlines; the active section is the gold selection. */
 
 .k-app {
   min-height: 100dvh;

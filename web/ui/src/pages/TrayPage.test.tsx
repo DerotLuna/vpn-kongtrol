@@ -134,7 +134,10 @@ describe('TrayPage (/tray)', () => {
   it('in a normal tab: "Abrir panel" is a link and there is no Salir', async () => {
     stubApi(baseRoutes([]))
     render(<App />)
-    expect(await screen.findByText('Todavía no tienes VPN. Agrégala desde el panel.')).toBeInTheDocument()
+    expect(await screen.findByText('Todavía no tienes VPN. Agrega la primera en un minuto.')).toBeInTheDocument()
+    // with no VPN the one primary action is "Agregar VPN"; "Abrir panel" steps back
+    expect(screen.getByRole('button', { name: 'Agregar VPN' })).toHaveClass('primary')
+    expect(screen.getByRole('link', { name: 'Abrir panel' })).not.toHaveClass('primary')
     expect(screen.getByRole('link', { name: 'Abrir panel' })).toHaveAttribute('href', '/')
     expect(screen.queryByRole('button', { name: 'Salir' })).toBeNull()
   })
