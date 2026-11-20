@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.12 · 2026-11-19
+Version 1.13 · 2026-11-19
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -116,7 +116,8 @@ PUT/DELETE /api/v1/scheduler/rules/{name}    # rule {name,profiles,weekdays,star
 
 # Audit log (every retained day; same reader as `kongtrol logs`)
 GET  /api/v1/audit?profile=&level=&limit=&from=&to=&before=
-#   newest first; limit 1–1000 (default 200); from/to = local day YYYY-MM-DD (to inclusive) or RFC 3339;
+#   newest first; profile may repeat (profile=a&profile=b: an entry of any of them, case-insensitive; ADR-0068);
+#   limit 1–1000 (default 200); from/to = local day YYYY-MM-DD (to inclusive) or RFC 3339;
 #   before = RFC 3339 cursor (exclusive): pass the last entry's timestamp for the next page.
 #   Body: [{id,timestamp,level,action,profile,message,hmac,"signed":bool,"verified":bool}];
 #   verified = signed and its HMAC matches the key in the OS keychain (the key never leaves the daemon).
