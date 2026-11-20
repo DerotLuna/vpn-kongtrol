@@ -177,7 +177,9 @@ export function AppShell() {
           <VersionTag className="k-topbar__version" />
         </div>
       </header>
-      <SideNav collapsed={nav.collapsed} onToggle={nav.toggle} />
+      <div className="k-navcol">
+        <SideNav collapsed={nav.collapsed} onToggle={nav.toggle} />
+      </div>
       <main id="main" tabIndex={-1} className="k-main">
         <AppNotices />
         <div key={pathname} className="k-page">

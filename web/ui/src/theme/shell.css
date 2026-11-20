@@ -1,4 +1,4 @@
-/* KONGTROL UI — app shell (header, navigation, page frame) · v0.3.0 · 2026-11-19
+/* KONGTROL UI — app shell (header, navigation, page frame) · v0.4.0 · 2026-11-19
    Navigation by width (ADR-0038): bottom bar < 600px · side menu ≥ 600px,
    collapsible to an icon rail. The header and nav are tonal (surface),
    flat, with 1px hairlines; the active section is the amber selection. */
@@ -94,7 +94,7 @@
 .k-bottombar .k-nav-item .k-nav-item__icon { width: 56px; height: 30px; border-radius: 999px; transition: background-color var(--dur-fast) var(--ease-standard); }
 .k-bottombar .k-nav-item.active .k-nav-item__icon,
 .k-bottombar .k-nav-item[aria-current='page'] .k-nav-item__icon { background: var(--state-select); }
-.k-sidenav { display: none; }
+.k-navcol { display: none; }
 /* Hidden visually only: the links keep their names for screen readers. */
 .k-topbar__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .k-topbar__version { display: none; }
@@ -119,9 +119,14 @@
   .k-app { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); grid-template-areas: 'top top' 'nav main'; }
   .k-app[data-nav='collapsed'] { grid-template-columns: var(--rail-w) minmax(0, 1fr); }
   .k-bottombar { display: none; }
+  /* The column carries the surface and the hairline for the whole page
+     height (a long page never shows it ending); the menu inside stays in
+     view (sticky under the header) and scrolls on its own if it is taller
+     than the window. */
+  .k-navcol { display: block; grid-area: nav; min-width: 0; background: var(--surface); border-right: 1px solid var(--border); }
   .k-sidenav {
-    display: flex; flex-direction: column; gap: 8px; grid-area: nav; position: sticky; top: var(--topbar-h);
-    height: calc(100dvh - var(--topbar-h)); overflow-y: auto; border-right: 1px solid var(--border); padding: 16px 12px;
+    display: flex; flex-direction: column; gap: 8px; position: sticky; top: var(--topbar-h);
+    height: calc(100dvh - var(--topbar-h)); overflow-y: auto; overscroll-behavior: contain; padding: 16px 12px;
   }
   .k-sidenav ul { display: flex; flex-direction: column; gap: 4px; }
   .k-sidenav .k-nav-item { white-space: nowrap; }
