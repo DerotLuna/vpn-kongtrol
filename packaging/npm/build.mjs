@@ -27,6 +27,7 @@ const repository = { type: 'git', url: 'git+https://github.com/DerotLuna/vpn-kon
 const common = {
   version,
   license: 'Apache-2.0',
+  author: 'Rubén Luna (https://github.com/DerotLuna)',
   homepage: 'https://kongtrol.app',
   repository,
 }

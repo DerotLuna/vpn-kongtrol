@@ -29,7 +29,10 @@ AppId={{BA277280-D8B2-4309-8620-BCEECBAA4B41}
 AppName=Kongtrol
 AppVersion={#AppVersion}
 AppVerName=Kongtrol {#AppVersion}
-AppPublisher=Kongtrol
+; Author and publisher (ADR-0081): one person, not a company. UTF-8, like the
+; Spanish messages below.
+AppPublisher=Rubén Luna
+AppCopyright=Copyright 2026 Rubén Luna
 AppPublisherURL=https://kongtrol.app
 AppSupportURL=https://kongtrol.app/guia
 DefaultDirName={autopf}\Kongtrol

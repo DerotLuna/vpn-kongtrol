@@ -326,4 +326,6 @@ are recorded from the landing page: `node scripts/readme-media.mjs`.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE). Terms of use: [kongtrol.app/en/terms](https://kongtrol.app/en/terms).
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). Terms of use: [kongtrol.app/en/terms](https://kongtrol.app/en/terms).
+
+Made with ♥ by [Rubén Luna](https://github.com/DerotLuna).

@@ -69,6 +69,7 @@ archives:
       - configs/example.yaml
       - README.md
       - LICENSE
+      - NOTICE
       - src: packaging/linux/kongtrol.desktop
         dst: kongtrol.desktop
       - src: assets/brand/app-icon-512.png
@@ -92,9 +93,9 @@ nfpms:
     package_name: kongtrol
     file_name_template: "kongtrol_{{ .Version }}_{{ .Arch }}"
     formats: [deb, rpm]
-    vendor: Kongtrol
+    vendor: Rubén Luna
     homepage: https://kongtrol.app
-    maintainer: Kongtrol <https://github.com/DerotLuna/vpn-kongtrol>
+    maintainer: Rubén Luna <https://github.com/DerotLuna>
     description: Kongtrol — connect and control several VPNs from one tray app.
     license: Apache-2.0
     bindir: /usr/bin
@@ -115,6 +116,8 @@ nfpms:
         dst: /usr/share/icons/hicolor/256x256/apps/kongtrol.png
       - src: LICENSE
         dst: /usr/share/doc/kongtrol/LICENSE
+      - src: NOTICE
+        dst: /usr/share/doc/kongtrol/NOTICE
 
 # Scoop bucket (Windows): `scoop install kongtrol`, `scoop update kongtrol`.
 scoops:
@@ -133,7 +136,7 @@ scoops:
 # winget: opens a PR to microsoft/winget-pkgs from the DerotLuna fork.
 winget:
   - name: Kongtrol
-    publisher: Kongtrol
+    publisher: Rubén Luna
     package_identifier: Kongtrol.Kongtrol
     short_description: Connect and control several VPNs from one tray app.
     license: Apache-2.0
@@ -163,7 +166,7 @@ aurs:
     ids: [cli-archive]
     homepage: https://kongtrol.app
     description: Connect and control several VPNs from one tray app.
-    maintainers: ["DerotLuna <https://github.com/DerotLuna>"]
+    maintainers: ["Rubén Luna (DerotLuna) <https://github.com/DerotLuna>"]
     license: Apache-2.0
     provides: [kongtrol]
     conflicts: [kongtrol]

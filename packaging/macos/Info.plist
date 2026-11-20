@@ -29,5 +29,7 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Rubén Luna</string>
 </dict>
 </plist>

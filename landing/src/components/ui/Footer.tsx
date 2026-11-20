@@ -26,6 +26,8 @@ export default function Footer({ lang, page = 'home' }: Props) {
       tagline: 'Panel web y CLI completa. Local, gratis y de código abierto.',
       facts: ['beta', '10 VPN', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
+      madeBy: ['Hecho con', 'por'],
+      madeByHeart: 'cariño',
       latest: 'último release',
       siteTitle: 'Kongtrol',
       site: [['Inicio', pathFor('home', 'es')], ['Guía', pathFor('guia', 'es')], ['Descargas', downloadHref(page, 'es')]] as [string, string][],
@@ -38,6 +40,8 @@ export default function Footer({ lang, page = 'home' }: Props) {
       tagline: 'Web panel and a full CLI. Local, free and open source.',
       facts: ['beta', '10 VPNs', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
+      madeBy: ['Made with', 'by'],
+      madeByHeart: 'love',
       latest: 'latest release',
       siteTitle: 'Kongtrol',
       site: [['Home', pathFor('home', 'en')], ['Guide', pathFor('guia', 'en')], ['Downloads', downloadHref(page, 'en')]] as [string, string][],
@@ -121,6 +125,15 @@ export default function Footer({ lang, page = 'home' }: Props) {
           <ul className="footer-facts">
             {copy.facts.map(f => <li key={f}>{f}</li>)}
           </ul>
+          {/* the author (ADR-0081): one person, not a company */}
+          <span className="footer-made mono">
+            {copy.madeBy[0]}{' '}
+            <svg className="footer-heart" width="12" height="12" viewBox="0 0 16 16" role="img" aria-label={copy.madeByHeart}>
+              <path fill="currentColor" d="M8 14.2 6.9 13.2C2.9 9.6.3 7.3.3 4.4.3 2.1 2.1.3 4.4.3c1.3 0 2.6.6 3.6 1.6C9 .9 10.3.3 11.6.3c2.3 0 4.1 1.8 4.1 4.1 0 2.9-2.6 5.2-6.6 8.8L8 14.2Z" />
+            </svg>{' '}
+            {copy.madeBy[1]}{' '}
+            <a href="https://github.com/DerotLuna" target="_blank" rel="noreferrer" className="footer-gh-link">Rubén Luna</a>
+          </span>
           <span className="footer-wink mono">{copy.wink}</span>
         </div>
       </div>

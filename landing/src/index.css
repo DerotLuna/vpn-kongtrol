@@ -917,6 +917,10 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   padding-right: 64px;
 }
 .footer-wink { font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
+/* "Hecho con ♥ por Rubén Luna" (ADR-0081): the heart is the one gold mark here */
+.footer-made { display: inline-flex; align-items: center; gap: 0.4em; font-size: var(--text-min); color: var(--text-muted); letter-spacing: 0.04em; }
+.footer-made .footer-gh-link { color: var(--text); }
+.footer-heart { color: var(--signal-mark); vertical-align: -1px; }
 
 /* giant cropped wordmark — a faint watermark pinned to the bottom, alone:
    .footer-inner keeps its content above it (padding-bottom = --giant-h) */

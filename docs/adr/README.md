@@ -93,6 +93,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0078](0078-panel-motion-hover-intent-and-fixed-action-slots.md) | Panel: sliding tab mark, hover that says what the click does (Desconectar red, gold glow + Ink edge), fixed row slots [secondary][main][＋], fluid status pills, loader for pending latency, one-line Inicio lead | Accepted | 2026-11-20 |
 | [0079](0079-landing-hero-cta-and-one-screen-footer-on-phones.md) | Landing: bigger hero call to action with a facts row; footer fills one phone screen (mark beside the claim, links in rows, no chips, no tmux offset); the phone jump menu hides with the header | Accepted | 2026-11-20 |
 | [0080](0080-import-detects-wireguard-or-openvpn-by-content.md) | A .conf is imported as WireGuard ([Interface]) or OpenVPN (client/remote/dev tun…) by its content — OpenVPN GUI on Windows uses .conf; OpenVPN files with separate certificates are used in place (profile path), not copied | Accepted | 2026-11-20 |
+| [0081](0081-author-and-publisher-ruben-luna.md) | Author and publisher "Rubén Luna" everywhere (Windows installer, packages, winget, AUR, npm, macOS app), a NOTICE file shipped with LICENSE, and "Hecho con ♥ por Rubén Luna" in the landing footer | Accepted | 2026-11-20 |
 
 ## Statuses
 
