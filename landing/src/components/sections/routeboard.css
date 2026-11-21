@@ -9,10 +9,10 @@
    route crosses to its exit. One example at a time: the destination lights,
    a packet (a round dash) travels card → socket → cable → socket → exit,
    the exit lights and the rule label (`claude.ai → us-content`) fades in.
-   Timeline per example (Features.tsx CYCLE = --pp-cycle): packet starts at
-   --pp-start and travels for --pp-travel; the exit and the label land at
+   When a destination is selected, the packet starts at --pp-start and travels
+   for --pp-travel; the exit and the label land at
    --pp-land. Motion animates only opacity, transform and stroke-dashoffset,
-   only while the board is on screen (.is-live, ADR-0031) and only under
+   once per selection and only under
    prefers-reduced-motion: no-preference. Without motion the frame is
    static and every route is drawn lit.
    Below 768px the SVG gives way to a vertical stack (.sb-stack):
@@ -94,22 +94,22 @@
 }
 .sb-hint { margin-top: 8px; text-align: center; font-family: var(--font-mono); font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.03em; }
 
-/* ── the animated example (on screen, motion allowed) ── */
+/* ── the animated example (after selection, motion allowed) ── */
 @media (prefers-reduced-motion: no-preference) {
-  .switchboard.is-live .pp-trace.active {
+  .switchboard[data-played] .pp-trace.active {
     stroke-dashoffset: 100;
     animation: ppDraw var(--pp-travel) linear var(--pp-start) forwards;
   }
-  .switchboard.is-live .pp-packet {
+  .switchboard[data-played] .pp-packet {
     animation: ppTravel var(--pp-travel) linear var(--pp-start) both;
   }
   /* the exit and its socket answer only when the packet lands */
-  .switchboard.is-live .sb-node.out.active rect,
-  .switchboard.is-live .sb-node.out.active text,
-  .switchboard.is-live .sb-chip.out.active,
-  .switchboard.is-live .pp-jack.out.active rect,
-  .switchboard.is-live .pp-jack.out.active .pp-jack-hole { transition-delay: var(--pp-land); }
-  .switchboard.is-live .pp-rule > span { animation: ppLabel 0.35s cubic-bezier(0.22, 1, 0.36, 1) var(--pp-land) both; }
+  .switchboard[data-played] .sb-node.out.active rect,
+  .switchboard[data-played] .sb-node.out.active text,
+  .switchboard[data-played] .sb-chip.out.active,
+  .switchboard[data-played] .pp-jack.out.active rect,
+  .switchboard[data-played] .pp-jack.out.active .pp-jack-hole { transition-delay: var(--pp-land); }
+  .switchboard[data-played] .pp-rule > span { animation: ppLabel 0.35s cubic-bezier(0.22, 1, 0.36, 1) var(--pp-land) both; }
 }
 @keyframes ppDraw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
 /* a 0-length dash with a round cap is a dot; dashoffset slides it along */
@@ -189,16 +189,3 @@
   .pp-rule { margin-top: 6px; }
   .sb-hint { margin-top: 4px; }
 }
-.sb-controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 16px; }
-.sb-motion {
-  color: var(--text-muted);
-  font: inherit;
-  font-size: var(--text-min);
-  border: 0;
-  background: none;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  padding: 4px;
-  cursor: pointer;
-}
-@media (prefers-reduced-motion: reduce) { .sb-motion { display: none; } }

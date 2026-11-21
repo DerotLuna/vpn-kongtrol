@@ -23,6 +23,7 @@ const FILES = {
   'favicon.svg': 'favicon.svg',
   'logo.svg': 'logo.svg',
   'logo-kong.svg': 'logo-kong.svg',
+  'logo-kong-on-dark.svg': 'logo-kong-on-dark.svg',
   // solid silhouette for small marks (header, patch-panel badge; DESIGN.md Logo)
   'source/logo-kong-solid.svg': 'logo-kong-solid.svg',
   'logo-kong-32.png': 'logo-kong-32.png',
