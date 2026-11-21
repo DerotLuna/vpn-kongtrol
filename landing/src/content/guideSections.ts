@@ -22,6 +22,7 @@ export const GUIDE_SECTIONS_ES: GuideSection[] = [
   { id: 'trouble', num: '11', label: 'Si algo falla' },
   { id: 'update', num: '12', label: 'Actualizar' },
   { id: 'uninstall', num: '13', label: 'Desinstalar' },
+  { id: 'faq', num: '14', label: 'Preguntas frecuentes' },
 ]
 
 export const GUIDE_SECTIONS_EN: GuideSection[] = [
@@ -39,4 +40,5 @@ export const GUIDE_SECTIONS_EN: GuideSection[] = [
   { id: 'trouble', num: '11', label: 'If something fails' },
   { id: 'update', num: '12', label: 'Update' },
   { id: 'uninstall', num: '13', label: 'Uninstall' },
+  { id: 'faq', num: '14', label: 'Frequently asked questions' },
 ]

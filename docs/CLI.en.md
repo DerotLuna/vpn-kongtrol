@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.13 · 2026-11-20
+Version 1.14 · 2026-11-21
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -38,7 +38,7 @@ kongtrol up office --dry-run
 
 ### `kongtrol down`
 
-Disconnects the given profiles and restores your DNS when the last tunnel drops. Next: kongtrol status to confirm.
+Disconnects the given profiles and restores your DNS when the last tunnel drops. If rules still require blocking, disconnecting a profile keeps Kongtrol running. Use kongtrol down --all to stop it.
 
 ```text
 kongtrol down [profile...] [flags]
@@ -104,6 +104,34 @@ kongtrol routes office
 kongtrol routes --system
 ```
 
+### `kongtrol routes check-default`
+
+Examine a local WireGuard profile file on Linux without changing the network.
+
+```text
+kongtrol routes check-default <profile> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol routes check-default office
+```
+
+### `kongtrol routes default-egress`
+
+Save the setting for the next connection of a compatible WireGuard profile on Linux. Disconnect the profile before changing it.
+
+```text
+kongtrol routes default-egress <profile> <on|off> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol routes default-egress office on
+```
+
 ### `kongtrol dashboard`
 
 Opens the dashboard to set up and connect your VPNs from the browser; starts Kongtrol in the background if needed. If it doesn't open, copy the address shown.
@@ -112,10 +140,30 @@ Opens the dashboard to set up and connect your VPNs from the browser; starts Kon
 kongtrol dashboard [flags]
 ```
 
+**Flags**
+
+| Flags | Description |
+|---|---|
+| `--diagnostics` | open diagnostics directly |
+
 **Examples**
 
 ```bash
 kongtrol dashboard
+```
+
+### `kongtrol tray`
+
+Open the installed tray app from your desktop session to view and manage VPNs.
+
+```text
+kongtrol tray [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol tray
 ```
 
 ## Setup
@@ -499,6 +547,7 @@ kongtrol profile add <type> [flags]
 | `--key string` | the certificate's private key file |
 | `--name string` | profile name (required), for example office |
 | `--no-auto-connect` | do not connect the app automatically: Kongtrol opens it and waits for you to connect |
+| `--on-tunnel-down string` | rule action while the VPN is off: allow (default), block, or connect |
 | `--port int` | VPN server port |
 | `--protocol string` | protocol (Proton VPN) |
 | `--server string` | exact server (NordVPN, Proton VPN) |
@@ -527,6 +576,20 @@ kongtrol profile detect [flags]
 ```bash
 kongtrol profile detect
 kongtrol profile detect --json
+```
+
+### `kongtrol profile on-tunnel-down`
+
+Change the action this profile's rules inherit. allow permits traffic, block blocks known IPs, and connect blocks those IPs and tries to connect when TCP traffic is observed. Rejected attempts may be missed. On macOS, connect manually.
+
+```text
+kongtrol profile on-tunnel-down <name> <allow|block|connect> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol profile on-tunnel-down office block
 ```
 
 ### `kongtrol policy`
@@ -560,13 +623,14 @@ kongtrol policy add <site|ip|range|app:<exe>>... [flags]
 | `--block-when-down` | if that VPN is off, block the traffic instead of using the normal internet |
 | `--name string` | policy name (default: "<first target> via <vpn>") |
 | `--no-subdomains` | only the exact site, without its subdomains (*.site) |
+| `--on-tunnel-down string` | while the VPN is off: inherit (default), allow, block, or connect |
 | `--via string` | VPN profile the traffic goes through (required) |
 
 **Examples**
 
 ```bash
-kongtrol policy add github.com --via office
-kongtrol policy add https://intranet.mycompany.com 10.20.0.0/16 --via work --block-when-down
+kongtrol policy add claude.com "*.anthropic.com" --via office
+kongtrol policy add api.anthropic.com 192.0.2.42 192.0.2.0/24 --via work --block-when-down
 kongtrol policy add app:teams.exe --via work --name teams
 ```
 
@@ -589,6 +653,20 @@ kongtrol policy remove <name> [flags]
 ```bash
 kongtrol policy remove "github.com via office"
 kongtrol policy remove teams --yes
+```
+
+### `kongtrol policy on-tunnel-down`
+
+Use inherit to follow the profile setting, allow to permit traffic, block to block known IPs, or connect to block and try to connect when TCP traffic is observed. On macOS, connect manually.
+
+```text
+kongtrol policy on-tunnel-down <name> <inherit|allow|block|connect> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol policy on-tunnel-down intranet inherit
 ```
 
 ### `kongtrol policy list`

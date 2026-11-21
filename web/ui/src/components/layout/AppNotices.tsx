@@ -26,11 +26,13 @@ export function AppNotices() {
   const client = useQueryClient()
   const daemon = useDaemonState()
   const helper = useHelper()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const state = helperUiState(helper.status ?? undefined)
   const auth = useAuthState()
 
   if (auth === 'unauthorized') {
+    // The modal sheet owns the notice while it is open.
+    if (new URLSearchParams(search).has('add')) return null
     return (
       <div className="k-notices">
         <Banner tone="bad" urgent title={t('error.unauthorized')}>

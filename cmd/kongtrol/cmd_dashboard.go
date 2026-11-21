@@ -6,7 +6,14 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 )
+
+var dashboardDiagnostics bool
+
+func init() {
+	dashboardCmd.Flags().BoolVar(&dashboardDiagnostics, "diagnostics", false, ct("cli.dashboard.flag.diagnostics"))
+}
 
 // ── dashboard ─────────────────────────────────────────────────────────────────
 
@@ -40,7 +47,11 @@ var dashboardCmd = &cobra.Command{
 		}
 		fmt.Println(tuiOK(styleBright.Render(ct("cli.dashboard.running")) + "  " + paint(cDim, "→") + "  " + stylePrompt.Render(base)))
 		fmt.Println(paint(cDim, "  "+ct("cli.dashboard.opening")))
-		if err := openBrowserFn(daemonPanelURLFn(base, "/")); err != nil {
+		path := "/"
+		if dashboardDiagnostics {
+			path = daemonctl.DiagnosticsPath
+		}
+		if err := openBrowserFn(daemonPanelURLFn(base, path)); err != nil {
 			fmt.Println(tuiWarn(cf("cli.dashboard.open_failed", err)))
 		}
 		fmt.Println(tuiInfo(paint(cDim, ct("cli.dashboard.keeps_running"))))

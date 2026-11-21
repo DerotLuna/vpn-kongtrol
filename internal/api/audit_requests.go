@@ -61,11 +61,12 @@ var auditRoutes = map[string]auditRoute{
 	"POST /api/v1/groups/{name}/disconnect":      {action: "api.group.disconnect", level: "INFO"},
 	"POST /api/v1/groups/{name}/reload":          {action: "api.group.reload", level: "INFO"},
 
-	"POST /api/v1/security/killswitch":     {action: "security.killswitch.set", level: "SECURITY"},
-	"POST /api/v1/security/dnsguard":       {action: "security.dnsguard.set", level: "SECURITY"},
-	"POST /api/v1/security/publicip":       {action: "security.publicip.set", level: "SECURITY"},
-	"POST /api/v1/security/publicip/check": {action: "security.publicip.check", level: "INFO"},
-	"PUT /api/v1/vpns/{name}/killswitch":   {action: "security.profile_killswitch.set", level: "SECURITY", profile: true},
+	"POST /api/v1/security/killswitch":       {action: "security.killswitch.set", level: "SECURITY"},
+	"POST /api/v1/security/dnsguard":         {action: "security.dnsguard.set", level: "SECURITY"},
+	"POST /api/v1/security/publicip":         {action: "security.publicip.set", level: "SECURITY"},
+	"POST /api/v1/security/publicip/check":   {action: "security.publicip.check", level: "INFO"},
+	"PUT /api/v1/vpns/{name}/killswitch":     {action: "security.profile_killswitch.set", level: "SECURITY", profile: true},
+	"PUT /api/v1/vpns/{name}/default-egress": {action: "vpn.default_egress.set", level: "SECURITY", profile: true},
 
 	"POST /api/v1/vpns":          {action: "config.profile.create", level: "SECURITY"},
 	"POST /api/v1/vpns/import":   {action: "config.profile.import", level: "SECURITY"},

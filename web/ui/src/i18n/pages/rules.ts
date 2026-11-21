@@ -54,9 +54,9 @@ const es = {
   'rules.field.via.pick': 'Elige una VPN',
   'rules.field.domains': 'Sitios web',
   'rules.field.domains.hint':
-    'Uno por línea. *.miempresa.com cubre www.miempresa.com, app.miempresa.com…; añade también miempresa.com. Puedes pegar una dirección web.',
+    'Uno por línea. Ejemplos: claude.com, api.anthropic.com, *.anthropic.com y café.example. El comodín coincide con un nivel de subdominio. Para incluir el dominio raíz, agrégalo también.',
   'rules.field.ipRanges': 'Direcciones IP y redes',
-  'rules.field.ipRanges.hint': 'Una por línea: una IP (192.0.2.10) o una red (10.0.0.0/8).',
+  'rules.field.ipRanges.hint': 'Una por línea. IP individual: 192.0.2.42 o 2001:db8::42. Rango: 192.0.2.0/24.',
   'rules.field.onDown': 'Si esa VPN está apagada',
   'rules.field.apps.toggle': 'Apps (experimental)',
   'rules.field.apps.note':
@@ -65,14 +65,16 @@ const es = {
   'rules.field.apps.hint': 'Una por línea: nombre (chrome.exe), patrón (teams*) o ruta completa.',
 
   'rules.onDown.allow': 'Usar la conexión normal y avisarme',
+  'rules.onDown.inherit': 'Usar la opción de la VPN',
+  'rules.onDown.inherit.hint': 'La regla seguirá la opción que elijas en el perfil de la VPN.',
   'rules.onDown.allow.hint': 'Tú decides qué VPN están encendidas; Kongtrol solo te avisa (como mucho una vez cada 30 min).',
   'rules.onDown.allow.short': 'Conexión normal',
   'rules.onDown.block': 'Bloquear este tráfico',
   'rules.onDown.block.hint': 'Nunca sale por la conexión normal. En sitios web, solo se bloquean las IP que Kongtrol ya conoce.',
   'rules.onDown.block.short': 'Se bloquea',
-  'rules.onDown.connect': 'Conectar la VPN cuando haya tráfico',
-  'rules.onDown.connect.hint': 'Kongtrol conecta la VPN al ver tráfico hacia estos destinos.',
-  'rules.onDown.connect.short': 'Se conecta',
+  'rules.onDown.connect': 'Bloquear e intentar conectar la VPN',
+  'rules.onDown.connect.hint': 'Bloquea las IP conocidas. Si detecta un intento TCP, Kongtrol intenta conectar. En macOS, conecta desde Inicio.',
+  'rules.onDown.connect.short': 'Bloquea e intenta conectar',
 
   'rules.err.name.required': 'Falta el nombre.',
   'rules.err.name.required.fix': 'Escribe un nombre corto, por ejemplo «Webs del trabajo».',
@@ -88,8 +90,8 @@ const es = {
   'rules.err.domains.badDomain.fix': 'Escribe solo el nombre, como miempresa.com o *.miempresa.com (el * solo al principio).',
   'rules.err.ipRanges.badRange': '«{value}» no es una IP ni una red.',
   'rules.err.ipRanges.badRange.fix': 'Escribe una IP (192.0.2.10) o una red con su tamaño (10.0.0.0/8).',
-  'rules.err.onDown.blockAppsOnly': '«Bloquear» necesita sitios web o redes.',
-  'rules.err.onDown.blockAppsOnly.fix': 'Las apps solas no dan nada que bloquear: añade un sitio o una red, o elige otra opción.',
+  'rules.err.onDown.blockAppsOnly': 'El bloqueo necesita sitios web o redes.',
+  'rules.err.onDown.blockAppsOnly.fix': 'Añade un sitio o una red, o elige permitir el tráfico.',
 
   'rules.test.title': 'Probar un destino',
   'rules.test.what': 'Escribe un sitio, una IP o una dirección web y te decimos por dónde sale y por qué.',
@@ -126,7 +128,7 @@ const es = {
   'rules.outcome.noResponse': 'Debería salir por «{via}», pero no responde. Revisa esa VPN en Inicio.',
   'rules.outcome.normal': '«{via}» está apagada: ahora sale por tu conexión normal y Kongtrol te avisa. Conéctala para que salga por ella.',
   'rules.outcome.blocked': '«{via}» está apagada: Kongtrol bloquea este tráfico hasta que la conectes.',
-  'rules.outcome.connect': '«{via}» está apagada: Kongtrol la conecta en cuanto vea tráfico hacia aquí.',
+  'rules.outcome.connect': '«{via}» está apagada. Kongtrol bloquea las IP conocidas e intenta conectar si detecta tráfico TCP.',
 
   'rules.reason.empty_target': 'destino vacío',
   'rules.reason.no_ip_rule': 'ninguna regla de IP coincide',
@@ -320,9 +322,9 @@ const en: Strings<typeof es> = {
   'rules.field.via.pick': 'Pick a VPN',
   'rules.field.domains': 'Websites',
   'rules.field.domains.hint':
-    'One per line. *.mycompany.com covers www.mycompany.com, app.mycompany.com…; add mycompany.com too. You can paste a web address.',
+    'One per line. Examples: claude.com, api.anthropic.com, *.anthropic.com, and café.example. A wildcard matches one subdomain level. Add the root domain separately to include it.',
   'rules.field.ipRanges': 'IP addresses and networks',
-  'rules.field.ipRanges.hint': 'One per line: an IP (192.0.2.10) or a network (10.0.0.0/8).',
+  'rules.field.ipRanges.hint': 'One per line. Single IP: 192.0.2.42 or 2001:db8::42. Range: 192.0.2.0/24.',
   'rules.field.onDown': 'If that VPN is off',
   'rules.field.apps.toggle': 'Apps (experimental)',
   'rules.field.apps.note':
@@ -331,14 +333,16 @@ const en: Strings<typeof es> = {
   'rules.field.apps.hint': 'One per line: a name (chrome.exe), a pattern (teams*) or a full path.',
 
   'rules.onDown.allow': 'Use the normal connection and tell me',
+  'rules.onDown.inherit': 'Use the VPN setting',
+  'rules.onDown.inherit.hint': 'This rule follows the setting you choose in the VPN profile.',
   'rules.onDown.allow.hint': 'You decide which VPNs are on; Kongtrol only tells you (at most once every 30 min).',
   'rules.onDown.allow.short': 'Normal connection',
   'rules.onDown.block': 'Block this traffic',
   'rules.onDown.block.hint': 'It never leaves through the normal connection. For websites, only the IPs Kongtrol already knows are blocked.',
   'rules.onDown.block.short': 'Blocked',
-  'rules.onDown.connect': 'Connect the VPN when there is traffic',
-  'rules.onDown.connect.hint': 'Kongtrol connects the VPN when it sees traffic to these destinations.',
-  'rules.onDown.connect.short': 'Connects',
+  'rules.onDown.connect': 'Block and try to connect the VPN',
+  'rules.onDown.connect.hint': 'Blocks known IPs. If Kongtrol observes a TCP attempt, it tries to connect. On macOS, connect from Home.',
+  'rules.onDown.connect.short': 'Blocks and tries to connect',
 
   'rules.err.name.required': 'The name is missing.',
   'rules.err.name.required.fix': 'Type a short name, for example “Work sites”.',
@@ -354,8 +358,8 @@ const en: Strings<typeof es> = {
   'rules.err.domains.badDomain.fix': 'Type just the name, like mycompany.com or *.mycompany.com (the * only at the start).',
   'rules.err.ipRanges.badRange': '“{value}” is not an IP or a network.',
   'rules.err.ipRanges.badRange.fix': 'Type an IP (192.0.2.10) or a network with its size (10.0.0.0/8).',
-  'rules.err.onDown.blockAppsOnly': '“Block” needs websites or networks.',
-  'rules.err.onDown.blockAppsOnly.fix': 'Apps alone give nothing to block: add a site or a network, or pick another option.',
+  'rules.err.onDown.blockAppsOnly': 'Blocking needs websites or networks.',
+  'rules.err.onDown.blockAppsOnly.fix': 'Add a site or a network, or allow the traffic.',
 
   'rules.test.title': 'Test a destination',
   'rules.test.what': 'Type a site, an IP or a web address and we tell you where it goes and why.',
@@ -392,7 +396,7 @@ const en: Strings<typeof es> = {
   'rules.outcome.noResponse': 'It should go through “{via}”, but that VPN is not answering. Check it on Home.',
   'rules.outcome.normal': '“{via}” is off: it uses your normal connection now and Kongtrol tells you. Connect it to send this through it.',
   'rules.outcome.blocked': '“{via}” is off: Kongtrol blocks this traffic until you connect it.',
-  'rules.outcome.connect': '“{via}” is off: Kongtrol connects it as soon as it sees traffic going here.',
+  'rules.outcome.connect': '“{via}” is off. Kongtrol blocks known IPs and tries to connect if it observes TCP traffic.',
 
   'rules.reason.empty_target': 'empty target',
   'rules.reason.no_ip_rule': 'no IP rule matches',

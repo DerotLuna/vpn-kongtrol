@@ -14,6 +14,7 @@ import type { MessageKey } from '../../i18n/messages'
 import { SelectField, TextField, type FieldError } from '../ui/Field'
 import { StatusPill } from '../ui/StatusPill'
 import { Switch } from '../ui/Switch'
+import { ON_TUNNEL_DOWN, type OnTunnelDown } from '../rules/model'
 import { Monogram, SupportChip } from './Bits'
 import { AUTH_METHODS, CATALOG, specOf, type AuthMethod } from './catalog'
 import type { Draft, DraftField, Problems } from './draft'
@@ -257,10 +258,14 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
           </span>
           <span className="k-field__hint">{t('profiles.ks.hint')}</span>
         </div>
-        <p className="k-field__hint">
-          {t('profiles.onDown.before')} <Link to="/rules">{t('profiles.onDown.link')}</Link>
-          {t('profiles.onDown.after')}
-        </p>
+        <SelectField
+          label={t('profiles.onDown.label')}
+          hint={t(`rules.onDown.${draft.onTunnelDown}.hint`)}
+          value={draft.onTunnelDown}
+          options={ON_TUNNEL_DOWN.map((value) => ({ value, label: t(`rules.onDown.${value}`) }))}
+          onChange={(value) => onChange({ onTunnelDown: value as OnTunnelDown })}
+        />
+        <p className="k-field__hint">{t('profiles.onDown.hint')}</p>
       </Section>
 
       <details className="kp-more" open={advancedProblem ? true : undefined}>

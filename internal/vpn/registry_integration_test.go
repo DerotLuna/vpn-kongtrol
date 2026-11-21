@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
 
 	// Ensure all adapters are registered before the test runs.
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/ciscoanyconnect"
@@ -80,11 +81,13 @@ func TestAllAdapters_Name(t *testing.T) {
 	}
 }
 
-// TestAllAdapters_InitialStatus verifies that a freshly created adapter reports
-// StatusDisconnected before any Connect() call.
+// TestAllAdapters_InitialStatus verifies the initial status with no external tunnel.
 func TestAllAdapters_InitialStatus(t *testing.T) {
 	for _, adapterType := range allAdapterTypes {
 		t.Run(adapterType, func(t *testing.T) {
+			if _, active, _ := appattach.ActiveTunnel(adapterType); active {
+				t.Skip("provider tunnel is already active outside the test")
+			}
 			a, err := vpn.New(adapterType)
 			if err != nil {
 				t.Fatalf("New(%q): %v", adapterType, err)
@@ -98,10 +101,13 @@ func TestAllAdapters_InitialStatus(t *testing.T) {
 }
 
 // TestAllAdapters_TunnelInfoNilWhenDisconnected verifies TunnelInfo returns
-// (nil, nil) when the adapter has never connected.
+// (nil, nil) while disconnected.
 func TestAllAdapters_TunnelInfoNilWhenDisconnected(t *testing.T) {
 	for _, adapterType := range allAdapterTypes {
 		t.Run(adapterType, func(t *testing.T) {
+			if _, active, _ := appattach.ActiveTunnel(adapterType); active {
+				t.Skip("provider tunnel is already active outside the test")
+			}
 			a, err := vpn.New(adapterType)
 			if err != nil {
 				t.Fatalf("New(%q): %v", adapterType, err)

@@ -44,6 +44,7 @@ export interface VPNProfile {
   protocol?: string
   config?: string
   priority: number
+  on_tunnel_down?: 'allow' | 'block' | 'connect'
   failover: string[] | null
   auth_method?: string
   cert?: string
@@ -70,6 +71,7 @@ export type ProfileRequest = Partial<{
   protocol: string
   config: string
   priority: number
+  on_tunnel_down?: 'allow' | 'block' | 'connect'
   failover: string[]
   auth_method: string
   cert: string
@@ -98,6 +100,13 @@ export interface ProfileChangeResult {
   reconnect_required?: boolean
   /** The reconnect was tried and failed (the settings are saved). */
   reconnect_error?: string
+}
+
+export interface DefaultEgressStatus {
+  enabled: boolean
+  compatible: boolean
+  reason?: 'unsupported_platform' | 'unsupported_profile' | 'config_unavailable' | 'invalid_config'
+    | 'unsupported_options' | 'peer_count' | 'missing_endpoint' | 'missing_addresses' | 'missing_defaults' | 'missing_dns'
 }
 
 /** POST /api/v1/vpns/import body (handlers_vpn_import.go importReq). */
@@ -275,6 +284,18 @@ export function useSaveProfile() {
   })
 }
 
+export function useProfileDefaultEgress(name: string) {
+  const path = `/api/v1/vpns/${encodeURIComponent(name)}/default-egress`
+  const queryKey = [...profileKeys.vpns, name, 'default-egress']
+  const query = useQuery({ queryKey, queryFn: () => http.get<DefaultEgressStatus>(path) })
+  const change = useOptimisticMutation<boolean, DefaultEgressStatus, DefaultEgressStatus>({
+    queryKey,
+    mutationFn: (enabled) => http.put<DefaultEgressStatus>(path, { enabled }),
+    apply: (current, enabled) => ({ ...current, enabled }),
+  })
+  return { query, change }
+}
+
 /** Delete: the row leaves at once and comes back if the daemon refuses. */
 /** Rewrites a daemon error in the user's language (components/profiles/errors.ts). */
 export type Localize = (err: unknown) => unknown
@@ -314,7 +335,7 @@ export function useImportProfileFile() {
 
 // ── Restart ───────────────────────────────────────────────────────────────
 
-export type RestartPhase = 'idle' | 'requesting' | 'stopping' | 'starting' | 'done' | 'failed' | 'timeout'
+export type RestartPhase = 'idle' | 'requesting' | 'stopping' | 'starting' | 'done' | 'failed' | 'timeout' | 'reauth'
 
 const restartPhase = createStore<RestartPhase>('idle')
 
@@ -324,13 +345,12 @@ export function useRestartPhase(): RestartPhase {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
-async function answers(): Promise<boolean> {
+async function probeRestart(): Promise<'ready' | 'offline' | 'reauth'> {
   try {
     await profilesApi.setup()
-    return true
+    return 'ready'
   } catch (err) {
-    // A 4xx (e.g. 401) is still an answer: the daemon is up.
-    return err instanceof ApiError && err.kind !== 'offline' && err.status > 0 && err.status < 500
+    return err instanceof ApiError && err.kind === 'unauthorized' ? 'reauth' : 'offline'
   }
 }
 
@@ -353,7 +373,7 @@ export const RESTART_TIMING: RestartTiming = { stepMs: 500, stopSteps: 240, star
 export async function runRestart(
   client: ReturnType<typeof useQueryClient>,
   timing: RestartTiming = RESTART_TIMING,
-): Promise<'done' | 'timeout'> {
+): Promise<'done' | 'timeout' | 'reauth'> {
   restartPhase.set('requesting')
   try {
     await profilesApi.restart()
@@ -362,18 +382,24 @@ export async function runRestart(
     throw err
   }
   restartPhase.set('stopping')
-  let gone = false
-  for (let i = 0; i < timing.stopSteps && !gone; i++) {
+  let answer: Awaited<ReturnType<typeof probeRestart>> = 'ready'
+  for (let i = 0; i < timing.stopSteps && answer === 'ready'; i++) {
     await sleep(timing.stepMs)
-    gone = !(await answers())
+    answer = await probeRestart()
   }
-  restartPhase.set('starting')
-  let back = false
-  for (let i = 0; gone && i < timing.startSteps && !back; i++) {
-    await sleep(timing.stepMs)
-    back = await answers()
+  const stopped = answer === 'offline'
+  if (stopped) {
+    restartPhase.set('starting')
+    for (let i = 0; i < timing.startSteps && answer === 'offline'; i++) {
+      await sleep(timing.stepMs)
+      answer = await probeRestart()
+    }
   }
-  if (!back) {
+  if (answer === 'reauth') {
+    restartPhase.set('reauth')
+    return 'reauth'
+  }
+  if (!stopped || answer === 'offline') {
     restartPhase.set('timeout')
     return 'timeout'
   }

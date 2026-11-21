@@ -17,19 +17,19 @@ export function useSaveAndActivate() {
   const { restart } = useRestartAction()
   const [phase, setPhase] = useState<ActivatePhase>('idle')
 
-  const activate = async (): Promise<boolean> => {
+  const activate = async () => {
     setPhase('restarting')
     const outcome = await restart()
-    if (outcome === 'done') {
+    if (outcome === 'done' || outcome === 'reauth') {
       setPhase('idle')
-      return true
+      return outcome
     }
     setPhase('restartFailed')
-    return false
+    return 'failed'
   }
 
-  /** Creates the profile (a refusal is thrown to the form) and restarts when the daemon asks. True when it is usable. */
-  const run = async (body: ProfileRequest): Promise<boolean> => {
+  /** Creates the profile (a refusal is thrown to the form) and restarts when needed. */
+  const run = async (body: ProfileRequest) => {
     setPhase('saving')
     let restartRequired: boolean
     try {
@@ -42,7 +42,7 @@ export function useSaveAndActivate() {
     }
     if (!restartRequired) {
       setPhase('idle')
-      return true
+      return 'done'
     }
     return activate()
   }

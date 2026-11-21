@@ -98,6 +98,7 @@ func TestTrayHeaderTransitions(t *testing.T) {
 		{daemonStarting, nil, "Iniciando Kongtrol…", "Starting Kongtrol…", assets.BadgeNone, false},
 		{daemonRunning, []tunnelView{{Checked: true, Kind: kindUp}, {Checked: true, Kind: kindUp}}, "2 VPN conectadas", "2 VPNs connected", assets.BadgeLive, false},
 		{daemonRunning, []tunnelView{{Kind: kindDown}}, "Ninguna VPN conectada", "No VPN connected", assets.BadgeNone, false},
+		{daemonRunning, []tunnelView{{Kind: kindError}, {Kind: kindCaution}}, "Ninguna VPN conectada", "No VPN connected", assets.BadgeError, false},
 		{daemonRunning, []tunnelView{{Checked: true, Kind: kindCaution}}, "1 VPN conectada", "1 VPN connected", assets.BadgeCaution, false},
 		{daemonUnresponsive, nil, "Kongtrol no responde · espera o abre el panel", "Kongtrol is not responding · wait or open the panel", assets.BadgeCaution, false},
 	}

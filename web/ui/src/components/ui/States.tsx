@@ -7,6 +7,7 @@
 // Banners sit inline above content for page- or app-wide conditions (daemon
 // stopped, helper missing), never as a modal.
 import type { ReactNode } from 'react'
+import { ApiError } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { guideLink } from '../../links'
 import { usePreferences } from '../../app/preferences-context'
@@ -48,6 +49,7 @@ export function EmptyState({ title, body, action, icon }: EmptyStateProps) {
  */
 export function ErrorState({ error, onRetry, help = false }: { error: unknown; onRetry?: () => void; help?: boolean }) {
   const { t } = usePreferences()
+  if (error instanceof ApiError && error.kind === 'unauthorized') return null
   const { message, fix } = describeError(error, t)
   return (
     <div className="k-error-state" role="alert">

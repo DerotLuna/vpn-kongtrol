@@ -42,7 +42,7 @@ func TestAddRemovePolicy_SaveRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Name != "corp" || got.OnTunnelDown != "" || len(got.Match.Domains) != 1 || rule.Match.Domains[0] != " a.com " {
+	if got.Name != "corp" || got.OnTunnelDown != "allow" || len(got.Match.Domains) != 1 || rule.Match.Domains[0] != " a.com " {
 		t.Fatalf("normalized = %+v (input changed: %q)", got, rule.Match.Domains)
 	}
 	if _, err := AddPolicy(c, config.PolicyRule{Name: "CORP", Via: "office", Match: config.MatchSpec{Domains: []string{"b.com"}}}); key(err) != ErrKeyPolicyExists {

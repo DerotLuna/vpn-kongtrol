@@ -61,17 +61,18 @@ function fontPreloads(): Plugin {
 // Releases API ("latest" skips drafts and pre-releases;
 // https://docs.github.com/en/rest/releases/releases#get-the-latest-release),
 // 5 s timeout, 3) the newest stable git tag, 4) none (the line is left out).
-// Cached for an hour in node_modules/.cache so build, prerender and the
-// hydration check (three processes) bake the same value. A new release shows
-// up on the next landing build.
+// A production build checks for a new published release first. Prerender
+// and the hydration check reuse its answer from node_modules/.cache.
 const RELEASE_CACHE = resolve(__dirname, 'node_modules', '.cache', 'kongtrol-latest-release.json')
 const STABLE_TAG = /^v\d+\.\d+\.\d+$/
-async function latestRelease(): Promise<string | null> {
+async function latestRelease(refresh: boolean): Promise<string | null> {
   const env = process.env.KONGTROL_RELEASE
   if (env && STABLE_TAG.test(env)) return env
+  let cached: string | null = null
   try {
     const c = JSON.parse(readFileSync(RELEASE_CACHE, 'utf8')) as { tag: string | null; at: number }
-    if (Date.now() - c.at < 3_600_000) return c.tag
+    if (c.tag && STABLE_TAG.test(c.tag)) cached = c.tag
+    if (!refresh && Date.now() - c.at < 3_600_000) return cached
   } catch { /* no cache yet */ }
   let tag: string | null = null
   try {
@@ -84,6 +85,7 @@ async function latestRelease(): Promise<string | null> {
       if (t && STABLE_TAG.test(t)) tag = t
     }
   } catch { /* offline or rate limited: fall back to git */ }
+  if (!tag) tag = cached
   if (!tag) {
     try {
       const t = execFileSync('git', ['describe', '--tags', '--abbrev=0', '--exclude', '*-*'], { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
@@ -97,9 +99,9 @@ async function latestRelease(): Promise<string | null> {
   return tag
 }
 
-export default defineConfig(async () => ({
+export default defineConfig(async ({ command }) => ({
   base: '/',
-  define: { __LATEST_RELEASE__: JSON.stringify(await latestRelease()) },
+  define: { __LATEST_RELEASE__: JSON.stringify(await latestRelease(command === 'build')) },
   plugins: [react(), seoHead(), fontPreloads()],
   resolve: {
     // single source of brand assets (assets/brand), shared with web/ui and the dashboard

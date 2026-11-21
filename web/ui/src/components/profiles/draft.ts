@@ -23,6 +23,7 @@ export interface Draft {
   name: string
   type: AdapterType
   priority: string
+  onTunnelDown: NonNullable<VPNProfile['on_tunnel_down']>
   failover: string[]
   host: string
   config: string
@@ -49,6 +50,7 @@ export function emptyDraft(type: AdapterType = 'openvpn'): Draft {
     name: '',
     type,
     priority: '10',
+    onTunnelDown: 'allow',
     failover: [],
     host: '',
     config: '',
@@ -76,6 +78,7 @@ export function fromProfile(p: VPNProfile): Draft {
     name: p.name,
     type: spec.type,
     priority: String(p.priority ?? 0),
+    onTunnelDown: p.on_tunnel_down ?? 'allow',
     failover: [...(p.failover ?? [])],
     host: p.host ?? '',
     config: p.config ?? '',
@@ -147,6 +150,7 @@ export function toRequest(d: Draft, mode: 'create' | 'update'): ProfileRequest {
     // option always sends true (the daemon rejects false there).
     auto_connect: !spec.autoConnect || d.autoConnect,
   }
+  if (mode === 'update' || d.onTunnelDown !== 'allow') body.on_tunnel_down = d.onTunnelDown
   for (const [field, key] of TEXT) {
     const value = d[field] as string
     const trimmed = field === 'authMethod' ? value : value.trim()

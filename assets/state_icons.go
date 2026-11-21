@@ -49,8 +49,9 @@ type TrayBadge int
 const (
 	BadgeNone    TrayBadge = iota // Kongtrol running, nothing connected
 	BadgeLive                     // at least one tunnel up, none in trouble
-	BadgeCaution                  // a tunnel dropped / not answering / failed
+	BadgeCaution                  // a tunnel or daemon needs attention
 	BadgeStopped                  // Kongtrol (the daemon) is not running: hollow ring
+	BadgeError                    // a VPN failed to connect
 )
 
 // BadgeGeometry is the status dot on a size×size tray icon: center (cx, cy)
@@ -80,6 +81,8 @@ func drawBadge(dst *image.RGBA, badge TrayBadge) {
 		paintCircle(dst, cx, cy, r, func(d float64) float64 { return coverage(r - d) }, ColorLive)
 	case BadgeCaution:
 		paintCircle(dst, cx, cy, r, func(d float64) float64 { return coverage(r - d) }, ColorCaution)
+	case BadgeError:
+		paintCircle(dst, cx, cy, r, func(d float64) float64 { return coverage(r - d) }, ColorDanger)
 	case BadgeStopped:
 		ring := math.Max(1, size/14)
 		paintCircle(dst, cx, cy, r, func(d float64) float64 {

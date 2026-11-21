@@ -119,6 +119,31 @@ func TestPolicyAdd_OfflineWritesTheSameRuleAsTheDashboard(t *testing.T) {
 	}
 }
 
+func TestTunnelDownCommandsPersistProfileAndExplicitOverride(t *testing.T) {
+	path := withEditConfig(t)
+	if _, err := runFlags(t, profileTunnelDownCmd, nil, "oficina", "connect"); err != nil {
+		t.Fatal(err)
+	}
+	reloadEditCfg(t, path)
+	if _, err := runFlags(t, policyAddCmd, map[string]string{"via": "oficina", "name": "intranet"}, "corp.example"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runFlags(t, policyTunnelDownCmd, nil, "intranet", "allow"); err != nil {
+		t.Fatal(err)
+	}
+	c := reloadEditCfg(t, path)
+	if c.VPNs["oficina"].OnTunnelDown != "connect" || c.Policies[0].OnTunnelDown != "allow" {
+		t.Fatalf("profile = %q, policy override = %q", c.VPNs["oficina"].OnTunnelDown, c.Policies[0].OnTunnelDown)
+	}
+	if _, err := runFlags(t, policyTunnelDownCmd, nil, "intranet", "inherit"); err != nil {
+		t.Fatal(err)
+	}
+	c = reloadEditCfg(t, path)
+	if c.Policies[0].OnTunnelDown != "" || c.Policies[0].TunnelDownAction(c.VPNs["oficina"]) != "connect" {
+		t.Fatalf("expected inherited connect: %+v", c.Policies[0])
+	}
+}
+
 func TestPolicyAdd_ErrorsCarryWhatToDo(t *testing.T) {
 	withEditConfig(t)
 	cases := []struct {

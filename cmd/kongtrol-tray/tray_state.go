@@ -171,18 +171,19 @@ func trayHeader(d daemonState, views []tunnelView) (string, assets.TrayBadge) {
 	case daemonUnresponsive:
 		return trayT("tray.daemon_unreachable"), assets.BadgeCaution
 	}
-	up, trouble := 0, false
+	up, caution, failed := 0, false, false
 	for _, v := range views {
 		if v.Checked {
 			up++
 		}
-		if v.Kind == kindCaution || v.Kind == kindError {
-			trouble = true
-		}
+		caution = caution || v.Kind == kindCaution
+		failed = failed || v.Kind == kindError
 	}
 	badge := assets.BadgeNone
 	switch {
-	case trouble:
+	case failed:
+		badge = assets.BadgeError
+	case caution:
 		badge = assets.BadgeCaution
 	case up > 0:
 		badge = assets.BadgeLive

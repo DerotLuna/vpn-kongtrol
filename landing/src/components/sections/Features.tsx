@@ -73,25 +73,28 @@ export default function Features({ lang }: Props) {
   // and their CSS timeline starts again even when the same route repeats
   const [run, setRun] = useState(0)
   const [paused, setPaused] = useState(false)
-  // once the visitor picks a destination the board stops rotating for good
-  // (WCAG 2.2.2) and the rule label starts being announced
+  // Announce only a destination the visitor picked, never the automatic demo.
   const [touched, setTouched] = useState(false)
   // rotates and animates only while on screen (ADR-0031)
   const boardRef = useRef<HTMLDivElement>(null)
   const live = useInView(boardRef)
   // .is-live is toggled on the node, not through className: useReveal adds
   // .is-in to this .reveal element by hand, and a className re-render would drop it
-  useEffect(() => { boardRef.current?.classList.toggle('is-live', live) }, [live])
+  useEffect(() => {
+    boardRef.current?.classList.toggle('is-live', live && !paused)
+  }, [live, paused])
 
   const copy = lang === 'es'
     ? {
       label: '$ kongtrol policy show claude.ai',
       title: 'Cada sitio, por la VPN correcta.',
-      sub: 'Tú eliges qué sitios y redes van por cada VPN: el sistema de tu empresa por la VPN del trabajo, otro sitio por tu VPN personal. Lo demás sale directo, sin VPN. Varias VPN a la vez, sin pelearse.',
-      boardIn: 'Destino',
-      boardOut: 'Sale por',
+      sub: 'Elige qué sitios y redes van por cada VPN. Por ejemplo, el sistema de tu empresa por la VPN del trabajo y otro sitio por tu VPN personal.',
+      boardIn: 'Sitio o red',
+      boardOut: 'Conexión que usa',
       boardName: 'Mapa de rutas: qué destino sale por qué VPN',
-      hint: 'Toca un destino para ver por dónde sale',
+      hint: 'Elige un sitio o una red para ver su recorrido.',
+      pause: 'Pausar demo',
+      resume: 'Continuar demo',
       routes: [
         { dest: '10.10.0.0/16', human: 'sistema de tu empresa', tunnel: 'office', adapter: 'FortiClient' },
         { dest: '*.amazonaws.com', human: 'servidores en la nube', tunnel: 'aws', adapter: 'OpenVPN' },
@@ -102,11 +105,13 @@ export default function Features({ lang }: Props) {
     : {
       label: '$ kongtrol policy show claude.ai',
       title: 'Every site, through the right VPN.',
-      sub: 'You choose which sites and networks go through each VPN: your company system through the work VPN, another site through your personal VPN. Everything else goes out directly, no VPN. Several VPNs at once, no fighting.',
-      boardIn: 'Destination',
-      boardOut: 'Goes out through',
+      sub: 'Choose which sites and networks use each VPN. For example, send your company system through the work VPN and another site through your personal VPN.',
+      boardIn: 'Site or network',
+      boardOut: 'Connection it uses',
       boardName: 'Route map: which destination goes out through which VPN',
-      hint: 'Tap a destination to see where it goes out',
+      hint: 'Choose a site or network to see its route.',
+      pause: 'Pause demo',
+      resume: 'Resume demo',
       routes: [
         { dest: '10.10.0.0/16', human: 'your company system', tunnel: 'office', adapter: 'FortiClient' },
         { dest: '*.amazonaws.com', human: 'cloud servers', tunnel: 'aws', adapter: 'OpenVPN' },
@@ -116,21 +121,40 @@ export default function Features({ lang }: Props) {
     }
 
   useEffect(() => {
-    if (paused || touched || !live) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const t = window.setInterval(() => {
-      setActive(a => (a + 1) % ROWS.length)
-      setRun(n => n + 1)
-    }, CYCLE)
-    return () => window.clearInterval(t)
-  }, [paused, touched, live])
+    if (paused || !live) return
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+    let timer: number | undefined
+    const updateTimer = () => {
+      window.clearInterval(timer)
+      if (reducedMotion.matches) return
+      timer = window.setInterval(() => {
+        setActive(a => (a + 1) % ROWS.length)
+        setRun(n => n + 1)
+      }, CYCLE)
+    }
+    updateTimer()
+    reducedMotion.addEventListener('change', updateTimer)
+    return () => {
+      reducedMotion.removeEventListener('change', updateTimer)
+      window.clearInterval(timer)
+    }
+  }, [paused, live])
 
   const routes = copy.routes
   const cur = routes[active]
   // the visitor picked a destination (click, tap, Enter or Space)
-  const pick = (i: number) => { setActive(i); setRun(n => n + 1); setTouched(true) }
+  const pick = (i: number) => {
+    setActive(i)
+    setRun(n => n + 1)
+    setPaused(true)
+    setTouched(true)
+  }
+  const toggleAnimation = () => {
+    if (paused) setTouched(false)
+    setPaused(!paused)
+  }
   // the line-art original as the panel badge (DESIGN.md Logo, ADR-0060)
-  const mark = `${import.meta.env.BASE_URL}logo-kong.svg`
+  const mark = `${import.meta.env.BASE_URL}logo-kong-on-dark.svg`
   const cls = (i: number, extra = '') =>
     `${extra}${i === active ? ' active' : ''}${routes[i].direct ? ' direct' : ''}`
 
@@ -146,10 +170,6 @@ export default function Features({ lang }: Props) {
           ref={boardRef}
           className="switchboard reveal"
           style={{ '--pp-cycle': `${CYCLE}ms` } as CSSProperties}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-          onFocus={() => setPaused(true)}
-          onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setPaused(false) }}
         >
           <div className="sb-legend" aria-hidden="true">
             <span>{copy.boardIn}</span>
@@ -173,7 +193,7 @@ export default function Features({ lang }: Props) {
               <circle className="pp-screw" cx={PANEL_R - 12} cy="34" r="2.5" />
               <circle className="pp-screw" cx={PANEL_L + 12} cy="326" r="2.5" />
               <circle className="pp-screw" cx={PANEL_R - 12} cy="326" r="2.5" />
-              <image className="pp-badge logo-mark" href={mark} x={(PANEL_L + PANEL_R) / 2 - 20} y="24" width="40" height="40" />
+              <image className="pp-badge" href={mark} x={(PANEL_L + PANEL_R) / 2 - 17} y="25" width="34" height="34" />
               {routes.map((_, i) => (
                 <path key={`c-${i}`} className={cls(i, 'pp-cable')} d={cable(i)} />
               ))}
@@ -263,7 +283,7 @@ export default function Features({ lang }: Props) {
             </div>
             <svg className="sb-strip" viewBox="0 0 300 120" aria-hidden="true">
               <rect className="pp-body" x="4" y={STRIP_T} width="292" height={STRIP_B - STRIP_T} rx="10" />
-              <image className="pp-badge logo-mark" href={mark} x="9" y={STRIP_T + 30} width="28" height="28" />
+              <image className="pp-badge" href={mark} x="9" y={STRIP_T + 30} width="28" height="28" />
               {routes.map((_, i) => (
                 <path key={`sc-${i}`} className={cls(i, 'pp-cable')} d={stripCable(i)} />
               ))}
@@ -301,7 +321,12 @@ export default function Features({ lang }: Props) {
               {cur.dest} <span aria-hidden="true">→</span> {cur.tunnel}
             </span>
           </p>
-          <p className="sb-hint">{copy.hint}</p>
+          <div className="sb-controls">
+            <p className="sb-hint">{copy.hint}</p>
+            <button type="button" className="sb-motion" onClick={toggleAnimation}>
+              {paused ? copy.resume : copy.pause}
+            </button>
+          </div>
         </div>
       </div>
     </section>

@@ -83,7 +83,7 @@ credentials or usage data.
 | HTTPS `GET https://api.github.com/repos/DerotLuna/vpn-kongtrol/releases/latest` with only `User-Agent: kongtrol/<version>` and `Accept: application/vnd.github+json` (no token, cookie or user data) | **Off by default (opt-in).** Only when `updates.check_enabled: true` (`kongtrol config update-check on`, the dashboard's Ajustes, or "Sí" in `kongtrol init`): at most once every 24 h (the last attempt is remembered in `~/.kongtrol/update-check.json`, failures included), plus once right after you turn it on if 24 h have passed. | Tell you a newer stable version exists (pre-releases ignored), once per version, with how to update. It never downloads or installs anything. GitHub sees your public IP, the time and that User-Agent. 5 s timeout; at most 1 MiB of the answer is read; TLS 1.2+ with default verification; redirects only over https to `api.github.com` (max 3). Only `tag_name` is used and it must be a strict `vX.Y.Z`; the release link is built as `https://github.com/DerotLuna/vpn-kongtrol/releases/tag/<tag>`, never taken from the answer (`html_url` is ignored), and a remembered link is re-validated on load. [ADR-0034](adr/0034-uninstall-and-update-notice.md) | `internal/update/update.go`, `cmd/kongtrol/daemon_update.go` |
 | TCP connect to the profile's `host:port` (default 443), closed immediately | Before each connect (preflight) and on tunnel health checks | Warn early when the VPN server is unreachable; measure latency. | `internal/app/profile_service.go`, `cmd/kongtrol/daemon_runtime.go` |
 | DNS lookups of policy domains, through the system resolver and the tunnels' DNS servers (UDP/TCP 53) | When domain rules are resolved to routes | Turn `*.example.com` rules into IP routes. For a wildcard, the base name and `www.`, `api.`, `cdn.`, `app.`, `docs.`, `console.` under it are looked up. | `internal/monitor/policyresolver.go`, `internal/app/profile_service.go` |
-| DNS lookup of VPN server hostnames | When the per-profile kill switch is applied | Allow-list the VPN server so the tunnel can come up behind the block. | `internal/app/killswitch_service.go` |
+| DNS lookup of VPN server hostnames | When the kill switch or a protected policy needs VPN transport exceptions | Keep the VPN server reachable so the tunnel can come up behind the block. | `internal/app/killswitch_service.go` |
 | TCP to the tunnel's DNS server on port 53 | Health checks when the VPN server itself cannot be probed | Measure a round trip inside the tunnel. | `cmd/kongtrol/daemon_runtime.go` |
 | DNS query for `connectivitycheck.gstatic.com` sent only to the tunnel's own DNS servers (UDP 53) | Tunnel health checks of a connected profile that pushed DNS servers | Check that DNS works inside the tunnel. Only the VPN's DNS server sees the query; nothing is sent to Google. | `cmd/kongtrol/daemon_runtime.go` |
 
@@ -180,6 +180,10 @@ The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refu
   after 12 h without use and after 7 days in any case, and only SHA-256 digests of ids, page
   tokens, nonces and tickets are stored. A second tab or the tray flyout gets its own page token
   on the same cookie (up to 16). `DELETE /api/v1/session` signs out.
+- After the first profile restart, the Add sheet can retain the saved profile name and any rule
+  draft in the browser's local storage for the panel origin. A fresh nonce exchange allows
+  resuming the draft for ten minutes. The panel removes the entry when reading it. It contains
+  no credentials or connection files. See [ADR-0082](adr/0082-resume-first-rule-after-panel-sign-in.md).
 - After a daemon restart the hidden tray flyout's session is gone (401): the page hides its last
   states and posts `reauth` (closed message list); the tray reloads it with a fresh one-time nonce,
   at most once per 5 s, through the same loopback-origin check as the first load. The tray also

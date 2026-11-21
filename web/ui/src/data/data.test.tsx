@@ -137,7 +137,7 @@ describe('live feed', () => {
   it('retries with backoff when no ticket is given (no socket without one)', async () => {
     vi.useFakeTimers()
     const client = createQueryClient()
-    const ticket = vi.fn().mockRejectedValueOnce(new Error('unauthorized')).mockResolvedValue('ok')
+    const ticket = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue('ok')
     const stop = startLiveFeed(client, {
       WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
       url: 'ws://x',
@@ -150,6 +150,21 @@ describe('live feed', () => {
     await vi.advanceTimersByTimeAsync(100)
     expect(FakeSocket.instances).toHaveLength(1)
     expect(FakeSocket.last().url).toBe('ws://x?ticket=ok')
+    stop()
+  })
+
+  it('stops requesting live tickets after the session is rejected', async () => {
+    vi.useFakeTimers()
+    const denied = vi.fn(() => Promise.resolve(new Response('', { status: 401 })))
+    vi.stubGlobal('fetch', denied)
+    const stop = startLiveFeed(createQueryClient(), {
+      WebSocketImpl: FakeSocket as unknown as typeof WebSocket,
+      url: 'ws://x',
+      delay: () => 100,
+    })
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(denied).toHaveBeenCalledTimes(1)
+    expect(FakeSocket.instances).toHaveLength(0)
     stop()
   })
 

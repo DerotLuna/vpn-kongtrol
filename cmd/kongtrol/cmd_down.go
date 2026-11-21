@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
@@ -48,9 +50,8 @@ var stopDaemonFn = stopDaemon
 // are used, as before.
 //
 // Because stopping the daemon now tears down every tunnel it still holds,
-// a targeted `down <profile>` against a live daemon only stops it once no
-// other profile remains active there; --all, and the no-daemon path, keep
-// the previous "always stop the daemon" behavior.
+// a targeted `down <profile>` keeps the daemon running if other profiles
+// are active or the daemon still has policy protection to enforce.
 func runDown(ctx context.Context, args []string) error {
 	base := daemonAPIBase()
 	viaDaemon := daemonProbeFn(base)
@@ -120,6 +121,12 @@ func runDown(ctx context.Context, args []string) error {
 	if viaDaemon {
 		if remaining := daemonRemainingAfter(base, targets); len(remaining) > 0 {
 			fmt.Println(tuiInfo(paint(cDim, cf("cli.daemon.down.kept_running", strings.Join(remaining, ", ")))))
+			return nil
+		}
+		if (len(args) > 0 || downGroup != "") && cfg != nil && slices.ContainsFunc(cfg.Policies, func(rule config.PolicyRule) bool {
+			return config.BlocksWhenDown(rule.TunnelDownAction(cfg.VPNs[rule.Via]))
+		}) {
+			fmt.Println(tuiInfo(ct("cli.daemon.down.kept_protection")))
 			return nil
 		}
 	}

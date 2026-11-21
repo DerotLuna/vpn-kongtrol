@@ -275,7 +275,7 @@ export function explainLookup(res: ResolveResult, ctx: LookupContext): LookupVer
     const up = ctx.tunnels.some((tn) => tn.Name === res.via && tn.Status === 'connected')
     if (up) return { kind: 'tunnel', via: res.via, rule: res.rule }
     const pol = ctx.policies.find((p) => p.name === res.rule)
-    if (pol?.on_tunnel_down === 'block') return { kind: 'blocked', via: res.via, rule: res.rule }
+    if (pol?.on_tunnel_down === 'block' || pol?.on_tunnel_down === 'connect') return { kind: 'blocked', via: res.via, rule: res.rule }
     return { kind: 'tunnel_down', via: res.via, rule: res.rule }
   }
   if (ctx.routes?.rest_via_tunnel) return { kind: 'all_traffic', via: ctx.routes.rest_via_tunnel }

@@ -156,9 +156,13 @@ func doctorDaemonState() *doctor.Daemon {
 }
 
 func doctorDaemonFromSnapshot(tunnels []monitor.TunnelMetrics, sec *apiSecurityStatus) *doctor.Daemon {
-	d := &doctor.Daemon{Tunnels: make(map[string]vpn.Status, len(tunnels))}
+	d := &doctor.Daemon{
+		Tunnels:          make(map[string]vpn.Status, len(tunnels)),
+		TunnelInterfaces: make(map[string]string, len(tunnels)),
+	}
 	for _, t := range tunnels {
 		d.Tunnels[t.Name] = t.Status
+		d.TunnelInterfaces[t.Name] = t.InterfaceName
 	}
 	if sec != nil {
 		d.KillSwitchEnabled = sec.KillSwitchEnabled

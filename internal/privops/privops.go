@@ -122,8 +122,9 @@ type KillSwitchRequest struct {
 // WGInstallRequest brings a WireGuard tunnel up from a user .conf file.
 // The helper reads and validates the file itself and runs a private copy.
 type WGInstallRequest struct {
-	ConfigPath string `json:"config_path"`
-	Name       string `json:"name,omitempty"` // default: config file base name
+	ConfigPath    string `json:"config_path"`
+	Name          string `json:"name,omitempty"` // default: config file base name
+	DefaultEgress bool   `json:"default_egress,omitempty"`
 }
 
 // WGTunnel is the tunnel the helper brought up.

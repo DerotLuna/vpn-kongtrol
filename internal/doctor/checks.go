@@ -123,7 +123,11 @@ func (d *run) checkBinaries(cfg *config.Config) {
 			if override := overrides[adapterType]; override != "" {
 				d.fail(label, d.f("cli.doctor.file.not_found", override), d.t("doctor.hint.binary_override"))
 			} else if vpndetect.Known(adapterType) {
-				d.fail(label, d.t("cli.doctor.binary.not_found"), d.t("doctor.hint.binary_missing"))
+				hint := "doctor.hint.binary_missing"
+				if adapterType == "wireguard" {
+					hint = "doctor.hint.wireguard_binary_missing"
+				}
+				d.fail(label, d.t("cli.doctor.binary.not_found"), d.t(hint))
 			}
 			continue
 		}
@@ -372,6 +376,7 @@ func (d *run) checkRuntimeNetworking(cfg *config.Config) {
 	} else {
 		d.ok(label, d.f("cli.doctor.routes.visible", len(routes)))
 	}
+	d.checkVPNCoexistence(cfg)
 
 	if cfg == nil {
 		d.skipped()
@@ -444,7 +449,7 @@ func (d *run) checkAdapterStatus(cfg *config.Config) {
 			continue
 		}
 		if st == vpn.StatusError {
-			d.warn(label, d.t("doctor.adapter.error_state"), d.f("doctor.hint.adapter_error", name))
+			d.fail(label, d.t("doctor.adapter.error_state"), d.f("doctor.hint.adapter_error", name))
 			continue
 		}
 		d.ok(label, string(st))

@@ -14,8 +14,6 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
-var splitDNSCommonSubdomains = []string{"www.", "api.", "cdn.", "app.", "docs.", "console.", "static.", "assets."}
-
 // SplitDNSManager injects policy-resolved domains into system hosts file
 // so regular applications resolve them without calling the API.
 type SplitDNSManager struct {
@@ -73,13 +71,13 @@ func (m *SplitDNSManager) sync() {
 
 	for _, pol := range m.cfg.Policies {
 		for _, domainPattern := range pol.Match.Domains {
-			for _, domain := range expandSplitDNSDomainPattern(domainPattern) {
+			for _, domain := range expandDomainPattern(domainPattern) {
 				ips, err := m.resolver.ResolveDomainViaProfile(pol.Via, domain)
 				if err != nil || len(ips) == 0 {
 					continue
 				}
 				if ip := pickPreferredIP(ips); ip != nil {
-					hostMap[domain] = ip.String()
+					hostMap[strings.TrimSuffix(domain, ".")] = ip.String()
 				}
 			}
 		}
@@ -92,22 +90,6 @@ func (m *SplitDNSManager) sync() {
 
 func (m *SplitDNSManager) restore() error {
 	return m.writeHosts(map[string]string{})
-}
-
-func expandSplitDNSDomainPattern(pattern string) []string {
-	p := strings.TrimSpace(strings.ToLower(pattern))
-	if p == "" {
-		return nil
-	}
-	if strings.HasPrefix(p, "*.") {
-		base := strings.TrimPrefix(p, "*.")
-		targets := []string{base}
-		for _, prefix := range splitDNSCommonSubdomains {
-			targets = append(targets, prefix+base)
-		}
-		return targets
-	}
-	return []string{p}
 }
 
 func pickPreferredIP(ips []net.IP) net.IP {

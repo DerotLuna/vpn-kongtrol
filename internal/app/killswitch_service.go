@@ -3,6 +3,8 @@ package app
 import (
 	"bufio"
 	"context"
+	"fmt"
+	"iter"
 	"net"
 	"net/netip"
 	"os"
@@ -13,6 +15,7 @@ import (
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
@@ -28,12 +31,10 @@ import (
 //     routes captured while it was up + its policies' IPs/CIDRs — until it
 //     reconnects or the user runs `down`. A full-tunnel profile (default
 //     route through the tunnel) blocks everything except the VPN endpoints
-//     (and the LAN when allowed). A tunnel the user turned off is never
-//     blocked: its traffic goes to the normal internet.
-//   - Policies with on_tunnel_down: block whose tunnel is not connected.
+//     (and the LAN when allowed). This source excludes intentional stops.
+//   - Winning policies with effective block or connect while their tunnel
+//     is disconnected or being disconnected.
 //
-// Destinations of a connected tunnel are never blocked (firewall rules
-// apply on every interface, so they would cut that tunnel too).
 // Everything goes to the helper as one leased set of BLOCK rules
 // (privops.SetBlockedDestinations): fail-open if the daemon dies.
 type KillSwitchService struct {
@@ -48,8 +49,9 @@ type KillSwitchService struct {
 	now      func() time.Time
 	lookupIP func(host string) []net.IP
 
-	state  map[string]*ksProfile
-	status security.KillSwitchStatus
+	state         map[string]*ksProfile
+	disconnecting map[string]int
+	status        security.KillSwitchStatus
 	// blocked is the prefix set last sent to the blocker (Blocked()).
 	blocked     []netip.Prefix
 	legacyClean bool
@@ -61,7 +63,7 @@ type KillSwitchService struct {
 // domain IPs), implemented by monitor.PolicyResolver.
 type DestinationSource interface {
 	ProfileDestinations(profile string) []netip.Prefix
-	PolicyDestinations(policy string) []netip.Prefix
+	PolicyDestinations() iter.Seq[monitor.PolicyDestination]
 }
 
 // ksProfile is what the service remembers about one profile.
@@ -83,11 +85,12 @@ const captureEvery = 2 * time.Minute
 // used only to remove all-traffic rules left by older releases.
 func NewKillSwitchService(cfg *config.Config, adapters *vpn.Set, ks security.KillSwitch) *KillSwitchService {
 	return &KillSwitchService{
-		cfg:      cfg,
-		adapters: adapters,
-		legacy:   ks,
-		now:      time.Now,
-		state:    map[string]*ksProfile{},
+		cfg:           cfg,
+		adapters:      adapters,
+		legacy:        ks,
+		now:           time.Now,
+		state:         map[string]*ksProfile{},
+		disconnecting: map[string]int{},
 		lookupIP: func(host string) []net.IP {
 			ips, _ := net.LookupIP(host)
 			return ips
@@ -119,8 +122,45 @@ func (s *KillSwitchService) SetRouteLister(fn func() ([]routing.Route, error)) {
 // SetConfig swaps the configuration and keeps the per-tunnel memory.
 func (s *KillSwitchService) SetConfig(cfg *config.Config) {
 	s.mu.Lock()
+	for name, st := range s.state {
+		if s.cfg == nil || cfg == nil {
+			break
+		}
+		old, next := s.cfg.VPNs[name], cfg.VPNs[name]
+		if old.Host != next.Host || old.ConfigFile != next.ConfigFile || old.Type != next.Type {
+			st.endpoints = nil
+			st.capturedAt = time.Time{}
+		}
+	}
 	s.cfg = cfg
 	s.mu.Unlock()
+}
+
+// BeginDisconnect installs policy blocks before the adapter removes routes.
+func (s *KillSwitchService) BeginDisconnect(name string) (func(), error) {
+	s.mu.Lock()
+	if s.cfg == nil {
+		s.mu.Unlock()
+		return nil, nil
+	}
+	protected := slices.ContainsFunc(s.cfg.Policies, func(p config.PolicyRule) bool {
+		return p.Via == name && config.BlocksWhenDown(p.TunnelDownAction(s.cfg.VPNs[name]))
+	})
+	if !protected {
+		s.mu.Unlock()
+		return nil, nil
+	}
+	s.disconnecting[name]++
+	s.mu.Unlock()
+	return func() {
+		s.mu.Lock()
+		s.disconnecting[name]--
+		if s.disconnecting[name] == 0 {
+			delete(s.disconnecting, name)
+		}
+		s.mu.Unlock()
+		_ = s.Apply()
+	}, s.Apply()
 }
 
 // NoteIntent records that the user turned a tunnel off (intendedDown) or
@@ -180,9 +220,11 @@ func (s *KillSwitchService) profile(name string) *ksProfile {
 
 // Apply recomputes the block set from the tunnels' state and sends it.
 func (s *KillSwitchService) Apply() error {
-	if s == nil || s.cfg == nil {
+	if s == nil {
 		return nil
 	}
+	s.applyMu.Lock()
+	defer s.applyMu.Unlock()
 	// Adapter status / tunnel info may run commands: read them unlocked.
 	type obs struct {
 		connected bool
@@ -201,8 +243,6 @@ func (s *KillSwitchService) Apply() error {
 
 	// applyMu serializes whole Apply runs; s.mu is released while the
 	// helper works so Status never waits for it.
-	s.applyMu.Lock()
-	defer s.applyMu.Unlock()
 	s.mu.Lock()
 	unlocked := false
 	defer func() {
@@ -210,6 +250,9 @@ func (s *KillSwitchService) Apply() error {
 			s.mu.Unlock()
 		}
 	}()
+	if s.cfg == nil {
+		return nil
+	}
 	s.cleanLegacy()
 
 	// 1. Remember what each connected tunnel carries.
@@ -220,7 +263,9 @@ func (s *KillSwitchService) Apply() error {
 		if !o.connected {
 			continue
 		}
-		st.wasUp, st.intended = true, false
+		if s.disconnecting[name] == 0 {
+			st.wasUp, st.intended = true, false
+		}
 		iface := ""
 		if o.info != nil {
 			iface = o.info.InterfaceName
@@ -287,20 +332,42 @@ func (s *KillSwitchService) Apply() error {
 			block = append(block, s.dests.ProfileDestinations(name)...)
 		}
 	}
-	for _, pol := range s.cfg.Policies {
-		if pol.TunnelDownAction() != config.OnTunnelDownBlock || seen[pol.Via].connected || s.dests == nil {
-			continue
-		}
-		if d := s.dests.PolicyDestinations(pol.Name); len(d) > 0 {
-			status.PolicyBlocking = append(status.PolicyBlocking, pol.Name)
-			block = append(block, d...)
-		}
-	}
 	block = subtractAll(dedupePrefixes(block), append(slices.Clone(keep), local...))
-	block = dedupePrefixes(append(block, fullBlock...))
-	if len(block) > privops.MaxBlockPrefixes {
-		block = block[:privops.MaxBlockPrefixes]
+	block = append(block, fullBlock...)
+	if s.dests != nil {
+		var exemptions, claimed []netip.Prefix
+		seenPrefix := map[netip.Prefix]bool{}
+		blocking := map[string]bool{}
+		for dst := range s.dests.PolicyDestinations() {
+			if seenPrefix[dst.Prefix] {
+				continue
+			}
+			seenPrefix[dst.Prefix] = true
+			m := dst.Match
+			earlier := claimed
+			claimed = append(claimed, dst.Prefix)
+			if !config.BlocksWhenDown(m.Action) || (seen[m.Via].connected && s.disconnecting[m.Via] == 0) {
+				continue
+			}
+			if exemptions == nil {
+				exemptions = s.policyExceptions(allEndpoints)
+			}
+			winning := []netip.Prefix{dst.Prefix}
+			if dst.Prefix.Bits() < dst.Prefix.Addr().BitLen() {
+				winning = subtractPrefix(dst.Prefix, earlier)
+			}
+			winning = subtractAll(winning, exemptions)
+			if len(winning) > 0 {
+				blocking[m.Policy] = true
+				block = append(block, winning...)
+			}
+		}
+		for name := range blocking {
+			status.PolicyBlocking = append(status.PolicyBlocking, name)
+		}
+		sort.Strings(status.PolicyBlocking)
 	}
+	block = dedupePrefixes(block)
 
 	switch {
 	case len(status.Blocking) > 0:
@@ -314,7 +381,9 @@ func (s *KillSwitchService) Apply() error {
 	s.mu.Unlock()
 
 	var err error
-	if blocker != nil {
+	if len(block) > privops.MaxBlockPrefixes {
+		err = fmt.Errorf("blocked destinations exceed firewall limit of %d", privops.MaxBlockPrefixes)
+	} else if blocker != nil {
 		err = blocker.Set(block)
 	}
 	if err != nil {
@@ -340,6 +409,27 @@ func (s *KillSwitchService) Apply() error {
 		}
 	}
 	return err
+}
+
+func (s *KillSwitchService) policyExceptions(known []netip.Addr) []netip.Prefix {
+	exceptions := slices.Clone(neverBlock)
+	for _, addr := range known {
+		exceptions = append(exceptions, hostPrefix(addr))
+	}
+	for name, v := range s.cfg.VPNs {
+		st := s.profile(name)
+		if st.endpoints != nil {
+			continue
+		}
+		st.endpoints = []netip.Addr{}
+		for _, ip := range s.profileEndpointIPs(v) {
+			if addr, err := netip.ParseAddr(ip); err == nil {
+				st.endpoints = append(st.endpoints, addr.Unmap())
+				exceptions = append(exceptions, hostPrefix(addr))
+			}
+		}
+	}
+	return exceptions
 }
 
 // SetOnBlock sets the callback run once when a dropped tunnel starts being

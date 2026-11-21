@@ -24,6 +24,7 @@ var (
 	policyAddVia           string
 	policyAddName          string
 	policyAddBlockWhenDown bool
+	policyAddOnTunnelDown  string
 	policyAddNoSubdomains  bool
 	policyRemoveYes        bool
 )
@@ -79,6 +80,13 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 			Apps:     targets.Apps,
 		},
 	}
+	rule.OnTunnelDown = strings.ToLower(strings.TrimSpace(policyAddOnTunnelDown))
+	if rule.OnTunnelDown == "inherit" {
+		rule.OnTunnelDown = ""
+	}
+	if policyAddBlockWhenDown && cmd.Flags().Changed("on-tunnel-down") {
+		return errors.New(ct("cli.policy.add.on_tunnel_down_conflict"))
+	}
 	if policyAddBlockWhenDown {
 		rule.OnTunnelDown = config.OnTunnelDownBlock
 	}
@@ -87,13 +95,14 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	var profile config.VPNConfig
+	if cfg != nil {
+		profile = cfg.VPNs[via]
+	}
 	res := policyAddResult{
 		Name: rule.Name, Via: via, ViaDaemon: viaDaemon,
 		Domains: nonNilStrings(targets.Domains), IPRanges: nonNilStrings(targets.IPRanges), Apps: nonNilStrings(targets.Apps),
-		OnTunnelDown: config.OnTunnelDownAllow,
-	}
-	if policyAddBlockWhenDown {
-		res.OnTunnelDown = config.OnTunnelDownBlock
+		OnTunnelDown: rule.TunnelDownAction(profile),
 	}
 	if outputJSON {
 		return emitJSON(res)
@@ -110,10 +119,15 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 			fmt.Println("  " + styleDim.Render(cf(line.key, strings.Join(line.list, ", "))))
 		}
 	}
-	if policyAddBlockWhenDown {
-		fmt.Println("  " + styleDim.Render(ct("cli.policy.add.blocked_when_down")))
-	} else {
+	switch rule.OnTunnelDown {
+	case "":
+		fmt.Println("  " + styleDim.Render(ct("policy.on_down.inherit")))
+	case config.OnTunnelDownAllow:
 		fmt.Println("  " + styleDim.Render(ct("cli.policy.add.allowed_when_down")))
+	case config.OnTunnelDownBlock:
+		fmt.Println("  " + styleDim.Render(ct("cli.policy.add.blocked_when_down")))
+	case config.OnTunnelDownConnect:
+		fmt.Println("  " + styleDim.Render(ct("policy.on_down.connect")))
 	}
 	if !viaDaemon {
 		fmt.Println(tuiInfo(ct("cli.policy.add.saved_offline")))
@@ -263,6 +277,7 @@ func init() {
 	policyAddCmd.Flags().StringVar(&policyAddVia, "via", "", ct("cli.policy.add.flag.via"))
 	policyAddCmd.Flags().StringVar(&policyAddName, "name", "", ct("cli.policy.add.flag.name"))
 	policyAddCmd.Flags().BoolVar(&policyAddBlockWhenDown, "block-when-down", false, ct("cli.policy.add.flag.block_when_down"))
+	policyAddCmd.Flags().StringVar(&policyAddOnTunnelDown, "on-tunnel-down", "", ct("cli.policy.add.flag.on_tunnel_down"))
 	policyAddCmd.Flags().BoolVar(&policyAddNoSubdomains, "no-subdomains", false, ct("cli.policy.add.flag.no_subdomains"))
 	policyRemoveCmd.Flags().BoolVarP(&policyRemoveYes, "yes", "y", false, ct("cli.policy.remove.flag.yes"))
 	policyCmd.AddCommand(policyAddCmd, policyRemoveCmd)

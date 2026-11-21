@@ -41,6 +41,8 @@ describe('policy validation (mirrors the daemon)', () => {
   it('cleans pasted URLs to the host', () => {
     expect(normalizeDomain('https://Git.MiEmpresa.com:8443/repo?x=1')).toBe('git.miempresa.com')
     expect(normalizeDomain('example.com.')).toBe('example.com')
+    expect(normalizeDomain('*.café.example.')).toBe('*.xn--caf-dma.example')
+    expect(normalizeDomain('https://café.example:8443/site')).toBe('xn--caf-dma.example')
   })
 
   it('accepts IPs and CIDRs like net.ParseCIDR, IPv6 included', () => {

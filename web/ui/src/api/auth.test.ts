@@ -92,11 +92,18 @@ describe('auth', () => {
     expect(authState.get()).toBe('unauthorized')
   })
 
-  it('a 401 marks the page unauthorized; a later answer clears it', async () => {
+  it('a 401 stops requests until a fresh local nonce is exchanged', async () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('unauthorized', { status: 401 }))))
     await expect(api.preferences()).rejects.toMatchObject({ kind: 'unauthorized' })
     expect(authState.get()).toBe('unauthorized')
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))))
+    const next = vi.fn((input: RequestInfo | URL) => Promise.resolve(new Response(
+      String(input) === '/api/v1/session' ? '{"session_token":"fresh"}' : '{}',
+    )))
+    vi.stubGlobal('fetch', next)
+    await expect(api.preferences()).rejects.toMatchObject({ kind: 'unauthorized' })
+    expect(next).not.toHaveBeenCalled()
+    window.history.replaceState(null, '', '/#k=fresh')
+    await startAuth()
     await api.preferences()
     expect(authState.get()).toBe('ok')
   })

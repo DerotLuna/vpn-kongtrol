@@ -63,7 +63,7 @@ const es = {
   'home.lastError.fileOwner': 'El archivo de configuración de la VPN no es tuyo. Cópialo a tu carpeta de usuario (por ejemplo ~/.kongtrol) y apunta el perfil a la copia.',
   'home.lastError.fileWritable': 'Otros usuarios pueden modificar el archivo de configuración de la VPN. Muévelo a tu carpeta de usuario (por ejemplo ~/.kongtrol) y reintenta.',
   'home.lastError.sessionOwner': 'Esa conexión OpenVPN la inició otro usuario. Desconéctala desde la sesión de ese usuario.',
-  'home.lastError.generic': 'Vuelve a intentarlo; si sigue, abre Ajustes → Diagnóstico.',
+  'home.lastError.generic': 'Vuelve a intentarlo o revisa qué pasó.',
 
   'home.routes.toggle': 'Rutas ({n})',
   'home.routes.toggleAll': 'Rutas (todo)',
@@ -243,7 +243,7 @@ const en: Strings<typeof es> = {
   'home.lastError.fileOwner': 'The VPN config file is not yours. Copy it into your user folder (e.g. ~/.kongtrol) and point the profile at the copy.',
   'home.lastError.fileWritable': 'Other users can change the VPN config file. Move it into your user folder (e.g. ~/.kongtrol) and retry.',
   'home.lastError.sessionOwner': 'That OpenVPN connection was started by another user. Disconnect it from that user’s session.',
-  'home.lastError.generic': 'Try again; if it persists, open Settings → Diagnostics.',
+  'home.lastError.generic': 'Try again or check what happened.',
 
   'home.routes.toggle': 'Routes ({n})',
   'home.routes.toggleAll': 'Routes (everything)',

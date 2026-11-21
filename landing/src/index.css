@@ -600,7 +600,12 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .section-sub { font-size: var(--step-0); line-height: 1.6; color: var(--text-muted); max-width: var(--measure); text-wrap: pretty; }
 
 /* ── Features / Control tower ───────────────────────────────────────────────── */
-.features-section { container-type: inline-size; }
+.features-section {
+  container-type: inline-size;
+  background-image:
+    radial-gradient(ellipse at 84% 26%, color-mix(in srgb, var(--signal-mark) 10%, transparent), transparent 56%),
+    radial-gradient(ellipse at 0% 78%, color-mix(in srgb, var(--steel) 8%, transparent), transparent 48%);
+}
 
 
 .source-install {
@@ -750,6 +755,7 @@ code, pre, .mono { font-family: var(--font-mono); font-size: 0.88em; }
 .guide-more > summary:hover { background: color-mix(in srgb, var(--signal) var(--state-hover), transparent); }
 .guide-more > summary::-webkit-details-marker { display: none; }
 .guide-more[open] > summary { border-bottom: 1px solid var(--border); }
+.guide-faq > p { margin: 0; padding: 12px 16px; }
 
 /* ── Disclosures (every <details>: .guide-more, .dl-more) ──
    The +/− marker is drawn (.disclosure-mark in the <summary>): two bars; the
@@ -917,10 +923,10 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   padding-right: 64px;
 }
 .footer-wink { font-size: var(--text-min); color: var(--text-dim); letter-spacing: 0.04em; }
-/* "Hecho con ♥ por Rubén Luna" (ADR-0081): the heart is the one gold mark here */
+/* A warm red heart in the author credit. */
 .footer-made { display: inline-flex; align-items: center; gap: 0.4em; font-size: var(--text-min); color: var(--text-muted); letter-spacing: 0.04em; }
 .footer-made .footer-gh-link { color: var(--text); }
-.footer-heart { color: var(--signal-mark); vertical-align: -1px; }
+.footer-heart { color: var(--danger); vertical-align: -1px; }
 
 /* giant cropped wordmark — a faint watermark pinned to the bottom, alone:
    .footer-inner keeps its content above it (padding-bottom = --giant-h) */
@@ -932,8 +938,17 @@ body:has(.tmux-bar) { --tmux-h: 34px; }
   font-size: var(--giant-size);
   line-height: 0.76; letter-spacing: -0.03em;
   text-align: center; white-space: nowrap;
-  /* solid faint gold, no gradient text (One Accent Rule) */
   color: color-mix(in srgb, var(--signal-mark) 22%, transparent);
+}
+@supports (background-clip: text) {
+  .footer-giant {
+    background-image: linear-gradient(145deg,
+      color-mix(in srgb, var(--signal-mark) 33%, transparent),
+      color-mix(in srgb, var(--signal-mark) 15%, transparent) 52%,
+      color-mix(in srgb, var(--steel) 18%, transparent));
+    background-clip: text;
+    color: transparent;
+  }
 }
 
 /* back to top: round Ink icon button, fixed bottom-right above the tmux bar

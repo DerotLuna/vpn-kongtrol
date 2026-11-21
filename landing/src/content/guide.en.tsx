@@ -131,12 +131,12 @@ export default function guideEN(os: OS): GuideContent {
       attach: <><strong>If you use your VPN's app:</strong> when you connect, if the tunnel is already up, Kongtrol attaches to it.
         If not, it opens the app and connects for you when it can. If it can't, it tells you what to do and waits for you to connect.</>,
       cliTitle: <>From the terminal</>,
-      cli: <><IC c="kongtrol init" /> asks, in this order:</>,
+      cli: <>To create your first profile, run <IC c="kongtrol init" />.</>,
       cliSteps: [
         <>Your VPNs: it finds the installed apps (✓) and asks for each profile's name and details.</>,
-        <>Rules: which sites or networks use each VPN (you can leave it for later).</>,
-        <>Security: kill switch, DNS protection, signed log, panel and the optional public IP check.</>,
-        <>Review and save to <IC c="~/.kongtrol/kongtrol.yaml" />. Then it offers the helper and "Connect now?".</>,
+        <>Save the profile and exit, or continue to rules and security.</>,
+        <>If you continue, choose which sites or networks use the VPN and set options like the kill switch and DNS protection.</>,
+        <>Kongtrol saves your changes to <IC c="~/.kongtrol/kongtrol.yaml" /> and offers to install the helper if needed.</>,
       ],
       cliMore: <>If you already have profiles, <IC c="kongtrol init" /> shows a menu: add a profile, update credentials,
         rules, security or save. For scripts: <IC c="kongtrol profile add" /> and <IC c="kongtrol profile import" />.
@@ -156,6 +156,7 @@ $ kongtrol profile import ~/Downloads/proton-us.conf`,
       code: `$ kongtrol up office           # connect one VPN
 $ kongtrol up office aws       # several at once
 $ kongtrol status --watch      # live status · q closes the view, VPNs stay up
+$ kongtrol tray                # open the tray icon if the tray app is installed
 $ kongtrol down office         # disconnect one
 $ kongtrol down --all          # disconnect all`,
       waiting: <><strong>"Waiting for connection in …"</strong> means Kongtrol opened your VPN's app and waits for you to connect there.
@@ -166,25 +167,28 @@ $ kongtrol down --all          # disconnect all`,
     // feature:policies feature:routes
     policies: {
       title: <>What goes through each VPN</>,
-      lead: <>With several VPNs at once, <strong>rules</strong> decide which destination uses which. Without a rule, it uses your normal internet.</>,
+      lead: <>A <strong>rule</strong> chooses which destinations use a VPN profile. A <strong>route</strong> is the path your device takes to reach a destination. Other traffic follows the device's existing routes.</>,
       diagram: `  destination          rule                         goes through
   ─────────────────────────────────────────────────────────────────
   claude.ai        ──▶  domains: claude.ai      ──▶  us-content
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  office
   example.com      ──▶  no rule                 ──▶  normal internet`,
-      panel: <>In the panel: <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the VPN and test before saving.
-        In the terminal:</>,
+      panel: <>In the panel, open <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the VPN and test before saving.
+        If Kongtrol asks you to reopen the panel after saving your first profile, use the tray icon in the same browser. You have ten minutes to resume setup and recover your rule draft.
+        You can also create the rule in the terminal.</>,
       code: `$ kongtrol policy add github.com --via office
 $ kongtrol policy show github.com     # which VPN it uses and why
 $ kongtrol policy list
 $ kongtrol policy remove <name>`,
-      down: <><strong>If a rule's VPN is off,</strong> that destination uses your normal internet. To block it instead:{' '}
-        <IC c="--block-when-down" /> (in the file, <IC c="on_tunnel_down: block" />).</>,
+      down: <><strong>When the VPN is off,</strong> the profile can allow the regular connection, block known destinations, or block them and try to connect when Kongtrol sees TCP activity. Each rule can choose its own action.
+        Use <IC c="kongtrol profile on-tunnel-down office block" /> to change it. Detection can miss quick or rejected attempts. On macOS, connect manually.</>,
+      // feature:default_egress
+      defaultEgress: <>On Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. It takes effect on connect. More specific routes keep priority.</>,
       yamlLead: <>You can also write them in <IC c="kongtrol.yaml" />, under <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI
     match:
-      domains: [claude.ai, "*.anthropic.com"]
+      domains: [claude.com, "*.claude.com", api.anthropic.com, "*.anthropic.com"]
     via: us-content
 
   - name: Office network
@@ -193,8 +197,9 @@ $ kongtrol policy remove <name>`,
       domains: ["*.yourcompany.com"]
     via: office
     on_tunnel_down: block   # optional: if office is off, block`,
-      match: <><strong>How the choice is made:</strong> <IC c="*.company.com" /> covers subdomains, not <IC c="company.com" /> itself (add both).
-        For networks the most specific wins: <IC c="10.10.1.0/24" /> before <IC c="10.0.0.0/8" />.
+      match: <><strong>Example destinations.</strong> Use <IC c="claude.com" /> for the root domain, <IC c="api.anthropic.com" /> for an exact subdomain, and <IC c="*.anthropic.com" /> for one level of subdomains. Kongtrol looks up some common names to install routes. Enter the full name of each subdomain you need.
+        You can use <IC c="café.example" />. Names also match if you paste uppercase letters or a trailing dot.
+        Use <IC c="192.0.2.42" /> for one IP, <IC c="2001:db8::42" /> for IPv6, or <IC c="192.0.2.0/24" /> for a network. The most specific network wins when they overlap.
         App rules (<IC c="apps" />) only explain for now; they don't route.</>,
       apply: <>After editing the file: <IC c="kongtrol config validate" /> and <IC c="kongtrol reload --policy" /> (applies without touching the tunnels).
         Changes in the panel apply by themselves.</>,
@@ -210,11 +215,21 @@ $ kongtrol down --group work`,
       note: <>A VPN can be in several groups. If you edit the file while Kongtrol runs:{' '}
         <IC c="kongtrol reload" /> applies the changes without a restart.</>,
     },
+    faq: {
+      title: 'Frequently asked questions',
+      items: [
+        { question: 'Do I need WireGuard or my VPN provider’s app?', answer: <>A direct WireGuard profile requires your system’s WireGuard tools. If you choose a provider that uses its own app, install that app and connect there when Kongtrol asks.</> },
+        { question: 'Can I use several VPNs at once?', answer: <>You can split destinations across compatible profiles. Some apps control the entire connection, DNS, or the firewall. If one VPN fails when you connect another, open <a href="#doctor">Diagnostics</a> to check what your device sees.</> },
+        { question: 'What happens if I close the dashboard?', answer: <>Your connections stay active. Open the dashboard or tray to see them. Use <IC c="kongtrol down --all" /> to disconnect all of them.</> },
+      ],
+    },
+    // feature:wizard_doctor feature:direct_diagnostics
     doctor: {
       title: <>Check that all is well</>,
       lead: <>In the panel: <strong>Settings</strong> → <strong>Diagnostics</strong>. It checks your VPNs, files, saved passwords and the helper.
-        Each problem says what to do; if the helper is missing, the <strong>Fix</strong> button installs it.</>,
-      code: `$ kongtrol doctor          # the same in the terminal
+        Each problem says what to do. Diagnostics also warns when two detected VPNs announce full routes for IPv4 or IPv6.</>,
+      code: `$ kongtrol dashboard --diagnostics  # open Diagnostics directly
+$ kongtrol doctor          # the same in the terminal
 $ kongtrol doctor --fix    # and repairs what it can`,
       export: <><strong>Export configuration</strong> (in Diagnostics, or <IC c="kongtrol export" />) gives you a file without passwords,
         useful to ask for help or to set up a teammate's computer.</>,

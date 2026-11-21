@@ -19,7 +19,7 @@
 // refetches every other resource and announces CHANGED_EVENT so the
 // preferences (theme, language) are read again too.
 import type { QueryClient } from '@tanstack/react-query'
-import { liveTicket } from '../api/auth'
+import { authState, liveTicket } from '../api/auth'
 import { sortTunnels } from '../api/client'
 import type { TunnelMetrics } from '../api/types'
 import { backoffDelay } from './backoff'
@@ -84,16 +84,17 @@ export function startLiveFeed(client: QueryClient, opts: LiveFeedOptions = {}): 
     if (closed) return
     hadOutage = true
     liveState.set('down')
-    timer = setTimeout(open, delay(attempt++))
+    if (authState.get() === 'ok') timer = setTimeout(open, delay(attempt++))
   }
 
   const open = () => {
+    if (closed || authState.get() === 'unauthorized') return
     liveState.set(attempt === 0 ? 'connecting' : 'down')
     ticket().then(connect, retry)
   }
 
   const connect = (t: string) => {
-    if (closed) return
+    if (closed || authState.get() === 'unauthorized') return
     socket = new WS(withTicket(opts.url ?? liveFeedURL(), t))
     socket.onopen = () => {
       attempt = 0
@@ -114,10 +115,21 @@ export function startLiveFeed(client: QueryClient, opts: LiveFeedOptions = {}): 
     }
     socket.onclose = retry
   }
+  const unsubscribe = authState.subscribe(() => {
+    if (authState.get() === 'unauthorized') {
+      clearTimeout(timer)
+      socket?.close()
+      socket = null
+      liveState.set('down')
+    } else {
+      open()
+    }
+  })
   open()
 
   return () => {
     closed = true
+    unsubscribe()
     clearTimeout(timer)
     socket?.close()
   }

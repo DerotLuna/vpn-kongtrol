@@ -182,6 +182,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/security/publicip/check", s.handleCheckPublicIP)
 	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
 	mux.HandleFunc("GET /api/v1/vpns/detect", s.handleDetectVPNs)
+	mux.HandleFunc("GET /api/v1/vpns/{name}/default-egress", s.handleDefaultEgress)
+	mux.HandleFunc("PUT /api/v1/vpns/{name}/default-egress", s.handleSetDefaultEgress)
 	mux.HandleFunc("GET /api/v1/connections/recent", s.handleRecentConnections)
 	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
 	mux.HandleFunc("POST /api/v1/vpns/import", s.handleImportVPNFile)

@@ -32,6 +32,8 @@ type VPNConfig struct {
 	Host       string `yaml:"host,omitempty"`
 	Port       int    `yaml:"port,omitempty"`
 	TunnelName string `yaml:"tunnel_name,omitempty"`
+	// DefaultEgress preserves native default routing for direct WireGuard on Linux.
+	DefaultEgress bool `yaml:"default_egress,omitempty"`
 	// FortiClient-only: when true, GUI automation accepts certificate warnings.
 	// Keep false in production to avoid MITM risk.
 	AllowInsecureCert bool       `yaml:"allow_insecure_cert,omitempty"`
@@ -44,6 +46,8 @@ type VPNConfig struct {
 	// It never links profiles: failover only follows Failover.
 	Priority   int   `yaml:"priority,omitempty"`
 	KillSwitch *bool `yaml:"kill_switch,omitempty"` // optional per-profile override
+	// OnTunnelDown is the default action for policies through this profile.
+	OnTunnelDown string `yaml:"on_tunnel_down,omitempty"`
 	// Failover lists, in order, the profiles the watchdog may connect when
 	// this one drops and cannot reconnect. Empty (default): never connect
 	// another profile. Profiles are never linked by name, type or priority.
@@ -120,9 +124,10 @@ type PolicyRule struct {
 	Via   string    `yaml:"via,omitempty"  validate:"required"`
 	// OnTunnelDown is what happens to this policy's traffic while its
 	// tunnel is not connected (the user decides which tunnels are up):
-	//   allow   (default) normal internet, and Kongtrol notifies;
+	//   allow   normal internet, and Kongtrol notifies;
 	//   block   the traffic must not leave through the normal internet;
-	//   connect Kongtrol connects the tunnel when the traffic shows up.
+	//   connect block and try connecting when TCP activity is observed.
+	// An empty value inherits the profile action.
 	OnTunnelDown string `yaml:"on_tunnel_down,omitempty"`
 }
 
@@ -133,11 +138,23 @@ const (
 	OnTunnelDownConnect = "connect"
 )
 
-// TunnelDownAction returns the policy's on_tunnel_down action ("allow"
-// when unset).
-func (p PolicyRule) TunnelDownAction() string {
-	if p.OnTunnelDown == "" {
+// BlocksWhenDown reports whether an action requires firewall protection.
+func BlocksWhenDown(action string) bool {
+	return action == OnTunnelDownBlock || action == OnTunnelDownConnect
+}
+
+// TunnelDownAction returns the profile default, or allow when omitted.
+func (v VPNConfig) TunnelDownAction() string {
+	if v.OnTunnelDown == "" {
 		return OnTunnelDownAllow
+	}
+	return v.OnTunnelDown
+}
+
+// TunnelDownAction returns the explicit policy action or the profile default.
+func (p PolicyRule) TunnelDownAction(profile VPNConfig) string {
+	if p.OnTunnelDown == "" {
+		return profile.TunnelDownAction()
 	}
 	return p.OnTunnelDown
 }

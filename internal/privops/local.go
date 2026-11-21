@@ -86,7 +86,7 @@ func failed(op string, err error) error {
 	if err == nil {
 		return nil
 	}
-	for _, s := range []error{ErrInvalidRequest, ErrDenied, ErrNotFound, ErrUnsupported} {
+	for _, s := range []error{ErrInvalidRequest, ErrDenied, ErrNotFound, ErrUnsupported, ErrWGDefaultEgressConflict} {
 		if errors.Is(err, s) {
 			return err
 		}
@@ -241,6 +241,12 @@ func (l *Local) KillSwitchDisable(ctx context.Context) error {
 
 func (l *Local) wgDir() string { return filepath.Join(l.opts.StateDir, "wg") }
 
+const wgDefaultEgressSuffix = ".default-egress"
+
+func (l *Local) wgDefaultEgressMarker(name string) string {
+	return filepath.Join(l.wgDir(), name+wgDefaultEgressSuffix)
+}
+
 // wgManaged reports whether name was installed through privops (its
 // private copy exists) or is a stale tunnel from older Kongtrol builds.
 func (l *Local) wgManaged(name string) bool {
@@ -267,7 +273,12 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 	if err != nil {
 		return WGTunnel{}, err
 	}
-	if err := ValidateWireGuardConfig(data); err != nil {
+	defer clear(data)
+	if req.DefaultEgress {
+		if result := inspectWireGuardDefaultEgress(data); !result.Compatible {
+			return WGTunnel{}, invalid("native WireGuard default routing: %s", result.Reason)
+		}
+	} else if err := ValidateWireGuardConfig(data); err != nil {
 		return WGTunnel{}, err
 	}
 	l.mu.Lock()
@@ -276,14 +287,55 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		return WGTunnel{}, failed("state dir", err)
 	}
 	copyPath := filepath.Join(l.wgDir(), name+".conf")
+	marker := l.wgDefaultEgressMarker(name)
+	_, markerErr := os.Stat(marker)
+	if markerErr != nil && !os.IsNotExist(markerErr) {
+		return WGTunnel{}, failed("read WireGuard default routing state", markerErr)
+	}
+	if req.DefaultEgress {
+		replacing := ""
+		if l.wgManaged(name) {
+			replacing = name
+		}
+		if err := checkNativeDefaultRules(ctx, replacing); err != nil {
+			return WGTunnel{}, failed("check WireGuard default routes", err)
+		}
+	} else if hasAutomaticWireGuardDefault(data) {
+		entries, err := os.ReadDir(l.wgDir())
+		if err != nil {
+			return WGTunnel{}, failed("read WireGuard state", err)
+		}
+		for _, entry := range entries {
+			other, marked := strings.CutSuffix(entry.Name(), wgDefaultEgressSuffix)
+			if marked && other != name && l.wgManaged(other) {
+				if live, _ := wgIsTunnelFn(ctx, other); live {
+					return WGTunnel{}, ErrWGDefaultEgressConflict
+				}
+			}
+		}
+	}
 	if l.wgManaged(name) {
-		_ = sysWGDown(ctx, name, copyPath)
+		if err := sysWGDown(ctx, name, copyPath); err != nil && (req.DefaultEgress || markerErr == nil) {
+			live, probeErr := wgIsTunnelFn(ctx, name)
+			if live || probeErr != nil {
+				return WGTunnel{}, failed("stop previous WireGuard tunnel", err)
+			}
+		}
+	}
+	if req.DefaultEgress {
+		if err := writePrivateFile(marker, nil); err != nil {
+			return WGTunnel{}, failed("record WireGuard default routing", err)
+		}
+	} else if err := os.Remove(marker); err != nil && !os.IsNotExist(err) {
+		return WGTunnel{}, failed("clear WireGuard default routing", err)
 	}
 	if err := writePrivateFile(copyPath, data); err != nil {
+		_ = os.Remove(marker)
 		return WGTunnel{}, failed("write tunnel config", err)
 	}
 	if err := sysWGUp(ctx, name, copyPath); err != nil {
 		_ = os.Remove(copyPath)
+		_ = os.Remove(marker)
 		return WGTunnel{}, failed("start WireGuard tunnel", err)
 	}
 	return WGTunnel{Name: name}, nil
@@ -383,6 +435,7 @@ func (l *Local) WGRemoveTunnel(ctx context.Context, req WGRemoveRequest) error {
 		return failed("stop WireGuard tunnel", err)
 	}
 	_ = os.Remove(copyPath)
+	_ = os.Remove(l.wgDefaultEgressMarker(req.Name))
 	return nil
 }
 
@@ -392,13 +445,20 @@ func (l *Local) WGSetAllowedIPs(ctx context.Context, req WGAllowedIPsRequest) er
 		return err
 	}
 	l.mu.Lock()
+	defer l.mu.Unlock()
 	present, err := l.wgAuthorize(ctx, req.Interface, req.ConfigPath, true)
-	l.mu.Unlock()
 	if err != nil {
 		return err
 	}
 	if !present {
 		return fmt.Errorf("%w: WireGuard tunnel %q is not running", ErrNotFound, req.Interface)
+	}
+	if _, err := os.Stat(l.wgDefaultEgressMarker(req.Interface)); err == nil {
+		// This peer already accepts both address families. Retain /0 so
+		// wg-quick also removes its routing rules on disconnect.
+		return nil
+	} else if !os.IsNotExist(err) {
+		return failed("read WireGuard default routing state", err)
 	}
 	return failed("set allowed IPs", wgSetFn(ctx, req))
 }

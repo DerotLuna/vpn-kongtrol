@@ -8,6 +8,7 @@
 // the state allows and shows the one in progress in place until the daemon
 // reports that it ended (data/transition.ts).
 import { memo, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import type { TunnelMetrics } from '../../api/types'
 import { useAddSheet } from '../../app/addLink'
 import { usePreferences } from '../../app/preferences-context'
@@ -83,6 +84,8 @@ export const TunnelStatusCell = memo(function TunnelStatusCell({ tn }: { tn: Tun
           <p>
             <strong>{t('home.lastError', { time: formatClock(tn.last_error_at, lang) })}</strong>{' '}
             {errorFix ? t(errorFix) : t('home.lastError.generic')}
+            {' '}
+            <Link to="/settings?section=diagnostics">{t('diag.open')}</Link>
           </p>
           {tn.last_error && (
             <details className="home-detail">

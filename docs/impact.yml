@@ -73,9 +73,11 @@ features:
     code:
       - internal/policy/**
       - internal/monitor/policywatch.go
+      - internal/monitor/policyresolver.go
       - internal/api/handlers_policy.go
       - cmd/kongtrol/policy_cmd.go
       - cmd/kongtrol/cmd_policy_edit.go
+      - cmd/kongtrol/cmd_tunnel_down.go
       - cmd/kongtrol/wizard_policies.go
       - cmd/kongtrol-tray/tray_policy.go
       - web/ui/src/components/rules/**
@@ -84,6 +86,7 @@ features:
     surfaces:
       - AGENTS.md#policies
       - docs/SETUP.md#policies
+      - docs/CONFIGURATION.md#policies
       - landing/src/content/guide.es.tsx#policies
       - landing/src/content/guide.en.tsx#policies
 
@@ -91,6 +94,8 @@ features:
     code:
       - internal/routing/**
       - internal/monitor/policyresolver.go
+      - internal/monitor/splitdns.go
+      - internal/config/policy_domain.go
       - internal/api/handlers_routes.go
       - cmd/kongtrol/cmd_routes.go
       - cmd/kongtrol/traffic_map.go
@@ -99,6 +104,24 @@ features:
       - docs/SETUP.md#policies
       - landing/src/content/guide.es.tsx#routes
       - landing/src/content/guide.en.tsx#routes
+
+  default_egress:
+    code:
+      - cmd/kongtrol/cmd_routes_default_egress.go
+      - internal/api/handlers_default_egress.go
+      - internal/config/default_egress.go
+      - internal/configedit/default_egress.go
+      - internal/privops/wg_egress*.go
+      - web/ui/src/components/profiles/DefaultEgress.tsx
+    surfaces:
+      - AGENTS.md#default_egress
+      - README.md#default_egress
+      - docs/API.md#default_egress
+      - docs/CONFIGURATION.md#default_egress
+      - docs/SETUP.md#default_egress
+      - landing/src/content/guide.es.tsx#default_egress
+      - landing/src/content/guide.en.tsx#default_egress
+      - web/ui/src/i18n/pages/profiles.ts#default_egress
 
   providers:
     code:
@@ -221,6 +244,7 @@ features:
   tray_exits:
     code:
       - cmd/kongtrol-tray/**
+      - cmd/kongtrol/cmd_tray.go
     surfaces:
       - AGENTS.md#tray_exits
       - landing/src/content/guide.es.tsx#daemon_lifecycle
@@ -318,10 +342,24 @@ features:
       - cmd/kongtrol/wizard*.go
       - cmd/kongtrol/doctor*.go
       - internal/doctor/**
+      - internal/api/handlers_doctor.go
     surfaces:
       - docs/SETUP.md#wizard
+      - docs/SETUP.md#wizard_doctor
       - landing/src/content/guide.es.tsx#wizard
       - landing/src/content/guide.en.tsx#wizard
+      - landing/src/content/guide.es.tsx#wizard_doctor
+      - landing/src/content/guide.en.tsx#wizard_doctor
+
+  direct_diagnostics:
+    code:
+      - cmd/kongtrol/cmd_dashboard.go
+      - web/ui/src/components/home/TunnelRow.tsx
+      - web/ui/src/pages/TrayPage.tsx
+    surfaces:
+      - docs/SETUP.md#direct_diagnostics
+      - landing/src/content/guide.es.tsx#direct_diagnostics
+      - landing/src/content/guide.en.tsx#direct_diagnostics
 
 
   first_run:
@@ -335,6 +373,8 @@ features:
       - cmd/kongtrol-tray/tray_menu.go
       - web/ui/src/components/profiles/FirstRun.tsx
       - web/ui/src/components/profiles/useRestartAction.ts
+      - web/ui/src/components/add/activate.ts
+      - web/ui/src/components/add/recovery.ts
       - internal/api/handlers_detect.go
     surfaces:
       - AGENTS.md#first_run

@@ -264,7 +264,7 @@ function useRuleColumns(): Column<Policy>[] {
         cell: (p) => (
           <span className="tr-rule-name">
             <span className="mono">{p.name}</span>
-            {p.on_tunnel_down === 'block' && <span className="tr-tag tr-tag--block">{t('traffic.rules.blockTag')}</span>}
+            {(p.on_tunnel_down === 'block' || p.on_tunnel_down === 'connect') && <span className="tr-tag tr-tag--block">{t('traffic.rules.blockTag')}</span>}
           </span>
         ),
       },

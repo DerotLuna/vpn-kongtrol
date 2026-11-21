@@ -18,14 +18,15 @@ const ErrKeyVPNExists = "api.err.vpn_exists"
 // existing VPNConfig, so YAML-only fields the dashboard form does not expose
 // (binary_path, allow_insecure_cert, version, tunnel_name, ...) survive.
 type VPNProfile struct {
-	Name       *string `json:"name"`
-	Type       *string `json:"type"`
-	Host       *string `json:"host"`
-	Port       *int    `json:"port"`
-	Server     *string `json:"server"`
-	Protocol   *string `json:"protocol"`
-	ConfigFile *string `json:"config"`
-	Priority   *int    `json:"priority"`
+	Name         *string `json:"name"`
+	Type         *string `json:"type"`
+	Host         *string `json:"host"`
+	Port         *int    `json:"port"`
+	Server       *string `json:"server"`
+	Protocol     *string `json:"protocol"`
+	ConfigFile   *string `json:"config"`
+	Priority     *int    `json:"priority"`
+	OnTunnelDown *string `json:"on_tunnel_down"`
 	// Failover: the backup profiles, in order; [] clears it.
 	Failover   *[]string `json:"failover"`
 	AuthMethod *string   `json:"auth_method"`
@@ -62,6 +63,9 @@ func setTrimmed(dst, src *string) {
 
 // ApplyTo overlays the fields present in p onto vc.
 func (p VPNProfile) ApplyTo(vc *config.VPNConfig) {
+	if p.OnTunnelDown != nil {
+		vc.OnTunnelDown = strings.ToLower(Str(p.OnTunnelDown))
+	}
 	setTrimmed(&vc.Type, p.Type)
 	setTrimmed(&vc.Host, p.Host)
 	setTrimmed(&vc.Server, p.Server)

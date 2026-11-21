@@ -31,6 +31,7 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 		Protocol           string   `json:"protocol,omitempty"`
 		ConfigFile         string   `json:"config,omitempty"`
 		Priority           int      `json:"priority"`
+		OnTunnelDown       string   `json:"on_tunnel_down"`
 		Failover           []string `json:"failover"`
 		AuthMethod         string   `json:"auth_method,omitempty"`
 		Cert               string   `json:"cert,omitempty"`
@@ -67,6 +68,7 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 			Protocol:           v.Protocol,
 			ConfigFile:         v.ConfigFile,
 			Priority:           v.Priority,
+			OnTunnelDown:       v.TunnelDownAction(),
 			Failover:           append([]string{}, v.Failover...),
 			AuthMethod:         v.Auth.Method,
 			Cert:               v.Auth.Cert,

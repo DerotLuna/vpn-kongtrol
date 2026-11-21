@@ -175,7 +175,9 @@ Pendiente (todavía no publicado).
 1. Abre Kongtrol (menú de inicio, Launchpad o el menú de aplicaciones). Aparece el ícono en la
    bandeja y se abre el panel en tu navegador.
 2. En **Perfiles VPN**, elige el tipo, completa los datos y pulsa **Crear**.
-3. Kongtrol se reinicia solo y te lleva al resumen: ya puedes conectar desde el panel o el ícono.
+3. Kongtrol se reinicia al guardar el primer perfil. Si el panel te pide volver a abrirlo, hazlo
+   desde el ícono de Kongtrol en el mismo navegador. Puedes continuar con el perfil guardado y
+   retomar la regla que estabas preparando durante los próximos diez minutos.
 
 ¿Cerraste el navegador? En el ícono, **Configurar ahora…** lo abre de nuevo. Si prefieres la
 terminal, `kongtrol init` hace lo mismo con un asistente (sección 4).
@@ -257,6 +259,9 @@ sin las líneas dudosas en tu carpeta e impórtala para ver el detalle. (ADR-006
 ---
 
 <!-- feature:wizard -->
+Al crear tu primera VPN con `kongtrol init`, elige **Guardar y salir** o
+**Guardar y configurar rutas y políticas**. Tu perfil queda guardado antes
+del paso de reglas y puedes conectar cuando estés listo.
 ## 4. Registrar tus VPNs: `kongtrol init`
 
 > **¿Ya tienes tus VPNs configuradas?** Perfecto — `kongtrol init` no las toca. Lo que hace es decirle a Kongtrol dónde están y cómo hablarles: qué cliente usar, qué tunnel name tiene, dónde está el `.ovpn`. Si FortiClient ya conecta y OpenVPN ya tiene su `.ovpn`, este paso solo recopila esa información.
@@ -467,6 +472,18 @@ Un enlace (`https://…/x`) se guarda como su sitio; `--no-subdomains` deja solo
 no pones `--name`, el nombre sale solo ("claude.ai por us-content"). Con Kongtrol en marcha se aplica
 al momento; si no, se guarda en `kongtrol.yaml`.
 
+<!-- feature:policies -->
+En **Perfiles**, elige qué hacen sus reglas cuando la VPN está apagada. Cada regla puede heredar
+esa opción o elegir otra. También puedes cambiarla desde la terminal.
+
+```bash
+kongtrol profile on-tunnel-down office connect
+kongtrol policy on-tunnel-down teams allow
+```
+
+`block` protege las direcciones conocidas. `connect` también las bloquea e intenta conectar si
+se detecta tráfico TCP. Un intento rechazado puede pasar inadvertido. En macOS, conecta desde Inicio.
+
 ### Opción A: desde el wizard
 
 Al final de `kongtrol init` (después de seguridad), el wizard pregunta:
@@ -566,7 +583,14 @@ policies:
 | Regla | Cubre | No cubre |
 |---|---|---|
 | `claude.ai` | Solo `claude.ai` exacto | `api.claude.ai` |
-| `*.anthropic.com` | `api.anthropic.com`, `docs.anthropic.com` | `anthropic.com` solo |
+| `claude.com` | Dominio raíz `claude.com` | `www.claude.com` |
+| `api.anthropic.com` | Subdominio exacto `api.anthropic.com` | `docs.anthropic.com` |
+| `*.anthropic.com` | Un nivel, como `api.anthropic.com` o `docs.anthropic.com` | `anthropic.com`, `a.b.anthropic.com` |
+
+Kongtrol consulta algunos nombres frecuentes para instalar rutas a partir del comodín.
+Escribe explícitamente los subdominios que necesites. Puedes pegar nombres con
+mayúsculas, un punto final o caracteres internacionales como `café.example`.
+Para destinos por dirección, `192.0.2.42` identifica una IP y `192.0.2.0/24` una red.
 
 > **Tip:** Para cubrir dominio raíz Y subdominios, agrega dos entradas: `anthropic.com` y `*.anthropic.com`.
 
@@ -647,6 +671,19 @@ Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kong
 ---
 
 ## 6. Verificar con doctor
+
+<!-- feature:direct_diagnostics -->
+Desde un error en Inicio o en la bandeja, usa **Abrir diagnóstico**. También
+puedes abrir esa pantalla con `kongtrol dashboard --diagnostics` o leer las
+comprobaciones en la terminal con `kongtrol doctor`.
+
+<!-- feature:wizard_doctor -->
+**Convivencia de VPN.** Diagnóstico avisa cuando detecta dos VPN con rutas que
+cubren la misma familia de IP completa, o AnyConnect activo junto con otro
+túnel. Para aislar el problema, desconecta temporalmente las otras VPN desde sus
+aplicaciones y vuelve a intentar. Los filtros del proveedor, DNS y errores de
+controlador pueden requerir revisar el diagnóstico de la aplicación.
+[Investigación y pruebas de convivencia](research/2026-11-21-vpn-coexistence.md)
 
 Antes de conectar por primera vez, deja que Kongtrol valide todo:
 
@@ -800,6 +837,13 @@ frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&ta
 ---
 
 ## 9. Uso diario
+
+<!-- feature:default_egress -->
+En Linux, abre la edición de un perfil WireGuard directo y usa **Salida por defecto de WireGuard**.
+También puedes revisar el archivo con `kongtrol routes check-default <perfil>` y cambiar la opción
+con `kongtrol routes default-egress <perfil> on|off`. Desconecta el perfil antes de cambiarla y
+conéctalo para aplicarla. Las rutas más específicas de la red local y de otras VPN conservan
+su prioridad. Consulta [ADR-0085](adr/0085-native-wireguard-default-egress.md) para los requisitos.
 
 ### Comandos más usados
 

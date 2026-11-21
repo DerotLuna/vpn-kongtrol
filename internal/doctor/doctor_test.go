@@ -12,6 +12,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
 )
 
 type fakeRoutes struct{}
@@ -42,6 +43,13 @@ func stubOS(t *testing.T, helperOK bool) {
 	t.Cleanup(func() {
 		helperQueryStatus, helperPing, isElevated, dnsGuardActive, newRouteLister, getCredential = prevQ, prevP, prevE, prevD, prevR, prevC
 	})
+	prevProvider, prevIfaces, prevRoutes := activeProviderTunnel, listNetworkInterfaces, listSystemRoutes
+	t.Cleanup(func() {
+		activeProviderTunnel, listNetworkInterfaces, listSystemRoutes = prevProvider, prevIfaces, prevRoutes
+	})
+	activeProviderTunnel = func(string) (appattach.Tunnel, bool, bool) { return appattach.Tunnel{}, false, false }
+	listNetworkInterfaces = func() []appattach.Iface { return nil }
+	listSystemRoutes = func() ([]routing.Route, error) { return nil, nil }
 	isElevated = func() bool { return false }
 	prevPath := pathEnv
 	t.Cleanup(func() { pathEnv = prevPath })

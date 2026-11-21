@@ -2,12 +2,14 @@ package app
 
 import (
 	"context"
+	"iter"
 	"net"
 	"net/netip"
 	"slices"
 	"testing"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -34,7 +36,9 @@ func (f *fakeAdapter) TunnelInfo() (*vpn.TunnelInfo, error)             { return
 type fakeDests map[string][]netip.Prefix
 
 func (f fakeDests) ProfileDestinations(p string) []netip.Prefix { return f["profile:"+p] }
-func (f fakeDests) PolicyDestinations(p string) []netip.Prefix  { return f["policy:"+p] }
+func (f fakeDests) PolicyDestinations() iter.Seq[monitor.PolicyDestination] {
+	return slices.Values([]monitor.PolicyDestination(nil))
+}
 
 func pfx(ss ...string) []netip.Prefix {
 	var out []netip.Prefix
@@ -235,17 +239,19 @@ func TestKillSwitch_OnBlockOncePerOutageAndHoldsAllTraffic(t *testing.T) {
 func TestKillSwitch_PolicyBlockAndConnectedTunnelKept(t *testing.T) {
 	cfg := ksCfg()
 	cfg.Security.KillSwitch.Enabled = false
-	cfg.VPNs["office"] = config.VPNConfig{Type: "forticlient"}
+	cfg.VPNs["office"] = config.VPNConfig{Type: "forticlient", OnTunnelDown: "connect"}
 	cfg.Policies = []config.PolicyRule{
-		{Name: "corp", Via: "office", OnTunnelDown: "block", Match: config.MatchSpec{IPRanges: []string{"10.0.0.0/8"}}},
+		{Name: "corp", Via: "office", Match: config.MatchSpec{IPRanges: []string{"10.0.0.0/8"}}},
+		{Name: "lab", Via: "brainbox", OnTunnelDown: "allow", Match: config.MatchSpec{IPRanges: []string{"10.20.0.0/16"}}},
 	}
 	off := &fakeAdapter{status: vpn.StatusDisconnected}
 	bb := &fakeAdapter{status: vpn.StatusConnected, info: &vpn.TunnelInfo{InterfaceName: "tun0"}}
 	s, b := newKS(t, cfg, map[string]vpn.VPNAdapter{"office": off, "brainbox": bb},
 		[]routing.Route{rt("10.20.0.0/16", "tun0")},
-		fakeDests{"policy:corp": pfx("10.0.0.0/8")})
+		fakeDests{})
+	s.SetDestinations(monitor.NewPolicyResolver(cfg, nil, nil))
 	_ = s.Apply()
-	// 10/8 is blocked except what the connected brainbox tunnel carries.
+	// The more specific policy wins over the broader inherited block.
 	if slices.Contains(b.set, netip.MustParsePrefix("10.0.0.0/8")) || len(b.set) == 0 {
 		t.Fatalf("blocked = %v", b.set)
 	}
@@ -254,10 +260,34 @@ func TestKillSwitch_PolicyBlockAndConnectedTunnelKept(t *testing.T) {
 			t.Fatalf("blocked a connected tunnel's route: %v", p)
 		}
 	}
-	if st := s.Status(); st.State != "off" || st.PolicyBlocking[0] != "corp" {
+	if st := s.Status(); st.State != "off" || !slices.Equal(st.PolicyBlocking, []string{"corp"}) {
 		t.Fatalf("status = %+v", st)
 	}
 
+}
+
+func TestKillSwitch_ProtectsIntentionalDisconnectWithoutTCPObservation(t *testing.T) {
+	cfg := ksCfg()
+	profile := cfg.VPNs["brainbox"]
+	profile.OnTunnelDown = config.OnTunnelDownConnect
+	cfg.VPNs["brainbox"] = profile
+	cfg.Policies = []config.PolicyRule{{Name: "restricted", Via: "brainbox", Match: config.MatchSpec{IPRanges: []string{"203.0.113.55"}}}}
+	adapter := &fakeAdapter{status: vpn.StatusConnected}
+	s, b := newKS(t, cfg, map[string]vpn.VPNAdapter{"brainbox": adapter}, nil, nil)
+	s.SetDestinations(monitor.NewPolicyResolver(cfg, nil, nil))
+	if err := s.Apply(); err != nil || len(b.set) != 0 {
+		t.Fatalf("connected profile: block set %v, error %v", b.set, err)
+	}
+	finish, err := s.BeginDisconnect("brainbox")
+	if err != nil || !slices.Equal(b.set, pfx("203.0.113.55/32")) {
+		t.Fatalf("before disconnect: block set %v, error %v", b.set, err)
+	}
+	s.NoteIntent("brainbox", true)
+	adapter.status = vpn.StatusDisconnected
+	finish()
+	if !slices.Equal(b.set, pfx("203.0.113.55/32")) {
+		t.Fatalf("after disconnect: block set %v", b.set)
+	}
 }
 
 func TestSubtractPrefix(t *testing.T) {

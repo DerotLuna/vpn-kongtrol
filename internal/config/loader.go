@@ -44,7 +44,11 @@ func Load(path string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("config: reading %s: %w", path, err)
 	}
+	return Parse(data, path)
+}
 
+// Parse validates configuration contents before a caller replaces the file.
+func Parse(data []byte, path string) (*Config, error) {
 	// Expand environment variables in the YAML before parsing.
 	expanded := os.ExpandEnv(string(data))
 

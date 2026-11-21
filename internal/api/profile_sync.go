@@ -54,13 +54,14 @@ func (p profileApply) reconnectRequired(name string) bool {
 }
 
 // tunnelSettingsChanged reports whether an edit touches what a running
-// tunnel was brought up with. Priority, failover and the kill switch
-// override are read when used, so they never need a reconnect.
+// tunnel was brought up with. Priority, failover and the protection
+// settings are read when used, so they never need a reconnect.
 func tunnelSettingsChanged(before, after config.VPNConfig) bool {
 	strip := func(v config.VPNConfig) config.VPNConfig {
 		v.Priority = 0
 		v.Failover = nil
 		v.KillSwitch = nil
+		v.OnTunnelDown = ""
 		return v
 	}
 	return !reflect.DeepEqual(strip(before), strip(after))

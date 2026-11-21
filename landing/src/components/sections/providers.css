@@ -104,3 +104,5 @@
   .provider, .provider-mark { transition: none; }
   .provider:hover .provider-mark { transform: none; }
 }
+.provider-names { max-width: 72ch; margin: 16px 0; color: var(--text); line-height: 1.65; }
+.providers-more > summary { width: fit-content; color: var(--text); cursor: pointer; }

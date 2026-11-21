@@ -230,6 +230,10 @@ func TestMatchGlob(t *testing.T) {
 		{"exact.com", "other.com", false},
 		{"*.amazonaws.com", "s3.amazonaws.com", true},
 		{"*.amazonaws.com", "amazonaws.com", false},
+		{"API.Anthropic.COM.", "api.anthropic.com", true},
+		{"*.Claude.COM", "www.claude.com.", true},
+		{"café.example", "xn--caf-dma.example", true},
+		{"*.café.example.", "www.xn--caf-dma.example", true},
 	}
 
 	for _, tc := range cases {

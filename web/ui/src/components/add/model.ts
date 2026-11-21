@@ -13,7 +13,7 @@
 // - file type by extension: profileimport.TypeForFile (.conf = WireGuard,
 //   .ovpn = OpenVPN).
 import { importName } from '../profiles/importModel'
-import { isDomainPattern, isIPv4, isIPv6, isIpOrCidr } from '../rules/model'
+import { isDomainPattern, isIPv4, isIPv6, isIpOrCidr, normalizeDomain, type TunnelDownChoice } from '../rules/model'
 
 // ── Names ─────────────────────────────────────────────────────────────────
 
@@ -189,9 +189,10 @@ export function classifyEntry(raw: string): Classified {
   const slash = s.indexOf('/')
   // An IP with a bad prefix length (10.0.0.0/40) is refused, not read as a path.
   if (slash > 0 && !s.includes('://') && canonicalIP(s.slice(0, slash))) return { ok: false, problem: 'invalid', value: raw }
-  const host = hostOf(s)
-  const ip = canonicalIP(host)
+  const target = hostOf(s)
+  const ip = canonicalIP(target)
   if (ip) return { ok: true, entry: { kind: 'ip', value: ip, label: ip } }
+  const host = normalizeDomain(target)
   if (!host || host.length > 253 || !isDomainPattern(host)) return { ok: false, problem: 'invalid', value: raw }
   const entry: Entry = { kind: 'domain', value: host, label: host.replace(/^\*\./, '') }
   if (/\.exe$/.test(host)) return { ok: true, entry, hint: 'exe' }
@@ -275,12 +276,12 @@ export interface RuleDraft {
   input: string
   subs: boolean
   via: string
-  onDown: 'allow' | 'block'
+  onDown: TunnelDownChoice
   /** '' = the generated name. */
   name: string
   more: string
 }
 
 export function emptyRuleDraft(input = '', via = ''): RuleDraft {
-  return { input, subs: true, via, onDown: 'allow', name: '', more: '' }
+  return { input, subs: true, via, onDown: 'inherit', name: '', more: '' }
 }

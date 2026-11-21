@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-20
 
-Status: Accepted · Date: 2026-11-20 · Decision-makers: project maintainer (owner)
+Status: Accepted (footer heart color superseded by ADR-0089) · Date: 2026-11-20 · Decision-makers: project maintainer (owner)
 
 ## Context and Problem Statement
 

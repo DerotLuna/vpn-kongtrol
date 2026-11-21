@@ -109,7 +109,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	}()
 	// Safety net for every exit path; runs before DNS restore and PID
 	// removal. The normal path below already disconnected everything.
-	defer disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)
+	defer disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfileForShutdown, shutdownDisconnectTimeout)
 
 	stopServices := startDaemonServices(ctx)
 	defer stopServices()
@@ -143,7 +143,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	// Disconnect while kill switch, watchdog and API are still alive
 	// (their defers run after this), strictly before DNS restore and PID
 	// file removal.
-	disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)
+	disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfileForShutdown, shutdownDisconnectTimeout)
 	return nil
 }
 
@@ -158,7 +158,7 @@ func startDaemonServices(ctx context.Context) func() {
 	if ks != nil {
 		stops = append(stops, func() { _ = ks.Disable() })
 	}
-	// Split-tunnel kill switch + on_tunnel_down: block. The loop notices
+	// Split-tunnel kill switch and policy blocks. The loop notices
 	// unexpected drops; stopping the daemon (`down`) lifts every block.
 	if killSwitchSvc != nil {
 		go killSwitchSvc.Run(ctx, 5*time.Second)

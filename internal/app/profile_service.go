@@ -37,20 +37,21 @@ type DNSManager interface {
 }
 
 type ProfileService struct {
-	cfg            *config.Config
-	adapters       *vpn.Set
-	watchdog       Watchdog
-	policyResolver PolicyResolver
-	dnsMgr         DNSManager
-	applyKill      func() error
-	format         func(key string, args ...any) string
-	translate      func(key string) string
-	emitAlert      func(level, profile, message string)
-	logAudit       func(level, action, profile, message string)
-	emitWarn       func(message string)
-	emitStderr     func(message string)
-	onAttach       func(name string, st vpn.AttachState)
-	onIntent       func(name string, intendedDown bool)
+	cfg             *config.Config
+	adapters        *vpn.Set
+	watchdog        Watchdog
+	policyResolver  PolicyResolver
+	dnsMgr          DNSManager
+	applyKill       func() error
+	beginDisconnect func(string) (func(), error)
+	format          func(key string, args ...any) string
+	translate       func(key string) string
+	emitAlert       func(level, profile, message string)
+	logAudit        func(level, action, profile, message string)
+	emitWarn        func(message string)
+	emitStderr      func(message string)
+	onAttach        func(name string, st vpn.AttachState)
+	onIntent        func(name string, intendedDown bool)
 
 	// inflight tracks running Connect calls per profile so Disconnect can
 	// cancel them (and wait for them) before it reports success.
@@ -71,18 +72,19 @@ type pendingConnect struct {
 var disconnectCancelWait = 15 * time.Second
 
 type ProfileServiceDeps struct {
-	Cfg            *config.Config
-	Adapters       *vpn.Set
-	Watchdog       Watchdog
-	PolicyResolver PolicyResolver
-	DNSManager     DNSManager
-	ApplyKill      func() error
-	Format         func(key string, args ...any) string
-	Translate      func(key string) string
-	EmitAlert      func(level, profile, message string)
-	LogAudit       func(level, action, profile, message string)
-	EmitWarn       func(message string)
-	EmitStderr     func(message string)
+	Cfg             *config.Config
+	Adapters        *vpn.Set
+	Watchdog        Watchdog
+	PolicyResolver  PolicyResolver
+	DNSManager      DNSManager
+	ApplyKill       func() error
+	BeginDisconnect func(string) (func(), error)
+	Format          func(key string, args ...any) string
+	Translate       func(key string) string
+	EmitAlert       func(level, profile, message string)
+	LogAudit        func(level, action, profile, message string)
+	EmitWarn        func(message string)
+	EmitStderr      func(message string)
 	// OnAttach is called on every provider attach-phase change (optional).
 	OnAttach func(name string, st vpn.AttachState)
 	// OnIntent records that the user turned a tunnel on (false) or off
@@ -92,20 +94,21 @@ type ProfileServiceDeps struct {
 
 func NewProfileService(deps ProfileServiceDeps) *ProfileService {
 	return &ProfileService{
-		cfg:            deps.Cfg,
-		adapters:       deps.Adapters,
-		watchdog:       deps.Watchdog,
-		policyResolver: deps.PolicyResolver,
-		dnsMgr:         deps.DNSManager,
-		applyKill:      deps.ApplyKill,
-		format:         deps.Format,
-		translate:      deps.Translate,
-		emitAlert:      deps.EmitAlert,
-		logAudit:       deps.LogAudit,
-		emitWarn:       deps.EmitWarn,
-		emitStderr:     deps.EmitStderr,
-		onAttach:       deps.OnAttach,
-		onIntent:       deps.OnIntent,
+		cfg:             deps.Cfg,
+		adapters:        deps.Adapters,
+		watchdog:        deps.Watchdog,
+		policyResolver:  deps.PolicyResolver,
+		dnsMgr:          deps.DNSManager,
+		applyKill:       deps.ApplyKill,
+		beginDisconnect: deps.BeginDisconnect,
+		format:          deps.Format,
+		translate:       deps.Translate,
+		emitAlert:       deps.EmitAlert,
+		logAudit:        deps.LogAudit,
+		emitWarn:        deps.EmitWarn,
+		emitStderr:      deps.EmitStderr,
+		onAttach:        deps.OnAttach,
+		onIntent:        deps.OnIntent,
 	}
 }
 
@@ -126,14 +129,15 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	}
 
 	aCfg := vpn.AdapterConfig{
-		Host:       vpnCfg.Host,
-		Port:       vpnCfg.Port,
-		TunnelName: vpnCfg.TunnelName,
-		CertPath:   vpnCfg.Auth.Cert,
-		KeyPath:    vpnCfg.Auth.Key,
-		ConfigPath: vpnCfg.ConfigFile,
-		Username:   vpnCfg.Auth.Username,
-		Extra:      vpnCfg.AdapterExtra(),
+		Host:          vpnCfg.Host,
+		Port:          vpnCfg.Port,
+		TunnelName:    vpnCfg.TunnelName,
+		CertPath:      vpnCfg.Auth.Cert,
+		KeyPath:       vpnCfg.Auth.Key,
+		ConfigPath:    vpnCfg.ConfigFile,
+		DefaultEgress: vpnCfg.DefaultEgress,
+		Username:      vpnCfg.Auth.Username,
+		Extra:         vpnCfg.AdapterExtra(),
 		// Provider adapters (attach mode) call this when they start waiting
 		// for the user to connect in the provider's app.
 		OnAttach: func(st vpn.AttachState) { s.notifyAttach(name, st) },
@@ -177,6 +181,9 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	if adapter.Status().Normalize() != vpn.StatusConnected {
 		err := adapter.Connect(ctx, aCfg)
 		aCfg.Password = ""
+		if errors.Is(err, privops.ErrWGDefaultEgressConflict) {
+			err = errors.New(s.t("cli.routes.default.conflict"))
+		}
 		if errors.Is(err, vpn.ErrUserActionTimeout) {
 			err = fmt.Errorf("%s: %w", s.f("cli.attach.wait_timeout", name), err)
 		}
@@ -232,10 +239,35 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 }
 
 func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
+	return s.disconnect(ctx, name, s.beginDisconnect)
+}
+
+// DisconnectForShutdown stops the adapter even if the helper is unavailable.
+func (s *ProfileService) DisconnectForShutdown(ctx context.Context, name string) error {
+	return s.disconnect(ctx, name, nil)
+}
+
+func (s *ProfileService) disconnect(ctx context.Context, name string, begin func(string) (func(), error)) error {
 	adapter, ok := s.adapters.Get(name)
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.unknown_profile", name))
 	}
+	var finish func()
+	if begin != nil {
+		var err error
+		finish, err = begin(name)
+		if err != nil {
+			if finish != nil {
+				finish()
+			}
+			return fmt.Errorf("%s: %w", s.t("cli.policy.disconnect_protection_failed"), err)
+		}
+	}
+	defer func() {
+		if finish != nil {
+			finish()
+		}
+	}()
 	if s.watchdog != nil {
 		s.watchdog.MarkIntended(name) // also cancels a watchdog reconnect/failover in flight
 	}
@@ -251,15 +283,13 @@ func (s *ProfileService) Disconnect(ctx context.Context, name string) error {
 		// re-armed the watchdog: mark the intent again.
 		s.watchdog.MarkIntended(name)
 	}
-	if s.policyResolver != nil {
-		s.policyResolver.UnregisterProfile(name)
-	}
 	if err := adapter.Disconnect(ctx); err != nil {
 		if errors.Is(err, vpn.ErrManualDisconnect) {
 			// Provider app without a CLI: the user disconnects in the app
 			// (the adapter opened it). Returned as-is so callers show the
 			// waiting state; cleanup runs once the tunnel drops.
-			s.manualDisconnect(name, adapter)
+			s.manualDisconnect(name, adapter, finish)
+			finish = nil
 		}
 		return err
 	}
@@ -352,7 +382,7 @@ func (s *ProfileService) notifyAttach(name string, st vpn.AttachState) {
 // the post-disconnect cleanup (DNS, kill switch, audit) in the background
 // once the tunnel drops, bounded by the profile's wait_timeout. It does
 // not block: callers show the waiting state and poll the tunnel status.
-func (s *ProfileService) manualDisconnect(name string, adapter vpn.VPNAdapter) {
+func (s *ProfileService) manualDisconnect(name string, adapter vpn.VPNAdapter, finish func()) {
 	st := vpn.AttachState{Phase: vpn.PhaseWaitingDisconnect, App: name, Since: time.Now()}
 	if r, ok := adapter.(vpn.AttachReporter); ok {
 		if cur := r.AttachState(); cur != nil {
@@ -366,6 +396,9 @@ func (s *ProfileService) manualDisconnect(name string, adapter vpn.VPNAdapter) {
 		timeout = d
 	}
 	go func() {
+		if finish != nil {
+			defer finish()
+		}
 		deadline := time.Now().Add(timeout)
 		for adapter.Status().Normalize() == vpn.StatusConnected {
 			if time.Now().After(deadline) {
@@ -380,6 +413,9 @@ func (s *ProfileService) manualDisconnect(name string, adapter vpn.VPNAdapter) {
 
 // afterDisconnect is the cleanup shared by Disconnect and manualDisconnect.
 func (s *ProfileService) afterDisconnect(name string) {
+	if s.policyResolver != nil {
+		s.policyResolver.UnregisterProfile(name)
+	}
 	if s.dnsMgr != nil {
 		s.dnsMgr.OnDisconnect(name)
 	}
@@ -398,6 +434,12 @@ func (s *ProfileService) PolicyAllowedIPs(profileName string) []string {
 }
 
 func (s *ProfileService) runProfilePreflight(name string, vpnCfg config.VPNConfig, aCfg vpn.AdapterConfig) error {
+	if vpnCfg.DefaultEgress {
+		if status := vpnCfg.DefaultEgressStatus(); !status.Compatible {
+			key := "config.err.default_egress_" + status.Reason
+			return fmt.Errorf("%s %s", s.t(key), s.t(key+".fix"))
+		}
+	}
 	if vpnCfg.ConfigFile != "" {
 		if err := config.CheckFileReadable(vpnCfg.ConfigFile); err != nil {
 			// Only root can read it (e.g. /etc/wireguard): say so and how
@@ -540,7 +582,7 @@ func (s *ProfileService) reauthHint(vpnCfg config.VPNConfig) string {
 
 func (s *ProfileService) policyAllowedIPs(profileName string) []string {
 	vpnCfg, ok := s.cfg.VPNs[profileName]
-	if !ok {
+	if !ok || vpnCfg.DefaultEgress {
 		return nil
 	}
 

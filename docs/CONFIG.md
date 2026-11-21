@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.6 · 2026-11-19
+Versión 1.7 · 2026-11-21
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -19,6 +19,7 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 | `vpns.<name>.host` | texto | — | Servidor o gateway VPN (clientes corporativos). |
 | `vpns.<name>.port` | entero | — | Puerto del servidor. |
 | `vpns.<name>.tunnel_name` | texto | — | Nombre de la conexión guardada en el cliente (p. ej. FortiClient). |
+| `vpns.<name>.default_egress` | booleano | — | Opt-in para un solo perfil WireGuard directo en Linux. Conserva las rutas por defecto IPv4 e IPv6 del archivo compatible en la próxima conexión. |
 | `vpns.<name>.allow_insecure_cert` | booleano | — | Solo FortiClient: acepta advertencias de certificado al automatizar la app. Déjalo en `false` (riesgo de MITM). |
 | `vpns.<name>.config` | texto | — | Ruta al `.ovpn` (openvpn) o `.conf` (wireguard). |
 | `vpns.<name>.server` | texto | — | Servidor exacto (protonvpn, nordvpn). |
@@ -32,6 +33,7 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 | `vpns.<name>.auth.password_keychain` | texto | — | Nombre de la entrada del llavero que guarda la contraseña. |
 | `vpns.<name>.priority` | entero | — | Desempate entre políticas que se solapan: las políticas de un perfil con número mayor se evalúan antes (dominios y apps: gana la primera que coincide; IP: siempre gana el rango más específico y la prioridad solo desempata rangos del mismo tamaño). Sin valor, cuenta la posición de la política (las primeras van antes). No conecta ni cambia perfiles. |
 | `vpns.<name>.kill_switch` | booleano | — | Activa o desactiva el kill switch solo para este perfil (si falta, usa `security.kill_switch.enabled`). |
+| `vpns.<name>.on_tunnel_down` | texto | — | Acción que heredan las reglas de este perfil mientras su VPN está apagada: `allow` (por defecto), `block` o `connect`. |
 | `vpns.<name>.failover` | lista de texto | — | Perfiles de respaldo, en orden, que Kongtrol puede conectar si este se cae y no logra reconectarse. Si falta, nunca conecta otro perfil: avisa y sigue reintentando este. Cada uno debe existir, no puede ser el mismo perfil y no puede formar un círculo. |
 | `vpns.<name>.auto_connect` | booleano | — | Proveedores con app oficial: intenta conectar solo (CLI oficial o automatización) antes de pedirte que conectes en la app. Si falta: `true`. |
 | `vpns.<name>.country` | texto | — | País del servidor (código o nombre), para proveedores que permiten elegir. |
@@ -60,7 +62,7 @@ Reglas que deciden por qué VPN sale cada destino, en orden.
 | `policies[].match.domains` | lista de texto | — | Dominios o globs (`*.ejemplo.com`). |
 | `policies[].match.apps` | lista de texto | — | Ejecutables o globs (experimental). |
 | `policies[].via` | texto | — | **Obligatorio.** Perfil VPN por el que sale el tráfico. |
-| `policies[].on_tunnel_down` | texto | — | Qué pasa con este tráfico si su túnel está apagado: `allow` (por defecto: internet normal y aviso), `block` (no sale) o `connect` (Kongtrol conecta el túnel). |
+| `policies[].on_tunnel_down` | texto | — | Vacío: hereda la opción del perfil. `allow` permite y avisa si detecta tráfico. `block` bloquea las IP conocidas. `connect` también las bloquea e intenta conectar si detecta tráfico TCP en Windows o Linux. En macOS, conecta manualmente. |
 
 ## `security`
 

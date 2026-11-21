@@ -27,6 +27,7 @@ import { Banner } from '../ui/States'
 import { checkDraft, fieldForErrorKey, fromProfile, toRequest, withType, type Draft, type DraftField, type Problems } from './draft'
 import { localizeError } from './errors'
 import { ProfileForm } from './ProfileForm'
+import { DefaultEgress } from './DefaultEgress'
 
 interface Props {
   open: boolean
@@ -46,7 +47,8 @@ export function ProfileEditor({ open, onClose, editing, profiles, busy = false, 
   const [draft, setDraft] = useState<Draft>(() => fromProfile(editing))
   // What the sheet opened with: any difference is an unsaved edit.
   const [pristine] = useState(draft)
-  useUnsavedChanges(JSON.stringify(draft) !== JSON.stringify(pristine))
+  const dirty = JSON.stringify(draft) !== JSON.stringify(pristine)
+  useUnsavedChanges(dirty)
   const [tried, setTried] = useState(false)
   const [serverErrors, setServerErrors] = useState<Partial<Record<DraftField, FieldError>>>({})
   const [formError, setFormError] = useState<unknown>(null)
@@ -165,6 +167,7 @@ export function ProfileEditor({ open, onClose, editing, profiles, busy = false, 
           editing={editing}
           busy={busy}
         />
+        {open && editing.type === 'wireguard' && <DefaultEgress name={editing.name} busy={busy} dirty={dirty} />}
         {connected && <p className="kp-muted kp-small kp-editor__cut">{t('profiles.editor.reconnectNote')}</p>}
         <footer className="k-dialog__actions kp-editor__actions">
           <Button variant="outlined" onClick={onClose}>

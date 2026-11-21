@@ -27,6 +27,7 @@ import (
 var profileAddFlags struct {
 	name, host, server, protocol, config, authMethod, cert, key, username string
 	country, city, group, iface, waitTimeout, appPath                     string
+	onTunnelDown                                                          string
 	port                                                                  int
 	noAutoConnect, yes                                                    bool
 }
@@ -89,6 +90,7 @@ func runProfileAdd(cmd *cobra.Command, args []string) error {
 		{&p.Cert, f.cert}, {&p.Key, f.key}, {&p.Username, f.username}, {&p.Country, f.country},
 		{&p.City, f.city}, {&p.Group, f.group}, {&p.Interface, f.iface}, {&p.WaitTimeout, f.waitTimeout},
 		{&p.AppPath, f.appPath},
+		{&p.OnTunnelDown, f.onTunnelDown},
 	} {
 		if strings.TrimSpace(s.v) != "" {
 			*s.dst = strPtr(s.v)
@@ -295,6 +297,7 @@ func init() {
 	fl.StringVar(&f.iface, "interface", "", ct("cli.profile.add.flag.interface"))
 	fl.StringVar(&f.waitTimeout, "wait-timeout", "", ct("cli.profile.add.flag.wait_timeout"))
 	fl.StringVar(&f.appPath, "app-path", "", ct("cli.profile.add.flag.app_path"))
+	fl.StringVar(&f.onTunnelDown, "on-tunnel-down", "", ct("cli.profile.add.flag.on_tunnel_down"))
 	fl.BoolVar(&f.noAutoConnect, "no-auto-connect", false, ct("cli.profile.add.flag.no_auto_connect"))
 	fl.BoolVarP(&f.yes, "yes", "y", false, ct("cli.profile.add.flag.yes"))
 

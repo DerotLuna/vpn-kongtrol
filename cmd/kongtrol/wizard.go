@@ -338,6 +338,26 @@ func runWizard(_ *cobra.Command, _ []string) (err error) {
 		}
 	}
 
+	if len(addedProfiles) == 0 {
+		return cancelled()
+	}
+	configure, err := chooseProfileNextStep(lang)
+	if errors.Is(err, errWizardCancelled) {
+		return cancelled()
+	}
+	if err != nil {
+		return err
+	}
+	written, err := writeWizardConfig(lang, outPath, doc)
+	if err != nil {
+		return err
+	}
+	if !configure {
+		printWizardNextSteps(lang, addedProfiles, written)
+		offerHelperInstall(helperStateFn(), initYes)
+		return nil
+	}
+
 	addedPolicies, err := collectPoliciesHuh(lang, doc, existing, knownProfiles)
 	if err != nil {
 		if errors.Is(err, errWizardCancelled) {
@@ -476,40 +496,64 @@ func reviewAndWrite(lang i18n.Lang, outPath string, doc *yaml.Node, profiles []p
 		return nil
 	}
 
+	written, err := writeWizardConfig(lang, outPath, doc)
+	if err != nil {
+		return err
+	}
+	printWizardNextSteps(lang, profiles, written)
+	return finishInit(outPath, profiles, written)
+}
+
+func chooseProfileNextStep(lang i18n.Lang) (bool, error) {
+	t := func(key string) string { return i18n.T(lang, key) }
+	var configure bool
+	err := runForm(newForm(huh.NewGroup(
+		huh.NewSelect[bool]().
+			Title(t("wizard.profile_next.title")).
+			Description(t("wizard.profile_next.desc")).
+			Options(
+				huh.NewOption(t("wizard.profile_next.exit"), false),
+				huh.NewOption(t("wizard.profile_next.configure"), true),
+			).
+			Value(&configure),
+	)))
+	return configure, err
+}
+
+func writeWizardConfig(lang i18n.Lang, outPath string, doc *yaml.Node) (*config.Config, error) {
+	t := func(key string) string { return i18n.T(lang, key) }
+	tf := func(key string, a ...any) string { return i18n.F(lang, key, a...) }
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o700); err != nil {
-		return fmt.Errorf("init: mkdir: %w", err)
+		return nil, fmt.Errorf("init: mkdir: %w", err)
 	}
 	out, err := yaml.Marshal(doc)
 	if err != nil {
-		return fmt.Errorf("init: marshal: %w", err)
+		return nil, fmt.Errorf("init: marshal: %w", err)
 	}
-	if err := os.WriteFile(outPath, out, 0o600); err != nil {
-		return fmt.Errorf("init: write: %w", err)
+	written, err := config.Parse(out, outPath)
+	if err != nil {
+		return nil, localizeConfigErr(err)
+	}
+	if err := config.WriteFileAtomic(outPath, out, 0o600); err != nil {
+		return nil, fmt.Errorf("init: write: %w", err)
 	}
 
 	fmt.Println(tuiOK(styleBright.Render(tf("write.success", outPath))))
 
-	written, err := config.Load(outPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, tuiWarn(tf("write.validation_warn", localizedErrText(lang, err))))
-		fmt.Fprintln(os.Stderr, styleDim.Render(t("write.validation_hint")))
-	} else {
-		fmt.Println(tuiOK(styleOK.Render(t("write.valid"))))
-	}
+	fmt.Println(tuiOK(styleOK.Render(t("write.valid"))))
+	return written, nil
+}
 
-	// ── Next steps ────────────────────────────────────────────────────────────
+func printWizardNextSteps(lang i18n.Lang, profiles []profileSummary, written *config.Config) {
+	t := func(key string) string { return i18n.T(lang, key) }
 	fmt.Println()
 	fmt.Println(NextStepsPanel(t("nextsteps.header"), []string{
 		t("nextsteps.init"),
 		t("nextsteps.status"),
-		tf("nextsteps.up", nextStepsProfile(lang, profiles, written)),
+		i18n.F(lang, "nextsteps.up", nextStepsProfile(lang, profiles, written)),
 		t("nextsteps.dashboard"),
 	}))
 	fmt.Println()
-	if err != nil {
-		return nil
-	}
-	return finishInit(outPath, profiles, written)
 }
 
 // ── Review panel ──────────────────────────────────────────────────────────────

@@ -183,6 +183,8 @@ func disconnectProfile(name string) {
 // openDashboard starts the daemon if needed and opens its page.
 func openDashboard() { openDashboardPage("/") }
 
+func openDiagnostics() { openDashboardPage(daemonctl.DiagnosticsPath) }
+
 // setupPagePath is the dashboard page a first run opens: Perfiles, which
 // shows the "create your first VPN" guide while the daemon runs in setup
 // mode (no kongtrol.yaml yet). No page

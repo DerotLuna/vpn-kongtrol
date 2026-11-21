@@ -208,6 +208,7 @@ export default function Guide({ os, setOS, lang }: Props) {
               <p>{t.policies.yamlLead}</p>
               <CodeBlock ui={lang} lang="yaml">{t.policies.yaml}</CodeBlock>
               <p>{t.policies.match}</p>
+              <p>{t.policies.defaultEgress}</p>
               <p>{t.policies.apply}</p>
             </div>
 
@@ -297,6 +298,15 @@ export default function Guide({ os, setOS, lang }: Props) {
               <p>{t.uninstall.scriptLead}</p>
               <CodeBlock ui={lang} lang={os === 'windows' ? 'powershell' : 'bash'} wrap>{t.uninstall.script}</CodeBlock>
               <p>{t.uninstall.data}</p>
+            </div>
+            <div id="faq" className="guide-section">
+              <Head num={num('faq')}>{t.faq.title}</Head>
+              {t.faq.items.map((item) => (
+                <details className="guide-more guide-faq" key={item.question}>
+                  <summary>{item.question}</summary>
+                  <p>{item.answer}</p>
+                </details>
+              ))}
             </div>
           </div>
         </div>

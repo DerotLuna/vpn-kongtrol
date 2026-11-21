@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
 
 // Targets is what a list of free-form entries ("github.com",
@@ -126,8 +128,7 @@ func hostOf(s string) string {
 		s = h
 	}
 	s = strings.Trim(s, "[]")
-	s = strings.TrimSuffix(s, ".")
-	return strings.ToLower(strings.TrimSpace(s))
+	return strings.TrimSuffix(config.ASCIIPolicyDomain(s), ".")
 }
 
 // AutoName is the name a new policy gets when none is given: format

@@ -179,6 +179,9 @@ func (c *Client) KillSwitchDisable(ctx context.Context) error {
 func (c *Client) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTunnel, error) {
 	var t WGTunnel
 	err := c.Call(ctx, OpWGInstall, req, &t)
+	if req.DefaultEgress && errors.Is(err, ErrInvalidRequest) && strings.Contains(err.Error(), `unknown field "default_egress"`) {
+		return WGTunnel{}, ErrHelperOutdated
+	}
 	return t, err
 }
 

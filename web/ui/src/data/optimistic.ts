@@ -7,6 +7,7 @@
 // becomes one toast with the "what to do" line and a Retry action.
 import { useMutation, useQueryClient, type QueryKey } from '@tanstack/react-query'
 import { describeError } from '../api/errors'
+import { ApiError } from '../api/client'
 import { usePreferences } from '../app/preferences-context'
 import { toasts } from './toast'
 
@@ -44,6 +45,7 @@ export function useOptimisticMutation<TVars, TData, TCache>(opts: OptimisticOpti
     onError: (err, vars, snapshot) => {
       if (snapshot?.previous !== undefined) client.setQueryData<TCache>(queryKey, snapshot.previous)
       if (opts.onRefused?.(err, vars)) return
+      if (err instanceof ApiError && err.kind === 'unauthorized') return
       const { message, fix } = describeError(err, t)
       toasts.show({
         tone: 'bad',

@@ -103,6 +103,8 @@ func setupMenu() {
 	// ── Primary actions ───────────────────────────────────────────────────
 	m.dash = systray.AddMenuItem(trayT("tray.open_dashboard"), trayT("tray.open_dashboard_tip"))
 	onClick(m.dash, openDashboard)
+	diagnostics := systray.AddMenuItem(trayT("tray.open_diagnostics"), trayT("tray.open_diagnostics"))
+	onClick(diagnostics, openDiagnostics)
 
 	// One slot per VPN profile; renderTunnels relabels them so connected
 	// VPNs come first.

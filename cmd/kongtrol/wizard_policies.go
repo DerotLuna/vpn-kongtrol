@@ -85,7 +85,7 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 			via        string = profileList[0]
 			domainsRaw string
 			ipsRaw     string
-			onDown     string = config.OnTunnelDownAllow
+			onDown     string
 		)
 
 		if err := runForm(newForm(
@@ -109,6 +109,7 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 				huh.NewSelect[string]().
 					Title(i18n.T(lang, "policy.on_down")).
 					Options(
+						huh.NewOption(i18n.T(lang, "policy.on_down.inherit"), ""),
 						huh.NewOption(i18n.T(lang, "policy.on_down.allow"), config.OnTunnelDownAllow),
 						huh.NewOption(i18n.T(lang, "policy.on_down.block"), config.OnTunnelDownBlock),
 						huh.NewOption(i18n.T(lang, "policy.on_down.connect"), config.OnTunnelDownConnect),
@@ -117,18 +118,16 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 			),
 			huh.NewGroup(
 				huh.NewNote().
-					Title(i18n.T(lang, "policy.domains_hint")).
-					Description(styleDim.Render("e.g. internal.company.com, *.corp")),
+					Title(i18n.T(lang, "policy.domains_hint")),
 				huh.NewInput().
 					Title(i18n.T(lang, "policy.domain_prompt")).
-					Description(styleDim.Render("Comma-separated, leave empty to skip")).
+					Description(styleDim.Render(i18n.T(lang, "policy.destinations_optional"))).
 					Value(&domainsRaw),
 				huh.NewNote().
-					Title(i18n.T(lang, "policy.ips_hint")).
-					Description(styleDim.Render("e.g. 10.0.0.0/8, 192.168.1.0/24")),
+					Title(i18n.T(lang, "policy.ips_hint")),
 				huh.NewInput().
 					Title(i18n.T(lang, "policy.ip_prompt")).
-					Description(styleDim.Render("Comma-separated CIDR, leave empty to skip")).
+					Description(styleDim.Render(i18n.T(lang, "policy.destinations_optional"))).
 					Value(&ipsRaw),
 			),
 		)); err != nil {
@@ -185,7 +184,7 @@ func collectPoliciesHuh(lang i18n.Lang, doc *yaml.Node, existing *config.Config,
 }
 
 // policyNode builds a YAML mapping node for a single policy rule. onDown
-// (optional) is on_tunnel_down; "allow" (the default) is left out.
+// (optional) is on_tunnel_down. An empty value inherits the profile.
 func policyNode(name, via string, domains, ipRanges []string, onDown ...string) *yaml.Node {
 	matchNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 	if len(domains) > 0 {
@@ -208,7 +207,7 @@ func policyNode(name, via string, domains, ipRanges []string, onDown ...string) 
 		scalarNode("match"), matchNode,
 		scalarNode("via"), scalarNode(via),
 	)
-	if len(onDown) > 0 && onDown[0] != "" && onDown[0] != config.OnTunnelDownAllow {
+	if len(onDown) > 0 && onDown[0] != "" {
 		n.Content = append(n.Content, scalarNode("on_tunnel_down"), scalarNode(onDown[0]))
 	}
 	return n

@@ -34,8 +34,9 @@ export default function Start({ lang }: Props) {
         { you: 'Eliges qué sitios van por cada VPN.', kong: 'Manda cada sitio por la VPN correcta.' },
         { you: 'Cierras el panel cuando quieras.', kong: 'Sigue trabajando en segundo plano.' },
       ],
-      setupNote: 'La primera vez, todavía se configura escribiendo un par de comandos. Sin problema: la guía te dice cuáles, y Kongtrol te pregunta lo demás.',
+      setupNote: 'Agrega tu primera VPN desde el panel.',
       setupLink: 'Ver cómo, paso a paso',
+      faq: 'Preguntas frecuentes',
       devsTitle: 'Para devs',
       devsLead: 'La misma app, con una CLI que hace todo lo que hace el panel. Ideal para scripts.',
       devsInstall: 'Instala con una línea',
@@ -56,8 +57,9 @@ $ kongtrol dashboard  # abre el panel`,
         { you: 'Choose which sites go through each VPN.', kong: 'Sends each site through the right VPN.' },
         { you: 'Close the panel whenever you like.', kong: 'Keeps working in the background.' },
       ],
-      setupNote: 'For now, the first setup still means typing a couple of commands. No worries: the guide shows you which ones, and Kongtrol asks you the rest.',
+      setupNote: 'Add your first VPN from the dashboard.',
       setupLink: 'See how, step by step',
+      faq: 'Frequently asked questions',
       devsTitle: 'For devs',
       devsLead: 'The same app, with a CLI that does everything the panel does. Built for scripts.',
       devsInstall: 'Install in one line',
@@ -91,6 +93,8 @@ $ kongtrol dashboard  # opens the panel`,
             <p className="path-setup">
               {t.setupNote}{' '}
               <a href={`${pathFor('guia', lang)}#quickstart`}>{t.setupLink}</a>
+              {' · '}
+              <a href={`${pathFor('guia', lang)}#faq`}>{t.faq}</a>
             </p>
             {/* same as the hero: scroll to the download section; phones get "send to my computer" */}
             {mobile ? (

@@ -1,6 +1,16 @@
 {
   "_comment": "Shared by internal/policy/classify_test.go (ClassifyTargets) and web/ui/src/components/add/model.test.ts (classifyTargets): the dashboard's \"+ Agregar\" sheet and `kongtrol policy add` must read the same entries the same way (ADR-0055).",
   "cases": [
+    {
+      "name": "unicode host and lowercase wildcard",
+      "in": ["https://café.example/docs", "*.Anthropic.com."],
+      "subdomains": true,
+      "domains": ["xn--caf-dma.example", "*.xn--caf-dma.example", "*.anthropic.com"],
+      "ip_ranges": [],
+      "apps": [],
+      "first": "xn--caf-dma.example",
+      "invalid": []
+    },
     { "name": "domain with subdomains", "in": ["github.com"], "subdomains": true,
       "domains": ["github.com", "*.github.com"], "ip_ranges": [], "apps": [], "first": "github.com", "invalid": [] },
     { "name": "domain without subdomains", "in": ["GitHub.com."], "subdomains": false,

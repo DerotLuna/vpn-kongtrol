@@ -189,3 +189,16 @@
   .pp-rule { margin-top: 6px; }
   .sb-hint { margin-top: 4px; }
 }
+.sb-controls { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 16px; }
+.sb-motion {
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-min);
+  border: 0;
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) { .sb-motion { display: none; } }

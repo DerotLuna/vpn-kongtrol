@@ -7,6 +7,13 @@ Names of VPN profiles, policies, groups and scheduler rules: 1–64 characters; 
 spaces and `- _ .` are fine; `<`, `>`, `"`, `'`, `` ` ``, `&`, `\` and control characters are refused (they are shown in
 the dashboards and the tray; [ADR-0040](adr/0040-local-hardening-review-2026-11.md)).
 
+<!-- feature:policies -->
+Rules inherit `vpns.<name>.on_tunnel_down`. The profile defaults to `allow`, which permits the
+available system routes. `block` protects known IP destinations and `connect` also tries to bring
+up the VPN when Kongtrol observes TCP activity. A rejected connection may leave no observable
+socket. On macOS, connect manually. Set a rule's `on_tunnel_down: allow` to override `block` or
+`connect` for that rule. An executable-only rule needs explicit `allow` or a domain or IP destination.
+
 ```yaml
 # ~/.kongtrol/kongtrol.yaml
 # Run 'kongtrol init' to generate this file interactively.
@@ -208,6 +215,18 @@ groups:
 ```
 
 ---
+
+<!-- feature:default_egress -->
+## Native WireGuard default egress on Linux
+
+One direct WireGuard profile can set `default_egress: true`. Check the file with
+`kongtrol routes check-default <profile>` and enable it in the saved profile editor or with
+`kongtrol routes default-egress <profile> on`. Connect the profile to apply the setting.
+It requires one peer, an endpoint, addresses and default prefixes for both IP families,
+automatic routing and a DNS server. Routes with more-specific prefixes retain priority.
+The option is off by default. Turning it off restores the profile's usual behavior at the
+next connection. A file that already brings up default routes can still do so.
+[ADR-0085](adr/0085-native-wireguard-default-egress.md)
 
 <!-- feature:providers feature:wireguard -->
 ## ProtonVPN: GUI vs WireGuard

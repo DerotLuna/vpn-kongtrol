@@ -11,6 +11,7 @@ import { Link } from 'react-router'
 import { ApiError } from '../../api/client'
 import { usePreferences } from '../../app/preferences-context'
 import { useUnsavedChanges } from '../../app/unsaved'
+import { useProfilesQuery } from '../../data/profiles'
 import { useSavePolicy, useTestDraft } from '../../data/rules'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
@@ -20,7 +21,7 @@ import { ErrorState } from '../ui/States'
 import { CheckIcon, InfoIcon } from '../ui/icons'
 import {
   hasErrors,
-  ON_TUNNEL_DOWN,
+  TUNNEL_DOWN_CHOICES,
   POLICY_FIELDS,
   splitTestInput,
   toPayload,
@@ -50,7 +51,8 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
   const [serverError, setServerError] = useState<unknown>(null)
   const titleId = useId()
 
-  const ctx = { names: policies.map((p) => p.name), editing: original, profiles }
+  const profileAction = useProfilesQuery().data?.find((p) => p.name === draft.via)?.on_tunnel_down ?? 'allow'
+  const ctx = { names: policies.map((p) => p.name), editing: original, profiles, profileAction }
   const errors: PolicyErrors = submitted ? validatePolicy(draft, ctx) : {}
   const err = (f: keyof PolicyErrors) => (errors[f] ? policyErrorText(f, errors[f], t) : null)
 
@@ -150,7 +152,7 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
 
         <fieldset className="r-choice" aria-describedby={errors.onDown ? `${titleId}-ondown-err` : undefined}>
           <legend className="k-field__label">{t('rules.field.onDown')}</legend>
-          {ON_TUNNEL_DOWN.map((v) => (
+          {TUNNEL_DOWN_CHOICES.map((v) => (
             <label key={v} className="r-choice__item">
               <input
                 type="radio"

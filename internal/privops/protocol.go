@@ -15,30 +15,31 @@ const MaxFrame = 1 << 20
 
 // Operation names on the wire. One request type per operation.
 const (
-	OpPing             = "ping"
-	OpRouteAdd         = "route.add"
-	OpRouteDelete      = "route.delete"
-	OpRouteFlush       = "route.flush"
-	OpDNSSet           = "dns.set"
-	OpDNSRestore       = "dns.restore"
-	OpKillSwitchOn     = "killswitch.enable"
-	OpKillSwitchOff    = "killswitch.disable"
-	OpWGInstall        = "wg.install"
-	OpWGRemove         = "wg.remove"
-	OpWGAllowedIPs     = "wg.allowed_ips"
-	OpWGStats          = "wg.stats"
-	OpOpenVPNStart     = "openvpn.start"
-	OpOpenVPNStop      = "openvpn.stop"
-	OpOpenVPNStatus    = "openvpn.status"
-	OpHostsWrite       = "hosts.write"
-	OpLeaseRenew       = "lease.renew"
-	OpBlockSet         = "block.set"
-	errCodeInvalid     = "invalid"
-	errCodeDenied      = "denied"
-	errCodeNotFound    = "not_found"
-	errCodeUnsupported = "unsupported"
-	errCodeProtocol    = "protocol"
-	errCodeFailed      = "failed"
+	OpPing                         = "ping"
+	OpRouteAdd                     = "route.add"
+	OpRouteDelete                  = "route.delete"
+	OpRouteFlush                   = "route.flush"
+	OpDNSSet                       = "dns.set"
+	OpDNSRestore                   = "dns.restore"
+	OpKillSwitchOn                 = "killswitch.enable"
+	OpKillSwitchOff                = "killswitch.disable"
+	OpWGInstall                    = "wg.install"
+	OpWGRemove                     = "wg.remove"
+	OpWGAllowedIPs                 = "wg.allowed_ips"
+	OpWGStats                      = "wg.stats"
+	OpOpenVPNStart                 = "openvpn.start"
+	OpOpenVPNStop                  = "openvpn.stop"
+	OpOpenVPNStatus                = "openvpn.status"
+	OpHostsWrite                   = "hosts.write"
+	OpLeaseRenew                   = "lease.renew"
+	OpBlockSet                     = "block.set"
+	errCodeInvalid                 = "invalid"
+	errCodeDenied                  = "denied"
+	errCodeNotFound                = "not_found"
+	errCodeUnsupported             = "unsupported"
+	errCodeProtocol                = "protocol"
+	errCodeWGDefaultEgressConflict = "wg_default_egress_conflict"
+	errCodeFailed                  = "failed"
 )
 
 // Request is the envelope for every call.
@@ -138,6 +139,8 @@ func ErrorCode(err error) string {
 		return errCodeUnsupported
 	case errors.Is(err, ErrHelperOutdated):
 		return errCodeProtocol
+	case errors.Is(err, ErrWGDefaultEgressConflict):
+		return errCodeWGDefaultEgressConflict
 	}
 	return errCodeFailed
 }
@@ -159,6 +162,8 @@ func errorFromWire(code, msg, reason string) error {
 		base = ErrUnsupported
 	case errCodeProtocol:
 		base = ErrHelperOutdated
+	case errCodeWGDefaultEgressConflict:
+		base = ErrWGDefaultEgressConflict
 	default:
 		base = ErrFailed
 	}

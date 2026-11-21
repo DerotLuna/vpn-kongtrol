@@ -74,9 +74,12 @@ POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, h
                                              #   {"status","policies","restart_required":bool,"reconnect_required":[profile]}
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
+                                             # GET policy items expose effective on_tunnel_down and raw on_tunnel_down_override.
+                                             # POST/PUT accepts on_tunnel_down: "" to inherit, or allow, block, connect.
 
 # VPN profiles (config + OS keychain; applied live, ADR-0053 — see "Profile changes" below)
 GET/POST  /api/v1/vpns                      # POST → 201 {"status":"created","profile","restart_required":false,"reconnect_required":false}
+                                             # Profile GET exposes on_tunnel_down; POST/PUT accepts allow, block, connect.
 GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing):
                                              #   [{"label","adapter_type","path","active":true|false|null,"interface"}]; active = the provider app's
                                              #   tunnel is up now (interface listing / macOS scutil, no admin, no automation); null = cannot tell
@@ -99,6 +102,8 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   else 400 api.err.import_protected_path. The read (and the permission window, up to 3 min) runs
                                              #   without the config lock; only storing the file takes it (ADR-0062)
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
+GET/PUT /api/v1/vpns/{name}/default-egress    # PUT {"enabled":bool}, 409 while connected/connecting
+                                             # Both return {enabled,compatible,reason?}, see ADR-0085
 
 # Groups
 GET/POST  /api/v1/groups
@@ -149,6 +154,10 @@ POST /api/v1/updates                         # {"enabled": true|false}: saves up
 POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): disconnects every tunnel, deletes ~/.kongtrol data and Kongtrol's keychain entries, then restarts into setup mode → {"status":"purged","restarting":bool}
 ```
 
+<!-- feature:first_run -->
+The replacement process requires a new browser session. After a 401 on the restart probe,
+the panel tells the user to reopen it from Kongtrol to exchange a fresh local nonce.
+
 <!-- feature:update_check feature:uninstall -->
 **Update notice and purge.** Reading `/api/v1/updates` never makes a request; with
 `check_enabled` the daemon asks GitHub at most once per 24 h and emits one `update_available`
@@ -177,6 +186,12 @@ switch knows the drop is intended); the answer adds `"reconnected": true` (the c
 the background: follow it in `/api/v1/tunnels` or the live feed) or `"reconnect_error"`. Priority,
 failover and the kill switch override apply without a reconnect. `POST /api/v1/restart` keeps
 working.
+
+<!-- feature:default_egress -->
+**Native default egress (ADR-0085).** Compatibility checks the saved profile file locally.
+A compatible direct WireGuard profile can select the option for its next connection on Linux.
+The response's `enabled` field describes the saved selection. It can remain enabled if
+the file later becomes incompatible, in which case the option can still be turned off.
 
 <!-- feature:recent_connections -->
 **Recent destinations (ADR-0054).** `GET /api/v1/connections/recent` lists the destinations

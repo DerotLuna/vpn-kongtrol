@@ -245,7 +245,16 @@ func Spawn(exe string, args []string, logPath string, lang i18n.Lang) (<-chan er
 // next to the running executable first, so an installed pair always uses
 // its own CLI, then PATH. The error is translated.
 func FindKongtrol(lang i18n.Lang) (string, error) {
-	name := executableName
+	return findCompanion(executableName, lang, "daemonctl.kongtrol_not_found")
+}
+
+// FindTray locates the installed desktop companion next to the CLI or on PATH.
+func FindTray(lang i18n.Lang) (string, error) {
+	name := "kongtrol-tray" + filepath.Ext(executableName)
+	return findCompanion(name, lang, "daemonctl.tray_not_found")
+}
+
+func findCompanion(name string, lang i18n.Lang, missingKey string) (string, error) {
 	if self, err := os.Executable(); err == nil {
 		if resolved, err := filepath.EvalSymlinks(self); err == nil {
 			self = resolved
@@ -261,7 +270,7 @@ func FindKongtrol(lang i18n.Lang) (string, error) {
 		}
 		return p, nil
 	}
-	return "", fmt.Errorf("%s", i18n.F(lang, "daemonctl.kongtrol_not_found", name))
+	return "", fmt.Errorf("%s", i18n.F(lang, missingKey, name))
 }
 
 // ReadLogTail returns up to n trailing non-empty lines written to path at

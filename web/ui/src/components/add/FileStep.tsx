@@ -33,7 +33,7 @@ interface Props {
   /** Shown on top when the user came from the type picker ("WireGuard se agrega con su archivo"). */
   note?: string | undefined
   onBack: () => void
-  onDone: (name: string, path: string) => void
+  onDone: (name: string, path: string, reauth: boolean) => void
   onDirty: (dirty: boolean) => void
 }
 
@@ -148,9 +148,9 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     }
     const draft = { ...emptyDraft(chosen.type), name: n, config: path, authMethod, username, password }
     try {
-      const ok = await act.run(toRequest(draft, 'create'))
+      const outcome = await act.run(toRequest(draft, 'create'))
       onDirty(false)
-      if (ok) onDone(n, path)
+      if (outcome !== 'failed') onDone(n, path, outcome === 'reauth')
     } catch (err) {
       const local = localizeError(err, t)
       if (local instanceof ApiError && fieldForErrorKey(local.key) === 'name') {
@@ -282,8 +282,8 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
         phase={act.phase}
         onBack={onBack}
         onRetry={() =>
-          void act.retryRestart().then((ok) => {
-            if (ok && stored) onDone(name.trim(), stored.path)
+          void act.retryRestart().then((outcome) => {
+            if (outcome !== 'failed' && stored) onDone(name.trim(), stored.path, outcome === 'reauth')
           })
         }
       />

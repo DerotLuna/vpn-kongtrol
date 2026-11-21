@@ -1,8 +1,8 @@
-//go:build linux || darwin
+//go:build darwin
 
 package wireguard
 
-// wgPreUp: nothing to check on Unix; wg-quick runs in the helper.
+// wgPreUp leaves macOS tunnel setup to wg-quick in the helper.
 func wgPreUp(string) bool { return false }
 
 // tunnelServiceRunning is a no-op on Unix; WireGuard is managed by wg-quick,

@@ -7,7 +7,7 @@
 // normal browser tab there is no bridge and the page works as a compact
 // status view without the window-only controls.
 
-export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'open-add' | 'reauth' | 'quit-tray' | 'quit-all'
+export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'open-add' | 'open-diagnostics' | 'reauth' | 'quit-tray' | 'quit-all'
 
 interface TrayHost {
   post: (message: TrayMessage) => void

@@ -47,6 +47,7 @@ type Report struct {
 // never-connected adapters.
 type Daemon struct {
 	Tunnels           map[string]vpn.Status
+	TunnelInterfaces  map[string]string
 	KillSwitchEnabled bool
 	KillSwitchActive  bool
 	KillSwitch        *security.KillSwitchStatus // detail, may be nil

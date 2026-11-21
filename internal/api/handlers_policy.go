@@ -53,13 +53,14 @@ func cidrPrefixLen(cidr string) int {
 // GET /api/v1/policies — active policies with resolved IPs from PolicyResolver.
 func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 	type policyDTO struct {
-		Name          string   `json:"name"`
-		Via           string   `json:"via"`
-		Domains       []string `json:"domains"`
-		IPRanges      []string `json:"ip_ranges"`
-		Apps          []string `json:"apps"`
-		OnTunnelDown  string   `json:"on_tunnel_down"`
-		ResolvedCIDRs []string `json:"resolved_cidrs"`
+		Name                 string   `json:"name"`
+		Via                  string   `json:"via"`
+		Domains              []string `json:"domains"`
+		IPRanges             []string `json:"ip_ranges"`
+		Apps                 []string `json:"apps"`
+		OnTunnelDown         string   `json:"on_tunnel_down"`
+		OnTunnelDownOverride string   `json:"on_tunnel_down_override"`
+		ResolvedCIDRs        []string `json:"resolved_cidrs"`
 		// Resolved: this policy's own resolved IPs with their expiry
 		// (resolved_cidrs above stays every IP of the profile, as before).
 		Resolved []monitor.ResolvedIP `json:"resolved"`
@@ -67,18 +68,21 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 
 	// Start from the policy engine rules (static config).
 	var out []policyDTO
+	overrides := map[string]string{}
 	onDown := map[string]string{} // policy → on_tunnel_down (not in the engine)
 	if cfg, _, err := s.loadRuntimeConfig(); err == nil {
 		for _, p := range cfg.Policies {
-			onDown[p.Name] = p.TunnelDownAction()
+			onDown[p.Name] = p.TunnelDownAction(cfg.VPNs[p.Via])
+			overrides[p.Name] = p.OnTunnelDown
 		}
 	}
 	if pe := s.policyEngine.Load(); pe != nil {
 		for _, rule := range pe.Rules() {
 			dto := policyDTO{
-				Name:         rule.Name,
-				Via:          rule.Via,
-				OnTunnelDown: onDown[rule.Name],
+				Name:                 rule.Name,
+				Via:                  rule.Via,
+				OnTunnelDown:         onDown[rule.Name],
+				OnTunnelDownOverride: overrides[rule.Name],
 			}
 			if dto.OnTunnelDown == "" {
 				dto.OnTunnelDown = config.OnTunnelDownAllow

@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+const DiagnosticsPath = "/settings?section=diagnostics"
+
 // PanelURL returns the address that opens path ("/", "/profiles",
 // "/tray", …) on the daemon's dashboard already signed in:
 // it asks the daemon for a one-time nonce (valid 60 s, POST

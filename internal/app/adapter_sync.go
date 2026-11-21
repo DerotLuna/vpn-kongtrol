@@ -29,14 +29,15 @@ func NewProfileAdapter(vc config.VPNConfig) (vpn.VPNAdapter, error) {
 // config when it is used.
 func adapterSeed(vc config.VPNConfig) vpn.AdapterConfig {
 	return vpn.AdapterConfig{
-		Host:       vc.Host,
-		Port:       vc.Port,
-		TunnelName: vc.TunnelName,
-		CertPath:   vc.Auth.Cert,
-		KeyPath:    vc.Auth.Key,
-		ConfigPath: vc.ConfigFile,
-		Username:   vc.Auth.Username,
-		Extra:      vc.AdapterExtra(),
+		Host:          vc.Host,
+		Port:          vc.Port,
+		TunnelName:    vc.TunnelName,
+		CertPath:      vc.Auth.Cert,
+		KeyPath:       vc.Auth.Key,
+		ConfigPath:    vc.ConfigFile,
+		DefaultEgress: vc.DefaultEgress,
+		Username:      vc.Auth.Username,
+		Extra:         vc.AdapterExtra(),
 	}
 }
 

@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.14 · 2026-11-20
+Versión 2.15 · 2026-11-21
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -38,7 +38,7 @@ kongtrol up oficina --dry-run
 
 ### `kongtrol down`
 
-Desconecta los perfiles indicados y restaura tu DNS al caer el último túnel. Después: kongtrol status para confirmarlo.
+Desconecta los perfiles indicados y restaura tu DNS al caer el último túnel. Si quedan reglas con bloqueo, la desconexión de un perfil mantiene Kongtrol activo. Usa kongtrol down --all para detenerlo.
 
 ```text
 kongtrol down [perfil...] [opciones]
@@ -104,6 +104,34 @@ kongtrol routes oficina
 kongtrol routes --system
 ```
 
+### `kongtrol routes check-default`
+
+Examina el archivo local de un perfil WireGuard en Linux sin cambiar la red.
+
+```text
+kongtrol routes check-default <perfil> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol routes check-default oficina
+```
+
+### `kongtrol routes default-egress`
+
+Guarda la opción para la próxima conexión de un perfil WireGuard compatible en Linux. Desconecta el perfil antes de cambiarla.
+
+```text
+kongtrol routes default-egress <perfil> <on|off> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol routes default-egress oficina on
+```
+
 ### `kongtrol dashboard`
 
 Abre el dashboard para configurar y conectar tus VPN desde el navegador; arranca Kongtrol en segundo plano si hace falta. Si no se abre, copia la dirección que aparece.
@@ -112,10 +140,30 @@ Abre el dashboard para configurar y conectar tus VPN desde el navegador; arranca
 kongtrol dashboard [opciones]
 ```
 
+**Opciones**
+
+| Opciones | Descripción |
+|---|---|
+| `--diagnostics` | abre directamente el diagnóstico |
+
 **Ejemplos**
 
 ```bash
 kongtrol dashboard
+```
+
+### `kongtrol tray`
+
+Abre la aplicación de bandeja instalada. Úsala desde tu sesión de escritorio para ver y gestionar las VPN.
+
+```text
+kongtrol tray [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol tray
 ```
 
 ## Configuración
@@ -499,6 +547,7 @@ kongtrol profile add <tipo> [opciones]
 | `--key string` | archivo de la clave privada del certificado |
 | `--name string` | nombre del perfil (obligatorio), por ejemplo oficina |
 | `--no-auto-connect` | no conectar la app automáticamente: Kongtrol la abre y espera a que conectes |
+| `--on-tunnel-down string` | acción de sus reglas al apagarse la VPN: allow (por defecto), block o connect |
 | `--port int` | puerto del servidor VPN |
 | `--protocol string` | protocolo (Proton VPN) |
 | `--server string` | servidor exacto (NordVPN, Proton VPN) |
@@ -527,6 +576,20 @@ kongtrol profile detect [opciones]
 ```bash
 kongtrol profile detect
 kongtrol profile detect --json
+```
+
+### `kongtrol profile on-tunnel-down`
+
+Cambia la acción que heredan las reglas de este perfil. allow permite el tráfico, block bloquea las IP conocidas y connect las bloquea e intenta conectar si detecta tráfico TCP. Los intentos rechazados pueden pasar inadvertidos. En macOS, conecta manualmente.
+
+```text
+kongtrol profile on-tunnel-down <name> <allow|block|connect> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol profile on-tunnel-down oficina block
 ```
 
 ### `kongtrol policy`
@@ -560,13 +623,14 @@ kongtrol policy add <sitio|ip|rango|app:<exe>>... [opciones]
 | `--block-when-down` | si esa VPN está apagada, bloquea el tráfico en vez de usar internet normal |
 | `--name string` | nombre de la política (por defecto: "<primer destino> por <vpn>") |
 | `--no-subdomains` | solo el sitio exacto, sin sus subdominios (*.sitio) |
+| `--on-tunnel-down string` | al apagarse la VPN: inherit (por defecto), allow, block o connect |
 | `--via string` | perfil de VPN por el que va el tráfico (obligatorio) |
 
 **Ejemplos**
 
 ```bash
-kongtrol policy add github.com --via oficina
-kongtrol policy add https://intranet.miempresa.com 10.20.0.0/16 --via trabajo --block-when-down
+kongtrol policy add claude.com "*.anthropic.com" --via oficina
+kongtrol policy add api.anthropic.com 192.0.2.42 192.0.2.0/24 --via trabajo --block-when-down
 kongtrol policy add app:teams.exe --via trabajo --name teams
 ```
 
@@ -589,6 +653,20 @@ kongtrol policy remove <nombre> [opciones]
 ```bash
 kongtrol policy remove "github.com por oficina"
 kongtrol policy remove teams --yes
+```
+
+### `kongtrol policy on-tunnel-down`
+
+Usa inherit para seguir la opción del perfil, allow para permitir, block para bloquear las IP conocidas o connect para bloquear e intentar conectar si se detecta tráfico TCP. En macOS, conecta manualmente.
+
+```text
+kongtrol policy on-tunnel-down <name> <inherit|allow|block|connect> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol policy on-tunnel-down intranet inherit
 ```
 
 ### `kongtrol policy list`

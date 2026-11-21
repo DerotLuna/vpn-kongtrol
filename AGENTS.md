@@ -93,6 +93,9 @@ When adding a new adapter:
 
 <!-- feature:first_run -->
 **First run and restart (ADR-0025).**
+- The first profile restart invalidates the browser session. The Add sheet tells the user to
+  reopen the panel from Kongtrol and resumes the draft after a fresh nonce exchange in the same
+  browser. Unauthorized tabs stop REST requests and WebSocket ticket retries (ADR-0082).
 - With no `kongtrol.yaml`, only `kongtrol daemon` may start, in **setup mode**
   (`config.NewEmpty()`, `GET /api/v1/setup`): the tray starts it and opens the dashboard's
   Perfiles page (`/profiles`), whose profile editor writes the first profile to `config.DefaultPaths()[0]`. Every
@@ -489,10 +492,23 @@ changing the port from the page serving that request would cut the connection mi
 <!-- feature:killswitch feature:policies feature:routes -->
 ### Policy routing, kill switch, on_tunnel_down
 
-The user decides which tunnels are up; a policy whose tunnel is off uses the normal internet unless `on_tunnel_down` says otherwise.
-- `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Overlaps follow the policy engine order. Resolved IPs expire after 6h unseen.
-- `app.KillSwitchService` owns the blocked set: a protected tunnel that dropped unexpectedly (was up, user did not run `down` — `ProfileService` reports intent via `OnIntent`) blocks only its captured routes + policy destinations; a full-tunnel profile blocks everything but endpoints and `neverBlock` (broadcast/multicast/link-local); the directly connected subnets and private ranges stay open only with `allow_lan` / legacy `mode: loose` (otherwise the LAN router, the usual DNS fallback, would leak lookups, ADR-0063). Split-tunnel blocks always exempt the directly connected subnets. Policies with `on_tunnel_down: block` add theirs. A connected tunnel's destinations are never blocked. States `off`/`armed`/`active` (`security.KillSwitchStatus`, rendered with `killswitch.state.*`). For domains the block covers only IPs resolved so far. When a dropped tunnel starts being blocked, `SetOnBlock` emits one notice per outage (`killswitch.event.blocking` / `blocking_full` / `blocking_full_lan` when the LAN is blocked too, kind `tunnel_watchdog`) with what to do (ADR-0058).
-- `monitor.PolicyWatch` checks open TCP connections (Windows GetExtendedTcpTable, Linux /proc/net/tcp; macOS unsupported) every 15s and emits `monitor.Event`s (i18n key + args, throttled 30 min per policy; `connect` rate-limited 3 min) served by `GET /api/v1/events?after=<seq>` to tray, dashboard (toasts + Actividad, `web/ui/src/data/home.ts`) and the live view.
+- Domain matching is case-insensitive and accepts Unicode names via IDNA.
+  The optional root dot is preserved when the resolver makes a DNS lookup.
+  A `*.` pattern matches one label. Route discovery probes common hostnames.
+  Add exact hostnames that the policy must route.
+
+Rules inherit `vpns.<name>.on_tunnel_down` (default `allow`) unless they explicitly select `allow`, `block` or `connect` (ADR-0084). `allow` leaves the system's existing routes available. `block` and `connect` keep the winning rule's known destinations blocked while the VPN is off, including after an individual disconnect.
+- `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Its cached destination order is longest prefix, profile priority, then rule order. Resolved IPs expire after 6h unseen.
+- `app.KillSwitchService` owns the blocked set. The independent kill switch protects a tunnel after an unexpected drop (`ProfileService` reports intent via `OnIntent`). A split-tunnel drop blocks captured routes and policy destinations, exempting directly connected subnets. A full-tunnel drop blocks everything except VPN endpoints and reserved ranges. `allow_lan` / legacy `mode: loose` also exempts the LAN (ADR-0063). Rule protection adds the winning `block` and `connect` destinations, including before an individual disconnect removes routes. For domains this covers only IPs resolved so far. The daemon releases its firewall rules on shutdown. States `off`/`armed`/`active` (`security.KillSwitchStatus`) describe the independent kill switch. `SetOnBlock` emits one notice per unexpected outage (ADR-0058).
+- `monitor.PolicyWatch` samples TCP sockets every 15 seconds on Windows and Linux. It may miss rejected or brief attempts, and macOS uses manual connection. A visible sample can emit a `monitor.Event` (throttled to 30 min per policy) or attempt a `connect` (rate-limited to 3 min). The firewall handles blocking independently. `GET /api/v1/events?after=<seq>` supplies events to the tray, dashboard and live view.
+
+<!-- feature:default_egress -->
+One direct WireGuard profile on Linux may opt into `default_egress` (ADR-0085). The profile
+editor and `kongtrol routes check-default|default-egress` share a local compatibility check.
+The native `wg-quick` table gives more-specific main-table routes priority, and the resolver
+and helper preserve both peer defaults until teardown. The helper detects conflicting native
+defaults when bringing the profile up. Tunnel attachment and file compatibility describe
+different states. The setting applies when Kongtrol next starts the tunnel.
 
 ### Public IP lookup (opt-in)
 

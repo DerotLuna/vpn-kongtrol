@@ -62,16 +62,17 @@ func applySchedulerConfig(c *config.Config) {
 
 func buildProfileService() *app.ProfileService {
 	return app.NewProfileService(app.ProfileServiceDeps{
-		Cfg:            cfg,
-		Adapters:       adapters,
-		Watchdog:       watchdog,
-		PolicyResolver: policyResolver,
-		DNSManager:     dnsMgr,
-		ApplyKill:      applyKillSwitchState,
-		Format:         cf,
-		Translate:      ct,
-		EmitAlert:      emitAlert,
-		LogAudit:       logAudit,
+		Cfg:             cfg,
+		Adapters:        adapters,
+		Watchdog:        watchdog,
+		PolicyResolver:  policyResolver,
+		DNSManager:      dnsMgr,
+		ApplyKill:       applyKillSwitchState,
+		BeginDisconnect: killSwitchSvc.BeginDisconnect,
+		Format:          cf,
+		Translate:       ct,
+		EmitAlert:       emitAlert,
+		LogAudit:        logAudit,
 		EmitWarn: func(message string) {
 			fmt.Fprintln(os.Stderr, tuiWarn(message))
 		},
@@ -101,6 +102,13 @@ func disconnectProfile(ctx context.Context, name string) error {
 		resyncProfiles()
 	}
 	return err
+}
+
+func disconnectProfileForShutdown(ctx context.Context, name string) error {
+	if svc := profileSvc.Load(); svc != nil {
+		return svc.DisconnectForShutdown(ctx, name)
+	}
+	return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
 }
 
 // syncProfilesLive brings the adapter set in line with c after a config

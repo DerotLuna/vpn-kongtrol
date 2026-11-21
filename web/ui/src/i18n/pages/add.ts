@@ -68,7 +68,7 @@ const es = {
   'add.file.required.fix': 'Pulsa «Elegir archivo» o arrástralo aquí.',
 
   'add.rule.input': 'Sitio, IP o programa',
-  'add.rule.input.hint': 'Por ejemplo claude.ai, una dirección https://…, 10.2.0.0/16 o app:chrome.exe.',
+  'add.rule.input.hint': 'Por ejemplo claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42 o 192.0.2.0/24. También puedes pegar una dirección web.',
   'add.rule.subs': 'Incluye subdominios (www., app.…)',
   'add.rule.via': 'Sale por',
   'add.rule.via.pick': 'Elige una VPN',
@@ -98,6 +98,9 @@ const es = {
   'add.rule.noVpn.fix': 'Te llevamos a agregarla y volvemos aquí con lo que escribiste.',
   'add.rule.noVpn.action': 'Agregar una VPN',
   'add.rule.back': 'Listo: «{name}» está agregada. Sigue con tu regla.',
+  'add.reauth.saved': 'Tu perfil se guardó. Vuelve a abrir el panel para continuar.',
+  'add.reauth.resume': 'Puedes continuar donde estabas si lo abres en este navegador en los próximos 10 minutos.',
+  'add.reauth.copy': 'Copia este destino antes de volver a abrir el panel.',
 
   'add.err.empty': 'Escribe un sitio, una IP o un programa.',
   'add.err.empty.fix': 'Por ejemplo claude.ai, 10.2.0.5 o app:chrome.exe.',
@@ -198,7 +201,7 @@ const en: Strings<typeof es> = {
   'add.file.required.fix': 'Press “Choose file” or drag it here.',
 
   'add.rule.input': 'Site, IP or program',
-  'add.rule.input.hint': 'For example claude.ai, an https://… address, 10.2.0.0/16 or app:chrome.exe.',
+  'add.rule.input.hint': 'For example claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42, or 192.0.2.0/24. You can also paste a web address.',
   'add.rule.subs': 'Include subdomains (www., app.…)',
   'add.rule.via': 'Goes through',
   'add.rule.via.pick': 'Pick a VPN',
@@ -228,6 +231,9 @@ const en: Strings<typeof es> = {
   'add.rule.noVpn.fix': 'We take you there and come back here with what you typed.',
   'add.rule.noVpn.action': 'Add a VPN',
   'add.rule.back': 'Done: “{name}” is added. Go on with your rule.',
+  'add.reauth.saved': 'Your profile was saved. Reopen the dashboard to continue.',
+  'add.reauth.resume': 'You can pick up where you left off if you open it in this browser within 10 minutes.',
+  'add.reauth.copy': 'Copy this destination before reopening the dashboard.',
 
   'add.err.empty': 'Type a site, an IP or a program.',
   'add.err.empty.fix': 'For example claude.ai, 10.2.0.5 or app:chrome.exe.',

@@ -123,7 +123,7 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	a.assignedIP, _ = parseConfigAddress(configPath)
 	a.dnsServers = parseConfigDNS(configPath)
 
-	if err := wgUp(configPath, a.ifaceName, restart); err != nil {
+	if err := wgUp(configPath, a.ifaceName, restart, cfg.DefaultEgress); err != nil {
 		a.status = vpn.StatusError
 		return fmt.Errorf("wireguard: %w", err)
 	}

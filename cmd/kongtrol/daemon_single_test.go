@@ -71,6 +71,19 @@ func TestRunDown_ViaDaemon_StopsWhenLastProfileGone(t *testing.T) {
 	}
 }
 
+func TestRunDown_ViaDaemon_KeepsPolicyProtectionAfterLastProfile(t *testing.T) {
+	disc, stopped := stubDaemonFns(t, true, []string{"office"})
+	downAll = false
+	cfg.VPNs["office"] = config.VPNConfig{OnTunnelDown: config.OnTunnelDownConnect}
+	cfg.Policies = []config.PolicyRule{{Name: "intranet", Via: "office"}}
+	if err := runDown(context.Background(), []string{"office"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(*disc) != 1 || *stopped != 0 {
+		t.Fatalf("disc=%v stopped=%d, want one disconnect with protection still running", *disc, *stopped)
+	}
+}
+
 func TestRunDown_All_ViaDaemon(t *testing.T) {
 	disc, stopped := stubDaemonFns(t, true, []string{"a", "b"})
 	adapters = vpn.NewSet(map[string]vpn.VPNAdapter{"a": &mockAdapter{}, "b": &mockAdapter{}})

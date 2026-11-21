@@ -66,6 +66,13 @@ reasoned but unverified.
 | [2026-11-20-tray-flyout-open-latency](2026-11-20-tray-flyout-open-latency.md) | Where the flyout open time goes (lazy WebView2 creation, daemon probe on every click), WebView2 pre-warming and reuse guidance, measurements of one smoke run | ADR-0074 |
 | [2026-11-20-antivirus-blocked-binary-in-installers](2026-11-20-antivirus-blocked-binary-in-installers.md) | Windows errors 225/226 when an antivirus blocks a start, the PowerShell exception shape (measured), Defender Protection history actions and false-positive submission, what `!ml` means (no official definition), shell exit codes 126/127/128+N | ADR-0073 |
 | [2026-11-20-install-scripts-cli-and-tray](2026-11-20-install-scripts-cli-and-tray.md) | How rustup, Tailscale and Docker Desktop install everything by default with an opt-out; Inno Setup uninstall key and silent upgrade flags; Microsoft's Server Core check (ServerLevels); freedesktop desktop-session variables; what the Windows release assets contain; GUI-subsystem exe output to a pipe (measured) | ADR-0075 |
+| [VPN coexistence](2026-11-21-vpn-coexistence.md) | Providers, default routes and diagnosis | ADR-0086 |
+| [Direct diagnostics](2026-11-21-diagnostics-deep-links.md) | Authenticated dashboard entry points and tray colors | ADR-0083 |
+| [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
+| [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |
+| [Panel session recovery](2026-11-21-panel-session-recovery.md) | Browser session invalidation after the first profile restart and local draft recovery | ADR-0082 |
+| [Linux WireGuard and tray](2026-11-21-linux-tray-and-wireguard.md) | Existing kernel links and desktop launch | ADR-0088 |
+| [Landing and release refresh](2026-11-21-landing-release-refresh.md) | Compatibility summary, visuals and stable release refresh | ADR-0089 |
 
 ## Template
 

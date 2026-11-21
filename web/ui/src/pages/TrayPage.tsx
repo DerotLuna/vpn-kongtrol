@@ -233,6 +233,9 @@ export function TrayPage() {
   // one primary per view: with no VPN it is "Agregar VPN", not "Abrir panel"
   const noVPNs = !!tunnels && tunnels.length === 0
   const openAdd = () => (host ? host.post('open-add') : window.location.assign('/?add=vpn'))
+  const openDiagnostics = () => (
+    host ? host.post('open-diagnostics') : window.location.assign('/settings?section=diagnostics')
+  )
 
   const publicIP = !security?.public_ip_check_enabled
     ? t('tray.publicip.off')
@@ -298,19 +301,25 @@ export function TrayPage() {
                 {rows.map(({ tn, st }, i) => {
                   const noteId = `tray-note-${i}`
                   const showFail = failed[tn.Name]
+                  const tone = showFail ? 'danger' : st.tone
                   const note = showFail ? { key: 'tray.note.failed' as const } : st.note
                   return (
                     <li key={tn.Name} className="tray-row">
                       <div className="tray-row-main">
                         <span className="tray-name">{tn.Name}</span>
-                        <span className={`tray-state ${st.tone}`}>
-                          <Dot tone={st.tone} />
-                          {t(st.word)}
+                        <span className={`tray-state ${tone}`}>
+                          <Dot tone={tone} />
+                          {t(showFail ? 'tray.status.error' : st.word)}
                         </span>
                         {note && (
                           <span id={noteId} className="tray-note">
                             {t(note.key, 'vars' in note ? note.vars : undefined)}
                           </span>
+                        )}
+                        {(showFail || st.tone === 'danger') && (
+                          <button type="button" className="tray-btn ghost small" onClick={openDiagnostics}>
+                            {t('diag.open')}
+                          </button>
                         )}
                       </div>
                       <button

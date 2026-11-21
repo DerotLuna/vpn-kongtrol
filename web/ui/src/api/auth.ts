@@ -30,6 +30,7 @@ const SESSION_HEADER = 'X-Kongtrol-Session'
 const STORAGE_KEY = 'kongtrol.session'
 
 let sessionToken = ''
+let bootstrapped = false
 
 function loadToken(): string {
   if (sessionToken) return sessionToken
@@ -54,6 +55,14 @@ function saveToken(token: string): void {
 /** Test seam: forget the page token (memory and sessionStorage). */
 export function resetSessionForTests(): void {
   saveToken('')
+  bootstrapped = false
+  ready = Promise.resolve()
+}
+
+/** A fresh nonce exchanged in this page, as when the panel is reopened from Kongtrol. */
+export async function hasFreshSession(): Promise<boolean> {
+  await ready
+  return bootstrapped && authState.get() === 'ok'
 }
 
 /** Headers that authenticate a request of this page (empty before sign-in). */
@@ -96,13 +105,17 @@ export function startAuth(fetchImpl: typeof fetch = (...a) => fetch(...a)): Prom
   }).then(
     async (res) => {
       if (res.status === 401 || res.status === 403) {
-        authState.set('unauthorized')
+        denySession()
         return
       }
       if (!res.ok) return
       try {
         const body = (await res.json()) as { session_token?: unknown }
-        if (typeof body.session_token === 'string' && body.session_token) saveToken(body.session_token)
+        if (typeof body.session_token === 'string' && body.session_token) {
+          saveToken(body.session_token)
+          bootstrapped = true
+          authState.set('ok')
+        }
       } catch {
         // No token in the answer: requests get 401 and the shell explains.
       }
@@ -121,13 +134,14 @@ export function startAuth(fetchImpl: typeof fetch = (...a) => fetch(...a)): Prom
  */
 export async function liveTicket(fetchImpl: typeof fetch = (...a) => fetch(...a)): Promise<string> {
   await ready
+  if (authState.get() === 'unauthorized') throw new Error('unauthorized')
   const res = await fetchImpl('/api/v1/ws-ticket', {
     method: 'POST',
     credentials: 'same-origin',
     headers: authHeaders(),
   })
   if (res.status === 401 || res.status === 403) {
-    authState.set('unauthorized')
+    denySession()
     throw new Error('unauthorized')
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -136,8 +150,9 @@ export async function liveTicket(fetchImpl: typeof fetch = (...a) => fetch(...a)
   return body.ticket
 }
 
-/** Called by the API client for every answer. */
-export function noteAuthStatus(status: number, unauthorized: boolean): void {
-  if (unauthorized) authState.set('unauthorized')
-  else if (status < 400) authState.set('ok')
+/** End this tab's session after an authentication refusal. */
+export function denySession(): void {
+  saveToken('')
+  bootstrapped = false
+  authState.set('unauthorized')
 }

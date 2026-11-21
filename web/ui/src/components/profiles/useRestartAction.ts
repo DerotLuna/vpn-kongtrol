@@ -15,7 +15,7 @@ import { localizeError } from './errors'
 
 const BUSY: RestartPhase[] = ['requesting', 'stopping', 'starting']
 
-export type RestartOutcome = 'done' | 'timeout' | 'failed' | 'busy'
+export type RestartOutcome = 'done' | 'timeout' | 'failed' | 'busy' | 'reauth'
 
 export function useRestartAction() {
   const client = useQueryClient()
@@ -31,6 +31,7 @@ export function useRestartAction() {
       try {
         const result = await runRestart(client)
         toasts.dismiss(running)
+        if (result === 'reauth') return result
         if (result === 'timeout') {
           toasts.show({ tone: 'bad', message: t('profiles.restart.timeout'), detail: t('profiles.restart.timeout.fix') })
           return 'timeout'

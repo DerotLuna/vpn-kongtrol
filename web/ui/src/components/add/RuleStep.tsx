@@ -17,7 +17,7 @@ import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
 import { SelectField, TextAreaField, TextField, type FieldError } from '../ui/Field'
 import { Banner } from '../ui/States'
-import { splitLines, type PolicyPayload } from '../rules/model'
+import { splitLines, TUNNEL_DOWN_CHOICES, type OnTunnelDown, type PolicyPayload } from '../rules/model'
 import { ArrowLeftIcon } from '../profiles/icons'
 import { autoName as suggestName, classifyEntry, isValidName, matchOf, nameSource, probeOf, type Classified, type Entry, type RuleDraft } from './model'
 import { ErrorBanner } from './parts'
@@ -27,7 +27,7 @@ export type { RuleDraft }
 export interface SavedRule {
   name: string
   via: string
-  onDown: 'allow' | 'block'
+  onDown: OnTunnelDown
   /** What "Probar" asks about. */
   probe: string
 }
@@ -36,6 +36,7 @@ interface Props {
   draft: RuleDraft
   onChange: (patch: Partial<RuleDraft>) => void
   profiles: readonly string[]
+  profileAction: OnTunnelDown
   tunnels: readonly TunnelMetrics[]
   /** Shown once after coming back from adding the VPN. */
   backNote?: string | undefined
@@ -61,7 +62,7 @@ function problemText(c: Classified, t: T): FieldError | null {
   return { message: t(key, { value: c.value }), fix: t(`${key}.fix` as MessageKey, { value: c.value }) }
 }
 
-export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack, onNeedVpn, onDone }: Props) {
+export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, backNote, onBack, onNeedVpn, onDone }: Props) {
   const { t } = usePreferences()
   const policies = usePoliciesQuery()
   const save = useSavePolicy()
@@ -101,13 +102,14 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
           ? { message: t('add.err.ruleTaken', { name }), fix: t('add.err.ruleTaken.fix') }
           : null
   const appsOnly = entries.length > 0 && entries.every((e) => e.kind === 'app')
+  const onDown = draft.onDown === 'inherit' ? profileAction : draft.onDown
   const downError: FieldError | null =
-    tried && draft.onDown === 'block' && appsOnly
+    tried && onDown !== 'allow' && appsOnly
       ? { message: t('rules.err.onDown.blockAppsOnly'), fix: t('rules.err.onDown.blockAppsOnly.fix') }
       : null
 
   const payload: PolicyPayload | null =
-    main.ok && draft.via ? { name: name || 'preview', via: draft.via, on_tunnel_down: draft.onDown, match: matchOf(entries, draft.subs) } : null
+    main.ok && draft.via ? { name: name || 'preview', via: draft.via, on_tunnel_down: draft.onDown === 'inherit' ? '' : draft.onDown, match: matchOf(entries, draft.subs) } : null
 
   // Preview: ask once the typing settles.
   const probe = main.ok ? probeOf(main.entry) : null
@@ -152,14 +154,14 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
       !name ||
       !isValidName(name) ||
       taken.some((n) => n.toLowerCase() === name.toLowerCase()) ||
-      (draft.onDown === 'block' && appsOnly)
+      (onDown !== 'allow' && appsOnly)
     if (blocked || !payload) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('.k-add [aria-invalid="true"]')?.focus())
       return
     }
     try {
       await save.mutateAsync({ payload: { ...payload, name } })
-      onDone({ name, via: draft.via, onDown: draft.onDown, probe: todayTargetOf(main.entry) })
+      onDone({ name, via: draft.via, onDown, probe: todayTargetOf(main.entry) })
     } catch (err) {
       setRefusal(err)
     }
@@ -172,7 +174,7 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
     if (!after.data) return after.isFetching ? t('add.rule.checking') : null
     if (!after.data.matched) return t('add.rule.after.miss', { target: label })
     if (viaOn) return t('add.rule.after.via', { target: label, via: draft.via })
-    return t(draft.onDown === 'block' ? 'add.rule.after.offBlock' : 'add.rule.after.offAllow', { target: label, via: draft.via })
+    return t(onDown === 'allow' ? 'add.rule.after.offAllow' : 'add.rule.after.offBlock', { target: label, via: draft.via })
   }
   const todayText = (): string | null => {
     if (!probe) return null
@@ -220,10 +222,10 @@ export function RuleStep({ draft, onChange, profiles, tunnels, backNote, onBack,
       />
       <fieldset className="k-add-radios" aria-invalid={downError ? true : undefined}>
         <legend className="k-field__label">{t('add.rule.down')}</legend>
-        {(['allow', 'block'] as const).map((v) => (
+        {TUNNEL_DOWN_CHOICES.map((v) => (
           <label key={v} className="k-add-radio">
             <input type="radio" name="add-ondown" value={v} checked={draft.onDown === v} onChange={() => onChange({ onDown: v })} />
-            <span>{t(v === 'allow' ? 'add.rule.down.allow' : 'add.rule.down.block')}</span>
+            <span>{t(v === 'allow' || v === 'block' ? `add.rule.down.${v}` : `rules.onDown.${v}`)}</span>
           </label>
         ))}
         {downError && (

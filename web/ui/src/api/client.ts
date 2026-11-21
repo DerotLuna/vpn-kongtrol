@@ -8,7 +8,7 @@
 // failure means the daemon that serves this page stopped answering.
 // Caching, de-dup, retries and the live feed live in src/data/ (ADR-0038).
 import { connection } from '../data/connection'
-import { authHeaders, authReady, noteAuthStatus } from './auth'
+import { authHeaders, authReady, authState, denySession } from './auth'
 import type { Lang } from '../i18n/messages'
 import type {
   ApiErrorBody,
@@ -59,6 +59,7 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   headers.set('X-Kongtrol-Lang', currentLang)
   headers.set('Accept', accept)
   await authReady()
+  if (authState.get() === 'unauthorized') throw new ApiError('unauthorized', 401)
   for (const [name, value] of Object.entries(authHeaders())) headers.set(name, value)
   let res: Response
   try {
@@ -92,10 +93,9 @@ async function parse<T>(res: Response): Promise<T> {
     // (cookie or Origin). A translated 403 is an ordinary failure, e.g. the
     // user declined the OS permission prompt while installing the helper.
     const auth = res.status === 401 || (res.status === 403 && !err.error_key)
-    noteAuthStatus(res.status, auth)
+    if (auth) denySession()
     throw new ApiError(auth ? 'unauthorized' : 'server', res.status, err)
   }
-  noteAuthStatus(res.status, false)
   return body as T
 }
 

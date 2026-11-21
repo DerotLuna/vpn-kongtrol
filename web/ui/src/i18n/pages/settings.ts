@@ -7,6 +7,7 @@ import type { Strings } from '../module'
 
 const es = {
   'diag.title': 'Diagnóstico',
+  'diag.open': 'Abrir diagnóstico',
   'diag.what': 'Revisa la configuración, el ayudante y tus VPN, y te dice qué hacer si algo falla.',
   'diag.idle': 'Pulsa «Revisar ahora»; tarda unos segundos.',
   'diag.run': 'Revisar ahora',
@@ -132,6 +133,7 @@ const es = {
 
 const en: Strings<typeof es> = {
   'diag.title': 'Diagnostics',
+  'diag.open': 'Open diagnostics',
   'diag.what': 'Checks the configuration, the helper and your VPNs, and tells you what to do if something fails.',
   'diag.idle': 'Click “Check now”; it takes a few seconds.',
   'diag.run': 'Check now',

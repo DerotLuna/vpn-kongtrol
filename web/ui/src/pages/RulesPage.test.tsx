@@ -34,6 +34,17 @@ function routes(extra: Routes = {}, policies: unknown[] = [work, lab]): Routes {
 }
 
 describe('Rules page', () => {
+  it('shows one recovery notice when authorization is refused', async () => {
+    stubFetch(routes({
+      'GET /api/v1/policies': () => Promise.resolve(new Response('forbidden origin', { status: 403 })),
+    }))
+    render(<App />)
+    expect(await screen.findByText('This page is not allowed to talk to Kongtrol.')).toBeInTheDocument()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.getByText(/open the dashboard from Kongtrol/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+  })
+
   it('lists rules in evaluation order with their VPN state, what happens when off, and overlaps', async () => {
     stubFetch(routes())
     render(<App />)

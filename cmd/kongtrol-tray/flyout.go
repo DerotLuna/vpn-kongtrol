@@ -283,6 +283,7 @@ const (
 	// flyoutOpenAdd: "Agregar VPN" when there is none yet: the panel's
 	// "＋ Agregar" sheet on the VPN step (ADR-0055 deep link).
 	flyoutOpenAdd
+	flyoutOpenDiagnostics
 	// flyoutReauth: the page's session is gone (401; sessions live in the
 	// daemon's memory, so a daemon restart ends them). The tray loads the
 	// page again with a fresh one-time nonce (ADR-0074), at most once per
@@ -306,13 +307,14 @@ const addVPNPath = "/?add=vpn"
 
 // flyoutMessages maps the names web/ui/src/tray/bridge.ts sends.
 var flyoutMessages = map[string]flyoutAction{
-	"ready":          flyoutReady,
-	"close":          flyoutClose,
-	"open-dashboard": flyoutOpenDashboard,
-	"quit-tray":      flyoutQuitTray,
-	"quit-all":       flyoutQuitAll,
-	"open-add":       flyoutOpenAdd,
-	"reauth":         flyoutReauth,
+	"ready":            flyoutReady,
+	"close":            flyoutClose,
+	"open-dashboard":   flyoutOpenDashboard,
+	"quit-tray":        flyoutQuitTray,
+	"quit-all":         flyoutQuitAll,
+	"open-add":         flyoutOpenAdd,
+	"open-diagnostics": flyoutOpenDiagnostics,
+	"reauth":           flyoutReauth,
 }
 
 // parseFlyoutMessage returns the action of a page message, which must be
@@ -360,6 +362,9 @@ func runFlyoutAction(a flyoutAction, hide func()) {
 	case flyoutOpenAdd:
 		hide()
 		go openDashboardPage(addVPNPath)
+	case flyoutOpenDiagnostics:
+		hide()
+		go openDiagnostics()
 	}
 }
 

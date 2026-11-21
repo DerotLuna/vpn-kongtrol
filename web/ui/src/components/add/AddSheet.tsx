@@ -9,10 +9,12 @@
 // "Elegir archivo" button inside the sheet stays the accessible path.
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { hasFreshSession, useAuthState } from '../../api/auth'
 import { useAddSheet, parseAddParams } from '../../app/addLink'
 import { usePreferences } from '../../app/preferences-context'
 import { droppedFile } from '../../data/add'
 import { UploadIcon } from '../profiles/icons'
+import { takeAddRecovery, type AddRecovery } from './recovery'
 import './add.css'
 
 const AddFlow = lazy(() => import('./AddFlow').then((m) => ({ default: m.AddFlow })))
@@ -27,6 +29,8 @@ export function AddSheet() {
   const [params] = useSearchParams()
   const req = parseAddParams(params)
   const { open, close } = useAddSheet()
+  const auth = useAuthState()
+  const [recovery, setRecovery] = useState<AddRecovery | null>(null)
   const [over, setOver] = useState(false)
   const depth = useRef(0)
   const isOpen = req !== null
@@ -35,6 +39,18 @@ export function AddSheet() {
   useEffect(() => {
     latest.current = { open, isOpen }
   })
+  useEffect(() => {
+    if (isOpen || auth !== 'ok') return
+    let cancelled = false
+    void hasFreshSession().then((fresh) => {
+      if (cancelled || !fresh) return
+      const saved = takeAddRecovery()
+      if (!saved) return
+      setRecovery(saved)
+      open({ mode: saved.draft ? 'rule' : 'vpn' })
+    })
+    return () => { cancelled = true }
+  }, [auth, isOpen, open])
 
   useEffect(() => {
     const reset = () => {
@@ -81,7 +97,10 @@ export function AddSheet() {
     <>
       {req && (
         <Suspense fallback={null}>
-          <AddFlow req={req} onClose={close} />
+          <AddFlow req={req} recovery={recovery} onClose={() => {
+            setRecovery(null)
+            close()
+          }} />
         </Suspense>
       )}
       <div className="k-drop" data-show={over || undefined} aria-hidden="true">

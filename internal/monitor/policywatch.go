@@ -12,9 +12,9 @@ import (
 
 // PolicyWatch notices traffic for a policy whose tunnel is off (the user
 // decides which tunnels are up; Kongtrol only tells them, or connects when
-// the policy says on_tunnel_down: connect). It looks at the machine's open
-// TCP connections (established or being opened) and matches the remote
-// addresses against the policies' CIDRs and resolved domain IPs.
+// the effective action is connect). It samples the machine's TCP table,
+// which can miss short-lived or rejected sockets. The firewall runs
+// independently of this observer.
 //
 // Notices are throttled to one per policy per NoticeEvery; automatic
 // connects to one attempt per tunnel per ConnectEvery.
@@ -123,7 +123,7 @@ func (w *PolicyWatch) handle(ctx context.Context, m PolicyMatch) {
 			Args: []string{m.Label, m.Via}, Profile: m.Via, Policy: m.Policy, Action: m.Action})
 		if w.Connect != nil {
 			go func() {
-				if err := w.Connect(context.WithoutCancel(ctx), m.Via); err != nil {
+				if err := w.Connect(ctx, m.Via); err != nil && ctx.Err() == nil {
 					w.emit(Event{Kind: EventPolicyTunnelDown, Level: "WARN", Key: "policy.event.connect_failed",
 						Args: []string{m.Label, m.Via}, Profile: m.Via, Policy: m.Policy, Action: m.Action, CanConnect: true})
 				}

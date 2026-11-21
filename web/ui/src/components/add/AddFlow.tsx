@@ -14,6 +14,7 @@
 // ([data-autofocus]) and returns to whatever opened the sheet.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { useAuthState } from '../../api/auth'
 import type { AddRequest } from '../../app/addLink'
 import { usePreferences } from '../../app/preferences-context'
 import { useUnsavedChanges } from '../../app/unsaved'
@@ -33,6 +34,7 @@ import { isKnownType, specOf } from '../profiles/catalog'
 import { FileStep } from './FileStep'
 import { defaultVia, emptyRuleDraft } from './model'
 import { Choice } from './parts'
+import { saveAddRecovery, type AddRecovery } from './recovery'
 import { RuleStep, type RuleDraft, type SavedRule } from './RuleStep'
 import { VpnStep } from './VpnStep'
 
@@ -63,8 +65,9 @@ function initialView(req: AddRequest): View {
   return { k: 'menu' }
 }
 
-export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void }) {
+export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery: AddRecovery | null; onClose: () => void }) {
   const { t } = usePreferences()
+  const auth = useAuthState()
   const navigate = useNavigate()
   const profilesQ = useProfilesQuery()
   const tunnelsQ = useTunnelsQuery()
@@ -72,11 +75,16 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
   const tunnels = useMemo(() => tunnelsQ.data ?? [], [tunnelsQ.data])
   const names = useMemo(() => profiles.map((p) => p.name), [profiles])
 
-  const [view, setView] = useState<View>(() => initialView(req))
-  const [rule, setRule] = useState<RuleDraft>(() => emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? ''), ''))
-  const [viaChosen, setViaChosen] = useState(false)
+  const [view, setView] = useState<View>(() =>
+    recovery ? (recovery.draft ? { k: 'rule' } : { k: 'doneVpn', name: recovery.profile }) : initialView(req),
+  )
+  const [rule, setRule] = useState<RuleDraft>(() => recovery?.draft ?? emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? ''), ''))
+  const [viaChosen, setViaChosen] = useState(!!recovery?.draft)
   const [backToRule, setBackToRule] = useState(false)
-  const [backNote, setBackNote] = useState<string | undefined>()
+  const [backNote, setBackNote] = useState<string | undefined>(() =>
+    recovery?.draft ? t('add.rule.back', { name: recovery.profile }) : undefined,
+  )
+  const [resume, setResume] = useState<{ saved: boolean; target: string } | null>(null)
   const [stepDirty, setStepDirty] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
   const body = useRef<HTMLDivElement>(null)
@@ -86,7 +94,7 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
   const via = viaChosen ? rule.via : defaultVia(names, tunnels, req.via)
   const ruleDraft = useMemo(() => ({ ...rule, via }), [rule, via])
   const ruleDirty = view.k === 'rule' && (rule.input !== emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? '')).input || rule.more !== '' || rule.name !== '')
-  const dirty = (view.k === 'vpn' || view.k === 'file') ? stepDirty : ruleDirty || (backToRule && rule.input !== '')
+  const dirty = !resume?.saved && ((view.k === 'vpn' || view.k === 'file') ? stepDirty : ruleDirty || (backToRule && rule.input !== ''))
   useUnsavedChanges(dirty)
 
   // Focus the first control of each step; give focus back on close.
@@ -129,7 +137,13 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
   }
   const onDirty = useCallback((d: boolean) => setStepDirty(d), [])
 
-  const vpnDone = (name: string, path?: string) => {
+  const vpnDone = (name: string, reauth: boolean, path?: string) => {
+    if (reauth) {
+      const draft = backToRule ? { ...rule, via: name } : null
+      setResume({ saved: saveAddRecovery({ profile: name, draft }), target: draft?.input ?? '' })
+      setStepDirty(false)
+      return
+    }
     if (backToRule) {
       setBackToRule(false)
       setRule((r) => ({ ...r, via: name }))
@@ -147,7 +161,16 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
   }
 
   let content
-  if (profilesQ.isPending && view.k !== 'menu') {
+  if (auth === 'unauthorized') {
+    content = (
+      <Banner tone="bad" urgent title={t(resume ? 'add.reauth.saved' : 'error.unauthorized')}>
+        <p>{t('error.unauthorized.fix')}</p>
+        {resume?.saved && <p>{t('add.reauth.resume')}</p>}
+        {resume?.target && !resume.saved && <p>{t('add.reauth.copy')}</p>}
+        {!!resume?.target && <p><code className="mono">{resume.target}</code></p>}
+      </Banner>
+    )
+  } else if (profilesQ.isPending && view.k !== 'menu') {
     content = <Skeleton lines={3} label={t('add.title.menu')} />
   } else if (profilesQ.isError && !profilesQ.data && view.k !== 'menu') {
     content = <ErrorState error={profilesQ.error} onRetry={() => void profilesQ.refetch()} />
@@ -163,7 +186,7 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
             initialType={view.type}
             onBack={() => go(backToRule ? { k: 'rule' } : { k: 'menu' })}
             onNeedsFile={(type) => go({ k: 'file', note: t('add.file.fromPicker', { app: specOf(type).label }) })}
-            onDone={(name) => vpnDone(name)}
+            onDone={vpnDone}
             onDirty={onDirty}
             focusFirst={focusFirst}
           />
@@ -176,7 +199,7 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
             incoming={incoming}
             note={view.note}
             onBack={() => go(backToRule ? { k: 'rule' } : { k: 'menu' })}
-            onDone={(name, path) => vpnDone(name, path)}
+            onDone={(name, path, reauth) => vpnDone(name, reauth, path)}
             onDirty={onDirty}
           />
         )
@@ -185,6 +208,7 @@ export function AddFlow({ req, onClose }: { req: AddRequest; onClose: () => void
         content = (
           <RuleStep
             draft={ruleDraft}
+            profileAction={profiles.find((p) => p.name === ruleDraft.via)?.on_tunnel_down ?? 'allow'}
             onChange={(patch) => {
               if (patch.via !== undefined) setViaChosen(true)
               setRule((r) => ({ ...r, ...patch }))
@@ -328,7 +352,7 @@ function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; c
     const ex = result.data
     if (!ex.Matched || ex.Via !== rule.via) tested = t('add.done.tested.other', { target })
     else if (connected) tested = t('add.done.tested.via', { target, via: ex.Via, rule: ex.RuleName })
-    else tested = t(rule.onDown === 'block' ? 'add.done.tested.offBlock' : 'add.done.tested.offAllow', { target, via: ex.Via })
+    else tested = t(rule.onDown === 'allow' ? 'add.done.tested.offAllow' : 'add.done.tested.offBlock', { target, via: ex.Via })
   }
   return (
     <div className="k-add__step">

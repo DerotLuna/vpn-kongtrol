@@ -74,9 +74,9 @@ Kongtrol keeps running in the background after you close the window.
 
 - **Several VPNs at once.** Each one keeps its own routes and DNS; Kongtrol settles the conflicts.
 - **Routing per destination.** Rules by IP range or domain send traffic through the tunnel you
-  choose, on every VPN type. `on_tunnel_down` decides what happens when that tunnel is off
-  (normal internet by default, or block). App rules only explain and diagnose for now; they don't
-  route per process yet.
+  choose, on every VPN type. Rules inherit their profile's action while the tunnel is off.
+  Allow uses the available connection, block protects known destinations, and connect also tries
+  to start the VPN if TCP traffic is detected. App rules provide diagnosis today.
 - **Auto-reconnect.** The watchdog retries only the tunnel that dropped, with growing waits, and
   tells you when it can't. It fails over only to backups you declared (`failover:`); it never
   brings up an unrelated VPN. A provider app it cannot reconnect on its own gets a notice to
@@ -91,7 +91,7 @@ Kongtrol keeps running in the background after you close the window.
   (diagnostics, export, updates); compiled into the program, no external server. Tray icon.
 - **Setup wizard** (`kongtrol init`): finds the VPN clients you have and saves passwords in the
   system keychain.
-- **Diagnostics** (`kongtrol doctor`): checks programs, certificates, keychain and permissions
+- **Diagnostics** (`kongtrol doctor`): checks programs, certificates, keychain, permissions and visible VPN default-route conflicts.
   before you connect, and says how to fix each problem.
 - **No administrator terminal.** Network changes go through a small helper you install once.
 
@@ -191,7 +191,8 @@ Build from source (Go 1.27+): `git clone https://github.com/DerotLuna/vpn-kongtr
 
 **With the app**: open Kongtrol. The panel opens in your
 browser to create your first VPN ("Set up now…" in the tray icon opens it again). Kongtrol
-restarts on its own once the VPN is saved.
+restarts on its own once the first VPN is saved. If the panel asks you to reopen it, open it
+from Kongtrol in the same browser. You have ten minutes to pick up where you left off.
 
 **From the terminal** (same features):
 
@@ -217,6 +218,10 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
   It works at once, no restart. Edited a VPN that is connected? It keeps its old settings until you
   reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other VPNs are never
   touched.
+<!-- feature:default_egress -->
+- On Linux, edit a compatible WireGuard profile to select it for default egress.
+  Check the saved file with `kongtrol routes check-default <profile>`. Disconnect the profile
+  before changing the setting, then connect to apply it. More-specific routes retain priority.
 <!-- feature:recent_connections -->
 - Where did my traffic go? `kongtrol traffic recent` lists the destinations of the last hour, the
   program and which VPN each went through (Windows and Linux). Memory only, never saved or sent;

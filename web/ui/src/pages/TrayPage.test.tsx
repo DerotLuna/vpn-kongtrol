@@ -116,13 +116,17 @@ describe('TrayPage (/tray)', () => {
   })
 
   it('says what to do when a connect fails', async () => {
+    const post = vi.fn()
+    window.kongtrolTray = { post }
     stubApi({
       ...baseRoutes([tunnel('oficina', 'disconnected')]),
       'POST /api/v1/tunnels/oficina/connect': () => json({ error: 'boom' }, 500),
     })
     render(<App />)
     await userEvent.click(await screen.findByRole('switch', { name: 'Conectar oficina' }))
-    expect(await screen.findByText('No se pudo. Inténtalo otra vez o abre el panel.')).toBeInTheDocument()
+    expect(await screen.findByText('No se pudo conectar. Inténtalo otra vez o revisa qué pasó.')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir diagnóstico' }))
+    expect(post).toHaveBeenCalledWith('open-diagnostics')
   })
 
   it('shows a what-to-do line when the daemon is unreachable', async () => {

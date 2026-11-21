@@ -76,6 +76,28 @@ func (c *Client) DeletePolicy(name string) error {
 	return nil
 }
 
+// UpdateVPN applies a partial profile edit through the daemon.
+func (c *Client) UpdateVPN(name string, p configedit.VPNProfile) error {
+	return c.updateConfig("/api/v1/vpns/"+url.PathEscape(name), p)
+}
+
+// UpdatePolicy applies a partial policy edit through the daemon.
+func (c *Client) UpdatePolicy(name string, p configedit.PolicyPatch) error {
+	return c.updateConfig("/api/v1/policies/"+url.PathEscape(name), p)
+}
+
+func (c *Client) updateConfig(path string, p any) error {
+	resp, err := c.sendJSON(http.MethodPut, path, p)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return APIError(resp)
+	}
+	return nil
+}
+
 // CreateVPN creates a profile (POST /api/v1/vpns). A password in p goes
 // over the loopback API to the daemon, which stores it in the keychain,
 // as the dashboard does. restartRequired is the daemon's flag: false when
@@ -95,6 +117,28 @@ func (c *Client) CreateVPN(p configedit.VPNProfile) (restartRequired bool, err e
 	}
 	_ = json.NewDecoder(resp.Body).Decode(&out)
 	return out.RestartRequired, nil
+}
+
+// DefaultEgress checks compatibility, or applies the supplied selection.
+func (c *Client) DefaultEgress(name string, enabled *bool) (config.DefaultEgressStatus, error) {
+	path := "/api/v1/vpns/" + url.PathEscape(name) + "/default-egress"
+	var result config.DefaultEgressStatus
+	var resp *http.Response
+	var err error
+	if enabled == nil {
+		resp, err = c.sendJSON(http.MethodGet, path, nil)
+	} else {
+		resp, err = c.sendJSON(http.MethodPut, path, map[string]bool{"enabled": *enabled})
+	}
+	if err != nil {
+		return result, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return result, APIError(resp)
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	return result, err
 }
 
 func nonNil(s []string) []string {

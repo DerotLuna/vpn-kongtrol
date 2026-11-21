@@ -34,8 +34,8 @@ func withOps(fn func(ctx context.Context, ops privops.Ops) error) error {
 // wireguard.exe /installtunnelservice (Windows) or wg-quick up (Unix) on it.
 // restart skips reusing a tunnel that is already up: the helper replaces
 // it (used when the old one stopped responding).
-func wgUp(configPath, name string, restart bool) error {
-	if !restart && wgPreUp(name) {
+func wgUp(configPath, name string, restart, defaultEgress bool) error {
+	if !restart && !defaultEgress && wgPreUp(name) {
 		return nil
 	}
 	abs, err := filepath.Abs(configPath)
@@ -43,7 +43,7 @@ func wgUp(configPath, name string, restart bool) error {
 		return err
 	}
 	return withOps(func(ctx context.Context, ops privops.Ops) error {
-		_, err := ops.WGInstallTunnel(ctx, privops.WGInstallRequest{ConfigPath: abs, Name: name})
+		_, err := ops.WGInstallTunnel(ctx, privops.WGInstallRequest{ConfigPath: abs, Name: name, DefaultEgress: defaultEgress})
 		return err
 	})
 }

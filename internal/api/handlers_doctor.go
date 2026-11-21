@@ -22,6 +22,7 @@ func (s *Server) handleDoctor(w http.ResponseWriter, r *http.Request) {
 	sec := s.securityState()
 	dm := &doctor.Daemon{
 		Tunnels:           map[string]vpn.Status{},
+		TunnelInterfaces:  map[string]string{},
 		KillSwitchEnabled: sec.killEnabled,
 		KillSwitchActive:  sec.killActive,
 		KillSwitch:        sec.ksStatus,
@@ -30,6 +31,7 @@ func (s *Server) handleDoctor(w http.ResponseWriter, r *http.Request) {
 	if s.collector != nil {
 		for name, m := range s.collector.Snapshot() {
 			dm.Tunnels[name] = m.Status
+			dm.TunnelInterfaces[name] = m.InterfaceName
 		}
 	}
 	rep := runDoctor(doctor.Options{

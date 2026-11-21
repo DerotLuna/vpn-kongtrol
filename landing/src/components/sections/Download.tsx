@@ -282,8 +282,8 @@ shasum -a 256 -c --ignore-missing checksums.txt`,
         </div>
       </div>
       <svg className="dl-echo" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-        <path pathLength={1} d="M0 12 C380 98 1060 98 1440 12" />
-        <path pathLength={1} d="M0 12 C380 98 1060 98 1440 12" />
+        <path d="M0 12 C380 98 1060 98 1440 12" />
+        <path d="M0 12 C380 98 1060 98 1440 12" />
       </svg>
       <div className="container dl-rest">
 

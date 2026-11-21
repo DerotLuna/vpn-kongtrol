@@ -4,6 +4,7 @@
 // check, privacy (update notice opt-in, public IP → Seguridad), diagnostics
 // + export, help links and "Borrar todos mis datos". Security tuning lives
 // on /security and the scheduler on /rules/schedule (ADR-0038 §6).
+import { useEffect } from 'react'
 import { useConfigExport, useDoctor, useHelper } from '../api/hooks'
 import { usePurgeData, useUpdates } from '../api/lifecycle-hooks'
 import { usePreferences } from '../app/preferences-context'
@@ -37,6 +38,12 @@ export function SettingsPage() {
   const exporter = useConfigExport()
   const updates = useUpdates()
   const purge = usePurgeData()
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('section') !== 'diagnostics') return
+    const section = document.getElementById('diagnostics')
+    section?.focus({ preventScroll: true })
+    section?.scrollIntoView?.({ block: 'start' })
+  }, [])
 
   return (
     <div className="k-set-page">
@@ -68,7 +75,7 @@ export function SettingsPage() {
           )}
           <PrivacySection />
           <UpdatesCard state={updates} />
-          <div id="diagnostics" className="k-set-anchor">
+          <div id="diagnostics" className="k-set-anchor" tabIndex={-1}>
             <DiagnosticsCard doctor={doctor} helper={helper} exporter={exporter} />
           </div>
           <AboutSection />

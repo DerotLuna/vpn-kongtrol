@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"net"
 	"net/netip"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -38,15 +40,16 @@ import (
 // tunnel. An equal route that already exists on the tunnel interface
 // (pushed by the VPN server) is left alone.
 type PolicyResolver struct {
-	mu       sync.Mutex
-	opMu     sync.Mutex // serializes route / AllowedIPs changes
-	cfg      *config.Config
-	routeMgr routing.RouteManager
-	log      *zap.Logger
-	profiles map[string]*profileState
-	resolved map[string]map[string]seenIP // policy → CIDR → last seen
-	probe    TunnelProbe
-	cancel   context.CancelFunc
+	mu           sync.Mutex
+	opMu         sync.Mutex // serializes route / AllowedIPs changes
+	cfg          *config.Config
+	routeMgr     routing.RouteManager
+	log          *zap.Logger
+	profiles     map[string]*profileState
+	resolved     map[string]map[string]seenIP // policy → CIDR → last seen
+	destinations []PolicyDestination          // immutable between config or DNS updates
+	probe        TunnelProbe
+	cancel       context.CancelFunc
 
 	// test hooks
 	now    func() time.Time
@@ -75,13 +78,14 @@ type seenIP struct {
 
 // profileState holds the live routing state of one connected tunnel.
 type profileState struct {
-	wg         bool
-	ifaceName  string
-	peerPubKey string
-	configPath string   // profile .conf (lets the helper adopt a pre-existing tunnel)
-	endpointIP net.IP   // never routed into the tunnel (routing loop)
-	dnsServers []net.IP // VPN DNS servers for resolution
-	vpnSubnet  string   // WireGuard: e.g. "10.2.0.0/24"
+	wg                 bool
+	preserveAllowedIPs bool
+	ifaceName          string
+	peerPubKey         string
+	configPath         string   // profile .conf (lets the helper adopt a pre-existing tunnel)
+	endpointIP         net.IP   // never routed into the tunnel (routing loop)
+	dnsServers         []net.IP // VPN DNS servers for resolution
+	vpnSubnet          string   // WireGuard: e.g. "10.2.0.0/24"
 
 	installed map[string]routing.Route // CIDR → route Kongtrol added
 	external  map[string]bool          // CIDR already routed on the interface by someone else
@@ -130,10 +134,22 @@ func (r *PolicyResolver) SetTunnelProbe(p TunnelProbe) {
 // and re-applies every connected tunnel's routes.
 func (r *PolicyResolver) SetConfig(cfg *config.Config) {
 	r.mu.Lock()
+	old := r.cfg
 	r.cfg = cfg
+	r.destinations = nil
+	previous := map[string]config.PolicyRule{}
+	if old != nil {
+		for _, p := range old.Policies {
+			previous[p.Name] = p
+		}
+	}
 	keep := map[string]bool{}
-	for _, p := range cfg.Policies {
-		keep[p.Name] = true
+	if cfg != nil {
+		for _, p := range cfg.Policies {
+			if before, ok := previous[p.Name]; ok && before.Via == p.Via && slices.Equal(before.Match.Domains, p.Match.Domains) {
+				keep[p.Name] = true
+			}
+		}
 	}
 	for name := range r.resolved {
 		if !keep[name] {
@@ -173,6 +189,9 @@ func (r *PolicyResolver) RegisterProfile(name, ifaceName, configPath string) err
 	if !r.hasPolicies(name) {
 		return nil
 	}
+	r.mu.Lock()
+	preserve := r.cfg != nil && r.cfg.VPNs[name].DefaultEgress
+	r.mu.Unlock()
 	pubKey, err := wireguard.ParsePeerPublicKey(configPath)
 	if err != nil {
 		return fmt.Errorf("policyresolver: %w", err)
@@ -182,6 +201,7 @@ func (r *PolicyResolver) RegisterProfile(name, ifaceName, configPath string) err
 		return fmt.Errorf("policyresolver: %w", err)
 	}
 	ps := newProfileState(ifaceName, wireguard.ParseConfigDNS(configPath))
+	ps.preserveAllowedIPs = preserve
 	ps.wg, ps.peerPubKey, ps.configPath, ps.endpointIP = true, pubKey, configPath, endpointIP
 	// Derive VPN subnet from assigned address: 10.2.0.2/32 → 10.2.0.0/24.
 	if addr, err := wireguard.ParseConfigAddress(configPath); err == nil && addr != nil {
@@ -391,42 +411,14 @@ func (r *PolicyResolver) ResolvedIPs(policy string) []ResolvedIP {
 	return out
 }
 
-// PolicyDestinations returns one policy's static CIDRs plus its resolved
-// domain IPs (tunnel up or not).
-func (r *PolicyResolver) PolicyDestinations(policy string) []netip.Prefix {
-	for _, p := range r.policies() {
-		if p.Name == policy {
-			return r.policyPrefixes(p)
-		}
-	}
-	return nil
-}
-
 // ProfileDestinations returns the destinations of every policy via profile.
 func (r *PolicyResolver) ProfileDestinations(profile string) []netip.Prefix {
 	var out []netip.Prefix
-	for _, p := range r.policies() {
-		if p.Via == profile {
-			out = append(out, r.policyPrefixes(p)...)
+	for d := range r.PolicyDestinations() {
+		if d.Match.Via == profile {
+			out = append(out, d.Prefix)
 		}
 	}
-	return out
-}
-
-func (r *PolicyResolver) policyPrefixes(p config.PolicyRule) []netip.Prefix {
-	var out []netip.Prefix
-	for _, c := range p.Match.IPRanges {
-		if pf, err := netip.ParsePrefix(strings.TrimSpace(c)); err == nil {
-			out = append(out, pf.Masked())
-		}
-	}
-	r.mu.Lock()
-	for c := range r.resolved[p.Name] {
-		if pf, err := netip.ParsePrefix(c); err == nil {
-			out = append(out, pf)
-		}
-	}
-	r.mu.Unlock()
 	return out
 }
 
@@ -438,24 +430,52 @@ type PolicyMatch struct {
 	Label  string // domain it was resolved from, else a policy domain, else the IP
 }
 
-// MatchAddr returns the highest-priority policy whose destinations contain
-// a (static CIDRs or resolved domain IPs).
-func (r *PolicyResolver) MatchAddr(a netip.Addr) (PolicyMatch, bool) {
-	a = a.Unmap()
-	cfg := r.config()
-	for _, p := range orderedPolicies(cfg) {
-		m := PolicyMatch{Policy: p.Name, Via: p.Via, Action: p.TunnelDownAction()}
+type PolicyDestination struct {
+	Prefix netip.Prefix
+	Match  PolicyMatch
+}
+
+// PolicyDestinations iterates longest prefixes first. Profile priority and
+// policy order break ties, matching IP routing precedence.
+func (r *PolicyResolver) PolicyDestinations() iter.Seq[PolicyDestination] {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.destinations != nil || r.cfg == nil {
+		return slices.Values(r.destinations)
+	}
+	destinations := []PolicyDestination{}
+	for _, p := range orderedPolicies(r.cfg) {
+		m := PolicyMatch{Policy: p.Name, Via: p.Via, Action: p.TunnelDownAction(r.cfg.VPNs[p.Via])}
 		for _, c := range p.Match.IPRanges {
-			if pf, err := netip.ParsePrefix(strings.TrimSpace(c)); err == nil && pf.Contains(a) {
-				m.Label = a.String()
-				return m, true
+			c = strings.TrimSpace(c)
+			if addr, err := netip.ParseAddr(c); err == nil {
+				addr = addr.Unmap()
+				destinations = append(destinations, PolicyDestination{netip.PrefixFrom(addr, addr.BitLen()), m})
+			} else if prefix, err := netip.ParsePrefix(c); err == nil {
+				if prefix.Addr().Is4In6() && prefix.Bits() >= 96 {
+					prefix = netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
+				}
+				destinations = append(destinations, PolicyDestination{prefix.Masked(), m})
 			}
 		}
-		r.mu.Lock()
-		s, ok := r.resolved[p.Name][hostCIDR(a)]
-		r.mu.Unlock()
-		if ok {
-			m.Label = s.host
+		for c, seen := range r.resolved[p.Name] {
+			if prefix, err := netip.ParsePrefix(c); err == nil {
+				m.Label = seen.host
+				destinations = append(destinations, PolicyDestination{prefix, m})
+			}
+		}
+	}
+	slices.SortStableFunc(destinations, func(a, b PolicyDestination) int { return b.Prefix.Bits() - a.Prefix.Bits() })
+	r.destinations = destinations
+	return slices.Values(destinations)
+}
+
+// MatchAddr returns the winning policy for a static or resolved address.
+func (r *PolicyResolver) MatchAddr(a netip.Addr) (PolicyMatch, bool) {
+	a = a.Unmap()
+	for d := range r.PolicyDestinations() {
+		if d.Prefix.Contains(a) {
+			m := d.Match
 			if m.Label == "" {
 				m.Label = a.String()
 			}
@@ -479,12 +499,6 @@ func (r *PolicyResolver) HostOf(a netip.Addr) string {
 	return ""
 }
 
-func (r *PolicyResolver) config() *config.Config {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.cfg
-}
-
 // ResolveDomainViaProfile resolves a domain using the DNS servers attached to
 // a specific profile. It returns deduplicated IPs.
 func (r *PolicyResolver) ResolveDomainViaProfile(profile, domain string) ([]net.IP, error) {
@@ -494,10 +508,11 @@ func (r *PolicyResolver) ResolveDomainViaProfile(profile, domain string) ([]net.
 	if !ok {
 		return nil, fmt.Errorf("policyresolver: profile %q is not registered", profile)
 	}
-	if strings.TrimSpace(domain) == "" {
+	lookupName := config.ASCIIPolicyDomain(domain)
+	if lookupName == "" {
 		return nil, errors.New("policyresolver: empty domain")
 	}
-	ips := r.lookup(domain, ps.dnsServers)
+	ips := r.lookup(lookupName, ps.dnsServers)
 	if len(ips) == 0 {
 		return nil, fmt.Errorf("policyresolver: no answers for %q via %s DNS", domain, profile)
 	}
@@ -507,8 +522,12 @@ func (r *PolicyResolver) ResolveDomainViaProfile(profile, domain string) ([]net.
 // resolve looks up the domains of every policy (only those via onlyVia
 // when set) and records the answers. No lock is held during DNS.
 func (r *PolicyResolver) resolve(onlyVia string, budget time.Duration) {
-	pols := r.policies()
 	r.mu.Lock()
+	cfg := r.cfg
+	if cfg == nil {
+		r.mu.Unlock()
+		return
+	}
 	dnsFor := map[string][]net.IP{}
 	endpointFor := map[string]net.IP{}
 	for name, ps := range r.profiles {
@@ -519,7 +538,7 @@ func (r *PolicyResolver) resolve(onlyVia string, budget time.Duration) {
 
 	started := time.Now()
 	found := map[string]map[string]string{} // policy → CIDR → host
-	for _, p := range pols {
+	for _, p := range cfg.Policies {
 		if onlyVia != "" && p.Via != onlyVia {
 			continue
 		}
@@ -548,6 +567,9 @@ func (r *PolicyResolver) resolve(onlyVia string, budget time.Duration) {
 	now := r.now()
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	if r.cfg != cfg {
+		return
+	}
 	for pol, cidrs := range found {
 		m := r.resolved[pol]
 		if m == nil {
@@ -556,8 +578,11 @@ func (r *PolicyResolver) resolve(onlyVia string, budget time.Duration) {
 		}
 		newCount := 0
 		for c, host := range cidrs {
-			if _, ok := m[c]; !ok {
+			if previous, ok := m[c]; !ok {
 				newCount++
+				r.destinations = nil
+			} else if previous.host != host {
+				r.destinations = nil
 			}
 			m[c] = seenIP{last: now, host: host}
 		}
@@ -569,6 +594,7 @@ func (r *PolicyResolver) resolve(onlyVia string, budget time.Duration) {
 		for c, s := range m {
 			if now.Sub(s.last) > staleAfter {
 				delete(m, c)
+				r.destinations = nil
 			}
 		}
 	}
@@ -588,26 +614,17 @@ func (r *PolicyResolver) applyAll() {
 
 // desiredCIDRs returns the CIDRs whose winning policy routes via profile.
 func (r *PolicyResolver) desiredCIDRs(profile string, ps *profileState) []string {
-	owner := map[string]string{}
-	var order []string
-	for _, p := range orderedPolicies(r.config()) {
-		for _, pf := range r.policyPrefixes(p) {
-			c := pf.String()
-			if _, taken := owner[c]; !taken {
-				owner[c] = p.Via
-				order = append(order, c)
-			}
-		}
-	}
+	seen := map[netip.Prefix]bool{}
+	endpoint := ipToCIDR(ps.endpointIP)
 	var out []string
-	for _, c := range order {
-		if owner[c] != profile {
+	for d := range r.PolicyDestinations() {
+		if seen[d.Prefix] {
 			continue
 		}
-		if ps.endpointIP != nil && c == ipToCIDR(ps.endpointIP) {
-			continue
+		seen[d.Prefix] = true
+		if d.Match.Via == profile && d.Prefix.String() != endpoint {
+			out = append(out, d.Prefix.String())
 		}
-		out = append(out, c)
 	}
 	sort.Strings(out)
 	return out
@@ -626,7 +643,7 @@ func (r *PolicyResolver) apply(name string) {
 	}
 	desired := r.desiredCIDRs(name, ps)
 
-	if ps.wg {
+	if ps.wg && !ps.preserveAllowedIPs {
 		all := buildAllowedIPs(ps, desired)
 		if joined := strings.Join(all, ","); joined != ps.wgApplied {
 			if err := r.wgSet(ps.ifaceName, ps.peerPubKey, all, ps.configPath); err != nil {
@@ -801,9 +818,11 @@ func (r *PolicyResolver) lookupAll(domain string, vpnDNS []net.IP) []net.IP {
 // "*.anthropic.com" → ["anthropic.com", "www.anthropic.com", "api.anthropic.com", ...]
 // "claude.ai" → ["claude.ai"]
 func expandDomainPattern(pattern string) []string {
-	pattern = strings.TrimSpace(pattern)
-	if strings.HasPrefix(pattern, "*.") {
-		base := strings.TrimPrefix(pattern, "*.")
+	pattern = config.ASCIIPolicyDomain(pattern)
+	if pattern == "" {
+		return nil
+	}
+	if base, ok := strings.CutPrefix(pattern, "*."); ok {
 		targets := []string{base}
 		for _, prefix := range commonSubdomains {
 			targets = append(targets, prefix+base)

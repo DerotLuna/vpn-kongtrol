@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../App'
+import { resetSessionForTests, startAuth } from '../../api/auth'
 import { RESTART_TIMING, resetRestartPhase, type VPNProfile } from '../../data/profiles'
 import { FakeSocket, helperReady, json, stubFetch, tunnel, type Routes } from '../../test/fakes'
 
@@ -109,7 +110,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     const input = await within(sheet).findByRole('textbox', { name: /Site, IP or program/ })
     expect(input).toHaveValue('https://claude.ai/chat')
     expect(within(sheet).getByRole('button', { name: /Goes through/ })).toHaveTextContent(/home/)
-    expect(within(sheet).getByRole('radio', { name: 'Use my normal connection' })).toBeChecked()
+    expect(within(sheet).getByRole('radio', { name: 'Use the VPN setting' })).toBeChecked()
     expect(within(sheet).getByRole('checkbox', { name: /Include subdomains/ })).toBeChecked()
     expect(within(sheet).getByRole('textbox', { name: /Rule name/ })).toHaveValue('claude.ai via home')
 
@@ -119,7 +120,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     ).toBeInTheDocument()
     expect(bodyOf(fetchMock, 'POST /api/v1/policies/test')).toMatchObject({
       target: 'claude.ai',
-      rule: { via: 'home', match: { domains: ['claude.ai', '*.claude.ai'] } },
+      rule: { via: 'home', on_tunnel_down: '', match: { domains: ['claude.ai', '*.claude.ai'] } },
     })
 
     await userEvent.clear(input)
@@ -253,6 +254,69 @@ describe('A: connect a VPN I already use', () => {
 })
 
 describe('C with no profile: add the VPN first, then back to the rule with the draft kept', () => {
+  it('recovers the first rule after the replacement daemon rejects the old session', async () => {
+    window.history.replaceState(null, '', '/rules?add=rule&target=example.net#k=first')
+    let replaced = false
+    let down = false
+    const { routes, state } = daemon([], {
+      'POST /api/v1/session': (init) => {
+        const { nonce } = JSON.parse(String(init?.body))
+        if (nonce !== (replaced ? 'reopened' : 'first')) return json({}, 401)
+        return json({ session_token: replaced ? 'new-page' : 'old-page' })
+      },
+      'GET /api/v1/vpns/detect': () => json([{ label: 'Surfshark', adapter_type: 'surfshark' }]),
+      'POST /api/v1/vpns': () => {
+        state.profiles.push(profile('Surfshark', 'surfshark'))
+        return json({ status: 'created', profile: 'Surfshark', restart_required: true }, 201)
+      },
+      'POST /api/v1/restart': () => {
+        down = true
+        return json({ status: 'restarting' }, 202)
+      },
+      'GET /api/v1/setup': () => {
+        if (down) {
+          down = false
+          replaced = true
+          return Promise.reject(new TypeError('down'))
+        }
+        return json(setupDone)
+      },
+      'POST /api/v1/ws-ticket': () => json({ ticket: 'one-shot' }),
+      'POST /api/v1/policies': () => json({ status: 'created' }, 201),
+    })
+    for (const [key, handler] of Object.entries(routes)) {
+      if (key === 'POST /api/v1/session') continue
+      routes[key] = (init) => {
+        const token = new Headers(init?.headers).get('X-Kongtrol-Session')
+        return token === (replaced ? 'new-page' : 'old-page') ? handler(init) : json({}, 401)
+      }
+    }
+    const fetchMock = stubFetch(routes)
+    await startAuth()
+    const first = render(<App />)
+    const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Add a VPN' }))
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Use Surfshark' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(await within(sheet).findByText('Your profile was saved. Reopen the dashboard to continue.')).toBeInTheDocument()
+    expect(within(sheet).getByText('example.net')).toBeInTheDocument()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(screen.queryByText(/Reconnecting to Kongtrol/)).not.toBeInTheDocument()
+    expect(called(fetchMock, 'POST /api/v1/policies')).toBe(false)
+
+    first.unmount()
+    resetSessionForTests()
+    window.history.replaceState(null, '', '/rules#k=reopened')
+    await startAuth()
+    render(<App />)
+    const resumed = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
+    expect(await within(resumed).findByRole('textbox', { name: /Site, IP or program/ })).toHaveValue('example.net')
+    expect(within(resumed).getByRole('button', { name: /Goes through/ })).toHaveTextContent('Surfshark')
+    await userEvent.click(within(resumed).getByRole('button', { name: 'Save rule' }))
+    expect(await within(resumed).findByText(/example.net via Surfshark.*saved/)).toBeInTheDocument()
+    expect(bodyOf(fetchMock, 'POST /api/v1/policies')).toMatchObject({ via: 'Surfshark', match: { domains: ['example.net', '*.example.net'] } })
+  })
+
   it('rule → "Add a VPN" → A → restart → back on the rule with that VPN', async () => {
     window.history.replaceState(null, '', '/?add=rule&target=claude.ai')
     const { routes, state } = daemon([], {

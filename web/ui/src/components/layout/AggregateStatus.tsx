@@ -13,6 +13,7 @@ import { RefreshIcon } from '../ui/icons'
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
 import { useDaemonState, useLiveState } from '../../data/connection'
+import { useAuthState } from '../../api/auth'
 import { summarizeTunnels, useAppVersion, useTunnelsQuery, type TunnelState } from '../../data/resources'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
 
@@ -29,6 +30,7 @@ export const AggregateStatus = memo(function AggregateStatus() {
   const { t } = usePreferences()
   const daemon = useDaemonState()
   const live = useLiveState()
+  const auth = useAuthState()
   const { data } = useTunnelsQuery()
 
   let tone: PillTone = 'unknown'
@@ -41,7 +43,7 @@ export const AggregateStatus = memo(function AggregateStatus() {
     tone = TONE[sum.worst]
     text = sum.total === 0 ? t('status.none') : t('status.summary', { connected: sum.connected, total: sum.total })
   }
-  const reconnecting = daemon !== 'offline' && live === 'down' && !!data
+  const reconnecting = auth === 'ok' && daemon !== 'offline' && live === 'down' && !!data
   // The {' '} text nodes separate words in the accessible name; the flex
   // layout ignores them.
   return (

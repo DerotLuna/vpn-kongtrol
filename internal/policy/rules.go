@@ -7,6 +7,8 @@ import (
 	"net"
 	"path"
 	"strings"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 )
 
 // Rule maps a set of traffic patterns to a VPN profile name.
@@ -151,26 +153,21 @@ func prefixLen(n *net.IPNet) int {
 	return ones
 }
 
-// matchGlob performs simple glob matching where * matches any sequence of
-// non-dot characters and ** matches any sequence including dots.
+// matchGlob matches an exact DNS name or a wildcard for one DNS label.
 func matchGlob(pattern, s string) bool {
+	pattern = strings.TrimSuffix(config.ASCIIPolicyDomain(pattern), ".")
+	s = strings.TrimSuffix(config.ASCIIPolicyDomain(s), ".")
+	if pattern == "" || s == "" {
+		return false
+	}
 	// Exact match.
 	if pattern == s {
 		return true
 	}
 	// Wildcard prefix: *.example.com matches sub.example.com
-	if len(pattern) > 2 && pattern[:2] == "*." {
-		suffix := pattern[1:] // ".example.com"
-		if len(s) > len(suffix) && s[len(s)-len(suffix):] == suffix {
-			// Ensure the wildcard part has no dots (single label only).
-			prefix := s[:len(s)-len(suffix)]
-			for _, c := range prefix {
-				if c == '.' {
-					return false
-				}
-			}
-			return true
-		}
+	if strings.HasPrefix(pattern, "*.") {
+		label, ok := strings.CutSuffix(s, pattern[1:])
+		return ok && label != "" && !strings.Contains(label, ".")
 	}
 	return false
 }

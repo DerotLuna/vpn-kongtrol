@@ -22,7 +22,7 @@ const (
 type PolicyPatch struct {
 	Name *string `json:"name"`
 	Via  *string `json:"via"`
-	// OnTunnelDown: allow (default) | block | connect.
+	// OnTunnelDown: empty (inherit) | allow | block | connect.
 	OnTunnelDown *string `json:"on_tunnel_down"`
 	Match        *struct {
 		IPRanges *[]string `json:"ip_ranges"`
@@ -56,15 +56,11 @@ func (p PolicyPatch) ApplyTo(base config.PolicyRule) config.PolicyRule {
 	return base
 }
 
-// NormalizePolicy trims every field, drops empty entries and leaves the
-// default on_tunnel_down ("allow") out of kongtrol.yaml.
+// NormalizePolicy trims every field and drops empty match entries.
 func NormalizePolicy(r config.PolicyRule) config.PolicyRule {
 	r.Name = strings.TrimSpace(r.Name)
 	r.Via = strings.TrimSpace(r.Via)
 	r.OnTunnelDown = strings.ToLower(strings.TrimSpace(r.OnTunnelDown))
-	if r.OnTunnelDown == config.OnTunnelDownAllow {
-		r.OnTunnelDown = ""
-	}
 	r.Match.Domains = nonEmpty(r.Match.Domains)
 	r.Match.IPRanges = nonEmpty(r.Match.IPRanges)
 	r.Match.Apps = nonEmpty(r.Match.Apps)
@@ -112,7 +108,7 @@ func ValidatePolicy(rule config.PolicyRule, cfg *config.Config) error {
 			return &config.ValidationError{Key: "api.err.policy_bad_range", Args: []any{r}}
 		}
 	}
-	if err := config.ValidateOnTunnelDown(rule); err != nil {
+	if err := config.ValidateOnTunnelDown(rule, cfg.VPNs[rule.Via]); err != nil {
 		return err
 	}
 	_, err := policy.ParseRule(rule.Name, rule.Via, rule.Match.IPRanges, rule.Match.Domains, rule.Match.Apps, 1)

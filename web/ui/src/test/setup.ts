@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach, beforeEach, vi } from 'vitest'
-import { authState } from '../api/auth'
+import { authState, resetSessionForTests } from '../api/auth'
 import { connection, liveState } from '../data/connection'
 import { toasts } from '../data/toast'
 import { resetTransitions } from '../data/transition'
@@ -30,12 +30,13 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  cleanup()
   toasts.clear()
   resetTransitions()
+  resetSessionForTests()
   authState.set('ok')
   connection.set('unknown')
   liveState.set('connecting')
-  cleanup()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
   localStorage.clear()

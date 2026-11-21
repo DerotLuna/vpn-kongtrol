@@ -149,6 +149,25 @@ describe('ProfilesPage', () => {
     expect(within(dialog).queryByText('You already have a VPN called “work”.')).not.toBeInTheDocument()
   })
 
+  it('selects native default egress from the saved WireGuard profile', async () => {
+    let enabled = false
+    const fetchMock = stubFetch(base({
+      'GET /api/v1/vpns': () => json([profile('home', { type: 'wireguard', config: '/home/ana/wg0.conf' })]),
+      'GET /api/v1/vpns/home/default-egress': () => json({ enabled, compatible: true }),
+      'PUT /api/v1/vpns/home/default-egress': () => {
+        enabled = true
+        return json({ enabled, compatible: true })
+      },
+    }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit home' }))
+    const toggle = await screen.findByRole('switch', { name: 'WireGuard default egress' })
+    expect(toggle).toHaveAttribute('aria-checked', 'false')
+    await userEvent.click(toggle)
+    await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/home/default-egress')).toEqual({ enabled: true }))
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'))
+  })
+
   it('editing: a connected VPN saves with "Save and reconnect" (PUT ?reconnect=true); a disconnected one with "Save"', async () => {
     const fetchMock = stubFetch(
       base({

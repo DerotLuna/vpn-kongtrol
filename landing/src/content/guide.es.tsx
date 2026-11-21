@@ -137,12 +137,12 @@ export default function guideES(os: OS) {
       attach: <><strong>Si usas la app de tu VPN:</strong> al conectar, si el túnel ya está arriba, Kongtrol se engancha.
         Si no, abre la app y conecta por ti cuando puede. Si no puede, te dice qué hacer y espera a que conectes tú.</>,
       cliTitle: <>Desde la terminal</>,
-      cli: <><IC c="kongtrol init" /> te pregunta, en este orden:</>,
+      cli: <>Para crear tu primer perfil, ejecuta <IC c="kongtrol init" />.</>,
       cliSteps: [
         <>Tus VPN: detecta las apps instaladas (✓) y te pide nombre y datos de cada perfil.</>,
-        <>Reglas: qué sitios o redes salen por cada VPN (puedes dejarlo para después).</>,
-        <>Seguridad: kill switch, protección de DNS, registro firmado, panel y la consulta opcional de IP pública.</>,
-        <>Revisar y guardar en <IC c="~/.kongtrol/kongtrol.yaml" />. Luego ofrece el ayudante y «¿Conectar ahora?».</>,
+        <>Guarda el perfil y sal, o sigue con las reglas y la seguridad.</>,
+        <>Si sigues, elige qué sitios o redes salen por la VPN y configura opciones como kill switch y protección DNS.</>,
+        <>Kongtrol guarda los cambios en <IC c="~/.kongtrol/kongtrol.yaml" /> y te ofrece instalar el ayudante si hace falta.</>,
       ],
       cliMore: <>Si ya tienes perfiles, <IC c="kongtrol init" /> muestra un menú: agregar un perfil, actualizar credenciales,
         reglas, seguridad o guardar. Para scripts: <IC c="kongtrol profile add" /> y <IC c="kongtrol profile import" />.
@@ -162,6 +162,7 @@ $ kongtrol profile import ~/Descargas/proton-us.conf`,
       code: `$ kongtrol up oficina          # conecta una VPN
 $ kongtrol up oficina aws      # varias a la vez
 $ kongtrol status --watch      # estado en vivo · q cierra la vista, las VPN siguen
+$ kongtrol tray                # abre el icono si instalaste la app de bandeja
 $ kongtrol down oficina        # desconecta una
 $ kongtrol down --all          # desconecta todas`,
       waiting: <><strong>«Esperando conexión en …»</strong> significa que Kongtrol abrió la app de tu VPN y espera que conectes ahí.
@@ -172,25 +173,28 @@ $ kongtrol down --all          # desconecta todas`,
     // feature:policies feature:routes
     policies: {
       title: <>Qué sale por cada VPN</>,
-      lead: <>Con varias VPN a la vez, las <strong>reglas</strong> deciden qué destino va por cuál. Sin regla, sale por tu internet normal.</>,
+      lead: <>Una <strong>regla</strong> elige qué destinos van por un perfil VPN. Una <strong>ruta</strong> es el camino que usa tu equipo para llegar a ese destino. El resto del tráfico sigue las rutas del equipo.</>,
       diagram: `  destino              regla                        sale por
   ─────────────────────────────────────────────────────────────────
   claude.ai        ──▶  domains: claude.ai      ──▶  us-content
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  oficina
   ejemplo.com      ──▶  sin regla               ──▶  internet normal`,
-      panel: <>En el panel: <strong>Reglas</strong> → <strong>＋ Agregar</strong>. Escribe un sitio o una red, elige la VPN y prueba antes de guardar.
-        En la terminal:</>,
+      panel: <>En el panel, abre <strong>Reglas</strong> → <strong>＋ Agregar</strong>. Escribe un sitio o una red, elige la VPN y prueba antes de guardar.
+        Si Kongtrol te pide reabrir el panel tras guardar tu primer perfil, hazlo desde el ícono de la bandeja con el mismo navegador. Durante diez minutos puedes retomar la configuración y recuperar el borrador de la regla.
+        También puedes crear la regla desde la terminal.</>,
       code: `$ kongtrol policy add github.com --via oficina
 $ kongtrol policy show github.com     # por cuál VPN sale y por qué
 $ kongtrol policy list
 $ kongtrol policy remove <nombre>`,
-      down: <><strong>Si la VPN de una regla está apagada,</strong> ese destino sale por tu internet normal. Para bloquearlo en ese caso:{' '}
-        <IC c="--block-when-down" /> (en el archivo, <IC c="on_tunnel_down: block" />).</>,
+      down: <><strong>Si la VPN está apagada,</strong> en Perfiles puedes permitir la conexión normal, bloquear los destinos conocidos o bloquearlos e intentar conectar al detectar actividad TCP. Cada regla puede elegir su propia acción.
+        Puedes cambiarlo con <IC c="kongtrol profile on-tunnel-down oficina block" />. La detección puede omitir intentos cortos o rechazados. En macOS, conecta manualmente.</>,
+      // feature:default_egress
+      defaultEgress: <>En Linux, puedes elegir <strong>Salida por defecto de WireGuard</strong> en un perfil directo compatible y desconectado. También puedes usar <IC c="kongtrol routes check-default oficina" /> y <IC c="kongtrol routes default-egress oficina on" />. Se aplica al conectar. Las rutas más específicas conservan su prioridad.</>,
       yamlLead: <>También puedes escribirlas en <IC c="kongtrol.yaml" />, bajo <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI
     match:
-      domains: [claude.ai, "*.anthropic.com"]
+      domains: [claude.com, "*.claude.com", api.anthropic.com, "*.anthropic.com"]
     via: us-content
 
   - name: Red de la oficina
@@ -199,8 +203,9 @@ $ kongtrol policy remove <nombre>`,
       domains: ["*.tuempresa.com"]
     via: oficina
     on_tunnel_down: block   # opcional: si oficina está apagada, bloquear`,
-      match: <><strong>Cómo se elige:</strong> <IC c="*.empresa.com" /> cubre los subdominios, no <IC c="empresa.com" /> (agrega los dos).
-        En redes gana la más específica: <IC c="10.10.1.0/24" /> antes que <IC c="10.0.0.0/8" />.
+      match: <><strong>Ejemplos de destinos.</strong> Usa <IC c="claude.com" /> para el dominio raíz, <IC c="api.anthropic.com" /> para un subdominio exacto y <IC c="*.anthropic.com" /> para un nivel de subdominios. Kongtrol consulta algunos nombres frecuentes para instalar rutas. Escribe el nombre completo de cada subdominio que necesites.
+        Puedes usar <IC c="café.example" />, y el nombre coincide aunque lo pegues con mayúsculas o un punto final.
+        Usa <IC c="192.0.2.42" /> para una IP, <IC c="2001:db8::42" /> para una IPv6 o <IC c="192.0.2.0/24" /> para una red. Entre redes superpuestas gana la más específica.
         Las reglas por app (<IC c="apps" />) por ahora solo explican, no enrutan.</>,
       apply: <>Después de editar el archivo: <IC c="kongtrol config validate" /> y <IC c="kongtrol reload --policy" /> (aplica sin tocar los túneles).
         Lo que cambies en el panel se aplica solo.</>,
@@ -216,11 +221,21 @@ $ kongtrol down --group trabajo`,
       note: <>Una VPN puede estar en varios grupos. Si editas el archivo con Kongtrol en marcha:{' '}
         <IC c="kongtrol reload" /> aplica los cambios sin reiniciar.</>,
     },
+    faq: {
+      title: 'Preguntas frecuentes',
+      items: [
+        { question: '¿Necesito instalar WireGuard o la app de mi VPN?', answer: <>Un perfil directo de WireGuard requiere las herramientas de WireGuard de tu sistema. Si eliges un proveedor que funciona con su app, instala la app de ese proveedor y conecta desde ella cuando Kongtrol te lo pida.</> },
+        { question: '¿Puedo tener varias VPN a la vez?', answer: <>Puedes separar destinos entre perfiles compatibles. Algunas apps controlan toda la conexión, el DNS o el firewall. Si una VPN falla al activar otra, abre <a href="#doctor">Diagnóstico</a> para revisar qué muestra el equipo.</> },
+        { question: '¿Qué pasa si cierro el panel?', answer: <>Tus conexiones siguen activas. Abre el panel o la bandeja para verlas. Usa <IC c="kongtrol down --all" /> si quieres desconectarlas todas.</> },
+      ],
+    },
+    // feature:wizard_doctor feature:direct_diagnostics
     doctor: {
       title: <>Revisar que todo esté bien</>,
       lead: <>En el panel: <strong>Ajustes</strong> → <strong>Diagnóstico</strong>. Revisa tus VPN, archivos, contraseñas guardadas y el ayudante.
-        Cada problema trae qué hacer; si falta el ayudante, el botón <strong>Reparar</strong> lo instala.</>,
-      code: `$ kongtrol doctor          # lo mismo en la terminal
+        Cada problema trae qué hacer. Diagnóstico también avisa si dos VPN detectadas anuncian una salida completa para IPv4 o IPv6.</>,
+      code: `$ kongtrol dashboard --diagnostics  # abre Diagnóstico directamente
+$ kongtrol doctor          # lo mismo en la terminal
 $ kongtrol doctor --fix    # y repara lo que se puede`,
       export: <><strong>Exportar configuración</strong> (en Diagnóstico, o <IC c="kongtrol export" />) te da un archivo sin contraseñas,
         útil para pedir ayuda o preparar el equipo de un compañero.</>,

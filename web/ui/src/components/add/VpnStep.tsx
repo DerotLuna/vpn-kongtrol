@@ -34,7 +34,7 @@ interface Props {
   onBack: () => void
   /** WireGuard / OpenVPN: continue with their file. */
   onNeedsFile: (type: 'wireguard' | 'openvpn') => void
-  onDone: (name: string) => void
+  onDone: (name: string, reauth: boolean) => void
   onDirty: (dirty: boolean) => void
   focusFirst: () => void
 }
@@ -182,9 +182,9 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
       return
     }
     try {
-      const ok = await act.run(toRequest(draft, 'create'))
+      const outcome = await act.run(toRequest(draft, 'create'))
       onDirty(false)
-      if (ok) onDone(draft.name.trim())
+      if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth')
     } catch (error) {
       const local = localizeError(error, t)
       const field = local instanceof ApiError ? fieldForErrorKey(local.key) : undefined
@@ -266,8 +266,8 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
         phase={act.phase}
         onBack={() => (initialType ? onBack() : setSub({ k: 'list' }))}
         onRetry={() =>
-          void act.retryRestart().then((ok) => {
-            if (ok) onDone(draft.name.trim())
+          void act.retryRestart().then((outcome) => {
+            if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth')
           })
         }
       />

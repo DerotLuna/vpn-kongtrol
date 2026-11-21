@@ -87,12 +87,18 @@ func validateSemantics(cfg *Config) error {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	if err := validateDefaultEgress(cfg.VPNs, names); err != nil {
+		return err
+	}
 	for _, n := range names {
 		if err := ValidateName("vpn", n); err != nil {
 			return err
 		}
 		if err := validateProvider(n, cfg.VPNs[n]); err != nil {
 			return err
+		}
+		if action := cfg.VPNs[n].OnTunnelDown; !validTunnelDownAction(action) {
+			return newValidationError("config.err.profile_on_tunnel_down", n, action)
 		}
 	}
 	for _, p := range cfg.Policies {
@@ -125,7 +131,7 @@ func validateSemantics(cfg *Config) error {
 		if len(pol.Match.IPRanges) == 0 && len(pol.Match.Domains) == 0 && len(pol.Match.Apps) == 0 {
 			return newValidationError("config.err.policy_no_match", pol.Name)
 		}
-		if err := ValidateOnTunnelDown(pol); err != nil {
+		if err := ValidateOnTunnelDown(pol, cfg.VPNs[pol.Via]); err != nil {
 			return err
 		}
 		if _, exists := policyNames[pol.Name]; exists {
@@ -259,16 +265,17 @@ func validateProvider(name string, v VPNConfig) error {
 	return nil
 }
 
-// ValidateOnTunnelDown checks a policy's on_tunnel_down (allow, block,
-// connect; block needs destinations, not only apps). Exported so the
-// dashboard API reports it translated before saving.
-func ValidateOnTunnelDown(pol PolicyRule) error {
-	switch pol.OnTunnelDown {
-	case "", OnTunnelDownAllow, OnTunnelDownBlock, OnTunnelDownConnect:
-	default:
+func validTunnelDownAction(action string) bool {
+	return action == "" || action == OnTunnelDownAllow || BlocksWhenDown(action)
+}
+
+// ValidateOnTunnelDown validates the explicit action and the requirements of
+// the effective action, including when inherited from the profile.
+func ValidateOnTunnelDown(pol PolicyRule, profile VPNConfig) error {
+	if !validTunnelDownAction(pol.OnTunnelDown) {
 		return newValidationError("config.err.on_tunnel_down", pol.Name, pol.OnTunnelDown)
 	}
-	if pol.OnTunnelDown == OnTunnelDownBlock && len(pol.Match.IPRanges) == 0 && len(pol.Match.Domains) == 0 {
+	if BlocksWhenDown(pol.TunnelDownAction(profile)) && len(pol.Match.IPRanges) == 0 && len(pol.Match.Domains) == 0 {
 		// Apps alone give no destination to block.
 		return newValidationError("config.err.on_tunnel_down_apps", pol.Name)
 	}

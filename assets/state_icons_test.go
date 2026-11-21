@@ -70,6 +70,7 @@ func TestTrayBadges(t *testing.T) {
 	cases := map[TrayBadge][3]uint8{
 		BadgeLive:    {ColorLive.R, ColorLive.G, ColorLive.B},
 		BadgeCaution: {ColorCaution.R, ColorCaution.G, ColorCaution.B},
+		BadgeError:   {ColorDanger.R, ColorDanger.G, ColorDanger.B},
 	}
 	for badge, want := range cases {
 		img, err := TrayMark(32, InkOnLight, badge)

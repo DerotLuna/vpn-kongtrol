@@ -20,7 +20,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0005](0005-privileged-helper-service.md) | Privileged helper service: closed op list, IPC auth, lease, fail-open | Accepted | 2026-11-17 |
 | [0006](0006-provider-adapters-attach-mode.md) | Provider adapters with attach mode; direct WireGuard/OpenVPN way | Accepted | 2026-11-17 |
 | [0007](0007-openvpn-pushed-routes-binary-cd.md) | OpenVPN: accept pushed routes, binary resolution, `--cd` | Accepted | 2026-11-17 |
-| [0008](0008-policy-routing-on-tunnel-down.md) | Policy routing for all adapters, `on_tunnel_down`, notices | Accepted | 2026-11-17 |
+| [0008](0008-policy-routing-on-tunnel-down.md) | Policy routing for all adapters, `on_tunnel_down`, notices | Superseded by ADR-0084 | 2026-11-17 |
 | [0009](0009-kill-switch-split-tunneling.md) | Kill switch for split tunneling: block-only, per destination | Accepted | 2026-11-17 |
 | [0010](0010-public-ip-check-opt-in.md) | Public IP check is opt-in (Local only) | Accepted | 2026-11-17 |
 | [0011](0011-dashboard-vite-react-ts.md) | Dashboard migration to Vite + React + TS by phases, at `/app/` | Superseded by ADR-0043 | 2026-11-17 |
@@ -94,6 +94,14 @@ decision live in [`docs/research/`](../research/README.md).
 | [0079](0079-landing-hero-cta-and-one-screen-footer-on-phones.md) | Landing: bigger hero call to action with a facts row; footer fills one phone screen (mark beside the claim, links in rows, no chips, no tmux offset); the phone jump menu hides with the header | Accepted | 2026-11-20 |
 | [0080](0080-import-detects-wireguard-or-openvpn-by-content.md) | A .conf is imported as WireGuard ([Interface]) or OpenVPN (client/remote/dev tun…) by its content — OpenVPN GUI on Windows uses .conf; OpenVPN files with separate certificates are used in place (profile path), not copied | Accepted | 2026-11-20 |
 | [0081](0081-author-and-publisher-ruben-luna.md) | Author and publisher "Rubén Luna" everywhere (Windows installer, packages, winget, AUR, npm, macOS app), a NOTICE file shipped with LICENSE, and "Hecho con ♥ por Rubén Luna" in the landing footer | Accepted | 2026-11-20 |
+| [0083](0083-direct-diagnostics-from-errors.md) | Open Diagnostics directly from connection errors | Accepted | 2026-11-21 |
+| [0082](0082-resume-first-rule-after-panel-sign-in.md) | Reopen the panel with a fresh nonce after the first profile restart and resume the rule draft | Accepted | 2026-11-21 |
+| [0084](0084-per-profile-tunnel-down-protection.md) | Inherit tunnel-down protection from a VPN profile and enforce it independently of TCP observation | Accepted | 2026-11-21 |
+| [0085](0085-native-wireguard-default-egress.md) | Opt into native WireGuard default routing on Linux | Accepted | 2026-11-21 |
+| [0086](0086-observe-vpn-coexistence.md) | Report observed VPN coexistence signals | Accepted | 2026-11-21 |
+| [0087](0087-normalize-rule-dns-input.md) | Normalize DNS names in VPN rules | Accepted | 2026-11-21 |
+| [0088](0088-tray-command-and-existing-linux-wireguard.md) | Open the tray on demand and reuse active Linux WireGuard links | Accepted | 2026-11-21 |
+| [0089](0089-compact-landing-and-release-refresh.md) | Compact compatibility, guide FAQ, landing visuals and release refresh | Accepted | 2026-11-21 |
 
 ## Statuses
 

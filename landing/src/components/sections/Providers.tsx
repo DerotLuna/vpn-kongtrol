@@ -4,6 +4,7 @@
 // each adapter's platform files. No third-party logos (ADR-0023): every VPN
 // gets our own monogram tile.
 import { Lang } from '../../i18n'
+import { pathFor } from '../../site'
 import './providers.css'
 
 interface Props {
@@ -60,7 +61,9 @@ export default function Providers({ lang }: Props) {
   const t = es
     ? {
       title: 'Funciona con las VPN que ya usas.',
-      sub: '10 VPN compatibles. No reemplaza tus apps: las pone a trabajar juntas.',
+      sub: 'Usa Kongtrol con estos clientes y protocolos.',
+      details: 'Ver compatibilidad por sistema',
+      guide: 'Consulta los requisitos en la Guía',
       attachTitle: 'Abres tu app y Kongtrol se adjunta',
       attachDesc: 'Conectas en la app oficial, como siempre. Kongtrol detecta el túnel y lo vigila. Donde el proveedor lo permite, también la conecta por ti.',
       directTitle: 'Kongtrol conecta directo',
@@ -82,11 +85,13 @@ export default function Providers({ lang }: Props) {
         { s: 'partial', text: 'OpenVPN en macOS necesita, por ahora, ejecutarse como administrador.' },
       ] as LegendItem[],
       kinds: { privacy: 'Privacidad', enterprise: 'Empresa', open: 'Estándar abierto', network: 'Red privada' },
-      note: 'Los nombres son marcas de sus respectivos dueños. Kongtrol es un proyecto independiente, sin afiliación con ellos.',
+      note: 'Proyecto independiente. Las marcas pertenecen a sus titulares.',
     }
     : {
       title: 'Works with the VPNs you already use.',
-      sub: '10 supported VPNs. It does not replace your apps: it makes them work together.',
+      sub: 'Use Kongtrol with these clients and protocols.',
+      details: 'Check compatibility by operating system',
+      guide: 'See requirements in the guide',
       attachTitle: 'Open your app and Kongtrol attaches',
       attachDesc: 'Connect in the official app, as usual. Kongtrol detects the tunnel and watches it. Where the provider allows it, it also connects it for you.',
       directTitle: 'Kongtrol connects directly',
@@ -108,7 +113,7 @@ export default function Providers({ lang }: Props) {
         { s: 'partial', text: 'OpenVPN on macOS needs, for now, to run as administrator.' },
       ] as LegendItem[],
       kinds: { privacy: 'Privacy', enterprise: 'Enterprise', open: 'Open standard', network: 'Private network' },
-      note: 'Names are trademarks of their respective owners. Kongtrol is an independent project, not affiliated with them.',
+      note: 'Independent project. Trademarks belong to their owners.',
     }
 
   // The legend sits above the cards it explains, so each tag is known before
@@ -153,23 +158,27 @@ export default function Providers({ lang }: Props) {
       <div className="container">
         <h2 className="section-title">{t.title}</h2>
         <p className="section-sub">{t.sub}</p>
+        <p className="provider-names">{[...ATTACH, ...DIRECT].map(p => p.name).join(' · ')}</p>
 
         {/* feature:providers */}
-        <div className="providers-group" aria-labelledby="vpns-attach">
-          <h3 id="vpns-attach" className="providers-group-title">{t.attachTitle}</h3>
-          <p className="providers-group-desc">{t.attachDesc}</p>
-          {legend(t.attachKey)}
-          <ul className="provider-grid is-attach">{ATTACH.map(card)}</ul>
-        </div>
+        <details className="providers-more">
+          <summary>{t.details}</summary>
+          <div className="providers-group" aria-labelledby="vpns-attach">
+            <h3 id="vpns-attach" className="providers-group-title">{t.attachTitle}</h3>
+            <p className="providers-group-desc">{t.attachDesc}</p>
+            {legend(t.attachKey)}
+            <ul className="provider-grid is-attach">{ATTACH.map(card)}</ul>
+          </div>
 
-        <div className="providers-group" aria-labelledby="vpns-direct">
-          <h3 id="vpns-direct" className="providers-group-title">{t.directTitle}</h3>
-          <p className="providers-group-desc">{t.directDesc}</p>
-          {legend(t.directKey)}
-          <ul className="provider-grid is-direct">{DIRECT.map(card)}</ul>
-        </div>
+          <div className="providers-group" aria-labelledby="vpns-direct">
+            <h3 id="vpns-direct" className="providers-group-title">{t.directTitle}</h3>
+            <p className="providers-group-desc">{t.directDesc}</p>
+            {legend(t.directKey)}
+            <ul className="provider-grid is-direct">{DIRECT.map(card)}</ul>
+          </div>
+        </details>
 
-        <p className="providers-note">{t.note}</p>
+        <p className="providers-note">{t.note} <a href={`${pathFor('guia', lang)}#prereqs`}>{t.guide}</a></p>
       </div>
     </section>
   )

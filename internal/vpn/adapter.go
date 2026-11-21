@@ -140,15 +140,16 @@ type TunnelInfo struct {
 // Credentials are only populated at connect time — callers must fetch them
 // from the OS keychain immediately before calling Connect and zero them after.
 type AdapterConfig struct {
-	Host       string
-	Port       int
-	TunnelName string // named tunnel as configured in the VPN client
-	CertPath   string // path to client certificate
-	KeyPath    string // path to private key
-	ConfigPath string // path to VPN config file (e.g. .ovpn)
-	Username   string
-	Password   string            // plaintext; zero this field after Connect() returns
-	Extra      map[string]string // adapter-specific parameters
+	Host          string
+	Port          int
+	TunnelName    string // named tunnel as configured in the VPN client
+	CertPath      string // path to client certificate
+	KeyPath       string // path to private key
+	ConfigPath    string // path to VPN config file (e.g. .ovpn)
+	DefaultEgress bool   // direct WireGuard on Linux: require native default routing
+	Username      string
+	Password      string            // plaintext; zero this field after Connect() returns
+	Extra         map[string]string // adapter-specific parameters
 	// OnAttach, when set, is called by provider adapters (attach mode) on
 	// each AttachState phase change during Connect, so the caller can
 	// notify the user right away. Optional.

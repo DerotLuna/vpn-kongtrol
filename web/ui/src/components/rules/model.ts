@@ -15,6 +15,8 @@
 
 export type OnTunnelDown = 'allow' | 'block' | 'connect'
 export const ON_TUNNEL_DOWN: readonly OnTunnelDown[] = ['allow', 'block', 'connect']
+export type TunnelDownChoice = 'inherit' | OnTunnelDown
+export const TUNNEL_DOWN_CHOICES: readonly TunnelDownChoice[] = ['inherit', ...ON_TUNNEL_DOWN]
 
 /** GET /api/v1/policies item (internal/api/handlers_policy.go policyDTO). */
 export interface Policy {
@@ -24,6 +26,7 @@ export interface Policy {
   ip_ranges: string[] | null
   apps: string[] | null
   on_tunnel_down: string
+  on_tunnel_down_override?: string
   resolved_cidrs?: string[] | null
 }
 
@@ -31,7 +34,7 @@ export interface Policy {
 export interface PolicyPayload {
   name: string
   via: string
-  on_tunnel_down: OnTunnelDown
+  on_tunnel_down: OnTunnelDown | ''
   match: { domains: string[]; ip_ranges: string[]; apps: string[] }
 }
 
@@ -42,11 +45,11 @@ export interface PolicyDraft {
   domains: string
   ipRanges: string
   apps: string
-  onDown: OnTunnelDown
+  onDown: TunnelDownChoice
 }
 
 export function emptyDraft(via = ''): PolicyDraft {
-  return { name: '', via, domains: '', ipRanges: '', apps: '', onDown: 'allow' }
+  return { name: '', via, domains: '', ipRanges: '', apps: '', onDown: 'inherit' }
 }
 
 export function onDownOf(p: Pick<Policy, 'on_tunnel_down'>): OnTunnelDown {
@@ -60,7 +63,7 @@ export function draftFromPolicy(p: Policy): PolicyDraft {
     domains: (p.domains ?? []).join('\n'),
     ipRanges: (p.ip_ranges ?? []).join('\n'),
     apps: (p.apps ?? []).join('\n'),
-    onDown: onDownOf(p),
+    onDown: p.on_tunnel_down_override === '' ? 'inherit' : onDownOf({ on_tunnel_down: p.on_tunnel_down_override ?? p.on_tunnel_down }),
   }
 }
 
@@ -86,7 +89,16 @@ export function normalizeDomain(raw: string): string {
   s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, '')
   s = s.split(/[/?#]/, 1)[0] ?? ''
   s = s.replace(/:\d+$/, '').replace(/\.$/, '')
-  return s
+  if (/^\p{ASCII}*$/u.test(s)) return s
+  const wildcard = s.startsWith('*.')
+  const host = wildcard ? s.slice(2) : s
+  if (/[%@:\\[\]\s]/.test(host)) return ''
+  try {
+    const ascii = new URL(`http://${host}`).hostname.replace(/\.$/, '')
+    return wildcard ? `*.${ascii}` : ascii
+  } catch {
+    return ''
+  }
 }
 
 const LABEL = '[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?'
@@ -143,6 +155,7 @@ interface ValidateContext {
   /** Name of the policy being edited, if any (renaming to itself is fine). */
   editing?: string | undefined
   profiles: readonly string[]
+  profileAction?: OnTunnelDown
 }
 
 export function validatePolicy(d: PolicyDraft, ctx: ValidateContext): PolicyErrors {
@@ -168,7 +181,7 @@ export function validatePolicy(d: PolicyDraft, ctx: ValidateContext): PolicyErro
 
   const apps = splitLines(d.apps)
   if (domains.length === 0 && ranges.length === 0 && apps.length === 0) errors.domains = { code: 'noMatch' }
-  else if (d.onDown === 'block' && domains.length === 0 && ranges.length === 0) errors.onDown = { code: 'blockAppsOnly' }
+  else if ((d.onDown === 'inherit' ? (ctx.profileAction ?? 'allow') : d.onDown) !== 'allow' && domains.length === 0 && ranges.length === 0) errors.onDown = { code: 'blockAppsOnly' }
   return errors
 }
 
@@ -183,7 +196,7 @@ export function toPayload(d: PolicyDraft): PolicyPayload {
   return {
     name: d.name.trim(),
     via: d.via,
-    on_tunnel_down: d.onDown,
+    on_tunnel_down: d.onDown === 'inherit' ? '' : d.onDown,
     match: {
       domains: [...new Set(splitEntries(d.domains).map(normalizeDomain))],
       ip_ranges: [...new Set(splitEntries(d.ipRanges))],
@@ -201,6 +214,7 @@ export function policyFromPayload(p: PolicyPayload): Policy {
     ip_ranges: p.match.ip_ranges,
     apps: p.match.apps,
     on_tunnel_down: p.on_tunnel_down,
+    on_tunnel_down_override: p.on_tunnel_down,
   }
 }
 
