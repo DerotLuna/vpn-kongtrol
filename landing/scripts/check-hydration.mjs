@@ -126,7 +126,7 @@ try {
       if (!firstNode) record('setup', ['no prerendered markup in #root'])
 
       vite.moduleGraph.invalidateAll() // fresh app modules (and module state) per run
-      await vite.ssrLoadModule(`/src/pages/${page}/main.tsx`)
+      const { root: reactRoot } = await vite.ssrLoadModule(`/src/pages/${page}/main.tsx`)
       await new Promise(r => setTimeout(r, SETTLE_MS))
 
       if (firstNode && (!firstNode.isConnected || container.firstElementChild !== firstNode)) {
@@ -153,6 +153,9 @@ try {
         }
       }
 
+      // Run effect cleanups while this window is still the active DOM. React's
+      // scheduler is shared across visitors and can have callbacks queued.
+      reactRoot.unmount()
       window.close()
       current = null
       runs++
