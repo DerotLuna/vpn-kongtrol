@@ -138,7 +138,7 @@ GET  /api/v1/audit?profile=&level=&limit=&from=&to=&before=
 POST /api/v1/shutdown                        # ask a running daemon to shut down gracefully
 
 # Diagnostics, helper and export
-GET  /api/v1/doctor                          # same checks as `kongtrol doctor`, in the daemon, translated (X-Kongtrol-Lang): {"checks":[{section,label,status ok|warn|fail,detail,hint,fix}],"failures","warnings"}; fix is only "helper_install"
+GET  /api/v1/doctor                          # same checks as `kongtrol doctor`, translated (X-Kongtrol-Lang): {"checks":[{section,label,status ok|warn|fail,detail,hint,fix,help}],"failures","warnings"}; fix: "helper_install"; help: "tunnelbear_driver"
 GET  /api/v1/version                         # {"version"}: the daemon build version (what `kongtrol version` prints); tray menu and the dashboard show it
 GET  /api/v1/helper/status                   # {"installed","running","available","elevated","needs_install","outdated",…}; outdated = answers with an older protocol ("Actualizar ayudante")
 POST /api/v1/helper/install                  # installs the privileged helper (one OS permission prompt)
@@ -188,7 +188,7 @@ failover and the kill switch override apply without a reconnect. `POST /api/v1/r
 working.
 
 <!-- feature:default_egress -->
-**Native default egress (ADR-0085).** Compatibility checks the saved profile file locally.
+**WireGuard default egress (ADR-0090).** Compatibility checks the saved profile file locally on Windows and Linux.
 A compatible direct WireGuard profile can select the option for its next connection on Linux.
 The response's `enabled` field describes the saved selection. It can remain enabled if
 the file later becomes incompatible, in which case the option can still be turned off.

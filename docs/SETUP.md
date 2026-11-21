@@ -685,6 +685,12 @@ aplicaciones y vuelve a intentar. Los filtros del proveedor, DNS y errores de
 controlador pueden requerir revisar el diagnóstico de la aplicación.
 [Investigación y pruebas de convivencia](research/2026-11-21-vpn-coexistence.md)
 
+En Windows, Diagnóstico también comprueba si aparece un adaptador de TunnelBear
+y muestra el código si Windows informa un problema con el dispositivo. Desde el
+panel puedes abrir la guía del fabricante. Algunos protocolos de TunnelBear usan
+adaptadores de Windows, por lo que la ausencia del dispositivo con su nombre es
+solo una pista.
+
 Antes de conectar por primera vez, deja que Kongtrol valide todo:
 
 ```bash
@@ -839,11 +845,11 @@ frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&ta
 ## 9. Uso diario
 
 <!-- feature:default_egress -->
-En Linux, abre la edición de un perfil WireGuard directo y usa **Salida por defecto de WireGuard**.
+En Windows o Linux, abre la edición de un perfil WireGuard directo y elige **Salida por defecto de WireGuard**.
 También puedes revisar el archivo con `kongtrol routes check-default <perfil>` y cambiar la opción
 con `kongtrol routes default-egress <perfil> on|off`. Desconecta el perfil antes de cambiarla y
 conéctalo para aplicarla. Las rutas más específicas de la red local y de otras VPN conservan
-su prioridad. Consulta [ADR-0085](adr/0085-native-wireguard-default-egress.md) para los requisitos.
+su prioridad. Consulta [ADR-0090](adr/0090-wireguard-default-egress-windows.md) para los requisitos.
 
 ### Comandos más usados
 

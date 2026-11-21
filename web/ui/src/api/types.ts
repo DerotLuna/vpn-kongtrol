@@ -155,6 +155,7 @@ export interface DoctorCheck {
   hint?: string
   /** The only fix the GUI offers: install the helper. */
   fix?: 'helper_install'
+  help?: 'tunnelbear_driver'
 }
 
 /** GET /api/v1/doctor — internal/doctor `Report`. */

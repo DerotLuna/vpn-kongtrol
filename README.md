@@ -219,7 +219,7 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
   reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other VPNs are never
   touched.
 <!-- feature:default_egress -->
-- On Linux, edit a compatible WireGuard profile to select it for default egress.
+- On Windows or Linux, edit a compatible direct WireGuard profile to use it for traffic without a more specific route.
   Check the saved file with `kongtrol routes check-default <profile>`. Disconnect the profile
   before changing the setting, then connect to apply it. More-specific routes retain priority.
 <!-- feature:recent_connections -->

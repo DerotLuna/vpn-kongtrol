@@ -71,6 +71,7 @@ reasoned but unverified.
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |
 | [Panel session recovery](2026-11-21-panel-session-recovery.md) | Browser session invalidation after the first profile restart and local draft recovery | ADR-0082 |
+| [Windows VPN egress](2026-11-21-windows-vpn-egress.md) | WireGuard default routes and TunnelBear device diagnostics on Windows | ADR-0090 |
 | [Linux WireGuard and tray](2026-11-21-linux-tray-and-wireguard.md) | Existing kernel links and desktop launch | ADR-0088 |
 | [Landing and release refresh](2026-11-21-landing-release-refresh.md) | Compatibility summary, visuals and stable release refresh | ADR-0089 |
 

@@ -278,6 +278,8 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		if result := inspectWireGuardDefaultEgress(data); !result.Compatible {
 			return WGTunnel{}, invalid("native WireGuard default routing: %s", result.Reason)
 		}
+		data = prepareWireGuardDefaultEgress(data)
+		defer clear(data)
 	} else if err := ValidateWireGuardConfig(data); err != nil {
 		return WGTunnel{}, err
 	}
@@ -300,7 +302,8 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		if err := checkNativeDefaultRules(ctx, replacing); err != nil {
 			return WGTunnel{}, failed("check WireGuard default routes", err)
 		}
-	} else if hasAutomaticWireGuardDefault(data) {
+	}
+	if req.DefaultEgress || hasAutomaticWireGuardDefault(data) {
 		entries, err := os.ReadDir(l.wgDir())
 		if err != nil {
 			return WGTunnel{}, failed("read WireGuard state", err)
@@ -334,6 +337,9 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		return WGTunnel{}, failed("write tunnel config", err)
 	}
 	if err := sysWGUp(ctx, name, copyPath); err != nil {
+		if req.DefaultEgress {
+			_ = sysWGDown(ctx, name, copyPath)
+		}
 		_ = os.Remove(copyPath)
 		_ = os.Remove(marker)
 		return WGTunnel{}, failed("start WireGuard tunnel", err)

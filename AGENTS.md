@@ -503,12 +503,12 @@ Rules inherit `vpns.<name>.on_tunnel_down` (default `allow`) unless they explici
 - `monitor.PolicyWatch` samples TCP sockets every 15 seconds on Windows and Linux. It may miss rejected or brief attempts, and macOS uses manual connection. A visible sample can emit a `monitor.Event` (throttled to 30 min per policy) or attempt a `connect` (rate-limited to 3 min). The firewall handles blocking independently. `GET /api/v1/events?after=<seq>` supplies events to the tray, dashboard and live view.
 
 <!-- feature:default_egress -->
-One direct WireGuard profile on Linux may opt into `default_egress` (ADR-0085). The profile
+One direct WireGuard profile on Windows or Linux may opt into `default_egress` (ADR-0090). The profile
 editor and `kongtrol routes check-default|default-egress` share a local compatibility check.
-The native `wg-quick` table gives more-specific main-table routes priority, and the resolver
-and helper preserve both peer defaults until teardown. The helper detects conflicting native
-defaults when bringing the profile up. Tunnel attachment and file compatibility describe
-different states. The setting applies when Kongtrol next starts the tunnel.
+Linux uses the native `wg-quick` table. Windows uses two /1 routes per family in the helper's
+private copy so provider firewall rules do not block more-specific routes through other interfaces.
+The helper checks for conflicts before startup and preserves the tunnel's AllowedIPs until teardown.
+The setting applies when Kongtrol next starts the tunnel.
 
 ### Public IP lookup (opt-in)
 

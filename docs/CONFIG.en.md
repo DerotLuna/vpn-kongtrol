@@ -4,7 +4,7 @@
 
 # Configuration reference (kongtrol.yaml)
 
-Version 1.7 · 2026-11-21
+Version 1.8 · 2026-11-21
 
 Every key of `~/.kongtrol/kongtrol.yaml`, read from the schema (`internal/config/schema.go`). Defaults are the ones the code applies. Guide with examples: [CONFIGURATION.md](CONFIGURATION.md) · full example: [configs/example.yaml](../configs/example.yaml) · Español: [CONFIG.md](CONFIG.md).
 
@@ -19,7 +19,7 @@ Your VPN profiles, one per name (`vpns.office`, `vpns.home`, …). At least one.
 | `vpns.<name>.host` | string | — | VPN server or gateway (corporate clients). |
 | `vpns.<name>.port` | int | — | Server port. |
 | `vpns.<name>.tunnel_name` | string | — | Name of the connection saved in the client (e.g. FortiClient). |
-| `vpns.<name>.default_egress` | bool | — | Opt-in for one direct WireGuard profile on Linux. Preserves the compatible file's IPv4 and IPv6 default routes on the next connection. |
+| `vpns.<name>.default_egress` | bool | — | Opt in for one direct WireGuard profile on Windows or Linux. On the next connection it carries IPv4 and IPv6 traffic without a more specific route. |
 | `vpns.<name>.allow_insecure_cert` | bool | — | FortiClient only: accept certificate warnings while automating the app. Keep it `false` (MITM risk). |
 | `vpns.<name>.config` | string | — | Path to the `.ovpn` (openvpn) or `.conf` (wireguard) file. |
 | `vpns.<name>.server` | string | — | Exact server (protonvpn, nordvpn). |

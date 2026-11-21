@@ -217,7 +217,7 @@ groups:
 ---
 
 <!-- feature:default_egress -->
-## Native WireGuard default egress on Linux
+## WireGuard default egress on Windows and Linux
 
 One direct WireGuard profile can set `default_egress: true`. Check the file with
 `kongtrol routes check-default <profile>` and enable it in the saved profile editor or with
@@ -226,7 +226,7 @@ It requires one peer, an endpoint, addresses and default prefixes for both IP fa
 automatic routing and a DNS server. Routes with more-specific prefixes retain priority.
 The option is off by default. Turning it off restores the profile's usual behavior at the
 next connection. A file that already brings up default routes can still do so.
-[ADR-0085](adr/0085-native-wireguard-default-egress.md)
+[ADR-0090](adr/0090-wireguard-default-egress-windows.md)
 
 <!-- feature:providers feature:wireguard -->
 ## ProtonVPN: GUI vs WireGuard

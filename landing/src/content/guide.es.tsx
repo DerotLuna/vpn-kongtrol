@@ -189,7 +189,7 @@ $ kongtrol policy remove <nombre>`,
       down: <><strong>Si la VPN está apagada,</strong> en Perfiles puedes permitir la conexión normal, bloquear los destinos conocidos o bloquearlos e intentar conectar al detectar actividad TCP. Cada regla puede elegir su propia acción.
         Puedes cambiarlo con <IC c="kongtrol profile on-tunnel-down oficina block" />. La detección puede omitir intentos cortos o rechazados. En macOS, conecta manualmente.</>,
       // feature:default_egress
-      defaultEgress: <>En Linux, puedes elegir <strong>Salida por defecto de WireGuard</strong> en un perfil directo compatible y desconectado. También puedes usar <IC c="kongtrol routes check-default oficina" /> y <IC c="kongtrol routes default-egress oficina on" />. Se aplica al conectar. Las rutas más específicas conservan su prioridad.</>,
+      defaultEgress: <>En Windows o Linux, elige <strong>Salida por defecto de WireGuard</strong> en un perfil directo compatible y desconectado. También puedes usar <IC c="kongtrol routes check-default oficina" /> y <IC c="kongtrol routes default-egress oficina on" />. Al conectarlo, el perfil se encarga del tráfico sin una ruta más específica.</>,
       yamlLead: <>También puedes escribirlas en <IC c="kongtrol.yaml" />, bajo <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI

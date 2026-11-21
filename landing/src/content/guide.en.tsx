@@ -183,7 +183,7 @@ $ kongtrol policy remove <name>`,
       down: <><strong>When the VPN is off,</strong> the profile can allow the regular connection, block known destinations, or block them and try to connect when Kongtrol sees TCP activity. Each rule can choose its own action.
         Use <IC c="kongtrol profile on-tunnel-down office block" /> to change it. Detection can miss quick or rejected attempts. On macOS, connect manually.</>,
       // feature:default_egress
-      defaultEgress: <>On Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. It takes effect on connect. More specific routes keep priority.</>,
+      defaultEgress: <>On Windows or Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. When connected, the profile carries traffic without a more specific route.</>,
       yamlLead: <>You can also write them in <IC c="kongtrol.yaml" />, under <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI

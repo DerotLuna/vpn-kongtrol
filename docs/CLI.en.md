@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.14 · 2026-11-21
+Version 1.15 · 2026-11-21
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -106,7 +106,7 @@ kongtrol routes --system
 
 ### `kongtrol routes check-default`
 
-Examine a local WireGuard profile file on Linux without changing the network.
+Examine a local WireGuard profile file on Windows or Linux without changing the network.
 
 ```text
 kongtrol routes check-default <profile> [flags]
@@ -120,7 +120,7 @@ kongtrol routes check-default office
 
 ### `kongtrol routes default-egress`
 
-Save the setting for the next connection of a compatible WireGuard profile on Linux. Disconnect the profile before changing it.
+Save the setting for the next connection of a compatible WireGuard profile on Windows or Linux. Disconnect the profile before changing it.
 
 ```text
 kongtrol routes default-egress <profile> <on|off> [flags]
