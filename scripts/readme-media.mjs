@@ -45,7 +45,7 @@ const VIEWPORT = { width: 1280, height: 1000 } // tall enough for the whole hero
 // cycle, so the GIF loops without a jump), whether to scroll to it, and the
 // GIF width / palette size that keep it under ~2 MB.
 const CLIPS = {
-  // Features.tsx plays 4 examples, one every 3.4 s (CYCLE).
+  // Select all four routes explicitly, allowing 3.4 s for each to play.
   routing: { path: '/en/', selector: '#map .switchboard', seconds: 13.6, scroll: true, width: 640, colors: 48 },
   // attachdemo.css: one 9 s cycle.
   attach: { path: '/en/', selector: '#start .attach', seconds: 9, scroll: true, width: MAX_WIDTH, colors: 96 },
@@ -145,7 +145,7 @@ async function record(browser, base, name, clip, work) {
   const t0 = Date.now()
   await page.goto(base + clip.path, { waitUntil: 'load' })
   await page.addStyleTag({ content: HIDE_CSS })
-  await page.mouse.move(VIEWPORT.width - 1, VIEWPORT.height - 1) // never hover (hover pauses the diagram)
+  await page.mouse.move(VIEWPORT.width - 1, VIEWPORT.height - 1)
   const el = page.locator(clip.selector).first()
   if (clip.scroll) {
     await el.evaluate(node => node.scrollIntoView({ block: 'center' }))
@@ -156,7 +156,15 @@ async function record(browser, base, name, clip, work) {
   const box = await el.boundingBox()
   if (!box) fail(`${name}: ${clip.selector} not found`)
   const start = clip.scroll ? (Date.now() - t0) / 1000 : 0.3
-  await page.waitForTimeout(clip.seconds * 1000 + 300)
+  if (name === 'routing') {
+    const destinations = el.locator('.sb-svg .sb-node.in')
+    for (const index of [1, 2, 3, 0]) {
+      await destinations.nth(index).click()
+      await page.waitForTimeout(clip.seconds * 250)
+    }
+  } else {
+    await page.waitForTimeout(clip.seconds * 1000 + 300)
+  }
   const video = page.video()
   await context.close() // flushes the video file
   return { file: await video.path(), start, box }

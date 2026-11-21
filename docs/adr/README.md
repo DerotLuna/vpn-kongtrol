@@ -102,6 +102,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0087](0087-normalize-rule-dns-input.md) | Normalize DNS names in VPN rules | Accepted | 2026-11-21 |
 | [0088](0088-tray-command-and-existing-linux-wireguard.md) | Open the tray on demand and reuse active Linux WireGuard links | Accepted | 2026-11-21 |
 | [0089](0089-compact-landing-and-release-refresh.md) | Compact compatibility, guide FAQ, landing visuals and release refresh | Accepted | 2026-11-21 |
+| [0091](0091-play-the-route-map-on-selection.md) | Play the route map when a visitor selects a destination | Accepted | 2026-11-21 |
 
 ## Statuses
 

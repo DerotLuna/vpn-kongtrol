@@ -139,6 +139,30 @@ try {
         record('os', [`hero does not show the ${visitor.os} file (${osFile}…) after hydration`])
       }
       if (page === 'home') {
+        const board = container.querySelector('#map .switchboard')
+        const selector = visitor.mobile ? '.sb-strip' : '.sb-svg'
+        const badge = board?.querySelector(`${selector} image.pp-badge`)?.getAttribute('href')
+        if (!badge?.startsWith('/')) {
+          record('route map', ['missing logo URL'])
+        } else {
+          try {
+            const logo = await readFile(resolve(root, 'dist', badge.slice(1)), 'utf8')
+            if (!logo.includes('<svg')) record('route map', ['logo URL does not point to an SVG'])
+          } catch {
+            record('route map', [`missing built logo: ${badge}`])
+          }
+        }
+        const buttons = board?.querySelectorAll(visitor.mobile ? '.sb-chip.in' : '.sb-node.in')
+        if (board?.hasAttribute('data-played') || board?.querySelector('.sb-motion') || !buttons?.[1]) {
+          record('route map', ['the first frame must be static with clickable destinations'])
+        } else {
+          buttons[1].dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+          await new Promise(r => setTimeout(r, 50))
+          if (!board.hasAttribute('data-played') || buttons[1].getAttribute('aria-pressed') !== 'true') {
+            record('route map', ['selecting a destination did not play its route'])
+          }
+        }
+
         // The hero carries both variants; CSS shows one by <html data-device>,
         // which the boot script sets before first paint (ADR-0029).
         const heroCta = container.querySelector('#hero-cta')

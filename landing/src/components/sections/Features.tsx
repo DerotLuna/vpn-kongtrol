@@ -1,5 +1,4 @@
-import { CSSProperties, useEffect, useRef, useState } from 'react'
-import { useInView } from '../../hooks/useInView'
+import { useState } from 'react'
 import { Lang } from '../../i18n'
 import './routeboard.css'
 
@@ -20,9 +19,7 @@ type Route = {
 // Patch panel ("switchboard", routeboard.css v2). One example at a time: a
 // packet leaves a destination, enters the panel through its socket, follows
 // its cable to the exit socket and lands on the exit; then the rule label
-// shows. CYCLE must cover the CSS timeline (packet --pp-travel, landing at
-// --pp-land); scripts/readme-media.mjs records 4 × CYCLE.
-const CYCLE = 3400
+// shows. Selecting a destination plays the sequence once.
 
 // Fixed geometry in the 640×360 viewBox (desktop) — no DOM measurement.
 // Cards: 6–156 (left) and 484–634 (right). Panel: 236–404. Sockets sit ON the
@@ -72,17 +69,6 @@ export default function Features({ lang }: Props) {
   // bumps on every new example, so the keyed packet / trace / label remount
   // and their CSS timeline starts again even when the same route repeats
   const [run, setRun] = useState(0)
-  const [paused, setPaused] = useState(false)
-  // Announce only a destination the visitor picked, never the automatic demo.
-  const [touched, setTouched] = useState(false)
-  // rotates and animates only while on screen (ADR-0031)
-  const boardRef = useRef<HTMLDivElement>(null)
-  const live = useInView(boardRef)
-  // .is-live is toggled on the node, not through className: useReveal adds
-  // .is-in to this .reveal element by hand, and a className re-render would drop it
-  useEffect(() => {
-    boardRef.current?.classList.toggle('is-live', live && !paused)
-  }, [live, paused])
 
   const copy = lang === 'es'
     ? {
@@ -93,8 +79,6 @@ export default function Features({ lang }: Props) {
       boardOut: 'Conexión que usa',
       boardName: 'Mapa de rutas: qué destino sale por qué VPN',
       hint: 'Elige un sitio o una red para ver su recorrido.',
-      pause: 'Pausar demo',
-      resume: 'Continuar demo',
       routes: [
         { dest: '10.10.0.0/16', human: 'sistema de tu empresa', tunnel: 'office', adapter: 'FortiClient' },
         { dest: '*.amazonaws.com', human: 'servidores en la nube', tunnel: 'aws', adapter: 'OpenVPN' },
@@ -110,8 +94,6 @@ export default function Features({ lang }: Props) {
       boardOut: 'Connection it uses',
       boardName: 'Route map: which destination goes out through which VPN',
       hint: 'Choose a site or network to see its route.',
-      pause: 'Pause demo',
-      resume: 'Resume demo',
       routes: [
         { dest: '10.10.0.0/16', human: 'your company system', tunnel: 'office', adapter: 'FortiClient' },
         { dest: '*.amazonaws.com', human: 'cloud servers', tunnel: 'aws', adapter: 'OpenVPN' },
@@ -120,38 +102,12 @@ export default function Features({ lang }: Props) {
       ] as Route[],
     }
 
-  useEffect(() => {
-    if (paused || !live) return
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    let timer: number | undefined
-    const updateTimer = () => {
-      window.clearInterval(timer)
-      if (reducedMotion.matches) return
-      timer = window.setInterval(() => {
-        setActive(a => (a + 1) % ROWS.length)
-        setRun(n => n + 1)
-      }, CYCLE)
-    }
-    updateTimer()
-    reducedMotion.addEventListener('change', updateTimer)
-    return () => {
-      reducedMotion.removeEventListener('change', updateTimer)
-      window.clearInterval(timer)
-    }
-  }, [paused, live])
-
   const routes = copy.routes
   const cur = routes[active]
   // the visitor picked a destination (click, tap, Enter or Space)
   const pick = (i: number) => {
     setActive(i)
     setRun(n => n + 1)
-    setPaused(true)
-    setTouched(true)
-  }
-  const toggleAnimation = () => {
-    if (paused) setTouched(false)
-    setPaused(!paused)
   }
   // the line-art original as the panel badge (DESIGN.md Logo, ADR-0060)
   const mark = `${import.meta.env.BASE_URL}logo-kong-on-dark.svg`
@@ -166,11 +122,7 @@ export default function Features({ lang }: Props) {
         <p className="section-sub">{copy.sub}</p>
 
         {/* ── SIGNATURE: routing patch panel ── */}
-        <div
-          ref={boardRef}
-          className="switchboard reveal"
-          style={{ '--pp-cycle': `${CYCLE}ms` } as CSSProperties}
-        >
+        <div className="switchboard reveal" data-played={run > 0 ? '' : undefined}>
           <div className="sb-legend" aria-hidden="true">
             <span>{copy.boardIn}</span>
             <span>{copy.boardOut}</span>
@@ -316,17 +268,12 @@ export default function Features({ lang }: Props) {
           </div>
 
           {/* the rule, shown once the packet lands */}
-          <p className="pp-rule" aria-live={touched ? 'polite' : 'off'}>
+          <p className="pp-rule" aria-live="polite">
             <span key={`r-${run}`} className={cur.direct ? 'direct' : undefined}>
               {cur.dest} <span aria-hidden="true">→</span> {cur.tunnel}
             </span>
           </p>
-          <div className="sb-controls">
-            <p className="sb-hint">{copy.hint}</p>
-            <button type="button" className="sb-motion" onClick={toggleAnimation}>
-              {paused ? copy.resume : copy.pause}
-            </button>
-          </div>
+          <p className="sb-hint">{copy.hint}</p>
         </div>
       </div>
     </section>
