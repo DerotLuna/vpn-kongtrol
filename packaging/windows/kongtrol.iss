@@ -63,7 +63,7 @@ WizardSmallImageFile=..\..\assets\brand\installer\wizard-small-58.png,..\..\asse
 ShowLanguageDialog=auto
 ; The user PATH changes: tell running programs (Explorer) to re-read it.
 ChangesEnvironment=yes
-; Upgrades: close a running tray through the Restart Manager.
+; Keep Restart Manager as a fallback for files still in use.
 CloseApplications=yes
 RestartApplications=no
 
@@ -115,6 +115,8 @@ es.ReadyKeep=Tus VPN, ajustes, contraseñas y opciones elegidas se conservan.
 en.ReadyKeep=Your VPNs, settings, passwords and chosen options are kept.
 es.ReadyDown=Las VPN conectadas se desconectan un momento y se vuelven a conectar solas al terminar. El ayudante de red solo se actualiza si hace falta (entonces Windows pide permiso una vez).
 en.ReadyDown=Connected VPNs disconnect for a moment and reconnect by themselves at the end. The network helper is only updated if needed (then Windows asks for permission once).
+es.UpgradeStopFailed=El instalador no pudo preparar el cierre de Kongtrol. Abre Kongtrol desde el menú Inicio, elige «Salir y desconectar todo» en la bandeja y vuelve a ejecutar el instalador.
+en.UpgradeStopFailed=Setup could not prepare Kongtrol to close. Open Kongtrol from the Start menu, choose “Quit and disconnect all” from the tray and run Setup again.
 ; Button captions stay one word: the Next button has a fixed width and a
 ; longer caption was cut ("ar versión ant"); the page title says the rest.
 es.BtnUpdate=Actualizar
@@ -520,23 +522,31 @@ begin
   Exe := ExpandConstant('{app}\kongtrol.exe');
   // Files without an uninstall key (older or broken install) still count.
   WasInstalled := WasInstalled or FileExists(Exe);
+  // Close the tray before the daemon so it cannot start another one.
+  if WasInstalled then
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im kongtrol-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if FileExists(Exe) then
   begin
     // The NEW kongtrol.exe stops Kongtrol and saves the connected VPNs for
     // `resume` ([Run]): an older installed copy does not know --remember.
-    // It talks to the running daemon through its local API. If it cannot
-    // run, the installed copy stops Kongtrol as before (no resume then).
+    // It talks to the running daemon even when there is no saved profile.
     Stopped := False;
     try
       ExtractTemporaryFile('kongtrol.exe');
-      Stopped := Exec(ExpandConstant('{tmp}\kongtrol.exe'), 'down --all --quiet --remember', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+      if ExecAndLogOutput(ExpandConstant('{tmp}\kongtrol.exe'), 'down --all --plain --remember', '', SW_HIDE, ewWaitUntilTerminated, Code, nil) then
+      begin
+        Stopped := Code = 0;
+        if not Stopped then
+          Log('Kongtrol update shutdown exited with code ' + IntToStr(Code));
+      end
+      else
+        Log('Kongtrol update shutdown could not start: ' + SysErrorMessage(Code));
     except
-      Stopped := False;
+      Log('Kongtrol update shutdown failed: ' + GetExceptionMessage);
     end;
     if not Stopped then
-      Exec(Exe, 'down --all --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
+      Result := CustomMessage('UpgradeStopFailed');
   end;
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im kongtrol-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
 // The helper task runs on the first install only. An upgrade runs

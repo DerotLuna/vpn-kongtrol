@@ -430,6 +430,16 @@ features:
       - landing/src/content/guide.es.tsx#update_check
       - landing/src/content/guide.en.tsx#update_check
 
+  windows_installer_shutdown:
+    code:
+      - packaging/windows/kongtrol.iss
+      - cmd/kongtrol/cmd_down.go
+    surfaces:
+      - AGENTS.md#windows_installer_shutdown
+      - docs/SETUP.md#windows_installer_shutdown
+      - landing/src/content/guide.es.tsx#windows_installer_shutdown
+      - landing/src/content/guide.en.tsx#windows_installer_shutdown
+
   uninstall:
     code:
       - internal/uninstall/**

@@ -103,6 +103,10 @@ versión nueva necesita un ayudante más nuevo, Windows pide permiso una vez dur
 actualización. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
 pide confirmar (por defecto No).
 
+<!-- feature:windows_installer_shutdown -->
+Si Windows avisa que no pudo cerrar las aplicaciones, cancela el intento, abre Kongtrol desde
+Inicio y elige **Salir y desconectar todo** en la bandeja. Vuelve a abrir el instalador.
+
 Si antes copiaste `kongtrol.exe` a mano en otra carpeta del PATH (por ejemplo `C:\tools`), la
 terminal puede seguir usando esa copia vieja: `kongtrol doctor` lo avisa en «kongtrol en la
 terminal». Bórrala o quita esa carpeta del PATH y abre una terminal nueva.

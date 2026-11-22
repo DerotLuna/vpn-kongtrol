@@ -87,7 +87,7 @@ export default function guideEN(os: OS): GuideContent {
       note: <>Full list and what Kongtrol does with each: <a href="/en/#vpns">supported VPNs</a>. Proton VPN also works without its app,
         as a <IC c="wireguard" /> profile with the file you download from your account.</>,
     },
-    // feature:helper
+    // feature:helper feature:windows_installer_shutdown
     install: {
       title: <>Install</>,
       steps: (os === 'windows'
@@ -113,7 +113,8 @@ export default function guideEN(os: OS): GuideContent {
             <a href="/en/#install">downloads</a>, with a double click. On GNOME the icon needs the AppIndicator extension (Ubuntu ships it).
             {' '}Only the <IC c="kongtrol" /> command? End the line with <IC c="| sh -s -- --cli-only" />; with no desktop (a server, SSH) it does that by itself and tells you.</>
           : <>No installer? This line in PowerShell (no administrator) installs the same: the app with its icon and the <IC c="kongtrol" /> command.
-            {' '}Only the command: type <IC c="$env:KONGTROL_CLI_ONLY=1" /> first. If you used the installer, update with the new installer.</>,
+            {' '}Only the command: type <IC c="$env:KONGTROL_CLI_ONLY=1" /> first. If you used the installer, update with the new installer.
+            {' '}If Windows says it could not close the applications, cancel setup, choose <strong>Quit and disconnect all</strong> from the tray, and run the installer again.</>,
       winScript: INSTALL_CMD.windows,
       helper: <><strong>One permission, once.</strong> After that no step needs an administrator terminal or{' '}
         <IC c="sudo" />. If the helper is missing, the panel says so with a <strong>Fix</strong> button; in the terminal:{' '}

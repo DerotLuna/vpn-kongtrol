@@ -74,6 +74,7 @@ reasoned but unverified.
 | [Windows VPN egress](2026-11-21-windows-vpn-egress.md) | WireGuard default routes and TunnelBear device diagnostics on Windows | ADR-0090 |
 | [First profile activation](2026-11-22-first-profile-live.md) | Apply the first profile and update the tray menu in place | ADR-0092 |
 | [Windows uninstall](2026-11-22-uninstall-data-removal.md) | Distinguish data removal failures from leftover program files | ADR-0093 |
+| [Windows installer shutdown](2026-11-22-windows-installer-shutdown.md) | Close the setup dashboard before updating installed files | ADR-0094 |
 | [Linux WireGuard and tray](2026-11-21-linux-tray-and-wireguard.md) | Existing kernel links and desktop launch | ADR-0088 |
 | [Landing and release refresh](2026-11-21-landing-release-refresh.md) | Compatibility summary, visuals and stable release refresh | ADR-0089 |
 

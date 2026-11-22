@@ -86,6 +86,8 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	if err := srv.Start(); err != nil {
 		return fmt.Errorf("%s", cf("cli.daemon.api_failed", base, err))
 	}
+	// Keep the PID file until the HTTP shutdown also completes.
+	defer removePIDFile()
 	defer func() {
 		shutCtx, c := context.WithTimeout(context.Background(), 5*time.Second)
 		defer c()
@@ -100,7 +102,6 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	// Only the daemon writes the PID file; `down` uses it as the kill
 	// fallback and waits for its removal as the "fully stopped" signal.
 	writePIDFile()
-	defer removePIDFile()
 
 	defer func() {
 		if dnsMgr != nil {

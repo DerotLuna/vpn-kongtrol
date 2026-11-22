@@ -253,6 +253,11 @@ installed once (`kongtrol service install`) runs only a closed list of network o
 user-session parts (tray, CLI, dashboard, keychain, GUI automation of corporate clients) stay
 unprivileged because services can't reach the user desktop or keychain.
 
+<!-- feature:windows_installer_shutdown -->
+Windows setup closes the tray before asking the daemon to shut down. Its bundled
+`down --all --remember` works even before a profile exists. The daemon reports
+which VPNs to resume and cleans up its own connections before Setup copies files.
+
 ### Data flow: connect lifecycle
 
 Clients (CLI, tray, dashboard) call the daemon's local API; the daemon runs
