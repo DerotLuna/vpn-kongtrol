@@ -180,7 +180,7 @@ $ kongtrol down --all          # desconecta todas`,
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  oficina
   ejemplo.com      ──▶  sin regla               ──▶  internet normal`,
       panel: <>En el panel, abre <strong>Reglas</strong> → <strong>＋ Agregar</strong>. Escribe un sitio o una red, elige la VPN y prueba antes de guardar.
-        Si Kongtrol te pide reabrir el panel tras guardar tu primer perfil, hazlo desde el ícono de la bandeja con el mismo navegador. Durante diez minutos puedes retomar la configuración y recuperar el borrador de la regla.
+        Al guardar el primer perfil, puedes seguir en la misma pestaña y crear una regla para esa VPN.
         También puedes crear la regla desde la terminal.</>,
       code: `$ kongtrol policy add github.com --via oficina
 $ kongtrol policy show github.com     # por cuál VPN sale y por qué

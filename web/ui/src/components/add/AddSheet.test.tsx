@@ -226,7 +226,7 @@ describe('A: connect a VPN I already use', () => {
     const name = within(sheet).getByRole('textbox', { name: /^Name/ })
     expect(name).toHaveValue('NordVPN 2')
     await waitFor(() => expect(name).toHaveFocus())
-    expect(within(sheet).getByText(/connected VPNs reconnect after a brief cut/)).toBeInTheDocument()
+    expect(within(sheet).getByText('Once saved, you can connect the profile or assign it a rule.')).toBeInTheDocument()
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
 
     expect(await within(sheet).findByText('“NordVPN 2” is ready.')).toBeInTheDocument()

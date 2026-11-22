@@ -93,9 +93,10 @@ When adding a new adapter:
 
 <!-- feature:first_run -->
 **First run and restart (ADR-0025).**
-- The first profile restart invalidates the browser session. The Add sheet tells the user to
-  reopen the panel from Kongtrol and resumes the draft after a fresh nonce exchange in the same
-  browser. Unauthorized tabs stop REST requests and WebSocket ticket retries (ADR-0082).
+- The daemon applies the first saved profile through live adapter sync and exits setup mode in
+  the same browser session. The tray replaces its temporary menu items in place (ADR-0092).
+  If an explicit restart interrupts setup, the Add sheet can recover a local draft after a fresh
+  nonce exchange. Unauthorized tabs stop REST requests and WebSocket ticket retries (ADR-0082).
 - With no `kongtrol.yaml`, only `kongtrol daemon` may start, in **setup mode**
   (`config.NewEmpty()`, `GET /api/v1/setup`): the tray starts it and opens the dashboard's
   Perfiles page (`/profiles`), whose profile editor writes the first profile to `config.DefaultPaths()[0]`. Every

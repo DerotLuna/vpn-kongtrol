@@ -2,7 +2,7 @@
 
 Version 1.0.0 · 2026-11-21
 
-Status: Accepted · Date: 2026-11-21
+Status: Accepted · Date: 2026-11-21 · Map playback superseded by ADR-0091
 
 Keep the landing's interactive routing demo. Use explicit playback controls so
 someone can recover after selecting a destination, and respect reduced motion.
