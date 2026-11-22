@@ -151,7 +151,7 @@ POST /api/v1/restart                         # 202 {"status":"restarting"}: star
 # Update notice and "delete all my data" (ADR-0034)
 GET  /api/v1/updates                         # {"check_enabled","host","current","latest","url","newer","checked_at"} from the remembered last check; never contacts GitHub
 POST /api/v1/updates                         # {"enabled": true|false}: saves updates.check_enabled (opt-in, off by default); 409 cli.update.no_config before the first profile
-POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): disconnects every tunnel, deletes ~/.kongtrol data and Kongtrol's keychain entries, then restarts into setup mode → {"status":"purged","restarting":bool}
+POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): deletes profiles, preferences and Kongtrol credentials while retaining in-use daemon/tray files, then restarts into setup mode → {"status":"purged","restarting":bool}
 ```
 
 <!-- feature:first_run -->

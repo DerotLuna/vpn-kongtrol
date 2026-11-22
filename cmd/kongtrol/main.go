@@ -79,7 +79,7 @@ var rootCmd = &cobra.Command{
 		if cmd.Root().PersistentFlags().Changed("alert-bell") {
 			warnDeprecated("--alert-bell", "kongtrol up --alert-bell")
 		}
-		if cmd.Name() != "init" {
+		if cmd.Name() != "init" && !(cmd == uninstallCmd && uninstallDryRun) {
 			sessionGreetingLine, sessionLastUseLine = prepareSessionBanner(time.Now(), cmd)
 		}
 		// init shows its own animated logo — skip compact header and session banner there.

@@ -19,7 +19,19 @@ import (
 // (default 127.0.0.1:9741) — every kongtrol process reads the same config,
 // so this is how any viewer finds a daemon that's already running.
 func daemonAPIBase() string {
-	return daemonctl.APIBase(cfg.Monitor.Dashboard.Bind, cfg.Monitor.Dashboard.Port)
+	settings := cfg
+	if settings == nil {
+		// Uninstall is allowed to run without a valid config. Read the
+		// listener settings without bringing up any runtime services.
+		var err error
+		settings, err = config.Load(cfgPath)
+		if err != nil {
+			settings = config.NewEmpty()
+		}
+		config.ApplyDashboardPreferences(settings)
+	}
+	dashboard := settings.Monitor.Dashboard
+	return daemonctl.APIBase(dashboard.Bind, dashboard.Port)
 }
 
 // daemonClient returns an API client for base. It reads

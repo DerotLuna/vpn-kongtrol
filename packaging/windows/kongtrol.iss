@@ -135,8 +135,10 @@ es.BinaryBlocked=Windows no deja abrir kongtrol.exe: %1%n%nSuele ser Microsoft D
 en.BinaryBlocked=Windows does not let kongtrol.exe start: %1%n%nThis is usually Microsoft Defender flagging a new unsigned program by mistake (for example "Trojan:Win32/Bearfoos.A!ml").%n%nWhat to do: in Windows Security > Virus & threat protection > Protection history, open the Kongtrol entry and choose "Allow on device" (or "Restore") only if you trust the file; then open this installer again. Report the false positive at https://www.microsoft.com/wdsi/filesubmission
 es.FinishedBlocked=Kongtrol se copió, pero Windows no deja abrir kongtrol.exe, así que todavía no se puede usar.%n%nSiguiente: sigue los pasos del aviso anterior y abre este instalador otra vez.
 en.FinishedBlocked=Kongtrol was copied, but Windows does not let kongtrol.exe start, so it cannot be used yet.%n%nNext: follow the steps in the previous message and open this installer again.
-es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nSi piensas reinstalar, elige No.
-en.PurgeAsk=Also delete your settings and saved passwords?%n%nIf you plan to reinstall, choose No.
+es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nElige Sí para empezar de cero o No para conservarlas al reinstalar.
+en.PurgeAsk=Also delete your settings and saved passwords?%n%nChoose Yes for a fresh start or No to keep them when reinstalling.
+es.PurgeFailed=Kongtrol no pudo completar la limpieza de tus datos. Para intentarlo de nuevo, instala Kongtrol y abre Ajustes → Borrar todos mis datos.
+en.PurgeFailed=Kongtrol could not finish clearing your data. To retry, install Kongtrol and open Settings → Delete all my data.
 
 [Tasks]
 Name: "autostart"; Description: "{cm:TaskAutostart}"
@@ -611,7 +613,19 @@ begin
   // it does not depend on the [UninstallRun] order, then deletes
   // ~/.kongtrol and Kongtrol's keychain entries.
   if (CurUninstallStep = usUninstall) and PurgeData then
-    Exec(ExpandConstant('{app}\kongtrol.exe'), 'uninstall --data-only --yes --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  begin
+    if not ExecAndLogOutput(ExpandConstant('{app}\kongtrol.exe'),
+      'uninstall --data-only --yes --plain', '', SW_HIDE, ewWaitUntilTerminated, Code, nil) then
+    begin
+      Log('Kongtrol data removal could not start: ' + SysErrorMessage(Code));
+      MsgBox(CustomMessage('PurgeFailed'), mbError, MB_OK);
+    end
+    else if Code <> 0 then
+    begin
+      Log('Kongtrol data removal reported exit code ' + IntToStr(Code));
+      MsgBox(CustomMessage('PurgeFailed'), mbError, MB_OK);
+    end;
+  end;
   if CurUninstallStep <> usPostUninstall then
     exit;
   if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Path) then

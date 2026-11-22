@@ -105,6 +105,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0090](0090-wireguard-default-egress-windows.md) | Select WireGuard default egress on Windows and Linux | Accepted | 2026-11-21 |
 | [0091](0091-play-the-route-map-on-selection.md) | Play the route map when a visitor selects a destination | Accepted | 2026-11-21 |
 | [0092](0092-activate-first-profile-live.md) | Apply the first profile in the current panel and tray session | Accepted | 2026-11-22 |
+| [0093](0093-report-uninstall-data-removal.md) | Report Windows uninstall data removal failures | Accepted | 2026-11-22 |
 
 ## Statuses
 

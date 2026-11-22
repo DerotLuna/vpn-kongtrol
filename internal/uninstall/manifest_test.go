@@ -8,7 +8,7 @@ import (
 
 func TestPurge_KeepManifestOnly(t *testing.T) {
 	dir := t.TempDir()
-	for _, f := range []string{"kongtrol.yaml", "api-token", "daemon.log", ManifestName} {
+	for _, f := range []string{"kongtrol.yaml", "api-token", "daemon.log", "webview2/EBWebView/Default/Cache/journal.baj", ManifestName} {
 		write(t, filepath.Join(dir, f), "x: 1\n")
 	}
 	rep := Purge(PurgeOptions{DataDir: dir, KeepManifest: true, Delete: func(Credential) error { return nil }})

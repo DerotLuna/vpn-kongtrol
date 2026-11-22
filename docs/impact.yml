@@ -433,6 +433,7 @@ features:
   uninstall:
     code:
       - internal/uninstall/**
+      - cmd/kongtrol/daemon_client.go
       - internal/api/handlers_lifecycle.go
       - cmd/kongtrol/cmd_uninstall*.go
       - packaging/windows/kongtrol.iss

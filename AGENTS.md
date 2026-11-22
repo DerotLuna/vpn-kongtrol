@@ -166,8 +166,9 @@ exe, package manager by path, else manual) and only script-installed files are e
 `_system.audit_hmac_key`. Surfaces: `kongtrol uninstall [--purge|--data-only] [--yes] [--dry-run]`,
 `install.sh --uninstall [--purge]`, `install.ps1 -Uninstall [-Purge]`, the Inno uninstaller
 (asks, default No; silent never deletes), web/ui Ajustes "Borrar todos mis datos" →
-`POST /api/v1/data/purge {"confirm":true}` (daemon keeps api-token/run/logs, then restarts into
-setup). The tray has no uninstall item on purpose.
+`POST /api/v1/data/purge {"confirm":true}` (keeps the running daemon and tray files, including
+WebView2, then restarts into setup). The standalone purge stops both processes before
+removing their data (ADR-0093). The tray has no uninstall item on purpose.
 
 <!-- feature:update_check -->
 **Update notice: opt-in, never auto-update (ADR-0034).** `updates.check_enabled` (default false;

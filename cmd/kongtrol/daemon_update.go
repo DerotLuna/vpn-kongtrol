@@ -79,7 +79,7 @@ func purgeExtraFiles(c *config.Config) []string {
 // purgeDataFromDaemon disconnects every tunnel (lifting kill switch blocks
 // and restoring DNS, so the user stays online), then deletes settings,
 // profiles and Kongtrol's keychain entries. The files this running daemon
-// still needs (api-token, run/, logs) stay; the caller restarts it into
+// and tray still need (api-token, run/, logs, WebView2) stay; the caller restarts it into
 // first-run setup.
 func purgeDataFromDaemon() error {
 	disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)

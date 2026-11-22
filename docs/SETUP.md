@@ -1130,14 +1130,16 @@ kongtrol uninstall --purge     # también borra tus datos y contraseñas (pregun
 kongtrol uninstall --data-only # solo borra tus datos; la app queda instalada
 ```
 
-- Windows: Configuración › Aplicaciones › Kongtrol › Desinstalar. Pregunta «¿Borrar también tu
-  configuración y las contraseñas guardadas? Si piensas reinstalar, elige No.» (por defecto No; en
-  modo silencioso nunca borra datos).
+- Windows: Configuración › Aplicaciones › Kongtrol › Desinstalar. Elige **Sí** para borrar la
+  configuración y las contraseñas guardadas, o **No** para conservarlas. Si la limpieza falla,
+  el desinstalador lo indica por separado. Desde el panel, **Ajustes › Borrar todos mis datos**
+  permite empezar de cero con la aplicación instalada.
 - Instalado con `install.sh`/`install.ps1`: `… | sh -s -- --uninstall [--purge]`, o
   `kongtrol uninstall`.
 - `.deb`/`.rpm`: Kongtrol no toca esos archivos. Si quieres
   borrar tus datos, corre `kongtrol uninstall --purge` **antes** de quitar el paquete.
-- Desde el panel: Ajustes › «Borrar todos mis datos» (la app queda instalada y empieza de cero).
+- Desde el panel: Ajustes › **Borrar todos mis datos**. Se eliminan los perfiles, ajustes y
+  credenciales guardadas. Quedan los archivos que usan el servicio y la bandeja mientras están abiertos.
 - La bandeja no tiene opción de desinstalar: lo hace el desinstalador de tu sistema.
 
 ---
