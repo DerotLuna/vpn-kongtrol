@@ -174,7 +174,7 @@ $ kongtrol down --all          # disconnect all`,
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  office
   example.com      ──▶  no rule                 ──▶  normal internet`,
       panel: <>In the panel, open <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the VPN and test before saving.
-        If Kongtrol asks you to reopen the panel after saving your first profile, use the tray icon in the same browser. You have ten minutes to resume setup and recover your rule draft.
+        After saving the first profile, you can stay in the same tab and add a rule for that VPN.
         You can also create the rule in the terminal.</>,
       code: `$ kongtrol policy add github.com --via office
 $ kongtrol policy show github.com     # which VPN it uses and why

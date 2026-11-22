@@ -169,12 +169,12 @@ cookie + X-Kongtrol-Session, same origin, `application/json`) plus the explicit 
 <!-- feature:first_run -->
 **Setup mode.** A daemon started with no config file (the tray spawns it on first run) serves the
 dashboard with no profiles; `GET /api/v1/vpns` returns `[]` and the first valid
-`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml`. In setup mode VPN profile changes still
-answer `restart_required: true`: the dashboard restarts the daemon after the first profile so it
-leaves setup mode (CLI: `kongtrol restart`).
+`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml` and applies the first profile to the live
+adapter set. On success it returns `restart_required: false` and leaves setup mode in the current
+session (ADR-0092). A server without live adapter sync still returns `restart_required: true`.
 
 <!-- feature:profile_live -->
-**Profile changes (ADR-0053).** Outside setup mode, creating, editing, renaming or deleting a
+**Profile changes (ADR-0053).** Creating, editing, renaming or deleting a
 profile (and `POST /api/v1/policies/reload` after a hand edit) takes effect in the running daemon
 at once: `restart_required` is `false` (`true` only if the daemon cannot build that profile, e.g.
 an unknown type). A profile whose tunnel is up is never renamed or deleted (409

@@ -35,11 +35,16 @@ type profileApply struct {
 }
 
 func (s *Server) syncProfiles(cfg *config.Config) profileApply {
-	// Setup mode keeps its restart: the daemon leaves setup mode then.
-	if s.profileSync == nil || s.setupMode.Load() {
+	if s.profileSync == nil {
 		return profileApply{}
 	}
-	return profileApply{live: true, res: s.profileSync(cfg)}
+	res := s.profileSync(cfg)
+	// The first valid config uses the same live adapter set as later edits.
+	// Keep setup pending if building an adapter failed.
+	if s.setupMode.Load() && len(cfg.VPNs) > 0 && len(res.Failed) == 0 {
+		s.setupMode.Store(false)
+	}
+	return profileApply{live: true, res: res}
 }
 
 // restartRequired: the change to name only applies after a daemon restart.

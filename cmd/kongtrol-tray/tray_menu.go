@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"sync"
 	"time"
 
 	"fyne.io/systray"
@@ -48,9 +49,7 @@ func requestRefresh() {
 	}
 }
 
-// setupMenu builds the full menu, or the first-run / error menu when the
-// tray cannot work yet. It runs again (after systray.ResetMenu) once a
-// first-run user has created the config.
+// setupMenu initializes the tray once and chooses its initial menu.
 //
 // Layout (top to bottom): status header (VPNs up, kill switch, public IP)
 // and the lines that ask for an action (start Kongtrol, helper, policy);
@@ -70,6 +69,10 @@ func setupMenu() {
 		}
 		return
 	}
+	setupConfiguredMenu()
+}
+
+func setupConfiguredMenu() {
 	// The installer's "create my first VPN" checkbox with profiles already
 	// there (data kept from an earlier install): open the page anyway.
 	if p := takeOpenRequest(); p != "" {
@@ -95,7 +98,9 @@ func setupMenu() {
 	m.start.Hide()
 	onClick(m.start, func() { startKongtrol(m) })
 	// Shown only while the privileged helper is missing or outdated.
-	addHelperMenuItem()
+	if helperItem.Load() == nil {
+		addHelperMenuItem()
+	}
 	// "Conectar <perfil>" after a policy notice (see tray_policy.go).
 	addPolicyMenuItem()
 	systray.AddSeparator()
@@ -225,8 +230,18 @@ func showFirstRun() {
 	mMsg := systray.AddMenuItem(msg, trayT("tray.first_run_tip"))
 	mMsg.Disable()
 	mSetup := systray.AddMenuItem(trayT("tray.setup_open"), trayT("tray.setup_open_tip"))
+	var menuMu sync.Mutex
+	done := make(chan struct{})
 	openSetup := func() {
-		if !openDashboardPage(setupPagePath) {
+		opened := openDashboardPage(setupPagePath)
+		menuMu.Lock()
+		defer menuMu.Unlock()
+		select {
+		case <-done:
+			return
+		default:
+		}
+		if !opened {
 			mMsg.SetTitle(trayT("tray.setup_failed"))
 			systray.SetTooltip(trayT("tray.setup_failed"))
 			return
@@ -247,12 +262,18 @@ func showFirstRun() {
 	addHelperMenuItem()
 	go refreshHelperItem()
 	mQuit := systray.AddMenuItem(trayT("tray.exit"), trayT("tray.exit"))
-	done := make(chan struct{})
-	go func() {
-		<-mQuit.ClickedCh
-		close(done)
+	onClick(mQuit, func() {
+		menuMu.Lock()
+		select {
+		case <-done:
+			menuMu.Unlock()
+			return
+		default:
+			close(done)
+		}
+		menuMu.Unlock()
 		systray.Quit()
-	}()
+	})
 
 	// Rebuild the full menu as soon as the dashboard (or `kongtrol init`)
 	// saved the config.
@@ -265,11 +286,30 @@ func showFirstRun() {
 				return
 			case <-ticker.C:
 				refreshHelperItem()
-				if configExists() {
-					systray.ResetMenu()
-					setupMenu()
-					return
+				if !configExists() {
+					continue
 				}
+				saved, err := config.Load("")
+				if err != nil {
+					continue
+				}
+				menuMu.Lock()
+				select {
+				case <-done:
+					menuMu.Unlock()
+					return
+				default:
+					close(done)
+				}
+				// Remove the temporary items individually. Removing an
+				// item closes its click channel without sending a click.
+				mMsg.Remove()
+				mSetup.Remove()
+				mQuit.Remove()
+				menuMu.Unlock()
+				cfg = saved
+				setupConfiguredMenu()
+				return
 			}
 		}
 	}()

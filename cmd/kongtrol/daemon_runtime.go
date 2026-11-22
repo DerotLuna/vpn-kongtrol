@@ -224,8 +224,8 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	// Every change made through the API, and refused credentials (ADR-0064).
 	srv.SetAuditLog(auditAPIRequest)
 	// First run without kongtrol.yaml, and the restart that applies a
-	// change the running daemon cannot (setup mode, a hand edit with an
-	// unknown type). Profile changes otherwise apply live (ADR-0053).
+	// change the running daemon cannot apply. Profile changes, including
+	// first setup, ordinarily apply live (ADR-0053).
 	srv.SetSetupMode(setupMode)
 	srv.SetRestarter(restartDaemon)
 	srv.SetProfileSync(syncProfilesLive)

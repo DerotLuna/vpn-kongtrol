@@ -175,9 +175,8 @@ Pendiente (todavía no publicado).
 1. Abre Kongtrol (menú de inicio, Launchpad o el menú de aplicaciones). Aparece el ícono en la
    bandeja y se abre el panel en tu navegador.
 2. En **Perfiles VPN**, elige el tipo, completa los datos y pulsa **Crear**.
-3. Kongtrol se reinicia al guardar el primer perfil. Si el panel te pide volver a abrirlo, hazlo
-   desde el ícono de Kongtrol en el mismo navegador. Puedes continuar con el perfil guardado y
-   retomar la regla que estabas preparando durante los próximos diez minutos.
+3. Al guardar el primer perfil, el panel te deja conectar, crear una regla o volver a Inicio.
+   Puedes seguir en la misma pestaña y el menú de la bandeja se actualiza en unos segundos.
 
 ¿Cerraste el navegador? En el ícono, **Configurar ahora…** lo abre de nuevo. Si prefieres la
 terminal, `kongtrol init` hace lo mismo con un asistente (sección 4).

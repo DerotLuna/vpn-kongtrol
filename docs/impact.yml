@@ -365,6 +365,7 @@ features:
   first_run:
     code:
       - internal/api/handlers_setup.go
+      - internal/api/profile_sync.go
       - cmd/kongtrol/daemon_restart.go
       - cmd/kongtrol/config_load.go
       - cmd/kongtrol/helper_check.go
@@ -372,8 +373,10 @@ features:
       - cmd/kongtrol-tray/tray_actions.go
       - cmd/kongtrol-tray/tray_menu.go
       - web/ui/src/components/profiles/FirstRun.tsx
+      - web/ui/src/components/profiles/profiles.css
       - web/ui/src/components/profiles/useRestartAction.ts
       - web/ui/src/components/add/activate.ts
+      - web/ui/src/components/add/add.css
       - web/ui/src/components/add/recovery.ts
       - internal/api/handlers_detect.go
     surfaces:

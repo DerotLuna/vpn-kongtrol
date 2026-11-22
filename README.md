@@ -190,9 +190,8 @@ Build from source (Go 1.27+): `git clone https://github.com/DerotLuna/vpn-kongtr
 ## First run
 
 **With the app**: open Kongtrol. The panel opens in your
-browser to create your first VPN ("Set up now…" in the tray icon opens it again). Kongtrol
-restarts on its own once the first VPN is saved. If the panel asks you to reopen it, open it
-from Kongtrol in the same browser. You have ten minutes to pick up where you left off.
+browser to create your first VPN ("Set up now…" in the tray icon opens it again). After saving,
+use the same tab to connect or create a rule. The tray updates its menu when the profile is saved.
 
 **From the terminal** (same features):
 

@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-21
 
-Status: Accepted · Date: 2026-11-21
+Status: Accepted · Date: 2026-11-21 · First-profile restart superseded by ADR-0092
 
 ## Context and Problem Statement
 

@@ -7,10 +7,9 @@ import (
 )
 
 // SetupStatus is the body of GET /api/v1/setup. A daemon started with no
-// kongtrol.yaml runs in setup mode: the dashboard shows the "create your
-// first VPN" guide while NeedsSetup is true, and restarts the daemon once
-// RestartPending says the first profile was saved (the adapters map is
-// built only at boot, see AGENTS.md "Dashboard REST API").
+// kongtrol.yaml runs in setup mode. It leaves setup mode when the first
+// valid config is applied live. RestartPending is retained for clients
+// that encounter a saved config which could not be applied.
 type SetupStatus struct {
 	SetupMode      bool   `json:"setup_mode"`
 	NeedsSetup     bool   `json:"needs_setup"`
@@ -37,8 +36,10 @@ func (s *Server) configFileExists() bool {
 
 // GET /api/v1/setup
 func (s *Server) handleSetupStatus(w http.ResponseWriter, _ *http.Request) {
+	s.configMu.Lock()
 	setup := s.setupMode.Load()
 	has := s.configFileExists()
+	s.configMu.Unlock()
 	writeJSON(w, http.StatusOK, SetupStatus{
 		SetupMode:      setup,
 		NeedsSetup:     setup && !has,
@@ -50,7 +51,7 @@ func (s *Server) handleSetupStatus(w http.ResponseWriter, _ *http.Request) {
 // POST /api/v1/restart — stop this daemon (tunnels disconnect like on
 // `kongtrol down`) and start a fresh one that reads kongtrol.yaml again and
 // reconnects the tunnels that were up. Used after VPN profile changes
-// (restart_required) and to leave setup mode.
+// that cannot be applied live.
 func (s *Server) handleRestart(w http.ResponseWriter, _ *http.Request) {
 	if s.restart == nil || s.onShutdown == nil {
 		writeError(w, http.StatusNotImplemented, "restart not supported by this daemon instance")

@@ -80,24 +80,16 @@ describe('ProfilesPage', () => {
     expect(screen.getByText('/home/ana/.kongtrol/kongtrol.yaml')).toBeInTheDocument()
   })
 
-  it('first run: suggests the installed VPN app, saves the first profile, restarts and goes home', async () => {
-    let restarted = false
-    let setupCalls = 0
+  it('suggests an installed VPN and opens the first profile in the same session', async () => {
+    let saved = false
     const fetchMock = stubFetch(
       base({
-        'GET /api/v1/vpns': () => json([]),
-        'GET /api/v1/setup': () => {
-          setupCalls++
-          // While restarting: answers until POST /restart, then down once, then up again.
-          if (restarted && setupCalls === 1000) return Promise.reject(new TypeError('down'))
-          return json({ setup_mode: true, needs_setup: !restarted, restart_pending: false, config_path: '' })
-        },
+        'GET /api/v1/vpns': () => json(saved ? [profile('nord', { type: 'nordvpn' })] : []),
+        'GET /api/v1/setup': () => json({ ...setupDone, setup_mode: !saved, needs_setup: !saved }),
         'GET /api/v1/vpns/detect': () => json([{ label: 'NordVPN', adapter_type: 'nordvpn', path: 'C:/NordVPN/nordvpn.exe' }]),
-        'POST /api/v1/vpns': () => json({ status: 'created', profile: 'nord', restart_required: true }, 201),
-        'POST /api/v1/restart': () => {
-          restarted = true
-          setupCalls = 999
-          return json({ status: 'restarting' }, 202)
+        'POST /api/v1/vpns': () => {
+          saved = true
+          return json({ status: 'created', profile: 'nord', restart_required: false }, 201)
         },
       }),
     )
@@ -116,14 +108,13 @@ describe('ProfilesPage', () => {
     await userEvent.type(name, 'nord')
     await userEvent.click(within(dialog).getByText('More options'))
     await userEvent.type(within(dialog).getByLabelText('Country (optional)'), 'CH')
-    expect(within(dialog).getByText(/If Kongtrol has to restart for that, it does so on its own/)).toBeInTheDocument()
+    expect(within(dialog).getByText('Once saved, you can connect the profile or assign it a rule.')).toBeInTheDocument()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save and activate' }))
 
     await waitFor(() => expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toBeDefined())
     expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toEqual({ name: 'nord', type: 'nordvpn', priority: 10, auto_connect: true, country: 'CH' })
-    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/restart' && i?.method === 'POST')).toBe(true))
-    expect(await screen.findByText('Kongtrol restarted · you can connect your VPNs now')).toBeInTheDocument()
     expect(await screen.findByText('“nord” is ready.')).toBeInTheDocument()
+    expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/restart' && i?.method === 'POST')).toBe(false)
     await userEvent.click(screen.getByRole('button', { name: 'See it on Home' }))
     await waitFor(() => expect(window.location.pathname).toBe('/'))
   })

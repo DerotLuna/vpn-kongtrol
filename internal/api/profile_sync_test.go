@@ -103,14 +103,6 @@ func TestProfileCRUD_WithoutLiveApplyNeedsRestart(t *testing.T) {
 	if b := decodeBody(t, rec); b["restart_required"] != true {
 		t.Fatalf("no live apply must answer restart_required: %v", b)
 	}
-	// Setup mode keeps its restart too.
-	s2, _ := newLiveServer(t, providerTestYAML, nil)
-	s2.SetSetupMode(true)
-	rec = doJSON(t, s2, http.MethodPost, "/api/v1/vpns", "/api/v1/vpns", s2.handleCreateVPN,
-		`{"name":"proton","type":"protonvpn"}`)
-	if b := decodeBody(t, rec); b["restart_required"] != true {
-		t.Fatalf("setup mode must answer restart_required: %v", b)
-	}
 }
 
 func TestUpdateConnectedProfile_ReconnectRequiredOrDone(t *testing.T) {
