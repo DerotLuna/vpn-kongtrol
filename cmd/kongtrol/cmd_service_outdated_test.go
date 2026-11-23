@@ -7,35 +7,46 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
-// The Windows installer runs `service install --if-outdated` on every
-// upgrade: only a helper speaking an older protocol may trigger UAC.
-func TestOutdatedHelperAction(t *testing.T) {
+func TestConditionalHelperInstallAction(t *testing.T) {
 	cases := []struct {
-		name    string
-		res     privops.PingResult
-		err     error
-		install bool
-		key     string
+		name          string
+		res           privops.PingResult
+		err           error
+		ifOutdated    helperInstallMode
+		ifOutdatedKey string
+		ifNeeded      helperInstallMode
+		ifNeededKey   string
 	}{
-		{"not installed", privops.PingResult{}, privops.ErrHelperNotInstalled, false, "service.install.nothing_to_update"},
-		{"current protocol", privops.PingResult{Protocol: privops.ProtocolVersion}, nil, false, "service.install.up_to_date"},
-		{"older protocol", privops.PingResult{Protocol: privops.ProtocolVersion - 1}, nil, true, ""},
-		// The client turns a reply with another protocol into
-		// ErrHelperOutdated: that helper must be updated, not skipped.
-		{"client reports outdated", privops.PingResult{}, privops.ErrHelperOutdated, true, ""},
+		{"not installed or stopped", privops.PingResult{}, privops.ErrHelperNotInstalled,
+			helperModeCurrent, "service.install.nothing_to_update", helperModeInstall, ""},
+		{"current protocol, other build", privops.PingResult{Protocol: privops.ProtocolVersion, Version: "other"}, nil,
+			helperModeCurrent, "service.install.up_to_date", helperModeCurrent, "service.install.up_to_date"},
+		{"older protocol", privops.PingResult{Protocol: privops.ProtocolVersion - 1}, nil,
+			helperModeUpdate, "", helperModeUpdate, ""},
+		{"client reports outdated", privops.PingResult{}, privops.ErrHelperOutdated,
+			helperModeUpdate, "", helperModeUpdate, ""},
+		{"denied", privops.PingResult{}, privops.ErrDenied,
+			helperModeCurrent, "service.install.nothing_to_update", helperModeCurrent, "service.install.nothing_to_update"},
 	}
 	for _, c := range cases {
-		install, key := outdatedHelperAction(c.res, c.err)
-		if install != c.install || key != c.key {
-			t.Errorf("%s: got (%v, %q), want (%v, %q)", c.name, install, key, c.install, c.key)
+		mode, key := conditionalHelperInstallAction(c.res, c.err, false)
+		if mode != c.ifOutdated || key != c.ifOutdatedKey {
+			t.Errorf("--if-outdated, %s: got (%v, %q), want (%v, %q)", c.name, mode, key, c.ifOutdated, c.ifOutdatedKey)
 		}
-		if key != "" && (i18n.T(i18n.ES, key) == key || i18n.T(i18n.EN, key) == key) {
-			t.Errorf("%s: %s not translated", c.name, key)
+		mode, key = conditionalHelperInstallAction(c.res, c.err, true)
+		if mode != c.ifNeeded || key != c.ifNeededKey {
+			t.Errorf("--if-needed, %s: got (%v, %q), want (%v, %q)", c.name, mode, key, c.ifNeeded, c.ifNeededKey)
 		}
 	}
-	f := serviceInstallCmd.Flags().Lookup("if-outdated")
-	if f == nil || !f.Hidden {
-		t.Fatal("--if-outdated must exist and stay hidden (installer plumbing)")
+	for _, key := range []string{"service.install.nothing_to_update", "service.install.up_to_date"} {
+		if i18n.T(i18n.ES, key) == key || i18n.T(i18n.EN, key) == key {
+			t.Errorf("%s not translated", key)
+		}
+	}
+	for _, name := range []string{"if-outdated", "if-needed"} {
+		if f := serviceInstallCmd.Flags().Lookup(name); f == nil || !f.Hidden {
+			t.Errorf("--%s must exist and stay hidden (installer plumbing)", name)
+		}
 	}
 }
 

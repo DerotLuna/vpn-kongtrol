@@ -198,7 +198,7 @@ $ kongtrol policy remove <name>`,
       domains: ["*.yourcompany.com"]
     via: office
     on_tunnel_down: block   # optional: if office is off, block`,
-      match: <><strong>Example destinations.</strong> Use <IC c="claude.com" /> for the root domain, <IC c="api.anthropic.com" /> for an exact subdomain, and <IC c="*.anthropic.com" /> for one level of subdomains. Kongtrol looks up some common names to install routes. Enter the full name of each subdomain you need.
+      match: <><strong>Multiple destinations.</strong> Separate them with commas or line breaks, for example <IC c="claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42" />. The wildcard covers one level of subdomains. Save the rule paused and activate it when you want it to take effect.
         You can use <IC c="café.example" />. Names also match if you paste uppercase letters or a trailing dot.
         Use <IC c="192.0.2.42" /> for one IP, <IC c="2001:db8::42" /> for IPv6, or <IC c="192.0.2.0/24" /> for a network. The most specific network wins when they overlap.
         App rules (<IC c="apps" />) only explain for now; they don't route.</>,

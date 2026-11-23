@@ -39,6 +39,9 @@ func probeTunnel(profile string) monitor.TunnelState {
 	if a.Status().Normalize() != vpn.StatusConnected {
 		return st
 	}
+	if policyWatch != nil {
+		policyWatch.ResetConnectBudget(profile)
+	}
 	st.Connected = true
 	if info, err := a.TunnelInfo(); err == nil && info != nil {
 		st.Interface, st.DNS = info.InterfaceName, info.DNS

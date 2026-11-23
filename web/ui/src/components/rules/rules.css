@@ -17,7 +17,7 @@
 .r-down { font-size: 14px; color: var(--text-muted); }
 .r-row-actions { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
 .k-empty .r-row-actions { flex-wrap: wrap; justify-content: flex-start; }
-/* Per-rule pause switch in the schedule table: the column header names it. */
+/* Per-rule pause switch: the column header names it. */
 .r-rule-switch { display: inline-flex; }
 .r-rule-switch .k-switch-row { gap: 0; }
 .r-rule-switch .k-switch-text { display: contents; }
@@ -96,7 +96,6 @@ button.r-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 
 .r-disclosure[open] > summary::before { transform: rotate(45deg); }
 .r-disclosure > summary:hover { color: var(--text); }
 .r-disclosure > summary:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; border-radius: 4px; }
-.r-disclosure__note { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; max-width: 70ch; }
 .r-disclosure--tech { border-top: 0; padding-top: 0; }
 
 .r-inline-form { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; }

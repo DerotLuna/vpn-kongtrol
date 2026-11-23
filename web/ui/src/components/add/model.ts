@@ -200,6 +200,31 @@ export function classifyEntry(raw: string): Classified {
   return { ok: true, entry }
 }
 
+/** Split each line independently. Quotes force a single entry. An unquoted
+ * app takes the rest of its line; commas inside URL paths stay literal
+ * unless followed by whitespace. */
+export function readDestinations(input: string) {
+  const checked: { line: number; result: Classified }[] = []
+  for (const [index, line] of input.split(/\r\n?|\n/).entries()) {
+    let rest = line.trim()
+    while (rest) {
+      const quoted = /^"([^"]+)"\s*(?:,|$)/.exec(rest)
+      if (quoted) {
+        checked.push({ line: index + 1, result: classifyEntry(quoted[1]!) })
+        rest = rest.slice(quoted[0].length).trim()
+        continue
+      }
+      const app = /^app:/i.test(rest)
+      const inPath = /^[a-z][a-z0-9+.-]*:\/\/[^/?#,]+[/?#]/i.test(rest)
+      const comma = app ? -1 : rest.search(inPath ? /,(?=\s|$)/ : /,/)
+      const raw = (comma < 0 ? rest : rest.slice(0, comma)).trim()
+      if (raw) checked.push({ line: index + 1, result: classifyEntry(raw) })
+      rest = comma < 0 ? '' : rest.slice(comma + 1).trim()
+    }
+  }
+  return checked
+}
+
 export interface RuleMatch {
   domains: string[]
   ip_ranges: string[]
@@ -214,23 +239,18 @@ export interface Targets extends RuleMatch {
 
 /** The rule's match lists; "incluye subdominios" adds *.host after each host. Duplicates dropped, order kept. */
 export function matchOf(entries: readonly Entry[], includeSubdomains: boolean): RuleMatch {
-  const seen = new Set<string>()
-  const out: RuleMatch = { domains: [], ip_ranges: [], apps: [] }
-  const add = (list: string[], v: string) => {
-    if (!seen.has(v)) {
-      seen.add(v)
-      list.push(v)
-    }
-  }
+  const domains = new Set<string>()
+  const ranges = new Set<string>()
+  const apps = new Set<string>()
   for (const e of entries) {
-    if (e.kind === 'ip') add(out.ip_ranges, e.value)
-    else if (e.kind === 'app') add(out.apps, e.value)
+    if (e.kind === 'ip') ranges.add(e.value)
+    else if (e.kind === 'app') apps.add(e.value)
     else {
-      add(out.domains, e.value)
-      if (includeSubdomains && !e.value.startsWith('*.')) add(out.domains, `*.${e.value}`)
+      domains.add(e.value)
+      if (includeSubdomains && !e.value.startsWith('*.')) domains.add(`*.${e.value}`)
     }
   }
-  return out
+  return { domains: [...domains], ip_ranges: [...ranges], apps: [...apps] }
 }
 
 /** policy.ClassifyTargets: the whole list, with the entries none of the forms accept. */
@@ -279,9 +299,8 @@ export interface RuleDraft {
   onDown: TunnelDownChoice
   /** '' = the generated name. */
   name: string
-  more: string
 }
 
 export function emptyRuleDraft(input = '', via = ''): RuleDraft {
-  return { input, subs: true, via, onDown: 'inherit', name: '', more: '' }
+  return { input, subs: true, via, onDown: 'inherit', name: '' }
 }

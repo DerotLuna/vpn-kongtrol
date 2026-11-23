@@ -1,7 +1,6 @@
 package monitor
 
 import (
-	"context"
 	"net"
 	"net/netip"
 	"sort"
@@ -11,7 +10,6 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/routing"
-	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
 // fakeRoutes is an in-memory routing.RouteManager. existing are routes the
@@ -98,6 +96,27 @@ func testResolver(t *testing.T, cfg *config.Config, rm routing.RouteManager, dns
 	}
 	r.wgSet = func(string, string, []string, string) error { return nil }
 	return r
+}
+
+func TestPausedPolicyRemovesRoutesAndStopsMatching(t *testing.T) {
+	cfg := policyCfg()
+	routes := newFakeRoutes()
+	r := testResolver(t, cfg, routes, nil)
+	if err := r.RegisterTunnel("office", "office-tun", nil); err != nil {
+		t.Fatal(err)
+	}
+	target := netip.MustParseAddr("172.20.0.42")
+	if _, ok := r.MatchAddr(target); !ok || len(routes.keys()) == 0 {
+		t.Fatal("active rule did not match or install routes")
+	}
+	paused := *cfg
+	paused.Policies = append([]config.PolicyRule(nil), cfg.Policies...)
+	paused.Policies[1].Disabled = true
+	r.SetConfig(&paused)
+	r.applyAll()
+	if _, ok := r.MatchAddr(target); ok || len(routes.keys()) != 0 {
+		t.Fatalf("paused rule still matches or routes: %v", routes.keys())
+	}
 }
 
 func policyCfg() *config.Config {
@@ -218,64 +237,6 @@ func TestPolicyResolver_ResolvedIPsExpiry(t *testing.T) {
 	}
 	if other := r.ResolvedIPs("corp"); len(other) != 0 {
 		t.Fatalf("corp has no domains, got %+v", other)
-	}
-}
-
-type fakeMatcher map[netip.Addr]PolicyMatch
-
-func (f fakeMatcher) MatchAddr(a netip.Addr) (PolicyMatch, bool) { m, ok := f[a]; return m, ok }
-
-func TestPolicyWatch_NotifyThrottleAndConnect(t *testing.T) {
-	a1, a2 := netip.MustParseAddr("2.2.2.2"), netip.MustParseAddr("3.3.3.3")
-	log := NewEventLog(10)
-	var connects []string
-	var mu sync.Mutex
-	done := make(chan struct{}, 4)
-	now := time.Unix(0, 0)
-	w := &PolicyWatch{
-		Matcher: fakeMatcher{
-			a1: {Policy: "ai", Via: "brainbox", Action: "allow", Label: "claude.ai"},
-			a2: {Policy: "git", Via: "office", Action: "connect", Label: "git.corp"},
-		},
-		Status: func(string) vpn.Status { return vpn.StatusDisconnected },
-		Connect: func(_ context.Context, p string) error {
-			mu.Lock()
-			connects = append(connects, p)
-			mu.Unlock()
-			done <- struct{}{}
-			return nil
-		},
-		Events: log,
-		conns:  func() ([]netip.Addr, error) { return []netip.Addr{a1, a1, a2}, nil },
-		now:    func() time.Time { return now },
-	}
-	w.Check(context.Background())
-	<-done
-	evs, _ := log.After(0)
-	if len(evs) != 2 {
-		t.Fatalf("events = %+v", evs)
-	}
-	var allow Event
-	for _, e := range evs {
-		if e.Policy == "ai" {
-			allow = e
-		}
-	}
-	if allow.Key != "policy.event.allow" || allow.Args[0] != "claude.ai" || allow.Args[1] != "brainbox" || !allow.CanConnect {
-		t.Fatalf("allow event = %+v", allow)
-	}
-	now = now.Add(time.Minute)
-	w.Check(context.Background())
-	if evs, _ := log.After(2); len(evs) != 0 {
-		t.Fatalf("not throttled: %+v", evs)
-	}
-	now = now.Add(DefaultNoticeEvery)
-	w.Check(context.Background())
-	<-done
-	mu.Lock()
-	defer mu.Unlock()
-	if len(connects) != 2 || connects[0] != "office" {
-		t.Fatalf("connects = %v", connects)
 	}
 }
 

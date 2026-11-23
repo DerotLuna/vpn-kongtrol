@@ -170,6 +170,9 @@ jobs:
               if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 100 }
               throw "Installer failed in stage $stage"
             }
+            if (Select-String -LiteralPath $log -SimpleMatch 'Parameters: service install' -Quiet) {
+              throw "Installer ran the deselected network helper task in stage $stage"
+            }
           }
           Install-TestCopy 'first-install'
           $binary = Join-Path $directory 'kongtrol.exe'

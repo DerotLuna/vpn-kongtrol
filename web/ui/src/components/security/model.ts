@@ -85,6 +85,10 @@ export function watchKey(key: string): MessageKey | null {
       return 'security.watch.connect'
     case 'policy.event.connect_failed':
       return 'security.watch.connect_failed'
+    case 'policy.event.connect_exhausted':
+      return 'security.watch.connect_exhausted'
+    case 'policy.event.connect_conflict':
+      return 'security.watch.connect_conflict'
     default:
       return null
   }

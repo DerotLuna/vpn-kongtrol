@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.8 · 2026-11-21
+Versión 1.9 · 2026-11-22
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -62,6 +62,7 @@ Reglas que deciden por qué VPN sale cada destino, en orden.
 | `policies[].match.domains` | lista de texto | — | Dominios o globs (`*.ejemplo.com`). |
 | `policies[].match.apps` | lista de texto | — | Ejecutables o globs (experimental). |
 | `policies[].via` | texto | — | **Obligatorio.** Perfil VPN por el que sale el tráfico. |
+| `policies[].disabled` | booleano | — | `true` conserva la regla pausada hasta que la actives. Por defecto la regla está activa. |
 | `policies[].on_tunnel_down` | texto | — | Vacío: hereda la opción del perfil. `allow` permite y avisa si detecta tráfico. `block` bloquea las IP conocidas. `connect` también las bloquea e intenta conectar si detecta tráfico TCP en Windows o Linux. En macOS, conecta manualmente. |
 
 ## `security`

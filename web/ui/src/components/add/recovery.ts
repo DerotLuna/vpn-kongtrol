@@ -27,10 +27,13 @@ export function takeAddRecovery(): AddRecovery | null {
     localStorage.removeItem(KEY)
     const saved = JSON.parse(raw) as AddRecovery & { expires: number }
     if (typeof saved.expires !== 'number' || saved.expires <= Date.now() || typeof saved.profile !== 'string') return null
-    const { draft } = saved
-    if (draft !== null && (!draft || typeof draft.input !== 'string' || typeof draft.more !== 'string'
+    const draft = saved.draft as (RuleDraft & { more?: string }) | null
+    if (draft !== null && (!draft || typeof draft.input !== 'string'
       || typeof draft.name !== 'string' || typeof draft.subs !== 'boolean' || !TUNNEL_DOWN_CHOICES.includes(draft.onDown))) return null
-    return { profile: saved.profile, draft: draft && { ...draft, via: saved.profile } }
+    if (!draft) return { profile: saved.profile, draft: null }
+    const { more, ...rule } = draft
+    const input = more ? [rule.input, more].filter(Boolean).join('\n') : rule.input
+    return { profile: saved.profile, draft: { ...rule, input, via: saved.profile } }
   } catch {
     return null
   }

@@ -174,6 +174,8 @@ const es = {
   'security.watch.block': '{0} bloqueado · {1} está apagado',
   'security.watch.connect': 'Conectando {1}: hay tráfico hacia {0}',
   'security.watch.connect_failed': 'No se pudo conectar {1} para {0}',
+  'security.watch.connect_exhausted': 'No se pudo conectar {1} para {0} tras tres intentos automáticos. Conecta la VPN manualmente.',
+  'security.watch.connect_conflict': 'Se aplazó la conexión de {1} porque {2} está activa. Los destinos de esta regla siguen bloqueados. Si quieres usar {1}, desconecta {2} y vuelve a intentarlo.',
 } as const
 
 const en: Strings<typeof es> = {
@@ -343,6 +345,8 @@ const en: Strings<typeof es> = {
   'security.watch.block': '{0} blocked · {1} is off',
   'security.watch.connect': 'Connecting {1}: traffic to {0}',
   'security.watch.connect_failed': 'Could not connect {1} for {0}',
+  'security.watch.connect_exhausted': 'Could not connect {1} for {0} after three automatic attempts. Connect the VPN manually.',
+  'security.watch.connect_conflict': 'Connecting {1} was deferred because {2} is active. This rule’s destinations remain blocked. To use {1}, disconnect {2} and try again.',
 }
 
 export default { es, en }

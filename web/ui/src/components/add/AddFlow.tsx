@@ -6,7 +6,7 @@
 //   B "Importar un archivo de VPN"   (FileStep: .conf / .ovpn, drop)
 //   C "Hacer que un sitio salga por una VPN" (RuleStep: one sentence)
 // and a Done step with the next useful actions. A and B save and restart
-// ("Guardar y activar"); C applies at once. C with no profile runs A first
+// ("Guardar y activar"); C saves paused. C with no profile runs A first
 // and comes back with the draft kept.
 //
 // Native <dialog> sheet (kit Dialog): Esc and the close button ask first
@@ -21,7 +21,7 @@ import { useUnsavedChanges } from '../../app/unsaved'
 import { droppedFile } from '../../data/add'
 import { useTunnelActions } from '../../data/home'
 import { useDetectedClients, useProfilesQuery, type AdapterType } from '../../data/profiles'
-import { useExplain } from '../../data/rules'
+import { useExplain, useTogglePolicy } from '../../data/rules'
 import { useTunnelsQuery } from '../../data/resources'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
@@ -93,7 +93,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   // "sale por" follows the deep link / only profile / first connected until the user picks.
   const via = viaChosen ? rule.via : defaultVia(names, tunnels, req.via)
   const ruleDraft = useMemo(() => ({ ...rule, via }), [rule, via])
-  const ruleDirty = view.k === 'rule' && (rule.input !== emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? '')).input || rule.more !== '' || rule.name !== '')
+  const ruleDirty = view.k === 'rule' && (rule.input !== emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? '')).input || rule.name !== '' || !rule.subs || rule.onDown !== 'inherit' || viaChosen)
   const dirty = !resume?.saved && ((view.k === 'vpn' || view.k === 'file') ? stepDirty : ruleDirty || (backToRule && rule.input !== ''))
   useUnsavedChanges(dirty)
 
@@ -344,8 +344,18 @@ function DoneVpn({ name, path, onRule, onHome }: { name: string; path?: string |
 function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; connected: boolean; onAnother: () => void; onFinish: () => void }) {
   const { t } = usePreferences()
   const run = useTunnelActions()
+  const activation = useTogglePolicy()
+  const [active, setActive] = useState(false)
   const [asked, setAsked] = useState(false)
-  const result = useExplain(asked ? rule.probe : '')
+  const result = useExplain(active && asked ? rule.probe : '')
+  const activate = async () => {
+    try {
+      await activation.mutateAsync({ name: rule.name, disabled: false, inline: true })
+      setActive(true)
+    } catch {
+      // The error stays by the activation button, which can be used again.
+    }
+  }
   const target = rule.probe.replace(/^app:/, '')
   let tested: string | null = null
   if (asked && result.data) {
@@ -357,22 +367,30 @@ function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; c
   return (
     <div className="k-add__step">
       <Banner tone="ok" title={t('add.done.rule.title', { name: rule.name })}>
-        <span>{t('add.done.rule.what')}</span>
+        <span>{t(active ? 'add.done.rule.active' : 'add.done.rule.paused')}</span>
       </Banner>
+      {activation.isError && <ErrorState error={activation.error} />}
       <div aria-live="polite">{tested && <p className="k-add-preview">{tested}</p>}</div>
       <footer className="k-dialog__actions k-add__actions">
         <Button variant="text" className="k-add__back" icon={<PlusIcon />} onClick={onAnother}>
           {t('add.done.another')}
         </Button>
-        {!connected && (
-          <Button variant="outlined" icon={<PlugIcon />} onClick={() => run(rule.via, 'connect')}>
-            {t('add.done.connect', { name: rule.via })}
+        {!active && (
+          <Button variant="outlined" loading={activation.isPending} onClick={() => void activate()}>
+            {t('add.done.activate')}
           </Button>
         )}
-        <Button variant="outlined" icon={<CheckIcon />} loading={asked && result.isFetching} onClick={() => (asked ? void result.refetch() : setAsked(true))} data-autofocus="">
-          {t('add.done.test')}
-        </Button>
-        <Button onClick={onFinish}>{t('add.finish')}</Button>
+        {active && !connected && (
+          <Button variant="outlined" icon={<PlugIcon />} onClick={() => run(rule.via, 'connect')}>
+            {t('add.done.connectNow', { name: rule.via })}
+          </Button>
+        )}
+        {active && (
+          <Button variant="outlined" icon={<CheckIcon />} loading={asked && result.isFetching} onClick={() => (asked ? void result.refetch() : setAsked(true))}>
+            {t('add.done.test')}
+          </Button>
+        )}
+        <Button onClick={onFinish} data-autofocus="">{t('add.finish')}</Button>
       </footer>
     </div>
   )

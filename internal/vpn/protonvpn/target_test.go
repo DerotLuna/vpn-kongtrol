@@ -63,7 +63,7 @@ func TestModernConnectArgs(t *testing.T) {
 
 func TestMatcher(t *testing.T) {
 	for name, want := range map[string]bool{
-		"proton0": true, "pvpn-wg": true, "ProtonVPN": true,
+		"proton0": true, "pvpn-wg": true, "ProtonVPN": true, "ProTUN": true,
 		"pvpnksintrf0": false, "pvpnroutintrf0": false, "ipv6leakintrf0": false,
 		"wg0": false, "tun0": false, "eth0": false, "nordlynx": false,
 	} {

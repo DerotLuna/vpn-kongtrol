@@ -122,6 +122,8 @@ type PolicyRule struct {
 	Name  string    `yaml:"name,omitempty" validate:"required"`
 	Match MatchSpec `yaml:"match,omitempty"`
 	Via   string    `yaml:"via,omitempty"  validate:"required"`
+	// Disabled saves a rule without routing, blocking or waking a tunnel.
+	Disabled bool `yaml:"disabled,omitempty"`
 	// OnTunnelDown is what happens to this policy's traffic while its
 	// tunnel is not connected (the user decides which tunnels are up):
 	//   allow   normal internet, and Kongtrol notifies;

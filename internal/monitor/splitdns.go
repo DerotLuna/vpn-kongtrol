@@ -10,23 +10,20 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
 // SplitDNSManager injects policy-resolved domains into system hosts file
 // so regular applications resolve them without calling the API.
 type SplitDNSManager struct {
-	cfg      *config.Config
 	resolver *PolicyResolver
 	interval time.Duration
 	log      *zap.Logger
 	cancel   context.CancelFunc
 }
 
-func NewSplitDNSManager(cfg *config.Config, resolver *PolicyResolver, interval time.Duration, log *zap.Logger) *SplitDNSManager {
+func NewSplitDNSManager(resolver *PolicyResolver, interval time.Duration, log *zap.Logger) *SplitDNSManager {
 	return &SplitDNSManager{
-		cfg:      cfg,
 		resolver: resolver,
 		interval: interval,
 		log:      log,
@@ -69,7 +66,7 @@ func (m *SplitDNSManager) loop(ctx context.Context) {
 func (m *SplitDNSManager) sync() {
 	hostMap := map[string]string{}
 
-	for _, pol := range m.cfg.Policies {
+	for _, pol := range m.resolver.policies() {
 		for _, domainPattern := range pol.Match.Domains {
 			for _, domain := range expandDomainPattern(domainPattern) {
 				ips, err := m.resolver.ResolveDomainViaProfile(pol.Via, domain)

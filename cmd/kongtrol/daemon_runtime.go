@@ -154,6 +154,9 @@ func connectProfile(ctx context.Context, name string) error {
 	}
 	err := svc.Connect(ctx, name)
 	if err == nil {
+		if policyWatch != nil {
+			policyWatch.ResetConnectBudget(name)
+		}
 		triggerPublicIPCheck() // egress may have changed (no-op unless opted in)
 	}
 	return err

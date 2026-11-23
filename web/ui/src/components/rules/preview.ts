@@ -5,7 +5,8 @@
 // so ES and EN read naturally; tested in model.test.ts.
 import type { FieldError } from '../ui/Field'
 import { messages, type Lang, type MessageKey } from '../../i18n/messages'
-import { daysShape, isOvernight, readableTime, type ExplainResult, type Overlap, type PolicyError, type ScheduleRule, type Weekday } from './model'
+import type { PolicyError } from './editorModel'
+import { daysShape, isOvernight, readableTime, type ExplainResult, type Overlap, type ScheduleRule, type Weekday } from './model'
 
 type T = (key: MessageKey, vars?: Record<string, string | number>) => string
 

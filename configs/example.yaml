@@ -150,6 +150,7 @@ vpns:
 
 
 policies:
+  # Save a rule with disabled: true to keep it paused until you activate it.
   - name: "Office servers"
     match:
       ip_ranges:

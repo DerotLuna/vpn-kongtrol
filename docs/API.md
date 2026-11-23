@@ -75,6 +75,7 @@ POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, h
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
                                              # GET policy items expose effective on_tunnel_down and raw on_tunnel_down_override.
+                                             # GET includes disabled rules. POST/PUT accepts disabled: true to pause or false to activate.
                                              # POST/PUT accepts on_tunnel_down: "" to inherit, or allow, block, connect.
 
 # VPN profiles (config + OS keychain; applied live, ADR-0053 — see "Profile changes" below)

@@ -50,11 +50,12 @@ func cidrPrefixLen(cidr string) int {
 	return ones
 }
 
-// GET /api/v1/policies — active policies with resolved IPs from PolicyResolver.
+// GET /api/v1/policies — active policies and saved paused rules.
 func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 	type policyDTO struct {
 		Name                 string   `json:"name"`
 		Via                  string   `json:"via"`
+		Disabled             bool     `json:"disabled"`
 		Domains              []string `json:"domains"`
 		IPRanges             []string `json:"ip_ranges"`
 		Apps                 []string `json:"apps"`
@@ -67,11 +68,18 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Start from the policy engine rules (static config).
-	var out []policyDTO
+	var out, paused []policyDTO
 	overrides := map[string]string{}
 	onDown := map[string]string{} // policy → on_tunnel_down (not in the engine)
 	if cfg, _, err := s.loadRuntimeConfig(); err == nil {
 		for _, p := range cfg.Policies {
+			if p.Disabled {
+				paused = append(paused, policyDTO{
+					Name: p.Name, Via: p.Via, Disabled: true, Domains: p.Match.Domains, IPRanges: p.Match.IPRanges, Apps: p.Match.Apps,
+					OnTunnelDown: p.TunnelDownAction(cfg.VPNs[p.Via]), OnTunnelDownOverride: p.OnTunnelDown,
+				})
+				continue
+			}
 			onDown[p.Name] = p.TunnelDownAction(cfg.VPNs[p.Via])
 			overrides[p.Name] = p.OnTunnelDown
 		}
@@ -111,6 +119,7 @@ func (s *Server) handleListPolicies(w http.ResponseWriter, r *http.Request) {
 			out[i].Resolved = s.policyResolver.ResolvedIPs(out[i].Name)
 		}
 	}
+	out = append(out, paused...)
 
 	if out == nil {
 		out = []policyDTO{}

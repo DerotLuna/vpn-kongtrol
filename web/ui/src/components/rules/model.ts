@@ -28,6 +28,7 @@ export interface Policy {
   on_tunnel_down: string
   on_tunnel_down_override?: string
   resolved_cidrs?: string[] | null
+  disabled?: boolean
 }
 
 /** Body of POST/PUT /api/v1/policies (policyPatch). */
@@ -36,51 +37,11 @@ export interface PolicyPayload {
   via: string
   on_tunnel_down: OnTunnelDown | ''
   match: { domains: string[]; ip_ranges: string[]; apps: string[] }
-}
-
-/** The editor's state: lists as one entry per line, the way people paste them. */
-export interface PolicyDraft {
-  name: string
-  via: string
-  domains: string
-  ipRanges: string
-  apps: string
-  onDown: TunnelDownChoice
-}
-
-export function emptyDraft(via = ''): PolicyDraft {
-  return { name: '', via, domains: '', ipRanges: '', apps: '', onDown: 'inherit' }
+  disabled?: boolean
 }
 
 export function onDownOf(p: Pick<Policy, 'on_tunnel_down'>): OnTunnelDown {
   return (ON_TUNNEL_DOWN as readonly string[]).includes(p.on_tunnel_down) ? (p.on_tunnel_down as OnTunnelDown) : 'allow'
-}
-
-export function draftFromPolicy(p: Policy): PolicyDraft {
-  return {
-    name: p.name,
-    via: p.via,
-    domains: (p.domains ?? []).join('\n'),
-    ipRanges: (p.ip_ranges ?? []).join('\n'),
-    apps: (p.apps ?? []).join('\n'),
-    onDown: p.on_tunnel_down_override === '' ? 'inherit' : onDownOf({ on_tunnel_down: p.on_tunnel_down_override ?? p.on_tunnel_down }),
-  }
-}
-
-/** One entry per line; commas and spaces also separate (pasted lists). */
-export function splitEntries(text: string): string[] {
-  return text
-    .split(/[\s,;]+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
-
-/** Apps keep spaces inside paths ("C:\Program Files\…"): one per line only. */
-export function splitLines(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((s) => s.trim())
-    .filter(Boolean)
 }
 
 /** A pasted URL or host:port becomes the bare host the daemon matches. */
@@ -136,73 +97,8 @@ export function isIpOrCidr(s: string): boolean {
   return Number(prefix) <= (v4 ? 32 : 128)
 }
 
-export type PolicyField = 'name' | 'via' | 'domains' | 'ipRanges' | 'apps' | 'onDown'
-
-export type PolicyErrorCode = 'required' | 'duplicate' | 'noProfiles' | 'noMatch' | 'badDomain' | 'badRange' | 'blockAppsOnly'
-
-export interface PolicyError {
-  code: PolicyErrorCode
-  /** The offending entry and its 1-based position, for list fields. */
-  value?: string
-  line?: number
-}
-
-export type PolicyErrors = Partial<Record<PolicyField, PolicyError>>
-
-interface ValidateContext {
-  /** Every saved policy name (duplicates are case-insensitive, like the daemon). */
-  names: readonly string[]
-  /** Name of the policy being edited, if any (renaming to itself is fine). */
-  editing?: string | undefined
-  profiles: readonly string[]
-  profileAction?: OnTunnelDown
-}
-
-export function validatePolicy(d: PolicyDraft, ctx: ValidateContext): PolicyErrors {
-  const errors: PolicyErrors = {}
-  const name = d.name.trim()
-  if (!name) errors.name = { code: 'required' }
-  else if (
-    ctx.names.some((n) => n.toLowerCase() === name.toLowerCase()) &&
-    name.toLowerCase() !== ctx.editing?.toLowerCase()
-  )
-    errors.name = { code: 'duplicate', value: name }
-
-  if (ctx.profiles.length === 0) errors.via = { code: 'noProfiles' }
-  else if (!d.via) errors.via = { code: 'required' }
-
-  const domains = splitEntries(d.domains).map(normalizeDomain)
-  const badDomain = domains.findIndex((x) => !isDomainPattern(x))
-  if (badDomain >= 0) errors.domains = { code: 'badDomain', value: domains[badDomain] ?? '', line: badDomain + 1 }
-
-  const ranges = splitEntries(d.ipRanges)
-  const badRange = ranges.findIndex((x) => !isIpOrCidr(x))
-  if (badRange >= 0) errors.ipRanges = { code: 'badRange', value: ranges[badRange] ?? '', line: badRange + 1 }
-
-  const apps = splitLines(d.apps)
-  if (domains.length === 0 && ranges.length === 0 && apps.length === 0) errors.domains = { code: 'noMatch' }
-  else if ((d.onDown === 'inherit' ? (ctx.profileAction ?? 'allow') : d.onDown) !== 'allow' && domains.length === 0 && ranges.length === 0) errors.onDown = { code: 'blockAppsOnly' }
-  return errors
-}
-
 export function hasErrors(e: object): boolean {
   return Object.keys(e).length > 0
-}
-
-/** Field order for moving focus to the first problem. */
-export const POLICY_FIELDS: readonly PolicyField[] = ['name', 'via', 'domains', 'ipRanges', 'apps', 'onDown']
-
-export function toPayload(d: PolicyDraft): PolicyPayload {
-  return {
-    name: d.name.trim(),
-    via: d.via,
-    on_tunnel_down: d.onDown === 'inherit' ? '' : d.onDown,
-    match: {
-      domains: [...new Set(splitEntries(d.domains).map(normalizeDomain))],
-      ip_ranges: [...new Set(splitEntries(d.ipRanges))],
-      apps: [...new Set(splitLines(d.apps))],
-    },
-  }
 }
 
 /** How a saved payload shows in the list before the daemon answers (optimistic). */
@@ -215,6 +111,7 @@ export function policyFromPayload(p: PolicyPayload): Policy {
     apps: p.match.apps,
     on_tunnel_down: p.on_tunnel_down,
     on_tunnel_down_override: p.on_tunnel_down,
+    ...(p.disabled === undefined ? {} : { disabled: p.disabled }),
   }
 }
 
@@ -259,6 +156,7 @@ export function v4Range(cidr: string): V4Range | null {
 }
 
 export function findOverlaps(policies: readonly Policy[]): Overlap[] {
+  policies = policies.filter((policy) => !policy.disabled)
   const out: Overlap[] = []
   for (let i = 0; i < policies.length; i++) {
     for (let j = i + 1; j < policies.length; j++) {

@@ -129,7 +129,7 @@ func runDown(ctx context.Context, args []string) error {
 			return nil
 		}
 		if (len(args) > 0 || downGroup != "") && cfg != nil && slices.ContainsFunc(cfg.Policies, func(rule config.PolicyRule) bool {
-			return config.BlocksWhenDown(rule.TunnelDownAction(cfg.VPNs[rule.Via]))
+			return !rule.Disabled && config.BlocksWhenDown(rule.TunnelDownAction(cfg.VPNs[rule.Via]))
 		}) {
 			fmt.Println(tuiInfo(ct("cli.daemon.down.kept_protection")))
 			return nil

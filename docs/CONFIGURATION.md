@@ -8,11 +8,18 @@ spaces and `- _ .` are fine; `<`, `>`, `"`, `'`, `` ` ``, `&`, `\` and control c
 the dashboards and the tray; [ADR-0040](adr/0040-local-hardening-review-2026-11.md)).
 
 <!-- feature:policies -->
+Set `disabled: true` to save a paused rule. The Dashboard saves new rules paused
+and lets you activate them when ready. Use `kongtrol policy add --paused` to do
+the same in a terminal, then `kongtrol policy state <name> on` to apply it.
+
 Rules inherit `vpns.<name>.on_tunnel_down`. The profile defaults to `allow`, which permits the
 available system routes. `block` protects known IP destinations and `connect` also tries to bring
 up the VPN when Kongtrol observes TCP activity. A rejected connection may leave no observable
 socket. On macOS, connect manually. Set a rule's `on_tunnel_down: allow` to override `block` or
 `connect` for that rule. An executable-only rule needs explicit `allow` or a domain or IP destination.
+Traffic-triggered connections have a per-profile budget of three attempts, with waits of
+3 and 6 minutes after a failure and a new observed TCP sample for each attempt. When it
+runs out, the destination stays blocked and the app prompts you to connect manually.
 
 ```yaml
 # ~/.kongtrol/kongtrol.yaml

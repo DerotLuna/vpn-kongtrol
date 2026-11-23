@@ -204,7 +204,7 @@ $ kongtrol policy remove <nombre>`,
       domains: ["*.tuempresa.com"]
     via: oficina
     on_tunnel_down: block   # opcional: si oficina está apagada, bloquear`,
-      match: <><strong>Ejemplos de destinos.</strong> Usa <IC c="claude.com" /> para el dominio raíz, <IC c="api.anthropic.com" /> para un subdominio exacto y <IC c="*.anthropic.com" /> para un nivel de subdominios. Kongtrol consulta algunos nombres frecuentes para instalar rutas. Escribe el nombre completo de cada subdominio que necesites.
+      match: <><strong>Varios destinos.</strong> Separa por comas o saltos de línea, por ejemplo <IC c="claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42" />. El comodín cubre un nivel de subdominios. Guarda la regla pausada y actívala cuando quieras aplicarla.
         Puedes usar <IC c="café.example" />, y el nombre coincide aunque lo pegues con mayúsculas o un punto final.
         Usa <IC c="192.0.2.42" /> para una IP, <IC c="2001:db8::42" /> para una IPv6 o <IC c="192.0.2.0/24" /> para una red. Entre redes superpuestas gana la más específica.
         Las reglas por app (<IC c="apps" />) por ahora solo explican, no enrutan.</>,

@@ -2,9 +2,11 @@
 import { memo, useMemo } from 'react'
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
+import { useTogglePolicy } from '../../data/rules'
 import type { MessageKey } from '../../i18n/messages'
 import { IconButton } from '../ui/Button'
 import { DataList, type Column } from '../ui/DataList'
+import { Switch } from '../ui/Switch'
 import { EditIcon, TrashIcon } from './icons'
 import { findOverlaps, onDownOf, type Policy } from './model'
 import { overlapText } from './preview'
@@ -43,11 +45,29 @@ interface ListProps {
 
 export function PolicyList({ policies, onEdit, onDelete }: ListProps) {
   const { t } = usePreferences()
+  const { mutate: toggle, isPending, variables } = useTogglePolicy()
   const columns = useMemo<Column<Policy>[]>(
     () => [
       { id: 'name', header: t('rules.list.name'), cell: (p) => p.name },
       { id: 'match', header: t('rules.list.match'), cell: (p) => <MatchCell p={p} /> },
       { id: 'via', header: t('rules.list.via'), cell: (p) => <VpnState name={p.via} /> },
+      {
+        id: 'status',
+        header: t('rules.list.status'),
+        cell: (p) => (
+          <div className="r-rule-switch">
+            <Switch
+              label={<span className="visually-hidden">{t('rules.action.toggleNamed', { name: p.name })}</span>}
+              checked={!p.disabled}
+              onText={t('rules.status.active')}
+              offText={t('rules.status.paused')}
+              pending={isPending && variables?.name === p.name}
+              disabled={isPending}
+              onChange={(active) => toggle({ name: p.name, disabled: !active })}
+            />
+          </div>
+        ),
+      },
       {
         id: 'down',
         header: t('rules.list.onDown'),
@@ -65,7 +85,7 @@ export function PolicyList({ policies, onEdit, onDelete }: ListProps) {
         ),
       },
     ],
-    [t, onEdit, onDelete],
+    [t, onEdit, onDelete, toggle, isPending, variables],
   )
   return <DataList caption={t('rules.list.caption')} columns={columns} rows={policies} rowKey={(p) => p.name} />
 }
