@@ -1,6 +1,15 @@
 package main
 
-import "github.com/vpn-kongtrol/kongtrol/internal/monitor"
+import (
+	"errors"
+	"slices"
+	"strconv"
+	"strings"
+
+	"github.com/vpn-kongtrol/kongtrol/internal/app"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
+	"github.com/vpn-kongtrol/kongtrol/internal/security"
+)
 
 // onWatchdogEvent turns watchdog events into alerts, audit entries and,
 // for what the user must know about, a daemon notice (monitor.Event) that
@@ -18,17 +27,27 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 		if svc := profileSvc.Load(); svc != nil {
 			svc.HandleReconnectError(profile, err)
 		}
-	case "reconnect_failing":
-		// Once per outage: no backup declared (or none worked). Kongtrol
-		// keeps retrying this same profile; it never picks another one.
-		watchdogNotice("WARN", "vpn.reconnect_failing", "watchdog.event.reconnect_failing", profile)
+	case "reconnect_gave_up":
+		// Once per outage: every attempt failed and no declared backup
+		// took over (ADR-0098). Kongtrol stops trying until the network
+		// changes; the notice offers "Reintentar" and, while the kill
+		// switch blocks for it, how to get internet back.
+		key := gaveUpKey(profile, killSwitchSvc.Status())
+		watchdogNotice("WARN", "vpn.reconnect_gave_up", key, profile, strconv.Itoa(attempt))
+	case "reconnect_blocked":
+		// Once per outage: only the user can resolve it (another VPN
+		// carries all traffic now, ADR-0099). Not an attempt.
+		watchdogNotice("WARN", "vpn.reconnect_blocked", "watchdog.event.reconnect_blocked", profile)
+	case "retry_rearmed":
+		emitAlert("INFO", profile, cf("cli.alert.retry_rearmed", profile))
+		logAudit("INFO", "vpn.retry_rearmed", profile, cf("cli.alert.retry_rearmed", profile))
 	case "reconnected":
 		if col != nil {
 			col.RecordReconnect(profile)
 		}
 		emitAlert("INFO", profile, cf("cli.alert.reconnected", profile, attempt))
 		logAudit("INFO", "vpn.reconnected", profile, cf("cli.alert.reconnected", profile, attempt))
-		if attempt > 1 { // the user was told it was failing
+		if e.AfterGiveUp { // the user was told it gave up
 			daemonEvents.Add(monitor.Event{Kind: monitor.EventTunnelWatchdog, Level: "INFO",
 				Key: "watchdog.event.reconnected", Args: []string{profile}, Profile: profile})
 		}
@@ -57,11 +76,38 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 	}
 }
 
+// gaveUpKey picks the give-up notice: plain, or with how to get traffic
+// back while the kill switch keeps blocking for the profile (its
+// destinations, or everything for a full tunnel). The block stays on
+// purpose (security first); disconnecting the profile lifts it.
+func gaveUpKey(profile string, ks security.KillSwitchStatus) string {
+	if slices.Contains(ks.FullTunnel, profile) {
+		return "watchdog.event.gave_up_blocking_full"
+	}
+	if slices.Contains(ks.Blocking, profile) {
+		return "watchdog.event.gave_up_blocking"
+	}
+	return "watchdog.event.gave_up"
+}
+
+// offersRetry: the notices after which only the user connects the profile
+// again, so clients offer "Reintentar".
+func offersRetry(key string) bool {
+	return strings.HasPrefix(key, "watchdog.event.gave_up") || key == "watchdog.event.reconnect_blocked"
+}
+
+// reconnectWaitsForUser classifies reconnect errors only the user can
+// resolve (SetWaitForUser): another VPN already carries all traffic
+// (ADR-0099), so retrying on a timer cannot help.
+var reconnectWaitsForUser = func(err error) bool { return errors.Is(err, app.ErrFullTunnelConflict) }
+
 // watchdogNotice records a watchdog notice for every client and shows it
-// in the daemon's own output and audit log.
+// in the daemon's own output and audit log. A give-up notice offers to
+// connect the profile again (CanConnect: "Reintentar" in the panel and
+// the tray, `kongtrol up <profile>` in the CLI).
 func watchdogNotice(level, action, key string, args ...string) {
 	daemonEvents.Add(monitor.Event{Kind: monitor.EventTunnelWatchdog, Level: level,
-		Key: key, Args: args, Profile: args[0]})
+		Key: key, Args: args, Profile: args[0], CanConnect: offersRetry(key)})
 	fmtArgs := make([]any, len(args))
 	for i, a := range args {
 		fmtArgs[i] = a

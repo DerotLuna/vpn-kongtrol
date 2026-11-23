@@ -54,6 +54,9 @@ type Client struct {
 	// Lang ("es", "en"; optional) asks the daemon to word its translated
 	// errors in the client's language (X-Kongtrol-Lang).
 	Lang string
+	// LangSource, when set, gives the language per request instead of
+	// Lang (the tray follows a language changed while it runs).
+	LangSource func() string
 }
 
 // New returns a client for the daemon at base, authenticated with token.
@@ -77,8 +80,12 @@ func (c *Client) NewRequest(method, url string, body io.Reader) (*http.Request, 
 		return nil, err
 	}
 	req.Header.Set(TokenHeader, c.CurrentToken())
-	if c.Lang != "" {
-		req.Header.Set("X-Kongtrol-Lang", c.Lang)
+	lang := c.Lang
+	if c.LangSource != nil {
+		lang = c.LangSource()
+	}
+	if lang != "" {
+		req.Header.Set("X-Kongtrol-Lang", lang)
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

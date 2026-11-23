@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/autostart"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/privhelper"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
@@ -74,9 +75,12 @@ func uninstallExtraFiles() []string {
 
 func runUninstall(cmd *cobra.Command, _ []string) error {
 	if runViaSudo(os.Geteuid(), os.Getenv) {
-		// Under sudo, HOME may be root's or the user's depending on the OS
-		// and sudoers (env_keep): the data dir, keychain and manifest would
-		// be guessed. Refuse instead of acting on the wrong user.
+		// Under sudo, doas or pkexec, HOME may be root's or the user's
+		// depending on the OS and sudoers (env_keep). Resolving the real
+		// user (SUDO_UID + getpwuid) is not enough: root would still stop
+		// every user's tray, miss the user's daemon (listener-owner check)
+		// and keychain, and delete inside a folder the user controls.
+		// Refuse instead of acting on the wrong user (ADR-0100).
 		say(tuiWarn(ct("cli.uninstall.no_sudo")))
 		say(tuiInfo(ct("cli.uninstall.no_sudo.fix")))
 		return alreadyReported(errors.New("uninstall run via sudo"))
@@ -131,7 +135,15 @@ func runUninstall(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	// 4. The app itself, per channel.
+	// 4. A sign-in start that Kongtrol's own setting wrote for this tray
+	// (ADR-0098); the Windows installer removes its entry itself.
+	if plan.Channel != uninstall.ChannelWindowsInstaller {
+		if tray, ok := autostart.TrayPath(); ok {
+			_ = autostart.Remove(tray)
+		}
+	}
+
+	// 5. The app itself, per channel.
 	switch plan.Channel {
 	case uninstall.ChannelScript:
 		removeScriptInstall(plan)
@@ -245,10 +257,17 @@ func removeScriptInstall(p uninstall.Plan) {
 	}
 }
 
-// runViaSudo reports a root process started by sudo for another user
-// (SUDO_USER set). euid is -1 on Windows.
+// runViaSudo reports a root process started for another user by sudo
+// (SUDO_USER / SUDO_UID, sudo(8)), doas (DOAS_USER, doas(1)) or pkexec
+// (PKEXEC_UID, pkexec(1)). euid is -1 on Windows. A root shell of its own
+// (su -, a root login) is not refused: its HOME is root's own.
 func runViaSudo(euid int, getenv func(string) string) bool {
-	return euid == 0 && getenv("SUDO_USER") != "" && getenv("SUDO_USER") != "root"
+	if euid != 0 {
+		return false
+	}
+	otherName := func(k string) bool { v := getenv(k); return v != "" && v != "root" }
+	otherUID := func(k string) bool { v := getenv(k); return v != "" && v != "0" }
+	return otherName("SUDO_USER") || otherUID("SUDO_UID") || otherName("DOAS_USER") || otherUID("PKEXEC_UID")
 }
 
 // removeListed deletes one manifest entry (already filtered to Kongtrol's

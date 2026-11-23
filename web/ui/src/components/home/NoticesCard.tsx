@@ -9,7 +9,7 @@
 // toast. The full history is /activity.
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
-import { noticeText, useRecentNotices, useTunnelActions } from '../../data/home'
+import { noticeActionLabel, noticeText, useRecentNotices, useTunnelActions } from '../../data/home'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { AlertIcon, InfoIcon } from '../ui/icons'
@@ -37,7 +37,7 @@ export function NoticesCard() {
               </div>
               {e.can_connect && e.profile && (
                 <Button variant="tonal" size="sm" onClick={() => run(e.profile ?? '', 'connect')}>
-                  {t('home.notices.connect', { profile: e.profile })}
+                  {noticeActionLabel(e, t)}
                 </Button>
               )}
             </li>

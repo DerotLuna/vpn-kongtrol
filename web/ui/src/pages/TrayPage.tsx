@@ -10,7 +10,7 @@
 import logoUrl from '@brand/source/logo-kong-solid.svg'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuthState } from '../api/auth'
-import { api } from '../api/client'
+import { ApiError, api } from '../api/client'
 import { useTunnels } from '../api/hooks'
 import type { Group, TunnelMetrics } from '../api/types'
 import { useQueryClient } from '@tanstack/react-query'
@@ -69,7 +69,9 @@ export function TrayPage() {
   const { tunnels, error, reload } = useTunnels()
   const { groups, security, version } = useTrayData(shownTick)
   const [pending, setPending] = useState<Record<string, { want: Pending; at: number }>>({})
-  const [failed, setFailed] = useState<Record<string, boolean>>({})
+  // true = generic "No se pudo"; a string = the daemon's translated reason
+  // plus what to do (e.g. another VPN already carries all traffic).
+  const [failed, setFailed] = useState<Record<string, string | boolean>>({})
   const [quitOpen, setQuitOpen] = useState(false)
   // Row order, taken on each show and when profiles come or go (trayOrder).
   const [order, setOrder] = useState<{ tick: number; names: string[] } | null>(null)
@@ -179,13 +181,14 @@ export function TrayPage() {
     const call = want === 'connect' ? api.connect(tn.Name) : api.disconnect(tn.Name)
     call.then(
       () => reload(),
-      () => {
+      (err: unknown) => {
         setPending((p) => {
           const next = { ...p }
           delete next[tn.Name]
           return next
         })
-        setFailed((f) => ({ ...f, [tn.Name]: true }))
+        const reason = err instanceof ApiError && err.hint ? `${err.message} ${err.hint}` : true
+        setFailed((f) => ({ ...f, [tn.Name]: reason }))
       },
     )
   }
@@ -300,9 +303,11 @@ export function TrayPage() {
               <ul className="tray-list">
                 {rows.map(({ tn, st }, i) => {
                   const noteId = `tray-note-${i}`
-                  const showFail = failed[tn.Name]
+                  const failure = failed[tn.Name]
+                  const showFail = Boolean(failure)
                   const tone = showFail ? 'danger' : st.tone
                   const note = showFail ? { key: 'tray.note.failed' as const } : st.note
+                  const noteText = typeof failure === 'string' ? failure : note && t(note.key, 'vars' in note ? note.vars : undefined)
                   return (
                     <li key={tn.Name} className="tray-row">
                       <div className="tray-row-main">
@@ -311,9 +316,9 @@ export function TrayPage() {
                           <Dot tone={tone} />
                           {t(showFail ? 'tray.status.error' : st.word)}
                         </span>
-                        {note && (
+                        {noteText && (
                           <span id={noteId} className="tray-note">
-                            {t(note.key, 'vars' in note ? note.vars : undefined)}
+                            {noteText}
                           </span>
                         )}
                         {(showFail || st.tone === 'danger') && (
@@ -327,7 +332,7 @@ export function TrayPage() {
                         role="switch"
                         aria-checked={st.on}
                         aria-busy={st.busy}
-                        aria-describedby={note ? noteId : undefined}
+                        aria-describedby={noteText ? noteId : undefined}
                         aria-label={t(st.on ? 'tray.toggle.disconnect' : 'tray.toggle.connect', { name: tn.Name })}
                         className={`tray-switch ${st.tone}`}
                         disabled={pending[tn.Name] !== undefined}

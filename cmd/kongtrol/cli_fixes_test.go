@@ -122,4 +122,17 @@ func TestRunViaSudo(t *testing.T) {
 	if runViaSudo(1000, env(map[string]string{"SUDO_USER": "ana"})) || runViaSudo(-1, env(map[string]string{"SUDO_USER": "ana"})) {
 		t.Error("non-root must be allowed")
 	}
+	// ADR-0100: the other ways to become root for another user.
+	for _, m := range []map[string]string{
+		{"SUDO_UID": "1000"},
+		{"DOAS_USER": "ana"},
+		{"PKEXEC_UID": "1000"},
+	} {
+		if !runViaSudo(0, env(m)) {
+			t.Errorf("%v not detected", m)
+		}
+	}
+	if runViaSudo(0, env(map[string]string{"SUDO_UID": "0", "DOAS_USER": "root", "PKEXEC_UID": "0"})) {
+		t.Error("root acting for root must be allowed")
+	}
 }

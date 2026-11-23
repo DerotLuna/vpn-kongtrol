@@ -27,7 +27,7 @@ Decisions: [docs/adr/](adr/README.md) · Research: [docs/research/](research/REA
 │                                                                      │
 │  ┌─────────────────────────┐   ┌──────────────────────────────────┐  │
 │  │     SECURITY LAYER      │   │       MONITOR / WATCHDOG         │  │
-│  │  • Kill Switch (OS FW)  │   │  • Auto-reconnect (backoff)      │  │
+│  │  • Kill Switch (OS FW)  │   │  • Auto-reconnect (3 attempts)   │  │
 │  │  • DNS Guard            │   │  • Health checks per tunnel      │  │
 │  │  • Leak Detection       │   │  • Bandwidth / uptime metrics    │  │
 │  │  • Audit Log (HMAC)     │   │  • Reference-counted DNS guard   │  │
@@ -92,7 +92,7 @@ vpn-kongtrol/
 │   │
 │   ├── monitor/
 │   │   ├── collector.go           # Aggregate metrics snapshot + change broadcast
-│   │   ├── watchdog.go            # Auto-reconnect with backoff
+│   │   ├── watchdog.go            # Bounded auto-reconnect (ADR-0098)
 │   │   ├── dnsmanager.go          # Reference-counted DNS guard
 │   │   ├── splitdns.go            # Transparent split-DNS hosts injection
 │   │   └── scheduler.go           # Time-based profile scheduler

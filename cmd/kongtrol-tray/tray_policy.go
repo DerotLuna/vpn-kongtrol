@@ -75,7 +75,12 @@ func pollPolicyEvents(states map[string]monitor.TunnelMetrics) {
 			item := policyItem
 			policyMu.Unlock()
 			if item != nil {
-				item.SetTitle(trayF("policy.event.action_connect", e.Profile))
+				// A tunnel the watchdog gave up on: "Reintentar <perfil>".
+				action := "policy.event.action_connect"
+				if e.Kind == monitor.EventTunnelWatchdog {
+					action = "watchdog.event.action_retry"
+				}
+				item.SetTitle(trayF(action, e.Profile))
 				item.SetTooltip(msg)
 				item.Show()
 			}

@@ -50,7 +50,7 @@ func policyNoticeLine(e *monitor.Event, now time.Time) string {
 		args[i] = a
 	}
 	line := e.Time.Format("15:04") + "  " + cf(e.Key, args...)
-	if e.CanConnect && e.Profile != "" {
+	if e.CanConnect && e.Profile != "" && e.Kind != monitor.EventTunnelWatchdog { // watchdog notices name the command already
 		line += "  ·  " + cf("policy.event.hint_cli", e.Profile)
 	}
 	return line

@@ -152,6 +152,8 @@ POST /api/v1/restart                         # 202 {"status":"restarting"}: star
 # Update notice and "delete all my data" (ADR-0034)
 GET  /api/v1/updates                         # {"check_enabled","host","current","latest","url","newer","checked_at"} from the remembered last check; never contacts GitHub
 POST /api/v1/updates                         # {"enabled": true|false}: saves updates.check_enabled (opt-in, off by default); 409 cli.update.no_config before the first profile
+GET  /api/v1/startup                         # {"start_at_login","start_at_login_supported","restore_tunnels"} (ADR-0098)
+PUT  /api/v1/startup                         # {"start_at_login"?: bool, "restore_tunnels"?: bool}: the OS sign-in entry and preferences.json restore_tunnels; 409 startup.err.no_tray on a CLI-only install
 POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): deletes profiles, preferences and Kongtrol credentials while retaining in-use daemon/tray files, then restarts into setup mode → {"status":"purged","restarting":bool}
 ```
 

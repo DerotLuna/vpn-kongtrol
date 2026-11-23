@@ -82,6 +82,7 @@ func purgeExtraFiles(c *config.Config) []string {
 // and tray still need (api-token, run/, logs, WebView2) stay; the caller restarts it into
 // first-run setup.
 func purgeDataFromDaemon() error {
+	forgetWantedTunnels() // a profile created later with the same name is never restored
 	disconnectActiveOnShutdown(adapters.Snapshot(), disconnectProfile, shutdownDisconnectTimeout)
 	if destBlocker != nil {
 		_ = destBlocker.Set(nil)

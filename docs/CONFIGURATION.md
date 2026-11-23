@@ -277,7 +277,7 @@ vpns:
 <!-- feature:watchdog -->
 ### Failover (`failover:`)
 
-When a profile drops and cannot reconnect, Kongtrol keeps retrying **that profile only** (backoff 2 s → 5 min) and notifies you once. It never brings up another VPN on its own: profiles reach different networks, even with similar names or equal `priority` ([ADR-0018](adr/0018-failover-only-to-declared-profiles.md)).
+When a profile drops, Kongtrol retries **that profile only**, three times (after 2 s, 30 s and 2 min). If it does not come back, it stops and notifies you once, with a Retry action (`kongtrol up <profile>`); it tries again on its own only when your network changes or the computer wakes from sleep, without a new notice. A kill switch block for that profile stays until you disconnect it ([ADR-0098](adr/0098-bounded-reconnect-and-restore-at-start.md)). It never brings up another VPN on its own: profiles reach different networks, even with similar names or equal `priority` ([ADR-0018](adr/0018-failover-only-to-declared-profiles.md)).
 
 To allow a backup, declare it on the profile that may fail, in order of preference:
 

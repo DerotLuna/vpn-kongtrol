@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -13,10 +12,24 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
+// DefaultRetryDelays is the reconnect policy (ADR-0098): one automatic
+// attempt after each delay, then the watchdog gives up for this outage and
+// tells the user once. Three attempts like the rule auto-connect
+// (ADR-0095); the first comes fast for a blip, the last ~2.5 min later.
+var DefaultRetryDelays = []time.Duration{2 * time.Second, 30 * time.Second, 2 * time.Minute}
+
+// RetryDelay returns the wait before the next automatic attempt when made
+// attempts were already made in this round, or false when the round's
+// budget is spent (the watchdog gives up until a re-arm signal).
+func RetryDelay(delays []time.Duration, made int) (time.Duration, bool) {
+	if made < 0 || made >= len(delays) {
+		return 0, false
+	}
+	return delays[made], true
+}
+
 const (
-	watchdogBaseDelay = 2 * time.Second
-	watchdogMaxDelay  = 5 * time.Minute
-	watchdogPoll      = 5 * time.Second
+	watchdogPoll = 5 * time.Second
 	// watchdogConnectTimeout bounds a single reconnect/failover attempt.
 	// Without it, a hung adapter driver (e.g. a stuck subprocess or a
 	// blocking syscall) would stall this profile's watcher goroutine
@@ -45,9 +58,17 @@ type HealthCheckFunc func(ctx context.Context, name string, adapter vpn.VPNAdapt
 //
 //   - reconnect_attempt, reconnect_failed, reconnected: Profile is the
 //     watched profile.
-//   - reconnect_failing: the first failed reconnect of an outage with no
-//     backup that took over; the watchdog keeps retrying Profile with
-//     backoff and never connects another profile.
+//   - reconnect_gave_up: once per outage, every attempt of the round
+//     failed and no declared backup took over; the watchdog stops
+//     retrying Profile (it never connects another profile) until the
+//     user connects it or the network changes (retry_rearmed).
+//   - reconnect_blocked: once per outage, a reconnect failed with an
+//     error only the user can resolve (SetWaitForUser, e.g. another VPN
+//     carries all traffic, ADR-0099). Not an attempt; the watchdog waits
+//     like after a give-up.
+//   - retry_rearmed: after reconnect_gave_up the computer's network
+//     changed (other addresses, or back online) or it woke from sleep: a
+//     new round starts. The user is not told again.
 //   - failover_started, failover_failed, failover_activated: Profile could
 //     not reconnect and Target is a backup the user declared for it
 //     (vpns.<Profile>.failover). After failover_activated the watchdog
@@ -65,10 +86,14 @@ type WatchdogEvent struct {
 	Attempt int
 	Err     error
 	Target  string
+	// AfterGiveUp (reconnected): the user was told this outage gave up,
+	// so the recovery deserves a notice too.
+	AfterGiveUp bool
 }
 
 // Watchdog monitors VPN adapters and reconnects on unexpected disconnects.
-// It uses exponential backoff between retries and only watches profiles
+// It makes a bounded number of attempts per outage (DefaultRetryDelays,
+// ADR-0098), then waits for the network to change, and only watches profiles
 // that have been explicitly activated via MarkActive (profiles that were
 // brought up). The only other profiles it ever connects are the backups
 // the user declared for a profile (ConfigureFailover); nothing is
@@ -103,6 +128,17 @@ type Watchdog struct {
 
 	connectTimeout time.Duration
 	poll           time.Duration
+	retryDelays    []time.Duration
+	// network returns a fingerprint of the computer's network; a change
+	// re-arms a profile that gave up (ADR-0098).
+	network func() string
+	// waitForUser classifies a reconnect error that retrying cannot fix
+	// and only the user can (another VPN carries all traffic, ADR-0099):
+	// it does not count as an attempt; the watchdog waits (nil = none).
+	waitForUser func(error) bool
+	// seeded holds attempts spent outside the watchdog (the restore
+	// connect at daemon start), taken by the profile's next outage.
+	seeded map[string]int
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -135,7 +171,57 @@ func NewWatchdog(adapters *vpn.Set, connect ConnectFunc, log *zap.Logger) *Watch
 		inflight:       make(map[string]map[uint64]context.CancelFunc),
 		connectTimeout: watchdogConnectTimeout,
 		poll:           watchdogPoll,
+		retryDelays:    DefaultRetryDelays,
+		network:        NetworkFingerprint,
+		seeded:         make(map[string]int),
 	}
+}
+
+// SetRetryDelays overrides DefaultRetryDelays (one attempt per delay). For
+// tests; call before MarkActive/Start.
+func (w *Watchdog) SetRetryDelays(delays []time.Duration) {
+	w.mu.Lock()
+	w.retryDelays = append([]time.Duration(nil), delays...)
+	w.mu.Unlock()
+}
+
+// SetWaitForUser sets the classifier of reconnect errors only the user
+// can resolve (e.g. another VPN already carries all traffic). Such a
+// failure stops the round without using an attempt, is told once
+// (reconnect_blocked) and is retried on the same signals as a give-up.
+// Call before MarkActive/Start.
+func (w *Watchdog) SetWaitForUser(fn func(error) bool) {
+	w.mu.Lock()
+	w.waitForUser = fn
+	w.mu.Unlock()
+}
+
+// SetNetworkFingerprint overrides NetworkFingerprint. For tests; call
+// before MarkActive/Start.
+func (w *Watchdog) SetNetworkFingerprint(fn func() string) {
+	w.mu.Lock()
+	w.network = fn
+	w.mu.Unlock()
+}
+
+// MarkActiveAfterFailedConnect watches name like MarkActive after a
+// connect made outside the watchdog failed (the restore at daemon start):
+// that attempt counts against the outage's budget, so the watchdog makes
+// only the remaining ones before it gives up and tells the user.
+func (w *Watchdog) MarkActiveAfterFailedConnect(name string) {
+	w.mu.Lock()
+	w.seeded[name] = 1
+	w.mu.Unlock()
+	w.MarkActive(name)
+}
+
+// takeSeeded returns and clears the attempts spent outside the watchdog.
+func (w *Watchdog) takeSeeded(name string) int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	n := w.seeded[name]
+	delete(w.seeded, name)
+	return n
 }
 
 // SetConnectTimeout overrides the default per-attempt timeout bounding
@@ -352,6 +438,7 @@ func (w *Watchdog) Forget(name string) {
 	delete(w.replaced, name)
 	delete(w.lastHealth, name)
 	delete(w.lastHealthAt, name)
+	delete(w.seeded, name)
 	delete(w.failover, name)
 	for src, list := range w.failover {
 		kept := list[:0:0]
@@ -378,21 +465,52 @@ func (w *Watchdog) Forget(name string) {
 func (w *Watchdog) watch(ctx context.Context, name string) {
 	w.mu.Lock()
 	poll := w.poll
+	delays := w.retryDelays
+	network := w.network
+	waitForUser := w.waitForUser
 	w.mu.Unlock()
 	ticker := time.NewTicker(poll)
 	defer ticker.Stop()
 
-	attempt := 0
+	attempt := 0 // attempts made in this round
 	manualNotified := false
-	failingNotified := false
 	failoverTried := false
+	// gaveUp: every attempt of this round failed; nothing more is tried
+	// until the network differs from gaveUpNet (ADR-0098).
+	gaveUp := false
+	gaveUpNet := ""
+	// gaveUpNotified: the user was told, once for the whole outage.
+	gaveUpNotified := false
+	// blockedNotified: told once that only the user can unblock it.
+	blockedNotified := false
+	seededTaken := false
 	// noResponse: this outage began with a tunnel that was up but whose
 	// server stopped answering (vpn.HealthNoResponse, ADR-0030).
 	noResponse := false
 	resetOutage := func() {
 		attempt = 0
-		failingNotified = false
 		failoverTried = false
+		gaveUp = false
+		gaveUpNotified = false
+		blockedNotified = false
+		seededTaken = false
+	}
+	// woke: the computer slept since the last give-up (a re-arm signal).
+	woke := false
+	var lastTick time.Time
+	giveUp := func(err error) {
+		gaveUp = true
+		woke = false
+		if network != nil {
+			gaveUpNet = network()
+		}
+		if gaveUpNotified || w.paused(name) {
+			return
+		}
+		gaveUpNotified = true
+		w.emit(WatchdogEvent{Profile: name, Event: "reconnect_gave_up", Attempt: attempt, Err: err})
+		w.log.Warn("watchdog: giving up reconnecting until the network changes",
+			zap.String("profile", name), zap.Int("attempts", attempt), zap.Error(err))
 	}
 
 	for {
@@ -400,6 +518,11 @@ func (w *Watchdog) watch(ctx context.Context, name string) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			now := time.Now()
+			if !lastTick.IsZero() && WokeFromSleep(now.Sub(lastTick), now.Round(0).Sub(lastTick.Round(0))) {
+				woke = true
+			}
+			lastTick = now
 			adapter, ok := w.adapters.Get(name)
 			if !ok {
 				return // removed without a restart; Forget cleans up
@@ -410,20 +533,21 @@ func (w *Watchdog) watch(ctx context.Context, name string) {
 				if noResponse {
 					if health == nil || health.State != vpn.HealthOK {
 						// Up again but the server has not answered yet:
-						// the outage (backoff, one failover) goes on.
+						// the outage (attempts, one failover) goes on.
 						continue
 					}
 					noResponse = false
 					w.emit(WatchdogEvent{Profile: name, Event: "responding"})
 					w.log.Info("watchdog: tunnel responds again", zap.String("profile", name))
 				}
-				resetOutage() // reset backoff on healthy state
+				resetOutage() // a healthy tunnel ends the outage
 				manualNotified = false
 				w.runHealthCheck(ctx, name, adapter)
 				continue
 			}
 			if status == vpn.StatusConnecting {
-				attempt = 0 // reset backoff on healthy state
+				// Someone is connecting it: wait. The round is not reset,
+				// so a tunnel that keeps failing stays bounded.
 				continue
 			}
 
@@ -457,14 +581,36 @@ func (w *Watchdog) watch(ctx context.Context, name string) {
 				continue
 			}
 
-			delay := backoff(attempt)
+			if gaveUp {
+				// Retry only on a clear signal: the network changed
+				// (other addresses, or back online), or the computer
+				// woke from sleep.
+				changed := network != nil && network() != gaveUpNet
+				if !changed && !woke {
+					continue
+				}
+				gaveUp, woke = false, false
+				attempt = 0
+				w.emit(WatchdogEvent{Profile: name, Event: "retry_rearmed"})
+				w.log.Info("watchdog: network changed, trying again", zap.String("profile", name))
+			}
+			if !seededTaken {
+				seededTaken = true
+				attempt += w.takeSeeded(name)
+			}
+
+			delay, more := RetryDelay(delays, attempt)
+			if !more {
+				giveUp(nil)
+				continue
+			}
 			attempt++
 			w.emit(WatchdogEvent{Profile: name, Event: "reconnect_attempt", Attempt: attempt})
 			w.log.Warn("watchdog: unexpected disconnect, reconnecting",
 				zap.String("profile", name),
 				zap.String("status", string(status)),
 				zap.Int("attempt", attempt),
-				zap.Duration("backoff", delay),
+				zap.Duration("delay", delay),
 			)
 
 			timer := time.NewTimer(delay)
@@ -477,14 +623,29 @@ func (w *Watchdog) watch(ctx context.Context, name string) {
 
 			ran, err := w.connectFor(ctx, name, name)
 			if !ran {
-				// `down` during the backoff or the attempt.
+				// `down` during the wait or the attempt.
 				resetOutage()
 				continue
 			}
 			if err == nil {
-				w.emit(WatchdogEvent{Profile: name, Event: "reconnected", Attempt: attempt})
+				w.emit(WatchdogEvent{Profile: name, Event: "reconnected", Attempt: attempt, AfterGiveUp: gaveUpNotified || blockedNotified})
 				w.log.Info("watchdog: reconnected", zap.String("profile", name))
 				resetOutage()
+				continue
+			}
+			if waitForUser != nil && waitForUser(err) {
+				// Only the user can resolve it (another VPN carries all
+				// traffic): not an attempt, no further retries now.
+				attempt--
+				gaveUp, woke = true, false
+				if network != nil {
+					gaveUpNet = network()
+				}
+				if !blockedNotified && !w.paused(name) {
+					blockedNotified = true
+					w.emit(WatchdogEvent{Profile: name, Event: "reconnect_blocked", Attempt: attempt, Err: err})
+					w.log.Warn("watchdog: reconnect needs the user", zap.String("profile", name), zap.Error(err))
+				}
 				continue
 			}
 			w.emit(WatchdogEvent{Profile: name, Event: "reconnect_failed", Attempt: attempt, Err: err})
@@ -499,9 +660,8 @@ func (w *Watchdog) watch(ctx context.Context, name string) {
 					continue
 				}
 			}
-			if !failingNotified && !w.paused(name) {
-				failingNotified = true
-				w.emit(WatchdogEvent{Profile: name, Event: "reconnect_failing", Attempt: attempt, Err: err})
+			if _, more := RetryDelay(delays, attempt); !more {
+				giveUp(err)
 			}
 		}
 	}
@@ -626,14 +786,4 @@ func tunnelHealth(adapter vpn.VPNAdapter) *vpn.TunnelHealth {
 		return r.TunnelHealth()
 	}
 	return nil
-}
-
-// backoff returns exponential delay with a cap, no jitter needed for CLI.
-func backoff(attempt int) time.Duration {
-	exp := math.Pow(2, float64(attempt))
-	d := time.Duration(exp) * watchdogBaseDelay
-	if d > watchdogMaxDelay {
-		d = watchdogMaxDelay
-	}
-	return d
 }

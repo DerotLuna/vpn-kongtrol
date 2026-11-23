@@ -54,6 +54,29 @@ const base = {
 }
 
 describe('Actividad · avisos', () => {
+  it('offers Reintentar once the watchdog gave up (ADR-0098)', async () => {
+    const fetchMock = stubFetch({
+      ...base,
+      'GET /api/v1/events?after=0': () =>
+        json({
+          seq: 1,
+          events: [ev(1, 'watchdog.event.gave_up_blocking_full', ['trabajo', '3'], { level: 'WARN', profile: 'trabajo', can_connect: true })],
+        }),
+      'POST /api/v1/tunnels/trabajo/connect': () => json({ status: 'connecting', tunnel: 'trabajo' }, 202),
+    })
+    window.history.replaceState(null, '', '/activity')
+    render(<App />)
+
+    const list = await screen.findByRole('region', { name: 'Avisos, del más nuevo al más viejo' })
+    const [item] = within(list).getAllByRole('listitem')
+    expect(item).toHaveTextContent('No se pudo reconectar trabajo tras 3 intentos')
+    expect(item).toHaveTextContent('Para volver a tener internet, desconéctala')
+    await userEvent.click(within(item!).getByRole('button', { name: 'Reintentar trabajo' }))
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some(([u, i]) => String(u) === '/api/v1/tunnels/trabajo/connect' && i?.method === 'POST')).toBe(true),
+    )
+  })
+
   it('renders daemon notices in plain language, newest first, and offers Conectar', async () => {
     const fetchMock = stubFetch({
       ...base,

@@ -1,4 +1,4 @@
-<!-- README version 2.3.2 · 2026-11-20.
+<!-- README version 2.4.0 · 2026-11-23.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -77,8 +77,11 @@ Kongtrol keeps running in the background after you close the window.
   choose, on every VPN type. Rules inherit their profile's action while the tunnel is off.
   Allow uses the available connection, block protects known destinations, and connect also tries
   to start the VPN if TCP traffic is detected. App rules provide diagnosis today.
-- **Auto-reconnect.** The watchdog retries only the tunnel that dropped, with growing waits, and
-  tells you when it can't. It fails over only to backups you declared (`failover:`); it never
+- **Auto-reconnect.** The watchdog retries only the tunnel that dropped, three times (2 s, 30 s,
+  2 min), then tells you once with a Retry action and tries again only when your network changes or
+  the computer wakes. When Kongtrol starts (sign-in, restart, after a crash) it reconnects the VPNs
+  you had connected; both are in Settings › When starting
+  ([ADR-0098](docs/adr/0098-bounded-reconnect-and-restore-at-start.md)). It fails over only to backups you declared (`failover:`); it never
   brings up an unrelated VPN. A provider app it cannot reconnect on its own gets a notice to
   reconnect it there.
 - **Kill switch and DNS guard** at the system firewall and network level (`status` shows what is
@@ -250,6 +253,8 @@ explains it with the next step and examples. Full reference: [docs/CLI.en.md](do
 | `kongtrol config public-ip <on\|off>` | Optional public IP lookup |
 | `kongtrol config update-check <on\|off\|status>` | Optional new version notice |
 | `kongtrol config recent-connections <on\|off\|status>` | Recent destinations list (memory only) |
+| `kongtrol config autostart <on\|off\|status>` | Open Kongtrol when you sign in |
+| `kongtrol config restore-tunnels <on\|off\|status>` | Reconnect the VPNs you had connected when Kongtrol starts |
 | `kongtrol config lang <es\|en>` · `config favorites` · `config dashboard` | Language, favorites, panel address on this computer |
 | `kongtrol reload [profile]` | Apply `kongtrol.yaml` changes without disconnecting |
 | `kongtrol restart` | Restart Kongtrol and reconnect what was connected |

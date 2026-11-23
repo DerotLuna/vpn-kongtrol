@@ -3,8 +3,10 @@
 package main
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -36,28 +38,50 @@ func startDetached(path string) error {
 	return cmd.Start()
 }
 
-// deleteAfterExit removes the running kongtrol.exe a few seconds after this
-// process exits (Windows locks a running executable).
+// deleteAfterExit removes the running kongtrol.exe once this process exits
+// (Windows locks a running executable).
 func deleteAfterExit(path string) error {
-	return deleteAfterExitCmd(path).Start()
+	return deleteAfterExitCmd(path, os.Getpid()).Start()
 }
 
-// deleteAfterExitCmd builds the delayed delete. cmd.exe looks up a bare
-// "ping" in the current directory first, so both programs are given by
-// full path under System32 and the working directory is System32 too.
-func deleteAfterExitCmd(path string) *exec.Cmd {
+// Environment variables that carry the delayed delete's inputs.
+const (
+	deletePathEnv = "KONGTROL_DELETE_PATH"
+	deleteWaitEnv = "KONGTROL_WAIT_PID"
+)
+
+// deleteAfterExitScript is constant PowerShell: the path never becomes
+// part of any command text. It is read from the environment and used only
+// with -LiteralPath, where no character is interpreted (cmd.exe expanded
+// %VAR% inside the old `del "<path>"` even within quotes). It waits for
+// the given process, then retries for up to ~10 s while the image is
+// still mapped. No double quotes, so Go's argument quoting stays trivial.
+const deleteAfterExitScript = `$p = $env:` + deletePathEnv + `; $w = $env:` + deleteWaitEnv + `; ` +
+	`if (-not $p) { exit 2 }; ` +
+	`if ($w) { Wait-Process -Id $w -Timeout 30 -ErrorAction SilentlyContinue }; ` +
+	`for ($i = 0; $i -lt 20; $i++) { ` +
+	`if (-not (Test-Path -LiteralPath $p)) { exit 0 }; ` +
+	`Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue; ` +
+	`Start-Sleep -Milliseconds 500 }; ` +
+	`if (Test-Path -LiteralPath $p) { exit 1 }`
+
+// deleteAfterExitCmd builds the delayed delete (ADR-0100): Windows
+// PowerShell by full path under System32, started in System32, no profile,
+// with the path and the process to wait for (0 = none) in its environment.
+func deleteAfterExitCmd(path string, waitPID int) *exec.Cmd {
 	sys := systemDirectory()
-	shell := filepath.Join(sys, "cmd.exe")
-	ping := filepath.Join(sys, "PING.EXE")
-	cmd := exec.Command(shell)
+	ps := filepath.Join(sys, "WindowsPowerShell", "v1.0", "powershell.exe")
+	cmd := exec.Command(ps, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", deleteAfterExitScript)
 	cmd.Dir = sys
-	// Raw command line: Go's argument escaping (\") is not cmd.exe's. /d
-	// skips AutoRun; the outer quotes keep cmd's /c quote stripping from
-	// eating the inner ones.
+	wait := ""
+	if waitPID > 0 {
+		wait = strconv.Itoa(waitPID)
+	}
+	// os/exec keeps the last value of a duplicated variable.
+	cmd.Env = append(os.Environ(), deletePathEnv+"="+path, deleteWaitEnv+"="+wait)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,
 		CreationFlags: 0x00000008, // DETACHED_PROCESS
-		CmdLine:       `"` + shell + `" /d /c ""` + ping + `" -n 4 127.0.0.1 >nul & del /f /q "` + path + `""`,
 	}
 	return cmd
 }

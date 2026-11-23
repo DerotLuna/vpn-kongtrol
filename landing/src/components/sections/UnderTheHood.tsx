@@ -15,7 +15,7 @@ export default function UnderTheHood({ lang }: Props) {
       sub: 'Para quien quiere saber exactamente cómo funciona.',
       rows: [
         { k: 'Ruteo determinista', v: 'Longest-prefix match para IP y globs para dominios, con prioridad para resolver conflictos. El mismo destino siempre resuelve al mismo perfil.', m: 'LPM + prioridad' },
-        { k: 'Watchdog', v: 'Sondea cada túnel cada 5 s y reconecta con backoff exponencial de 2 s hasta 5 min. Una desconexión intencional no dispara la reconexión.', m: '5s · 2s → 5m' },
+        { k: 'Watchdog', v: 'Sondea cada túnel cada 5 s y lo reconecta hasta 3 veces (2 s, 30 s, 2 min); si no vuelve, avisa una vez y prueba otra vez cuando cambia tu red. Una desconexión intencional no dispara la reconexión.', m: '5s · 3 intentos' },
         { k: 'Kill switch', v: 'Firewall del sistema: reglas de Windows Firewall (netsh), iptables en Linux, pf en macOS. Si un túnel protegido cae sin que lo apagues, bloquea sus rutas y destinos; todo el tráfico solo en perfiles de túnel completo (allow_lan deja pasar la red local).', m: 'netsh · iptables · pf' },
         { k: 'DNS guard', v: 'Con conteo de referencias entre túneles simultáneos: une los DNS de los perfiles activos y restaura el original cuando cae el último.', m: 'ref-counted' },
         { k: 'Audit log', v: 'Append-only, con HMAC-SHA256 por entrada. La llave de firma vive en el llavero del sistema, no en disco.', m: 'HMAC-SHA256' },
@@ -31,7 +31,7 @@ export default function UnderTheHood({ lang }: Props) {
       sub: 'For anyone who wants to know exactly how it works.',
       rows: [
         { k: 'Deterministic routing', v: 'Longest-prefix match for IPs and globs for domains, with priority to settle conflicts. The same destination always resolves to the same profile.', m: 'LPM + priority' },
-        { k: 'Watchdog', v: 'Polls every tunnel every 5 s and reconnects with exponential backoff from 2 s up to 5 min. An intentional disconnect never triggers a reconnect.', m: '5s · 2s → 5m' },
+        { k: 'Watchdog', v: 'Polls every tunnel every 5 s and reconnects it up to 3 times (2 s, 30 s, 2 min); if it does not come back, it tells you once and tries again when your network changes. An intentional disconnect never triggers a reconnect.', m: '5s · 3 attempts' },
         { k: 'Kill switch', v: 'The OS firewall: Windows Firewall rules (netsh), iptables on Linux, pf on macOS. If a protected tunnel drops without you turning it off, it blocks its routes and destinations; all traffic only for full-tunnel profiles (allow_lan lets the local network through).', m: 'netsh · iptables · pf' },
         { k: 'DNS guard', v: 'Reference-counted across simultaneous tunnels: merges the DNS servers of every active profile and restores the original when the last one drops.', m: 'ref-counted' },
         { k: 'Audit log', v: 'Append-only, with HMAC-SHA256 per entry. The signing key lives in the system keychain, not on disk.', m: 'HMAC-SHA256' },

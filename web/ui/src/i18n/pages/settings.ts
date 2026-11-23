@@ -76,6 +76,17 @@ const es = {
   'settings.theme.dark': 'Oscuro',
   'settings.theme.hint': 'Si eliges el mismo tema que tu sistema, el panel lo seguirá cuando cambie.',
 
+  // feature:restore_at_start
+  'settings.startup.title': 'Al iniciar',
+  'settings.startup.what': 'Qué hace Kongtrol cuando enciendes el equipo o inicias sesión.',
+  'settings.startup.login': 'Abrir Kongtrol al iniciar sesión',
+  'settings.startup.login.hint': 'Su ícono aparece solo al entrar a tu usuario. Usa el inicio automático de tu sistema (en Windows, Configuración › Aplicaciones › Inicio).',
+  'settings.startup.login.noTray': 'Esta instalación no tiene el ícono de Kongtrol. Instálalo con su ícono (el instalador, o install.sh / install.ps1 sin --cli-only) para activarlo.',
+  'settings.startup.restore': 'Al iniciar, volver a conectar las VPN que tenías conectadas',
+  'settings.startup.restore.hint': 'Tras apagar, reiniciar o un cierre inesperado. Las que desconectaste tú no se conectan; "Salir y desconectar todo" hace que no se conecte ninguna. Si una no conecta, Kongtrol lo intenta pocas veces y te avisa una vez.',
+  'settings.startup.on': 'Sí',
+  'settings.startup.off': 'No',
+
   'settings.system.title': 'Kongtrol en este equipo',
   'settings.system.what': 'Versión, ayudante y dónde está tu configuración.',
   'settings.version': 'Versión',
@@ -202,6 +213,17 @@ const en: Strings<typeof es> = {
   'settings.theme.light': 'Light',
   'settings.theme.dark': 'Dark',
   'settings.theme.hint': 'If you pick the same theme as your system, the panel follows it when it changes.',
+
+  // feature:restore_at_start
+  'settings.startup.title': 'When starting',
+  'settings.startup.what': 'What Kongtrol does when you turn the computer on or sign in.',
+  'settings.startup.login': 'Open Kongtrol when you sign in',
+  'settings.startup.login.hint': 'Its icon appears as soon as you sign in. It uses your system’s own autostart (on Windows, Settings › Apps › Startup).',
+  'settings.startup.login.noTray': 'This install has no Kongtrol icon. Install it with its icon (the installer, or install.sh / install.ps1 without --cli-only) to turn this on.',
+  'settings.startup.restore': 'When starting, reconnect the VPNs you had connected',
+  'settings.startup.restore.hint': 'After a shutdown, a restart or an unexpected close. The ones you disconnected yourself stay off; "Quit and disconnect all" means none is connected. If one does not connect, Kongtrol tries a few times and tells you once.',
+  'settings.startup.on': 'Yes',
+  'settings.startup.off': 'No',
 
   'settings.system.title': 'Kongtrol on this computer',
   'settings.system.what': 'Version, helper and where your configuration lives.',

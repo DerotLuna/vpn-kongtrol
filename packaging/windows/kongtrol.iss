@@ -1,4 +1,4 @@
-; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.7.0 · 2026-11-20
+; Kongtrol per-user Windows installer (Inno Setup 6) — version 1.8.0 · 2026-11-23
 ;
 ; Built by .github/workflows/release.yml (job "windows"); decision and sources
 ; in docs/adr/0025-desktop-release-channels-first-run.md; an existing install
@@ -159,6 +159,10 @@ Name: "{autoprograms}\Kongtrol"; Filename: "{app}\kongtrol-tray.exe"
 [Registry]
 ; Autostart for this user (HKCU Run key).
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Kongtrol"; ValueData: """{app}\kongtrol-tray.exe"""; Tasks: autostart; Flags: uninsdeletevalue
+; Its on/off switch (Settings > Apps > Startup, and Kongtrol's own "Abrir
+; Kongtrol al iniciar sesión", ADR-0098) is StartupApproved\Run: nothing is
+; written here (an update keeps the user's choice); uninstall removes it.
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run"; ValueType: none; ValueName: "Kongtrol"; Flags: dontcreatekey uninsdeletevalue
 ; User PATH (HKCU\Environment); removed again by CurUninstallStepChanged.
 ; Prepended, so `kongtrol` in a new terminal is this copy rather than an
 ; older one earlier in the user PATH (the system PATH still comes first;

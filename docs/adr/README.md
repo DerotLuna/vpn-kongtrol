@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.27.0 · 2026-11-19
+Version 1.28.0 · 2026-11-23
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -52,7 +52,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0037](0037-native-tray-menu-states-and-installer-upgrade.md) | Native tray menu: translated states, connected first with state dots, stopped-daemon state with "Iniciar Kongtrol", version line, icon from the vector mark with a state badge; installer PATH on by default and helper updated on every upgrade when outdated; doctor warns about other kongtrol copies in PATH | Accepted | 2026-11-18 |
 | [0038](0038-new-dashboard-architecture-and-patterns.md) | New dashboard: react-router + TanStack Query fed by the WebSocket, isolated auth, shared helper state, IA of 7 sections, component kit, vector theme-adaptive brand | Accepted | 2026-11-18 |
 | [0039](0039-browser-sessions-one-time-nonce.md) | Browser sessions: one-time nonce (`#k=`, 60 s) minted by native clients, traded for an in-memory HttpOnly session cookie; pages never hand out credentials; Host checked on every route | Accepted | 2026-11-18 |
-| [0040](0040-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted | 2026-11-18 |
+| [0040](0040-local-hardening-review-2026-11.md) | Local hardening: purge/uninstall delete only Kongtrol's files, WireGuard tunnels bound by key, update link built from the tag, safe names, CI secrets per step and SHA-pinned actions | Accepted; Windows delayed delete superseded by 0100 | 2026-11-18 |
 | [0041](0041-dashboard-data-router-and-unsaved-guard.md) | New dashboard: data router (`createBrowserRouter`), "Tienes cambios sin guardar" guard with `useBlocker` + `beforeunload`, pages loaded on demand; supersedes ADR-0038 decision 1 | Accepted | 2026-11-18 |
 | [0042](0042-dashboard-api-completeness.md) | Dashboard API completeness: audit verified/rotated by size/retention/date query, leak action removed (leak only notifies, connected profiles only), profile rename + delete with references + file import, localized group/scheduler errors, scheduler hot reload + rule `enabled`, stable policy order, manual-reconnect notice, gzip for `/app/` | Accepted | 2026-11-18 |
 | [0043](0043-new-dashboard-replaces-classic.md) | The new dashboard replaces the classic one and moves to `/`: parity gate closed, `/app/*` and classic pages redirect (308), `/tray`, classic dashboard + `/brand/` deleted, CSP without `unsafe-inline`; supersedes ADR-0011 | Accepted | 2026-11-18 |
@@ -109,6 +109,10 @@ decision live in [`docs/research/`](../research/README.md).
 | [0094](0094-stop-setup-daemon-before-upgrade.md) | Stop the setup daemon before updating Windows files | Accepted | 2026-11-22 |
 | [0095](0095-save-rules-paused-and-bound-auto-connect.md) | Save rules paused, bound traffic-triggered retries and defer direct WireGuard while Proton is active on Windows | Accepted | 2026-11-22 |
 | [0096](0096-repair-missing-helper-on-windows-upgrade.md) | Install or repair a missing helper with its task selected on Windows upgrades | Accepted | 2026-11-22 |
+| [0097](0097-user-disconnect-never-a-drop.md) | A user disconnect is never a kill switch drop: an intended tunnel re-arms only after it was seen down and up again | Accepted | 2026-11-23 |
+| [0098](0098-bounded-reconnect-and-restore-at-start.md) | Bounded reconnects, restore at start and a visible sign-in switch | Accepted | 2026-11-23 |
+| [0099](0099-refuse-second-full-tunnel-and-switch-aware-kill-switch.md) | Refuse a second full tunnel and never block a full-tunnel drop another VPN replaced | Accepted | 2026-11-23 |
+| [0100](0100-uninstall-sudo-deferred-delete-inno-workdir.md) | Uninstall under sudo, deferred self-delete and Inno working directory | Accepted | 2026-11-23 |
 
 ## Statuses
 

@@ -86,7 +86,8 @@ func buildProfileService() *app.ProfileService {
 				go col.Refresh()
 			}
 		},
-		OnIntent: killSwitchSvc.NoteIntent,
+		OnIntent:        killSwitchSvc.NoteIntent,
+		ExternalTunnels: externalFullTunnels,
 	})
 }
 
@@ -118,6 +119,7 @@ func syncProfilesLive(c *config.Config) api.ProfileSyncResult {
 	if adapterSync == nil || c == nil {
 		return api.ProfileSyncResult{}
 	}
+	pruneWanted(c) // a deleted profile is never restored
 	return afterProfileSync(c, adapterSync.Sync(c))
 }
 
@@ -207,11 +209,15 @@ func buildAPIServer(onShutdown func()) *api.Server {
 		},
 		dnsMgr,
 		cfg.Security.DNSGuard.Enabled,
-		connectProfile,
-		disconnectProfile,
+		// Requests from the user: remembered for the next start (ADR-0098).
+		userConnectProfile,
+		userDisconnectProfile,
 		apiToken,
 		onShutdown,
 	)
+	// "Abrir Kongtrol al iniciar sesión", "volver a conectar" and the
+	// stop-all that forgets the VPNs to reconnect (ADR-0098).
+	srv.SetStartup(startupHooks())
 	// One-click helper install from the tray / dashboard.
 	srv.SetHelperInstaller(version, installHelperFromGUI)
 	// Root-only profile files (/etc/wireguard): one OS prompt (ADR-0058).
@@ -221,6 +227,8 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	// Split-tunnel kill switch state and policy notices for every client.
 	srv.SetKillSwitchStatus(killSwitchSvc.Status)
 	srv.SetBlockedList(killSwitchSvc.Blocked)
+	// Refuse a second full tunnel before accepting the connect (ADR-0099).
+	srv.SetConnectCheck(checkConnectConflict)
 	srv.SetEventLog(daemonEvents)
 	// Audit entries are checked against the signing key, which stays here.
 	srv.SetAuditVerifier(auditVerifier())

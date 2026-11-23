@@ -58,6 +58,9 @@ func initClient() error {
 	// The daemon writes a new token on every start (ADR-0062): read it per
 	// request, so the tray keeps working across down/up and restarts.
 	client.TokenSource = config.CurrentAPIToken
+	// Translated refusals (e.g. a second VPN that would take all traffic,
+	// ADR-0099) come back in the tray's language.
+	client.LangSource = func() string { return string(trayLang) }
 	if firstRun {
 		return errNoConfig
 	}
@@ -168,8 +171,19 @@ func toggleGroup(name string) {
 
 func connectProfile(name string) {
 	if _, err := client.Connect(name); err != nil {
-		notifyError(trayF("tray.err_connect", name), err)
+		notifyError(connectErrorText(name, err), err)
 	}
+}
+
+// connectErrorText is the tray line for a refused connect: the daemon's
+// translated reason plus what to do when it gave one (ADR-0099), else the
+// generic "could not connect" line.
+func connectErrorText(name string, err error) string {
+	var re *daemonctl.RemoteError
+	if errors.As(err, &re) && re.Hint != "" && re.Message != "" {
+		return re.Message + " " + re.Hint
+	}
+	return trayF("tray.err_connect", name)
 }
 
 func disconnectProfile(name string) {

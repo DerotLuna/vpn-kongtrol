@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.3.0 · 2026-11-20.
+// Version 3.4.0 · 2026-11-23.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -151,7 +151,8 @@ $ kongtrol profile import ~/Downloads/proton-us.conf`,
     connect: {
       title: <>Connect and disconnect</>,
       lead: <>From the icon: click the VPN. From the panel: <strong>Home</strong> → <strong>Connect</strong>.</>,
-      bg: <>Kongtrol keeps working in the background. Closing the panel, the terminal or the icon disconnects nothing.</>,
+      bg: <>Kongtrol keeps working in the background. Closing the panel, the terminal or the icon disconnects nothing.
+        If you shut down or restart the computer, it reconnects the VPNs you had connected when it comes back (<strong>Settings</strong> → <strong>When starting</strong>).</>,
       stop: <>To disconnect everything: <strong>Quit and disconnect all</strong> in the icon, or <IC c="kongtrol down --all" />.
         The icon stays with "Kongtrol stopped"; <strong>Start Kongtrol</strong> starts it again.</>,
       code: `$ kongtrol up office           # connect one VPN
@@ -162,7 +163,7 @@ $ kongtrol down office         # disconnect one
 $ kongtrol down --all          # disconnect all`,
       waiting: <><strong>"Waiting for connection in …"</strong> means Kongtrol opened your VPN's app and waits for you to connect there.
         Connect in the app; Kongtrol detects it.</>,
-      drop: <><strong>If a VPN drops,</strong> Kongtrol reconnects it with growing waits, and tells you if it can't.
+      drop: <><strong>If a VPN drops,</strong> Kongtrol reconnects it on its own (up to 3 attempts); if it can't, it tells you once with <strong>Retry</strong> and tries again when your network changes.
         It only tries another VPN if you declared it as a backup (<IC c="failover" />).</>,
     },
     // feature:policies feature:routes
@@ -268,6 +269,9 @@ $ kongtrol doctor --fix    # and repairs what it can`,
         If that VPN carried all your traffic, internet stays blocked until it returns, and Kongtrol tells you.
         With <strong>Allow the local network</strong> off (<IC c="allow_lan: false" />) your printer, NAS and other
         devices on your network are cut too; turn it on to keep them.
+        If another VPN takes over all your traffic (say you connect Proton VPN in its app), it does not block:
+        your traffic keeps going through that VPN. And Kongtrol never connects two VPNs that carry all your
+        traffic at once: it tells you which one to disconnect first.
         Turn it on in <strong>Security</strong> or with <IC c="kongtrol config killswitch on" />; per VPN, in the file:</>,
       ksYaml: `vpns:
   office:

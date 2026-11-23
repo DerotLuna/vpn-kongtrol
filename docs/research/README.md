@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.21.0 · 2026-11-20
+Version 1.22.0 · 2026-11-23
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -66,7 +66,7 @@ reasoned but unverified.
 | [2026-11-20-tray-flyout-open-latency](2026-11-20-tray-flyout-open-latency.md) | Where the flyout open time goes (lazy WebView2 creation, daemon probe on every click), WebView2 pre-warming and reuse guidance, measurements of one smoke run | ADR-0074 |
 | [2026-11-20-antivirus-blocked-binary-in-installers](2026-11-20-antivirus-blocked-binary-in-installers.md) | Windows errors 225/226 when an antivirus blocks a start, the PowerShell exception shape (measured), Defender Protection history actions and false-positive submission, what `!ml` means (no official definition), shell exit codes 126/127/128+N | ADR-0073 |
 | [2026-11-20-install-scripts-cli-and-tray](2026-11-20-install-scripts-cli-and-tray.md) | How rustup, Tailscale and Docker Desktop install everything by default with an opt-out; Inno Setup uninstall key and silent upgrade flags; Microsoft's Server Core check (ServerLevels); freedesktop desktop-session variables; what the Windows release assets contain; GUI-subsystem exe output to a pipe (measured) | ADR-0075 |
-| [VPN coexistence](2026-11-21-vpn-coexistence.md) | Providers, default routes and diagnosis | ADR-0086 |
+| [VPN coexistence](2026-11-21-vpn-coexistence.md) | Providers, default routes, diagnosis, two full tunnels and the kill switch | ADR-0086, ADR-0099 |
 | [Direct diagnostics](2026-11-21-diagnostics-deep-links.md) | Authenticated dashboard entry points and tray colors | ADR-0083 |
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |
@@ -76,6 +76,9 @@ reasoned but unverified.
 | [Windows uninstall](2026-11-22-uninstall-data-removal.md) | Distinguish data removal failures from leftover program files | ADR-0093 |
 | [Windows installer shutdown](2026-11-22-windows-installer-shutdown.md) | Close the setup dashboard before updating installed files | ADR-0094 |
 | [Rules and Windows VPN coexistence](2026-11-22-rule-activation-and-vpn-coexistence.md) | Separate saving and activation, limit retries, detect Proton's active tunnel and repair helper on upgrades | ADR-0095, ADR-0096 |
+| [User disconnect and the kill switch](2026-11-23-user-disconnect-kill-switch.md) | Why a panel disconnect was reported as a drop (#46) | ADR-0097 |
+| [Uninstall under sudo and deferred delete](2026-11-23-uninstall-sudo-and-deferred-delete.md) | `HOME` under sudo/doas/pkexec, Inno working directory, deleting the running `kongtrol.exe` | ADR-0100 |
+| [Bounded reconnect and restore](2026-11-23-bounded-reconnect-and-restore.md) | Retry limits and re-arm signals, persisted intent, sign-in start per OS | ADR-0098 |
 | [Linux WireGuard and tray](2026-11-21-linux-tray-and-wireguard.md) | Existing kernel links and desktop launch | ADR-0088 |
 | [Landing and release refresh](2026-11-21-landing-release-refresh.md) | Compatibility summary, visuals and stable release refresh | ADR-0089 |
 

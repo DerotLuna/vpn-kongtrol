@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.17 · 2026-11-22
+Versión 2.18 · 2026-11-23
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -448,6 +448,38 @@ kongtrol config dns-guard <on|off|status> [opciones]
 ```bash
 kongtrol config dns-guard on
 kongtrol config dns-guard status
+```
+
+### `kongtrol config autostart`
+
+Kongtrol se abre solo cuando inicias sesión en este equipo (lo deja así el instalador). Con off ya no se abre; con on vuelve a abrirse. Usa el mecanismo de tu sistema: en Windows, Configuración › Aplicaciones › Inicio; en Linux, la entrada de inicio automático; en macOS, un agente de inicio de tu usuario. Una actualización respeta lo que elijas.
+
+```text
+kongtrol config autostart <on|off|status> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol config autostart status
+kongtrol config autostart off
+kongtrol config autostart on
+```
+
+### `kongtrol config restore-tunnels`
+
+Encendido por defecto. Si apagas o reinicias el equipo, o Kongtrol se cierra de golpe, al volver a abrirse conecta otra vez las VPN que tenías conectadas. Las que desconectaste tú no se conectan, y kongtrol down (o "Salir y desconectar todo") hace que no se conecte ninguna. Si una no conecta, Kongtrol lo intenta pocas veces y te avisa una sola vez.
+
+```text
+kongtrol config restore-tunnels <on|off|status> [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol config restore-tunnels status
+kongtrol config restore-tunnels off
+kongtrol config restore-tunnels on
 ```
 
 ### `kongtrol config update-check`

@@ -21,7 +21,7 @@
 | Per-profile kill-switch overrides | ✅ |
 | DNS guard (netsh · resolv.conf · networksetup) — timeout-bounded | ✅ |
 | Transparent split-DNS (policy domain host injection) | ✅ |
-| Auto-reconnect watchdog (exponential backoff, timeout-bounded reconnects) | ✅ |
+| Auto-reconnect watchdog (bounded: 3 attempts, re-armed on network change; timeout-bounded reconnects) | ✅ |
 | Health-check (notifies) + failover only to declared backup profiles (`failover:`, ADR-0018) | ✅ |
 | Profile scheduler (weekday/time windows) | ✅ |
 | Leak detection (opt-in public IP lookup on connect/disconnect and on demand · configurable action) | ✅ |

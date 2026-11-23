@@ -23,6 +23,12 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/wireguard"
 )
 
+// ksObs is one adapter's state, read unlocked at the start of Apply.
+type ksObs struct {
+	connected bool
+	info      *vpn.TunnelInfo
+}
+
 // KillSwitchService owns the set of blocked destinations, built from two
 // sources (split-tunnel aware; see config.KillSwitchConfig):
 //
@@ -57,6 +63,11 @@ type KillSwitchService struct {
 	legacyClean bool
 	// onBlock tells the daemon a dropped tunnel started being blocked.
 	onBlock func(name string, fullTunnel bool)
+	// externalFull lists provider app tunnels up outside Kongtrol;
+	// onSuperseded tells the daemon a dropped full tunnel was not blocked
+	// because another VPN now carries all traffic (ADR-0099).
+	externalFull func() []ExternalTunnel
+	onSuperseded func(name, by string)
 }
 
 // DestinationSource gives the policy destinations (static CIDRs + resolved
@@ -68,8 +79,12 @@ type DestinationSource interface {
 
 // ksProfile is what the service remembers about one profile.
 type ksProfile struct {
-	wasUp      bool // connected at some point since the user last turned it on
-	intended   bool // the user turned it off (down / disconnect)
+	wasUp    bool // connected at some point since the user last turned it on
+	intended bool // the user turned it off (down / disconnect)
+	// downSeen: seen down after the user turned it off. Until then a
+	// "connected" observation is the tunnel still going down (or a status
+	// read taken before the intent), never a new connection (ADR-0097).
+	downSeen   bool
 	iface      string
 	captured   []netip.Prefix // routes through the tunnel, captured while up
 	capturedAt time.Time
@@ -172,6 +187,7 @@ func (s *KillSwitchService) NoteIntent(name string, intendedDown bool) {
 	s.mu.Lock()
 	st := s.profile(name)
 	st.intended = intendedDown
+	st.downSeen = false
 	if intendedDown {
 		st.wasUp = false
 	}
@@ -226,19 +242,31 @@ func (s *KillSwitchService) Apply() error {
 	s.applyMu.Lock()
 	defer s.applyMu.Unlock()
 	// Adapter status / tunnel info may run commands: read them unlocked.
-	type obs struct {
-		connected bool
-		info      *vpn.TunnelInfo
-	}
-	seen := map[string]obs{}
+	seen := map[string]ksObs{}
 	for name, a := range s.adapters.Snapshot() {
-		o := obs{connected: a.Status().Normalize() == vpn.StatusConnected}
+		o := ksObs{connected: a.Status().Normalize() == vpn.StatusConnected}
 		if o.connected {
 			if info, err := a.TunnelInfo(); err == nil {
 				o.info = info
 			}
 		}
 		seen[name] = o
+	}
+	// Provider app tunnels are listed (interface listing, no admin) only
+	// when a dropped full tunnel could be blocked: they decide whether
+	// another VPN took over (supersededBy).
+	s.mu.Lock()
+	probe, needProbe := s.externalFull, false
+	for name, st := range s.state {
+		if probe != nil && st.fullTunnel && st.wasUp && !st.intended && !seen[name].connected {
+			needProbe = true
+			break
+		}
+	}
+	s.mu.Unlock()
+	var external []ExternalTunnel
+	if needProbe {
+		external = probe()
 	}
 
 	// applyMu serializes whole Apply runs; s.mu is released while the
@@ -261,10 +289,18 @@ func (s *KillSwitchService) Apply() error {
 	for name, o := range seen {
 		st := s.profile(name)
 		if !o.connected {
+			if st.intended {
+				st.downSeen = true
+			}
 			continue
 		}
-		if s.disconnecting[name] == 0 {
-			st.wasUp, st.intended = true, false
+		// A tunnel the user turned off is re-armed only once it was seen
+		// down and then up again (e.g. reconnected in the provider app).
+		// While the adapter is still disconnecting, or with a status read
+		// taken before the intent, re-arming would turn the user's own
+		// disconnect into a "drop" (#46, ADR-0097).
+		if s.disconnecting[name] == 0 && (!st.intended || st.downSeen) {
+			st.wasUp, st.intended, st.downSeen = true, false, false
 		}
 		iface := ""
 		if o.info != nil {
@@ -304,6 +340,7 @@ func (s *KillSwitchService) Apply() error {
 	// 3. What to block.
 	status := security.KillSwitchStatus{State: security.KillSwitchOff}
 	var block, fullBlock []netip.Prefix
+	var superseded [][2]string // dropped full tunnel, VPN that took over
 	names := s.adapters.Names()
 	for _, name := range names {
 		if !s.profileKillSwitchEnabled(name) {
@@ -316,6 +353,17 @@ func (s *KillSwitchService) Apply() error {
 		}
 		if !st.wasUp || st.intended {
 			continue // never up, or turned off by the user: normal internet
+		}
+		if st.fullTunnel {
+			// Another VPN took all traffic (the user switched VPNs, or a
+			// provider app took the default route): blocking everything
+			// would also block that VPN, i.e. the whole internet. The user
+			// moved on, so this drop is treated like a switch (ADR-0099).
+			if by := s.supersededBy(name, seen, external); by != "" {
+				st.wasUp = false
+				superseded = append(superseded, [2]string{name, by})
+				continue
+			}
 		}
 		status.Blocking = append(status.Blocking, name)
 		if st.fullTunnel {
@@ -399,7 +447,13 @@ func (s *KillSwitchService) Apply() error {
 		s.blocked = block // what is in place now; a failed Set keeps the last one
 	}
 	onBlock := s.onBlock
+	onSuperseded := s.onSuperseded
 	s.mu.Unlock()
+	if onSuperseded != nil {
+		for _, p := range superseded {
+			onSuperseded(p[0], p[1])
+		}
+	}
 	// Tell the user once per outage what is blocked and what to do (#37).
 	if onBlock != nil {
 		for _, name := range status.Blocking {
@@ -439,6 +493,48 @@ func (s *KillSwitchService) SetOnBlock(fn func(name string, fullTunnel bool)) {
 	s.mu.Lock()
 	s.onBlock = fn
 	s.mu.Unlock()
+}
+
+// SetExternalTunnels sets how provider app tunnels up outside Kongtrol are
+// listed (appattach matchers in the daemon).
+func (s *KillSwitchService) SetExternalTunnels(fn func() []ExternalTunnel) {
+	s.mu.Lock()
+	s.externalFull = fn
+	s.mu.Unlock()
+}
+
+// SetOnSuperseded sets the callback run once when a dropped full tunnel is
+// not blocked because another VPN (by) now carries all traffic.
+func (s *KillSwitchService) SetOnSuperseded(fn func(name, by string)) {
+	s.mu.Lock()
+	s.onSuperseded = fn
+	s.mu.Unlock()
+}
+
+// supersededBy names the VPN that carries all traffic now in place of the
+// dropped full tunnel name: a connected Kongtrol profile captured as a full
+// tunnel, or a provider app tunnel up outside Kongtrol. "" when none, and
+// then the full block applies. Caller holds s.mu.
+func (s *KillSwitchService) supersededBy(name string, seen map[string]ksObs, external []ExternalTunnel) string {
+	var managed []TunnelClaim
+	var ifaces []string
+	for other, o := range seen {
+		if other == name || !o.connected {
+			continue
+		}
+		st := s.profile(other)
+		if st.iface != "" {
+			ifaces = append(ifaces, st.iface)
+		}
+		if st.fullTunnel {
+			managed = append(managed, TunnelClaim{Profile: other, Label: other, Interface: st.iface})
+		}
+	}
+	slices.SortFunc(managed, func(a, b TunnelClaim) int { return strings.Compare(a.Profile, b.Profile) })
+	if c := fullTunnelConflicts(name, s.cfg.VPNs[name].Type, true, managed, ifaces, external); len(c) > 0 {
+		return c[0].Label
+	}
+	return ""
 }
 
 // LANAllowed reports whether a full-tunnel block leaves the local network

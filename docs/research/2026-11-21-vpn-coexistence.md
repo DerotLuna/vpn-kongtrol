@@ -1,6 +1,6 @@
 # Research: VPN coexistence on one machine
 
-Version 1.0.0 · 2026-11-21
+Version 1.1.0 · 2026-11-23
 
 ## Question
 
@@ -130,6 +130,54 @@ Look for third-party WFP filters only through an explicit diagnostic on Windows.
 Report a concrete next action for the detected layer. This approach needs a
 controlled VM proof and permission for any elevated capture. It should never
 change filters, DNS or vendor policy implicitly.
+
+## Two full tunnels and the kill switch (2026-11-23, ADR-0099)
+
+Question from the owner: what happens when Proton VPN is connected in its app
+and the user starts a direct WireGuard full tunnel, or the reverse, and why does
+the kill switch sometimes block everything?
+
+| Source | Accessed |
+|---|---|
+| [WireGuard for Windows: firewall considerations for `/0` Allowed IPs](https://github.com/WireGuard/wireguard-windows/blob/master/docs/netquirk.md#firewall-considerations-for-0-allowed-ips) (read through the GitHub API, raw file) | 2026-11-23 |
+| [Tailscale alongside other VPNs](https://tailscale.com/docs/reference/faq/other-vpns) | 2026-11-23 |
+| [Mullvad: Tailscale partnership](https://mullvad.net/en/blog/tailscale-has-partnered-with-mullvad) | 2026-11-23 |
+| [Proton VPN Android: action needed to connect (one always-on VPN)](https://protonvpn.com/support/action-needed-to-connect-to-vpn) | 2026-11-23 |
+
+- WireGuard for Windows: with one peer whose AllowedIPs hold a `/0`, it enables a
+  "kill-switch" whose firewall rules permit the tunnel service, loopback,
+  DHCP/NDP and packets going through the WireGuard tunnel; "all other packets
+  are blocked". A second VPN's transport and tunnel traffic is "other". Two
+  `/1` halves avoid those rules but still take the whole default route.
+- Tailscale: "Most VPNs set aggressive firewall rules to ensure all network
+  traffic goes through them", which can drop another VPN's traffic; "exit nodes
+  only support one VPN at a time". Narrow (split) routes are the documented way
+  to run two clients.
+- Mullvad documents its combination with Tailscale only through the Tailscale
+  app (Mullvad servers as exit nodes), not through two apps side by side.
+- Proton documents, for Android, that only one VPN app can be always-on. No
+  Proton page found that supports two desktop VPNs both taking all traffic
+  (**no verificado** that one does not exist). Proton's advanced kill switch
+  (sources above) keeps its own filter rules.
+
+Kongtrol's own kill switch had a matching failure: a full-tunnel profile that
+"dropped" (interface gone or `no_response`) got a block of everything except VPN
+endpoints. If the drop happened because another VPN took the default route,
+that block also covered the other VPN's traffic (Windows Firewall block rules
+match remote addresses on every interface), i.e. the whole internet.
+
+Decision inputs: refuse a second full tunnel before it starts (both directions,
+managed or provider app), allow split + full, and treat a full-tunnel drop while
+another full tunnel is up as a switch, not an outage. Mullvad and Tailscale
+choose "one full tunnel at a time" in their own products; Kongtrol enforces the
+same rule across apps.
+
+Limits (**no verificado** on live clients): provider app detection uses
+interface matchers with an address, so a retained adapter can look active and a
+macOS Network Extension service (no address) is not counted; a server-pushed
+`redirect-gateway` is only known after the OpenVPN tunnel is up; corporate
+clients (FortiClient, Cisco, GlobalProtect) and WireGuard tunnels started
+outside Kongtrol are not counted as full tunnels.
 
 ## Reproduction plan
 

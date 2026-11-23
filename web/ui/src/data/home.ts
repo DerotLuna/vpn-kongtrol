@@ -275,7 +275,9 @@ export function useTunnelActions() {
         }
         return (await api.disconnect(name)).status
       } catch (err) {
-        if (action === 'connect' && err instanceof ApiError && err.status === 409) return 'connecting'
+        // 409 without a hint = a connect already in progress. A 409 with a
+        // hint is a refusal (another VPN carries all traffic, ADR-0099).
+        if (action === 'connect' && err instanceof ApiError && err.status === 409 && !err.hint) return 'connecting'
         throw guided(err, t, name, action)
       }
     },
@@ -578,15 +580,19 @@ const NOTICE_TEXT: Record<string, MessageKey> = {
   'policy.event.connect_failed': 'home.notice.policy.connectFailed',
   'policy.event.connect_exhausted': 'home.notice.policy.connectExhausted',
   'policy.event.connect_conflict': 'home.notice.policy.connectConflict',
-  'watchdog.event.reconnect_failing': 'home.notice.watchdog.reconnectFailing',
   'watchdog.event.failover': 'home.notice.watchdog.failover',
   'watchdog.event.reconnected': 'home.notice.watchdog.reconnected',
   'watchdog.event.no_response': 'home.notice.watchdog.noResponse',
   'watchdog.event.responding': 'home.notice.watchdog.responding',
   'watchdog.event.manual_reconnect': 'home.notice.watchdog.manualReconnect',
+  'watchdog.event.gave_up': 'home.notice.watchdog.gaveUp',
+  'watchdog.event.gave_up_blocking': 'home.notice.watchdog.gaveUpBlocking',
+  'watchdog.event.gave_up_blocking_full': 'home.notice.watchdog.gaveUpBlockingFull',
+  'watchdog.event.reconnect_blocked': 'home.notice.watchdog.reconnectBlocked',
   'killswitch.event.blocking': 'home.notice.killswitch.blocking',
   'killswitch.event.blocking_full': 'home.notice.killswitch.blockingFull',
   'killswitch.event.blocking_full_lan': 'home.notice.killswitch.blockingFullLan',
+  'killswitch.event.superseded': 'home.notice.killswitch.superseded',
   'update.event.available': 'home.notice.update.available',
 }
 
@@ -596,6 +602,16 @@ export function noticeText(e: DaemonEvent, t: Translate): string {
   const args = e.args ?? []
   if (!key) return t('home.notice.generic', { profile: e.profile ?? args[0] ?? '' })
   return t(key, { 0: args[0] ?? '', 1: args[1] ?? '', 2: args[2] ?? '' })
+}
+
+// feature:watchdog
+/**
+ * The button of a notice that offers to connect its profile: "Reintentar"
+ * after the watchdog gave up on it (ADR-0098), "Conectar" otherwise.
+ */
+export function noticeActionLabel(e: DaemonEvent, t: Translate): string {
+  const profile = e.profile ?? ''
+  return e.key.startsWith('watchdog.event.') ? t('home.notices.retry', { profile }) : t('home.notices.connect', { profile })
 }
 
 /** A notice with an action waits this long (legacy notices.js: 60 s). */
@@ -618,7 +634,7 @@ export function useNoticeToasts(): void {
           tone,
           message,
           duration: ACTION_TOAST_MS,
-          action: { label: t('home.notices.connect', { profile }), run: () => run(profile, 'connect') },
+          action: { label: noticeActionLabel(e, t), run: () => run(profile, 'connect') },
         })
         return
       }

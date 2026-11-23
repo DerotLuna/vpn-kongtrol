@@ -40,6 +40,8 @@ func daemonAPIBase() string {
 func daemonClient(base string) *daemonctl.Client {
 	c := daemonctl.New(base, apiToken)
 	c.TokenSource = config.CurrentAPIToken
+	// Translated refusals and their "what to do" line in the CLI language.
+	c.Lang = string(cliLang())
 	return c
 }
 

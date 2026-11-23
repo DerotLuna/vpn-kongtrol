@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.13.0 · 2026-11-20
+Version 2.14.0 · 2026-11-23
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -108,8 +108,16 @@ named in `kongtrol.yaml` and its backups, and `_system.audit_hmac_key`). Files o
 manager are never deleted. Outside `~/.kongtrol` only single regular files are removed (a
 `--config` file and the daily `audit-YYYY-MM-DD.log` files of a custom `security.audit_log.path`),
 never a folder, link or anything recursively; `audit_log.path` must name a file, not a folder
-(config validation). See [ADR-0034](adr/0034-uninstall-and-update-notice.md) and
-[ADR-0040](adr/0040-local-hardening-review-2026-11.md).
+(config validation). `kongtrol uninstall` refuses to run as root for another user (sudo, doas,
+pkexec): `HOME` there depends on the OS and sudoers, and root would reach other users' trays and not
+the user's keychain; the helper removal asks for permission itself. On Windows the running
+`kongtrol.exe` is deleted after the command exits by Windows PowerShell from System32 with a
+constant script; the path travels in an environment variable and is used only with
+`-LiteralPath`, so no character in it (`%`, `&`, `^`) is interpreted. The Windows uninstaller runs
+only absolute programs (`{app}`, `{sys}`, `{tmp}`) in their own folder. See
+[ADR-0034](adr/0034-uninstall-and-update-notice.md),
+[ADR-0040](adr/0040-local-hardening-review-2026-11.md) and
+[ADR-0100](adr/0100-uninstall-sudo-deferred-delete-inno-workdir.md).
 
 Public IP services: the default is ipify (https://www.ipify.org, plain-text answer). Other well-known
 plain-text service you can list in `endpoints` is `https://icanhazip.com` (run by Cloudflare per its
@@ -498,7 +506,7 @@ sudo pfctl -a com.kongtrol -F all
 
 ## Auto-reconnect watchdog
 
-The watchdog polls every 5 seconds per profile. On an unexpected disconnect it waits `2s → 4s → 8s → … → 5min` (exponential backoff) before each retry, and each reconnect attempt is itself bounded by a timeout so a hung adapter driver can't stall the watcher indefinitely. Intentional disconnects via `kongtrol down` suppress reconnect automatically — the watchdog only fires on drops you didn't request.
+The watchdog polls every 5 seconds per profile. On an unexpected disconnect it makes three attempts (after 2 s, 30 s and 2 min), then stops and notifies once; it tries again only when the network changes or the computer wakes from sleep (ADR-0098). A profile the kill switch protects keeps its block while it is down; disconnecting it lifts the block. Each reconnect attempt is itself bounded by a timeout so a hung adapter driver can't stall the watcher indefinitely. Intentional disconnects via `kongtrol down` suppress reconnect automatically — the watchdog only fires on drops you didn't request.
 
 ## Graceful daemon shutdown
 
@@ -522,4 +530,4 @@ This is a self-assessment, not an audit or certification.
 | Insecure communication — DA7 | Only the opt-in outbound calls listed above, https only, constrained redirects; everything else is loopback or local IPC. | — |
 | Vulnerable components / supply chain — A06, A08, SLSA | `govulncheck` in CI and weekly Renovate updates; release artifacts with checksums, Sigstore signature and build provenance attestations; third-party Actions pinned to commit SHAs; secrets only on the steps that use them. | Install scripts verify the cosign signature of `checksums.txt` only when cosign is installed (ADR-0057); Windows binaries are unsigned until SignPath is configured. |
 | Logging — A09, DA10 | The helper audits every privileged request (read-only successes of managed tunnels excepted); HMAC-signed audit log in the daemon. | Browser session creation is not audited. |
-| Privileged helper / installer — Desktop Top 10 | Closed operation list, caller identified by the OS, lease-based fail-open cleanup, trusted-binary checks (Unix root-owned; Windows admin-owned and admin-writable only); uninstall deletes only Kongtrol's own files and refuses sudo. | Inno Setup uninstaller working directory not verified ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)). |
+| Privileged helper / installer — Desktop Top 10 | Closed operation list, caller identified by the OS, lease-based fail-open cleanup, trusted-binary checks (Unix root-owned; Windows admin-owned and admin-writable only); uninstall deletes only Kongtrol's own files, refuses root acting for another user (sudo, doas, pkexec), deletes its own `.exe` without passing the path through a shell, and the Windows uninstaller runs only absolute programs ([ADR-0100](adr/0100-uninstall-sudo-deferred-delete-inno-workdir.md)). | `#k=` fragment through the Windows URL handlers not tested with each browser ([#39](https://github.com/DerotLuna/vpn-kongtrol/issues/39)). |

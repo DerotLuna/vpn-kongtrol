@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/security"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -82,6 +83,10 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	}
 	apiToken = tok
 
+	// The VPNs the user wants up, kept across restarts (ADR-0098).
+	if !setupMode {
+		wantedTunnels = daemonctl.NewWanted(daemonctl.WantedPath())
+	}
 	srv := buildAPIServer(cancel)
 	if err := srv.Start(); err != nil {
 		return fmt.Errorf("%s", cf("cli.daemon.api_failed", base, err))
@@ -118,13 +123,15 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 
 	fmt.Println(tuiInfo(cf("cli.daemon.listening", base)))
 
+	// The VPNs the user had on, unless "volver a conectar" is off.
+	restoreWanted(ctx, targets)
 	for _, name := range targets {
 		if ctx.Err() != nil {
 			break
 		}
 		started := time.Now()
 		connectCtx, cancelConnect := context.WithTimeout(ctx, 5*time.Minute)
-		err := connectProfile(connectCtx, name)
+		err := userConnectProfile(connectCtx, name)
 		cancelConnect()
 		elapsed := time.Since(started).Round(time.Second)
 		switch {

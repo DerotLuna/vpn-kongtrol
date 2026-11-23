@@ -53,12 +53,14 @@ type Server struct {
 	configMu          sync.Mutex
 	connectProfile    func(context.Context, string) error
 	disconnectProfile func(context.Context, string) error
-	apiToken          string
-	sessions          sessionAuth // browser sessions + one-time nonces (session.go)
-	upgrader          websocket.Upgrader
-	changes           changeHub // settings changed: wakes WebSocket clients (changes.go, ADR-0072)
-	srv               *http.Server
-	onShutdown        func()
+	// connectCheck refuses a connect before it is accepted (SetConnectCheck).
+	connectCheck func(name string) error
+	apiToken     string
+	sessions     sessionAuth // browser sessions + one-time nonces (session.go)
+	upgrader     websocket.Upgrader
+	changes      changeHub // settings changed: wakes WebSocket clients (changes.go, ADR-0072)
+	srv          *http.Server
+	onShutdown   func()
 	// helperInstall backs POST /api/v1/helper/install; version (this
 	// build's version) backs GET /api/v1/version and the helper status.
 	// See SetHelperInstaller.
@@ -96,6 +98,8 @@ type Server struct {
 	profileSync func(*config.Config) ProfileSyncResult
 	// recent backs GET /api/v1/connections/recent (handlers_connections.go).
 	recent *monitor.RecentConnections
+	// startup backs /api/v1/startup and the stop-all hook (handlers_startup.go).
+	startup StartupHooks
 }
 
 // NewServer creates a new API server.
@@ -227,6 +231,8 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/v1/events", s.handleEvents)
 	mux.HandleFunc("GET /api/v1/updates", s.handleGetUpdates)
 	mux.HandleFunc("POST /api/v1/updates", s.handleSetUpdates)
+	mux.HandleFunc("GET /api/v1/startup", s.handleGetStartup)
+	mux.HandleFunc("PUT /api/v1/startup", s.handleSetStartup)
 	mux.HandleFunc("POST /api/v1/data/purge", s.handlePurgeData)
 
 	// WebSocket live metrics feed.

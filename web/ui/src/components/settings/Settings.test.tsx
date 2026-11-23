@@ -6,6 +6,7 @@ import { usePurgeData, useUpdates } from '../../api/lifecycle-hooks'
 import { DataProvider } from '../../app/DataProvider'
 import { PreferencesProvider } from '../../app/PreferencesProvider'
 import { DataCard } from './DataCard'
+import { StartupSection } from './StartupSection'
 import { UpdatesCard } from './UpdatesCard'
 import type { UpdateStatus } from '../../api/types'
 
@@ -33,6 +34,7 @@ function stubApi(routes: Record<string, (init?: RequestInit) => Promise<Response
 const base = {
   'GET /api/v1/preferences': () => json({ language: '', theme: '' }),
   'GET /api/v1/tunnels': () => json([]),
+  'GET /api/v1/startup': () => json({ start_at_login: true, start_at_login_supported: true, restore_tunnels: true }),
 }
 
 // The cards on their own: Inicio no longer shows them (they move to /settings).
@@ -41,6 +43,7 @@ function Cards() {
   const purge = usePurgeData()
   return (
     <>
+      <StartupSection />
       <UpdatesCard state={updates} />
       <DataCard state={purge} />
     </>
@@ -83,6 +86,43 @@ describe('Settings', () => {
     expect(await within(card).findByText(/Hay una versión nueva: v1\.1\.0 \(tienes v1\.0\.0\)/)).toBeInTheDocument()
     const post = fetchMock.mock.calls.find(([url, init]) => String(url) === '/api/v1/updates' && init?.method === 'POST')
     expect(JSON.parse(String(post?.[1]?.body))).toEqual({ enabled: true })
+  })
+
+  it('startup switches show the daemon state and send only their own field (ADR-0098)', async () => {
+    let state = { start_at_login: true, start_at_login_supported: true, restore_tunnels: true }
+    const fetchMock = stubApi({
+      ...base,
+      'GET /api/v1/updates': () => json(off),
+      'GET /api/v1/startup': () => json(state),
+      'PUT /api/v1/startup': (init) => {
+        state = { ...state, ...(JSON.parse(String(init?.body)) as Partial<typeof state>) }
+        return json(state)
+      },
+    })
+    render(<SettingsCards />)
+
+    const section = (await screen.findByRole('heading', { name: 'Al iniciar' })).closest('section')!
+    const login = await within(section).findByRole('switch', { name: 'Abrir Kongtrol al iniciar sesión' })
+    const restore = within(section).getByRole('switch', { name: 'Al iniciar, volver a conectar las VPN que tenías conectadas' })
+    expect(login).toHaveAttribute('aria-checked', 'true')
+    expect(restore).toHaveAttribute('aria-checked', 'true')
+
+    await userEvent.click(restore)
+    await vi.waitFor(() => expect(restore).toHaveAttribute('aria-checked', 'false'))
+    const put = fetchMock.mock.calls.find(([url, init]) => String(url) === '/api/v1/startup' && init?.method === 'PUT')
+    expect(JSON.parse(String(put?.[1]?.body))).toEqual({ restore_tunnels: false })
+  })
+
+  it('without a tray the sign-in switch is off, disabled and says what to do', async () => {
+    stubApi({
+      ...base,
+      'GET /api/v1/updates': () => json(off),
+      'GET /api/v1/startup': () => json({ start_at_login: false, start_at_login_supported: false, restore_tunnels: true }),
+    })
+    render(<SettingsCards />)
+    const login = await screen.findByRole('switch', { name: 'Abrir Kongtrol al iniciar sesión' })
+    expect(login).toBeDisabled()
+    expect(screen.getByText(/no tiene el ícono de Kongtrol/)).toBeInTheDocument()
   })
 
   it('purge asks first, lists what is deleted, and cancel sends nothing', async () => {

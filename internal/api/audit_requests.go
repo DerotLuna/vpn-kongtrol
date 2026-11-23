@@ -86,6 +86,7 @@ var auditRoutes = map[string]auditRoute{
 	"PUT /api/v1/settings":                  {action: "config.settings.update", level: "SECURITY"},
 	"PUT /api/v1/preferences":               {action: "config.preferences.update", level: "INFO"},
 	"POST /api/v1/updates":                  {action: "config.update_check.set", level: "INFO"},
+	"PUT /api/v1/startup":                   {action: "config.startup.set", level: "INFO"},
 
 	"POST /api/v1/shutdown":       {action: "daemon.shutdown", level: "INFO"},
 	"POST /api/v1/restart":        {action: "daemon.restart_request", level: "INFO"},

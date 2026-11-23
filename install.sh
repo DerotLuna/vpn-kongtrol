@@ -1,6 +1,6 @@
 #!/bin/sh
 # Installs or upgrades Kongtrol (CLI + tray app) from the latest GitHub release.
-# Version 2.8.0 · 2026-11-20 · docs/adr/0075-install-scripts-install-cli-and-tray.md, docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
+# Version 2.9.0 · 2026-11-23 · docs/adr/0098-bounded-reconnect-and-restore-at-start.md, docs/adr/0075-install-scripts-install-cli-and-tray.md, docs/adr/0073-installers-stop-when-the-new-binary-cannot-run.md, docs/adr/0063-kill-switch-lan-protected-read-and-release-hardening.md, docs/adr/0025-desktop-release-channels-first-run.md, docs/adr/0057-installers-verify-release-signature.md, docs/adr/0034-uninstall-and-update-notice.md, docs/adr/0046-installers-detect-existing-install.md, docs/adr/0050-installer-resume-tunnels-and-open-request.md
 #
 #   curl -fsSL https://kongtrol.app/install.sh | sh
 #
@@ -494,7 +494,12 @@ else
     if [ "$no_autostart" != "1" ]; then
       autostart="${XDG_CONFIG_HOME:-${HOME}/.config}/autostart"
       mkdir -p "$autostart"
+      # Turned off in Kongtrol (Ajustes or `kongtrol config autostart off`
+      # writes Hidden=true, XDG Autostart spec): an update keeps it off.
+      keep_hidden=0
+      if grep -q '^Hidden=true' "${autostart}/kongtrol.desktop" 2>/dev/null; then keep_hidden=1; fi
       cp "${apps}/applications/kongtrol.desktop" "${autostart}/kongtrol.desktop"
+      if [ "$keep_hidden" = 1 ]; then echo "Hidden=true" >> "${autostart}/kongtrol.desktop"; fi
     fi
     info "Installed ${install_dir}/kongtrol and ${install_dir}/kongtrol-tray (+ menu entry)"
   else

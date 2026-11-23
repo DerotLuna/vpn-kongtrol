@@ -85,6 +85,8 @@ func TestWatchdog_NoImplicitFailover(t *testing.T) {
 
 	wd := monitor.NewWatchdog(vpn.NewSet(adapters), connect, zapNop())
 	wd.SetPollInterval(50 * time.Millisecond)
+	wd.SetRetryDelays([]time.Duration{10 * time.Millisecond, 10 * time.Millisecond, 10 * time.Millisecond})
+	wd.SetNetworkFingerprint(func() string { return "home" })
 	// Declared failover elsewhere must not leak to these profiles.
 	wd.ConfigureFailover(map[string][]string{"us-content": {"ekiipago"}})
 	var log eventLog
@@ -96,13 +98,10 @@ func TestWatchdog_NoImplicitFailover(t *testing.T) {
 	wd.Start(ctx)
 	ovpn.setStatus(vpn.StatusError)
 
-	if !waitFor(t, 10*time.Second, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return connects["ekiipago-ovpn"] >= 2
-	}) {
-		t.Fatal("the dropped profile was not retried")
+	if !waitFor(t, 10*time.Second, func() bool { return log.count("reconnect_gave_up") == 1 }) {
+		t.Fatal("the dropped profile was not retried until the watchdog gave up")
 	}
+	time.Sleep(200 * time.Millisecond) // a further attempt would show
 	mu.Lock()
 	defer mu.Unlock()
 	for _, name := range []string{"ekiipago", "us-content"} {
@@ -113,8 +112,11 @@ func TestWatchdog_NoImplicitFailover(t *testing.T) {
 	if n := log.count("failover_started"); n != 0 {
 		t.Errorf("failover_started = %d, want 0", n)
 	}
-	if n := log.count("reconnect_failing"); n != 1 {
-		t.Errorf("reconnect_failing = %d, want exactly one notice per outage", n)
+	if connects["ekiipago-ovpn"] != 3 {
+		t.Errorf("ekiipago-ovpn attempts = %d, want 3 (then give up)", connects["ekiipago-ovpn"])
+	}
+	if n := log.count("reconnect_gave_up"); n != 1 {
+		t.Errorf("reconnect_gave_up = %d, want exactly one notice per outage", n)
 	}
 }
 
@@ -169,8 +171,8 @@ func TestWatchdog_FailoverToDeclaredBackup(t *testing.T) {
 	if unrelatedConnects.Load() != 0 {
 		t.Error("a profile not listed in failover was connected")
 	}
-	if n := log.count("reconnect_failing"); n != 0 {
-		t.Errorf("reconnect_failing = %d, want 0 when a backup took over", n)
+	if n := log.count("reconnect_gave_up"); n != 0 {
+		t.Errorf("reconnect_gave_up = %d, want 0 when a backup took over", n)
 	}
 }
 
@@ -213,7 +215,7 @@ func TestWatchdog_MarkIntendedCancelsInflightReconnect(t *testing.T) {
 		t.Fatal("MarkIntended did not cancel the in-flight reconnect")
 	}
 	time.Sleep(200 * time.Millisecond)
-	if n := log.count("reconnect_failed") + log.count("reconnect_failing"); n != 0 {
+	if n := log.count("reconnect_failed") + log.count("reconnect_gave_up"); n != 0 {
 		t.Errorf("a cancelled reconnect was reported as a failure (%d events)", n)
 	}
 }

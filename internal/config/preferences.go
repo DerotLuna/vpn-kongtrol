@@ -18,6 +18,15 @@ type Preferences struct {
 	Theme         string   `json:"theme,omitempty"`
 	DashboardPort int      `json:"dashboard_port,omitempty"`
 	DashboardBind string   `json:"dashboard_bind,omitempty"`
+	// RestoreTunnels: when Kongtrol starts, reconnect the VPNs the user
+	// had on (ADR-0098). nil = on (the default).
+	RestoreTunnels *bool `json:"restore_tunnels,omitempty"`
+}
+
+// RestoreTunnelsEnabled reports the "Al iniciar, volver a conectar las VPN
+// que tenías conectadas" setting; on unless the user turned it off.
+func (p *Preferences) RestoreTunnelsEnabled() bool {
+	return p == nil || p.RestoreTunnels == nil || *p.RestoreTunnels
 }
 
 var preferencesMu sync.Mutex

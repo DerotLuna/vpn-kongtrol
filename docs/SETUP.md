@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.15 · 2026-11-20
+Versión 1.16 · 2026-11-23
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -643,7 +643,7 @@ Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera r
 <!-- feature:watchdog -->
 #### Si una VPN se cae y no vuelve (failover)
 
-Kongtrol reintenta solo **esa misma** VPN (espera 2 s, 4 s, 8 s… hasta 5 min) y te avisa una vez en la bandeja, el dashboard y la vista en vivo. Nunca conecta otra VPN por su cuenta: cada perfil llega a redes distintas, aunque los nombres se parezcan. Si la VPN es de una app de proveedor que Kongtrol no puede reconectar (sin CLI, o con `auto_connect: false`), te avisa igual en esos tres lugares para que la conectes en su app; Kongtrol la sigue en cuanto vuelve.
+Kongtrol reintenta solo **esa misma** VPN, **3 veces** (a los 2 s, 30 s y 2 min). Si no vuelve, deja de intentarlo y te avisa **una sola vez** en la bandeja, el dashboard y la vista en vivo: «No se pudo reconectar <perfil> tras 3 intentos», con **Reintentar** (o `kongtrol up <perfil>`). Vuelve a probar solo cuando cambia tu red (otra Wi‑Fi, un cable, vuelve internet) o el equipo sale de suspensión, sin avisarte otra vez. Si el kill switch protegía esa VPN, **sigue bloqueando** (sus destinos, o todo si llevaba todo tu tráfico): el aviso te dice que la desconectes para volver a tener internet ([ADR-0098](adr/0098-bounded-reconnect-and-restore-at-start.md)). Nunca conecta otra VPN por su cuenta: cada perfil llega a redes distintas, aunque los nombres se parezcan. Si la VPN es de una app de proveedor que Kongtrol no puede reconectar (sin CLI, o con `auto_connect: false`), te avisa igual en esos tres lugares para que la conectes en su app; Kongtrol la sigue en cuanto vuelve.
 
 Si tienes un perfil de respaldo que llega a **las mismas redes**, decláralo en el perfil principal:
 
@@ -1053,6 +1053,17 @@ servidores DNS solo se alcanzan por el túnel caído) y avisa qué bloquea el ki
   por ahí saldrían tus búsquedas fuera de la VPN. Para seguir usándolos: panel → Seguridad →
   «Permitir la red local», o `allow_lan: true` en `security.kill_switch` (entonces las búsquedas
   pueden salir por el DNS de tu red mientras la VPN no vuelve).
+- **«…se cayó mientras <otra VPN> lleva todo tu tráfico · el kill switch no bloquea»**: otra VPN
+  de túnel completo tomó la salida a internet (otro perfil de Kongtrol, o Proton VPN, NordVPN o
+  Surfshark conectada en su propia app). Bloquear todo cortaría también esa VPN, así que Kongtrol
+  no bloquea y tu tráfico sigue por ella. Para volver al perfil caído: desconecta la otra VPN y
+  conéctalo.
+
+Dos VPN que llevan todo tu tráfico a la vez se cortan entre sí (WireGuard para Windows, con
+`0.0.0.0/0`, bloquea todo lo que no pase por su túnel). Por eso Kongtrol no conecta un perfil de
+túnel completo (Proton VPN, NordVPN, Surfshark, WireGuard con `default_egress`, OpenVPN con
+`redirect-gateway`) mientras otro está conectado: el panel, la bandeja y `kongtrol up` dicen cuál
+desconectar primero. Un perfil con reglas (túnel parcial) sí puede convivir con uno completo.
 
 WireGuard con línea `DNS =`: `wg-quick` manda **todas** las búsquedas al DNS del túnel mientras la
 interfaz exista (en systemd-resolved, `resolvconf -x` equivale a `~.`). Si el servidor deja de

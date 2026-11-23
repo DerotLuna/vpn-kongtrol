@@ -23,6 +23,11 @@ func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotImplemented, "shutdown not supported by this daemon instance")
 		return
 	}
+	// The user stops everything: nothing is reconnected at the next start
+	// (ADR-0098). A restart does not come through here.
+	if s.startup.OnStopAll != nil {
+		s.startup.OnStopAll()
+	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "shutting_down"})
 	go s.onShutdown()
 }
@@ -62,6 +67,14 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "connection service unavailable")
 		return
 	}
+	// A connect that would start a second full tunnel is refused at once
+	// (409 + translated "what to do"), not after the 202 (ADR-0099).
+	if s.connectCheck != nil {
+		if err := s.connectCheck(name); err != nil {
+			writeLocalizedError(w, r, http.StatusConflict, err)
+			return
+		}
+	}
 
 	// Generous: provider adapters (attach mode) may wait for the user to
 	// connect in the app; they bound that wait with the profile's
@@ -83,6 +96,10 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "connecting", "tunnel": name})
 }
+
+// SetConnectCheck sets the synchronous check POST .../connect runs before
+// accepting a connect (ProfileService.CheckFullTunnelConflict).
+func (s *Server) SetConnectCheck(fn func(name string) error) { s.connectCheck = fn }
 
 // POST /api/v1/tunnels/{name}/cancel_connect
 func (s *Server) handleCancelConnect(w http.ResponseWriter, r *http.Request) {

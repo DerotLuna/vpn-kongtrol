@@ -1,4 +1,4 @@
-# Change-impact map — version 1.11 · 2026-11-19
+# Change-impact map — version 1.12 · 2026-11-23
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -183,13 +183,40 @@ features:
   watchdog:
     code:
       - internal/monitor/watchdog*.go
+      - internal/monitor/netchange.go
       - cmd/kongtrol/daemon_watchdog.go
+      - cmd/kongtrol-tray/tray_policy.go
     surfaces:
       - README.md#watchdog
       - AGENTS.md#watchdog
       - docs/SETUP.md#watchdog
       - docs/CONFIGURATION.md#watchdog
+      - docs/SECURITY.md
+      - web/ui/src/data/home.ts#watchdog
+      - web/ui/src/i18n/pages/home.ts#watchdog
+      - web/ui/src/i18n/pages/activity.ts
+      - landing/src/content/guide.es.tsx#daemon_lifecycle
+      - landing/src/content/guide.en.tsx#daemon_lifecycle
       - configs/example.yaml
+
+  restore_at_start:
+    code:
+      - internal/autostart/**
+      - internal/daemonctl/wanted.go
+      - internal/api/handlers_startup.go
+      - cmd/kongtrol/daemon_restore.go
+      - cmd/kongtrol/cmd_config_startup.go
+      - internal/i18n/startup.go
+    surfaces:
+      - README.md#watchdog
+      - AGENTS.md#daemon_lifecycle
+      - web/ui/src/data/startup.ts#restore_at_start
+      - web/ui/src/components/settings/StartupSection.tsx#restore_at_start
+      - web/ui/src/i18n/pages/settings.ts#restore_at_start
+      - landing/src/content/guide.es.tsx#daemon_lifecycle
+      - landing/src/content/guide.en.tsx#daemon_lifecycle
+      - install.sh
+      - packaging/windows/kongtrol.iss
 
   daemon_lifecycle:
     code:

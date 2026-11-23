@@ -52,6 +52,7 @@ type ProfileService struct {
 	emitStderr      func(message string)
 	onAttach        func(name string, st vpn.AttachState)
 	onIntent        func(name string, intendedDown bool)
+	externalTunnels func() []ExternalTunnel
 
 	// inflight tracks running Connect calls per profile so Disconnect can
 	// cancel them (and wait for them) before it reports success.
@@ -90,6 +91,9 @@ type ProfileServiceDeps struct {
 	// OnIntent records that the user turned a tunnel on (false) or off
 	// (true): the kill switch never blocks a tunnel the user turned off.
 	OnIntent func(name string, intendedDown bool)
+	// ExternalTunnels lists provider app tunnels up outside Kongtrol
+	// (optional): a full-tunnel connect is refused while one is up.
+	ExternalTunnels func() []ExternalTunnel
 }
 
 func NewProfileService(deps ProfileServiceDeps) *ProfileService {
@@ -109,6 +113,7 @@ func NewProfileService(deps ProfileServiceDeps) *ProfileService {
 		emitStderr:      deps.EmitStderr,
 		onAttach:        deps.OnAttach,
 		onIntent:        deps.OnIntent,
+		externalTunnels: deps.ExternalTunnels,
 	}
 }
 
@@ -121,6 +126,13 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	vpnCfg, ok := s.cfg.VPNs[name]
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.no_config_for_profile", name))
+	}
+	if adapter.Status().Normalize() != vpn.StatusConnected {
+		// Never start a second tunnel that takes all traffic (ADR-0099).
+		if err := s.CheckFullTunnelConflict(name); err != nil {
+			s.audit("WARN", "vpn.connect_refused", name, s.f("cli.audit.connect_failed", name, err))
+			return err
+		}
 	}
 	ctx, done := s.trackConnect(ctx, name)
 	defer done()
@@ -239,6 +251,30 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	}
 
 	s.audit("INFO", "vpn.connect", name, s.f("cli.audit.connect", name))
+	return nil
+}
+
+// CheckFullTunnelConflict returns a *FullTunnelConflictError when profile
+// name carries all traffic and another tunnel already does (a connected
+// Kongtrol profile or a provider app outside Kongtrol). Two full tunnels
+// fight over the default route and, with WireGuard for Windows or a
+// provider kill switch, block each other's traffic (ADR-0099).
+func (s *ProfileService) CheckFullTunnelConflict(name string) error {
+	if s == nil || s.cfg == nil {
+		return nil
+	}
+	v, ok := s.cfg.VPNs[name]
+	if !ok || !ProfileCarriesAllTraffic(v) {
+		return nil
+	}
+	managed, ifaces := managedFullTunnels(s.cfg, s.adapters, name)
+	var external []ExternalTunnel
+	if s.externalTunnels != nil {
+		external = s.externalTunnels()
+	}
+	if c := fullTunnelConflicts(name, v.Type, true, managed, ifaces, external); len(c) > 0 {
+		return newFullTunnelConflictError(name, c[0])
+	}
 	return nil
 }
 

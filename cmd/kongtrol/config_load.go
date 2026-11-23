@@ -74,6 +74,10 @@ func loadConfig() error {
 	killSwitchSvc.SetBlocker(destBlocker)
 	killSwitchSvc.SetRouteLister(routeMgr.List)
 	killSwitchSvc.SetOnBlock(onKillSwitchBlock)
+	// A dropped full tunnel is never blocked while another VPN carries all
+	// traffic (ADR-0099).
+	killSwitchSvc.SetExternalTunnels(externalFullTunnels)
+	killSwitchSvc.SetOnSuperseded(onFullTunnelSuperseded)
 	// Public IP lookup (and the leak check built on it): always present so
 	// it can be toggled at runtime, but it makes no request unless the user
 	// opted in (security.public_ip_check). Kill switch and DNS guard never
@@ -96,6 +100,9 @@ func loadConfig() error {
 	watchdog.ConfigureFailover(profileFailover(cfg))
 	adapterSync = app.NewAdapterSync(adapters, cfg, watchdog.Forget)
 	watchdog.SetEventCallback(onWatchdogEvent)
+	// Errors only the user can resolve stop the round without using an
+	// attempt (ADR-0098, ADR-0099).
+	watchdog.SetWaitForUser(reconnectWaitsForUser)
 
 	// DNS manager — reference-counted guard across simultaneous tunnels.
 	dnsGuard := security.NewDNSGuard()

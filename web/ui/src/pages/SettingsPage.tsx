@@ -1,6 +1,7 @@
 // Ajustes (/settings) — docs/dashboard-parity.md §3.4 (General) + the items
 // the classic panel lacked: language/theme, Kongtrol on this computer
-// (version, helper, config file, panel address, restart, quit), health
+// (version, helper, config file, panel address, restart, quit), what
+// happens at start (sign-in, reconnect: ADR-0098), health
 // check, privacy (update notice opt-in, public IP → Seguridad), diagnostics
 // + export, help links and "Borrar todos mis datos". Security tuning lives
 // on /security and the scheduler on /rules/schedule (ADR-0038 §6).
@@ -13,6 +14,7 @@ import { DataCard } from '../components/settings/DataCard'
 import { HealthSection } from '../components/settings/HealthSection'
 import { AboutSection, AppearanceSection, PrivacySection } from '../components/settings/SettingsGroups'
 import { SettingsSection } from '../components/settings/SettingsSection'
+import { StartupSection } from '../components/settings/StartupSection'
 import { SystemSection } from '../components/settings/SystemSection'
 import { UpdatesCard } from '../components/settings/UpdatesCard'
 import { ErrorState, Skeleton } from '../components/ui/States'
@@ -23,6 +25,7 @@ import type { MessageKey } from '../i18n/messages'
 const TOC: { id: string; label: MessageKey }[] = [
   { id: 'look', label: 'settings.look.title' },
   { id: 'system', label: 'settings.system.title' },
+  { id: 'startup', label: 'settings.startup.title' },
   { id: 'health', label: 'settings.health.title' },
   { id: 'privacy', label: 'settings.privacy.title' },
   { id: 'diagnostics', label: 'diag.title' },
@@ -62,6 +65,7 @@ export function SettingsPage() {
         <div className="k-set-col">
           <AppearanceSection />
           <SystemSection settings={settings.data} helper={helper} />
+          <StartupSection />
           {settings.data ? (
             <HealthSection settings={settings.data} />
           ) : (

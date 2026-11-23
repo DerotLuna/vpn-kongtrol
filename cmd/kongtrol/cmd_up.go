@@ -134,6 +134,9 @@ func runUp(ctx context.Context, targets []string) error {
 				fmt.Println(tuiWarn(ct("cli.up.cancelled")))
 				return nil
 			}
+			// A refusal with its "what to do" line (e.g. another VPN
+			// already carries all traffic, ADR-0099) shows both.
+			err = remoteUserErr(err)
 			fmt.Println(tuiErr(paintBold(cBright, name) + "  " + err.Error() + "  " + paint(cDim, "("+elapsed.String()+")")))
 			fmt.Println(tuiInfo(paint(cDim, ct("cli.up.failed_hint"))))
 			return alreadyReported(fmt.Errorf("up %s: %w", name, err))

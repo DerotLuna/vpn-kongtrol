@@ -45,7 +45,9 @@ const EventRow = memo(function EventRow({ ev, onConnect, busy }: { ev: DaemonEve
         <div className="k-ev__actions">
           {ev.can_connect && (
             <Button variant="outlined" size="sm" icon={<PlugIcon />} loading={busy} onClick={() => onConnect(ev.profile!)}>
-              {t('activity.event.policy.event.action_connect', { 0: ev.profile })}
+              {ev.key.startsWith('watchdog.event.')
+                ? t('activity.event.watchdog.event.action_retry', { 0: ev.profile })
+                : t('activity.event.policy.event.action_connect', { 0: ev.profile })}
             </Button>
           )}
           <AddRuleIcon via={ev.profile} />
