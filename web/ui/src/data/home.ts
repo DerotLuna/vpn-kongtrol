@@ -1,4 +1,4 @@
-// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.2 · 2026-11-19
+// Kongtrol UI — Inicio (/) data: resources, actions and live samples · v1.0.3 · 2026-11-23
 //
 // Everything the Home page reads or changes that the shared layer
 // (resources.ts) does not have yet: network overview, what goes through each
@@ -14,6 +14,7 @@ import type { SecurityStatus, TunnelMetrics } from '../api/types'
 import { usePreferences } from '../app/preferences-context'
 import type { MessageKey } from '../i18n/messages'
 import { keys } from './keys'
+import { offerLabel, offerOf, useOfferRunner } from './offers'
 import { useOptimisticMutation } from './optimistic'
 import { createStore, useStore } from './store'
 import { endTransition, pendingActions, setPending, watchTransition, type TunnelAction } from './transition'
@@ -68,6 +69,8 @@ export interface DaemonEvent {
   policy?: string
   action?: string
   can_connect?: boolean
+  /** An extra action button (ADR-0102): src/data/offers.ts. */
+  offer?: string
 }
 
 /** internal/api/handlers_events.go `EventsResponse`. */
@@ -561,7 +564,7 @@ export function useDaemonNotices(onNotice: (e: DaemonEvent) => void): void {
     handler.current = onNotice
   }, [onNotice])
   useEffect(() => {
-    const fresh = (data?.events ?? []).filter((e) => NOTICE_KINDS.has(e.kind))
+    const fresh = (data?.events ?? []).filter((e) => NOTICE_KINDS.has(e.kind) || !!e.offer)
     if (fresh.length === 0) return
     recentNotices.set([...fresh].reverse().concat(recentNotices.get()).slice(0, NOTICES_MAX))
     fresh.forEach((e) => handler.current(e))
@@ -589,11 +592,23 @@ const NOTICE_TEXT: Record<string, MessageKey> = {
   'watchdog.event.gave_up_blocking': 'home.notice.watchdog.gaveUpBlocking',
   'watchdog.event.gave_up_blocking_full': 'home.notice.watchdog.gaveUpBlockingFull',
   'watchdog.event.reconnect_blocked': 'home.notice.watchdog.reconnectBlocked',
+  // Same Proton account / tunnel address (ADR-0103, strings in i18n/pages/proton.ts).
+  'watchdog.event.reconnect_blocked_proton': 'home.notice.watchdog.reconnectBlockedProton',
+  'watchdog.event.reconnect_blocked_address': 'home.notice.watchdog.reconnectBlockedAddress',
+  'watchdog.event.proton_handover': 'home.notice.watchdog.protonHandover',
+  'watchdog.event.proton_handover_add': 'home.notice.watchdog.protonHandoverAdd',
+  'watchdog.event.proton_blocks_other': 'home.notice.watchdog.protonBlocksOther',
   'killswitch.event.blocking': 'home.notice.killswitch.blocking',
   'killswitch.event.blocking_full': 'home.notice.killswitch.blockingFull',
   'killswitch.event.blocking_full_lan': 'home.notice.killswitch.blockingFullLan',
   'killswitch.event.superseded': 'home.notice.killswitch.superseded',
   'update.event.available': 'home.notice.update.available',
+  'killswitch.event.offer': 'offer.notice.killswitch',
+}
+
+/** The page key of a daemon notice key, or undefined when this page does not know it. */
+export function noticeTextKey(daemonKey: string): MessageKey | undefined {
+  return NOTICE_TEXT[daemonKey]
 }
 
 /** One notice as text in the page's language; unknown keys fall back to a generic line. */
@@ -624,10 +639,23 @@ export const ACTION_TOAST_MS = 60_000
 export function useNoticeToasts(): void {
   const { t } = usePreferences()
   const run = useTunnelActions()
+  const runOffer = useOfferRunner(useCallback((profile: string) => run(profile, 'disconnect'), [run]))
   const onNotice = useCallback(
     (e: DaemonEvent) => {
       const message = noticeText(e, t)
       const tone = e.level === 'WARN' ? 'bad' : 'info'
+      // An offer (ADR-0102) is the toast's action: "Recuperar internet"
+      // matters more than "Reintentar"; Inicio's list shows both.
+      const offer = offerOf(e)
+      if (offer) {
+        toasts.show({
+          tone,
+          message,
+          duration: ACTION_TOAST_MS,
+          action: { label: offerLabel(offer, t), run: () => runOffer(offer, e.seq) },
+        })
+        return
+      }
       if (e.can_connect && e.profile) {
         const profile = e.profile
         toasts.show({
@@ -640,7 +668,7 @@ export function useNoticeToasts(): void {
       }
       toasts.show({ tone, message })
     },
-    [t, run],
+    [t, run, runOffer],
   )
   useDaemonNotices(onNotice)
 }

@@ -18,6 +18,7 @@ import { usePreferences } from '../app/preferences-context'
 import { keys } from '../data/keys'
 import { useAppVersion, useGroupsQuery, useSecurityQuery } from '../data/resources'
 import { SHOWN_EVENT, announceReady, trayHost } from '../tray/bridge'
+import { TrayOffer } from '../tray/TrayOffer'
 import {
   aggregate,
   applyOrder,
@@ -31,6 +32,7 @@ import {
   type Tone,
 } from '../tray/model'
 import { SETTLE_TIMEOUT_MS } from '../data/transition'
+import { RestoreQuestion } from '../components/onboarding/RestoreQuestion'
 import '../theme/tray.css'
 
 /** A request the feed never confirmed stops showing as pending after this. */
@@ -174,6 +176,14 @@ export function TrayPage() {
     })
   }, [tunnels])
 
+  // "Recuperar internet": the row's own disconnect (a user disconnect, so
+  // the kill switch lifts its block, ADR-0102).
+  const release = (name: string) => {
+    const tn = tunnels?.find((x) => x.Name === name)
+    if (tn) toggle(tn, true)
+    else void api.disconnect(name).then(reload, reload)
+  }
+
   const toggle = (tn: TunnelMetrics, on: boolean) => {
     const want: Pending = on ? 'disconnect' : 'connect'
     setFailed((f) => ({ ...f, [tn.Name]: false }))
@@ -287,6 +297,9 @@ export function TrayPage() {
           </div>
         )}
 
+        {/* A notice's offer (ADR-0102): kill switch, get internet back, add a provider. */}
+        {!unauthorized && <TrayOffer security={security} onRelease={release} />}
+
         {tunnels && !unauthorized && (
           <section aria-labelledby="tray-vpns">
             <h2 id="tray-vpns" className="tray-label">
@@ -347,6 +360,9 @@ export function TrayPage() {
             )}
           </section>
         )}
+
+        {/* After the first VPN: reconnect at start? (ADR-0101) */}
+        {tunnels && !unauthorized && <RestoreQuestion variant="tray" />}
 
         {tunnels && groups.length > 0 && (
           <section aria-labelledby="tray-groups">

@@ -1,4 +1,4 @@
-// Kongtrol UI — "＋ Agregar" sheet · v1.0.0 · 2026-11-19
+// Kongtrol UI — "＋ Agregar" sheet · v1.2.0 · 2026-11-23
 //
 // One sheet for every "add" in the panel (ADR-0055): a menu with three
 // plain-language choices, then
@@ -20,7 +20,7 @@ import { usePreferences } from '../../app/preferences-context'
 import { useUnsavedChanges } from '../../app/unsaved'
 import { droppedFile } from '../../data/add'
 import { useTunnelActions } from '../../data/home'
-import { useDetectedClients, useProfilesQuery, type AdapterType } from '../../data/profiles'
+import { useDetectedClients, useProfilesQuery, type AdapterType, type VPNProfile } from '../../data/profiles'
 import { useExplain, useTogglePolicy } from '../../data/rules'
 import { useTunnelsQuery } from '../../data/resources'
 import type { MessageKey } from '../../i18n/messages'
@@ -33,6 +33,7 @@ import { RouteIcon } from '../rules/icons'
 import { isKnownType, specOf } from '../profiles/catalog'
 import { FileStep } from './FileStep'
 import { defaultVia, emptyRuleDraft } from './model'
+import { MoveRules } from './MoveRules'
 import { Choice } from './parts'
 import { saveAddRecovery, type AddRecovery } from './recovery'
 import { RuleStep, type RuleDraft, type SavedRule } from './RuleStep'
@@ -43,7 +44,7 @@ type View =
   | { k: 'vpn'; type?: AdapterType | undefined }
   | { k: 'file'; note?: string | undefined }
   | { k: 'rule' }
-  | { k: 'doneVpn'; name: string; path?: string | undefined }
+  | { k: 'doneVpn'; name: string; path?: string | undefined; provider?: string | undefined; type?: AdapterType | undefined }
   | { k: 'doneRule'; rule: SavedRule }
 
 const TITLE: Record<View['k'], MessageKey> = {
@@ -137,7 +138,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   }
   const onDirty = useCallback((d: boolean) => setStepDirty(d), [])
 
-  const vpnDone = (name: string, reauth: boolean, path?: string) => {
+  const vpnDone = (name: string, reauth: boolean, path?: string, provider?: string, type?: AdapterType) => {
     if (reauth) {
       const draft = backToRule ? { ...rule, via: name } : null
       setResume({ saved: saveAddRecovery({ profile: name, draft }), target: draft?.input ?? '' })
@@ -152,7 +153,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
       go({ k: 'rule' })
       return
     }
-    go({ k: 'doneVpn', name, path })
+    go({ k: 'doneVpn', name, path, provider, type })
   }
 
   const finish = (to?: string) => {
@@ -186,7 +187,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             initialType={view.type}
             onBack={() => go(backToRule ? { k: 'rule' } : { k: 'menu' })}
             onNeedsFile={(type) => go({ k: 'file', note: t('add.file.fromPicker', { app: specOf(type).label }) })}
-            onDone={vpnDone}
+            onDone={(name, reauth, type) => vpnDone(name, reauth, undefined, undefined, type)}
             onDirty={onDirty}
             focusFirst={focusFirst}
           />
@@ -199,7 +200,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             incoming={incoming}
             note={view.note}
             onBack={() => go(backToRule ? { k: 'rule' } : { k: 'menu' })}
-            onDone={(name, path, reauth) => vpnDone(name, reauth, path)}
+            onDone={(name, path, reauth, provider) => vpnDone(name, reauth, path, provider)}
             onDirty={onDirty}
           />
         )
@@ -233,6 +234,9 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
           <DoneVpn
             name={view.name}
             path={view.path}
+            provider={view.provider}
+            type={view.type ?? profiles.find((p) => p.name === view.name)?.type}
+            profiles={profiles}
             onRule={() => {
               setRule(emptyRuleDraft('', view.name))
               setViaChosen(true)
@@ -316,7 +320,25 @@ function Menu({ onPick }: { onPick: (k: 'vpn' | 'file' | 'rule') => void }) {
   )
 }
 
-function DoneVpn({ name, path, onRule, onHome }: { name: string; path?: string | undefined; onRule: () => void; onHome: () => void }) {
+function DoneVpn({
+  name,
+  path,
+  provider,
+  type,
+  profiles,
+  onRule,
+  onHome,
+}: {
+  name: string
+  path?: string | undefined
+  /** The new profile's type: a provider app may take over its files' rules (ADR-0104). */
+  type?: AdapterType | undefined
+  profiles: readonly VPNProfile[]
+  /** Whose account issued the imported file (ADR-0103): Proton clashes with its own app. */
+  provider?: string | undefined
+  onRule: () => void
+  onHome: () => void
+}) {
   const { t } = usePreferences()
   const run = useTunnelActions()
   return (
@@ -324,6 +346,8 @@ function DoneVpn({ name, path, onRule, onHome }: { name: string; path?: string |
       <Banner tone="ok" title={t('add.done.vpn', { name })}>
         <span>{t('add.done.vpn.what')}</span>
       </Banner>
+      {provider === 'protonvpn' && <Banner tone="caution" title={t('add.done.protonHint')} />}
+      <MoveRules to={name} type={type} profiles={profiles} />
       {path && (
         <p className="k-add__small">
           {t('add.file.stored')} <code className="mono">{path}</code>

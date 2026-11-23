@@ -154,20 +154,26 @@ func TestFlyoutInitScriptQuoting(t *testing.T) {
 func TestParseFlyoutMessage(t *testing.T) {
 	const nonce = "abc123"
 	cases := map[string]flyoutAction{
-		"abc123 ready":          flyoutReady,
-		"abc123 close":          flyoutClose,
-		"abc123 open-dashboard": flyoutOpenDashboard,
-		"abc123 quit-tray":      flyoutQuitTray,
-		"abc123 quit-all":       flyoutQuitAll,
-		"abc123 open-add":       flyoutOpenAdd,
-		"abc123 reauth":         flyoutReauth,
-		"reauth":                flyoutNone, // no nonce
-		"abc123 rm -rf":         flyoutNone, // closed set
-		"quit-all":              flyoutNone, // no nonce
-		"wrong quit-all":        flyoutNone,
-		"abc12 quit-all":        flyoutNone,
-		"kongtrol:off-page":     flyoutNone,
-		"":                      flyoutNone,
+		"abc123 ready":                flyoutReady,
+		"abc123 close":                flyoutClose,
+		"abc123 open-dashboard":       flyoutOpenDashboard,
+		"abc123 quit-tray":            flyoutQuitTray,
+		"abc123 quit-all":             flyoutQuitAll,
+		"abc123 open-add":             flyoutOpenAdd,
+		"abc123 reauth":               flyoutReauth,
+		"abc123 open-add-protonvpn":   flyoutOpenAddProtonVPN,
+		"abc123 open-add-nordvpn":     flyoutOpenAddNordVPN,
+		"abc123 open-add-surfshark":   flyoutOpenAddSurfshark,
+		"abc123 open-add-forticlient": flyoutOpenAddFortiClient,
+		"abc123 open-add-wireguard":   flyoutNone, // closed list
+		"abc123 open-add protonvpn":   flyoutNone,
+		"reauth":                      flyoutNone, // no nonce
+		"abc123 rm -rf":               flyoutNone, // closed set
+		"quit-all":                    flyoutNone, // no nonce
+		"wrong quit-all":              flyoutNone,
+		"abc12 quit-all":              flyoutNone,
+		"kongtrol:off-page":           flyoutNone,
+		"":                            flyoutNone,
 	}
 	for msg, want := range cases {
 		if got := parseFlyoutMessage(msg, nonce); got != want {

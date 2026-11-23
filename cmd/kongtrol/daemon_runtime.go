@@ -218,6 +218,8 @@ func buildAPIServer(onShutdown func()) *api.Server {
 	// "Abrir Kongtrol al iniciar sesión", "volver a conectar" and the
 	// stop-all that forgets the VPNs to reconnect (ADR-0098).
 	srv.SetStartup(startupHooks())
+	// The restore question shows at once in the panel and tray (ADR-0101).
+	restoreQuestionChanged = srv.AnnounceChange
 	// One-click helper install from the tray / dashboard.
 	srv.SetHelperInstaller(version, installHelperFromGUI)
 	// Root-only profile files (/etc/wireguard): one OS prompt (ADR-0058).

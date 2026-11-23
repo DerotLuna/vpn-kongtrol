@@ -67,6 +67,7 @@ reasoned but unverified.
 | [2026-11-20-antivirus-blocked-binary-in-installers](2026-11-20-antivirus-blocked-binary-in-installers.md) | Windows errors 225/226 when an antivirus blocks a start, the PowerShell exception shape (measured), Defender Protection history actions and false-positive submission, what `!ml` means (no official definition), shell exit codes 126/127/128+N | ADR-0073 |
 | [2026-11-20-install-scripts-cli-and-tray](2026-11-20-install-scripts-cli-and-tray.md) | How rustup, Tailscale and Docker Desktop install everything by default with an opt-out; Inno Setup uninstall key and silent upgrade flags; Microsoft's Server Core check (ServerLevels); freedesktop desktop-session variables; what the Windows release assets contain; GUI-subsystem exe output to a pipe (measured) | ADR-0075 |
 | [VPN coexistence](2026-11-21-vpn-coexistence.md) | Providers, default routes, diagnosis, two full tunnels and the kill switch | ADR-0086, ADR-0099 |
+| [Proton file next to the Proton app](2026-11-23-proton-same-account.md) | Proton file format, shared 10.2.0.2 address, advanced kill switch, pending Windows test | ADR-0103 |
 | [Direct diagnostics](2026-11-21-diagnostics-deep-links.md) | Authenticated dashboard entry points and tray colors | ADR-0083 |
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |

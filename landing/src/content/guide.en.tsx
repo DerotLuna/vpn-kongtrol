@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.4.0 · 2026-11-23.
+// Version 3.6.0 · 2026-11-23.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -72,7 +72,7 @@ export default function guideEN(os: OS): GuideContent {
       vpns: <>your VPNs</>,
       foot: <>kill switch · DNS protection · signed log · all local</>,
     },
-    // feature:providers
+    // feature:providers feature:rule_move
     prereqs: {
       title: <>Before you start</>,
       lead: <>Have your VPN working as usual. Kongtrol uses it; it doesn't set it up for you.</>,
@@ -85,7 +85,10 @@ export default function guideEN(os: OS): GuideContent {
         { vpn: <>Tailscale, Cloudflare WARP, Cisco Secure Client, GlobalProtect</>, need: <>Its official program installed and signed in.</> },
       ],
       note: <>Full list and what Kongtrol does with each: <a href="/en/#vpns">supported VPNs</a>. Proton VPN also works without its app,
-        as a <IC c="wireguard" /> profile with the file you download from your account.</>,
+        as a <IC c="wireguard" /> profile with the file you download from your account. Use one or the other, not both
+        at once: they share your account and clash. Kongtrol will not connect that file while the Proton app is connected,
+        and if you connect the app, it disconnects the file and tells you. If you add the Proton app when that file already has rules,
+        Kongtrol offers to move them to the app (or later: <IC c="kongtrol policy move" />).</>,
     },
     // feature:helper feature:windows_installer_shutdown
     install: {
@@ -152,7 +155,7 @@ $ kongtrol profile import ~/Downloads/proton-us.conf`,
       title: <>Connect and disconnect</>,
       lead: <>From the icon: click the VPN. From the panel: <strong>Home</strong> → <strong>Connect</strong>.</>,
       bg: <>Kongtrol keeps working in the background. Closing the panel, the terminal or the icon disconnects nothing.
-        If you shut down or restart the computer, it reconnects the VPNs you had connected when it comes back (<strong>Settings</strong> → <strong>When starting</strong>).</>,
+        After your first VPN, Kongtrol asks whether to reconnect the ones you left connected when the computer starts; it waits for internet and never opens a VPN app on its own. You can change it in <strong>Settings</strong> → <strong>When starting</strong>.</>,
       stop: <>To disconnect everything: <strong>Quit and disconnect all</strong> in the icon, or <IC c="kongtrol down --all" />.
         The icon stays with "Kongtrol stopped"; <strong>Start Kongtrol</strong> starts it again.</>,
       code: `$ kongtrol up office           # connect one VPN
@@ -315,7 +318,8 @@ $ sudo iptables -F KONGTROL`,
         },
         {
           q: <>A VPN dropped and nothing loads</>,
-          fix: <>That VPN carried all your traffic and the kill switch protects it. Disconnect it to browse now, or create rules
+          fix: <>That VPN carried all your traffic and the kill switch protects it. To browse now, press "Get internet back" in the notice
+            (it disconnects it), or create rules
             so only some sites depend on it. If your printer or NAS is unreachable too, turn on
             "Allow the local network" in Security.</>,
           code: `$ kongtrol down <profile>`,

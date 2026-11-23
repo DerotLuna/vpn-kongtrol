@@ -15,7 +15,10 @@ import common from './common'
 import activity from './pages/activity'
 import add from './pages/add'
 import home from './pages/home'
+import offers from './pages/offers'
+import onboarding from './pages/onboarding'
 import profiles from './pages/profiles'
+import proton from './pages/proton'
 import rules from './pages/rules'
 import security from './pages/security'
 import settings from './pages/settings'
@@ -25,19 +28,22 @@ import tray from './pages/tray'
 export type Lang = 'es' | 'en'
 
 /** Every module, for the duplicate-key test. Order does not matter. */
-export const MODULES = { common, add, home, profiles, rules, traffic, security, activity, settings, tray } as const
+export const MODULES = { common, add, home, onboarding, profiles, proton, rules, traffic, security, activity, settings, tray, offers } as const
 
 const es = {
   ...common.es,
   ...add.es,
   ...home.es,
+  ...onboarding.es,
   ...profiles.es,
+  ...proton.es,
   ...rules.es,
   ...traffic.es,
   ...security.es,
   ...activity.es,
   ...settings.es,
   ...tray.es,
+  ...offers.es,
 }
 
 export type MessageKey = keyof typeof es
@@ -47,13 +53,16 @@ const en: Messages = {
   ...common.en,
   ...add.en,
   ...home.en,
+  ...onboarding.en,
   ...profiles.en,
+  ...proton.en,
   ...rules.en,
   ...traffic.en,
   ...security.en,
   ...activity.en,
   ...settings.en,
   ...tray.en,
+  ...offers.en,
 }
 
 export const messages: Record<Lang, Messages> = { es, en }

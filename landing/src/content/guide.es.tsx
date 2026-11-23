@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 3.4.0 · 2026-11-23.
+// Version 3.6.0 · 2026-11-23.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -78,7 +78,7 @@ export default function guideES(os: OS) {
       vpns: <>tus VPN</>,
       foot: <>kill switch · protección de DNS · registro firmado · todo local</>,
     },
-    // feature:providers
+    // feature:providers feature:rule_move
     prereqs: {
       title: <>Antes de empezar</>,
       lead: <>Ten tu VPN funcionando como siempre. Kongtrol la usa; no la configura por ti.</>,
@@ -91,7 +91,10 @@ export default function guideES(os: OS) {
         { vpn: <>Tailscale, Cloudflare WARP, Cisco Secure Client, GlobalProtect</>, need: <>Su programa oficial instalado y con sesión iniciada.</> },
       ],
       note: <>Lista completa y qué hace Kongtrol con cada una: <a href="/#vpns">VPN compatibles</a>. Proton VPN también funciona sin su app,
-        como perfil <IC c="wireguard" /> con el archivo que descargas de tu cuenta.</>,
+        como perfil <IC c="wireguard" /> con el archivo que descargas de tu cuenta. Usa uno u otro, no los dos a la vez:
+        comparten tu cuenta y chocan. Kongtrol no conecta ese archivo mientras la app de Proton esté conectada, y si conectas
+        la app, desconecta el archivo y te avisa. Si agregas la app de Proton cuando ya tienes reglas con
+        ese archivo, Kongtrol te ofrece pasarlas a la app (o después: <IC c="kongtrol policy move" />).</>,
     },
     // feature:helper feature:windows_installer_shutdown
     install: {
@@ -158,7 +161,7 @@ $ kongtrol profile import ~/Descargas/proton-us.conf`,
       title: <>Conectar y desconectar</>,
       lead: <>Desde el ícono: haz clic en la VPN. Desde el panel: <strong>Inicio</strong> → <strong>Conectar</strong>.</>,
       bg: <>Kongtrol sigue trabajando en segundo plano. Cerrar el panel, la terminal o el ícono no desconecta nada.
-        Si apagas o reinicias el equipo, al volver reconecta las VPN que tenías conectadas (<strong>Ajustes</strong> → <strong>Al iniciar</strong>).</>,
+        Después de tu primera VPN, Kongtrol te pregunta si quieres que al encender el equipo vuelva a conectar las que dejaste conectadas; espera a tener internet y no abre apps de VPN por su cuenta. Puedes cambiarlo en <strong>Ajustes</strong> → <strong>Al iniciar</strong>.</>,
       stop: <>Para desconectar todo: <strong>Salir y desconectar todo</strong> en el ícono, o <IC c="kongtrol down --all" />.
         El ícono se queda con «Kongtrol detenido»; <strong>Iniciar Kongtrol</strong> lo vuelve a arrancar.</>,
       code: `$ kongtrol up oficina          # conecta una VPN
@@ -321,7 +324,8 @@ $ sudo iptables -F KONGTROL`,
         },
         {
           q: <>Se cayó una VPN y no carga nada</>,
-          fix: <>Esa VPN llevaba todo tu tráfico y el kill switch la protege. Desconéctala para navegar ya, o crea reglas
+          fix: <>Esa VPN llevaba todo tu tráfico y el kill switch la protege. Para navegar ya, pulsa «Recuperar internet» en el aviso
+            (la desconecta), o crea reglas
             para que solo algunos sitios dependan de ella. Si tampoco llegas a la impresora o al NAS, enciende
             «Permitir la red local» en Seguridad.</>,
           code: `$ kongtrol down <perfil>`,

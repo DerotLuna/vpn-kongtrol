@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.16 · 2026-11-23
+Versión 1.17 · 2026-11-23
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -241,7 +241,9 @@ scripts) para usar el perfil nuevo.
 Se revisa con las mismas reglas que usa el servicio de Kongtrol antes de conectar: se rechazan los
 archivos que ejecutan comandos (`PostUp`/`PreUp` en WireGuard; `up`, `down`, `plugin`,
 `script-security 2` en OpenVPN) y un `.ovpn` importado debe llevar sus certificados dentro
-(`<ca>…</ca>`). Nunca reemplaza un archivo con el mismo nombre sin confirmarlo.
+(`<ca>…</ca>`). Nunca reemplaza un archivo con el mismo nombre sin confirmarlo. Si el archivo es de tu cuenta de
+Proton, al importarlo te avisa que no lo conectes mientras la app de Proton esté conectada (ver
+«Archivo de Proton junto a la app de Proton», ADR-0103).
 
 **Archivos que solo puede leer el administrador (Linux, p. ej. `/etc/wireguard/wg0.conf`).**
 Kongtrol corre con tu usuario y no puede leerlos ahí. No hace falta moverlos a mano:
@@ -1043,7 +1045,8 @@ servidores DNS solo se alcanzan por el túnel caído) y avisa qué bloquea el ki
 - **«…bloquea solo sus destinos»**: el resto de internet sigue normal.
 - **«…llevaba todo tu tráfico»**: el perfil es de túnel completo (en WireGuard,
   `AllowedIPs = 0.0.0.0/0`). Con el kill switch activo, internet queda bloqueado hasta que vuelva;
-  eso es lo que pide un túnel completo. Para navegar ya: desconéctalo (panel o
+  eso es lo que pide un túnel completo. Para navegar ya: pulsa «Recuperar internet» en el aviso (lo
+  desconecta; o
   `kongtrol down <perfil>`). Si solo necesitas algunos sitios por esa VPN, agrega reglas
   (Agregar → «Hacer que un sitio salga por una VPN»): con reglas, Kongtrol lleva por el túnel solo
   esos destinos y lo demás no depende de él.
@@ -1064,6 +1067,24 @@ Dos VPN que llevan todo tu tráfico a la vez se cortan entre sí (WireGuard para
 túnel completo (Proton VPN, NordVPN, Surfshark, WireGuard con `default_egress`, OpenVPN con
 `redirect-gateway`) mientras otro está conectado: el panel, la bandeja y `kongtrol up` dicen cuál
 desconectar primero. Un perfil con reglas (túnel parcial) sí puede convivir con uno completo.
+
+**Archivo de Proton junto a la app de Proton** (ADR-0103). Un perfil `wireguard` u `openvpn` hecho
+con el archivo que descargas de tu cuenta de Proton usa tu misma cuenta y, en WireGuard, la misma
+dirección interna (`10.2.0.2`) que la app: a la vez chocan, aunque el perfil tenga reglas. Kongtrol
+lo reconoce por el archivo (no hay que marcar nada) y:
+
+- al importarlo avisa: «Este archivo es de tu cuenta de Proton. No lo conectes mientras la app de
+  Proton esté conectada: chocan.»;
+- no lo conecta mientras Proton está conectado en su app (dice que desconectes Proton en su app);
+- si conectas la app con el perfil arriba, Kongtrol desconecta el perfil y te avisa una vez; pulsa
+  Reintentar cuando desconectes Proton en su app. Sin un perfil de Proton VPN en Kongtrol, el aviso
+  ofrece agregarlo para ver la app aquí.
+
+Dos perfiles directos con la misma dirección interna (dos archivos de Proton con `10.2.0.2`) tampoco
+se conectan a la vez. Para usar dos, cambia la de uno en su archivo: `Address = 10.3.0.2/32` y
+`DNS = 10.3.0.1`, como indica Proton. Si un perfil que no es de Proton deja de responder mientras
+Proton está conectado en su app, revisa el «kill switch avanzado» de Proton: puede bloquear otras
+VPN (desactívalo o agrega ese perfil en «Split tunneling»; no verificado).
 
 WireGuard con línea `DNS =`: `wg-quick` manda **todas** las búsquedas al DNS del túnel mientras la
 interfaz exista (en systemd-resolved, `resolvconf -x` equivale a `~.`). Si el servidor deja de

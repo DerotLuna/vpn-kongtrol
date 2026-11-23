@@ -24,10 +24,18 @@ type StartupHooks struct {
 // SetStartup wires the startup settings and the stop-all hook.
 func (s *Server) SetStartup(h StartupHooks) { s.startup = h }
 
+// AnnounceChange wakes every client (WebSocket `changed` frame, ADR-0072)
+// after a change the daemon made on its own, such as the restore question
+// becoming pending after the first connect (ADR-0101).
+func (s *Server) AnnounceChange() { s.changes.bump() }
+
 type startupDTO struct {
 	StartAtLogin          bool `json:"start_at_login"`
 	StartAtLoginSupported bool `json:"start_at_login_supported"`
 	RestoreTunnels        bool `json:"restore_tunnels"`
+	// Ask: show "¿Volver a conectar tus VPN al encender el equipo?"
+	// (ADR-0101), answered with PUT {"restore_answer": bool}.
+	Ask bool `json:"ask"`
 }
 
 func (s *Server) startupStatus() (startupDTO, error) {
@@ -41,6 +49,7 @@ func (s *Server) startupStatus() (startupDTO, error) {
 		return out, err
 	}
 	out.RestoreTunnels = prefs.RestoreTunnelsEnabled()
+	out.Ask = prefs.RestoreQuestionPending()
 	return out, nil
 }
 
@@ -54,22 +63,35 @@ func (s *Server) handleGetStartup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, st)
 }
 
-// PUT /api/v1/startup {"start_at_login"?: bool, "restore_tunnels"?: bool}
+// PUT /api/v1/startup {"start_at_login"?: bool, "restore_tunnels"?: bool,
+// "restore_answer"?: bool}. restore_answer answers the question asked
+// after the first connect (ADR-0101): true turns on the reconnect and,
+// when this install has the tray, the start at sign-in; false ("Ahora
+// no") turns the reconnect off and leaves the start at sign-in as the
+// installer set it.
 func (s *Server) handleSetStartup(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		StartAtLogin   *bool `json:"start_at_login"`
 		RestoreTunnels *bool `json:"restore_tunnels"`
+		RestoreAnswer  *bool `json:"restore_answer"`
 	}
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
-	if err := dec.Decode(&req); err != nil || (req.StartAtLogin == nil && req.RestoreTunnels == nil) {
-		writeError(w, http.StatusBadRequest, `invalid JSON body: want {"start_at_login": bool} and/or {"restore_tunnels": bool}`)
+	if err := dec.Decode(&req); err != nil || (req.StartAtLogin == nil && req.RestoreTunnels == nil && req.RestoreAnswer == nil) {
+		writeError(w, http.StatusBadRequest, `invalid JSON body: want {"start_at_login": bool}, {"restore_tunnels": bool} and/or {"restore_answer": bool}`)
 		return
+	}
+	if req.RestoreAnswer != nil {
+		on := *req.RestoreAnswer
+		req.RestoreTunnels = &on
+		if on && req.StartAtLogin == nil && s.startup.Autostart != nil && s.startup.Autostart().Supported {
+			req.StartAtLogin = &on
+		}
 	}
 	if req.RestoreTunnels != nil {
 		on := *req.RestoreTunnels
 		if _, err := config.UpdatePreferences(s.preferencesPath, func(p *config.Preferences) error {
-			p.RestoreTunnels = &on
+			p.SetRestoreTunnels(on)
 			return nil
 		}); err != nil {
 			writeLocalizedError(w, r, http.StatusInternalServerError, err)

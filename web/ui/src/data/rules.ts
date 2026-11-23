@@ -1,4 +1,4 @@
-// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.1.0 · 2026-11-18
+// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.2.0 · 2026-11-23
 //
 // Policies, policy meta, the scheduler rules and the scheduler's two
 // settings, read and changed only through these hooks (ADR-0038). Keys
@@ -56,6 +56,9 @@ export const rulesApi = {
   createPolicy: (p: PolicyPayload) => http.post<unknown>('/api/v1/policies', p),
   updatePolicy: (name: string, p: Partial<PolicyPayload>) => http.put<unknown>(`/api/v1/policies/${enc(name)}`, p),
   deletePolicy: (name: string) => http.delete<unknown>(`/api/v1/policies/${enc(name)}`),
+  /** Every rule of `from` goes through `to`, one validated save (ADR-0104). */
+  movePolicies: (from: string, to: string) =>
+    http.post<{ moved: string[] | null }>('/api/v1/policies/move', { from, to }),
   /** Re-reads kongtrol.yaml (rules edited by hand) without restarting. */
   reloadPolicies: () => http.post<{ policies: number }>('/api/v1/policies/reload'),
   /** Dry run of an unsaved rule against one destination or app. */
@@ -109,6 +112,24 @@ export function useSavePolicy() {
     },
     successMessage: ({ original, payload }) =>
       t(original ? 'rules.toast.updated' : 'rules.toast.created', { name: payload.name }),
+  })
+}
+
+/**
+ * "Pasar reglas" (ADR-0104): every rule of `from` goes through `to`. Not
+ * optimistic: the caller waits for the answer and keeps its card on error.
+ */
+export function useMovePolicies() {
+  const { t } = usePreferences()
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ from, to }: { from: string; to: string }) => rulesApi.movePolicies(from, to),
+    onSuccess: (res, { to }) => {
+      void client.invalidateQueries({ queryKey: rulesKeys.anyPolicies })
+      void client.invalidateQueries({ queryKey: rulesKeys.explain })
+      const n = res.moved?.length ?? 0
+      toasts.show({ tone: 'ok', message: t(n === 1 ? 'add.move.done.one' : 'add.move.done.other', { n, to }) })
+    },
   })
 }
 

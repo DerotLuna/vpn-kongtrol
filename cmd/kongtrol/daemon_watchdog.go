@@ -21,12 +21,14 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 		emitAlert("WARN", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
 		logAudit("WARN", "vpn.reconnect_attempt", profile, cf("cli.alert.reconnect_attempt", profile, attempt))
 		releaseDroppedDNS(profile)
+		offerKillSwitch(profile)
 	case "reconnect_failed":
 		emitAlert("ERROR", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
 		logAudit("ERROR", "vpn.reconnect_failed", profile, cf("cli.alert.reconnect_failed", profile, attempt, err))
 		if svc := profileSvc.Load(); svc != nil {
 			svc.HandleReconnectError(profile, err)
 		}
+		maybeProtonBlocksHint(profile) // Proton's kill switch may block it (ADR-0103)
 	case "reconnect_gave_up":
 		// Once per outage: every attempt failed and no declared backup
 		// took over (ADR-0098). Kongtrol stops trying until the network
@@ -36,12 +38,15 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 		watchdogNotice("WARN", "vpn.reconnect_gave_up", key, profile, strconv.Itoa(attempt))
 	case "reconnect_blocked":
 		// Once per outage: only the user can resolve it (another VPN
-		// carries all traffic now, ADR-0099). Not an attempt.
-		watchdogNotice("WARN", "vpn.reconnect_blocked", "watchdog.event.reconnect_blocked", profile)
+		// carries all traffic now, ADR-0099; the same Proton account or tunnel
+		// address, ADR-0103). Not an attempt.
+		key, args := reconnectBlockedNotice(profile, err)
+		watchdogNotice("WARN", "vpn.reconnect_blocked", key, args...)
 	case "retry_rearmed":
 		emitAlert("INFO", profile, cf("cli.alert.retry_rearmed", profile))
 		logAudit("INFO", "vpn.retry_rearmed", profile, cf("cli.alert.retry_rearmed", profile))
 	case "reconnected":
+		protonHinted.Delete(profile)
 		if col != nil {
 			col.RecordReconnect(profile)
 		}
@@ -66,7 +71,9 @@ func onWatchdogEvent(e monitor.WatchdogEvent) {
 		// Once per outage: interface up, server silent (no WireGuard
 		// handshake). The watchdog reconnects it like a drop (ADR-0030).
 		watchdogNotice("WARN", "vpn.no_response", "watchdog.event.no_response", profile)
+		maybeProtonBlocksHint(profile)
 	case "responding":
+		protonHinted.Delete(profile)
 		watchdogNotice("INFO", "vpn.responding", "watchdog.event.responding", profile)
 	case "manual_reconnect_required":
 		// Once per drop: no automatic path (no CLI, or auto_connect off),
@@ -93,7 +100,7 @@ func gaveUpKey(profile string, ks security.KillSwitchStatus) string {
 // offersRetry: the notices after which only the user connects the profile
 // again, so clients offer "Reintentar".
 func offersRetry(key string) bool {
-	return strings.HasPrefix(key, "watchdog.event.gave_up") || key == "watchdog.event.reconnect_blocked"
+	return strings.HasPrefix(key, "watchdog.event.gave_up") || strings.HasPrefix(key, "watchdog.event.reconnect_blocked")
 }
 
 // reconnectWaitsForUser classifies reconnect errors only the user can
@@ -104,10 +111,11 @@ var reconnectWaitsForUser = func(err error) bool { return errors.Is(err, app.Err
 // watchdogNotice records a watchdog notice for every client and shows it
 // in the daemon's own output and audit log. A give-up notice offers to
 // connect the profile again (CanConnect: "Reintentar" in the panel and
-// the tray, `kongtrol up <profile>` in the CLI).
+// the tray, `kongtrol up <profile>` in the CLI). A notice about a kill
+// switch block offers "Recuperar internet" (ADR-0102).
 func watchdogNotice(level, action, key string, args ...string) {
 	daemonEvents.Add(monitor.Event{Kind: monitor.EventTunnelWatchdog, Level: level,
-		Key: key, Args: args, Profile: args[0], CanConnect: offersRetry(key)})
+		Key: key, Args: args, Profile: args[0], CanConnect: offersRetry(key), Offer: blockOffer(key)})
 	fmtArgs := make([]any, len(args))
 	for i, a := range args {
 		fmtArgs[i] = a

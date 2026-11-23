@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
+	"github.com/vpn-kongtrol/kongtrol/internal/profileimport"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/forticlient"
 )
 
@@ -228,16 +230,38 @@ func collectCiscoFields(lang i18n.Lang, name string, fields *[][2]string, auth *
 func promptConfigPath(lang i18n.Lang, key, name string) (string, error) {
 	for {
 		p, err := promptPath(lang, key, "")
-		if err != nil || p == "" || config.CheckFileReadable(p) == nil {
+		if err != nil || p == "" {
 			return p, err
+		}
+		if config.CheckFileReadable(p) == nil {
+			wizardProviderHint(lang, p)
+			return p, nil
 		}
 		fmt.Println(styleDim.Render("  " + i18n.F(lang, "wizard.config_root_only", p)))
 		res, err := importRootOnly(absPath(p), name, false, false)
 		if err == nil {
 			fmt.Println(tuiOK(i18n.F(lang, "cli.profile.import.done", res.Path)))
+			wizardProviderHint(lang, res.Path)
 			return res.Path, nil
 		}
 		fmt.Println(tuiWarn(err.Error()))
+	}
+}
+
+// wizardProviderHint says, for a file from a Proton account, not to connect
+// it while Proton's app is connected (ADR-0103).
+func wizardProviderHint(lang i18n.Lang, path string) {
+	fi, err := os.Stat(path)
+	if err != nil || fi.Size() > profileimport.MaxSize {
+		return
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	provider := profileimport.ProviderForContent(profileimport.TypeForContent(path, b), b)
+	if key := profileimport.HintKey(provider); key != "" {
+		fmt.Println(tuiWarn(i18n.T(lang, key)))
 	}
 }
 

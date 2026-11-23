@@ -1,4 +1,4 @@
-# Change-impact map — version 1.12 · 2026-11-23
+# Change-impact map — version 1.14 · 2026-11-23
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -27,10 +27,18 @@ features:
       - internal/security/killswitch*.go
       - internal/security/block_priv.go
       - internal/app/killswitch_service.go
+      - internal/app/proton.go
+      - cmd/kongtrol/daemon_proton.go
       - internal/api/handlers_security.go
       - internal/daemonctl/security.go
       - cmd/kongtrol/cmd_config_security.go
       - web/ui/src/components/security/**
+      - cmd/kongtrol/daemon_killswitch_offer.go
+      - cmd/kongtrol-tray/tray_offer.go
+      - internal/i18n/killswitch_offer.go
+      - web/ui/src/data/offers.ts
+      - web/ui/src/components/home/OfferActions.tsx
+      - web/ui/src/tray/TrayOffer.tsx
     surfaces:
       - README.md#killswitch
       - AGENTS.md#killswitch
@@ -89,6 +97,19 @@ features:
       - docs/CONFIGURATION.md#policies
       - landing/src/content/guide.es.tsx#policies
       - landing/src/content/guide.en.tsx#policies
+
+  rule_move:
+    code:
+      - internal/configedit/policy.go
+      - internal/app/rulemove.go
+      - cmd/kongtrol/cmd_policy_move.go
+      - internal/i18n/rule_move.go
+      - web/ui/src/components/add/MoveRules.tsx
+    surfaces:
+      - AGENTS.md#rule_move
+      - docs/API.md
+      - landing/src/content/guide.es.tsx#rule_move
+      - landing/src/content/guide.en.tsx#rule_move
 
   routes:
     code:
@@ -206,12 +227,19 @@ features:
       - internal/api/handlers_startup.go
       - cmd/kongtrol/daemon_restore.go
       - cmd/kongtrol/cmd_config_startup.go
+      - cmd/kongtrol/restore_question.go
+      - internal/monitor/netready.go
+      - internal/daemonctl/startup.go
       - internal/i18n/startup.go
+      - internal/i18n/onboarding.go
     surfaces:
       - README.md#watchdog
       - AGENTS.md#daemon_lifecycle
+      - docs/API.md
       - web/ui/src/data/startup.ts#restore_at_start
       - web/ui/src/components/settings/StartupSection.tsx#restore_at_start
+      - web/ui/src/components/onboarding/RestoreQuestion.tsx#restore_at_start
+      - web/ui/src/i18n/pages/onboarding.ts
       - web/ui/src/i18n/pages/settings.ts#restore_at_start
       - landing/src/content/guide.es.tsx#daemon_lifecycle
       - landing/src/content/guide.en.tsx#daemon_lifecycle

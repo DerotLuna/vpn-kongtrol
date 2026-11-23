@@ -289,7 +289,33 @@ const (
 	// page again with a fresh one-time nonce (ADR-0074), at most once per
 	// flyoutReauthEvery, without hiding the window.
 	flyoutReauth
+	// flyoutOpenAdd<Provider>: a notice's "Agregar <App>" (ADR-0102): the
+	// "＋ Agregar" sheet with that provider chosen. One message per provider
+	// keeps the list closed (no free-form argument from the page).
+	flyoutOpenAddProtonVPN
+	flyoutOpenAddNordVPN
+	flyoutOpenAddSurfshark
+	flyoutOpenAddFortiClient
 )
+
+// flyoutAddProviders maps each "open-add-<type>" action to its adapter type.
+var flyoutAddProviders = map[flyoutAction]string{
+	flyoutOpenAddProtonVPN:   "protonvpn",
+	flyoutOpenAddNordVPN:     "nordvpn",
+	flyoutOpenAddSurfshark:   "surfshark",
+	flyoutOpenAddFortiClient: "forticlient",
+}
+
+// addProviderPath is the deep link of "Agregar <App>" (web/ui
+// src/app/addLink.ts `type`), or "" for a type outside the closed list.
+func addProviderPath(adapterType string) string {
+	for _, t := range flyoutAddProviders {
+		if t == adapterType {
+			return addVPNPath + "&type=" + t
+		}
+	}
+	return ""
+}
 
 // flyoutReauthEvery rate-limits "reauth" so a daemon that keeps refusing
 // the sign-in cannot make the flyout reload in a loop.
@@ -315,6 +341,11 @@ var flyoutMessages = map[string]flyoutAction{
 	"open-add":         flyoutOpenAdd,
 	"open-diagnostics": flyoutOpenDiagnostics,
 	"reauth":           flyoutReauth,
+	// ADR-0102: a notice's "Agregar <App>".
+	"open-add-protonvpn":   flyoutOpenAddProtonVPN,
+	"open-add-nordvpn":     flyoutOpenAddNordVPN,
+	"open-add-surfshark":   flyoutOpenAddSurfshark,
+	"open-add-forticlient": flyoutOpenAddFortiClient,
 }
 
 // parseFlyoutMessage returns the action of a page message, which must be
@@ -365,6 +396,9 @@ func runFlyoutAction(a flyoutAction, hide func()) {
 	case flyoutOpenDiagnostics:
 		hide()
 		go openDiagnostics()
+	case flyoutOpenAddProtonVPN, flyoutOpenAddNordVPN, flyoutOpenAddSurfshark, flyoutOpenAddFortiClient:
+		hide()
+		go openDashboardPage(addProviderPath(flyoutAddProviders[a]))
 	}
 }
 

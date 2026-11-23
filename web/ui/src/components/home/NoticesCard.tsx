@@ -7,7 +7,10 @@
 // Each new one is a toast (WARN stays until dismissed; one with "Conectar
 // <perfil>" waits 60 s) and stays in this list, so a notice is never only a
 // toast. The full history is /activity.
+// A notice may also offer one more action (ADR-0102, OfferActions).
+import { useCallback } from 'react'
 import { Link } from 'react-router'
+import { OfferActions } from './OfferActions'
 import { usePreferences } from '../../app/preferences-context'
 import { noticeActionLabel, noticeText, useRecentNotices, useTunnelActions } from '../../data/home'
 import { Button } from '../ui/Button'
@@ -19,6 +22,7 @@ export function NoticesCard() {
   const { t, lang } = usePreferences()
   const notices = useRecentNotices()
   const run = useTunnelActions()
+  const disconnect = useCallback((profile: string) => run(profile, 'disconnect'), [run])
 
   return (
     <Card className="home-notices" title={t('home.notices.title')} aside={<Link to="/activity">{t('home.notices.seeAll')}</Link>}>
@@ -40,6 +44,7 @@ export function NoticesCard() {
                   {noticeActionLabel(e, t)}
                 </Button>
               )}
+              <OfferActions event={e} onDisconnect={disconnect} />
             </li>
           ))}
         </ul>

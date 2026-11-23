@@ -1,0 +1,8 @@
+/* Kongtrol UI — restore question in the tray flyout · v1.0.0 · 2026-11-23
+   A question, not a problem: the kit's info tone (steel), like
+   .k-banner--info, on top of the shared .tray-notice layout. */
+.tray-notice.info {
+  background: var(--steel-soft);
+  border-color: color-mix(in srgb, var(--steel) 45%, transparent);
+}
+.tray-notice.info .tray-actions { width: 100%; }

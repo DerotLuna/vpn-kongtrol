@@ -237,6 +237,42 @@ func (s *Server) handleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "updated", "policy": req.Name})
 }
 
+// POST /api/v1/policies/move {"from","to"} — every rule that goes through
+// from now goes through to, in one validated save (ADR-0104: the Add sheet
+// and `kongtrol policy move` after a provider-app profile is added).
+func (s *Server) handleMovePolicies(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		From string `json:"from"`
+		To   string `json:"to"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	cfg, cfgPath, err := s.loadRuntimeConfig()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	moved, err := configedit.MovePolicies(cfg, req.From, req.To)
+	if err != nil {
+		writeLocalizedError(w, r, http.StatusBadRequest, err)
+		return
+	}
+	if len(moved) > 0 {
+		if err := s.saveRuntimeConfig(cfgPath, cfg); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status": "moved",
+		"from":   strings.TrimSpace(req.From),
+		"to":     strings.TrimSpace(req.To),
+		"moved":  moved,
+	})
+}
+
 // DELETE /api/v1/policies/{name}
 func (s *Server) handleDeletePolicy(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")

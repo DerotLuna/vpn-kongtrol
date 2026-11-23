@@ -140,6 +140,11 @@ func createProfile(p configedit.VPNProfile, yes bool) error {
 		if configedit.NeedsPassword(typ, method) && !res.CredentialSaved {
 			fmt.Println(tuiWarn(cf("cli.profile.add.password_hint", name)))
 		}
+		// A provider-app profile: offer it the rules of direct profiles
+		// made from that provider's files (ADR-0104).
+		if typ != "wireguard" && typ != "openvpn" {
+			offerRuleMove(name, typ)
+		}
 	}
 	if res.RestartRequired {
 		base := daemonAPIBase()
@@ -273,6 +278,7 @@ func importAndCreate(file, name string, overwrite bool) error {
 	}
 	if !outputJSON && !outputQuiet {
 		fmt.Println(tuiOK(cf("cli.profile.import.done", res.Path)))
+		printImportHint(res)
 	}
 	p := configedit.VPNProfile{Name: strPtr(name), Type: strPtr(res.Type), ConfigFile: strPtr(res.Path)}
 	return createProfile(p, profileImportYes)

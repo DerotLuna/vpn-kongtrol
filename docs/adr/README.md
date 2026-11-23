@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.28.0 · 2026-11-23
+Version 1.30.0 · 2026-11-23
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -110,9 +110,13 @@ decision live in [`docs/research/`](../research/README.md).
 | [0095](0095-save-rules-paused-and-bound-auto-connect.md) | Save rules paused, bound traffic-triggered retries and defer direct WireGuard while Proton is active on Windows | Accepted | 2026-11-22 |
 | [0096](0096-repair-missing-helper-on-windows-upgrade.md) | Install or repair a missing helper with its task selected on Windows upgrades | Accepted | 2026-11-22 |
 | [0097](0097-user-disconnect-never-a-drop.md) | A user disconnect is never a kill switch drop: an intended tunnel re-arms only after it was seen down and up again | Accepted | 2026-11-23 |
-| [0098](0098-bounded-reconnect-and-restore-at-start.md) | Bounded reconnects, restore at start and a visible sign-in switch | Accepted | 2026-11-23 |
+| [0098](0098-bounded-reconnect-and-restore-at-start.md) | Bounded reconnects, restore at start and a visible sign-in switch | Accepted; default of restore_tunnels superseded by 0101 | 2026-11-23 |
 | [0099](0099-refuse-second-full-tunnel-and-switch-aware-kill-switch.md) | Refuse a second full tunnel and never block a full-tunnel drop another VPN replaced | Accepted | 2026-11-23 |
 | [0100](0100-uninstall-sudo-deferred-delete-inno-workdir.md) | Uninstall under sudo, deferred self-delete and Inno working directory | Accepted | 2026-11-23 |
+| [0101](0101-guided-restore-at-start-and-network-wait.md) | Ask once before restoring VPNs at start, wait for the network, never launch provider apps at boot | Accepted | 2026-11-23 |
+| [0102](0102-kill-switch-offered-after-first-drop-and-recover-button.md) | Offer the kill switch once after the first unexpected drop; "Recuperar internet" on every kill switch block; notice offers (`monitor.Event.Offer`) | Accepted | 2026-11-23 |
+| [0103](0103-proton-same-account-and-shared-tunnel-address.md) | A Proton file never runs next to the Proton app; one tunnel address, one tunnel (refines 0099) | Accepted | 2026-11-23 |
+| [0104](0104-move-rules-to-provider-app-profile.md) | After adding a provider app, offer to move the rules of that provider's files to it (`POST /api/v1/policies/move`, `kongtrol policy move`) | Accepted | 2026-11-23 |
 
 ## Statuses
 

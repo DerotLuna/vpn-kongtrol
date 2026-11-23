@@ -1,4 +1,4 @@
-// Kongtrol UI — B: "Importar un archivo de VPN" · v1.0.0 · 2026-11-19
+// Kongtrol UI — B: "Importar un archivo de VPN" · v1.1.0 · 2026-11-23
 //
 // The type comes from the extension and, for a .conf, from its content
 // (profileimport.TypeForContent, ADR-0080: OpenVPN GUI uses .conf), the name
@@ -33,7 +33,8 @@ interface Props {
   /** Shown on top when the user came from the type picker ("WireGuard se agrega con su archivo"). */
   note?: string | undefined
   onBack: () => void
-  onDone: (name: string, path: string, reauth: boolean) => void
+  /** provider: whose account issued the file (POST /api/v1/vpns/import, ADR-0103). */
+  onDone: (name: string, path: string, reauth: boolean, provider?: string) => void
   onDirty: (dirty: boolean) => void
 }
 
@@ -63,7 +64,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const [tried, setTried] = useState(false)
   const [nameError, setNameError] = useState<FieldError | null>(null)
   const [refusal, setRefusal] = useState<{ error: unknown; exists: boolean } | null>(null)
-  const [stored, setStored] = useState<{ as: string; path: string } | null>(null)
+  const [stored, setStored] = useState<{ as: string; path: string; provider?: string | undefined } | null>(null)
   const [drag, setDrag] = useState(false)
   const importFile = useImportProfileFile()
   const act = useSaveAndActivate()
@@ -136,11 +137,13 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     const n = name.trim()
     const as = importName(n, chosen.file.name)
     let path = stored?.as === as ? stored.path : ''
+    let provider = stored?.as === as ? stored.provider : undefined
     if (!path) {
       try {
         const res = await importFile.mutateAsync({ name: as, type: chosen.type, content_base64: chosen.content, overwrite })
         path = res.path
-        setStored({ as, path })
+        provider = res.provider
+        setStored({ as, path, provider })
       } catch (err) {
         setRefusal({ error: err, exists: err instanceof ApiError && err.key === 'api.err.import_exists' })
         return
@@ -150,7 +153,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     try {
       const outcome = await act.run(toRequest(draft, 'create'))
       onDirty(false)
-      if (outcome !== 'failed') onDone(n, path, outcome === 'reauth')
+      if (outcome !== 'failed') onDone(n, path, outcome === 'reauth', provider)
     } catch (err) {
       const local = localizeError(err, t)
       if (local instanceof ApiError && fieldForErrorKey(local.key) === 'name') {
@@ -283,7 +286,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
         onBack={onBack}
         onRetry={() =>
           void act.retryRestart().then((outcome) => {
-            if (outcome !== 'failed' && stored) onDone(name.trim(), stored.path, outcome === 'reauth')
+            if (outcome !== 'failed' && stored) onDone(name.trim(), stored.path, outcome === 'reauth', stored.provider)
           })
         }
       />

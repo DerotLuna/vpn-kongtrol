@@ -156,6 +156,8 @@ func runUp(ctx context.Context, targets []string) error {
 	}
 	if len(targets) > 0 {
 		fmt.Println(tuiInfo(paint(cDim, cf("cli.up.connected_all", time.Since(startedAll).Round(time.Second)))))
+		// After the first VPN: reconnect at start? Asked once (ADR-0101).
+		offerRestoreAtStart(daemonClient(base))
 	}
 
 	if !upIsTerminalFn() {

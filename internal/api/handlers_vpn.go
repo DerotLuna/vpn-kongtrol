@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/app"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
 )
@@ -48,6 +49,11 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 		Interface   string `json:"interface,omitempty"`
 		WaitTimeout string `json:"wait_timeout,omitempty"`
 		AppPath     string `json:"app_path,omitempty"`
+		// Provider: whose account issued a direct profile's file
+		// (app.DirectProfileProvider, "protonvpn"), "" when unknown. The Add
+		// sheet offers to move its rules to that provider's app profile
+		// (ADR-0104).
+		Provider string `json:"provider,omitempty"`
 	}
 	out := make([]vpnDTO, 0, len(cfg.VPNs))
 	for name, v := range cfg.VPNs {
@@ -84,6 +90,7 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 			Interface:          v.Interface,
 			WaitTimeout:        v.WaitTimeout,
 			AppPath:            v.AppPath,
+			Provider:           app.DirectProfileProvider(v),
 		})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })

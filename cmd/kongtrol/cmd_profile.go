@@ -49,6 +49,7 @@ var profileImportCmd = &cobra.Command{
 		}
 		fmt.Println(tuiOK(cf(key, res.Path)))
 		fmt.Println(tuiInfo(cf("cli.profile.import.next", res.Type, res.Path)))
+		printImportHint(res)
 		return nil
 	},
 }
@@ -112,4 +113,12 @@ func init() {
 	profileImportCmd.Flags().BoolVar(&profileImportOverwrite, "overwrite", false, ct("cli.profile.import.flag.overwrite"))
 	profileCmd.AddCommand(profileImportCmd)
 	rootCmd.AddCommand(profileCmd)
+}
+
+// printImportHint prints the line for a file from a provider account
+// (Proton: do not connect it while Proton's app is connected, ADR-0103).
+func printImportHint(res profileimport.Result) {
+	if key := profileimport.HintKey(res.Provider); key != "" {
+		fmt.Println(tuiWarn(ct(key)))
+	}
 }

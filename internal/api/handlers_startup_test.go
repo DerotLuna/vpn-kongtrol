@@ -30,8 +30,8 @@ func TestStartupSettings(t *testing.T) {
 	rec := doJSON(t, s, http.MethodGet, "/api/v1/startup", "/api/v1/startup", s.handleGetStartup, "")
 	var got startupDTO
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
-	if rec.Code != http.StatusOK || !got.StartAtLogin || !got.StartAtLoginSupported || !got.RestoreTunnels {
-		t.Fatalf("defaults: %d %+v (restore is on by default)", rec.Code, got)
+	if rec.Code != http.StatusOK || !got.StartAtLogin || !got.StartAtLoginSupported || got.RestoreTunnels || got.Ask {
+		t.Fatalf("defaults: %d %+v (restore is off until answered, ADR-0101)", rec.Code, got)
 	}
 
 	rec = doJSON(t, s, http.MethodPut, "/api/v1/startup", "/api/v1/startup", s.handleSetStartup,
@@ -81,5 +81,54 @@ func TestShutdownCallsStopAll(t *testing.T) {
 	<-shut
 	if rec.Code != http.StatusAccepted || !stopped {
 		t.Fatalf("%d stopped=%v", rec.Code, stopped)
+	}
+}
+
+// ADR-0101: the question after the first connect. "Sí, activar" turns on
+// the reconnect and, with a tray, the start at sign-in; "Ahora no" only
+// answers it (off).
+func TestStartupRestoreAnswer(t *testing.T) {
+	for _, c := range []struct {
+		body        string
+		supported   bool
+		wantRestore bool
+		wantLogin   bool
+	}{
+		{`{"restore_answer":true}`, true, true, true},
+		{`{"restore_answer":true}`, false, true, false},
+		{`{"restore_answer":false}`, true, false, false},
+	} {
+		path := filepath.Join(t.TempDir(), "preferences.json")
+		if err := config.SavePreferences(path, &config.Preferences{RestoreAsk: true}); err != nil {
+			t.Fatal(err)
+		}
+		login := autostart.State{Supported: c.supported}
+		s := &Server{preferencesPath: path}
+		s.SetStartup(StartupHooks{
+			Autostart: func() autostart.State { return login },
+			SetAutostart: func(on bool) error {
+				if !login.Supported {
+					return autostart.ErrNoTray
+				}
+				login.Enabled = on
+				return nil
+			},
+		})
+		rec := doJSON(t, s, http.MethodGet, "/api/v1/startup", "/api/v1/startup", s.handleGetStartup, "")
+		var got startupDTO
+		_ = json.Unmarshal(rec.Body.Bytes(), &got)
+		if !got.Ask {
+			t.Fatalf("pending question not reported: %s", rec.Body.String())
+		}
+		rec = doJSON(t, s, http.MethodPut, "/api/v1/startup", "/api/v1/startup", s.handleSetStartup, c.body)
+		got = startupDTO{}
+		_ = json.Unmarshal(rec.Body.Bytes(), &got)
+		if rec.Code != http.StatusOK || got.Ask || got.RestoreTunnels != c.wantRestore || got.StartAtLogin != c.wantLogin {
+			t.Errorf("%s supported=%v: %d %s", c.body, c.supported, rec.Code, rec.Body.String())
+		}
+		prefs, _ := config.LoadPreferences(path)
+		if !prefs.RestoreAnswered() || prefs.RestoreAsk {
+			t.Errorf("%s: not saved as answered: %+v", c.body, prefs)
+		}
 	}
 }

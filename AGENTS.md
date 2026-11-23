@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.29 · 2026-11-23
+Version 1.30 · 2026-11-23
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -85,8 +85,14 @@ When adding a new adapter:
   user connect that succeeds (`userConnectProfile`: API, `daemon <profiles>`), removed by a user
   disconnect, emptied by `POST /api/v1/shutdown` (`StartupHooks.OnStopAll`; a restart keeps it)
   and the data purge. Watchdog, scheduler and rule connects never touch it. On start, with
-  preferences.json `restore_tunnels` (default on), `restoreWanted` connects them once; a failure
-  hands over to the watchdog's bounded policy. "Abrir Kongtrol al iniciar sesión" is
+  preferences.json `restore_tunnels` on (unset = off, ADR-0101), `restoreWanted` first waits for
+  the network (`monitor.NetworkReady`, every 2 s up to 90 s, then the next `NetworkFingerprint`
+  change; no watchdog attempt spent), then connects them once; provider-app profiles are only
+  attached if their tunnel is already up (`appattach.ActiveTunnel`), never launched; a failure
+  hands over to the watchdog's bounded policy. The first successful user connect sets
+  `restore_ask` (`markRestoreQuestion`): `GET /api/v1/startup` `ask: true` → the panel (Inicio)
+  and tray flyout (`RestoreQuestion`) and `kongtrol up` (`offerRestoreAtStart`) ask once;
+  `PUT {"restore_answer": bool}` answers (yes also turns on autostart when supported). "Abrir Kongtrol al iniciar sesión" is
   `internal/autostart` (Windows Run + `StartupApproved\Run`, XDG `Hidden=true`, macOS
   LaunchAgent); both in Ajustes › Al iniciar, `GET/PUT /api/v1/startup`,
   `kongtrol config autostart|restore-tunnels`.
@@ -418,7 +424,7 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 `POST /api/v1/vpns/import` and `kongtrol profile import` share `internal/profileimport`: a
 `.conf`/`.ovpn` validated by the helper's own `privops` validators, refusals mapped to specific
 `api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
-`~/.kongtrol/configs/` (ADR-0042). A file only root can read (`/etc/wireguard/wg0.conf`) is never read
+`~/.kongtrol/configs/` (ADR-0042); the result carries `provider` (`profileimport.ProviderForContent`, Proton only) and the API adds a translated `hint` (ADR-0103). A file only root can read (`/etc/wireguard/wg0.conf`) is never read
 through the helper: `config.CheckFileReadable` → `config.err.file_root_only` (profile save, preflight,
 doctor), and the user copies it with one OS prompt — CLI/wizard `sudo`, dashboard `{"path","elevate":true}`
 → `pkexec` — to the hidden `kongtrol profile read-protected`, which releases it only after
@@ -435,6 +441,15 @@ API handlers and the CLI with no daemon (`kongtrol policy add|remove`, `kongtrol
 `profile import --create`); with a daemon the CLI calls the same endpoints. `policy.ClassifyTargets`
 is the "＋ Agregar" input classifier (URL → host, `*.host` unless `--no-subdomains`, IP/CIDR,
 `app:`); web/ui mirrors it. `kongtrol profile detect` = `GET /api/v1/vpns/detect` (vpndetect).
+
+<!-- feature:rule_move -->
+Moving rules (ADR-0104): `configedit.MovePolicies` points every rule of one profile at another in one
+validated save, behind `POST /api/v1/policies/move {"from","to"}` and `kongtrol policy move <from> <to>`.
+`GET /api/v1/vpns` carries `provider` (`app.DirectProfileProvider`). After a provider-app profile is
+saved, the Add sheet's Done step (`web/ui/src/components/add/MoveRules.tsx`) finds that provider's
+direct profiles with rules itself (no link parameter: the tray cannot pass one) and offers one card
+each; `kongtrol profile add <provider>` asks the same on a terminal (`app.RuleMoveCandidates`, never
+answered by `--yes`) or prints the `policy move` line.
 
 <!-- feature:profile_live -->
 VPN profile CRUD (and `POST /api/v1/policies/reload` after a hand edit) applies live (ADR-0053):
@@ -477,7 +492,7 @@ changing the port from the page serving that request would cut the connection mi
 `monitor.Watchdog` polls adapter `Status()` every 5 seconds per profile goroutine. Call `MarkIntended(name)` **before** `Disconnect()` to suppress reconnect. Call `MarkActive(name)` **after** a successful `Connect()` to re-arm it. Bounded (ADR-0098): `monitor.DefaultRetryDelays` = 3 attempts per outage (2 s, 30 s, 2 min), then `reconnect_gave_up` once (notice `watchdog.event.gave_up*` with `can_connect`: "Reintentar" in panel/tray, `kongtrol up` in the CLI; the `_blocking`/`_blocking_full` variants say how to get traffic back while the kill switch keeps its block) and no more attempts until `NetworkFingerprint` changes or `WokeFromSleep` (then one silent round). A connected status ends the outage (a later drop gets a full round and a new notice). `SetWaitForUser` classifies errors only the user can fix (another VPN carries all traffic, ADR-0099): not an attempt, one `reconnect_blocked` notice, same re-arm signals. `MarkActiveAfterFailedConnect` counts a failed restore connect as attempt 1.
 
 - It only reconnects profiles that were brought up (`MarkActive`). **No implicit failover** (ADR-0018): profiles reach different networks and are never linked by name, type or `priority`. The only other profiles it may connect are those the user declared on the dropped profile, `vpns.<name>.failover: [backup, …]` (validated: exist, not itself, once, no cycles), tried in order once per outage; a backup that takes over pauses retries of the original until the user connects it again.
-- No declared backup (or none worked): retry the same profile within the bounded policy above and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard toasts and Actividad, live view render them). Health-check failures only notify.
+- No declared backup (or none worked): retry the same profile within the bounded policy above and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard toasts and Actividad, live view render them). `monitor.Event.Offer` adds one action button (`enable_killswitch`, `release_block`, `add_provider`; ADR-0102): panel `src/data/offers.ts` + `OfferActions`, flyout `src/tray/TrayOffer.tsx` (closed `open-add-<type>` messages), native menu `tray_offer.go`, live view `offerHintCLI`; strings in `internal/i18n/killswitch_offer.go`. Health-check failures only notify.
 - `MarkIntended` cancels the watchdog's in-flight reconnect/failover for that profile; `ProfileService.Disconnect` also cancels and waits for any running `Connect` of the profile (`trackConnect`/`cancelConnects`), so `down` reports a final status and no provider app opens afterwards.
 - WireGuard liveness (ADR-0030): an existing interface is not "connected". The adapter reads `privops.WGStats` every 10s and `healthTracker` decides `vpn.TunnelHealth` (`ok` / `idle` / `no_response` / `unknown`, `vpn.HealthReporter`, `TunnelMetrics.Health` json `health`). `no_response` (handshake older than 200 s with PersistentKeepalive, or tx growing with rx flat for 15 s, or never handshaked but sent something; 30 s grace after connect) makes `Status()` return `StatusError`, so watchdog reconnect/failover, kill switch and `on_tunnel_down` treat it like a drop; the reconnect replaces the tunnel (`wgUp` restart). An unused tunnel without keepalive is `idle`, never flagged. Stats unreadable (helper missing/outdated) → `unknown` + `ReasonKey`, status stays connected. The watchdog emits `no_response` once per outage and `responding` when the handshake is fresh again (`watchdog.event.*`); clients render health with `health.*` keys.
 - `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset = position (earlier first).
@@ -517,7 +532,7 @@ changing the port from the page serving that request would cut the connection mi
 Rules inherit `vpns.<name>.on_tunnel_down` (default `allow`) unless they explicitly select `allow`, `block` or `connect` (ADR-0084). `allow` leaves the system's existing routes available. `block` and `connect` keep the winning rule's known destinations blocked while the VPN is off, including after an individual disconnect.
 - Rules with `disabled: true` remain editable and do not affect routing, DNS, blocking or demand connections. The dashboard saves new rules paused. CLI parity uses `policy add --paused` and `policy state <name> on|off`. Existing rules without the key are active.
 - `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Its cached destination order is longest prefix, profile priority, then rule order. Resolved IPs expire after 6h unseen.
-- `app.KillSwitchService` owns the blocked set. The independent kill switch protects a tunnel after an unexpected drop (`ProfileService` reports intent via `OnIntent`). A user disconnect is never a drop: after `OnIntent(name, true)` a "connected" reading re-arms the tunnel only once it was seen down and up again, so an `Apply` during `adapter.Disconnect` or a status read taken before the intent cannot turn it into one (#46, ADR-0097). A split-tunnel drop blocks captured routes and policy destinations, exempting directly connected subnets. A full-tunnel drop blocks everything except VPN endpoints and reserved ranges. `allow_lan` / legacy `mode: loose` also exempts the LAN (ADR-0063). Rule protection adds the winning `block` and `connect` destinations, including before an individual disconnect removes routes. For domains this covers only IPs resolved so far. The daemon releases its firewall rules on shutdown. States `off`/`armed`/`active` (`security.KillSwitchStatus`) describe the independent kill switch. `SetOnBlock` emits one notice per unexpected outage (ADR-0058). A dropped full tunnel is never blocked while another VPN carries all traffic (a connected Kongtrol full tunnel, or a Proton/Nord/Surfshark app tunnel via `SetExternalTunnels`): the drop counts as a switch, `SetOnSuperseded` emits `killswitch.event.superseded` once. `ProfileService.CheckFullTunnelConflict` refuses a full-tunnel connect while another full tunnel is up (`app.ErrFullTunnelConflict`, `api.err.connect_full_conflict[_app]`; `POST .../connect` answers 409 with the hint before 202) (ADR-0099).
+- `app.KillSwitchService` owns the blocked set. The independent kill switch protects a tunnel after an unexpected drop (`ProfileService` reports intent via `OnIntent`). A user disconnect is never a drop: after `OnIntent(name, true)` a "connected" reading re-arms the tunnel only once it was seen down and up again, so an `Apply` during `adapter.Disconnect` or a status read taken before the intent cannot turn it into one (#46, ADR-0097). A split-tunnel drop blocks captured routes and policy destinations, exempting directly connected subnets. A full-tunnel drop blocks everything except VPN endpoints and reserved ranges. `allow_lan` / legacy `mode: loose` also exempts the LAN (ADR-0063). Rule protection adds the winning `block` and `connect` destinations, including before an individual disconnect removes routes. For domains this covers only IPs resolved so far. The daemon releases its firewall rules on shutdown. States `off`/`armed`/`active` (`security.KillSwitchStatus`) describe the independent kill switch. `SetOnBlock` emits one notice per unexpected outage (ADR-0058); every block notice carries `Offer: release_block` ("Recuperar internet" = a user disconnect of that profile). Kill switch off: the first unexpected drop (`reconnect_attempt`, `ProtectsProfile` false) emits `killswitch.event.offer` with `Offer: enable_killswitch` once ever (`killswitch_offered` in preferences.json, written when asked; `cmd/kongtrol/daemon_killswitch_offer.go`, ADR-0102). A dropped full tunnel is never blocked while another VPN carries all traffic (a connected Kongtrol full tunnel, or a Proton/Nord/Surfshark app tunnel via `SetExternalTunnels`): the drop counts as a switch, `SetOnSuperseded` emits `killswitch.event.superseded` once. `ProfileService.CheckFullTunnelConflict` refuses a full-tunnel connect while another full tunnel is up (`app.ErrFullTunnelConflict`, `api.err.connect_full_conflict[_app]`; `POST .../connect` answers 409 with the hint before 202) (ADR-0099). The same check, split tunnel or not, refuses a direct profile made from a Proton account file (`app.DirectProfileProvider`, detected by `profileimport.ProviderForContent`) while the Proton app tunnel is up (`api.err.connect_proton_app`) and a direct profile whose WireGuard address a connected one already uses (`api.err.connect_same_address`); when the Proton app connects while such a profile is up, the daemon disconnects it as a system action (kept in `wanted.json`) with one `watchdog.event.proton_handover[_add]` notice (ADR-0103).
 - `monitor.PolicyWatch` samples TCP sockets every 15 seconds on Windows and Linux. It may miss rejected or brief attempts, and macOS uses manual connection. An automatic connect gets three attempts per profile with waits of 3 and 6 minutes after failure, only when traffic is detected. A successful connection rearms it. On Windows, a detected active Proton VPN defers automatic direct WireGuard starts without consuming attempts. The firewall handles blocking independently. `GET /api/v1/events?after=<seq>` supplies events to the tray, dashboard and live view.
 
 <!-- feature:default_egress -->
@@ -545,6 +560,7 @@ The setting applies when Kongtrol next starts the tunnel.
 - FortiClient versions (ADR-0020, matrix in `docs/forticlient-support.md` — update it with every change): `DetectInstall` (folder from `app_path` / registry `INSTALLDIR`, `FortiClient.exe` ProductVersion via the Win32 version API, `FortiVPN.exe` presence) → `SelectPlan` (pure, one test case per matrix row): `FortiVPN.exe` → `fortivpn-cli` (`--cli --connect --tunnel` + native auth dialog, contributor-reported); 6.x or unknown → `gui-6.4` (verified on 6.4.10 only); other versions → `attach` (no automation). Never click a layout nobody measured; never pass credentials on a command line (`FortiSSLVPNclient.exe -u user:pass` is rejected for that). `kongtrol doctor` shows version · strategy · status.
 - FortiClient GUI automation (`internal/vpn/forticlient/script.go` generates, `gui_windows.go` runs): the script text holds no user data — FortiClient path, tunnel, username and password go on stdin as base64 lines (a typographic quote also ends a PowerShell single-quoted string); booleans render as `$true`/`$false`; written as UTF-8 **with BOM** (Windows PowerShell 5.1 reads a BOM-less script in the ANSI code page, which broke parsing and mangled non-ASCII text); golden files in `testdata/` (`go test ./internal/vpn/forticlient -run Golden -update` after a reviewed change) and the Windows PowerShell parser test (fails, not skips, in CI); its failure becomes one line (`scriptErrorLine`: the script's `ERROR:` line or PowerShell's message + script line, never the source excerpt); cancelling the connect kills the script and clears the clipboard.
 - Interface names: FortiClient, NordVPN (NordLynx, TAP-NordVPN) and Proton (TAP-ProtonVPN, Linux proton0/pvpn*) are documented or known; Surfshark ("Surfshark DCO adapter" per its docs, Linux `surfshark*`) and the macOS Network Extension services are best effort, so `interface:` overrides them.
+- Proton file vs Proton app (ADR-0103): a `wireguard`/`openvpn` profile made from a Proton account file is recognised at run time from the file (no config field; Proton comment keys + 10.x.0.2/10.x.0.1, or a `*.protonvpn.net` host); import surfaces show `profile.import.proton_hint`. A split `no_response`/failed reconnect next to the Proton app gets `watchdog.event.proton_blocks_other` once (Proton advanced kill switch, not verified).
 
 <!-- feature:i18n -->
 <!-- feature:tray_flyout -->
@@ -558,7 +574,7 @@ The setting applies when Kongtrol next starts the tunnel.
 - Only `http://<loopback>:<port>/tray` loads (`flyoutURL`); requests outside the daemon's
   origin get 403; an injected script pins the page and exposes `window.kongtrolTray.post` with
   a per-launch nonce. Page → tray messages are the closed list in `flyoutMessages`
-  (`ready`, `close`, `open-dashboard`, `open-add`, `quit-tray`, `quit-all`, `reauth`;
+  (`ready`, `close`, `open-dashboard`, `open-add`, `open-add-<provider>` (ADR-0102), `quit-tray`, `quit-all`, `reauth`;
   `web/ui/src/tray/bridge.ts` mirrors it); add one in both places and in the tests.
 - The page uses the same API and cookie as the dashboard; window-only controls ("Salir",
   Escape) appear only when the bridge exists, so `/tray` also works in a browser tab.

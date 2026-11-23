@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.2.0 · 2026-11-19
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.3.0 · 2026-11-23
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -60,6 +60,8 @@ export interface VPNProfile {
   interface?: string
   wait_timeout?: string
   app_path?: string
+  /** Whose account issued a direct profile's file ("protonvpn"); absent when unknown (ADR-0103/0104). */
+  provider?: string
 }
 
 /** handlers_vpn.go `vpnProfileReq`: absent = keep (update), "" = clear. */
@@ -127,6 +129,11 @@ export interface ImportResult {
   path: string
   type: 'wireguard' | 'openvpn'
   overwritten: boolean
+  /** Provider whose account issued the file (ADR-0103); only `protonvpn` today. */
+  provider?: string
+  /** Server-translated line for that provider, and its i18n key. */
+  hint?: string
+  hint_key?: string
 }
 
 /** internal/api/handlers_setup.go `SetupStatus`. */

@@ -19,14 +19,55 @@ type Preferences struct {
 	DashboardPort int      `json:"dashboard_port,omitempty"`
 	DashboardBind string   `json:"dashboard_bind,omitempty"`
 	// RestoreTunnels: when Kongtrol starts, reconnect the VPNs the user
-	// had on (ADR-0098). nil = on (the default).
+	// had on (ADR-0098). nil = not answered yet = off (ADR-0101): the user
+	// is asked once, after the first VPN they connect.
 	RestoreTunnels *bool `json:"restore_tunnels,omitempty"`
+	// RestoreAsk: the daemon saw the first successful connect while
+	// RestoreTunnels was unset, so the panel, the tray flyout and
+	// `kongtrol up` show the question (ADR-0101). Answering sets
+	// RestoreTunnels and clears it.
+	RestoreAsk bool `json:"restore_ask,omitempty"`
+	// KillSwitchOffered: Kongtrol already offered to turn on the kill
+	// switch after a VPN dropped on its own (ADR-0102). It never asks
+	// again, whatever the answer.
+	KillSwitchOffered bool `json:"killswitch_offered,omitempty"`
 }
 
 // RestoreTunnelsEnabled reports the "Al iniciar, volver a conectar las VPN
-// que tenías conectadas" setting; on unless the user turned it off.
+// que tenías conectadas" setting: off until the user turns it on
+// (ADR-0101).
 func (p *Preferences) RestoreTunnelsEnabled() bool {
-	return p == nil || p.RestoreTunnels == nil || *p.RestoreTunnels
+	return p != nil && p.RestoreTunnels != nil && *p.RestoreTunnels
+}
+
+// RestoreAnswered reports whether the user already chose: the question,
+// the Ajustes switch or `kongtrol config restore-tunnels`.
+func (p *Preferences) RestoreAnswered() bool {
+	return p != nil && p.RestoreTunnels != nil
+}
+
+// RestoreQuestionPending reports whether "¿Volver a conectar tus VPN al
+// encender el equipo?" is waiting for an answer.
+func (p *Preferences) RestoreQuestionPending() bool {
+	return p != nil && p.RestoreAsk && p.RestoreTunnels == nil
+}
+
+// MarkRestoreQuestion makes the question pending after the first
+// successful connect. It reports false (nothing to save) when the user
+// already answered or the question is already pending.
+func (p *Preferences) MarkRestoreQuestion() bool {
+	if p == nil || p.RestoreTunnels != nil || p.RestoreAsk {
+		return false
+	}
+	p.RestoreAsk = true
+	return true
+}
+
+// SetRestoreTunnels records the user's choice. Any choice answers the
+// question, so it is never asked again.
+func (p *Preferences) SetRestoreTunnels(on bool) {
+	p.RestoreTunnels = &on
+	p.RestoreAsk = false
 }
 
 var preferencesMu sync.Mutex

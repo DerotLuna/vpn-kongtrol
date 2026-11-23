@@ -130,7 +130,9 @@ func fullTunnelConflicts(candidate, candidateType string, candidateFull bool, ma
 }
 
 // FullTunnelConflictError is the translated refusal of a connect that would
-// start a second full tunnel; it wraps ErrFullTunnelConflict.
+// start a second full tunnel, or (ADR-0103) a direct Proton profile next to
+// Proton's app or a second tunnel with the same address; it wraps
+// ErrFullTunnelConflict.
 type FullTunnelConflictError struct {
 	*config.ValidationError
 	Profile string

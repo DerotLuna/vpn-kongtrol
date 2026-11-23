@@ -11,6 +11,7 @@ import { usePreferences } from '../app/preferences-context'
 import { PageHeader } from '../components/layout/PageHeader'
 import { GroupsCard } from '../components/home/GroupsCard'
 import { HelperBanner } from '../components/home/HelperBanner'
+import { RestoreQuestion } from '../components/onboarding/RestoreQuestion'
 import { NetworkCard } from '../components/home/NetworkCard'
 import { NoticesCard } from '../components/home/NoticesCard'
 import { SecurityCard } from '../components/home/SecurityCard'
@@ -29,6 +30,7 @@ export function HomePage() {
     <>
       <PageHeader title={t('nav.home')} lead={t('home.lead')} />
       <HelperBanner />
+      <RestoreQuestion />
       <TunnelsCard
         tunnels={tunnels.tunnels ?? undefined}
         error={tunnels.error}

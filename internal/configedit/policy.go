@@ -154,3 +154,54 @@ func RemovePolicy(cfg *config.Config, name string) error {
 	cfg.Policies = append(cfg.Policies[:i:i], cfg.Policies[i+1:]...)
 	return nil
 }
+
+// ErrKeyPolicyMoveSame refuses moving a profile's rules to itself.
+const ErrKeyPolicyMoveSame = "api.err.policy_move_same"
+
+// MovePolicies points every rule that goes through from to to instead
+// (ADR-0104: a direct profile's rules move to the provider-app profile of
+// the same account). Both profiles must exist; each moved rule is checked
+// again against to. Returns the moved rule names, in config order; none is
+// not an error. Not saved: call Save.
+func MovePolicies(cfg *config.Config, from, to string) ([]string, error) {
+	from, to = strings.TrimSpace(from), strings.TrimSpace(to)
+	for _, name := range []string{from, to} {
+		if name == "" {
+			return nil, &config.ValidationError{Key: "api.err.policy_via_required"}
+		}
+		if _, ok := cfg.VPNs[name]; !ok {
+			return nil, &config.ValidationError{Key: "api.err.policy_via_unknown", Args: []any{name}}
+		}
+	}
+	if from == to {
+		return nil, &config.ValidationError{Key: ErrKeyPolicyMoveSame, Args: []any{from}}
+	}
+	moved := []string{}
+	next := make([]config.PolicyRule, len(cfg.Policies))
+	copy(next, cfg.Policies)
+	for i := range next {
+		if next[i].Via != from {
+			continue
+		}
+		rule := ClonePolicy(next[i])
+		rule.Via = to
+		if err := ValidatePolicy(NormalizePolicy(rule), cfg); err != nil {
+			return nil, err
+		}
+		next[i] = rule
+		moved = append(moved, rule.Name)
+	}
+	cfg.Policies = next
+	return moved, nil
+}
+
+// CountPolicies is how many rules go through profile name.
+func CountPolicies(cfg *config.Config, name string) int {
+	n := 0
+	for _, p := range cfg.Policies {
+		if p.Via == name {
+			n++
+		}
+	}
+	return n
+}

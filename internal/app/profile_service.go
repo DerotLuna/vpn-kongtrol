@@ -258,20 +258,43 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 // name carries all traffic and another tunnel already does (a connected
 // Kongtrol profile or a provider app outside Kongtrol). Two full tunnels
 // fight over the default route and, with WireGuard for Windows or a
-// provider kill switch, block each other's traffic (ADR-0099).
+// provider kill switch, block each other's traffic (ADR-0099). It also
+// refuses, split tunnel or not, a direct Proton profile while Proton's app
+// is connected and a direct profile whose tunnel address a connected one
+// already uses (ADR-0103). Every refusal wraps ErrFullTunnelConflict, so
+// the watchdog waits for the user instead of retrying.
 func (s *ProfileService) CheckFullTunnelConflict(name string) error {
 	if s == nil || s.cfg == nil {
 		return nil
 	}
 	v, ok := s.cfg.VPNs[name]
-	if !ok || !ProfileCarriesAllTraffic(v) {
+	if !ok {
+		return nil
+	}
+	var external []ExternalTunnel
+	probed := false
+	listExternal := func() []ExternalTunnel {
+		if !probed && s.externalTunnels != nil {
+			external, probed = s.externalTunnels(), true
+		}
+		return external
+	}
+	// A direct profile from a Proton account next to Proton's own app:
+	// same account and tunnel address, split or not (ADR-0103).
+	if isDirectProton(v) {
+		if e, up := protonAppTunnel(listExternal(), connectedIfaces(s.adapters, name)); up {
+			return newProtonAppConflictError(name, e)
+		}
+	}
+	// Two direct profiles with one tunnel address (ADR-0103).
+	if other, addr := sharedAddress(s.cfg, s.adapters, name, v); other != "" {
+		return newSharedAddressError(name, other, addr)
+	}
+	if !ProfileCarriesAllTraffic(v) {
 		return nil
 	}
 	managed, ifaces := managedFullTunnels(s.cfg, s.adapters, name)
-	var external []ExternalTunnel
-	if s.externalTunnels != nil {
-		external = s.externalTunnels()
-	}
+	external = listExternal()
 	if c := fullTunnelConflicts(name, v.Type, true, managed, ifaces, external); len(c) > 0 {
 		return newFullTunnelConflictError(name, c[0])
 	}

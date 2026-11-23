@@ -52,6 +52,9 @@ type Result struct {
 	Path        string `json:"path"`
 	Type        string `json:"type"`
 	Overwritten bool   `json:"overwritten"`
+	// Provider is the VPN provider whose account issued the file
+	// (ProviderForContent: "protonvpn"), "" when unknown (ADR-0103).
+	Provider string `json:"provider,omitempty"`
 }
 
 // ErrStore marks a failure writing the file (not the user's input).
@@ -195,7 +198,7 @@ func Import(dir string, req Request) (Result, error) {
 	case err != nil:
 		return Result{}, fmt.Errorf("%w: %w", ErrStore, err)
 	}
-	return Result{Path: path, Type: typ, Overwritten: overwritten}, nil
+	return Result{Path: path, Type: typ, Overwritten: overwritten, Provider: ProviderForContent(typ, req.Content)}, nil
 }
 
 // TooBig is the refusal for a file over MaxSize (callers that see the size

@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.14 · 2026-11-20
+Version 1.16 · 2026-11-23
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -56,7 +56,9 @@ GET  /api/v1/tunnels                         # live snapshot of all tunnels
 GET  /api/v1/metrics/history                 # persistent per-profile history (reconnects, jitter, samples)
 GET  /api/v1/routes                          # active OS routes with resolved policy/profile
 GET  /api/v1/network/overview                # default egress, local IPs, last public IP (only if the lookup is on; never fetched here), connected count
-POST /api/v1/tunnels/{name}/connect
+POST /api/v1/tunnels/{name}/connect          # 202 {"status":"connecting"}; 409 {error,hint,error_key} before 202 when it would clash:
+                                             #   api.err.connect_full_conflict[_app] (second full tunnel, ADR-0099), api.err.connect_proton_app
+                                             #   (a Proton file while the Proton app is connected), api.err.connect_same_address (same tunnel address, ADR-0103)
 POST /api/v1/tunnels/{name}/cancel_connect
 POST /api/v1/tunnels/{name}/disconnect
 POST /api/v1/tunnels/{name}/reload           # reload kongtrol.yaml + restart this tunnel in place if connected
@@ -72,6 +74,8 @@ PUT/DELETE /api/v1/policies/{name}          # refusals: {error,hint,error_key} i
                                              #   404 api.err.policy_not_found, 400 api.err.policy_* | name_required (same check as `kongtrol policy add|remove`)
 POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, hot-swap the policy engine and apply profiles live:
                                              #   {"status","policies","restart_required":bool,"reconnect_required":[profile]}
+POST /api/v1/policies/move                   # {"from","to"}: every rule of `from` now goes through `to`, one validated save (ADR-0104);
+                                             #   {"status":"moved","from","to","moved":[rule]}; 400 api.err.policy_via_unknown | policy_move_same
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
                                              # GET policy items expose effective on_tunnel_down and raw on_tunnel_down_override.
@@ -81,6 +85,7 @@ GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, do
 # VPN profiles (config + OS keychain; applied live, ADR-0053 — see "Profile changes" below)
 GET/POST  /api/v1/vpns                      # POST → 201 {"status":"created","profile","restart_required":false,"reconnect_required":false}
                                              # Profile GET exposes on_tunnel_down; POST/PUT accepts allow, block, connect.
+                                             # GET adds "provider" ("protonvpn") for a direct profile made from that provider's file (ADR-0103/0104).
 GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing):
                                              #   [{"label","adapter_type","path","active":true|false|null,"interface"}]; active = the provider app's
                                              #   tunnel is up now (interface listing / macOS scutil, no admin, no automation); null = cannot tell
@@ -93,6 +98,8 @@ PUT/DELETE /api/v1/vpns/{name}              # PUT with a different "name" rename
                                              # PUT ?reconnect=true: "save and reconnect" (see below) → adds "reconnected":true.
 POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openvpn","content_base64","overwrite":false} → 201
                                              #   {"status":"imported","path","type","overwritten"}: stored 0600 as ~/.kongtrol/configs/<name>.conf|.ovpn;
+                                             #   a file from a Proton account adds "provider":"protonvpn", "hint_key":"profile.import.proton_hint"
+                                             #   and "hint" (translated: do not connect it while the Proton app is connected; ADR-0103);
                                              #   validated like the helper does (no PostUp/…; no up/down/plugin/script-security>1/log/config…;
                                              #   an .ovpn must inline its certs/keys). 409 api.err.import_exists unless overwrite; 400 api.err.import_* (hook, directive,
                                              #   script_security, file_ref, not_wireguard, invalid…; same rules as `kongtrol profile import`)
@@ -152,8 +159,8 @@ POST /api/v1/restart                         # 202 {"status":"restarting"}: star
 # Update notice and "delete all my data" (ADR-0034)
 GET  /api/v1/updates                         # {"check_enabled","host","current","latest","url","newer","checked_at"} from the remembered last check; never contacts GitHub
 POST /api/v1/updates                         # {"enabled": true|false}: saves updates.check_enabled (opt-in, off by default); 409 cli.update.no_config before the first profile
-GET  /api/v1/startup                         # {"start_at_login","start_at_login_supported","restore_tunnels"} (ADR-0098)
-PUT  /api/v1/startup                         # {"start_at_login"?: bool, "restore_tunnels"?: bool}: the OS sign-in entry and preferences.json restore_tunnels; 409 startup.err.no_tray on a CLI-only install
+GET  /api/v1/startup                         # {"start_at_login","start_at_login_supported","restore_tunnels","ask"} (ADR-0098); restore_tunnels is off until chosen, ask = the question after the first connect is pending (ADR-0101)
+PUT  /api/v1/startup                         # {"start_at_login"?: bool, "restore_tunnels"?: bool, "restore_answer"?: bool}: the OS sign-in entry and preferences.json restore_tunnels; restore_answer answers the question (true also turns on the sign-in start when the tray is installed); 409 startup.err.no_tray on a CLI-only install
 POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): deletes profiles, preferences and Kongtrol credentials while retaining in-use daemon/tray files, then restarts into setup mode → {"status":"purged","restarting":bool}
 ```
 
@@ -168,6 +175,21 @@ event (`update.event.available`, args latest, current, release page) per new ver
 `/api/v1/events`. `/api/v1/data/purge` uses the same auth as every route (token or browser session:
 cookie + X-Kongtrol-Session, same origin, `application/json`) plus the explicit `confirm`; the running daemon keeps
 `api-token`, `run/` and its logs until it restarts.
+
+<!-- feature:killswitch -->
+**Notices and their actions.** `GET /api/v1/events?after=<seq>` returns `{"events":[…],"seq":N}`;
+each event is `{seq, time, kind, level, key, args, profile, policy, action, can_connect, offer}`
+(`internal/monitor/events.go`). `key` + `args` are an `internal/i18n` key the client translates.
+`can_connect` asks for a "Conectar" / "Reintentar" button (connect `profile`). `offer` (ADR-0102)
+asks for one more button:
+
+| `offer` | Button | What the client calls |
+|---|---|---|
+| `enable_killswitch` | "Activar protección" + "No, gracias" | `POST /api/v1/security/killswitch {"enabled":true}`; "No, gracias" only closes it (the daemon already recorded that it asked) |
+| `release_block` | "Recuperar internet" | `POST /api/v1/tunnels/{profile}/disconnect` (a user disconnect lifts the kill switch block) |
+| `add_provider` | "Agregar <App>" | opens `/?add=vpn&type=<args[last]>` (the "＋ Agregar" sheet with that provider) |
+
+Clients ignore an `offer` value they do not know. No new endpoint backs these actions.
 
 <!-- feature:first_run -->
 **Setup mode.** A daemon started with no config file (the tray spawns it on first run) serves the

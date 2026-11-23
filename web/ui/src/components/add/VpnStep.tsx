@@ -1,4 +1,4 @@
-// Kongtrol UI — A: "Conectar una VPN que ya uso" · v1.0.0 · 2026-11-19
+// Kongtrol UI — A: "Conectar una VPN que ya uso" · v1.1.0 · 2026-11-23
 //
 // VPN apps found on this computer come first, each with one "Usar";
 // "Otra VPN" opens the same type picker as before. The form asks only what
@@ -34,7 +34,8 @@ interface Props {
   onBack: () => void
   /** WireGuard / OpenVPN: continue with their file. */
   onNeedsFile: (type: 'wireguard' | 'openvpn') => void
-  onDone: (name: string, reauth: boolean) => void
+  /** `type`: the new profile's type (a provider app may take over a direct file's rules, ADR-0104). */
+  onDone: (name: string, reauth: boolean, type: AdapterType) => void
   onDirty: (dirty: boolean) => void
   focusFirst: () => void
 }
@@ -184,7 +185,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
     try {
       const outcome = await act.run(toRequest(draft, 'create'))
       onDirty(false)
-      if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth')
+      if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth', draft.type)
     } catch (error) {
       const local = localizeError(error, t)
       const field = local instanceof ApiError ? fieldForErrorKey(local.key) : undefined
@@ -267,7 +268,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
         onBack={() => (initialType ? onBack() : setSub({ k: 'list' }))}
         onRetry={() =>
           void act.retryRestart().then((outcome) => {
-            if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth')
+            if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth', draft.type)
           })
         }
       />

@@ -183,6 +183,8 @@ func startDaemonServices(ctx context.Context) func() {
 	if recentConns != nil {
 		go recentConns.Run(ctx, 15*time.Second) // monitor.RecentEvery
 	}
+	// A direct Proton profile gives way to Proton's app (ADR-0103).
+	go runProtonHandover(ctx, protonHandoverEvery)
 	if watchdog != nil {
 		watchdog.Start(ctx)
 		stops = append(stops, watchdog.Stop)

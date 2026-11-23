@@ -77,6 +77,7 @@ var auditRoutes = map[string]auditRoute{
 	"PUT /api/v1/policies/{name}":           {action: "config.policy.update", level: "INFO"},
 	"DELETE /api/v1/policies/{name}":        {action: "config.policy.delete", level: "INFO"},
 	"POST /api/v1/policies/reload":          {action: "config.policy.reload", level: "INFO"},
+	"POST /api/v1/policies/move":            {action: "config.policy.move", level: "INFO"},
 	"POST /api/v1/groups":                   {action: "config.group.create", level: "INFO"},
 	"PUT /api/v1/groups/{name}":             {action: "config.group.update", level: "INFO"},
 	"DELETE /api/v1/groups/{name}":          {action: "config.group.delete", level: "INFO"},

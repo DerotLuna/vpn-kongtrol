@@ -4,7 +4,7 @@
 
 Version 1.0.0 · 2026-11-23
 
-Status: Accepted · Date: 2026-11-23 · Decision-makers: project maintainer
+Status: Accepted (default of restore_tunnels superseded by ADR-0101) · Date: 2026-11-23 · Decision-makers: project maintainer
 
 Research: [2026-11-23-bounded-reconnect-and-restore](../research/2026-11-23-bounded-reconnect-and-restore.md).
 Consistent with [ADR-0095](0095-save-rules-paused-and-bound-auto-connect.md) (three attempts

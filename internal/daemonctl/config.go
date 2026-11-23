@@ -148,3 +148,22 @@ func nonNil(s []string) []string {
 	}
 	return s
 }
+
+// MovePolicies points every rule of profile from to profile to in one
+// validated save (POST /api/v1/policies/move, ADR-0104) and returns the
+// moved rule names.
+func (c *Client) MovePolicies(from, to string) ([]string, error) {
+	resp, err := c.sendJSON(http.MethodPost, "/api/v1/policies/move", map[string]string{"from": from, "to": to})
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, APIError(resp)
+	}
+	var out struct {
+		Moved []string `json:"moved"`
+	}
+	_ = json.NewDecoder(resp.Body).Decode(&out)
+	return out.Moved, nil
+}

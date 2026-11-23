@@ -7,7 +7,35 @@
 // normal browser tab there is no bridge and the page works as a compact
 // status view without the window-only controls.
 
-export type TrayMessage = 'ready' | 'close' | 'open-dashboard' | 'open-add' | 'open-diagnostics' | 'reauth' | 'quit-tray' | 'quit-all'
+export type TrayMessage =
+  | 'ready'
+  | 'close'
+  | 'open-dashboard'
+  | 'open-add'
+  | 'open-diagnostics'
+  | 'reauth'
+  | 'quit-tray'
+  | 'quit-all'
+  | AddProviderMessage
+
+/**
+ * A notice's "Agregar <App>" (ADR-0102): the panel's "＋ Agregar" sheet with
+ * that provider chosen. One message per provider keeps the list closed
+ * (flyoutAddProviders in flyout.go): the page never sends a free value.
+ */
+const ADD_PROVIDER_MESSAGES = {
+  protonvpn: 'open-add-protonvpn',
+  nordvpn: 'open-add-nordvpn',
+  surfshark: 'open-add-surfshark',
+  forticlient: 'open-add-forticlient',
+} as const
+
+export type AddProviderMessage = (typeof ADD_PROVIDER_MESSAGES)[keyof typeof ADD_PROVIDER_MESSAGES]
+
+/** The message for "Agregar <App>", or plain 'open-add' for a type the tray does not list. */
+export function addProviderMessage(type: string): TrayMessage {
+  return Object.hasOwn(ADD_PROVIDER_MESSAGES, type) ? ADD_PROVIDER_MESSAGES[type as keyof typeof ADD_PROVIDER_MESSAGES] : 'open-add'
+}
 
 interface TrayHost {
   post: (message: TrayMessage) => void

@@ -21,6 +21,9 @@ type Event struct {
 	Action  string    `json:"action,omitempty"` // on_tunnel_down: allow | block | connect
 	// CanConnect: clients offer a "Connect <Profile>" button.
 	CanConnect bool `json:"can_connect,omitempty"`
+	// Offer: an extra action clients show as a button (ADR-0102):
+	// "enable_killswitch", "release_block", "add_provider" (Args[len-1] = provider type).
+	Offer string `json:"offer,omitempty"`
 }
 
 // EventPolicyTunnelDown: traffic for a policy whose tunnel is off.

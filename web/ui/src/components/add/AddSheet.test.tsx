@@ -398,6 +398,40 @@ describe('B: import a VPN file', () => {
       password: 's3cret',
     })
     expect(within(sheet).getByText('/home/ana/.kongtrol/configs/Oficina.ovpn')).toBeInTheDocument()
+    expect(within(sheet).queryByText(/from your Proton account/)).not.toBeInTheDocument()
+  })
+
+  it('a file from a Proton account says, once imported, not to connect it next to the Proton app (ADR-0103)', async () => {
+    window.history.replaceState(null, '', '/?add=file')
+    const { routes, state } = daemon([profile('work')], {
+      'POST /api/v1/vpns/import': () =>
+        json(
+          {
+            status: 'imported',
+            path: '/home/ana/.kongtrol/configs/proton-ch.conf',
+            type: 'wireguard',
+            overwritten: false,
+            provider: 'protonvpn',
+            hint_key: 'profile.import.proton_hint',
+            hint: 'This file is from your Proton account.',
+          },
+          201,
+        ),
+      'POST /api/v1/vpns': () => {
+        state.profiles.push(profile('proton-ch', 'wireguard'))
+        return json({ status: 'created', profile: 'proton-ch', restart_required: false }, 201)
+      },
+    })
+    stubFetch(routes)
+    render(<App />)
+    const sheet = await screen.findByRole('dialog', { name: 'Import a VPN file' })
+    await within(sheet).findByRole('button', { name: 'Choose file' })
+    const input = sheet.querySelector<HTMLInputElement>('input[type="file"]')!
+    await userEvent.upload(input, new File(['[Interface]\n# NetShield = 1\nAddress = 10.2.0.2/32\n'], 'proton-ch.conf'))
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save and activate' }))
+    expect(
+      await within(sheet).findByText('This file is from your Proton account. Do not connect it while the Proton app is connected: they clash.'),
+    ).toBeInTheDocument()
   })
 })
 
@@ -513,5 +547,81 @@ describe('Traffic › Recent', () => {
     expect(screen.getByText("Only in this computer's memory: never saved to disk or sent off it; cleared when Kongtrol closes.")).toBeInTheDocument()
     await userEvent.click(sw)
     await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/settings')).toEqual({ recent_connections_enabled: true }))
+  })
+})
+
+describe('provider app added: move the rules of its account’s files (ADR-0104)', () => {
+  const direct = (name: string, provider?: string): VPNProfile => ({
+    ...profile(name, 'wireguard'),
+    config: `/home/ana/.kongtrol/configs/${name}.conf`,
+    ...(provider ? { provider } : {}),
+  })
+  const rule = (name: string, via: string) => ({ name, via, domains: [`${name}.example`], ip_ranges: null, apps: null, on_tunnel_down: 'allow' })
+
+  function protonDaemon(start: VPNProfile[], policies: unknown[]) {
+    const state = { policies }
+    const d = daemon(start, {
+      'GET /api/v1/vpns/detect': () => json([{ label: 'Proton VPN', adapter_type: 'protonvpn', path: 'C:/p.exe', active: false }]),
+      'GET /api/v1/policies': () => json(state.policies),
+      'POST /api/v1/vpns': () => {
+        d.state.profiles.push(profile('Proton VPN', 'protonvpn'))
+        return json({ status: 'created', profile: 'Proton VPN', restart_required: false }, 201)
+      },
+      'POST /api/v1/policies/move': () => {
+        state.policies = state.policies.map((p) => ({ ...(p as object), via: 'Proton VPN' }))
+        return json({ status: 'moved', from: 'proton-ch', to: 'Proton VPN', moved: ['news', 'shop'] })
+      },
+    })
+    return d
+  }
+
+  async function addProtonApp() {
+    window.history.replaceState(null, '', '/?add=vpn')
+    const sheet = await screen.findByRole('dialog', { name: 'Connect a VPN I already use' })
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Use Proton VPN' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(await within(sheet).findByText('“Proton VPN” is ready.')).toBeInTheDocument()
+    return sheet
+  }
+
+  it('one card per file with rules (plural / singular); "Move rules" moves, "Keep them" only hides', async () => {
+    const { routes } = protonDaemon(
+      [direct('proton-ch', 'protonvpn'), direct('proton-us', 'protonvpn'), direct('proton-jp', 'protonvpn'), direct('home')],
+      [rule('news', 'proton-ch'), rule('shop', 'proton-ch'), rule('mail', 'proton-us'), rule('bank', 'home')],
+    )
+    window.history.replaceState(null, '', '/?add=vpn')
+    const fetchMock = stubFetch(routes)
+    render(<App />)
+    const sheet = await addProtonApp()
+
+    expect(await within(sheet).findByText('Use Proton VPN for your proton-ch rules?')).toBeInTheDocument()
+    expect(
+      within(sheet).getByText(
+        '2 rules use proton-ch, your Proton VPN file. If you move them to Proton VPN, those sites will go through the Proton VPN app. proton-ch stays saved in case you use it again.',
+      ),
+    ).toBeInTheDocument()
+    expect(within(sheet).getByText('Use Proton VPN for your proton-us rules?')).toBeInTheDocument()
+    expect(within(sheet).getByText(/^1 rule uses proton-us, your Proton VPN file\. If you move it to Proton VPN/)).toBeInTheDocument()
+    expect(within(sheet).queryByText(/proton-jp rules/)).not.toBeInTheDocument()
+    expect(within(sheet).queryByText(/your home rules/)).not.toBeInTheDocument()
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Keep them on proton-us' }))
+    await waitFor(() => expect(within(sheet).queryByText('Use Proton VPN for your proton-us rules?')).not.toBeInTheDocument())
+    expect(called(fetchMock, 'POST /api/v1/policies/move')).toBe(false)
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Move rules' }))
+    expect(await screen.findByText('Done: 2 rules now use Proton VPN.')).toBeInTheDocument()
+    expect(bodyOf(fetchMock, 'POST /api/v1/policies/move')).toEqual({ from: 'proton-ch', to: 'Proton VPN' })
+    await waitFor(() => expect(within(sheet).queryByText('Use Proton VPN for your proton-ch rules?')).not.toBeInTheDocument())
+  })
+
+  it('no card when no file of that provider has rules', async () => {
+    const { routes } = protonDaemon([direct('proton-ch', 'protonvpn'), direct('home')], [rule('bank', 'home')])
+    window.history.replaceState(null, '', '/?add=vpn')
+    stubFetch(routes)
+    render(<App />)
+    const sheet = await addProtonApp()
+    await waitFor(() => expect(within(sheet).getByRole('button', { name: /Connect Proton VPN/ })).toBeInTheDocument())
+    expect(within(sheet).queryByRole('button', { name: 'Move rules' })).not.toBeInTheDocument()
   })
 })

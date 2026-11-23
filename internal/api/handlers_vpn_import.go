@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/profileimport"
 )
 
@@ -184,9 +185,19 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		writeLocalizedError(w, r, importStatus(err), err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, map[string]any{
+	body := map[string]any{
 		"status": "imported", "path": res.Path, "type": res.Type, "overwritten": res.Overwritten,
-	})
+	}
+	// A file from a provider account (Proton) says once that it clashes
+	// with that provider's app (ADR-0103).
+	if res.Provider != "" {
+		body["provider"] = res.Provider
+	}
+	if key := profileimport.HintKey(res.Provider); key != "" {
+		body["hint_key"] = key
+		body["hint"] = i18n.T(requestLang(r), key)
+	}
+	writeJSON(w, http.StatusCreated, body)
 }
 
 // readImportPath reads req.Path and fills Type and Name from it when empty.

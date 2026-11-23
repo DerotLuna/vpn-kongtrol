@@ -549,6 +549,19 @@ func (s *KillSwitchService) LANAllowed() bool {
 	return s.cfg != nil && s.cfg.Security.KillSwitch.LANAllowed()
 }
 
+// ProtectsProfile reports whether the kill switch guards name (the global
+// security.kill_switch.enabled, or the profile's own kill_switch). With it
+// off, a drop sends that tunnel's traffic over the normal internet while
+// the watchdog reconnects; the daemon offers to turn it on once (ADR-0102).
+func (s *KillSwitchService) ProtectsProfile(name string) bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cfg != nil && s.profileKillSwitchEnabled(name)
+}
+
 // HoldsAllTraffic reports, for a tunnel that just dropped, whether the
 // kill switch blocks (or, once the next Apply runs, will block) all
 // traffic because that tunnel carried everything. Then its DNS servers stay set: giving the

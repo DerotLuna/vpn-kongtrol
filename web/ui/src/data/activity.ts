@@ -16,6 +16,7 @@
 import { keepPreviousData, useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { http } from '../api/client'
 import { messages, type MessageKey } from '../i18n/messages'
+import { noticeTextKey } from './home'
 
 // ── Audit log ─────────────────────────────────────────────────────────────
 
@@ -137,6 +138,8 @@ export interface DaemonEvent {
   policy?: string
   action?: string
   can_connect?: boolean
+  /** An extra action button (ADR-0102): src/data/offers.ts. */
+  offer?: string
 }
 
 interface EventsResponse {
@@ -179,10 +182,10 @@ export function useEventsHistory() {
   })
 }
 
-/** activity.event.<daemon key>, when this UI knows it. */
+/** activity.event.<daemon key>, else Inicio's text for it (kill switch notices, ADR-0102), when this UI knows it. */
 function eventKey(key: string): MessageKey | null {
   const k = `activity.event.${key}`
-  return k in messages.es ? (k as MessageKey) : null
+  return k in messages.es ? (k as MessageKey) : (noticeTextKey(key) ?? null)
 }
 
 type T = (key: MessageKey, vars?: Record<string, string | number>) => string

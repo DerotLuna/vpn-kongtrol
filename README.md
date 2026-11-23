@@ -1,4 +1,4 @@
-<!-- README version 2.4.0 · 2026-11-23.
+<!-- README version 2.5.0 · 2026-11-23.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -79,17 +79,21 @@ Kongtrol keeps running in the background after you close the window.
   to start the VPN if TCP traffic is detected. App rules provide diagnosis today.
 - **Auto-reconnect.** The watchdog retries only the tunnel that dropped, three times (2 s, 30 s,
   2 min), then tells you once with a Retry action and tries again only when your network changes or
-  the computer wakes. When Kongtrol starts (sign-in, restart, after a crash) it reconnects the VPNs
-  you had connected; both are in Settings › When starting
-  ([ADR-0098](docs/adr/0098-bounded-reconnect-and-restore-at-start.md)). It fails over only to backups you declared (`failover:`); it never
+  the computer wakes. After your first VPN it asks once whether to reconnect, when Kongtrol starts
+  (sign-in, restart, after a crash), the VPNs you had connected; it waits for the network first and
+  only picks up a provider app's VPN its app already connected. Both are in Settings › When starting
+  ([ADR-0098](docs/adr/0098-bounded-reconnect-and-restore-at-start.md),
+  [ADR-0101](docs/adr/0101-guided-restore-at-start-and-network-wait.md)). It fails over only to backups you declared (`failover:`); it never
   brings up an unrelated VPN. A provider app it cannot reconnect on its own gets a notice to
   reconnect it there.
 - **Kill switch and DNS guard** at the system firewall and network level (`status` shows what is
   blocked and the DNS servers in use), with a signed local audit
   log whose signatures are checked when you read it. Turn them on in the panel or with `kongtrol config killswitch|dns-guard on|off|status`. When a VPN drops on its own, only its destinations
   are blocked and its DNS goes back to the system, so other sites keep working; a VPN that carried
-  all traffic stays blocked until it returns, and Kongtrol tells you what to do; with "Allow the
-  local network" off (`allow_lan: false`) that also cuts printers and NAS on your network.
+  all traffic stays blocked until it returns, and the notice has a "Get internet back" button
+  (it disconnects that VPN); with "Allow the
+  local network" off (`allow_lan: false`) that also cuts printers and NAS on your network. The kill
+  switch is off by default; the first time a VPN drops on its own, Kongtrol offers once to turn it on.
 - **Browser panel and tray icon.** One panel (the tray or `kongtrol dashboard` opens it) with seven sections: Home, Profiles (and groups), Rules (and schedules), Traffic, Security, Activity (audit log and notices), Settings
   (diagnostics, export, updates); compiled into the program, no external server. Tray icon.
 - **Setup wizard** (`kongtrol init`): finds the VPN clients you have and saves passwords in the
@@ -254,7 +258,7 @@ explains it with the next step and examples. Full reference: [docs/CLI.en.md](do
 | `kongtrol config update-check <on\|off\|status>` | Optional new version notice |
 | `kongtrol config recent-connections <on\|off\|status>` | Recent destinations list (memory only) |
 | `kongtrol config autostart <on\|off\|status>` | Open Kongtrol when you sign in |
-| `kongtrol config restore-tunnels <on\|off\|status>` | Reconnect the VPNs you had connected when Kongtrol starts |
+| `kongtrol config restore-tunnels <on\|off\|status>` | Reconnect the VPNs you had connected when Kongtrol starts (off until you turn it on; asked once after your first VPN) |
 | `kongtrol config lang <es\|en>` · `config favorites` · `config dashboard` | Language, favorites, panel address on this computer |
 | `kongtrol reload [profile]` | Apply `kongtrol.yaml` changes without disconnecting |
 | `kongtrol restart` | Restart Kongtrol and reconnect what was connected |

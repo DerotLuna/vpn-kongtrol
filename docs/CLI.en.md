@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.17 · 2026-11-23
+Version 1.19 · 2026-11-23
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -468,7 +468,7 @@ kongtrol config autostart on
 
 ### `kongtrol config restore-tunnels`
 
-On by default. If you shut down or restart the computer, or Kongtrol closes suddenly, it connects the VPNs you had connected again when it opens. The ones you disconnected yourself stay off, and kongtrol down (or "Quit and disconnect all") means none is connected. If one does not connect, Kongtrol tries a few times and tells you once.
+Off until you turn it on: Kongtrol asks you once, after the first VPN you connect. If you shut down or restart the computer, or Kongtrol closes suddenly, it connects the VPNs you had connected again when it opens, once there is an internet connection. Those of an app (Proton, NordVPN, Surfshark, FortiClient) are only picked up if their app already connected them. The ones you disconnected yourself stay off, and kongtrol down (or "Quit and disconnect all") means none is connected. If one does not connect, Kongtrol tries a few times and tells you once.
 
 ```text
 kongtrol config restore-tunnels <on|off|status> [flags]
@@ -700,6 +700,20 @@ kongtrol policy state <name> [on|off] [flags]
 
 ```bash
 kongtrol policy state intranet on
+```
+
+### `kongtrol policy move`
+
+Makes every rule that uses <from> use <to>, in one change. For example, to move to the Proton app the rules of a profile made from a Proton file. The <from> profile stays saved.
+
+```text
+kongtrol policy move <from> <to> [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol policy move proton-ch "Proton VPN"
 ```
 
 ### `kongtrol policy on-tunnel-down`

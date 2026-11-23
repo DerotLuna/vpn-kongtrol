@@ -6,11 +6,12 @@
 // daemon). A notice about traffic for a tunnel that is off offers "Conectar"
 // in place, through the same optimistic tunnel action as Inicio; every
 // notice about a profile offers "＋" (send a site through it, ADR-0055).
-import { memo, useMemo } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { eventText, useEventsHistory, type DaemonEvent } from '../../data/activity'
 import { useTunnelAction } from '../../data/resources'
 import { AddRuleIcon } from '../add/entries'
+import { OfferActions } from '../home/OfferActions'
 import { Button } from '../ui/Button'
 import { AlertIcon, InfoIcon, PlugIcon } from '../ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
@@ -22,7 +23,17 @@ function dayKey(iso: string): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
-const EventRow = memo(function EventRow({ ev, onConnect, busy }: { ev: DaemonEvent; onConnect: (name: string) => void; busy: boolean }) {
+const EventRow = memo(function EventRow({
+  ev,
+  onConnect,
+  onDisconnect,
+  busy,
+}: {
+  ev: DaemonEvent
+  onConnect: (name: string) => void
+  onDisconnect: (name: string) => void
+  busy: boolean
+}) {
   const { t, lang } = usePreferences()
   const warn = ev.level === 'WARN'
   const time = new Intl.DateTimeFormat(lang, { timeStyle: 'short' }).format(new Date(ev.time))
@@ -50,6 +61,7 @@ const EventRow = memo(function EventRow({ ev, onConnect, busy }: { ev: DaemonEve
                 : t('activity.event.policy.event.action_connect', { 0: ev.profile })}
             </Button>
           )}
+          <OfferActions event={ev} onDisconnect={onDisconnect} />
           <AddRuleIcon via={ev.profile} />
         </div>
       )}
@@ -83,7 +95,9 @@ export function EventsPanel() {
     return out
   }, [data, dataUpdatedAt, lang, t])
 
-  const onConnect = (name: string) => action.mutate({ name, action: 'connect' })
+  const { mutate } = action
+  const onConnect = useCallback((name: string) => mutate({ name, action: 'connect' }), [mutate])
+  const onDisconnect = useCallback((name: string) => mutate({ name, action: 'disconnect' }), [mutate])
 
   return (
     <section className="k-act" aria-labelledby="events-title" aria-busy={!data && !error}>
@@ -113,7 +127,7 @@ export function EventsPanel() {
               <h3 className="k-ev-day">{g.label}</h3>
               <ul className="k-ev-list">
                 {g.items.map((ev) => (
-                  <EventRow key={ev.seq} ev={ev} onConnect={onConnect} busy={connecting === ev.profile} />
+                  <EventRow key={ev.seq} ev={ev} onConnect={onConnect} onDisconnect={onDisconnect} busy={connecting === ev.profile} />
                 ))}
               </ul>
             </section>

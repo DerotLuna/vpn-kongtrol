@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.14.0 · 2026-11-23
+Version 2.15.0 · 2026-11-23
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -396,6 +396,20 @@ contacts the public Sigstore services to fetch its trust root).
 | **Dashboard** | Localhost-only bind (`127.0.0.1`) + per-user API capability | ← same | ← same |
 
 Every subprocess the security layer shells out to (`pfctl`, `iptables`, `networksetup`, `netsh`, elevated PowerShell on Windows) runs under a bounded timeout, so a hung system call can't block the daemon's shutdown or leave the kill switch / DNS guard in an indeterminate state.
+
+## Kill switch offer and "Recuperar internet"
+
+<!-- feature:killswitch -->
+The kill switch is off by default. The first time a VPN drops without the user asking
+(the watchdog starts reconnecting it) while the kill switch does not protect it, Kongtrol
+shows one notice: that VPN's traffic went out without the VPN while it was reconnecting, and
+"Activar protección" / "No, gracias". Kongtrol asks only once: `killswitch_offered: true` in
+`~/.kongtrol/preferences.json` is written when it asks, whatever the answer. "Activar
+protección" is the same toggle as below (`POST /api/v1/security/killswitch`, CLI
+`kongtrol config killswitch on`). Every notice about a kill switch block offers "Recuperar
+internet". That button disconnects that VPN as the user, so the block lifts; the CLI equivalent
+is `kongtrol down <profile>`. The block itself never lifts on its own (security first)
+([ADR-0102](adr/0102-kill-switch-offered-after-first-drop-and-recover-button.md)).
 
 ## Toggling from the dashboard
 

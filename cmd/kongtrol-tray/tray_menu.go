@@ -103,6 +103,8 @@ func setupConfiguredMenu() {
 	}
 	// "Conectar <perfil>" after a policy notice (see tray_policy.go).
 	addPolicyMenuItem()
+	// "Activar protección" / "Recuperar internet" / "Agregar <App>" (tray_offer.go).
+	addOfferMenuItem()
 	systray.AddSeparator()
 
 	// ── Primary actions ───────────────────────────────────────────────────

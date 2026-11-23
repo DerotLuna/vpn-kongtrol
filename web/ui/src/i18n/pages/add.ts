@@ -1,4 +1,4 @@
-// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.0.0 · 2026-11-19
+// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.1.0 · 2026-11-23
 //
 // The one place every "add" entry in the panel opens: connect a VPN the
 // user already has, import a .conf / .ovpn, or send a site through a VPN.
@@ -137,6 +137,15 @@ const es = {
   'add.done.tested.offBlock': 'Probado: {target} usa {via}, pero {via} está apagada; mientras tanto está bloqueado.',
   'add.done.tested.other': 'Probado: {target} todavía no usa esta regla. Revísala en Reglas.',
 
+  // ADR-0104: after adding a provider app, its account's direct files with rules.
+  'add.move.title': '¿Usar {to} en tus reglas de {from}?',
+  'add.move.body.one': '1 regla usa {from}, tu archivo de {provider}. Si la pasas a {to}, esos sitios saldrán por la app de {provider}. {from} queda guardado por si lo vuelves a usar.',
+  'add.move.body.other': '{n} reglas usan {from}, tu archivo de {provider}. Si las pasas a {to}, esos sitios saldrán por la app de {provider}. {from} queda guardado por si lo vuelves a usar.',
+  'add.move.move': 'Pasar reglas',
+  'add.move.keep': 'Dejarlas en {from}',
+  'add.move.done.one': 'Listo: 1 regla ahora usa {to}.',
+  'add.move.done.other': 'Listo: {n} reglas ahora usan {to}.',
+
   'add.siteVia': 'Hacer que un sitio salga por {vpn}',
   'add.thisVia': 'Hacer que esto salga por…',
 }
@@ -270,6 +279,14 @@ const en: Strings<typeof es> = {
   'add.done.tested.offAllow': 'Tested: {target} uses {via}, but {via} is off; meanwhile it goes over your normal connection.',
   'add.done.tested.offBlock': 'Tested: {target} uses {via}, but {via} is off; meanwhile it is blocked.',
   'add.done.tested.other': 'Tested: {target} does not use this rule yet. Check it in Rules.',
+
+  'add.move.title': 'Use {to} for your {from} rules?',
+  'add.move.body.one': '1 rule uses {from}, your {provider} file. If you move it to {to}, those sites will go through the {provider} app. {from} stays saved in case you use it again.',
+  'add.move.body.other': '{n} rules use {from}, your {provider} file. If you move them to {to}, those sites will go through the {provider} app. {from} stays saved in case you use it again.',
+  'add.move.move': 'Move rules',
+  'add.move.keep': 'Keep them on {from}',
+  'add.move.done.one': 'Done: 1 rule now uses {to}.',
+  'add.move.done.other': 'Done: {n} rules now use {to}.',
 
   'add.siteVia': 'Send a site through {vpn}',
   'add.thisVia': 'Send this through…',

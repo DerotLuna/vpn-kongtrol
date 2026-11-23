@@ -58,7 +58,7 @@ func pollPolicyEvents(states map[string]monitor.TunnelMetrics) {
 	policySeq = seq
 	policyMu.Unlock()
 	for _, e := range evs {
-		if e.Kind != monitor.EventPolicyTunnelDown && e.Kind != monitor.EventTunnelWatchdog && e.Kind != monitor.EventUpdateAvailable {
+		if e.Offer == "" && e.Kind != monitor.EventPolicyTunnelDown && e.Kind != monitor.EventTunnelWatchdog && e.Kind != monitor.EventUpdateAvailable {
 			continue
 		}
 		args := make([]any, len(e.Args))
@@ -68,6 +68,7 @@ func pollPolicyEvents(states map[string]monitor.TunnelMetrics) {
 		msg := trayF(e.Key, args...)
 		notifyError(msg, nil)
 		desktopNotify("Kongtrol", msg)
+		showOffer(e, msg)
 		if e.CanConnect && e.Profile != "" {
 			policyMu.Lock()
 			policyProfile = e.Profile
@@ -86,6 +87,7 @@ func pollPolicyEvents(states map[string]monitor.TunnelMetrics) {
 			}
 		}
 	}
+	expireOffer(states)
 	policyMu.Lock()
 	defer policyMu.Unlock()
 	if policyItem == nil || policyProfile == "" {

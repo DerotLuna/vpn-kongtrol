@@ -1,5 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
-import { announceReady, type TrayMessage } from './bridge'
+import { addProviderMessage, announceReady, type TrayMessage } from './bridge'
+
+describe('addProviderMessage', () => {
+  it('maps the providers the tray lists (flyoutAddProviders) and nothing else', () => {
+    expect(addProviderMessage('protonvpn')).toBe('open-add-protonvpn')
+    expect(addProviderMessage('nordvpn')).toBe('open-add-nordvpn')
+    expect(addProviderMessage('surfshark')).toBe('open-add-surfshark')
+    expect(addProviderMessage('forticlient')).toBe('open-add-forticlient')
+    expect(addProviderMessage('wireguard')).toBe('open-add')
+    expect(addProviderMessage('toString')).toBe('open-add')
+  })
+})
 
 // A document whose visibility the test controls.
 function fakeDoc(state: DocumentVisibilityState) {

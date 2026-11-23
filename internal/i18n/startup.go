@@ -43,7 +43,7 @@ var startupMessages = map[Lang]map[string]string{
 		"help.kongtrol.config.autostart.example":       "  kongtrol config autostart status\n  kongtrol config autostart off\n  kongtrol config autostart on",
 		"help.kongtrol.config.restore-tunnels.args":    "<on|off|status>",
 		"help.kongtrol.config.restore-tunnels.short":   "Al iniciar, vuelve a conectar las VPN que tenías conectadas",
-		"help.kongtrol.config.restore-tunnels.long":    "Encendido por defecto. Si apagas o reinicias el equipo, o Kongtrol se cierra de golpe, al volver a abrirse conecta otra vez las VPN que tenías conectadas. Las que desconectaste tú no se conectan, y kongtrol down (o \"Salir y desconectar todo\") hace que no se conecte ninguna. Si una no conecta, Kongtrol lo intenta pocas veces y te avisa una sola vez.",
+		"help.kongtrol.config.restore-tunnels.long":    "Apagado hasta que lo actives: Kongtrol te lo pregunta una vez, después de la primera VPN que conectas. Si apagas o reinicias el equipo, o Kongtrol se cierra de golpe, al volver a abrirse conecta otra vez las VPN que tenías conectadas, cuando ya hay conexión a internet. Las de una app (Proton, NordVPN, Surfshark, FortiClient) solo se adoptan si su app ya las conectó. Las que desconectaste tú no se conectan, y kongtrol down (o \"Salir y desconectar todo\") hace que no se conecte ninguna. Si una no conecta, Kongtrol lo intenta pocas veces y te avisa una sola vez.",
 		"help.kongtrol.config.restore-tunnels.example": "  kongtrol config restore-tunnels status\n  kongtrol config restore-tunnels off\n  kongtrol config restore-tunnels on",
 	},
 	EN: {
@@ -74,7 +74,7 @@ var startupMessages = map[Lang]map[string]string{
 		"help.kongtrol.config.autostart.example":       "  kongtrol config autostart status\n  kongtrol config autostart off\n  kongtrol config autostart on",
 		"help.kongtrol.config.restore-tunnels.args":    "<on|off|status>",
 		"help.kongtrol.config.restore-tunnels.short":   "When starting, reconnect the VPNs you had connected",
-		"help.kongtrol.config.restore-tunnels.long":    "On by default. If you shut down or restart the computer, or Kongtrol closes suddenly, it connects the VPNs you had connected again when it opens. The ones you disconnected yourself stay off, and kongtrol down (or \"Quit and disconnect all\") means none is connected. If one does not connect, Kongtrol tries a few times and tells you once.",
+		"help.kongtrol.config.restore-tunnels.long":    "Off until you turn it on: Kongtrol asks you once, after the first VPN you connect. If you shut down or restart the computer, or Kongtrol closes suddenly, it connects the VPNs you had connected again when it opens, once there is an internet connection. Those of an app (Proton, NordVPN, Surfshark, FortiClient) are only picked up if their app already connected them. The ones you disconnected yourself stay off, and kongtrol down (or \"Quit and disconnect all\") means none is connected. If one does not connect, Kongtrol tries a few times and tells you once.",
 		"help.kongtrol.config.restore-tunnels.example": "  kongtrol config restore-tunnels status\n  kongtrol config restore-tunnels off\n  kongtrol config restore-tunnels on",
 	},
 }

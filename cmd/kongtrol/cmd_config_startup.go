@@ -84,7 +84,7 @@ var configRestoreCmd = &cobra.Command{
 			return nil
 		}
 		if _, err := config.UpdatePreferences("", func(p *config.Preferences) error {
-			p.RestoreTunnels = &on
+			p.SetRestoreTunnels(on)
 			return nil
 		}); err != nil {
 			return err
