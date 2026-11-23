@@ -166,7 +166,7 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 		// Let PolicyResolver own the OS routes for destinations. If they
 		// are installed by the WireGuard client during startup, they
 		// cannot be removed when a rule is paused.
-		if cidrs := s.policyAllowedIPs(name, true); len(cidrs) > 0 {
+		if cidrs := s.policyAllowedIPs(name, s.policyResolver != nil); len(cidrs) > 0 {
 			if aCfg.TunnelName == "" {
 				base := filepath.Base(aCfg.ConfigPath)
 				aCfg.TunnelName = strings.TrimSuffix(base, filepath.Ext(base))

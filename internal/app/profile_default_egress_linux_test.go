@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,18 @@ type recordingWireGuardAdapter struct {
 	config vpn.AdapterConfig
 	data   string
 }
+
+type recordingPolicyResolver struct {
+	configPath string
+}
+
+func (r *recordingPolicyResolver) RegisterProfile(_, _, path string) error {
+	r.configPath = path
+	return nil
+}
+
+func (r *recordingPolicyResolver) RegisterTunnel(_, _ string, _ []net.IP) error { return nil }
+func (r *recordingPolicyResolver) UnregisterProfile(string)                     {}
 
 func (a *recordingWireGuardAdapter) Connect(_ context.Context, cfg vpn.AdapterConfig) error {
 	a.config = cfg
@@ -68,5 +81,15 @@ AllowedIPs = 0.0.0.0/0, ::/0
 	}
 	if adapter.config.ConfigPath == path || adapter.config.DefaultEgress || !strings.Contains(adapter.data, "198.51.100.12/32") {
 		t.Fatal("split-tunnel policy did not get its usual patched configuration")
+	}
+
+	resolver := &recordingPolicyResolver{}
+	svc.policyResolver = resolver
+	if err := svc.Connect(context.Background(), "native"); err != nil {
+		t.Fatal(err)
+	}
+	if adapter.config.ConfigPath == path || strings.Contains(adapter.data, "198.51.100.12/32") ||
+		!strings.Contains(adapter.data, "10.7.0.1/32") || resolver.configPath != path {
+		t.Fatal("with a resolver, only bootstrap routes should come from WireGuard and the resolver should receive the original config")
 	}
 }
