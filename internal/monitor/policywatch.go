@@ -91,7 +91,8 @@ func (w *PolicyWatch) Check(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	done := map[string]bool{} // one decision per policy per check
+	done := map[string]bool{}    // one decision per policy per check
+	started := map[string]bool{} // one automatic start per profile per sample
 	seen := map[netip.Addr]bool{}
 	for _, a := range addrs {
 		if seen[a] || !a.IsValid() || a.IsLoopback() || a.IsUnspecified() {
@@ -109,6 +110,12 @@ func (w *PolicyWatch) Check(ctx context.Context) {
 		case vpn.StatusConnecting:
 			continue
 		default:
+			if m.Action == config.OnTunnelDownConnect {
+				if started[m.Via] {
+					continue
+				}
+				started[m.Via] = true
+			}
 			w.handle(ctx, m)
 		}
 	}
