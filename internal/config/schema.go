@@ -133,6 +133,18 @@ type PolicyRule struct {
 	OnTunnelDown string `yaml:"on_tunnel_down,omitempty"`
 }
 
+// ActivePolicies returns the rules that participate in routing, in file order.
+// Paused rules must stay out of the positional priority calculation.
+func (c *Config) ActivePolicies() []PolicyRule {
+	active := make([]PolicyRule, 0, len(c.Policies))
+	for _, rule := range c.Policies {
+		if !rule.Disabled {
+			active = append(active, rule)
+		}
+	}
+	return active
+}
+
 // On-tunnel-down actions (PolicyRule.OnTunnelDown).
 const (
 	OnTunnelDownAllow   = "allow"

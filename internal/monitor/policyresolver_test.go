@@ -119,6 +119,19 @@ func TestPausedPolicyRemovesRoutesAndStopsMatching(t *testing.T) {
 	}
 }
 
+func TestPausedPolicyDoesNotChangeWinningRoute(t *testing.T) {
+	cfg := policyCfg()
+	cfg.VPNs["office"] = config.VPNConfig{Type: "forticlient", Priority: 3}
+	cfg.Policies = append(cfg.Policies, config.PolicyRule{
+		Name: "paused", Via: "brainbox", Disabled: true,
+		Match: config.MatchSpec{IPRanges: []string{"10.50.0.0/16"}},
+	})
+	r := testResolver(t, cfg, newFakeRoutes(), nil)
+	if m, ok := r.MatchAddr(netip.MustParseAddr("10.50.0.42")); !ok || m.Via != "office" {
+		t.Fatalf("saving a paused rule changed the winning route: %+v", m)
+	}
+}
+
 func policyCfg() *config.Config {
 	return &config.Config{
 		VPNs: map[string]config.VPNConfig{

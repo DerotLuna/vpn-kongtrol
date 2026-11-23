@@ -34,12 +34,10 @@ type ExplainResult struct {
 func New(cfg *config.Config) (*Engine, error) {
 	e := &Engine{}
 
-	for i, pr := range cfg.Policies {
-		if pr.Disabled {
-			continue
-		}
+	active := cfg.ActivePolicies()
+	for i, pr := range active {
 		// Determine priority: explicit from config, or positional (earlier = higher).
-		priority := len(cfg.Policies) - i
+		priority := len(active) - i
 		if vpnCfg, ok := cfg.VPNs[pr.Via]; ok && vpnCfg.Priority > 0 {
 			priority = vpnCfg.Priority
 		}

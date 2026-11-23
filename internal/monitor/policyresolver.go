@@ -169,13 +169,7 @@ func (r *PolicyResolver) policies() []config.PolicyRule {
 	if r.cfg == nil {
 		return nil
 	}
-	var active []config.PolicyRule
-	for _, p := range r.cfg.Policies {
-		if !p.Disabled {
-			active = append(active, p)
-		}
-	}
-	return active
+	return r.cfg.ActivePolicies()
 }
 
 // hasPolicies reports whether any policy routes through profile.
@@ -759,18 +753,15 @@ func orderedPolicies(cfg *config.Config) []config.PolicyRule {
 	type ranked struct {
 		p    config.PolicyRule
 		prio int
-		idx  int
 	}
-	rs := make([]ranked, 0, len(cfg.Policies))
-	for i, p := range cfg.Policies {
-		if p.Disabled {
-			continue
-		}
-		prio := len(cfg.Policies) - i
+	active := cfg.ActivePolicies()
+	rs := make([]ranked, 0, len(active))
+	for i, p := range active {
+		prio := len(active) - i
 		if v, ok := cfg.VPNs[p.Via]; ok && v.Priority > 0 {
 			prio = v.Priority
 		}
-		rs = append(rs, ranked{p, prio, i})
+		rs = append(rs, ranked{p, prio})
 	}
 	sort.SliceStable(rs, func(i, j int) bool { return rs[i].prio > rs[j].prio })
 	out := make([]config.PolicyRule, len(rs))
