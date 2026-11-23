@@ -1,6 +1,6 @@
 # ADR-0085: Select native WireGuard default egress on Linux
 
-Status: Accepted · Date: 2026-11-21
+Status: Superseded by ADR-0090 · Date: 2026-11-21
 
 ## Context
 

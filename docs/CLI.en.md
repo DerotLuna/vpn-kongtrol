@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.14 · 2026-11-21
+Version 1.16 · 2026-11-22
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -106,7 +106,7 @@ kongtrol routes --system
 
 ### `kongtrol routes check-default`
 
-Examine a local WireGuard profile file on Linux without changing the network.
+Examine a local WireGuard profile file on Windows or Linux without changing the network.
 
 ```text
 kongtrol routes check-default <profile> [flags]
@@ -120,7 +120,7 @@ kongtrol routes check-default office
 
 ### `kongtrol routes default-egress`
 
-Save the setting for the next connection of a compatible WireGuard profile on Linux. Disconnect the profile before changing it.
+Save the setting for the next connection of a compatible WireGuard profile on Windows or Linux. Disconnect the profile before changing it.
 
 ```text
 kongtrol routes default-egress <profile> <on|off> [flags]
@@ -624,6 +624,7 @@ kongtrol policy add <site|ip|range|app:<exe>>... [flags]
 | `--name string` | policy name (default: "<first target> via <vpn>") |
 | `--no-subdomains` | only the exact site, without its subdomains (*.site) |
 | `--on-tunnel-down string` | while the VPN is off: inherit (default), allow, block, or connect |
+| `--paused` | save the rule paused until you activate it |
 | `--via string` | VPN profile the traffic goes through (required) |
 
 **Examples**
@@ -653,6 +654,20 @@ kongtrol policy remove <name> [flags]
 ```bash
 kongtrol policy remove "github.com via office"
 kongtrol policy remove teams --yes
+```
+
+### `kongtrol policy state`
+
+A paused rule remains saved without routing, blocking, or attempting to connect to its VPN. Activating it applies its behavior immediately.
+
+```text
+kongtrol policy state <name> [on|off] [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol policy state intranet on
 ```
 
 ### `kongtrol policy on-tunnel-down`

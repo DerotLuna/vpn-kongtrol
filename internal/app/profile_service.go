@@ -163,14 +163,18 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	}
 
 	if vpnCfg.Type == "wireguard" && aCfg.ConfigPath != "" {
-		if cidrs := s.policyAllowedIPs(name); len(cidrs) > 0 {
+		// Let PolicyResolver own the OS routes for destinations. If they
+		// are installed by the WireGuard client during startup, they
+		// cannot be removed when a rule is paused.
+		if cidrs := s.policyAllowedIPs(name, s.policyResolver != nil); len(cidrs) > 0 {
 			if aCfg.TunnelName == "" {
 				base := filepath.Base(aCfg.ConfigPath)
 				aCfg.TunnelName = strings.TrimSuffix(base, filepath.Ext(base))
 			}
 			patched, err := patchWireGuardAllowedIPs(aCfg.ConfigPath, aCfg.TunnelName, cidrs)
 			if err != nil {
-				s.stderr(s.f("cli.policy.warn.patch_allowed_ips", name, err))
+				aCfg.Password = ""
+				return errors.New(s.f("cli.policy.warn.patch_allowed_ips", name, err))
 			} else {
 				aCfg.ConfigPath = patched
 				defer os.RemoveAll(filepath.Dir(patched))
@@ -430,7 +434,7 @@ func (s *ProfileService) HandleReconnectError(profile string, err error) {
 }
 
 func (s *ProfileService) PolicyAllowedIPs(profileName string) []string {
-	return s.policyAllowedIPs(profileName)
+	return s.policyAllowedIPs(profileName, false)
 }
 
 func (s *ProfileService) runProfilePreflight(name string, vpnCfg config.VPNConfig, aCfg vpn.AdapterConfig) error {
@@ -580,7 +584,7 @@ func (s *ProfileService) reauthHint(vpnCfg config.VPNConfig) string {
 	}
 }
 
-func (s *ProfileService) policyAllowedIPs(profileName string) []string {
+func (s *ProfileService) policyAllowedIPs(profileName string, bootstrap bool) []string {
 	vpnCfg, ok := s.cfg.VPNs[profileName]
 	if !ok || vpnCfg.DefaultEgress {
 		return nil
@@ -604,18 +608,25 @@ func (s *ProfileService) policyAllowedIPs(profileName string) []string {
 		if addr, err := wireguard.ParseConfigAddress(vpnCfg.ConfigFile); err == nil && addr != nil {
 			if v4 := addr.To4(); v4 != nil {
 				add(fmt.Sprintf("%d.%d.%d.0/24", v4[0], v4[1], v4[2]))
+			} else {
+				add(addr.String() + "/128")
 			}
 		}
 		for _, dns := range wireguard.ParseConfigDNS(vpnCfg.ConfigFile) {
 			if dns.To4() != nil {
 				add(dns.String() + "/32")
+			} else if dns.To16() != nil {
+				add(dns.String() + "/128")
 			}
 		}
+	}
+	if bootstrap && len(cidrs) > 0 {
+		return cidrs
 	}
 
 	hasDomains := false
 	for _, pol := range s.cfg.Policies {
-		if pol.Via != profileName {
+		if pol.Disabled || pol.Via != profileName {
 			continue
 		}
 		for _, cidr := range pol.Match.IPRanges {

@@ -77,6 +77,26 @@ func TestResolveIP_MultipleRanges(t *testing.T) {
 	}
 }
 
+func TestPausedPolicyDoesNotChangePriorityOfActiveRules(t *testing.T) {
+	const target = "192.0.2.42"
+	match := config.MatchSpec{IPRanges: []string{target + "/32"}}
+	cfg := &config.Config{
+		VPNs: map[string]config.VPNConfig{"first": {}, "priority": {Priority: 3}},
+		Policies: []config.PolicyRule{
+			{Name: "first", Via: "first", Match: match},
+			{Name: "priority", Via: "priority", Match: match},
+			{Name: "paused", Via: "first", Match: match, Disabled: true},
+		},
+	}
+	engine, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if via, _ := engine.ResolveIP(net.ParseIP(target)); via != "priority" {
+		t.Fatalf("saving a paused rule changed the destination to %q", via)
+	}
+}
+
 func TestResolveIP_PriorityOverridesPosition(t *testing.T) {
 	// Both rules match, the one with higher priority should win.
 	e := buildEngine(t,

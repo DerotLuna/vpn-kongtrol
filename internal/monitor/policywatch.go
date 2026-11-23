@@ -16,51 +16,52 @@ import (
 // which can miss short-lived or rejected sockets. The firewall runs
 // independently of this observer.
 //
-// Notices are throttled to one per policy per NoticeEvery; automatic
-// connects to one attempt per tunnel per ConnectEvery.
+// Notices are throttled to one per policy per NoticeEvery. Each profile
+// gets at most three traffic-triggered attempts between successful connections.
 type PolicyWatch struct {
 	Matcher interface {
 		MatchAddr(a netip.Addr) (PolicyMatch, bool)
 	}
 	Status  func(profile string) vpn.Status
 	Connect func(ctx context.Context, profile string) error
-	Events  *EventLog
+	// ConnectConflict reports an active VPN that should defer this automatic start.
+	ConnectConflict func(profile string) string
+	Events          *EventLog
 	// OnEvent is called for every new event (daemon log / audit).
 	OnEvent func(Event)
 
-	NoticeEvery  time.Duration
-	ConnectEvery time.Duration
+	NoticeEvery time.Duration
 
 	conns func() ([]netip.Addr, error)
-	now   func() time.Time
 
-	mu          sync.Mutex
-	lastNotice  map[string]time.Time // policy → last notice
-	lastConnect map[string]time.Time // profile → last automatic connect
+	mu         sync.Mutex
+	lastNotice map[string]time.Time
+	retries    map[string]policyConnectRetry
 }
 
-// Defaults for the throttles.
+type policyConnectRetry struct {
+	attempts     int
+	inFlight     bool
+	retryAt      time.Time
+	lastConflict time.Time
+}
+
 const (
-	DefaultNoticeEvery  = 30 * time.Minute
-	DefaultConnectEvery = 3 * time.Minute
+	DefaultNoticeEvery   = 30 * time.Minute
+	policyConnectLimit   = 3
+	policyConnectBackoff = 3 * time.Minute
 )
 
 func (w *PolicyWatch) init() {
 	if w.lastNotice == nil {
 		w.lastNotice = map[string]time.Time{}
-		w.lastConnect = map[string]time.Time{}
+		w.retries = map[string]policyConnectRetry{}
 	}
 	if w.conns == nil {
 		w.conns = activeRemoteAddrs
 	}
-	if w.now == nil {
-		w.now = time.Now
-	}
 	if w.NoticeEvery <= 0 {
 		w.NoticeEvery = DefaultNoticeEvery
-	}
-	if w.ConnectEvery <= 0 {
-		w.ConnectEvery = DefaultConnectEvery
 	}
 }
 
@@ -90,7 +91,8 @@ func (w *PolicyWatch) Check(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	done := map[string]bool{} // one decision per policy per check
+	done := map[string]bool{}    // one decision per policy per check
+	started := map[string]bool{} // one automatic start per profile per sample
 	seen := map[netip.Addr]bool{}
 	for _, a := range addrs {
 		if seen[a] || !a.IsValid() || a.IsLoopback() || a.IsUnspecified() {
@@ -102,35 +104,30 @@ func (w *PolicyWatch) Check(ctx context.Context) {
 			continue
 		}
 		done[m.Policy] = true
-		if st := w.Status(m.Via).Normalize(); st == vpn.StatusConnected || st == vpn.StatusConnecting {
-			continue // up, or coming up
+		switch w.Status(m.Via).Normalize() {
+		case vpn.StatusConnected:
+			w.ResetConnectBudget(m.Via)
+		case vpn.StatusConnecting:
+			continue
+		default:
+			if m.Action == config.OnTunnelDownConnect {
+				if started[m.Via] {
+					continue
+				}
+				started[m.Via] = true
+			}
+			w.handle(ctx, m)
 		}
-		w.handle(ctx, m)
 	}
 }
 
 func (w *PolicyWatch) handle(ctx context.Context, m PolicyMatch) {
-	now := w.now()
-	w.mu.Lock()
 	if m.Action == config.OnTunnelDownConnect {
-		if last, ok := w.lastConnect[m.Via]; ok && now.Sub(last) < w.ConnectEvery {
-			w.mu.Unlock()
-			return
-		}
-		w.lastConnect[m.Via] = now
-		w.mu.Unlock()
-		w.emit(Event{Kind: EventPolicyTunnelDown, Level: "INFO", Key: "policy.event.connect",
-			Args: []string{m.Label, m.Via}, Profile: m.Via, Policy: m.Policy, Action: m.Action})
-		if w.Connect != nil {
-			go func() {
-				if err := w.Connect(ctx, m.Via); err != nil && ctx.Err() == nil {
-					w.emit(Event{Kind: EventPolicyTunnelDown, Level: "WARN", Key: "policy.event.connect_failed",
-						Args: []string{m.Label, m.Via}, Profile: m.Via, Policy: m.Policy, Action: m.Action, CanConnect: true})
-				}
-			}()
-		}
+		w.startConnect(ctx, m)
 		return
 	}
+	now := time.Now()
+	w.mu.Lock()
 	if last, ok := w.lastNotice[m.Policy]; ok && now.Sub(last) < w.NoticeEvery {
 		w.mu.Unlock()
 		return
@@ -143,6 +140,81 @@ func (w *PolicyWatch) handle(ctx context.Context, m PolicyMatch) {
 	}
 	w.emit(Event{Kind: EventPolicyTunnelDown, Level: "WARN", Key: key, Args: []string{m.Label, m.Via},
 		Profile: m.Via, Policy: m.Policy, Action: m.Action, CanConnect: true})
+}
+
+// ResetConnectBudget re-arms traffic-triggered connection after a tunnel comes up.
+func (w *PolicyWatch) ResetConnectBudget(profile string) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if w.retries[profile].inFlight {
+		// Keep the reservation until the running attempt finishes. Its outcome
+		// belongs to the budget that was just reset.
+		w.retries[profile] = policyConnectRetry{inFlight: true}
+		return
+	}
+	delete(w.retries, profile)
+}
+
+func (w *PolicyWatch) startConnect(ctx context.Context, m PolicyMatch) {
+	if w.Connect == nil || ctx.Err() != nil {
+		return
+	}
+	var conflict string
+	if w.ConnectConflict != nil {
+		conflict = w.ConnectConflict(m.Via)
+	}
+	now := time.Now()
+	w.mu.Lock()
+	retry := w.retries[m.Via]
+	if retry.inFlight || retry.attempts >= policyConnectLimit || now.Before(retry.retryAt) {
+		w.mu.Unlock()
+		return
+	}
+	if conflict != "" {
+		notify := retry.lastConflict.IsZero() || now.Sub(retry.lastConflict) >= w.NoticeEvery
+		if notify {
+			retry.lastConflict = now
+			w.retries[m.Via] = retry
+		}
+		w.mu.Unlock()
+		if notify {
+			w.emit(Event{Kind: EventPolicyTunnelDown, Level: "WARN", Key: "policy.event.connect_conflict",
+				Args: []string{m.Label, m.Via, conflict}, Profile: m.Via, Policy: m.Policy, Action: m.Action})
+		}
+		return
+	}
+	retry.attempts++
+	retry.inFlight = true
+	w.retries[m.Via] = retry
+	w.mu.Unlock()
+
+	e := Event{Kind: EventPolicyTunnelDown, Level: "INFO", Key: "policy.event.connect",
+		Args: []string{m.Label, m.Via}, Profile: m.Via, Policy: m.Policy, Action: m.Action}
+	w.emit(e)
+	go func() {
+		if key := w.finishConnect(m.Via, w.Connect(ctx, m.Via)); key != "" && ctx.Err() == nil {
+			e.Level, e.Key, e.CanConnect = "WARN", key, true
+			w.emit(e)
+		}
+	}()
+}
+
+func (w *PolicyWatch) finishConnect(profile string, err error) string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	retry := w.retries[profile]
+	if err == nil || retry.attempts == 0 {
+		delete(w.retries, profile)
+		return ""
+	}
+	retry.inFlight = false
+	key := "policy.event.connect_exhausted"
+	if retry.attempts < policyConnectLimit {
+		retry.retryAt = time.Now().Add(policyConnectBackoff << (retry.attempts - 1))
+		key = "policy.event.connect_failed"
+	}
+	w.retries[profile] = retry
+	return key
 }
 
 func (w *PolicyWatch) emit(e Event) {

@@ -144,7 +144,7 @@ func (s *KillSwitchService) BeginDisconnect(name string) (func(), error) {
 		return nil, nil
 	}
 	protected := slices.ContainsFunc(s.cfg.Policies, func(p config.PolicyRule) bool {
-		return p.Via == name && config.BlocksWhenDown(p.TunnelDownAction(s.cfg.VPNs[name]))
+		return !p.Disabled && p.Via == name && config.BlocksWhenDown(p.TunnelDownAction(s.cfg.VPNs[name]))
 	})
 	if !protected {
 		s.mu.Unlock()
@@ -562,7 +562,7 @@ func (s *KillSwitchService) defaultFullTunnel(name string, v config.VPNConfig) b
 		return true
 	case "wireguard":
 		for _, p := range s.cfg.Policies {
-			if p.Via == name {
+			if !p.Disabled && p.Via == name {
 				return false // Kongtrol replaced AllowedIPs with the policies
 			}
 		}

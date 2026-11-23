@@ -106,11 +106,12 @@ func loadConfig() error {
 	policyResolver.SetTunnelProbe(probeTunnel)
 	killSwitchSvc.SetDestinations(policyResolver)
 	policyWatch = &monitor.PolicyWatch{
-		Matcher: policyResolver,
-		Status:  profileStatus,
-		Connect: connectProfile,
-		Events:  daemonEvents,
-		OnEvent: logPolicyEvent,
+		Matcher:         policyResolver,
+		Status:          profileStatus,
+		Connect:         connectProfile,
+		ConnectConflict: policyAutoConnectConflict,
+		Events:          daemonEvents,
+		OnEvent:         logPolicyEvent,
 	}
 	// Recent destinations: memory only, never on disk or sent (ADR-0054).
 	recentConns = monitor.NewRecentConnections(cfg.RecentConnectionsEnabled())
@@ -130,7 +131,6 @@ func loadConfig() error {
 		log,
 	)
 	splitDNSMgr = monitor.NewSplitDNSManager(
-		cfg,
 		policyResolver,
 		parseDuration(cfg.Monitor.SplitDNS.Interval, 60*time.Second),
 		log,

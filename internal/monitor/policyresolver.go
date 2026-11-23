@@ -146,7 +146,7 @@ func (r *PolicyResolver) SetConfig(cfg *config.Config) {
 	keep := map[string]bool{}
 	if cfg != nil {
 		for _, p := range cfg.Policies {
-			if before, ok := previous[p.Name]; ok && before.Via == p.Via && slices.Equal(before.Match.Domains, p.Match.Domains) {
+			if before, ok := previous[p.Name]; ok && !p.Disabled && !before.Disabled && before.Via == p.Via && slices.Equal(before.Match.Domains, p.Match.Domains) {
 				keep[p.Name] = true
 			}
 		}
@@ -169,7 +169,7 @@ func (r *PolicyResolver) policies() []config.PolicyRule {
 	if r.cfg == nil {
 		return nil
 	}
-	return append([]config.PolicyRule(nil), r.cfg.Policies...)
+	return r.cfg.ActivePolicies()
 }
 
 // hasPolicies reports whether any policy routes through profile.
@@ -207,6 +207,8 @@ func (r *PolicyResolver) RegisterProfile(name, ifaceName, configPath string) err
 	if addr, err := wireguard.ParseConfigAddress(configPath); err == nil && addr != nil {
 		if v4 := addr.To4(); v4 != nil {
 			ps.vpnSubnet = fmt.Sprintf("%d.%d.%d.0/24", v4[0], v4[1], v4[2])
+		} else {
+			ps.vpnSubnet = ipToCIDR(addr)
 		}
 	}
 	r.register(name, ps)
@@ -539,7 +541,7 @@ func (r *PolicyResolver) resolve(onlyVia string, budget time.Duration) {
 	started := time.Now()
 	found := map[string]map[string]string{} // policy → CIDR → host
 	for _, p := range cfg.Policies {
-		if onlyVia != "" && p.Via != onlyVia {
+		if p.Disabled || (onlyVia != "" && p.Via != onlyVia) {
 			continue
 		}
 		for _, pattern := range p.Match.Domains {
@@ -751,15 +753,15 @@ func orderedPolicies(cfg *config.Config) []config.PolicyRule {
 	type ranked struct {
 		p    config.PolicyRule
 		prio int
-		idx  int
 	}
-	rs := make([]ranked, len(cfg.Policies))
-	for i, p := range cfg.Policies {
-		prio := len(cfg.Policies) - i
+	active := cfg.ActivePolicies()
+	rs := make([]ranked, 0, len(active))
+	for i, p := range active {
+		prio := len(active) - i
 		if v, ok := cfg.VPNs[p.Via]; ok && v.Priority > 0 {
 			prio = v.Priority
 		}
-		rs[i] = ranked{p, prio, i}
+		rs = append(rs, ranked{p, prio})
 	}
 	sort.SliceStable(rs, func(i, j int) bool { return rs[i].prio > rs[j].prio })
 	out := make([]config.PolicyRule, len(rs))

@@ -71,6 +71,11 @@ reasoned but unverified.
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |
 | [Panel session recovery](2026-11-21-panel-session-recovery.md) | Browser session invalidation after the first profile restart and local draft recovery | ADR-0082 |
+| [Windows VPN egress](2026-11-21-windows-vpn-egress.md) | WireGuard default routes and TunnelBear device diagnostics on Windows | ADR-0090 |
+| [First profile activation](2026-11-22-first-profile-live.md) | Apply the first profile and update the tray menu in place | ADR-0092 |
+| [Windows uninstall](2026-11-22-uninstall-data-removal.md) | Distinguish data removal failures from leftover program files | ADR-0093 |
+| [Windows installer shutdown](2026-11-22-windows-installer-shutdown.md) | Close the setup dashboard before updating installed files | ADR-0094 |
+| [Rules and Windows VPN coexistence](2026-11-22-rule-activation-and-vpn-coexistence.md) | Separate saving and activation, limit retries, detect Proton's active tunnel and repair helper on upgrades | ADR-0095, ADR-0096 |
 | [Linux WireGuard and tray](2026-11-21-linux-tray-and-wireguard.md) | Existing kernel links and desktop launch | ADR-0088 |
 | [Landing and release refresh](2026-11-21-landing-release-refresh.md) | Compatibility summary, visuals and stable release refresh | ADR-0089 |
 

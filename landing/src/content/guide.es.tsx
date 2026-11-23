@@ -93,7 +93,7 @@ export default function guideES(os: OS) {
       note: <>Lista completa y qué hace Kongtrol con cada una: <a href="/#vpns">VPN compatibles</a>. Proton VPN también funciona sin su app,
         como perfil <IC c="wireguard" /> con el archivo que descargas de tu cuenta.</>,
     },
-    // feature:helper
+    // feature:helper feature:windows_installer_shutdown
     install: {
       title: <>Instalar</>,
       steps: (os === 'windows'
@@ -119,7 +119,8 @@ export default function guideES(os: OS) {
             <a href="/#install">descargas</a>, con doble clic. En GNOME el ícono necesita la extensión AppIndicator (Ubuntu ya la trae).
             {' '}¿Solo el comando <IC c="kongtrol" />? Termina la línea en <IC c="| sh -s -- --cli-only" />; sin escritorio (un servidor, SSH) lo hace solo y te lo dice.</>
           : <>¿Sin el instalador? Esta línea en PowerShell (sin administrador) instala lo mismo: la app con su ícono y el comando <IC c="kongtrol" />.
-            {' '}Solo el comando: antes escribe <IC c="$env:KONGTROL_CLI_ONLY=1" />. Si ya usaste el instalador, actualiza con el instalador nuevo.</>,
+            {' '}Solo el comando: antes escribe <IC c="$env:KONGTROL_CLI_ONLY=1" />. Si ya usaste el instalador, actualiza con el instalador nuevo.
+            {' '}Si Windows avisa que no pudo cerrar las aplicaciones, cancela la instalación, elige <strong>Salir y desconectar todo</strong> en la bandeja y vuelve a ejecutar el instalador.</>,
       winScript: INSTALL_CMD.windows,
       helper: <><strong>Un permiso, una sola vez.</strong> Después ningún paso necesita una terminal de administrador ni{' '}
         <IC c="sudo" />. Si falta el ayudante, el panel lo avisa con un botón <strong>Reparar</strong>; en la terminal:{' '}
@@ -180,7 +181,7 @@ $ kongtrol down --all          # desconecta todas`,
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  oficina
   ejemplo.com      ──▶  sin regla               ──▶  internet normal`,
       panel: <>En el panel, abre <strong>Reglas</strong> → <strong>＋ Agregar</strong>. Escribe un sitio o una red, elige la VPN y prueba antes de guardar.
-        Si Kongtrol te pide reabrir el panel tras guardar tu primer perfil, hazlo desde el ícono de la bandeja con el mismo navegador. Durante diez minutos puedes retomar la configuración y recuperar el borrador de la regla.
+        Al guardar el primer perfil, puedes seguir en la misma pestaña y crear una regla para esa VPN.
         También puedes crear la regla desde la terminal.</>,
       code: `$ kongtrol policy add github.com --via oficina
 $ kongtrol policy show github.com     # por cuál VPN sale y por qué
@@ -189,7 +190,7 @@ $ kongtrol policy remove <nombre>`,
       down: <><strong>Si la VPN está apagada,</strong> en Perfiles puedes permitir la conexión normal, bloquear los destinos conocidos o bloquearlos e intentar conectar al detectar actividad TCP. Cada regla puede elegir su propia acción.
         Puedes cambiarlo con <IC c="kongtrol profile on-tunnel-down oficina block" />. La detección puede omitir intentos cortos o rechazados. En macOS, conecta manualmente.</>,
       // feature:default_egress
-      defaultEgress: <>En Linux, puedes elegir <strong>Salida por defecto de WireGuard</strong> en un perfil directo compatible y desconectado. También puedes usar <IC c="kongtrol routes check-default oficina" /> y <IC c="kongtrol routes default-egress oficina on" />. Se aplica al conectar. Las rutas más específicas conservan su prioridad.</>,
+      defaultEgress: <>En Windows o Linux, elige <strong>Salida por defecto de WireGuard</strong> en un perfil directo compatible y desconectado. También puedes usar <IC c="kongtrol routes check-default oficina" /> y <IC c="kongtrol routes default-egress oficina on" />. Al conectarlo, el perfil se encarga del tráfico sin una ruta más específica.</>,
       yamlLead: <>También puedes escribirlas en <IC c="kongtrol.yaml" />, bajo <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI
@@ -203,7 +204,7 @@ $ kongtrol policy remove <nombre>`,
       domains: ["*.tuempresa.com"]
     via: oficina
     on_tunnel_down: block   # opcional: si oficina está apagada, bloquear`,
-      match: <><strong>Ejemplos de destinos.</strong> Usa <IC c="claude.com" /> para el dominio raíz, <IC c="api.anthropic.com" /> para un subdominio exacto y <IC c="*.anthropic.com" /> para un nivel de subdominios. Kongtrol consulta algunos nombres frecuentes para instalar rutas. Escribe el nombre completo de cada subdominio que necesites.
+      match: <><strong>Varios destinos.</strong> Separa por comas o saltos de línea, por ejemplo <IC c="claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42" />. El comodín cubre un nivel de subdominios. Guarda la regla pausada y actívala cuando quieras aplicarla.
         Puedes usar <IC c="café.example" />, y el nombre coincide aunque lo pegues con mayúsculas o un punto final.
         Usa <IC c="192.0.2.42" /> para una IP, <IC c="2001:db8::42" /> para una IPv6 o <IC c="192.0.2.0/24" /> para una red. Entre redes superpuestas gana la más específica.
         Las reglas por app (<IC c="apps" />) por ahora solo explican, no enrutan.</>,

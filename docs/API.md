@@ -75,6 +75,7 @@ POST /api/v1/policies/reload                 # reload kongtrol.yaml from disk, h
 POST /api/v1/policies/test                   # dry-run a policy against a target/app before saving
 GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, domain, URL, app:exe) uses and why; same JSON as `kongtrol policy show --json`
                                              # GET policy items expose effective on_tunnel_down and raw on_tunnel_down_override.
+                                             # GET includes disabled rules. POST/PUT accepts disabled: true to pause or false to activate.
                                              # POST/PUT accepts on_tunnel_down: "" to inherit, or allow, block, connect.
 
 # VPN profiles (config + OS keychain; applied live, ADR-0053 — see "Profile changes" below)
@@ -138,7 +139,7 @@ GET  /api/v1/audit?profile=&level=&limit=&from=&to=&before=
 POST /api/v1/shutdown                        # ask a running daemon to shut down gracefully
 
 # Diagnostics, helper and export
-GET  /api/v1/doctor                          # same checks as `kongtrol doctor`, in the daemon, translated (X-Kongtrol-Lang): {"checks":[{section,label,status ok|warn|fail,detail,hint,fix}],"failures","warnings"}; fix is only "helper_install"
+GET  /api/v1/doctor                          # same checks as `kongtrol doctor`, translated (X-Kongtrol-Lang): {"checks":[{section,label,status ok|warn|fail,detail,hint,fix,help}],"failures","warnings"}; fix: "helper_install"; help: "tunnelbear_driver"
 GET  /api/v1/version                         # {"version"}: the daemon build version (what `kongtrol version` prints); tray menu and the dashboard show it
 GET  /api/v1/helper/status                   # {"installed","running","available","elevated","needs_install","outdated",…}; outdated = answers with an older protocol ("Actualizar ayudante")
 POST /api/v1/helper/install                  # installs the privileged helper (one OS permission prompt)
@@ -151,7 +152,7 @@ POST /api/v1/restart                         # 202 {"status":"restarting"}: star
 # Update notice and "delete all my data" (ADR-0034)
 GET  /api/v1/updates                         # {"check_enabled","host","current","latest","url","newer","checked_at"} from the remembered last check; never contacts GitHub
 POST /api/v1/updates                         # {"enabled": true|false}: saves updates.check_enabled (opt-in, off by default); 409 cli.update.no_config before the first profile
-POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): disconnects every tunnel, deletes ~/.kongtrol data and Kongtrol's keychain entries, then restarts into setup mode → {"status":"purged","restarting":bool}
+POST /api/v1/data/purge                      # {"confirm": true} (required, else 400 purge.err.confirm): deletes profiles, preferences and Kongtrol credentials while retaining in-use daemon/tray files, then restarts into setup mode → {"status":"purged","restarting":bool}
 ```
 
 <!-- feature:first_run -->
@@ -169,12 +170,12 @@ cookie + X-Kongtrol-Session, same origin, `application/json`) plus the explicit 
 <!-- feature:first_run -->
 **Setup mode.** A daemon started with no config file (the tray spawns it on first run) serves the
 dashboard with no profiles; `GET /api/v1/vpns` returns `[]` and the first valid
-`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml`. In setup mode VPN profile changes still
-answer `restart_required: true`: the dashboard restarts the daemon after the first profile so it
-leaves setup mode (CLI: `kongtrol restart`).
+`POST /api/v1/vpns` writes `~/.kongtrol/kongtrol.yaml` and applies the first profile to the live
+adapter set. On success it returns `restart_required: false` and leaves setup mode in the current
+session (ADR-0092). A server without live adapter sync still returns `restart_required: true`.
 
 <!-- feature:profile_live -->
-**Profile changes (ADR-0053).** Outside setup mode, creating, editing, renaming or deleting a
+**Profile changes (ADR-0053).** Creating, editing, renaming or deleting a
 profile (and `POST /api/v1/policies/reload` after a hand edit) takes effect in the running daemon
 at once: `restart_required` is `false` (`true` only if the daemon cannot build that profile, e.g.
 an unknown type). A profile whose tunnel is up is never renamed or deleted (409
@@ -188,7 +189,7 @@ failover and the kill switch override apply without a reconnect. `POST /api/v1/r
 working.
 
 <!-- feature:default_egress -->
-**Native default egress (ADR-0085).** Compatibility checks the saved profile file locally.
+**WireGuard default egress (ADR-0090).** Compatibility checks the saved profile file locally on Windows and Linux.
 A compatible direct WireGuard profile can select the option for its next connection on Linux.
 The response's `enabled` field describes the saved selection. It can remain enabled if
 the file later becomes incompatible, in which case the option can still be turned off.

@@ -79,7 +79,8 @@ var rootCmd = &cobra.Command{
 		if cmd.Root().PersistentFlags().Changed("alert-bell") {
 			warnDeprecated("--alert-bell", "kongtrol up --alert-bell")
 		}
-		if cmd.Name() != "init" {
+		preparingUpdate := cmd == downCmd && downAll && downRemember
+		if cmd.Name() != "init" && !preparingUpdate && !(cmd == uninstallCmd && uninstallDryRun) {
 			sessionGreetingLine, sessionLastUseLine = prepareSessionBanner(time.Now(), cmd)
 		}
 		// init shows its own animated logo — skip compact header and session banner there.
@@ -92,7 +93,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		// Skip config load for commands that self-handle config discovery.
-		if cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" || cmd.Name() == "resume" || prefsOnlyCommand(cmd) {
+		if preparingUpdate || cmd.Name() == "init" || cmd.Name() == "version" || cmd.Name() == "doctor" || cmd.Name() == "resume" || prefsOnlyCommand(cmd) {
 			return nil
 		}
 		// Only the daemon may start with no kongtrol.yaml (first-run setup

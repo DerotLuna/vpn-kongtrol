@@ -46,6 +46,7 @@ func (c *Client) CreatePolicy(rule config.PolicyRule) error {
 		"name":           rule.Name,
 		"via":            rule.Via,
 		"on_tunnel_down": rule.OnTunnelDown,
+		"disabled":       rule.Disabled,
 		"match": map[string][]string{
 			"domains":   nonNil(rule.Match.Domains),
 			"ip_ranges": nonNil(rule.Match.IPRanges),

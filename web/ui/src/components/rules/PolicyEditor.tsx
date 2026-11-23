@@ -1,8 +1,6 @@
 // Reglas — edit one rule, inline (not a modal) · v1.1.0 · 2026-11-19
 //
-// Plain fields first (name, VPN, sites, networks, what happens when the
-// VPN is off), apps behind a disclosure because the daemon only uses them
-// to test and diagnose today; raw one-per-line editing. New rules start in
+// The editor shares the quick form's destination syntax. New rules start in
 // the shell's "＋ Agregar" sheet (ADR-0055). Validation
 // on submit, then live; focus goes to the first problem. A refusal from
 // the daemon stays next to the form (and as a toast).
@@ -19,17 +17,8 @@ import { Card } from '../ui/Card'
 import { SelectField, TextAreaField, TextField, type FieldError } from '../ui/Field'
 import { ErrorState } from '../ui/States'
 import { CheckIcon, InfoIcon } from '../ui/icons'
-import {
-  hasErrors,
-  TUNNEL_DOWN_CHOICES,
-  POLICY_FIELDS,
-  splitTestInput,
-  toPayload,
-  validatePolicy,
-  type Policy,
-  type PolicyDraft,
-  type PolicyErrors,
-} from './model'
+import { POLICY_FIELDS, validatePolicy, type PolicyDraft, type PolicyErrors } from './editorModel'
+import { TUNNEL_DOWN_CHOICES, splitTestInput, type Policy } from './model'
 import { policyErrorText } from './preview'
 
 interface Props {
@@ -53,23 +42,24 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
 
   const profileAction = useProfilesQuery().data?.find((p) => p.name === draft.via)?.on_tunnel_down ?? 'allow'
   const ctx = { names: policies.map((p) => p.name), editing: original, profiles, profileAction }
-  const errors: PolicyErrors = submitted ? validatePolicy(draft, ctx) : {}
+  const { errors: found, payload, hasApps } = validatePolicy(draft, ctx)
+  const errors: PolicyErrors = submitted ? found : {}
   const err = (f: keyof PolicyErrors) => (errors[f] ? policyErrorText(f, errors[f], t) : null)
 
   const set = <K extends keyof PolicyDraft>(k: K, v: PolicyDraft[K]) => setDraft((d) => ({ ...d, [k]: v }))
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    if (save.isPending) return
     setSubmitted(true)
     setServerError(null)
-    const found = validatePolicy(draft, ctx)
-    if (hasErrors(found)) {
+    if (!payload) {
       const first = POLICY_FIELDS.find((f) => found[f])
       formRef.current?.querySelector<HTMLElement>(`[name="${first}"]`)?.focus()
       return
     }
     try {
-      await save.mutateAsync({ original, payload: toPayload(draft) })
+      await save.mutateAsync({ original, payload })
       onClose()
     } catch (error) {
       setServerError(error)
@@ -122,33 +112,21 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
               options={profiles.map((p) => ({ value: p, label: p }))}
             />
           )}
-          <TextAreaField
-            name="domains"
-            label={t('rules.field.domains')}
-            hint={t('rules.field.domains.hint')}
-            placeholder={`${t('rules.template.domain')}\n*.${t('rules.template.domain')}`}
-            value={draft.domains}
-            onChange={(e) => set('domains', e.target.value)}
-            error={err('domains')}
-            mono
-            rows={4}
-            spellCheck={false}
-            autoCapitalize="off"
-          />
-          <TextAreaField
-            name="ipRanges"
-            label={t('rules.field.ipRanges')}
-            hint={t('rules.field.ipRanges.hint')}
-            placeholder={'10.0.0.0/8\n192.0.2.10'}
-            value={draft.ipRanges}
-            onChange={(e) => set('ipRanges', e.target.value)}
-            error={err('ipRanges')}
-            mono
-            rows={4}
-            spellCheck={false}
-            autoCapitalize="off"
-          />
         </div>
+        <TextAreaField
+          name="destinations"
+          label={t('add.rule.input')}
+          hint={t('add.rule.input.hint')}
+          placeholder={'example.com, 192.0.2.0/24\nhttps://git.example.org/'}
+          value={draft.destinations}
+          onChange={(e) => set('destinations', e.target.value)}
+          error={err('destinations')}
+          mono
+          rows={4}
+          spellCheck={false}
+          autoCapitalize="off"
+        />
+        {hasApps && <p className="r-note">{t('rules.field.apps.note')}</p>}
 
         <fieldset className="r-choice" aria-describedby={errors.onDown ? `${titleId}-ondown-err` : undefined}>
           <legend className="k-field__label">{t('rules.field.onDown')}</legend>
@@ -174,23 +152,6 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
             </p>
           )}
         </fieldset>
-
-        <details className="r-disclosure" open={draft.apps.trim() !== '' || undefined}>
-          <summary>{t('rules.field.apps.toggle')}</summary>
-          <p className="r-disclosure__note">{t('rules.field.apps.note')}</p>
-          <TextAreaField
-            name="apps"
-            label={t('rules.field.apps')}
-            hint={t('rules.field.apps.hint')}
-            placeholder={'chrome.exe\nteams*'}
-            value={draft.apps}
-            onChange={(e) => set('apps', e.target.value)}
-            mono
-            rows={3}
-            spellCheck={false}
-            autoCapitalize="off"
-          />
-        </details>
 
         <DraftTest draft={draft} ctx={ctx} />
 
@@ -228,12 +189,11 @@ function DraftTest({ draft, ctx }: { draft: PolicyDraft; ctx: Parameters<typeof 
       return
     }
     // Only the match fields matter for a dry run; name and VPN get placeholders.
-    const found = validatePolicy({ ...draft, name: draft.name || 'test', via: draft.via || ctx.profiles[0] || '' }, { ...ctx, names: [] })
-    if (hasErrors(found)) {
+    const { payload } = validatePolicy({ ...draft, name: draft.name || 'test', via: draft.via || ctx.profiles[0] || '' }, { ...ctx, names: [] })
+    if (!payload) {
       setProblem({ message: t('rules.test.err.draft'), fix: t('rules.test.err.draft.fix') })
       return
     }
-    const payload = toPayload({ ...draft, name: draft.name || 'test', via: draft.via || ctx.profiles[0] || '' })
     const { target, app } = splitTestInput(input)
     test.mutate({ rule: payload, target, app })
   }

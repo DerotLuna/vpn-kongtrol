@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.15 · 2026-11-21
+Versión 2.17 · 2026-11-22
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -106,7 +106,7 @@ kongtrol routes --system
 
 ### `kongtrol routes check-default`
 
-Examina el archivo local de un perfil WireGuard en Linux sin cambiar la red.
+Examina el archivo local de un perfil WireGuard en Windows o Linux sin cambiar la red.
 
 ```text
 kongtrol routes check-default <perfil> [opciones]
@@ -120,7 +120,7 @@ kongtrol routes check-default oficina
 
 ### `kongtrol routes default-egress`
 
-Guarda la opción para la próxima conexión de un perfil WireGuard compatible en Linux. Desconecta el perfil antes de cambiarla.
+Guarda la opción para la próxima conexión de un perfil WireGuard compatible en Windows o Linux. Desconecta el perfil antes de cambiarla.
 
 ```text
 kongtrol routes default-egress <perfil> <on|off> [opciones]
@@ -624,6 +624,7 @@ kongtrol policy add <sitio|ip|rango|app:<exe>>... [opciones]
 | `--name string` | nombre de la política (por defecto: "<primer destino> por <vpn>") |
 | `--no-subdomains` | solo el sitio exacto, sin sus subdominios (*.sitio) |
 | `--on-tunnel-down string` | al apagarse la VPN: inherit (por defecto), allow, block o connect |
+| `--paused` | guarda la regla pausada hasta que la actives |
 | `--via string` | perfil de VPN por el que va el tráfico (obligatorio) |
 
 **Ejemplos**
@@ -653,6 +654,20 @@ kongtrol policy remove <nombre> [opciones]
 ```bash
 kongtrol policy remove "github.com por oficina"
 kongtrol policy remove teams --yes
+```
+
+### `kongtrol policy state`
+
+Una regla pausada se conserva y no enruta, bloquea ni intenta conectar su VPN. Activarla aplica su comportamiento de inmediato.
+
+```text
+kongtrol policy state <name> [on|off] [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol policy state intranet on
 ```
 
 ### `kongtrol policy on-tunnel-down`

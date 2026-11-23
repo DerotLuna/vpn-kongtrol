@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.7 · 2026-11-21
+Versión 1.9 · 2026-11-22
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -19,7 +19,7 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 | `vpns.<name>.host` | texto | — | Servidor o gateway VPN (clientes corporativos). |
 | `vpns.<name>.port` | entero | — | Puerto del servidor. |
 | `vpns.<name>.tunnel_name` | texto | — | Nombre de la conexión guardada en el cliente (p. ej. FortiClient). |
-| `vpns.<name>.default_egress` | booleano | — | Opt-in para un solo perfil WireGuard directo en Linux. Conserva las rutas por defecto IPv4 e IPv6 del archivo compatible en la próxima conexión. |
+| `vpns.<name>.default_egress` | booleano | — | Opción para un solo perfil WireGuard directo en Windows o Linux. En la próxima conexión, el perfil lleva el tráfico IPv4 e IPv6 sin una ruta más específica. |
 | `vpns.<name>.allow_insecure_cert` | booleano | — | Solo FortiClient: acepta advertencias de certificado al automatizar la app. Déjalo en `false` (riesgo de MITM). |
 | `vpns.<name>.config` | texto | — | Ruta al `.ovpn` (openvpn) o `.conf` (wireguard). |
 | `vpns.<name>.server` | texto | — | Servidor exacto (protonvpn, nordvpn). |
@@ -62,6 +62,7 @@ Reglas que deciden por qué VPN sale cada destino, en orden.
 | `policies[].match.domains` | lista de texto | — | Dominios o globs (`*.ejemplo.com`). |
 | `policies[].match.apps` | lista de texto | — | Ejecutables o globs (experimental). |
 | `policies[].via` | texto | — | **Obligatorio.** Perfil VPN por el que sale el tráfico. |
+| `policies[].disabled` | booleano | — | `true` conserva la regla pausada hasta que la actives. Por defecto la regla está activa. |
 | `policies[].on_tunnel_down` | texto | — | Vacío: hereda la opción del perfil. `allow` permite y avisa si detecta tráfico. `block` bloquea las IP conocidas. `connect` también las bloquea e intenta conectar si detecta tráfico TCP en Windows o Linux. En macOS, conecta manualmente. |
 
 ## `security`

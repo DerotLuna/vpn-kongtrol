@@ -15,9 +15,8 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
-// Daemon restart: the adapters map is built once at boot (see loadConfig),
-// so a new or edited VPN profile, and leaving first-run setup mode, need a
-// fresh daemon process. POST /api/v1/restart (dashboard) and
+// Daemon restart is for updates or changes that cannot be applied live.
+// POST /api/v1/restart (dashboard) and
 // `kongtrol restart` (CLI) both end here: the running daemon starts its
 // replacement with --restart and the tunnels that were up, then stops like
 // on `kongtrol down`. The replacement waits until the old API is gone
@@ -76,8 +75,6 @@ func replacementArgs(targets []string) []string {
 func restartDaemon() error {
 	exe, err := currentExecutable()
 	if err == nil {
-		// In setup mode nothing is connected and activeCfgPath is the
-		// default path the first profile was just written to.
 		args := replacementArgs(connectedProfiles())
 		_, err = spawnReplacementFn(exe, args, daemonLogPath(), cliLang())
 	}

@@ -20,8 +20,9 @@ const (
 // carries only yaml tags, so decoding JSON straight into it silently dropped
 // "ip_ranges"; pointer fields also let an update apply only what was sent.
 type PolicyPatch struct {
-	Name *string `json:"name"`
-	Via  *string `json:"via"`
+	Name     *string `json:"name"`
+	Via      *string `json:"via"`
+	Disabled *bool   `json:"disabled"`
 	// OnTunnelDown: empty (inherit) | allow | block | connect.
 	OnTunnelDown *string `json:"on_tunnel_down"`
 	Match        *struct {
@@ -38,6 +39,9 @@ func (p PolicyPatch) ApplyTo(base config.PolicyRule) config.PolicyRule {
 	}
 	if p.OnTunnelDown != nil {
 		base.OnTunnelDown = *p.OnTunnelDown
+	}
+	if p.Disabled != nil {
+		base.Disabled = *p.Disabled
 	}
 	if p.Via != nil {
 		base.Via = *p.Via

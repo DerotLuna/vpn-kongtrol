@@ -54,7 +54,7 @@ export const rulesApi = {
   policies: () => http.get<Policy[] | null>('/api/v1/policies').then((l) => l ?? []),
   policyMeta: () => http.get<PolicyMeta>('/api/v1/policies/meta'),
   createPolicy: (p: PolicyPayload) => http.post<unknown>('/api/v1/policies', p),
-  updatePolicy: (name: string, p: PolicyPayload) => http.put<unknown>(`/api/v1/policies/${enc(name)}`, p),
+  updatePolicy: (name: string, p: Partial<PolicyPayload>) => http.put<unknown>(`/api/v1/policies/${enc(name)}`, p),
   deletePolicy: (name: string) => http.delete<unknown>(`/api/v1/policies/${enc(name)}`),
   /** Re-reads kongtrol.yaml (rules edited by hand) without restarting. */
   reloadPolicies: () => http.post<{ policies: number }>('/api/v1/policies/reload'),
@@ -105,10 +105,27 @@ export function useSavePolicy() {
     apply: (list, { original, payload }) => {
       const next = policyFromPayload(payload)
       if (!original) return [...list, next]
-      return list.map((p) => (p.name.toLowerCase() === original.toLowerCase() ? next : p))
+      return list.map((p) => (p.name.toLowerCase() === original.toLowerCase() ? { ...p, ...next } : p))
     },
     successMessage: ({ original, payload }) =>
       t(original ? 'rules.toast.updated' : 'rules.toast.created', { name: payload.name }),
+  })
+}
+
+export function useTogglePolicy() {
+  const { t } = usePreferences()
+  const client = useQueryClient()
+  return useOptimisticMutation<{ name: string; disabled: boolean; inline?: boolean }, unknown, Policy[]>({
+    queryKey: rulesKeys.policies,
+    mutationFn: async ({ name, disabled }) => {
+      const res = await rulesApi.updatePolicy(name, { disabled })
+      void client.invalidateQueries({ queryKey: rulesKeys.anyPolicies })
+      void client.invalidateQueries({ queryKey: rulesKeys.explain })
+      return res
+    },
+    apply: (list, { name, disabled }) => list.map((p) => p.name === name ? { ...p, disabled } : p),
+    successMessage: ({ name, disabled }) => t(disabled ? 'rules.toast.paused' : 'rules.toast.activated', { name }),
+    onRefused: (_, { inline }) => inline === true,
   })
 }
 

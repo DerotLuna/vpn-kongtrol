@@ -33,13 +33,14 @@ type Credential struct {
 
 func (c Credential) String() string { return c.Profile + "." + c.Key }
 
-// runtimeFiles are kept by a data-only purge done by a running daemon: it
-// still needs them (clients authenticate with api-token; logs are open).
+// runtimeFiles stay when resetting from the running dashboard. The daemon
+// and tray still use these files, including the flyout's WebView2 folder.
 var runtimeFiles = map[string]bool{
 	"api-token":  true,
 	"run":        true,
 	"daemon.log": true,
 	"tray.log":   true,
+	"webview2":   true,
 	ManifestName: true,
 }
 
@@ -135,8 +136,8 @@ type PurgeOptions struct {
 	// the daily files of a custom audit log path); YAML ones are read for
 	// profile names. Only regular files are removed (never RemoveAll).
 	ExtraFiles []string
-	// KeepRuntime keeps the files a running daemon needs (api-token, run/,
-	// logs) and the install manifest: the dashboard's "Borrar todos mis
+	// KeepRuntime keeps the files a running daemon and tray need
+	// (api-token, run/, logs, WebView2) and the install manifest: the dashboard's "Borrar todos mis
 	// datos", done by the running daemon itself.
 	KeepRuntime bool
 	// KeepManifest keeps only install.manifest: `--data-only` (the app

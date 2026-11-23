@@ -97,12 +97,18 @@ decision live in [`docs/research/`](../research/README.md).
 | [0083](0083-direct-diagnostics-from-errors.md) | Open Diagnostics directly from connection errors | Accepted | 2026-11-21 |
 | [0082](0082-resume-first-rule-after-panel-sign-in.md) | Reopen the panel with a fresh nonce after the first profile restart and resume the rule draft | Accepted | 2026-11-21 |
 | [0084](0084-per-profile-tunnel-down-protection.md) | Inherit tunnel-down protection from a VPN profile and enforce it independently of TCP observation | Accepted | 2026-11-21 |
-| [0085](0085-native-wireguard-default-egress.md) | Opt into native WireGuard default routing on Linux | Accepted | 2026-11-21 |
+| [0085](0085-native-wireguard-default-egress.md) | Opt into native WireGuard default routing on Linux | Superseded by ADR-0090 | 2026-11-21 |
 | [0086](0086-observe-vpn-coexistence.md) | Report observed VPN coexistence signals | Accepted | 2026-11-21 |
 | [0087](0087-normalize-rule-dns-input.md) | Normalize DNS names in VPN rules | Accepted | 2026-11-21 |
 | [0088](0088-tray-command-and-existing-linux-wireguard.md) | Open the tray on demand and reuse active Linux WireGuard links | Accepted | 2026-11-21 |
 | [0089](0089-compact-landing-and-release-refresh.md) | Compact compatibility, guide FAQ, landing visuals and release refresh | Accepted | 2026-11-21 |
+| [0090](0090-wireguard-default-egress-windows.md) | Select WireGuard default egress on Windows and Linux | Accepted | 2026-11-21 |
 | [0091](0091-play-the-route-map-on-selection.md) | Play the route map when a visitor selects a destination | Accepted | 2026-11-21 |
+| [0092](0092-activate-first-profile-live.md) | Apply the first profile in the current panel and tray session | Accepted | 2026-11-22 |
+| [0093](0093-report-uninstall-data-removal.md) | Report Windows uninstall data removal failures | Accepted | 2026-11-22 |
+| [0094](0094-stop-setup-daemon-before-upgrade.md) | Stop the setup daemon before updating Windows files | Accepted | 2026-11-22 |
+| [0095](0095-save-rules-paused-and-bound-auto-connect.md) | Save rules paused, bound traffic-triggered retries and defer direct WireGuard while Proton is active on Windows | Accepted | 2026-11-22 |
+| [0096](0096-repair-missing-helper-on-windows-upgrade.md) | Install or repair a missing helper with its task selected on Windows upgrades | Accepted | 2026-11-22 |
 
 ## Statuses
 

@@ -11,7 +11,7 @@ import type { DoctorState, ExportState, HelperState } from '../../api/hooks'
 import type { DoctorCheck } from '../../api/types'
 import { usePreferences } from '../../app/preferences-context'
 import { Button } from '../ui/Button'
-import { guideLink } from '../../links'
+import { guideLink, TUNNELBEAR_DRIVER_URL } from '../../links'
 import { ErrorState } from '../ui/States'
 import { ExternalLink } from '../ui/ExternalLink'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
@@ -89,6 +89,9 @@ export function DiagnosticsCard({ doctor, helper, exporter }: Props) {
                 <Button variant="tonal" onClick={helper.install} disabled={helper.installing}>
                   {t('diag.fix')}
                 </Button>
+              )}
+              {c.help === 'tunnelbear_driver' && (
+                <ExternalLink href={TUNNELBEAR_DRIVER_URL}>{t('diag.tunnelbearHelp')}</ExternalLink>
               )}
             </li>
           ))}

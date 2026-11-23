@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
@@ -189,6 +190,26 @@ func TestDaemonAPIBase_WildcardBindDialsLoopback(t *testing.T) {
 	cfg.Monitor.Dashboard.Port = 9741
 	if got := daemonAPIBase(); got != "http://127.0.0.1:9741" {
 		t.Fatalf("got %s", got)
+	}
+}
+
+func TestDaemonAPIBaseWithoutLoadedConfig(t *testing.T) {
+	oldCfg, oldPath := cfg, cfgPath
+	t.Cleanup(func() { cfg, cfgPath = oldCfg, oldPath })
+	cfg = nil
+	cfgPath = filepath.Join(t.TempDir(), "missing.yaml")
+	defaults := config.NewEmpty()
+	config.ApplyDashboardPreferences(defaults)
+	dashboard := defaults.Monitor.Dashboard
+	want := daemonctl.APIBase(dashboard.Bind, dashboard.Port)
+	if got := daemonAPIBase(); got != want {
+		t.Fatalf("missing config: got %s, want %s", got, want)
+	}
+	if err := os.WriteFile(cfgPath, []byte("vpns: ["), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := daemonAPIBase(); got != want {
+		t.Fatalf("unreadable config: got %s, want %s", got, want)
 	}
 }
 

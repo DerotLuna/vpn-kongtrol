@@ -55,6 +55,14 @@ var stopDaemonFn = stopDaemon
 func runDown(ctx context.Context, args []string) error {
 	base := daemonAPIBase()
 	viaDaemon := daemonProbeFn(base)
+	if downAll && downRemember {
+		// An installer can run while the daemon is in first-run setup or
+		// after the on-disk config changed. The daemon owns the live
+		// tunnels and already disconnects them on shutdown.
+		rememberConnected(base, viaDaemon)
+		stopDaemonFn()
+		return nil
+	}
 	rawDisconnect := disconnectProfile
 	readState := localTunnelState
 	if viaDaemon {
@@ -83,9 +91,6 @@ func runDown(ctx context.Context, args []string) error {
 	}
 
 	if downAll {
-		if downRemember {
-			rememberConnected(base, viaDaemon)
-		}
 		names := make([]string, 0, adapters.Len())
 		for _, name := range adapters.Names() {
 			names = append(names, name)
@@ -124,7 +129,7 @@ func runDown(ctx context.Context, args []string) error {
 			return nil
 		}
 		if (len(args) > 0 || downGroup != "") && cfg != nil && slices.ContainsFunc(cfg.Policies, func(rule config.PolicyRule) bool {
-			return config.BlocksWhenDown(rule.TunnelDownAction(cfg.VPNs[rule.Via]))
+			return !rule.Disabled && config.BlocksWhenDown(rule.TunnelDownAction(cfg.VPNs[rule.Via]))
 		}) {
 			fmt.Println(tuiInfo(ct("cli.daemon.down.kept_protection")))
 			return nil

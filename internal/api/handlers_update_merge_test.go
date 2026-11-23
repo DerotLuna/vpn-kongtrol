@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -179,6 +180,35 @@ func TestCreatePolicy_DecodesIPRanges(t *testing.T) {
 	cfg := reload(t, path)
 	if got := cfg.Policies[len(cfg.Policies)-1].Match.IPRanges; len(got) != 1 || got[0] != "192.168.50.0/24" {
 		t.Fatalf("ip_ranges not persisted: %v", got)
+	}
+}
+
+func TestPausedPolicyAppearsInDashboardWithoutMatching(t *testing.T) {
+	s, _ := newReloadTestServer(t, mergeTestYAML, nil)
+	rec := doJSON(t, s, http.MethodPost, "/api/v1/policies", "/api/v1/policies", s.handleCreatePolicy,
+		`{"name":"lab","via":"office","disabled":true,"on_tunnel_down":"connect","match":{"domains":["lab.example","*.lab.example"],"ip_ranges":["192.0.2.42"]}}`)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	assertExplanation := func(matched bool) {
+		t.Helper()
+		res := doJSON(t, s, http.MethodGet, "/api/v1/policies/explain?target=lab.example", "/api/v1/policies/explain", s.handleExplainPolicy, "")
+		if res.Code != http.StatusOK || !strings.Contains(res.Body.String(), fmt.Sprintf(`"Matched":%t`, matched)) {
+			t.Fatalf("matched=%v: status %d: %s", matched, res.Code, res.Body)
+		}
+	}
+	assertExplanation(false)
+	rec = doJSON(t, s, http.MethodGet, "/api/v1/policies", "/api/v1/policies", s.handleListPolicies, "")
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"name":"lab","via":"office","disabled":true`) {
+		t.Fatalf("paused rule missing: %d: %s", rec.Code, rec.Body)
+	}
+	for _, disabled := range []bool{false, true} {
+		rec = doJSON(t, s, http.MethodPut, "/api/v1/policies/lab", "/api/v1/policies/{name}", s.handleUpdatePolicy,
+			fmt.Sprintf(`{"disabled":%t}`, disabled))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("update failed: %d: %s", rec.Code, rec.Body)
+		}
+		assertExplanation(!disabled)
 	}
 }
 

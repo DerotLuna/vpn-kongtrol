@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !windows
 
 package privops
 
@@ -11,3 +11,5 @@ func CheckDefaultEgress(_, _, _ string) DefaultEgressCheck {
 func checkNativeDefaultRules(context.Context, string) error {
 	return ErrUnsupported
 }
+
+func prepareWireGuardDefaultEgress(data []byte) []byte { return data }

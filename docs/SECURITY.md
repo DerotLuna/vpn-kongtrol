@@ -180,7 +180,7 @@ The daemon's local API (`127.0.0.1:9741` by default; non-loopback binds are refu
   after 12 h without use and after 7 days in any case, and only SHA-256 digests of ids, page
   tokens, nonces and tickets are stored. A second tab or the tray flyout gets its own page token
   on the same cookie (up to 16). `DELETE /api/v1/session` signs out.
-- After the first profile restart, the Add sheet can retain the saved profile name and any rule
+- If an explicit daemon restart interrupts setup, the Add sheet can retain the saved profile name and any rule
   draft in the browser's local storage for the panel origin. A fresh nonce exchange allows
   resuming the draft for ten minutes. The panel removes the entry when reading it. It contains
   no credentials or connection files. See [ADR-0082](adr/0082-resume-first-rule-after-panel-sign-in.md).

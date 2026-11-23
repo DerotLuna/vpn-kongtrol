@@ -87,7 +87,7 @@ export default function guideEN(os: OS): GuideContent {
       note: <>Full list and what Kongtrol does with each: <a href="/en/#vpns">supported VPNs</a>. Proton VPN also works without its app,
         as a <IC c="wireguard" /> profile with the file you download from your account.</>,
     },
-    // feature:helper
+    // feature:helper feature:windows_installer_shutdown
     install: {
       title: <>Install</>,
       steps: (os === 'windows'
@@ -113,7 +113,8 @@ export default function guideEN(os: OS): GuideContent {
             <a href="/en/#install">downloads</a>, with a double click. On GNOME the icon needs the AppIndicator extension (Ubuntu ships it).
             {' '}Only the <IC c="kongtrol" /> command? End the line with <IC c="| sh -s -- --cli-only" />; with no desktop (a server, SSH) it does that by itself and tells you.</>
           : <>No installer? This line in PowerShell (no administrator) installs the same: the app with its icon and the <IC c="kongtrol" /> command.
-            {' '}Only the command: type <IC c="$env:KONGTROL_CLI_ONLY=1" /> first. If you used the installer, update with the new installer.</>,
+            {' '}Only the command: type <IC c="$env:KONGTROL_CLI_ONLY=1" /> first. If you used the installer, update with the new installer.
+            {' '}If Windows says it could not close the applications, cancel setup, choose <strong>Quit and disconnect all</strong> from the tray, and run the installer again.</>,
       winScript: INSTALL_CMD.windows,
       helper: <><strong>One permission, once.</strong> After that no step needs an administrator terminal or{' '}
         <IC c="sudo" />. If the helper is missing, the panel says so with a <strong>Fix</strong> button; in the terminal:{' '}
@@ -174,7 +175,7 @@ $ kongtrol down --all          # disconnect all`,
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  office
   example.com      ──▶  no rule                 ──▶  normal internet`,
       panel: <>In the panel, open <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the VPN and test before saving.
-        If Kongtrol asks you to reopen the panel after saving your first profile, use the tray icon in the same browser. You have ten minutes to resume setup and recover your rule draft.
+        After saving the first profile, you can stay in the same tab and add a rule for that VPN.
         You can also create the rule in the terminal.</>,
       code: `$ kongtrol policy add github.com --via office
 $ kongtrol policy show github.com     # which VPN it uses and why
@@ -183,7 +184,7 @@ $ kongtrol policy remove <name>`,
       down: <><strong>When the VPN is off,</strong> the profile can allow the regular connection, block known destinations, or block them and try to connect when Kongtrol sees TCP activity. Each rule can choose its own action.
         Use <IC c="kongtrol profile on-tunnel-down office block" /> to change it. Detection can miss quick or rejected attempts. On macOS, connect manually.</>,
       // feature:default_egress
-      defaultEgress: <>On Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. It takes effect on connect. More specific routes keep priority.</>,
+      defaultEgress: <>On Windows or Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. When connected, the profile carries traffic without a more specific route.</>,
       yamlLead: <>You can also write them in <IC c="kongtrol.yaml" />, under <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI
@@ -197,7 +198,7 @@ $ kongtrol policy remove <name>`,
       domains: ["*.yourcompany.com"]
     via: office
     on_tunnel_down: block   # optional: if office is off, block`,
-      match: <><strong>Example destinations.</strong> Use <IC c="claude.com" /> for the root domain, <IC c="api.anthropic.com" /> for an exact subdomain, and <IC c="*.anthropic.com" /> for one level of subdomains. Kongtrol looks up some common names to install routes. Enter the full name of each subdomain you need.
+      match: <><strong>Multiple destinations.</strong> Separate them with commas or line breaks, for example <IC c="claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42" />. The wildcard covers one level of subdomains. Save the rule paused and activate it when you want it to take effect.
         You can use <IC c="café.example" />. Names also match if you paste uppercase letters or a trailing dot.
         Use <IC c="192.0.2.42" /> for one IP, <IC c="2001:db8::42" /> for IPv6, or <IC c="192.0.2.0/24" /> for a network. The most specific network wins when they overlap.
         App rules (<IC c="apps" />) only explain for now; they don't route.</>,

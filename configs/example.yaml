@@ -117,7 +117,7 @@ vpns:
   wg-home:
     type: wireguard
     config: ~/.kongtrol/configs/wg-home.conf  # path to WireGuard .conf file
-    # default_egress: true  # Linux only, one profile with IPv4/IPv6 defaults and DNS
+    # default_egress: true  # Windows/Linux; one profile with IPv4 and IPv6 defaults and DNS
     auth:
       method: certificate   # WireGuard uses keys embedded in .conf
     priority: 15
@@ -150,6 +150,7 @@ vpns:
 
 
 policies:
+  # Save a rule with disabled: true to keep it paused until you activate it.
   - name: "Office servers"
     match:
       ip_ranges:

@@ -377,6 +377,7 @@ func (d *run) checkRuntimeNetworking(cfg *config.Config) {
 		d.ok(label, d.f("cli.doctor.routes.visible", len(routes)))
 	}
 	d.checkVPNCoexistence(cfg)
+	d.checkTunnelBearDriver()
 
 	if cfg == nil {
 		d.skipped()

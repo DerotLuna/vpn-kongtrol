@@ -120,7 +120,10 @@ describe('Select (React Aria)', () => {
     await user.keyboard('{Enter}')
     await screen.findByRole('listbox')
     await user.keyboard('{ArrowDown}{Escape}')
-    await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
+    await waitFor(() => {
+      expect(screen.queryByRole('listbox')).toBeNull()
+      expect(box).toHaveFocus()
+    })
     expect(box).toHaveTextContent('Warning')
     // Type-ahead inside the open list.
     await user.keyboard('{Enter}')

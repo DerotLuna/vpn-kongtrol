@@ -59,16 +59,25 @@ describe('Rules page', () => {
     expect(screen.getByText('/home/u/.kongtrol/kongtrol.yaml')).toBeInTheDocument()
   })
 
-  it('teaches with an empty state; "Create the first rule" opens the add sheet and saves one sentence as a rule', async () => {
+  it('validates the entire list, saves it paused, and connects only after explicit activation and connection', async () => {
     let body: unknown = null
+    const activationPatches: unknown[] = []
+    const connect = vi.fn(() => json({ status: 'connecting' }, 202))
     stubFetch(
       routes(
         {
-          'GET /api/v1/vpns': () => json([{ name: 'home', type: 'nordvpn' }, { name: 'office', type: 'forticlient' }]),
+          'GET /api/v1/vpns': () => json([{ name: 'home', type: 'nordvpn' }]),
           'POST /api/v1/policies': (init) => {
             body = JSON.parse(String(init?.body))
             return json({ status: 'created' }, 201)
           },
+          'PUT /api/v1/policies/git.acme.test%20via%20home': (init) => {
+            activationPatches.push(JSON.parse(String(init?.body)))
+            return activationPatches.length === 1
+              ? json({ error: 'Activation refused.', hint: 'Try again.' }, 400)
+              : json({ status: 'updated' })
+          },
+          'POST /api/v1/tunnels/home/connect': connect,
         },
         [],
       ),
@@ -80,22 +89,74 @@ describe('Rules page', () => {
     const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
     expect(new URLSearchParams(window.location.search).get('add')).toBe('rule')
     // Nothing typed: the error names the problem and says what to do.
-    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save rule' }))
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save paused' }))
     expect(within(sheet).getByText('Type a site, an IP or a program.')).toBeInTheDocument()
 
-    await userEvent.type(within(sheet).getByRole('textbox', { name: /Site, IP or program/ }), 'https://git.acme.test/x')
-    // "Goes through" starts on the connected profile.
-    expect(within(sheet).getByRole('button', { name: /Goes through/ })).toHaveTextContent(/office/)
+    const destinations = within(sheet).getByRole('textbox', { name: /Site, IP or program/ })
+    fireEvent.change(destinations, { target: { value: 'https://git.acme.test/x,y, git.acme.test\n192.0.2.4, bad host' } })
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save paused' }))
+    expect(body).toBeNull()
+    expect(destinations).toHaveAttribute('aria-invalid', 'true')
+    fireEvent.change(destinations, { target: { value: 'https://git.acme.test/x,y, git.acme.test\n192.0.2.4\napp:Code, Inc.exe' } })
+    expect(within(sheet).getByRole('button', { name: /Goes through/ })).toHaveTextContent(/home/)
     await userEvent.click(within(sheet).getByRole('radio', { name: 'Block it' }))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save rule' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save paused' }))
 
-    expect(await within(sheet).findByText('The rule “git.acme.test via office” is saved.')).toBeInTheDocument()
+    expect(await within(sheet).findByText('The rule “git.acme.test via home” is saved.')).toBeInTheDocument()
     expect(body).toEqual({
-      name: 'git.acme.test via office',
-      via: 'office',
+      name: 'git.acme.test via home',
+      via: 'home',
+      disabled: true,
       on_tunnel_down: 'block',
-      match: { domains: ['git.acme.test', '*.git.acme.test'], ip_ranges: [], apps: [] },
+      match: { domains: ['git.acme.test', '*.git.acme.test'], ip_ranges: ['192.0.2.4'], apps: ['Code, Inc.exe'] },
     })
+    expect(within(sheet).queryByRole('button', { name: 'Connect home now' })).not.toBeInTheDocument()
+    expect(activationPatches).toEqual([])
+    expect(connect).not.toHaveBeenCalled()
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Activate rule' }))
+    expect(await within(sheet).findByText('Activation refused.')).toBeInTheDocument()
+    expect(within(sheet).queryByRole('button', { name: 'Connect home now' })).not.toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Activate rule' }))
+    const connectNow = await within(sheet).findByRole('button', { name: 'Connect home now' })
+    expect(activationPatches).toEqual([{ disabled: false }, { disabled: false }])
+    expect(connect).not.toHaveBeenCalled()
+    await userEvent.click(connectNow)
+    await waitFor(() => expect(connect).toHaveBeenCalledOnce())
+  })
+
+  it('pauses and resumes from the list and leaves the saved state alone when editing', async () => {
+    const patches: Record<string, unknown>[] = []
+    const saved = { ...lab, disabled: true }
+    stubFetch(routes({
+      'PUT /api/v1/policies/Lab': (init) => {
+        const patch = JSON.parse(String(init?.body)) as Record<string, unknown>
+        patches.push(patch)
+        if (typeof patch.disabled === 'boolean') saved.disabled = patch.disabled
+        return json({ status: 'updated' })
+      },
+    }, [work, saved]))
+    render(<App />)
+    const legacy = await screen.findByRole('switch', { name: 'Rule “Work”' })
+    expect(legacy).toBeChecked()
+    const toggle = screen.getByRole('switch', { name: 'Rule “Lab”' })
+    expect(toggle).not.toBeChecked()
+    expect(toggle).toHaveTextContent('Paused')
+    await userEvent.click(toggle)
+    await waitFor(() => expect(legacy).toBeEnabled())
+    expect(toggle).toBeChecked()
+    expect(patches).toEqual([{ disabled: false }])
+    await userEvent.click(toggle)
+    await waitFor(() => expect(legacy).toBeEnabled())
+    expect(patches).toEqual([{ disabled: false }, { disabled: true }])
+    expect(toggle).not.toBeChecked()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit “Lab”' }))
+    expect(screen.getByRole('textbox', { name: 'Site, IP or program' })).toHaveValue('10.2.0.0/16\napp:code.exe')
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(patches).toHaveLength(3))
+    expect(patches[2]).not.toHaveProperty('disabled')
+    expect(toggle).not.toBeChecked()
   })
 
   it('keeps the form and shows the daemon’s refusal next to it', async () => {
@@ -107,7 +168,7 @@ describe('Rules page', () => {
     )
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Edit “Lab”' }))
-    expect(screen.getByRole('textbox', { name: 'Apps' })).toHaveValue('code.exe')
+    expect(screen.getByRole('textbox', { name: 'Site, IP or program' })).toHaveValue('10.2.0.0/16\napp:code.exe')
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     // inline and as a toast: the toast is never the only copy
     expect(await screen.findAllByText('Policy “Lab”: block needs destinations.')).toHaveLength(2)

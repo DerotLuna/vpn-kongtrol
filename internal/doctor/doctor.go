@@ -33,6 +33,8 @@ type Check struct {
 	Hint string `json:"hint,omitempty"`
 	// Fix names an automatic fix a client may offer (FixHelperInstall).
 	Fix string `json:"fix,omitempty"`
+	// Help names an article approved by the client.
+	Help string `json:"help,omitempty"`
 }
 
 // Report is the result of Run.

@@ -26,6 +26,7 @@ var (
 	policyAddBlockWhenDown bool
 	policyAddOnTunnelDown  string
 	policyAddNoSubdomains  bool
+	policyAddPaused        bool
 	policyRemoveYes        bool
 )
 
@@ -41,6 +42,12 @@ var policyRemoveCmd = &cobra.Command{
 	RunE: runPolicyRemove,
 }
 
+var policyStateCmd = &cobra.Command{
+	Use:  "state <name> [on|off]",
+	Args: cobra.RangeArgs(1, 2),
+	RunE: runPolicyState,
+}
+
 // policyAddResult is the --json answer of policy add.
 type policyAddResult struct {
 	Name         string   `json:"name"`
@@ -50,6 +57,7 @@ type policyAddResult struct {
 	Apps         []string `json:"apps"`
 	OnTunnelDown string   `json:"on_tunnel_down"`
 	ViaDaemon    bool     `json:"via_daemon"`
+	Disabled     bool     `json:"disabled"`
 }
 
 func runPolicyAdd(cmd *cobra.Command, args []string) error {
@@ -72,8 +80,9 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 		name = policy.AutoName(ct("cli.policy.add.auto_name"), targets.First, via, policyNames())
 	}
 	rule := config.PolicyRule{
-		Name: name,
-		Via:  via,
+		Name:     name,
+		Via:      via,
+		Disabled: policyAddPaused,
 		Match: config.MatchSpec{
 			Domains:  targets.Domains,
 			IPRanges: targets.IPRanges,
@@ -102,7 +111,7 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 	res := policyAddResult{
 		Name: rule.Name, Via: via, ViaDaemon: viaDaemon,
 		Domains: nonNilStrings(targets.Domains), IPRanges: nonNilStrings(targets.IPRanges), Apps: nonNilStrings(targets.Apps),
-		OnTunnelDown: rule.TunnelDownAction(profile),
+		OnTunnelDown: rule.TunnelDownAction(profile), Disabled: rule.Disabled,
 	}
 	if outputJSON {
 		return emitJSON(res)
@@ -119,6 +128,10 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 			fmt.Println("  " + styleDim.Render(cf(line.key, strings.Join(line.list, ", "))))
 		}
 	}
+	if rule.Disabled {
+		fmt.Println(tuiInfo(cf("cli.policy.add.paused_next", rule.Name)))
+		return nil
+	}
 	switch rule.OnTunnelDown {
 	case "":
 		fmt.Println("  " + styleDim.Render(ct("policy.on_down.inherit")))
@@ -133,6 +146,49 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 		fmt.Println(tuiInfo(ct("cli.policy.add.saved_offline")))
 	}
 	fmt.Println(tuiInfo(cf("cli.policy.add.next", policyTestTarget(targets))))
+	return nil
+}
+
+func runPolicyState(_ *cobra.Command, args []string) error {
+	idx := policyIndex(args[0])
+	if idx < 0 {
+		return localizeConfigErr(&config.ValidationError{Key: configedit.ErrKeyPolicyNotFound, Args: []any{args[0]}})
+	}
+	rule := cfg.Policies[idx]
+	if len(args) == 2 {
+		switch args[1] {
+		case "on":
+			rule.Disabled = false
+		case "off":
+			rule.Disabled = true
+		default:
+			return errors.New(ct("cli.policy.state.usage"))
+		}
+		var err error
+		if base := daemonAPIBase(); daemonProbeFn(base) {
+			err = remoteUserErr(configClient(base).UpdatePolicy(rule.Name, configedit.PolicyPatch{Disabled: &rule.Disabled}))
+		} else {
+			err = editConfigOffline(func(c *config.Config) error {
+				i := configedit.FindPolicy(c, rule.Name)
+				if i < 0 {
+					return &config.ValidationError{Key: configedit.ErrKeyPolicyNotFound, Args: []any{rule.Name}}
+				}
+				c.Policies[i].Disabled = rule.Disabled
+				return nil
+			})
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if outputJSON {
+		return emitJSON(map[string]any{"name": rule.Name, "disabled": rule.Disabled})
+	}
+	key := "cli.policy.state.on"
+	if rule.Disabled {
+		key = "cli.policy.state.off"
+	}
+	say(tuiInfo(cf(key, rule.Name)))
 	return nil
 }
 
@@ -279,6 +335,7 @@ func init() {
 	policyAddCmd.Flags().BoolVar(&policyAddBlockWhenDown, "block-when-down", false, ct("cli.policy.add.flag.block_when_down"))
 	policyAddCmd.Flags().StringVar(&policyAddOnTunnelDown, "on-tunnel-down", "", ct("cli.policy.add.flag.on_tunnel_down"))
 	policyAddCmd.Flags().BoolVar(&policyAddNoSubdomains, "no-subdomains", false, ct("cli.policy.add.flag.no_subdomains"))
+	policyAddCmd.Flags().BoolVar(&policyAddPaused, "paused", false, ct("cli.policy.add.flag.paused"))
 	policyRemoveCmd.Flags().BoolVarP(&policyRemoveYes, "yes", "y", false, ct("cli.policy.remove.flag.yes"))
-	policyCmd.AddCommand(policyAddCmd, policyRemoveCmd)
+	policyCmd.AddCommand(policyAddCmd, policyRemoveCmd, policyStateCmd)
 }

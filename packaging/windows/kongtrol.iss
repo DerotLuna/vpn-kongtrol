@@ -63,7 +63,7 @@ WizardSmallImageFile=..\..\assets\brand\installer\wizard-small-58.png,..\..\asse
 ShowLanguageDialog=auto
 ; The user PATH changes: tell running programs (Explorer) to re-read it.
 ChangesEnvironment=yes
-; Upgrades: close a running tray through the Restart Manager.
+; Keep Restart Manager as a fallback for files still in use.
 CloseApplications=yes
 RestartApplications=no
 
@@ -91,8 +91,8 @@ es.TaskHelper=Instalar el ayudante de red: Windows pedirá permiso una sola vez 
 en.TaskHelper=Install the network helper: Windows asks for permission once (recommended)
 es.RunHelper=Instalando el ayudante de red · acepta el aviso de Windows…
 en.RunHelper=Installing the network helper · accept the Windows prompt…
-es.RunHelperUpdate=Revisando el ayudante de red · si está desactualizado, acepta el aviso de Windows…
-en.RunHelperUpdate=Checking the network helper · if it is out of date, accept the Windows prompt…
+es.RunHelperUpdate=Revisando el ayudante de red · acepta el aviso de Windows si aparece…
+en.RunHelperUpdate=Checking the network helper · accept the Windows prompt if it appears…
 es.RunResume=Reconectando las VPN que tenías conectadas…
 en.RunResume=Reconnecting the VPNs you had connected…
 es.LaunchTray=Abrir Kongtrol y crear mi primera VPN
@@ -113,8 +113,12 @@ es.TitleDowngrade=Volver a una versión anterior (%1 → %2)
 en.TitleDowngrade=Go back to an older version (%1 → %2)
 es.ReadyKeep=Tus VPN, ajustes, contraseñas y opciones elegidas se conservan.
 en.ReadyKeep=Your VPNs, settings, passwords and chosen options are kept.
-es.ReadyDown=Las VPN conectadas se desconectan un momento y se vuelven a conectar solas al terminar. El ayudante de red solo se actualiza si hace falta (entonces Windows pide permiso una vez).
-en.ReadyDown=Connected VPNs disconnect for a moment and reconnect by themselves at the end. The network helper is only updated if needed (then Windows asks for permission once).
+es.ReadyDown=Las VPN conectadas se desconectan un momento y se vuelven a conectar solas al terminar.
+en.ReadyDown=Connected VPNs disconnect for a moment and reconnect by themselves at the end.
+es.ReadyHelper=Windows pedirá permiso si hace falta instalar o actualizar el ayudante de red.
+en.ReadyHelper=Windows will ask for permission if the network helper needs to be installed or updated.
+es.UpgradeStopFailed=El instalador no pudo preparar el cierre de Kongtrol. Abre Kongtrol desde el menú Inicio, elige «Salir y desconectar todo» en la bandeja y vuelve a ejecutar el instalador.
+en.UpgradeStopFailed=Setup could not prepare Kongtrol to close. Open Kongtrol from the Start menu, choose “Quit and disconnect all” from the tray and run Setup again.
 ; Button captions stay one word: the Next button has a fixed width and a
 ; longer caption was cut ("ar versión ant"); the page title says the rest.
 es.BtnUpdate=Actualizar
@@ -135,8 +139,10 @@ es.BinaryBlocked=Windows no deja abrir kongtrol.exe: %1%n%nSuele ser Microsoft D
 en.BinaryBlocked=Windows does not let kongtrol.exe start: %1%n%nThis is usually Microsoft Defender flagging a new unsigned program by mistake (for example "Trojan:Win32/Bearfoos.A!ml").%n%nWhat to do: in Windows Security > Virus & threat protection > Protection history, open the Kongtrol entry and choose "Allow on device" (or "Restore") only if you trust the file; then open this installer again. Report the false positive at https://www.microsoft.com/wdsi/filesubmission
 es.FinishedBlocked=Kongtrol se copió, pero Windows no deja abrir kongtrol.exe, así que todavía no se puede usar.%n%nSiguiente: sigue los pasos del aviso anterior y abre este instalador otra vez.
 en.FinishedBlocked=Kongtrol was copied, but Windows does not let kongtrol.exe start, so it cannot be used yet.%n%nNext: follow the steps in the previous message and open this installer again.
-es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nSi piensas reinstalar, elige No.
-en.PurgeAsk=Also delete your settings and saved passwords?%n%nIf you plan to reinstall, choose No.
+es.PurgeAsk=¿Borrar también tu configuración y las contraseñas guardadas?%n%nElige Sí para empezar de cero o No para conservarlas al reinstalar.
+en.PurgeAsk=Also delete your settings and saved passwords?%n%nChoose Yes for a fresh start or No to keep them when reinstalling.
+es.PurgeFailed=Kongtrol no pudo completar la limpieza de tus datos. Para intentarlo de nuevo, instala Kongtrol y abre Ajustes → Borrar todos mis datos.
+en.PurgeFailed=Kongtrol could not finish clearing your data. To retry, install Kongtrol and open Settings → Delete all my data.
 
 [Tasks]
 Name: "autostart"; Description: "{cm:TaskAutostart}"
@@ -164,10 +170,9 @@ Root: HKCU; Subkey: "Environment"; ValueType: expandsz; ValueName: "Path"; Value
 ; Every entry also checks BinaryRuns: when Windows blocks the copied
 ; kongtrol.exe nothing more is run and the finished page says so (ADR-0073).
 Filename: "{app}\kongtrol.exe"; Parameters: "service install --quiet"; StatusMsg: "{cm:RunHelper}"; Tasks: helper; Check: IsFirstInstall and BinaryRuns; Flags: runhidden waituntilterminated
-; Upgrade (also silent): update a helper that speaks an older protocol, so
-; it never stays outdated. A missing or current helper is left alone and
-; no UAC prompt appears (`--if-outdated`, cmd/kongtrol/cmd_service.go).
-Filename: "{app}\kongtrol.exe"; Parameters: "service install --if-outdated --quiet"; StatusMsg: "{cm:RunHelperUpdate}"; Check: IsUpgrade and BinaryRuns; Flags: runhidden waituntilterminated
+; Upgrade (also silent): honor the saved or explicitly supplied task choice.
+; Repair a missing or stopped helper and update an incompatible protocol.
+Filename: "{app}\kongtrol.exe"; Parameters: "service install --if-needed --quiet"; StatusMsg: "{cm:RunHelperUpdate}"; Tasks: helper; Check: IsUpgrade and BinaryRuns; Flags: runhidden waituntilterminated
 ; Upgrade (also silent): reconnect the VPNs that were up before
 ; PrepareToInstall stopped Kongtrol (`down --all --remember` saved them). After
 ; the helper entry above, so they reconnect through a current helper. It only
@@ -374,7 +379,7 @@ end;
 
 // Update, reinstall and older version need no choices: the license was
 // accepted, the folder is the previous one (UsePreviousAppDir) and the
-// task choices are the previous ones (UsePreviousTasks, both default yes),
+// task choices are restored by UsePreviousTasks,
 // so the wizard goes straight to the Ready page.
 // https://jrsoftware.org/ishelp/topic_setup_usepreviousappdir.htm
 // https://jrsoftware.org/ishelp/topic_setup_useprevioustasks.htm
@@ -467,6 +472,8 @@ begin
     end;
     WizardForm.PageDescriptionLabel.Caption := CustomMessage('ReadyKeep');
     WizardForm.ReadyLabel.Caption := CustomMessage('ReadyDown');
+    if WizardIsTaskSelected('helper') then
+      WizardForm.ReadyLabel.Caption := WizardForm.ReadyLabel.Caption + ' ' + CustomMessage('ReadyHelper');
     FitLabel(WizardForm.ReadyLabel, WizardForm.ReadyMemo, True);
   end
   else if CurPageID = wpFinished then
@@ -480,8 +487,8 @@ begin
   end;
 end;
 
-// The Ready page lists only the folder on an update: the previous task
-// choices are kept and the helper task does not run again (see IsFirstInstall).
+// The Ready memo lists only the folder on an update. The helper notice
+// appears in the label above when the helper task is selected.
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 begin
   if InstallKind <> ikFirst then
@@ -518,29 +525,33 @@ begin
   Exe := ExpandConstant('{app}\kongtrol.exe');
   // Files without an uninstall key (older or broken install) still count.
   WasInstalled := WasInstalled or FileExists(Exe);
+  // Close the tray before the daemon so it cannot start another one.
+  if WasInstalled then
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im kongtrol-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if FileExists(Exe) then
   begin
     // The NEW kongtrol.exe stops Kongtrol and saves the connected VPNs for
     // `resume` ([Run]): an older installed copy does not know --remember.
-    // It talks to the running daemon through its local API. If it cannot
-    // run, the installed copy stops Kongtrol as before (no resume then).
+    // It talks to the running daemon even when there is no saved profile.
     Stopped := False;
     try
       ExtractTemporaryFile('kongtrol.exe');
-      Stopped := Exec(ExpandConstant('{tmp}\kongtrol.exe'), 'down --all --quiet --remember', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+      if ExecAndLogOutput(ExpandConstant('{tmp}\kongtrol.exe'), 'down --all --plain --remember', '', SW_HIDE, ewWaitUntilTerminated, Code, nil) then
+      begin
+        Stopped := Code = 0;
+        if not Stopped then
+          Log('Kongtrol update shutdown exited with code ' + IntToStr(Code));
+      end
+      else
+        Log('Kongtrol update shutdown could not start: ' + SysErrorMessage(Code));
     except
-      Stopped := False;
+      Log('Kongtrol update shutdown failed: ' + GetExceptionMessage);
     end;
     if not Stopped then
-      Exec(Exe, 'down --all --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
+      Result := CustomMessage('UpgradeStopFailed');
   end;
-  Exec(ExpandConstant('{sys}\taskkill.exe'), '/f /im kongtrol-tray.exe', '', SW_HIDE, ewWaitUntilTerminated, Code);
 end;
 
-// The helper task runs on the first install only. An upgrade runs
-// `service install --if-outdated` instead: it asks for UAC only when the
-// installed helper speaks an older protocol (privops.ProtocolVersion), so
-// an upgrade never asks needlessly and never leaves the helper outdated.
 function IsFirstInstall: Boolean;
 begin
   Result := not WasInstalled;
@@ -611,7 +622,19 @@ begin
   // it does not depend on the [UninstallRun] order, then deletes
   // ~/.kongtrol and Kongtrol's keychain entries.
   if (CurUninstallStep = usUninstall) and PurgeData then
-    Exec(ExpandConstant('{app}\kongtrol.exe'), 'uninstall --data-only --yes --quiet', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  begin
+    if not ExecAndLogOutput(ExpandConstant('{app}\kongtrol.exe'),
+      'uninstall --data-only --yes --plain', '', SW_HIDE, ewWaitUntilTerminated, Code, nil) then
+    begin
+      Log('Kongtrol data removal could not start: ' + SysErrorMessage(Code));
+      MsgBox(CustomMessage('PurgeFailed'), mbError, MB_OK);
+    end
+    else if Code <> 0 then
+    begin
+      Log('Kongtrol data removal reported exit code ' + IntToStr(Code));
+      MsgBox(CustomMessage('PurgeFailed'), mbError, MB_OK);
+    end;
+  end;
   if CurUninstallStep <> usPostUninstall then
     exit;
   if not RegQueryStringValue(HKEY_CURRENT_USER, 'Environment', 'Path', Path) then

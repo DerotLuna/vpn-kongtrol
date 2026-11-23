@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { format, messages, type MessageKey } from '../../i18n/messages'
 import {
-  emptyDraft,
   findOverlaps,
   isActiveAt,
   isIpOrCidr,
@@ -10,19 +9,19 @@ import {
   routeOutcome,
   scheduleToPayload,
   testSuggestions,
-  toPayload,
-  validatePolicy,
   validateSchedule,
   emptySchedule,
   type ExplainResult,
   type Policy,
 } from './model'
 import { describeSchedule } from './preview'
+import { draftFromPolicy, validatePolicy } from './editorModel'
 
 const tES = (k: MessageKey, v?: Record<string, string | number>) => format(messages.es[k], v)
 const tEN = (k: MessageKey, v?: Record<string, string | number>) => format(messages.en[k], v)
 
 const ctx = { names: ['Trabajo'], profiles: ['oficina', 'casa'] }
+const draft = { name: 'x', via: 'oficina', destinations: '', onDown: 'inherit' } as const
 
 function policy(name: string, via: string, domains: string[] = [], ranges: string[] = []): Policy {
   return { name, via, domains, ip_ranges: ranges, apps: [], on_tunnel_down: 'allow' }
@@ -51,45 +50,59 @@ describe('policy validation (mirrors the daemon)', () => {
   })
 
   it('names the problem per field and the first bad entry', () => {
-    const e = validatePolicy({ ...emptyDraft(), name: 'trabajo', domains: 'ok.com\nfoo.*.com', ipRanges: '10.0.0/8' }, ctx)
+    const { errors: e, payload } = validatePolicy({ ...draft, via: '', name: 'trabajo', destinations: 'ok.com\nfoo.*.com' }, ctx)
     expect(e.name).toEqual({ code: 'duplicate', value: 'trabajo' })
     expect(e.via).toEqual({ code: 'required' })
-    expect(e.domains).toEqual({ code: 'badDomain', value: 'foo.*.com', line: 2 })
-    expect(e.ipRanges).toEqual({ code: 'badRange', value: '10.0.0/8', line: 1 })
+    expect(e.destinations).toEqual({ code: 'invalid', value: 'foo.*.com', line: 2 })
+    expect(payload).toBeNull()
   })
 
   it('needs something to match, and block needs a destination (not only apps)', () => {
-    expect(validatePolicy({ ...emptyDraft('oficina'), name: 'x' }, ctx).domains?.code).toBe('noMatch')
-    const appsOnly = validatePolicy({ ...emptyDraft('oficina'), name: 'x', apps: 'chrome.exe', onDown: 'block' }, ctx)
-    expect(appsOnly.onDown?.code).toBe('blockAppsOnly')
-    expect(validatePolicy({ ...emptyDraft('oficina'), name: 'x', apps: 'chrome.exe' }, ctx)).toEqual({})
+    expect(validatePolicy(draft, ctx).errors.destinations?.code).toBe('noMatch')
+    const app = { ...draft, destinations: 'app:chrome.exe' }
+    expect(validatePolicy({ ...app, onDown: 'block' }, ctx).errors.onDown?.code).toBe('blockAppsOnly')
+    expect(validatePolicy(app, ctx).errors).toEqual({})
   })
 
   it('renaming a rule to its own name is not a duplicate; no profiles is its own error', () => {
-    const d = { ...emptyDraft('oficina'), name: 'Trabajo', domains: 'a.com' }
-    expect(validatePolicy(d, { ...ctx, editing: 'Trabajo' })).toEqual({})
-    expect(validatePolicy(d, { names: [], profiles: [] }).via?.code).toBe('noProfiles')
+    const d = { ...draft, name: 'Trabajo', destinations: 'a.com' }
+    expect(validatePolicy(d, { ...ctx, editing: 'Trabajo' }).errors).toEqual({})
+    expect(validatePolicy(d, { names: [], profiles: [] }).errors.via?.code).toBe('noProfiles')
   })
 
   it('builds the API body: one entry per line or comma, deduplicated, apps keep spaces', () => {
-    const p = toPayload({
+    const { payload } = validatePolicy({
+      ...draft,
       name: ' Web ',
-      via: 'oficina',
-      domains: 'https://a.com/x, a.com\n*.a.com',
-      ipRanges: '10.0.0.0/8 10.0.0.0/8',
-      apps: 'C:\\Program Files\\App\\app.exe\n',
+      destinations: 'https://a.com/x,y, a.com\r\n*.a.com,10.0.0.0/8,10.0.0.0/8\napp:C:\\Program Files\\App, Inc\\app.exe\n',
       onDown: 'connect',
-    })
-    expect(p).toEqual({
+    }, ctx)
+    expect(payload).toEqual({
       name: 'Web',
       via: 'oficina',
       on_tunnel_down: 'connect',
-      match: { domains: ['a.com', '*.a.com'], ip_ranges: ['10.0.0.0/8'], apps: ['C:\\Program Files\\App\\app.exe'] },
+      match: { domains: ['a.com', '*.a.com'], ip_ranges: ['10.0.0.0/8'], apps: ['C:\\Program Files\\App, Inc\\app.exe'] },
     })
+  })
+
+  it('keeps a quoted app in a comma-separated list and deduplicates within each destination type', () => {
+    const { payload } = validatePolicy({ ...draft, destinations: '"app:Code, Inc.exe",a.com,a.com,app:a.com' }, ctx)
+    expect(payload?.match).toEqual({ domains: ['a.com'], ip_ranges: [], apps: ['Code, Inc.exe', 'a.com'] })
+  })
+
+  it('opens a paused rule with its existing matches and leaves state out of an edit', () => {
+    const saved = { ...policy('Work', 'oficina', ['*.corp.com'], ['10.0.0.0/8']), apps: ['Code, Inc.exe'], disabled: true }
+    const { payload } = validatePolicy(draftFromPolicy(saved), ctx)
+    expect(payload?.match).toEqual({ domains: saved.domains, ip_ranges: saved.ip_ranges, apps: saved.apps })
+    expect(payload).not.toHaveProperty('disabled')
   })
 })
 
 describe('overlaps', () => {
+  it('ignores paused rules', () => {
+    const paused = { ...policy('A', 'oficina', ['x.com']), disabled: true }
+    expect(findOverlaps([paused, policy('B', 'casa', ['x.com'])])).toEqual([])
+  })
   it('same domain and wildcard: the first rule (evaluation order) wins', () => {
     const o = findOverlaps([policy('A', 'oficina', ['*.corp.com']), policy('B', 'casa', ['git.corp.com', 'corp.com'])])
     expect(o).toHaveLength(1)

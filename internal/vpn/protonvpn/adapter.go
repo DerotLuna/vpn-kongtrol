@@ -184,11 +184,11 @@ var app = appattach.App{
 // matcher finds the Proton tunnel: Linux proton0 / pvpn* (excluding the
 // kill-switch / leak-guard dummies pvpnksintrf0, pvpnroutintrf0,
 // ipv6leakintrf0 that stay up while disconnected); Windows adapters with
-// "Proton" in the name or description ("TAP-ProtonVPN Windows Adapter V9";
-// WireGuard adapter name best effort); macOS by the app's network service
+// "Proton" in the name or description ("TAP-ProtonVPN Windows Adapter V9")
+// and the ProTUN interface; macOS by the app's network service
 // in `scutil --nc list` (best effort). `interface:` overrides all of this.
 var matcher = appattach.Matcher{
-	Patterns: []string{"proton*", "pvpn*", "*protonvpn*"},
+	Patterns: []string{"proton*", "pvpn*", "*protonvpn*", "ProTUN"},
 	Exclude:  []string{"*intrf*"},
 	Services: []string{"proton*"},
 }

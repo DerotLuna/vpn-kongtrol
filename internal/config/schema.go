@@ -122,6 +122,8 @@ type PolicyRule struct {
 	Name  string    `yaml:"name,omitempty" validate:"required"`
 	Match MatchSpec `yaml:"match,omitempty"`
 	Via   string    `yaml:"via,omitempty"  validate:"required"`
+	// Disabled saves a rule without routing, blocking or waking a tunnel.
+	Disabled bool `yaml:"disabled,omitempty"`
 	// OnTunnelDown is what happens to this policy's traffic while its
 	// tunnel is not connected (the user decides which tunnels are up):
 	//   allow   normal internet, and Kongtrol notifies;
@@ -129,6 +131,18 @@ type PolicyRule struct {
 	//   connect block and try connecting when TCP activity is observed.
 	// An empty value inherits the profile action.
 	OnTunnelDown string `yaml:"on_tunnel_down,omitempty"`
+}
+
+// ActivePolicies returns the rules that participate in routing, in file order.
+// Paused rules must stay out of the positional priority calculation.
+func (c *Config) ActivePolicies() []PolicyRule {
+	active := make([]PolicyRule, 0, len(c.Policies))
+	for _, rule := range c.Policies {
+		if !rule.Disabled {
+			active = append(active, rule)
+		}
+	}
+	return active
 }
 
 // On-tunnel-down actions (PolicyRule.OnTunnelDown).

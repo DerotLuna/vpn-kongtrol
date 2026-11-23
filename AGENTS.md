@@ -93,9 +93,10 @@ When adding a new adapter:
 
 <!-- feature:first_run -->
 **First run and restart (ADR-0025).**
-- The first profile restart invalidates the browser session. The Add sheet tells the user to
-  reopen the panel from Kongtrol and resumes the draft after a fresh nonce exchange in the same
-  browser. Unauthorized tabs stop REST requests and WebSocket ticket retries (ADR-0082).
+- The daemon applies the first saved profile through live adapter sync and exits setup mode in
+  the same browser session. The tray replaces its temporary menu items in place (ADR-0092).
+  If an explicit restart interrupts setup, the Add sheet can recover a local draft after a fresh
+  nonce exchange. Unauthorized tabs stop REST requests and WebSocket ticket retries (ADR-0082).
 - With no `kongtrol.yaml`, only `kongtrol daemon` may start, in **setup mode**
   (`config.NewEmpty()`, `GET /api/v1/setup`): the tray starts it and opens the dashboard's
   Perfiles page (`/profiles`), whose profile editor writes the first profile to `config.DefaultPaths()[0]`. Every
@@ -129,7 +130,7 @@ archives, `.deb`/`.rpm`, Scoop, winget, AUR, SBOM, cosign), then attestations, H
 `optionalDependencies`, no postinstall). Every publisher skips itself without its secret.
 Upgrades in place keep `~/.kongtrol`, keychain entries and the helper, and reconnect the tunnels
 that were up (ADR-0050): the NEW binary runs hidden `down --all --remember` (writes
-`~/.kongtrol/run/resume.json`, one-shot, 24 h), then after files + `service install --if-outdated`
+`~/.kongtrol/run/resume.json`, one-shot, 24 h), then after files and the helper check
 hidden `resume` reconnects them (`daemon --restart <profiles>`, or the running daemon's API). The
 Inno finished-page checkbox depends on profiles existing; "crear mi primera VPN" runs
 `kongtrol-tray --open /profiles`, which always opens it (also from a second tray instance).
@@ -165,8 +166,9 @@ exe, package manager by path, else manual) and only script-installed files are e
 `_system.audit_hmac_key`. Surfaces: `kongtrol uninstall [--purge|--data-only] [--yes] [--dry-run]`,
 `install.sh --uninstall [--purge]`, `install.ps1 -Uninstall [-Purge]`, the Inno uninstaller
 (asks, default No; silent never deletes), web/ui Ajustes "Borrar todos mis datos" →
-`POST /api/v1/data/purge {"confirm":true}` (daemon keeps api-token/run/logs, then restarts into
-setup). The tray has no uninstall item on purpose.
+`POST /api/v1/data/purge {"confirm":true}` (keeps the running daemon and tray files, including
+WebView2, then restarts into setup). The standalone purge stops both processes before
+removing their data (ADR-0093). The tray has no uninstall item on purpose.
 
 <!-- feature:update_check -->
 **Update notice: opt-in, never auto-update (ADR-0034).** `updates.check_enabled` (default false;
@@ -250,6 +252,11 @@ or nothing, never "some commands need admin". Target design: a privileged helper
 installed once (`kongtrol service install`) runs only a closed list of network operations;
 user-session parts (tray, CLI, dashboard, keychain, GUI automation of corporate clients) stay
 unprivileged because services can't reach the user desktop or keychain.
+
+<!-- feature:windows_installer_shutdown -->
+Windows setup closes the tray before asking the daemon to shut down. Its bundled
+`down --all --remember` works even before a profile exists. The daemon reports
+which VPNs to resume and cleans up its own connections before Setup copies files.
 
 ### Data flow: connect lifecycle
 
@@ -484,7 +491,7 @@ changing the port from the page serving that request would cut the connection mi
 
 - All privileged ops go through `privops.Default()` (`Local` when elevated, `Client` to the helper otherwise; `ErrHelperNotInstalled` → `GuidanceKey`). Installed once with `kongtrol service install`.
 - GUI install (always one OS permission prompt, never silent elevation): tray item "Instalar ayudante (una vez)" ("Actualizar ayudante (una vez)" when `helper/status` says `outdated`) on every OS, also in the first-run menu; after success the tray notifies "Ayudante listo" and hides the item at once; with no daemon answering the tray pings the helper itself, and tells the user once (`tray.helper_first_run`). The dashboard's Diagnóstico card offers "Reparar" for checks with `fix: helper_install`; both use `POST /api/v1/helper/install`.
-- The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change — an older installed helper is reported as outdated and the user re-runs `kongtrol service install`; the Windows installer runs `service install --if-outdated` on every upgrade, ADR-0036) and carries a per-process lease (renew 5s, expire 20s); expiry undoes OpenVPN, DNS, hosts, blocked destinations, kill switch (fail-open, so a crashed daemon never leaves the user offline). WireGuard and routes aren't leased.
+- The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change). With the network helper task selected, Windows Setup runs `service install --if-needed` on upgrades before resuming tunnels. A compatible helper needs no elevation. A missing, unhealthy or incompatible helper takes the existing installation path. The per-process lease (renew 5s, expire 20s) undoes OpenVPN, DNS, hosts, blocked destinations and the kill switch on expiry. WireGuard and routes aren't leased.
 - `block.set` (`SetBlockedDestinations`) replaces the whole set of blocked outbound prefixes: Windows Firewall BLOCK rules `KongtrolBlock`, Linux `KONGTROL_BLOCK` iptables/ip6tables chains (REJECT), macOS pf anchor `com.kongtrol` table. Only block rules: in Windows Defender Firewall a block rule always beats an allow rule, so "block all + allow exceptions" cannot work — a full-tunnel block is sent as the complement of its exceptions. An older helper answers "unknown operation" → `ErrHelperOutdated`.
 - `wg.stats` (`WGStats`, protocol 4) is read-only: `wg show <iface> dump` for a tunnel the helper manages, or the caller's own profile tunnel (same checks as `wg.remove`, nothing adopted). Only peer public key, latest handshake, rx/tx and keepalive leave the helper (`ParseWGDump` drops private/preshared keys; a failure never echoes the output). Successful read-only ops are not audited (polled every 10s); failures are.
 - The helper only runs root/admin-owned binaries; Homebrew binaries are refused (user-swappable dylibs), so macOS OpenVPN via the helper needs a bundled signed openvpn (pending).
@@ -498,17 +505,18 @@ changing the port from the page serving that request would cut the connection mi
   Add exact hostnames that the policy must route.
 
 Rules inherit `vpns.<name>.on_tunnel_down` (default `allow`) unless they explicitly select `allow`, `block` or `connect` (ADR-0084). `allow` leaves the system's existing routes available. `block` and `connect` keep the winning rule's known destinations blocked while the VPN is off, including after an individual disconnect.
+- Rules with `disabled: true` remain editable and do not affect routing, DNS, blocking or demand connections. The dashboard saves new rules paused. CLI parity uses `policy add --paused` and `policy state <name> on|off`. Existing rules without the key are active.
 - `monitor.PolicyResolver` resolves policy domains (tunnel up or not), installs OS routes for every adapter type through the tunnel interface (WireGuard also gets AllowedIPs), follows tunnels via `TunnelProbe` (attach mode, reconnects) and removes routes when the tunnel goes down. Its cached destination order is longest prefix, profile priority, then rule order. Resolved IPs expire after 6h unseen.
 - `app.KillSwitchService` owns the blocked set. The independent kill switch protects a tunnel after an unexpected drop (`ProfileService` reports intent via `OnIntent`). A split-tunnel drop blocks captured routes and policy destinations, exempting directly connected subnets. A full-tunnel drop blocks everything except VPN endpoints and reserved ranges. `allow_lan` / legacy `mode: loose` also exempts the LAN (ADR-0063). Rule protection adds the winning `block` and `connect` destinations, including before an individual disconnect removes routes. For domains this covers only IPs resolved so far. The daemon releases its firewall rules on shutdown. States `off`/`armed`/`active` (`security.KillSwitchStatus`) describe the independent kill switch. `SetOnBlock` emits one notice per unexpected outage (ADR-0058).
-- `monitor.PolicyWatch` samples TCP sockets every 15 seconds on Windows and Linux. It may miss rejected or brief attempts, and macOS uses manual connection. A visible sample can emit a `monitor.Event` (throttled to 30 min per policy) or attempt a `connect` (rate-limited to 3 min). The firewall handles blocking independently. `GET /api/v1/events?after=<seq>` supplies events to the tray, dashboard and live view.
+- `monitor.PolicyWatch` samples TCP sockets every 15 seconds on Windows and Linux. It may miss rejected or brief attempts, and macOS uses manual connection. An automatic connect gets three attempts per profile with waits of 3 and 6 minutes after failure, only when traffic is detected. A successful connection rearms it. On Windows, a detected active Proton VPN defers automatic direct WireGuard starts without consuming attempts. The firewall handles blocking independently. `GET /api/v1/events?after=<seq>` supplies events to the tray, dashboard and live view.
 
 <!-- feature:default_egress -->
-One direct WireGuard profile on Linux may opt into `default_egress` (ADR-0085). The profile
+One direct WireGuard profile on Windows or Linux may opt into `default_egress` (ADR-0090). The profile
 editor and `kongtrol routes check-default|default-egress` share a local compatibility check.
-The native `wg-quick` table gives more-specific main-table routes priority, and the resolver
-and helper preserve both peer defaults until teardown. The helper detects conflicting native
-defaults when bringing the profile up. Tunnel attachment and file compatibility describe
-different states. The setting applies when Kongtrol next starts the tunnel.
+Linux uses the native `wg-quick` table. Windows uses two /1 routes per family in the helper's
+private copy so provider firewall rules do not block more-specific routes through other interfaces.
+The helper checks for conflicts before startup and preserves the tunnel's AllowedIPs until teardown.
+The setting applies when Kongtrol next starts the tunnel.
 
 ### Public IP lookup (opt-in)
 

@@ -25,7 +25,8 @@
 }
 
 /* Choices (menu, done) */
-.k-add-choices, .k-add-apps { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.k-add-choices { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.k-add-apps { list-style: none; display: grid; grid-auto-rows: 1fr; gap: 6px; }
 .k-add-choice {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--tap); padding: 10px 12px;
   border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface);

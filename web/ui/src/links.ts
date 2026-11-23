@@ -5,6 +5,7 @@
 
 const SITE_URL = 'https://kongtrol.app'
 export const GUIDE_URL = `${SITE_URL}/guia`
+export const TUNNELBEAR_DRIVER_URL = 'https://help.tunnelbear.com/hc/en-us/articles/360060998872-Error-Driver-Error-on-Windows'
 
 /** Section anchors on the guide (ids from landing/src/content/guideSections.ts). */
 export type GuideSection = 'quickstart' | 'install' | 'connect' | 'dashboard' | 'trouble'

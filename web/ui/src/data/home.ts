@@ -576,6 +576,8 @@ const NOTICE_TEXT: Record<string, MessageKey> = {
   'policy.event.block': 'home.notice.policy.block',
   'policy.event.connect': 'home.notice.policy.connect',
   'policy.event.connect_failed': 'home.notice.policy.connectFailed',
+  'policy.event.connect_exhausted': 'home.notice.policy.connectExhausted',
+  'policy.event.connect_conflict': 'home.notice.policy.connectConflict',
   'watchdog.event.reconnect_failing': 'home.notice.watchdog.reconnectFailing',
   'watchdog.event.failover': 'home.notice.watchdog.failover',
   'watchdog.event.reconnected': 'home.notice.watchdog.reconnected',

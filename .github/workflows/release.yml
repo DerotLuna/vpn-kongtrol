@@ -154,6 +154,43 @@ jobs:
         run: |
           & "$env:RUNNER_TEMP\is6\ISCC.exe" "/DAppVersion=$($env:GITHUB_REF_NAME.TrimStart('v'))" "/DSourceDir=$PWD\build\win" "/DOutputDir=$PWD\dist-extra" packaging\windows\kongtrol.iss
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Reinstall with the setup dashboard running
+        shell: pwsh
+        run: |
+          $setup = Join-Path $PWD 'dist-extra\Kongtrol-Setup-windows-amd64.exe'
+          $directory = Join-Path $env:RUNNER_TEMP 'kongtrol-setup-test'
+          $state = Join-Path $env:USERPROFILE '.kongtrol'
+          $pidFile = Join-Path $state 'run\kongtrol.pid'
+          function Install-TestCopy($stage) {
+            $log = Join-Path $env:RUNNER_TEMP "kongtrol-$stage.log"
+            $setupArgs = '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART',
+              '/MERGETASKS=!helper,!autostart,!path', "/DIR=`"$directory`"", "/LOG=`"$log`""
+            $process = Start-Process $setup -ArgumentList $setupArgs -PassThru
+            if (!$process.WaitForExit(90000) -or $process.ExitCode -ne 0) {
+              if (Test-Path -LiteralPath $log) { Get-Content -LiteralPath $log -Tail 100 }
+              throw "Installer failed in stage $stage"
+            }
+            if (Select-String -LiteralPath $log -SimpleMatch 'Parameters: service install' -Quiet) {
+              throw "Installer ran the deselected network helper task in stage $stage"
+            }
+          }
+          Install-TestCopy 'first-install'
+          $binary = Join-Path $directory 'kongtrol.exe'
+          $daemon = Start-Process $binary -ArgumentList 'daemon','--plain' -WorkingDirectory $directory -WindowStyle Hidden -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(20)
+            do {
+              if ($daemon.HasExited -or (Get-Date) -gt $deadline) { throw 'Setup daemon failed to start' }
+              Start-Sleep -Milliseconds 200
+            } until ((Test-Path -LiteralPath $pidFile) -and (Get-Content -LiteralPath $pidFile -Raw).Trim() -eq $daemon.Id)
+            foreach ($name in 'kongtrol.yaml', 'config.yaml') {
+              if (Test-Path -LiteralPath (Join-Path $state $name)) { throw 'Expected no saved VPN profile' }
+            }
+            Install-TestCopy 'reinstall'
+            if (!$daemon.WaitForExit(5000)) { throw 'Setup daemon kept the old executable open' }
+          } finally {
+            if (!$daemon.HasExited) { Stop-Process -InputObject $daemon -Force }
+          }
       - name: Upload installer for signing
         id: unsigned-setup
         if: steps.signing.outputs.enabled == 'true'

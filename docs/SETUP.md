@@ -99,9 +99,13 @@ licencia, la carpeta ni las opciones (usa las de antes). Cierra Kongtrol (las VP
 un momento; tu internet normal sigue funcionando), actualiza, vuelve a conectar solas las VPN
 que tenías conectadas (también en una actualización silenciosa) y ofrece
 "Abrir Kongtrol". Si la
-versión nueva necesita un ayudante más nuevo, Windows pide permiso una vez durante la
-actualización. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
+opción de instalar el ayudante quedó seleccionada, Setup comprueba si falta o necesita
+reparación o actualización. Windows pide permiso una vez si hace falta. Con la misma versión dice "Reinstalar (reparar)"; con una versión anterior te
 pide confirmar (por defecto No).
+
+<!-- feature:windows_installer_shutdown -->
+Si Windows avisa que no pudo cerrar las aplicaciones, cancela el intento, abre Kongtrol desde
+Inicio y elige **Salir y desconectar todo** en la bandeja. Vuelve a abrir el instalador.
 
 Si antes copiaste `kongtrol.exe` a mano en otra carpeta del PATH (por ejemplo `C:\tools`), la
 terminal puede seguir usando esa copia vieja: `kongtrol doctor` lo avisa en «kongtrol en la
@@ -175,9 +179,8 @@ Pendiente (todavía no publicado).
 1. Abre Kongtrol (menú de inicio, Launchpad o el menú de aplicaciones). Aparece el ícono en la
    bandeja y se abre el panel en tu navegador.
 2. En **Perfiles VPN**, elige el tipo, completa los datos y pulsa **Crear**.
-3. Kongtrol se reinicia al guardar el primer perfil. Si el panel te pide volver a abrirlo, hazlo
-   desde el ícono de Kongtrol en el mismo navegador. Puedes continuar con el perfil guardado y
-   retomar la regla que estabas preparando durante los próximos diez minutos.
+3. Al guardar el primer perfil, el panel te deja conectar, crear una regla o volver a Inicio.
+   Puedes seguir en la misma pestaña y el menú de la bandeja se actualiza en unos segundos.
 
 ¿Cerraste el navegador? En el ícono, **Configurar ahora…** lo abre de nuevo. Si prefieres la
 terminal, `kongtrol init` hace lo mismo con un asistente (sección 4).
@@ -458,23 +461,33 @@ Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a
 
 ### La forma rápida: panel o una línea en la terminal
 
-En el panel: **＋ Agregar** → escribe sitios, enlaces, IP, rangos o apps y elige la VPN. En la
-terminal hace lo mismo, con las mismas reglas:
+En el panel, usa **＋ Agregar** y escribe sitios, enlaces, IP, rangos o apps separados por comas
+o saltos de línea. Por ejemplo, `claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42`.
+Elige la VPN y guarda la regla pausada. Puedes activarla al terminar o después en **Reglas**.
+La terminal admite varios destinos como argumentos:
 
 ```bash
 kongtrol policy add claude.ai --via us-content            # claude.ai y *.claude.ai
 kongtrol policy add 10.10.0.0/16 intranet.tuempresa.com --via office --block-when-down
 kongtrol policy add app:teams.exe --via office --name teams
+kongtrol policy add claude.com api.anthropic.com '*.anthropic.com' --via us-content --name claude --paused
+kongtrol policy state claude on                          # usa off para pausarla
 kongtrol policy remove teams                              # pregunta antes; --yes para scripts
 ```
 
 Un enlace (`https://…/x`) se guarda como su sitio; `--no-subdomains` deja solo el sitio exacto. Si
 no pones `--name`, el nombre sale solo ("claude.ai por us-content"). Con Kongtrol en marcha se aplica
-al momento; si no, se guarda en `kongtrol.yaml`.
+al momento, salvo que uses `--paused`. Sin Kongtrol en marcha se guarda en `kongtrol.yaml`.
 
 <!-- feature:policies -->
 En **Perfiles**, elige qué hacen sus reglas cuando la VPN está apagada. Cada regla puede heredar
 esa opción o elegir otra. También puedes cambiarla desde la terminal.
+
+Si una regla activa intenta conectar su VPN al detectar tráfico, Kongtrol hace hasta tres
+intentos por perfil. Tras un fallo, espera al menos 3 minutos para el segundo y 6 para el tercero.
+Si no conecta, conserva el bloqueo de los destinos conocidos y avisa para que conectes manualmente.
+En Windows, si detecta Proton VPN activa, aplaza el arranque automático de WireGuard directo.
+El aviso identifica la otra VPN y el aplazamiento no consume un intento.
 
 ```bash
 kongtrol profile on-tunnel-down office connect
@@ -685,6 +698,12 @@ aplicaciones y vuelve a intentar. Los filtros del proveedor, DNS y errores de
 controlador pueden requerir revisar el diagnóstico de la aplicación.
 [Investigación y pruebas de convivencia](research/2026-11-21-vpn-coexistence.md)
 
+En Windows, Diagnóstico también comprueba si aparece un adaptador de TunnelBear
+y muestra el código si Windows informa un problema con el dispositivo. Desde el
+panel puedes abrir la guía del fabricante. Algunos protocolos de TunnelBear usan
+adaptadores de Windows, por lo que la ausencia del dispositivo con su nombre es
+solo una pista.
+
 Antes de conectar por primera vez, deja que Kongtrol valide todo:
 
 ```bash
@@ -839,11 +858,11 @@ frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&ta
 ## 9. Uso diario
 
 <!-- feature:default_egress -->
-En Linux, abre la edición de un perfil WireGuard directo y usa **Salida por defecto de WireGuard**.
+En Windows o Linux, abre la edición de un perfil WireGuard directo y elige **Salida por defecto de WireGuard**.
 También puedes revisar el archivo con `kongtrol routes check-default <perfil>` y cambiar la opción
 con `kongtrol routes default-egress <perfil> on|off`. Desconecta el perfil antes de cambiarla y
 conéctalo para aplicarla. Las rutas más específicas de la red local y de otras VPN conservan
-su prioridad. Consulta [ADR-0085](adr/0085-native-wireguard-default-egress.md) para los requisitos.
+su prioridad. Consulta [ADR-0090](adr/0090-wireguard-default-egress-windows.md) para los requisitos.
 
 ### Comandos más usados
 
@@ -1125,14 +1144,16 @@ kongtrol uninstall --purge     # también borra tus datos y contraseñas (pregun
 kongtrol uninstall --data-only # solo borra tus datos; la app queda instalada
 ```
 
-- Windows: Configuración › Aplicaciones › Kongtrol › Desinstalar. Pregunta «¿Borrar también tu
-  configuración y las contraseñas guardadas? Si piensas reinstalar, elige No.» (por defecto No; en
-  modo silencioso nunca borra datos).
+- Windows: Configuración › Aplicaciones › Kongtrol › Desinstalar. Elige **Sí** para borrar la
+  configuración y las contraseñas guardadas, o **No** para conservarlas. Si la limpieza falla,
+  el desinstalador lo indica por separado. Desde el panel, **Ajustes › Borrar todos mis datos**
+  permite empezar de cero con la aplicación instalada.
 - Instalado con `install.sh`/`install.ps1`: `… | sh -s -- --uninstall [--purge]`, o
   `kongtrol uninstall`.
 - `.deb`/`.rpm`: Kongtrol no toca esos archivos. Si quieres
   borrar tus datos, corre `kongtrol uninstall --purge` **antes** de quitar el paquete.
-- Desde el panel: Ajustes › «Borrar todos mis datos» (la app queda instalada y empieza de cero).
+- Desde el panel: Ajustes › **Borrar todos mis datos**. Se eliminan los perfiles, ajustes y
+  credenciales guardadas. Quedan los archivos que usan el servicio y la bandeja mientras están abiertos.
 - La bandeja no tiene opción de desinstalar: lo hace el desinstalador de tu sistema.
 
 ---

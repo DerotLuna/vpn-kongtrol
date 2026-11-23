@@ -1,13 +1,7 @@
 // Kongtrol UI — C: "Hacer que un sitio salga por una VPN" · v1.0.0 · 2026-11-19
 //
-// One sentence: [Sitio, IP o programa] sale por [VPN ▾]; if that VPN is
-// off: use my normal connection (default) / block it. The input is read as
-// you type (URL → host, domain, IP/CIDR, app:x) and says at once what to
-// type instead. The rule name is generated ("claude.ai por Trabajo") and
-// sits with "más sitios" under "Más opciones". "Hoy / Después" asks the
-// daemon: GET /api/v1/policies/explain for today, POST
-// /api/v1/policies/test with this draft for after. With no profile yet,
-// the sheet adds one first and comes back here with the draft kept.
+// The daemon previews the first destination before and after activation.
+// The entire list is validated before the rule is saved paused.
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { useDraftRuleTest } from '../../data/add'
@@ -17,9 +11,9 @@ import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
 import { SelectField, TextAreaField, TextField, type FieldError } from '../ui/Field'
 import { Banner } from '../ui/States'
-import { splitLines, TUNNEL_DOWN_CHOICES, type OnTunnelDown, type PolicyPayload } from '../rules/model'
+import { TUNNEL_DOWN_CHOICES, type OnTunnelDown, type PolicyPayload } from '../rules/model'
 import { ArrowLeftIcon } from '../profiles/icons'
-import { autoName as suggestName, classifyEntry, isValidName, matchOf, nameSource, probeOf, type Classified, type Entry, type RuleDraft } from './model'
+import { autoName as suggestName, isValidName, matchOf, nameSource, probeOf, readDestinations, type Classified, type Entry, type RuleDraft } from './model'
 import { ErrorBanner } from './parts'
 
 export type { RuleDraft }
@@ -70,29 +64,27 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
   const [refusal, setRefusal] = useState<unknown>(null)
   const taken = useMemo(() => (policies.data ?? []).map((p) => p.name), [policies.data])
 
-  const main = classifyEntry(draft.input)
-  const moreLines = splitLines(draft.more)
-  const moreChecked = moreLines.map((l) => classifyEntry(l))
-  const entries: Entry[] = [main, ...moreChecked].flatMap((c) => (c.ok ? [c.entry] : []))
+  const checked = readDestinations(draft.input)
+  const invalid = checked.find(({ result }) => !result.ok)
+  const first = checked[0]?.result
+  const main = first?.ok ? first : null
+  const entries = checked.flatMap(({ result }) => result.ok ? [result.entry] : [])
   const state = (name: string) => tunnels.find((tn) => tn.Name === name)?.Status
   const viaOn = state(draft.via) === 'connected'
 
-  const autoName = main.ok ? suggestName(t('add.rule.autoName', { site: nameSource(main.entry.value), vpn: draft.via || '…' }), taken) : ''
+  const autoName = main ? suggestName(t('add.rule.autoName', { site: nameSource(main.entry.value), vpn: draft.via || '…' }), taken) : ''
   const name = (draft.name || autoName).trim()
 
   // Inline while typing for anything typed; "empty" only after trying to save.
-  const inputError = draft.input.trim() || tried ? problemText(main, t) : null
-  const hintText = main.ok && main.hint ? `${t(`add.hint.${main.hint}` as MessageKey, { value: main.entry.value })} ${t(`add.hint.${main.hint}.fix` as MessageKey, { value: main.entry.value })}` : null
-  const badMore = moreChecked.findIndex((c) => !c.ok)
-  const moreError: FieldError | null =
-    badMore >= 0
-      ? (() => {
-          const p = problemText(moreChecked[badMore] as Classified, t)
-          return p ? { message: t('add.err.line', { line: badMore + 1, message: p.message }), ...(p.fix ? { fix: p.fix } : {}) } : null
-        })()
-      : null
+  let inputError = invalid ? problemText(invalid.result, t) : null
+  if (inputError && invalid && checked.length > 1) {
+    inputError.message = t('add.err.line', { line: invalid.line, message: inputError.message })
+  } else if (tried && checked.length === 0) {
+    inputError = problemText({ ok: false, problem: 'empty', value: '' }, t)
+  }
+  const hintText = main?.hint ? `${t(`add.hint.${main.hint}` as MessageKey, { value: main.entry.value })} ${t(`add.hint.${main.hint}.fix` as MessageKey, { value: main.entry.value })}` : null
   const viaError: FieldError | null = tried && !draft.via ? { message: t('add.err.via'), fix: t('add.err.via.fix') } : null
-  const nameError: FieldError | null = !tried || !main.ok
+  const nameError: FieldError | null = !tried || !main
     ? null
     : !name
       ? { message: t('add.err.name.required'), fix: t('add.err.name.required.fix') }
@@ -108,11 +100,14 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
       ? { message: t('rules.err.onDown.blockAppsOnly'), fix: t('rules.err.onDown.blockAppsOnly.fix') }
       : null
 
+  const invalidOnDown = onDown !== 'allow' && appsOnly
   const payload: PolicyPayload | null =
-    main.ok && draft.via ? { name: name || 'preview', via: draft.via, on_tunnel_down: draft.onDown === 'inherit' ? '' : draft.onDown, match: matchOf(entries, draft.subs) } : null
+    main && !invalid && !invalidOnDown && draft.via
+      ? { name: name || 'preview', via: draft.via, on_tunnel_down: draft.onDown === 'inherit' ? '' : draft.onDown, match: matchOf(entries, draft.subs) }
+      : null
 
   // Preview: ask once the typing settles.
-  const probe = main.ok ? probeOf(main.entry) : null
+  const probe = main && !invalid ? probeOf(main.entry) : null
   const settled = useDebounced(JSON.stringify({ probe, payload }))
   const { probe: dProbe, payload: dPayload } = JSON.parse(settled) as { probe: typeof probe; payload: PolicyPayload | null }
   const todayTarget = dProbe ? (dProbe.app ? `app:${dProbe.app}` : dProbe.target) : ''
@@ -148,29 +143,24 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
     setTried(true)
     setRefusal(null)
     const blocked =
-      !main.ok ||
-      badMore >= 0 ||
-      !draft.via ||
       !name ||
       !isValidName(name) ||
-      taken.some((n) => n.toLowerCase() === name.toLowerCase()) ||
-      (onDown !== 'allow' && appsOnly)
-    if (blocked || !payload) {
+      taken.some((n) => n.toLowerCase() === name.toLowerCase())
+    if (blocked || !payload || !main) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('.k-add [aria-invalid="true"]')?.focus())
       return
     }
     try {
-      await save.mutateAsync({ payload: { ...payload, name } })
+      await save.mutateAsync({ payload: { ...payload, name, disabled: true } })
       onDone({ name, via: draft.via, onDown, probe: todayTargetOf(main.entry) })
     } catch (err) {
       setRefusal(err)
     }
   }
 
-  const label = main.ok ? main.entry.label : ''
+  const label = main?.entry.label ?? ''
   const afterText = (): string | null => {
-    if (!probe || !draft.via) return null
-    if (probe.app) return t('add.rule.after.app')
+    if (!probe || probe.app || !draft.via) return null
     if (!after.data) return after.isFetching ? t('add.rule.checking') : null
     if (!after.data.matched) return t('add.rule.after.miss', { target: label })
     if (viaOn) return t('add.rule.after.via', { target: label, via: draft.via })
@@ -185,7 +175,6 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
   }
   const todayLine = todayText()
   const afterLine = afterText()
-  const moreOpen = !!moreError || (tried && !!nameError) || undefined
 
   return (
     <form className="k-add__step" onSubmit={(e) => void submit(e)} noValidate>
@@ -193,19 +182,23 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
         <Banner tone="ok" title={backNote} />
       )}
       {refusal !== null && <ErrorBanner error={refusal} />}
-      <TextField
+      <TextAreaField
         label={t('add.rule.input')}
-        hint={hintText ?? t('add.rule.input.hint')}
+        hint={t('add.rule.input.hint')}
+        placeholder={'example.com, 192.0.2.0/24\nhttps://git.example.org/'}
         value={draft.input}
         onChange={(e) => onChange({ input: e.target.value })}
         error={inputError}
         mono
+        rows={4}
         autoComplete="off"
         spellCheck={false}
-        inputMode="url"
+        autoCapitalize="off"
         data-autofocus=""
       />
-      {main.ok && main.entry.kind === 'domain' && !main.entry.value.startsWith('*.') && (
+      {hintText && <p className="k-add__small">{hintText}</p>}
+      {entries.some((entry) => entry.kind === 'app') && <p className="k-add__small">{t('rules.field.apps.note')}</p>}
+      {entries.some((entry) => entry.kind === 'domain' && !entry.value.startsWith('*.')) && (
         <label className="k-add-check">
           <input type="checkbox" checked={draft.subs} onChange={(e) => onChange({ subs: e.target.checked })} />
           <span>{t('add.rule.subs')}</span>
@@ -250,7 +243,7 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
         </section>
       )}
 
-      <details className="k-add-more" open={moreOpen}>
+      <details className="k-add-more" open={!!nameError || undefined}>
         <summary>{t('add.more')}</summary>
         <div className="k-add-more__body">
           <TextField
@@ -260,16 +253,6 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
             onChange={(e) => onChange({ name: e.target.value })}
             error={nameError}
             autoComplete="off"
-          />
-          <TextAreaField
-            label={t('add.rule.moreSites')}
-            hint={t('add.rule.moreSites.hint')}
-            value={draft.more}
-            onChange={(e) => onChange({ more: e.target.value })}
-            error={moreError}
-            mono
-            rows={3}
-            spellCheck={false}
           />
         </div>
       </details>

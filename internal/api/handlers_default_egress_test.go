@@ -23,7 +23,7 @@ func TestProfileDefaultEgressCheckAndDisable(t *testing.T) {
 	const pattern = "/api/v1/vpns/{name}/default-egress"
 	check := doJSON(t, s, http.MethodGet, endpoint, pattern, s.handleDefaultEgress, "")
 	wantReason := "unsupported_platform"
-	if runtime.GOOS == "linux" {
+	if runtime.GOOS == "linux" || runtime.GOOS == "windows" {
 		wantReason = "config_unavailable"
 	}
 	if body := decodeBody(t, check); check.Code != http.StatusOK || body["enabled"] != true || body["reason"] != wantReason {

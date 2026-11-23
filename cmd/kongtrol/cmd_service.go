@@ -19,10 +19,10 @@ import (
 // installed the helper: an elevated process may run as a different
 // account (over-the-shoulder admin), so the unprivileged parent sends it.
 var (
-	// svcIfOutdated (hidden, used by the Windows installer on upgrades):
-	// reinstall only a helper that answers with an older protocol; a
-	// missing or current helper is left alone, so no UAC prompt.
+	// The install scripts update incompatible helpers only. Windows Setup
+	// also repairs a missing or stopped helper when its helper task is selected.
 	svcIfOutdated   bool
+	svcIfNeeded     bool
 	svcElevatedStep bool
 	svcUserSID      string
 	svcUserName     string
@@ -85,6 +85,9 @@ func init() {
 	}
 	serviceInstallCmd.Flags().BoolVar(&svcIfOutdated, "if-outdated", false, "")
 	_ = serviceInstallCmd.Flags().MarkHidden("if-outdated")
+	serviceInstallCmd.Flags().BoolVar(&svcIfNeeded, "if-needed", false, "")
+	_ = serviceInstallCmd.Flags().MarkHidden("if-needed")
+	serviceInstallCmd.MarkFlagsMutuallyExclusive("if-outdated", "if-needed")
 	serviceCmd.AddCommand(serviceInstallCmd, serviceUninstallCmd, serviceStatusCmd)
 	helperCmd.AddCommand(helperRunCmd)
 	rootCmd.AddCommand(serviceCmd)
@@ -132,13 +135,13 @@ func runServiceInstall(cmd *cobra.Command, args []string) error {
 	res, pingErr := privops.NewClient().Ping(ctx)
 	cancel()
 	var mode helperInstallMode
-	if svcIfOutdated {
-		install, key := outdatedHelperAction(res, pingErr)
-		if !install {
+	if svcIfOutdated || svcIfNeeded {
+		var key string
+		mode, key = conditionalHelperInstallAction(res, pingErr, svcIfNeeded)
+		if key != "" {
 			say(tuiInfo(ct(key)))
 			return nil
 		}
-		mode = helperModeUpdate
 	} else {
 		changed, unusable, _ := privhelper.CheckTools()
 		mode = helperInstallAction(res, pingErr, version, len(changed)+len(unusable) > 0)
@@ -197,21 +200,20 @@ func helperInstallAction(res privops.PingResult, pingErr error, cliVersion strin
 	return helperModeCurrent
 }
 
-// outdatedHelperAction decides `service install --if-outdated` from a
-// ping: reinstall only a helper that speaks another protocol — either it
-// answers with another privops.ProtocolVersion, or the client already
-// reports privops.ErrHelperOutdated (its reply carried another protocol);
-// otherwise the message key to print.
-func outdatedHelperAction(res privops.PingResult, pingErr error) (install bool, key string) {
+// conditionalHelperInstallAction uses protocol compatibility for both
+// installer modes. A message key means the installer can skip elevation.
+func conditionalHelperInstallAction(res privops.PingResult, pingErr error, repairMissing bool) (helperInstallMode, string) {
 	switch {
 	case errors.Is(pingErr, privops.ErrHelperOutdated):
-		return true, ""
+		return helperModeUpdate, ""
+	case repairMissing && errors.Is(pingErr, privops.ErrHelperNotInstalled):
+		return helperModeInstall, ""
 	case pingErr != nil:
-		return false, "service.install.nothing_to_update"
-	case res.Protocol == privops.ProtocolVersion:
-		return false, "service.install.up_to_date"
+		return helperModeCurrent, "service.install.nothing_to_update"
+	case res.Protocol != privops.ProtocolVersion:
+		return helperModeUpdate, ""
 	}
-	return true, ""
+	return helperModeCurrent, "service.install.up_to_date"
 }
 
 // installHelper installs (or, with update, updates) the helper from this

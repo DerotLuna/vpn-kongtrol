@@ -111,11 +111,13 @@ func TestPurge_KeepRuntime(t *testing.T) {
 	for _, f := range []string{"kongtrol.yaml", "preferences.json", "history.json", "api-token", "daemon.log", ManifestName, "run/kongtrol.pid", "wireguard/x.conf"} {
 		write(t, filepath.Join(dir, f), "vpns: {}\n")
 	}
+	webViewCache := filepath.Join("webview2", "EBWebView", "Default", "Cache", "journal.baj")
+	write(t, filepath.Join(dir, webViewCache), "runtime cache")
 	rep := Purge(PurgeOptions{DataDir: dir, KeepRuntime: true, Delete: func(Credential) error { return nil }})
 	if rep.Err() != nil {
 		t.Fatal(rep.Err())
 	}
-	for _, keep := range []string{"api-token", "daemon.log", ManifestName, "run"} {
+	for _, keep := range []string{"api-token", "daemon.log", ManifestName, "run", webViewCache} {
 		if _, err := os.Stat(filepath.Join(dir, keep)); err != nil {
 			t.Errorf("%s must be kept", keep)
 		}
