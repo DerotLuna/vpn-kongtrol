@@ -14,7 +14,7 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
+	github.com/gorilla/websocket v1.5.4-0.20240701034025-d67f41855da4
 	github.com/inconshreveable/mousetrap v1.1.0
 	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
 	github.com/ncruces/zenity v0.10.15

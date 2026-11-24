@@ -115,7 +115,8 @@ describe('Select (React Aria)', () => {
     await user.keyboard('{ArrowDown}{Enter}')
     expect(box).toHaveTextContent('Warning')
     await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
-    expect(box).toHaveFocus()
+    // React Aria gives focus back after the close (next frame): wait for it, a slow CI runner is later.
+    await waitFor(() => expect(box).toHaveFocus())
     // Esc closes without choosing.
     await user.keyboard('{Enter}')
     await screen.findByRole('listbox')
