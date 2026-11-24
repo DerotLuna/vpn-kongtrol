@@ -4,7 +4,7 @@
 
 # Configuration reference (kongtrol.yaml)
 
-Version 1.9 · 2026-11-22
+Version 1.10 · 2026-11-24
 
 Every key of `~/.kongtrol/kongtrol.yaml`, read from the schema (`internal/config/schema.go`). Defaults are the ones the code applies. Guide with examples: [CONFIGURATION.md](CONFIGURATION.md) · full example: [configs/example.yaml](../configs/example.yaml) · Español: [CONFIG.md](CONFIG.md).
 
@@ -31,7 +31,7 @@ Your VPN profiles, one per name (`vpns.office`, `vpns.home`, …). At least one.
 | `vpns.<name>.auth.username` | string | — | Plain-text username (low sensitivity). |
 | `vpns.<name>.auth.username_keychain` | string | — | Keychain entry name that holds the username. |
 | `vpns.<name>.auth.password_keychain` | string | — | Keychain entry name that holds the password. |
-| `vpns.<name>.priority` | int | — | Tie-break between overlapping policies: policies of a profile with a higher number are evaluated first (domains and apps: the first match wins; IPs: the most specific range always wins and priority only breaks ties between ranges of the same size). When unset, the policy's position counts (earlier first). It never connects or switches profiles. |
+| `vpns.<name>.priority` | int | — | Tie-break between overlapping policies: policies of a profile with a higher number are evaluated first (domains and apps: the first match wins; IPs: the most specific range always wins and priority only breaks ties between ranges of the same size). When unset (or 0), the policy's position counts (earlier first). From 0 to 1000. Change it with kongtrol profile priority or in the dashboard (Profiles › Order of its rules). It never connects or switches profiles. |
 | `vpns.<name>.kill_switch` | bool | — | Turns the kill switch on or off for this profile only (when missing, `security.kill_switch.enabled` applies). |
 | `vpns.<name>.on_tunnel_down` | string | — | Action this profile's rules inherit while its VPN is off: `allow` (default), `block`, or `connect`. |
 | `vpns.<name>.failover` | list of string | — | Backup profiles, in order, that Kongtrol may connect if this one drops and cannot reconnect. When unset, it never connects another profile: it notifies you and keeps retrying this one. Each must exist, cannot be this same profile and cannot form a loop. |

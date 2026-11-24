@@ -51,3 +51,40 @@ func TestProfileImport_SameRulesAsTheDashboard(t *testing.T) {
 		t.Fatal("missing file accepted")
 	}
 }
+
+// An .ovpn that names ca.crt is imported with the file from its own folder
+// or given after it, and a missing one is named with the CLI's way to add
+// it (ADR-0105).
+func TestProfileImport_ReadsReferencedFiles(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("KONGTROL_LANG", "en")
+	t.Cleanup(func() { profileImportExtra = nil })
+	src, other := t.TempDir(), t.TempDir()
+	conf := filepath.Join(src, "office.ovpn")
+	ca := "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+	if err := os.WriteFile(conf, []byte("client\nremote vpn.example.com 1194\nca ca.crt\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runProfileImport(conf, "", false)
+	if err == nil || !strings.Contains(err.Error(), "ca.crt") || !strings.Contains(err.Error(), "kongtrol profile import") {
+		t.Fatalf("missing: %v", err)
+	}
+	elsewhere := filepath.Join(other, "ca.crt")
+	if err := os.WriteFile(elsewhere, []byte(ca), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	profileImportExtra = []string{elsewhere}
+	res, err := runProfileImport(conf, "a", false)
+	if err != nil || len(res.Included) != 1 {
+		t.Fatalf("extra file: %+v %v", res, err)
+	}
+	profileImportExtra = nil
+	if err := os.WriteFile(filepath.Join(src, "ca.crt"), []byte(ca), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if res, err := runProfileImport(conf, "b", false); err != nil || len(res.Included) != 1 {
+		t.Fatalf("same folder: %+v %v", res, err)
+	}
+}

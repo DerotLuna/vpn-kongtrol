@@ -1,4 +1,4 @@
-// Reglas + Horarios — pure model (no React, no i18n) · v1.1.0 · 2026-11-19
+// Reglas + Horarios — pure model (no React, no i18n) · v1.2.0 · 2026-11-24
 //
 // Drafts, inline validation, overlap detection and the schedule preview,
 // kept pure so they are unit-tested on their own (model.test.ts). The
@@ -430,4 +430,41 @@ export function readableTime(hhmm: string): string {
 
 export function isOvernight(start: string, end: string): boolean {
   return HHMM.test(start) && HHMM.test(end) && minutes(start) > minutes(end)
+}
+
+// ── Order between overlapping rules (ADR-0108) ───────────────────────────
+
+/** Each profile's own priority (`vpns.<name>.priority`); absent or 0 = its rules go by position. */
+export type Priorities = ReadonlyMap<string, number>
+
+/**
+ * What decided an overlap the order settles (null for nested ranges: the
+ * most specific one always wins there). The daemon compares the profile's
+ * number when it has one and the rule's position when it has none
+ * (policy.New), so with only one number set the result depends on both.
+ */
+export type OrderBy = 'priority' | 'position' | 'mixed'
+
+export function overlapOrder(o: Overlap, priorities: Priorities): OrderBy | null {
+  if (o.kind === 'nestedRange') return null
+  const a = priorities.get(o.winner.via) ?? 0
+  const b = priorities.get(o.other.via) ?? 0
+  if (a === b) return 'position'
+  return a > 0 && b > 0 ? 'priority' : 'mixed'
+}
+
+/** Rules in at least one overlap the order settles: the only rows where "por posición" helps. */
+export function orderMatters(overlaps: readonly Overlap[]): Set<string> {
+  const out = new Set<string>()
+  for (const o of overlaps) {
+    if (o.kind === 'nestedRange') continue
+    out.add(o.winner.policy)
+    out.add(o.other.policy)
+  }
+  return out
+}
+
+/** Deep link to the profile editor with the priority field focused. */
+export function priorityLink(profile: string): string {
+  return `/profiles?edit=${encodeURIComponent(profile)}&focus=priority`
 }

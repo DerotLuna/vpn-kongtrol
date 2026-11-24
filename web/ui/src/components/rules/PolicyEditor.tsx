@@ -1,4 +1,4 @@
-// Reglas — edit one rule, inline (not a modal) · v1.1.0 · 2026-11-19
+// Reglas — edit one rule, inline (not a modal) · v1.2.0 · 2026-11-24
 //
 // The editor shares the quick form's destination syntax. New rules start in
 // the shell's "＋ Agregar" sheet (ADR-0055). Validation
@@ -18,7 +18,7 @@ import { SelectField, TextAreaField, TextField, type FieldError } from '../ui/Fi
 import { ErrorState } from '../ui/States'
 import { CheckIcon, InfoIcon } from '../ui/icons'
 import { POLICY_FIELDS, validatePolicy, type PolicyDraft, type PolicyErrors } from './editorModel'
-import { TUNNEL_DOWN_CHOICES, splitTestInput, type Policy } from './model'
+import { TUNNEL_DOWN_CHOICES, priorityLink, splitTestInput, type Policy } from './model'
 import { policyErrorText } from './preview'
 
 interface Props {
@@ -156,7 +156,7 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
         <DraftTest draft={draft} ctx={ctx} />
 
         <p className="r-note">
-          {t('rules.editor.priority')} <Link to="/profiles">{t('rules.editor.priority.link')}</Link>
+          {t('rules.editor.priority')} <Link to={draft.via ? priorityLink(draft.via) : '/profiles'}>{t('rules.editor.priority.link')}</Link>
         </p>
 
         {serverError !== null && !conflict && <ErrorState error={serverError} />}

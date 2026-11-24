@@ -18,7 +18,8 @@ import (
 )
 
 // importReq is the POST /api/v1/vpns/import body. The global middleware
-// already requires application/json and caps the body at 1 MiB.
+// already requires application/json and caps this route's body at
+// importBodyLimit.
 type importReq struct {
 	Name          string `json:"name"`           // file name without extension
 	Type          string `json:"type"`           // wireguard | openvpn
@@ -27,10 +28,25 @@ type importReq struct {
 	// Path instead of content: a file on this machine (absolute). One only
 	// root can read is refused with config.err.file_root_only unless
 	// Elevate is set: then the daemon asks for permission with the OS
-	// dialog and reads it (ADR-0058).
+	// dialog and reads it (ADR-0058). The files an .ovpn names are then
+	// read from its folder (ADR-0105).
 	Path    string `json:"path,omitempty"`
 	Elevate bool   `json:"elevate,omitempty"`
+	// Files are certificates and keys the user added by hand (dropped with
+	// the .ovpn, or "Agregar <name>"), matched to the .ovpn's references by
+	// base name (ADR-0105).
+	Files []importFile `json:"files,omitempty"`
 }
+
+// importFile is one file added by hand to an import.
+type importFile struct {
+	Name          string `json:"name"`
+	ContentBase64 string `json:"content_base64"`
+}
+
+// importBodyLimit: the .ovpn plus its added files, base64 (each at most
+// MaxSize in total, so 2 × 512 KiB × 4/3 plus JSON fits).
+const importBodyLimit = 2 << 20
 
 // ErrKeyElevatedReadFailed: the permission prompt was dismissed or the
 // elevated read failed (the "what to do" line offers the manual copy).
@@ -153,6 +169,7 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var content []byte
+	var refDir string
 	var err error
 	if strings.TrimSpace(req.Path) != "" {
 		if req.Elevate {
@@ -163,12 +180,17 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		// Read without the config lock (secureHandler does not take it
 		// for this route): a pending prompt must not block every other
 		// change.
-		if content, err = s.readImportPath(r.Context(), &req); err != nil {
+		if content, refDir, err = s.readImportPath(r.Context(), &req); err != nil {
 			writeLocalizedError(w, r, importStatus(err), err)
 			return
 		}
 	} else if content, err = base64.StdEncoding.DecodeString(strings.TrimSpace(req.ContentBase64)); err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.import_content"})
+		return
+	}
+	refs, err := importRefs(refDir, req.Files)
+	if err != nil {
+		writeLocalizedError(w, r, importStatus(err), err)
 		return
 	}
 	dir, err := s.configsDir()
@@ -178,15 +200,18 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 	}
 	s.configMu.Lock() // only to store the file (name taken / overwrite)
 	res, err := profileimport.Import(dir, profileimport.Request{
-		Name: req.Name, Type: req.Type, Content: content, Overwrite: req.Overwrite,
+		Name: req.Name, Type: req.Type, Content: content, Overwrite: req.Overwrite, Refs: refs,
 	})
 	s.configMu.Unlock()
 	if err != nil {
-		writeLocalizedError(w, r, importStatus(err), err)
+		writeImportError(w, r, err)
 		return
 	}
 	body := map[string]any{
 		"status": "imported", "path": res.Path, "type": res.Type, "overwritten": res.Overwritten,
+	}
+	if len(res.Included) > 0 {
+		body["included"] = res.Included
 	}
 	// A file from a provider account (Proton) says once that it clashes
 	// with that provider's app (ADR-0103).
@@ -200,18 +225,71 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, body)
 }
 
+// importRefs decodes the files added by hand and says where the .ovpn's
+// references come from: dir (the picked file's folder, "" when there is
+// none) and those files (ADR-0105).
+func importRefs(dir string, files []importFile) (*profileimport.Refs, error) {
+	if len(files) > profileimport.MaxExtraFiles {
+		return nil, &config.ValidationError{Key: profileimport.ErrKeyTooManyFiles, Args: []any{profileimport.MaxExtraFiles}}
+	}
+	m := make(map[string][]byte, len(files))
+	for _, f := range files {
+		b, err := base64.StdEncoding.DecodeString(strings.TrimSpace(f.ContentBase64))
+		if err != nil {
+			return nil, &config.ValidationError{Key: "api.err.import_content"}
+		}
+		m[f.Name] = b
+	}
+	return profileimport.NewRefs(dir, m)
+}
+
+// writeImportError is writeLocalizedError plus, for files the .ovpn needs
+// and Kongtrol could not find, "missing": their names, so the panel can
+// offer "Agregar <name>" for each (ADR-0105).
+func writeImportError(w http.ResponseWriter, r *http.Request, err error) {
+	var miss *profileimport.MissingFilesError
+	if !errors.As(err, &miss) {
+		writeLocalizedError(w, r, importStatus(err), err)
+		return
+	}
+	var ve *config.ValidationError
+	errors.As(err, &ve)
+	lang := requestLang(r)
+	writeJSON(w, http.StatusBadRequest, map[string]any{
+		"error":     ve.Message(lang),
+		"hint":      ve.Hint(lang),
+		"error_key": ve.Key,
+		"missing":   miss.Names,
+	})
+}
+
 // readImportPath reads req.Path and fills Type and Name from it when empty.
 // The caller is the signed-in user of this machine (secureHandler) picking
 // one of their own files, so any readable path is theirs to choose; still
 // only an absolute, clean path (cleanImportPath) to a regular file (no
 // link, directory or device) with a .conf / .ovpn name, read through the
 // descriptor checked (readRegularFile). A root-only file needs Elevate.
-func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, error) {
-	refuse := &config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{strings.TrimSpace(req.Path)}}
+// refDir is the file's folder, where the files an .ovpn names are looked
+// for (ADR-0105); "" for a root-only file (the elevated read releases only
+// a self-contained profile).
+func (s *Server) readImportPath(ctx context.Context, req *importReq) (content []byte, refDir string, err error) {
 	path, ok := cleanImportPath(req.Path)
 	if !ok {
-		return nil, refuse
+		return nil, "", &config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{strings.TrimSpace(req.Path)}}
 	}
+	elevated := false
+	content, err = s.readImportFile(ctx, req, path, &elevated)
+	if err != nil {
+		return nil, "", err
+	}
+	if !elevated {
+		refDir = filepath.Dir(path)
+	}
+	return content, refDir, nil
+}
+
+func (s *Server) readImportFile(ctx context.Context, req *importReq, path string, elevated *bool) ([]byte, error) {
+	refuse := &config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{strings.TrimSpace(req.Path)}}
 	typ := profileimport.TypeForFile(path)
 	if typ == "" {
 		return nil, refuse
@@ -254,6 +332,7 @@ func (s *Server) readImportPath(ctx context.Context, req *importReq) ([]byte, er
 	if !req.Elevate || s.readProtected == nil {
 		return nil, &config.ValidationError{Key: config.ErrKeyFileRootOnly, Args: []any{path}}
 	}
+	*elevated = true
 	b, err := s.readProtected(ctx, path)
 	if err != nil {
 		var ve *config.ValidationError
@@ -275,7 +354,7 @@ func importStatus(err error) int {
 	switch ve.Key {
 	case "api.err.import_exists", "api.err.import_not_file":
 		return http.StatusConflict
-	case "api.err.import_too_big":
+	case "api.err.import_too_big", profileimport.ErrKeyTooManyFiles:
 		return http.StatusRequestEntityTooLarge
 	case config.ErrKeyFileRootOnly, ErrKeyElevatedReadFailed:
 		return http.StatusForbidden

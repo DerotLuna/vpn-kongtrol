@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.6.0 · 2026-11-23.
+// Version 3.7.0 · 2026-11-24.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -123,13 +123,13 @@ export default function guideEN(os: OS): GuideContent {
         <IC c="sudo" />. If the helper is missing, the panel says so with a <strong>Fix</strong> button; in the terminal:{' '}
         <IC c="kongtrol service install" />.</>,
     },
-    // feature:wizard
+    // feature:wizard feature:profile_import
     wizard: {
       title: <>Your first VPN</>,
       lead: <>In the panel, <strong>Profiles</strong> (or the <strong>＋ Add</strong> button at the top). Pick one of these:</>,
       ways: [
         <><strong>A VPN you already use</strong> (NordVPN, Proton, FortiClient…): pick the app and give it a name, for example <IC c="office" />.</>,
-        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it, or drop it on the panel. Kongtrol checks it and keeps a protected copy.</>,
+        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it with <strong>Choose file</strong>, or drop it on the panel. If it comes with separate certificates (<IC c="ca.crt" />…), Kongtrol takes them from the same folder, or drag them together; if one is missing, it asks for it by name. It checks it and keeps a protected copy.</>,
         <><strong>Username and password</strong>: they go to the system keychain, never to a text file.</>,
       ],
       attach: <><strong>If you use your VPN's app:</strong> when you connect, if the tunnel is already up, Kongtrol attaches to it.
@@ -189,6 +189,12 @@ $ kongtrol policy remove <name>`,
         Use <IC c="kongtrol profile on-tunnel-down office block" /> to change it. Detection can miss quick or rejected attempts. On macOS, connect manually.</>,
       // feature:default_egress
       defaultEgress: <>On Windows or Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. When connected, the profile carries traffic without a more specific route.</>,
+      // feature:vpn_routes
+      vpnRoutes: <><strong>Routes each VPN brings.</strong> Below your rules, the dashboard shows the routes that come from the VPN’s file or its server. Kongtrol doesn’t change them: to do that, edit the file or ask your provider.
+        The most specific address wins, so a rule for <IC c="10.1.2.3" /> through another VPN wins over <IC c="10.0.0.0/8" /> or over “All traffic” from an .ovpn or .conf file. In the terminal: <IC c="kongtrol routes vpn" />.</>,
+      // feature:profile_priority
+      order: <><strong>When two rules overlap.</strong> If two rules with different VPNs cover the same site or the same IP range, the VPN with the higher <strong>priority</strong> (the larger number) wins. If neither has one, the rule higher up goes first.
+        The dashboard marks those rules (“Priority 10” or “by position”) and says who decided, with a “Change priority” link. In the terminal: <IC c="kongtrol profile priority office 20" /> and <IC c="kongtrol policy list" />.</>,
       yamlLead: <>You can also write them in <IC c="kongtrol.yaml" />, under <IC c="policies:" />:</>,
       yaml: `policies:
   - name: Claude AI

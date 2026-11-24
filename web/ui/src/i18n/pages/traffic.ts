@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Tráfico (/traffic) · v2.1.0 · 2026-11-19
+// Kongtrol UI strings — Tráfico (/traffic) · v2.2.0 · 2026-11-24
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -151,6 +151,15 @@ const es = {
   'traffic.recent.off.fix': 'Actívala en Ajustes › Privacidad. Se guarda solo en memoria.',
   'traffic.recent.off.action': 'Ir a Privacidad',
   'traffic.recent.unsupported': 'En este sistema Kongtrol aún no puede ver las conexiones sin permisos de administrador.',
+  'traffic.recent.search': 'Buscar sitio, IP o programa',
+  'traffic.recent.via.all': 'Todas',
+  'traffic.recent.fresh': '{n} nuevas',
+  'traffic.recent.fresh.one': '1 nueva',
+  'traffic.recent.fresh.show': 'Mostrar',
+  'traffic.recent.more': 'Ver {n} más (quedan {left})',
+  'traffic.recent.noMatch': 'Ningún destino coincide con el filtro.',
+  'traffic.recent.noMatch.fix': 'Prueba con otro texto o elige «Todas» en «Salió por».',
+  'traffic.recent.noMatch.clear': 'Quitar filtros',
 } as const
 
 const en: Strings<typeof es> = {
@@ -294,6 +303,15 @@ const en: Strings<typeof es> = {
   'traffic.recent.off.fix': 'Turn it on in Settings › Privacy. It is kept in memory only.',
   'traffic.recent.off.action': 'Go to Privacy',
   'traffic.recent.unsupported': 'On this system Kongtrol cannot see connections yet without administrator rights.',
+  'traffic.recent.search': 'Search site, IP or program',
+  'traffic.recent.via.all': 'All',
+  'traffic.recent.fresh': '{n} new',
+  'traffic.recent.fresh.one': '1 new',
+  'traffic.recent.fresh.show': 'Show',
+  'traffic.recent.more': 'Show {n} more ({left} left)',
+  'traffic.recent.noMatch': 'No destination matches the filter.',
+  'traffic.recent.noMatch.fix': 'Try other text or pick “All” under “Went through”.',
+  'traffic.recent.noMatch.clear': 'Clear filters',
 }
 
 export default { es, en }

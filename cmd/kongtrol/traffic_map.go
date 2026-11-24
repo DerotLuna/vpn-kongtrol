@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
@@ -29,7 +30,7 @@ func runMap(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 	}
 
-	printTrafficMap()
+	printTrafficMap(false)
 	return nil
 }
 
@@ -40,6 +41,8 @@ type mapRuleJSON struct {
 	Domains     []string `json:"domains,omitempty"`
 	IPRanges    []string `json:"ip_ranges,omitempty"`
 	ResolvedIPs int      `json:"resolved_ips"`
+	// Priority of the rule's profile; 0 = its position decides (ADR-0108).
+	Priority int `json:"priority"`
 }
 
 type mapReportJSON struct {
@@ -73,7 +76,10 @@ func printResolve(target string) {
 	}
 }
 
-func printTrafficMap() {
+// printTrafficMap prints the rules table; withOrder adds the ORDER column
+// (the profile's priority or "by position", ADR-0108) that `policy list`
+// shows. The deprecated `map` keeps its old columns.
+func printTrafficMap(withOrder bool) {
 	rules := engine.Rules()
 	if len(rules) == 0 {
 		fmt.Println("  " + styleDim.Render(ct("cli.map.none")))
@@ -108,11 +114,18 @@ func printTrafficMap() {
 		matchW = 40
 	}
 
-	sep := styleDim.Render("  " + strings.Repeat("─", nameW+matchW+viaW+12))
-	fmt.Printf("  %s %s %s %s\n",
+	orderW, orderHdr := 0, ""
+	if withOrder {
+		orderW = max(14, utf8.RuneCountInString(ct("cli.profile.priority.by_position"))+2)
+		orderHdr = styleMapHdr.Render(padRunes(ct("cli.policy.list.col.order"), orderW)) + " "
+	}
+
+	sep := styleDim.Render("  " + strings.Repeat("─", nameW+matchW+viaW+orderW+12))
+	fmt.Printf("  %s %s %s %s%s\n",
 		styleMapHdr.Render(pad("POLICY", nameW)),
 		styleMapHdr.Render(pad("MATCH", matchW)),
 		styleMapHdr.Render(pad("VIA", viaW)),
+		orderHdr,
 		styleMapHdr.Render("RESOLVED"))
 	fmt.Println(sep)
 
@@ -140,13 +153,28 @@ func printTrafficMap() {
 			matchColored = matchPadded
 		}
 
-		fmt.Printf("  %s %s %s %s\n",
+		order := ""
+		if withOrder {
+			p := profilePriority(r.Via)
+			cell := padRunes(priorityText(p), orderW)
+			if p > 0 {
+				order = styleBright.Render(cell) + " "
+			} else {
+				order = styleDim.Render(cell) + " "
+			}
+		}
+
+		fmt.Printf("  %s %s %s %s%s\n",
 			styleMapName.Render(pad(r.Name, nameW)),
 			matchColored,
 			styleMapVia.Render(pad(r.Via, viaW)),
+			order,
 			resolved)
 	}
 	fmt.Println(sep)
+	if withOrder {
+		fmt.Println("  " + styleDim.Render(ct("cli.policy.list.order_hint")))
+	}
 }
 
 func buildMapReport(args []string) mapReportJSON {
@@ -181,6 +209,7 @@ func buildMapReport(args []string) mapReportJSON {
 			row.IPRanges = append(row.IPRanges, p.String())
 		}
 		row.ResolvedIPs = resolvedByProfile[r.Via]
+		row.Priority = profilePriority(r.Via)
 		out.Rules = append(out.Rules, row)
 	}
 
@@ -207,4 +236,21 @@ func summarizeMatch(r *policy.Rule) string {
 		parts = append(parts, n.String())
 	}
 	return strings.Join(parts, ", ")
+}
+
+// padRunes right-pads s to w runes ("por posición" has a multi-byte rune).
+func padRunes(s string, w int) string {
+	if n := utf8.RuneCountInString(s); n < w {
+		return s + strings.Repeat(" ", w-n)
+	}
+	return s
+}
+
+// profilePriority is the priority of the profile named via (0 = unset or
+// unknown: the rule's position decides).
+func profilePriority(via string) int {
+	if cfg == nil {
+		return 0
+	}
+	return cfg.VPNs[via].Priority
 }

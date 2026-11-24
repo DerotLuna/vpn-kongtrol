@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   Kongtrol UI — Perfiles + Grupos · v1.2.0 · 2026-11-19
+   Kongtrol UI — Perfiles + Grupos · v1.3.0 · 2026-11-24
    Page-local styles on top of the kit (tokens.css, kit.css). Provider
    groups follow DESIGN.md: "con la app que ya usas" = gold, "conecta
    directo" = steel; green stays for connected only. Monograms are our own
@@ -52,6 +52,9 @@
 .kp-list { overflow-x: auto; }
 .kp-vpn__type { font-size: 13px; font-weight: 400; color: var(--text-muted); }
 .kp-vpn__where { font-size: 12px; overflow-wrap: anywhere; }
+/* A set priority (ADR-0108); unset = by position, not shown. */
+.kp-vpn__priority { font-size: 12px; }
+.kp-priority { max-width: 16ch; }
 .kp-ks { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .kp-ks a { color: var(--signal); min-height: 24px; display: inline-flex; align-items: center; }
 .kp-actions { display: inline-flex; gap: 4px; justify-content: flex-end; flex-wrap: nowrap; }

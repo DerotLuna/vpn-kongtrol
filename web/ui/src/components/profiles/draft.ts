@@ -1,4 +1,4 @@
-// Kongtrol UI — profile form model: draft ⇄ API body, and checks before saving · v1.1.0 · 2026-11-18
+// Kongtrol UI — profile form model: draft ⇄ API body, and checks before saving · v1.2.0 · 2026-11-24
 //
 // Pure functions (tested in draft.test.ts). The daemon stays the authority
 // (config.Validate answers with a translated error + hint); these checks
@@ -45,6 +45,9 @@ export interface Draft {
 
 export type DraftField = keyof Draft
 
+/** internal/config MaxPriority: 0 or empty = by position, 1..1000 = higher wins (ADR-0108). */
+export const MAX_PRIORITY = 1000
+
 export function emptyDraft(type: AdapterType = 'openvpn'): Draft {
   return {
     name: '',
@@ -77,7 +80,8 @@ export function fromProfile(p: VPNProfile): Draft {
   return {
     name: p.name,
     type: spec.type,
-    priority: String(p.priority ?? 0),
+    // Empty = no priority: the rule's position decides (ADR-0108).
+    priority: p.priority > 0 ? String(p.priority) : '',
     onTunnelDown: p.on_tunnel_down ?? 'allow',
     failover: [...(p.failover ?? [])],
     host: p.host ?? '',
@@ -243,7 +247,8 @@ export function checkDraft(d: Draft, { profiles, editing }: CheckContext): Probl
   if (spec.location && d.server.trim() && (d.country.trim() || d.city.trim() || d.group.trim())) {
     out.server = { key: 'profiles.check.serverCombo' }
   }
-  if (!/^-?\d*$/.test(d.priority.trim())) out.priority = { key: 'profiles.check.priority' }
+  const priority = d.priority.trim()
+  if (!/^\d*$/.test(priority) || Number(priority) > MAX_PRIORITY) out.priority = { key: 'profiles.check.priority', vars: { max: MAX_PRIORITY } }
 
   for (const [field] of TEXT) {
     if (out[field] || !shown.has(field)) continue
@@ -273,6 +278,8 @@ export function fieldForErrorKey(key: string): DraftField | undefined {
   switch (key) {
     case 'config.err.wait_timeout':
       return 'waitTimeout'
+    case 'config.err.profile_priority':
+      return 'priority'
     // Only root can read the config file (ADR-0058).
     case 'config.err.file_root_only':
       return 'config'

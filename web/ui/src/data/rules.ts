@@ -1,4 +1,4 @@
-// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.2.0 · 2026-11-23
+// Kongtrol UI — Reglas (/rules) and Horarios (/rules/schedule) resources · v1.3.0 · 2026-11-24
 //
 // Policies, policy meta, the scheduler rules and the scheduler's two
 // settings, read and changed only through these hooks (ADR-0038). Keys
@@ -20,6 +20,7 @@ import {
   type SchedulePayload,
   type ScheduleRule,
 } from '../components/rules/model'
+import type { VpnRoutesResponse } from '../components/rules/vpnRoutesModel'
 import { useOptimisticMutation } from './optimistic'
 import { toasts } from './toast'
 
@@ -44,6 +45,9 @@ export const rulesKeys = {
   anyPolicies: ['policies'] as const,
   policyMeta: ['policy-meta'] as const,
   explain: ['policy-explain'] as const,
+  // Under ['policies'] on purpose: the conflict notes depend on the rules,
+  // so every rule change (which invalidates ['policies']) refreshes them.
+  vpnRoutes: ['policies', 'vpn-routes'] as const,
   schedule: ['scheduler-rules'] as const,
   settings: ['settings'] as const,
 } as const
@@ -66,6 +70,8 @@ export const rulesApi = {
     http.post<DraftTestResult>('/api/v1/policies/test', { rule, target, app }),
   /** Which saved rule a destination uses and why (`kongtrol policy show`). */
   explain: (target: string) => http.get<ExplainResult>(`/api/v1/policies/explain?target=${enc(target)}`),
+  /** Routes each VPN brings by itself, read-only (ADR-0107; `kongtrol routes vpn`). */
+  vpnRoutes: () => http.get<VpnRoutesResponse>('/api/v1/vpns/routes').then((r) => r.profiles ?? []),
   scheduleRules: () => http.get<ScheduleRule[] | null>('/api/v1/scheduler/rules').then((l) => l ?? []),
   createSchedule: (p: SchedulePayload) => http.post<unknown>('/api/v1/scheduler/rules', p),
   updateSchedule: (name: string, p: SchedulePayload) =>
@@ -82,6 +88,14 @@ export const rulesApi = {
 /** In the daemon's evaluation order (VPN priority, then position). Loaded once; no polling. */
 export function usePoliciesQuery() {
   return useQuery({ queryKey: rulesKeys.policies, queryFn: rulesApi.policies })
+}
+
+/**
+ * "Rutas que trae cada VPN". Server-pushed routes appear when a tunnel
+ * connects, which is not a config change, so it re-reads every 30 s.
+ */
+export function useVpnRoutesQuery() {
+  return useQuery({ queryKey: rulesKeys.vpnRoutes, queryFn: rulesApi.vpnRoutes, refetchInterval: 30_000 })
 }
 
 export function usePolicyMetaQuery() {

@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.16 · 2026-11-23
+Version 1.17 · 2026-11-24
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -89,6 +89,16 @@ GET/POST  /api/v1/vpns                      # POST → 201 {"status":"created","
 GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing):
                                              #   [{"label","adapter_type","path","active":true|false|null,"interface"}]; active = the provider app's
                                              #   tunnel is up now (interface listing / macOS scutil, no admin, no automation); null = cannot tell
+GET  /api/v1/vpns/routes[?profile=<name>]    # Routes each VPN brings by itself, read-only (ADR-0107; same JSON as `kongtrol routes vpn --json`):
+                                             #   {"profiles":[{"name","type","connected","source":"config"|"app"|"unreadable","all_traffic",
+                                             #   "rules_only","server_pending","routes":[{"destination","origin":"file"|"server",
+                                             #   "conflicts":[{"rule","via","destination","winner":"rule"|"vpn"|"system"}]}]}]}
+                                             #   origin file = .ovpn route/route-ipv6/redirect-gateway or WireGuard AllowedIPs; server = pushed
+                                             #   (only while connected; server_pending otherwise). rules_only = WireGuard without default_egress:
+                                             #   Kongtrol replaces AllowedIPs with the rule destinations, the file's routes are not used.
+                                             #   source app = a provider app decides (all_traffic for Proton, NordVPN, Surfshark).
+                                             #   conflicts: active IP rules through another profile; winner by longest prefix, "system" = same
+                                             #   prefix, the OS picks by metric. 404 for an unknown profile.
 PUT/DELETE /api/v1/vpns/{name}              # PUT with a different "name" renames (→ {"status":"renamed","profile","previous"}): policies, groups,
                                              #   failover lists, scheduler rules, expected_ips, keychain entries and favorites follow;
                                              #   409 api.err.vpn_exists | api.err.vpn_rename_busy (tunnel up or connecting).
@@ -101,14 +111,25 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   a file from a Proton account adds "provider":"protonvpn", "hint_key":"profile.import.proton_hint"
                                              #   and "hint" (translated: do not connect it while the Proton app is connected; ADR-0103);
                                              #   validated like the helper does (no PostUp/…; no up/down/plugin/script-security>1/log/config…;
-                                             #   an .ovpn must inline its certs/keys). 409 api.err.import_exists unless overwrite; 400 api.err.import_* (hook, directive,
+                                             #   the stored .ovpn is self-contained). 409 api.err.import_exists unless overwrite; 400 api.err.import_* (hook, directive,
                                              #   script_security, file_ref, not_wireguard, invalid…; same rules as `kongtrol profile import`)
+                                             #   Files an .ovpn names (ca ca.crt, tls-auth ta.key 1…, ADR-0105) are put inside the stored copy, from
+                                             #   "files":[{"name","content_base64"}] (≤ 8, each ≤ 256 KiB, matched by base name) and, for a "path"
+                                             #   import, from the file's own folder (inside it only; no links; ≤ 256 KiB each). The answer adds
+                                             #   "included":[names]; still missing → 400 api.err.import_missing_files with "missing":[names];
+                                             #   api.err.import_ref_unreadable|ref_too_big|ref_not_text; 413 api.err.import_too_many_files.
+                                             #   Body cap for this route: 2 MiB (1 MiB elsewhere).
                                              #   Or {"path":"/abs/file.conf","elevate":false} instead of content: a file only root can read
                                              #   answers 403 config.err.file_root_only; "elevate":true reads it after the OS permission
                                              #   window (pkexec, Linux) → 201, or 403 api.err.import_elevated_failed (ADR-0058)
                                              #   The path must be absolute (Windows: drive letter only, no \\.\, \??\ or UNC share), without "..", a regular file (no link, folder, device);
                                              #   else 400 api.err.import_protected_path. The read (and the permission window, up to 3 min) runs
                                              #   without the config lock; only storing the file takes it (ADR-0062)
+GET  /api/v1/vpns/import/pick                # {"available":bool}: the daemon can open the OS's own "Open file" dialog (ADR-0105)
+POST /api/v1/vpns/import/pick                # opens it (one at a time, up to 10 min, no config lock) → {"path","name","type","content_base64"}
+                                             #   for the .ovpn/.conf picked (read like a "path" import; the panel then imports with "path"),
+                                             #   or {"cancelled":true}; 503 api.err.picker_unavailable (use the browser's input), 409 api.err.picker_busy.
+                                             #   Audited as config.profile.import_pick (never the path or content)
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 GET/PUT /api/v1/vpns/{name}/default-egress    # PUT {"enabled":bool}, 409 while connected/connecting
                                              # Both return {enabled,compatible,reason?}, see ADR-0085
@@ -225,4 +246,5 @@ this computer connected to in the last hour, read from the OS TCP table without 
 memory (500 entries, forgotten 1 h after last seen, emptied when turned off or on shutdown),
 never written to disk or logs and never sent off the machine; only this authenticated local API
 serves it. Turn it off with `recent_connections_enabled: false` in `/api/v1/settings` or
-`kongtrol config recent-connections off`.
+`kongtrol config recent-connections off`. The dashboard asks for every entry and pages, searches and
+filters them itself (ADR-0106); `kongtrol traffic recent --search/--via` filters the same way.

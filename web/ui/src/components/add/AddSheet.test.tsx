@@ -435,6 +435,149 @@ describe('B: import a VPN file', () => {
   })
 })
 
+describe('B: files an .ovpn names (ADR-0105)', () => {
+  const ovpn = 'client\nremote vpn.acme.test 1194\nca ca.crt\ntls-auth ta.key 1\n'
+  const imported = (name: string) => json({ status: 'imported', path: `/home/ana/.kongtrol/configs/${name}.ovpn`, type: 'openvpn', overwritten: false }, 201)
+  const zoneOf = (sheet: HTMLElement) => sheet.querySelector<HTMLElement>('.k-add-drop')!
+  const drop = (el: HTMLElement, files: File[]) => fireEvent.drop(el, { dataTransfer: { files, types: ['Files'] } })
+
+  async function openFileStep(extra: Routes) {
+    window.history.replaceState(null, '', '/?add=file')
+    const { routes, state } = daemon([profile('work')], {
+      'POST /api/v1/vpns': () => {
+        state.profiles.push(profile('Oficina', 'openvpn'))
+        return json({ status: 'created', profile: 'Oficina', restart_required: false }, 201)
+      },
+      ...extra,
+    })
+    const fetchMock = stubFetch(routes)
+    render(<App />)
+    const sheet = await screen.findByRole('dialog', { name: 'Import a VPN file' })
+    await within(sheet).findByRole('button', { name: 'Choose file' })
+    return { sheet, fetchMock }
+  }
+
+  it('the .ovpn dropped together with its certificates sends them as files', async () => {
+    const { sheet, fetchMock } = await openFileStep({ 'POST /api/v1/vpns/import': () => imported('Oficina') })
+    drop(zoneOf(sheet), [new File(['CA'], 'ca.crt'), new File([ovpn], 'Oficina.ovpn'), new File(['TA'], 'ta.key')])
+    expect(await within(sheet).findByText('Oficina.ovpn · OpenVPN')).toBeInTheDocument()
+    expect(within(sheet).getByText('Together with: ca.crt, ta.key')).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
+    const body = bodyOf(fetchMock, 'POST /api/v1/vpns/import') as { files: { name: string; content_base64: string }[] }
+    expect(body.files).toEqual([
+      { name: 'ca.crt', content_base64: btoa('CA') },
+      { name: 'ta.key', content_base64: btoa('TA') },
+    ])
+  })
+
+  it('missing files come back by name; "Add <name>" imports again with them', async () => {
+    let calls = 0
+    const { sheet, fetchMock } = await openFileStep({
+      'POST /api/v1/vpns/import': (init) => {
+        calls++
+        const body = JSON.parse(String(init?.body)) as { files?: { name: string }[] }
+        if (!body.files?.some((f) => f.name === 'ta.key')) {
+          return json(
+            { error: 'files this .ovpn needs are missing: ta.key', hint: 'Add them with “Add”.', error_key: 'api.err.import_missing_files', missing: ['ta.key'] },
+            400,
+          )
+        }
+        return imported('Oficina')
+      },
+    })
+    drop(zoneOf(sheet), [new File([ovpn], 'Oficina.ovpn'), new File(['CA'], 'ca.crt')])
+    await within(sheet).findByText('Oficina.ovpn · OpenVPN')
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(await within(sheet).findByText('files this .ovpn needs are missing: ta.key')).toBeInTheDocument()
+    const addKey = within(sheet).getByRole('button', { name: 'Add ta.key' })
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    await userEvent.click(addKey)
+    expect(click).toHaveBeenCalled()
+    click.mockRestore()
+    const extraInput = sheet.querySelectorAll<HTMLInputElement>('input[type="file"]')[1]!
+    await userEvent.upload(extraInput, new File(['TA'], 'ta.key'))
+    expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
+    expect(calls).toBe(2)
+    const body = bodyOf(fetchMock, 'POST /api/v1/vpns/import') as { files: { name: string }[] }
+    expect(body.files.map((f) => f.name)).toEqual(['ca.crt', 'ta.key'])
+  })
+
+  it('a file dropped while one is chosen replaces it and never reuses the old stored copy', async () => {
+    const bodies: { content_base64?: string }[] = []
+    let creates = 0
+    const { sheet } = await openFileStep({
+      'POST /api/v1/vpns/import': (init) => {
+        bodies.push(JSON.parse(String(init?.body)) as { content_base64?: string })
+        return imported('Oficina')
+      },
+      'POST /api/v1/vpns': () => {
+        creates++
+        return creates === 1
+          ? json({ error: 'the daemon could not save it', hint: 'Try again.', error_key: 'api.err.save' }, 500)
+          : json({ status: 'created', profile: 'Oficina', restart_required: false }, 201)
+      },
+    })
+    const zone = zoneOf(sheet)
+    drop(zone, [new File(['client\nremote a 1\n'], 'Oficina.ovpn')])
+    await within(sheet).findByText('Oficina.ovpn · OpenVPN')
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await waitFor(() => expect(creates).toBe(1))
+
+    // Dragging over the button inside the zone must not flicker it off.
+    // The browser fires enter on the child, then leave on the zone.
+    fireEvent.dragEnter(zone, { dataTransfer: { types: ['Files'] } })
+    expect(zone).toHaveAttribute('data-drag')
+    fireEvent.dragEnter(within(sheet).getByRole('button', { name: 'Choose another file' }), { dataTransfer: { types: ['Files'] } })
+    fireEvent.dragLeave(zone, { dataTransfer: { types: ['Files'] } })
+    expect(zone).toHaveAttribute('data-drag')
+
+    drop(zone, [new File(['client\nremote b 1\n'], 'Oficina.ovpn')])
+    expect(zone).not.toHaveAttribute('data-drag')
+    await waitFor(() => expect(within(sheet).queryByText('the daemon could not save it')).not.toBeInTheDocument())
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
+    expect(bodies.map((b) => atob(b.content_base64 ?? ''))).toEqual(['client\nremote a 1\n', 'client\nremote b 1\n'])
+  })
+
+  it('"Choose file" opens the OS dialog through the daemon and imports by path; unavailable falls back to the browser', async () => {
+    let picks = 0
+    const { sheet, fetchMock } = await openFileStep({
+      'GET /api/v1/vpns/import/pick': () => json({ available: true }),
+      'POST /api/v1/vpns/import/pick': () => {
+        picks++
+        if (picks === 1) return json({ error: 'this computer cannot open the choose-a-file window', hint: 'Use “Choose file” again.', error_key: 'api.err.picker_unavailable' }, 503)
+        return json({ path: 'C:\\VPN\\Oficina.ovpn', name: 'Oficina.ovpn', type: 'openvpn', content_base64: btoa(ovpn) })
+      },
+      'POST /api/v1/vpns/import': () => imported('Oficina'),
+    })
+    const chooser = within(sheet).getByRole('button', { name: 'Choose file' })
+    // Wait for the availability answer, then the first try says the dialog cannot open here.
+    await waitFor(() => expect(called(fetchMock, 'GET /api/v1/vpns/import/pick')).toBe(true))
+    await userEvent.click(chooser)
+    expect(await within(sheet).findByText('this computer cannot open the choose-a-file window')).toBeInTheDocument()
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
+    await userEvent.click(chooser)
+    expect(click).toHaveBeenCalled()
+    click.mockRestore()
+    expect(picks).toBe(1)
+  })
+
+  it('a path from the OS dialog is imported by path (the daemon reads its folder)', async () => {
+    const { sheet, fetchMock } = await openFileStep({
+      'GET /api/v1/vpns/import/pick': () => json({ available: true }),
+      'POST /api/v1/vpns/import/pick': () => json({ path: 'C:\\VPN\\Oficina.ovpn', name: 'Oficina.ovpn', type: 'openvpn', content_base64: btoa(ovpn) }),
+      'POST /api/v1/vpns/import': () => json({ status: 'imported', path: '/k/Oficina.ovpn', type: 'openvpn', overwritten: false, included: ['ca.crt', 'ta.key'] }, 201),
+    })
+    await waitFor(() => expect(called(fetchMock, 'GET /api/v1/vpns/import/pick')).toBe(true))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Choose file' }))
+    expect(await within(sheet).findByText('Oficina.ovpn · OpenVPN')).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
+    expect(bodyOf(fetchMock, 'POST /api/v1/vpns/import')).toEqual({ name: 'Oficina', type: 'openvpn', path: 'C:\\VPN\\Oficina.ovpn', overwrite: false })
+  })
+})
+
 describe('drafts are protected', () => {
   it('Esc with something typed asks first; "Keep editing" keeps it, "Discard" closes', async () => {
     window.history.replaceState(null, '', '/?add=rule')
@@ -483,7 +626,7 @@ describe('applied live (restart_required: false) and apps connected now', () => 
 })
 
 describe('Traffic › Recent', () => {
-  const recent = (body: unknown) => ({ 'GET /api/v1/connections/recent?limit=50': () => json(body) })
+  const recent = (body: unknown) => ({ 'GET /api/v1/connections/recent?limit=500': () => json(body) })
 
   it('lists recent destinations; "Send this through…" opens the rule sheet with that destination', async () => {
     window.history.replaceState(null, '', '/traffic')

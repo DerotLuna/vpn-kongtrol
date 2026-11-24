@@ -54,6 +54,14 @@ export const FileIcon = () => (
   </Icon>
 )
 
+/** Read-only: routes Kongtrol shows but does not own (ADR-0107). */
+export const LockIcon = () => (
+  <Icon>
+    <rect x="5" y="11" width="14" height="9.5" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+  </Icon>
+)
+
 /** Connector between the steps of a route (points right; rotated when stacked). */
 export const StepArrow = () => (
   <svg viewBox="0 0 40 12" aria-hidden="true" focusable="false" preserveAspectRatio="none">

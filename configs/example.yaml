@@ -23,7 +23,8 @@ vpns:
       # username_keychain: office.username   # keychain key name
       # password_keychain: office.password   # keychain key name (recommended)
     # priority only breaks ties between overlapping policies: the higher number
-    # is evaluated first. It never connects or switches profiles.
+    # is evaluated first (0–1000; unset = position). It never connects or switches
+    # profiles. Change it with: kongtrol profile priority office 20
     priority: 10
     kill_switch: true
     # on_tunnel_down: allow       # inherited by this profile's policies; also block or connect

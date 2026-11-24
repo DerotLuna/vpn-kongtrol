@@ -100,6 +100,9 @@ func validateSemantics(cfg *Config) error {
 		if action := cfg.VPNs[n].OnTunnelDown; !validTunnelDownAction(action) {
 			return newValidationError("config.err.profile_on_tunnel_down", n, action)
 		}
+		if p := cfg.VPNs[n].Priority; p < 0 || p > MaxPriority {
+			return newValidationError("config.err.profile_priority", n, p, MaxPriority)
+		}
 	}
 	for _, p := range cfg.Policies {
 		if err := ValidateName("policy", p.Name); err != nil {
@@ -264,6 +267,10 @@ func validateProvider(name string, v VPNConfig) error {
 	}
 	return nil
 }
+
+// MaxPriority is the largest vpns.<name>.priority (ADR-0108). 0 means
+// unset: the rule's position decides (policy.New).
+const MaxPriority = 1000
 
 func validTunnelDownAction(action string) bool {
 	return action == "" || action == OnTunnelDownAllow || BlocksWhenDown(action)

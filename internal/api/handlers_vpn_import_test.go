@@ -77,7 +77,7 @@ func TestImportVPNFile_Refusals(t *testing.T) {
 		"wg two interfaces": {importBody("x", "wireguard", wgConf+"[Interface]\n", false), "api.err.import_not_wireguard"},
 		"wg hook":           {importBody("x", "wireguard", "[Interface]\nPrivateKey = a\nPostUp = calc.exe\n", false), "api.err.import_hook"},
 		"wg unknown key":    {importBody("x", "wireguard", "[Interface]\nPrivateKey = a\nFoo = 1\n", false), "api.err.import_invalid"},
-		"ovpn file ref":     {importBody("x", "openvpn", "client\nca /etc/passwd\n", false), "api.err.import_file_ref"},
+		"ovpn file ref":     {importBody("x", "openvpn", "client\nca /etc/passwd\n", false), "api.err.import_missing_files"},
 		"ovpn script-sec 2": {importBody("x", "openvpn", "client\nscript-security 2\n", false), "api.err.import_script_security"},
 	}
 	for _, d := range []string{"up", "down", "route-up", "ipchange", "tls-verify", "auth-user-pass-verify", "client-connect", "plugin", "learn-address", "log", "config"} {

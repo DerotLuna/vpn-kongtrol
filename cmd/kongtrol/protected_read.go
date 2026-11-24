@@ -70,7 +70,7 @@ func importRootOnly(path, name string, overwrite, yes bool) (profileimport.Resul
 	if err != nil {
 		return profileimport.Result{}, elevatedReadError(err, rootOnly)
 	}
-	return storeImport(path, name, profileimport.TypeForContent(path, content), content, overwrite)
+	return storeImport(path, name, profileimport.TypeForContent(path, content), content, overwrite, nil)
 }
 
 // elevatedReadError turns a failed elevated read into the line to show.

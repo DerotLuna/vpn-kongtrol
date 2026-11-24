@@ -110,8 +110,8 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
     [opener],
   )
 
-  // A file dropped on the window while the menu or the import step is open.
-  const [incoming, setIncoming] = useState<File | null>(() => droppedFile.take())
+  // Files dropped on the window while the menu or the import step is open.
+  const [incoming, setIncoming] = useState<File[] | null>(() => droppedFile.take())
   const viewKind = useRef(view.k)
   useEffect(() => {
     viewKind.current = view.k
@@ -119,9 +119,9 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   useEffect(
     () =>
       droppedFile.subscribe(() => {
-        const file = droppedFile.take()
-        if (!file || (viewKind.current !== 'menu' && viewKind.current !== 'file')) return
-        setIncoming(file)
+        const files = droppedFile.take()
+        if (!files || (viewKind.current !== 'menu' && viewKind.current !== 'file')) return
+        setIncoming(files)
         setView({ k: 'file' })
       }),
     [],

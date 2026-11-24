@@ -1,4 +1,4 @@
-// Kongtrol UI — "Editar <perfil>" sheet · v2.0.0 · 2026-11-19
+// Kongtrol UI — "Editar <perfil>" sheet · v2.1.0 · 2026-11-24
 //
 // A sheet (bottom on phones, centered on wide screens) with the full guided
 // form. Creating a profile moved to the shell's "＋ Agregar" sheet
@@ -12,7 +12,7 @@
 // seconds and comes back with the new settings (owner decision, ADR-0055).
 // An older daemon answers `reconnect_required` instead: the toast then
 // offers "Reconectar" (the tunnel reload Inicio uses).
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
@@ -38,9 +38,11 @@ interface Props {
   busy?: boolean
   /** The tunnel is connected: saving reconnects it. */
   connected?: boolean
+  /** A field to focus on open (deep link /profiles?edit=<name>&focus=priority, ADR-0108). */
+  focusField?: DraftField | undefined
 }
 
-export function ProfileEditor({ open, onClose, editing, profiles, busy = false, connected = false }: Props) {
+export function ProfileEditor({ open, onClose, editing, profiles, busy = false, connected = false, focusField }: Props) {
   const { t } = usePreferences()
   const save = useSaveProfile()
   const reload = useTunnelReload()
@@ -53,6 +55,13 @@ export function ProfileEditor({ open, onClose, editing, profiles, busy = false, 
   const [serverErrors, setServerErrors] = useState<Partial<Record<DraftField, FieldError>>>({})
   const [formError, setFormError] = useState<unknown>(null)
   const formRef = useRef<HTMLFormElement>(null)
+
+  // After the dialog focused its title (showModal), move to the asked field.
+  useEffect(() => {
+    if (!focusField) return
+    const id = requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>(`[name="${focusField}"]`)?.focus())
+    return () => cancelAnimationFrame(id)
+  }, [focusField])
 
   const problems: Problems = tried ? checkDraft(draft, { profiles, editing: editing.name }) : {}
 

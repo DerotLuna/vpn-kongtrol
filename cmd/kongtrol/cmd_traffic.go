@@ -14,6 +14,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/daemonctl"
+	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 )
 
 // Recent destinations (ADR-0054): `kongtrol traffic recent` reads the
@@ -26,7 +27,47 @@ var trafficCmd = &cobra.Command{
 	Args: cobra.NoArgs,
 }
 
-var recentLimit int
+var (
+	recentLimit  int
+	recentSearch string
+	recentVia    string
+)
+
+// recentViaDirect is the --via value for the normal connection (no VPN),
+// the panel's "Conexión normal" choice.
+const recentViaDirect = "direct"
+
+// filterRecent keeps the destinations that match search (host, IP or
+// program, case-insensitive) and via (a profile name, or "direct" for the
+// normal connection), then at most limit (0 = all). Same rules as the
+// panel's Recientes filters (web/ui/src/components/traffic/recentView.ts,
+// ADR-0106).
+func filterRecent(in []monitor.RecentConnection, search, via string, limit int) []monitor.RecentConnection {
+	q := strings.ToLower(strings.TrimSpace(search))
+	via = strings.TrimSpace(via)
+	out := make([]monitor.RecentConnection, 0, len(in))
+	for _, c := range in {
+		switch {
+		case via == "":
+		case strings.EqualFold(via, recentViaDirect):
+			if c.Via != "" {
+				continue
+			}
+		case c.Via != via:
+			continue
+		}
+		if q != "" && !strings.Contains(strings.ToLower(c.Host), q) &&
+			!strings.Contains(strings.ToLower(c.RemoteIP), q) &&
+			!strings.Contains(strings.ToLower(c.Process), q) {
+			continue
+		}
+		out = append(out, c)
+		if limit > 0 && len(out) == limit {
+			break
+		}
+	}
+	return out
+}
 
 // daemonRecentFn is replaced in tests.
 var daemonRecentFn = func(base string, limit int) (daemonctl.RecentConnections, error) {
@@ -44,9 +85,17 @@ var trafficRecentCmd = &cobra.Command{
 		if !probeDaemonAPI(base) {
 			return guidedError("cli.recent.no_daemon", nil, "cli.recent.no_daemon_do")
 		}
-		res, err := daemonRecentFn(base, recentLimit)
+		filtering := strings.TrimSpace(recentSearch) != "" || strings.TrimSpace(recentVia) != ""
+		fetch := recentLimit
+		if filtering {
+			fetch = 0 // filter the whole list, then cut to --limit
+		}
+		res, err := daemonRecentFn(base, fetch)
 		if err != nil {
 			return err
+		}
+		if filtering {
+			res.Connections = filterRecent(res.Connections, recentSearch, recentVia, recentLimit)
 		}
 		if outputJSON {
 			return emitJSON(res)
@@ -58,6 +107,10 @@ var trafficRecentCmd = &cobra.Command{
 		case !res.Enabled:
 			fmt.Println(tuiInfo(ct("cli.recent.disabled")))
 			fmt.Println(tuiInfo(ct("cli.recent.disabled_do")))
+			return nil
+		case len(res.Connections) == 0 && filtering:
+			fmt.Println(tuiInfo(ct("cli.recent.no_match")))
+			fmt.Println(tuiInfo(ct("cli.recent.no_match_do")))
 			return nil
 		case len(res.Connections) == 0:
 			fmt.Println(tuiInfo(ct("cli.recent.empty")))
@@ -169,6 +222,8 @@ func setRecentConnectionsInFile(path string, enabled bool) error {
 
 func init() {
 	trafficRecentCmd.Flags().IntVar(&recentLimit, "limit", 0, ct("cli.recent.flag.limit"))
+	trafficRecentCmd.Flags().StringVar(&recentSearch, "search", "", ct("cli.recent.flag.search"))
+	trafficRecentCmd.Flags().StringVar(&recentVia, "via", "", ct("cli.recent.flag.via"))
 	trafficCmd.AddCommand(trafficRecentCmd)
 	rootCmd.AddCommand(trafficCmd)
 	configCmd.AddCommand(configRecentCmd)

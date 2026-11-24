@@ -1,8 +1,9 @@
-// Kongtrol UI — the guided profile form · v1.2.0 · 2026-11-19
+// Kongtrol UI — the guided profile form · v1.3.0 · 2026-11-24
 //
-// Only the fields the chosen VPN type uses, in four short sections:
-// what it is, how it connects, how it signs in, what happens if it drops.
-// Rarely needed settings (priority, network connection name, wait time,
+// Only the fields the chosen VPN type uses, in short sections: what it is,
+// how it connects, how it signs in, what happens if it drops, and the
+// order of its rules (priority, visible since ADR-0108: one small number,
+// empty = by position). Rarely needed settings (network connection name, wait time,
 // app folder, sign-in for VPNs that hold their own session) sit under
 // "Más opciones" with the technical names next to them, so the
 // non-technical path stays short and developers still reach everything.
@@ -116,7 +117,7 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
 
   const showAttach = spec.attach
   const showAdvancedAuth = spec.auth === 'advanced'
-  const advanced: DraftField[] = ['priority', 'iface', 'waitTimeout', 'appPath', ...(showAdvancedAuth ? (['cert', 'key', 'username', 'password'] as DraftField[]) : [])]
+  const advanced: DraftField[] = ['iface', 'waitTimeout', 'appPath', ...(showAdvancedAuth ? (['cert', 'key', 'username', 'password'] as DraftField[]) : [])]
   const advancedProblem = advanced.some((f) => problems[f] || serverErrors[f])
 
   return (
@@ -268,15 +269,22 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
         <p className="k-field__hint">{t('profiles.onDown.hint')}</p>
       </Section>
 
+      <Section title={t('profiles.section.order')}>
+        <TextField
+          label={t('profiles.field.priority')}
+          name="priority"
+          inputMode="numeric"
+          autoComplete="off"
+          className="kp-priority"
+          placeholder={t('profiles.placeholder.priority')}
+          hint={<>{t('profiles.hint.priority')}<Tech yaml="priority" /></>}
+          {...text('priority')}
+        />
+      </Section>
+
       <details className="kp-more" open={advancedProblem ? true : undefined}>
         <summary>{t('profiles.section.more')}</summary>
         <div className="kp-section__body">
-          <TextField
-            label={t('profiles.field.priority')}
-            inputMode="numeric"
-            hint={t('profiles.hint.priority')}
-            {...text('priority')}
-          />
           {showAttach && (
             <>
               <TextField

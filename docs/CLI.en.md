@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.19 · 2026-11-23
+Version 1.23 · 2026-11-24
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -100,7 +100,7 @@ kongtrol routes [profile] [flags]
 
 ```bash
 kongtrol routes
-kongtrol routes office
+kongtrol routes vpn office
 kongtrol routes --system
 ```
 
@@ -130,6 +130,22 @@ kongtrol routes default-egress <profile> <on|off> [flags]
 
 ```bash
 kongtrol routes default-egress office on
+```
+
+### `kongtrol routes vpn`
+
+Shows the routes each VPN brings by itself: the ones in its file (.ovpn or .conf) and the ones its server sends on connect. Kongtrol does not change them. It also says what wins when one of your rules covers the same address.
+
+```text
+kongtrol routes vpn [profile] [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol routes vpn
+kongtrol routes vpn office
+kongtrol routes vpn --json
 ```
 
 ### `kongtrol dashboard`
@@ -532,10 +548,10 @@ kongtrol profile import office.conf --create
 
 ### `kongtrol profile import`
 
-Checks the file with the same rules as the dashboard (no scripts or commands; an .ovpn with its certificates inside) and saves it in ~/.kongtrol/configs/ for your user only. It does not replace a file with the same name unless you pass --overwrite. With --create it also creates the profile that uses it (name: the file's, or --name). Next: kongtrol up <name>.
+Checks the file with the same rules as the dashboard (no scripts or commands) and saves it in ~/.kongtrol/configs/ for your user only. If an .ovpn names other files (ca ca.crt, tls-auth ta.key…), it looks for them in the same folder and saves them inside the profile; pass one that lives in another folder after the file. It does not replace a file with the same name unless you pass --overwrite. With --create it also creates the profile that uses it (name: the file's, or --name). Next: kongtrol up <name>.
 
 ```text
-kongtrol profile import <file.conf|file.ovpn> [flags]
+kongtrol profile import <file.conf|file.ovpn> [certificates…] [flags]
 ```
 
 **Flags**
@@ -552,7 +568,7 @@ kongtrol profile import <file.conf|file.ovpn> [flags]
 ```bash
 kongtrol profile import ~/Downloads/office.conf --create
 kongtrol profile import provider.ovpn --name home
-kongtrol profile import office.conf --overwrite
+kongtrol profile import office.ovpn ~/certs/ca.crt ~/certs/ta.key
 ```
 
 ### `kongtrol profile add`
@@ -608,6 +624,37 @@ kongtrol profile detect [flags]
 ```bash
 kongtrol profile detect
 kongtrol profile detect --json
+```
+
+### `kongtrol profile priority`
+
+Priority only decides between your rules when two cover the same site or the same IP range: the higher number wins. With no priority (0 or none) the rule's position decides: the first one goes first. It never connects another VPN and never changes the routes each VPN brings.
+
+```text
+kongtrol profile priority <profile> [N|none] [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol profile priority office
+kongtrol profile priority office 20
+kongtrol profile priority office none
+```
+
+### `kongtrol profile list`
+
+Shows each profile with its type and its order: "Priority N" or "by position". To change it: kongtrol profile priority <profile> <N>.
+
+```text
+kongtrol profile list [flags]
+```
+
+**Examples**
+
+```bash
+kongtrol profile list
+kongtrol profile list --json
 ```
 
 ### `kongtrol profile on-tunnel-down`
@@ -895,13 +942,15 @@ kongtrol traffic recent [flags]
 | Flags | Description |
 |---|---|
 | `--limit int` | How many destinations to show (0 = all) |
+| `--search string` | Show only those with this text in the site, IP or program |
+| `--via string` | Show only those that went through this profile (direct = normal connection, no VPN) |
 
 **Examples**
 
 ```bash
-kongtrol traffic recent
 kongtrol traffic recent --limit 20
-kongtrol traffic recent --json
+kongtrol traffic recent --search github
+kongtrol traffic recent --via direct
 ```
 
 ### `kongtrol logs`

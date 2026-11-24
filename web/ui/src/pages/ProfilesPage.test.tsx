@@ -493,3 +493,32 @@ describe('ProfilesPage: profiles applied live (ADR-0053)', () => {
     expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument()
   })
 })
+
+describe('ProfilesPage: priority (ADR-0108)', () => {
+  it('shows a set priority in the list; none when the position decides', async () => {
+    stubFetch(base({ 'GET /api/v1/vpns': () => json([profile('work', { priority: 20 }), profile('home', { priority: 0 })]) }))
+    render(<App />)
+    const table = await screen.findByRole('table', { name: 'Configured VPN profiles' })
+    const rows = within(table).getAllByRole('row')
+    expect(within(rows.find((r) => within(r).queryByText('work'))!).getByText(/Priority 20/)).toBeInTheDocument()
+    expect(within(rows.find((r) => within(r).queryByText('home'))!).queryByText(/Priority/)).not.toBeInTheDocument()
+  })
+
+  it('the deep link opens the editor on a visible priority field; a bad number says what to do', async () => {
+    window.history.replaceState(null, '', '/profiles?edit=work&focus=priority')
+    stubFetch(base({ 'GET /api/v1/vpns': () => json([profile('work', { priority: 0 }), profile('home')]) }))
+    render(<App />)
+    const dialog = await screen.findByRole('dialog', { name: 'Edit work' })
+    const field = within(dialog).getByLabelText('Priority')
+    await waitFor(() => expect(field).toHaveFocus())
+    expect(field).toHaveValue('')
+    expect(field).toHaveAttribute('placeholder', 'by position')
+    expect(field.closest('details')).toBeNull()
+    expect(within(dialog).getByText(/same site or the same IP range/)).toBeInTheDocument()
+    expect(window.location.search).toBe('')
+    await userEvent.type(field, '-3')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and reconnect' }))
+    expect(await within(dialog).findByText('Priority must be a whole number from 1 to 1000.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Type a number, e.g. 10, or leave it empty to let the position decide.')).toBeInTheDocument()
+  })
+})

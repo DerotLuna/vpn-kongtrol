@@ -2,7 +2,7 @@
 
 # Research notes
 
-Version 1.22.0 · 2026-11-23
+Version 1.24.0 · 2026-11-24
 
 Every investigation behind a Kongtrol decision is recorded here with its sources, so a decision
 can be re-checked later. Decisions themselves are ADRs in [`docs/adr/`](../adr/README.md).
@@ -68,6 +68,9 @@ reasoned but unverified.
 | [2026-11-20-install-scripts-cli-and-tray](2026-11-20-install-scripts-cli-and-tray.md) | How rustup, Tailscale and Docker Desktop install everything by default with an opt-out; Inno Setup uninstall key and silent upgrade flags; Microsoft's Server Core check (ServerLevels); freedesktop desktop-session variables; what the Windows release assets contain; GUI-subsystem exe output to a pipe (measured) | ADR-0075 |
 | [VPN coexistence](2026-11-21-vpn-coexistence.md) | Providers, default routes, diagnosis, two full tunnels and the kill switch | ADR-0086, ADR-0099 |
 | [Proton file next to the Proton app](2026-11-23-proton-same-account.md) | Proton file format, shared 10.2.0.2 address, advanced kill switch, pending Windows test | ADR-0103 |
+| [VPN routes and what wins](2026-11-24-vpn-routes-precedence.md) | OpenVPN file/pushed routes and `net_gateway`, WireGuard AllowedIPs replaced by rules, OS longest prefix then metric (Windows, Linux), wg-quick `suppress_prefixlength`, `priority` never reaches the OS | ADR-0107 |
+| [Native file picker and .ovpn references](2026-11-24-native-file-picker.md) | OpenVPN --cd / inline files, zenity (no cgo), Windows foreground rules and probe, manual test | ADR-0105 |
+| [Profile priority](2026-11-24-profile-priority.md) | `policy.New` rank = priority or position on one scale, defaults of 10, no range check before, Little Snitch ranks an explicit priority first | ADR-0108 |
 | [Direct diagnostics](2026-11-21-diagnostics-deep-links.md) | Authenticated dashboard entry points and tray colors | ADR-0083 |
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |

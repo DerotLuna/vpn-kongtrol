@@ -1,4 +1,4 @@
-// Setup guide — version 3.0.0 · 2026-11-19 (ADR-0061).
+// Setup guide — version 3.2.0 · 2026-11-24 (ADR-0061).
 // One markup tree for both languages; the words come from
 // content/guide.{es,en}.tsx. Bone page with two Ink emphasis blocks (the
 // quickstart and "how it works"), per DESIGN.md and ADR-0060.
@@ -209,6 +209,8 @@ export default function Guide({ os, setOS, lang }: Props) {
               <CodeBlock ui={lang} lang="yaml">{t.policies.yaml}</CodeBlock>
               <p>{t.policies.match}</p>
               <p>{t.policies.defaultEgress}</p>
+              <p>{t.policies.vpnRoutes}</p>
+              <p>{t.policies.order}</p>
               <p>{t.policies.apply}</p>
             </div>
 

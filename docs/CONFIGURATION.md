@@ -272,7 +272,7 @@ vpns:
 - If Proton is only for selected domains/apps, keep it in its own profile (e.g. `us-content`) and route only those policies through it.
 - Keep corporate traffic (`forticlient`, `openvpn`, etc.) in separate profiles with explicit policy targets.
 - Prefer policy-based separation over a catch-all default route when combining Proton with work VPNs.
-- Use profile `priority` intentionally if two policies may overlap: the **higher** number is evaluated first (domain and app rules: first match wins; IPs: the longest prefix always wins and `priority` only breaks ties between prefixes of the same length). Without it, the policy's position counts (earlier first). `priority` never connects or switches profiles.
+- Use profile `priority` intentionally if two policies may overlap: the **higher** number is evaluated first (domain and app rules: first match wins; IPs: the longest prefix always wins and `priority` only breaks ties between prefixes of the same length). Without it, the policy's position counts (earlier first). Range 0–1000 (0 = unset). Unset ranks by position on the same scale, so when only one of two overlapping profiles has a number, positions matter too: give both a priority. Change it in the dashboard (Profiles › Order of its rules, or "Change priority" on the Rules page, which marks overlapping rules) or with `kongtrol profile priority <profile> <N>` (`none` clears it); `kongtrol profile list` and `kongtrol policy list` show it ([ADR-0108](adr/0108-show-and-change-profile-priority.md)). `priority` never connects or switches profiles.
 
 <!-- feature:watchdog -->
 ### Failover (`failover:`)

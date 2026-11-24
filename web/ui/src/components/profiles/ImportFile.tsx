@@ -1,4 +1,4 @@
-// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.1.0 · 2026-11-19
+// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.2.0 · 2026-11-24
 //
 // feature:profile_import
 // The non-technical path to a .conf / .ovpn: pick (or drop) the file the
@@ -21,8 +21,9 @@ import { usePreferences } from '../../app/preferences-context'
 import { useImportProfileFile, type ImportResult } from '../../data/profiles'
 import { Button } from '../ui/Button'
 import { Banner } from '../ui/States'
+import { useDropZone } from './dropZone'
 import { UploadIcon } from './icons'
-import { IMPORT_EXT as EXT, MAX_IMPORT_BYTES, importName, toBase64 } from './importModel'
+import { IMPORT_EXT as EXT, MAX_EXTRA_BYTES, MAX_IMPORT_BYTES, importName, toBase64 } from './importModel'
 
 interface Props {
   type: 'wireguard' | 'openvpn'
@@ -40,7 +41,7 @@ interface Props {
 type Phase =
   | { kind: 'idle' }
   | { kind: 'done'; result: ImportResult }
-  | { kind: 'exists'; file: File; error: ErrorText }
+  | { kind: 'exists'; file: File; extras: File[]; error: ErrorText }
   | { kind: 'error'; error: ErrorText }
 
 export function ImportFile({ type, profileName, onImported, protectedPath }: Props) {
@@ -49,10 +50,12 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
   const input = useRef<HTMLInputElement>(null)
   const id = useId()
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
-  const [drag, setDrag] = useState(false)
+  const dropZone = useDropZone()
+  const drag = dropZone.drag
   const ext = EXT[type]
 
-  const send = async (file: File, overwrite: boolean) => {
+  // extras: certificates / keys dropped or picked with the .ovpn, matched to its references by name (ADR-0105).
+  const send = async (file: File, overwrite: boolean, extras: File[] = []) => {
     if (!file.name.toLowerCase().endsWith(ext)) {
       const vars = { file: file.name, ext }
       setPhase({ kind: 'error', error: { message: t('profiles.import.wrongExt', vars), fix: t('profiles.import.wrongExt.fix', vars) } })
@@ -64,15 +67,26 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
       return
     }
     let content: string
+    const files: { name: string; content_base64: string }[] = []
+    let current = file
     try {
       content = toBase64(new Uint8Array(await file.arrayBuffer()))
+      for (const extra of extras) {
+        current = extra
+        if (extra.size > MAX_EXTRA_BYTES) {
+          const vars = { file: extra.name, ext, size: Math.ceil(extra.size / 1024), max: MAX_EXTRA_BYTES / 1024 }
+          setPhase({ kind: 'error', error: { message: t('profiles.import.tooBig', vars), fix: t('profiles.import.tooBig.fix', vars) } })
+          return
+        }
+        files.push({ name: extra.name, content_base64: toBase64(new Uint8Array(await extra.arrayBuffer())) })
+      }
     } catch {
-      const vars = { file: file.name }
+      const vars = { file: current.name }
       setPhase({ kind: 'error', error: { message: t('profiles.import.readFail', vars), fix: t('profiles.import.readFail.fix', vars) } })
       return
     }
     save.mutate(
-      { name: importName(profileName, file.name), type, content_base64: content, overwrite },
+      { name: importName(profileName, file.name), type, content_base64: content, overwrite, ...(files.length > 0 ? { files } : {}) },
       {
         onSuccess: (result) => {
           setPhase({ kind: 'done', result })
@@ -81,7 +95,7 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
         onError: (err) => {
           const error = describeError(err, t)
           const taken = err instanceof ApiError && err.key === 'api.err.import_exists'
-          setPhase(taken ? { kind: 'exists', file, error } : { kind: 'error', error })
+          setPhase(taken ? { kind: 'exists', file, extras, error } : { kind: 'error', error })
         },
       },
     )
@@ -103,35 +117,29 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
     )
   }
 
-  const pick = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) void send(file, false)
+  // The profile's own file (by extension) plus whatever came with it: its certificates.
+  const pick = (list: FileList | null) => {
+    const files = [...(list ?? [])]
+    const file = files.find((f) => f.name.toLowerCase().endsWith(ext)) ?? files[0]
+    if (file) void send(file, false, files.filter((f) => f !== file))
     if (input.current) input.current.value = ''
   }
 
   const onDrop = (e: DragEvent) => {
     e.preventDefault()
-    setDrag(false)
+    dropZone.reset()
     pick(e.dataTransfer.files)
   }
 
   return (
-    <div
-      className="kp-import"
-      data-drag={drag || undefined}
-      onDragOver={(e) => {
-        e.preventDefault()
-        setDrag(true)
-      }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={onDrop}
-    >
+    <div className="kp-import" data-drag={drag || undefined} {...dropZone.handlers} onDrop={onDrop}>
       <div className="kp-import__row">
         <input
           ref={input}
           id={id}
           type="file"
-          accept={ext}
+          accept={type === 'openvpn' ? `${ext},.crt,.pem,.key,.cer,.p12` : ext}
+          multiple={type === 'openvpn'}
           className="kp-import__file"
           tabIndex={-1}
           aria-hidden="true"
@@ -174,7 +182,7 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
               <Button variant="outlined" size="sm" onClick={() => setPhase({ kind: 'idle' })}>
                 {t('profiles.import.keep')}
               </Button>
-              <Button variant="danger" size="sm" loading={save.isPending} onClick={() => void send(phase.file, true)}>
+              <Button variant="danger" size="sm" loading={save.isPending} onClick={() => void send(phase.file, true, phase.extras)}>
                 {t('profiles.import.replace')}
               </Button>
             </>

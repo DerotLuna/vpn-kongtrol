@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Perfiles (/profiles) and Grupos (/profiles/groups) · v2.3.0 · 2026-11-19
+// Kongtrol UI strings — Perfiles (/profiles) and Grupos (/profiles/groups) · v2.4.0 · 2026-11-24
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -197,7 +197,10 @@ const es = {
   'profiles.failover.remove': 'Quitar {name}',
   'profiles.field.priority': 'Prioridad',
   'profiles.hint.priority':
-    'Solo desempata reglas que se solapan: gana el número más alto. Nunca conecta otra VPN.',
+    'Solo decide entre tus reglas cuando dos cubren el mismo sitio o el mismo rango de IP: gana el número mayor. Vacío = por posición.',
+  'profiles.placeholder.priority': 'por posición',
+  'profiles.section.order': 'Orden de sus reglas',
+  'profiles.list.priority': 'Prioridad {n}',
   'profiles.field.interface': 'Nombre de la conexión de red (opcional)',
   'profiles.placeholder.interface': 'p. ej. NordLynx',
   'profiles.hint.interface': 'Solo si Kongtrol no detecta el túnel.',
@@ -221,8 +224,8 @@ const es = {
   'profiles.check.waitTimeout.fix': 'Escríbelo como 5m o 90s, o déjalo vacío para usar 5 minutos.',
   'profiles.check.serverCombo': 'Un servidor exacto no se combina con país, ciudad ni grupo.',
   'profiles.check.serverCombo.fix': 'Deja el servidor exacto o bien país/ciudad/grupo, no ambos.',
-  'profiles.check.priority': 'La prioridad debe ser un número entero.',
-  'profiles.check.priority.fix': 'Escribe un número, p. ej. 10, o déjala en 0.',
+  'profiles.check.priority': 'La prioridad debe ser un número entero de 1 a {max}.',
+  'profiles.check.priority.fix': 'Escribe un número, p. ej. 10, o déjala vacía para que decida la posición.',
   'profiles.check.envRef': 'Aquí no se pueden usar variables de entorno ($VAR).',
   'profiles.check.envRef.fix': 'Escribe el valor completo.',
   'profiles.check.failoverSelf': 'Una VPN no puede ser su propio respaldo.',
@@ -521,7 +524,11 @@ const en: Strings<typeof es> = {
   'profiles.failover.up': 'Move {name} up',
   'profiles.failover.remove': 'Remove {name}',
   'profiles.field.priority': 'Priority',
-  'profiles.hint.priority': 'Only breaks ties between overlapping rules: the higher number wins. It never connects another VPN.',
+  'profiles.hint.priority':
+    'It only decides between your rules when two cover the same site or the same IP range: the higher number wins. Empty = by position.',
+  'profiles.placeholder.priority': 'by position',
+  'profiles.section.order': 'Order of its rules',
+  'profiles.list.priority': 'Priority {n}',
   'profiles.field.interface': 'Network connection name (optional)',
   'profiles.placeholder.interface': 'e.g. NordLynx',
   'profiles.hint.interface': "Only if Kongtrol doesn't detect the tunnel.",
@@ -544,8 +551,8 @@ const en: Strings<typeof es> = {
   'profiles.check.waitTimeout.fix': 'Write it like 5m or 90s, or leave it empty to use 5 minutes.',
   'profiles.check.serverCombo': "An exact server doesn't combine with country, city or group.",
   'profiles.check.serverCombo.fix': 'Keep the exact server or country/city/group, not both.',
-  'profiles.check.priority': 'Priority must be a whole number.',
-  'profiles.check.priority.fix': 'Type a number, e.g. 10, or leave it at 0.',
+  'profiles.check.priority': 'Priority must be a whole number from 1 to {max}.',
+  'profiles.check.priority.fix': 'Type a number, e.g. 10, or leave it empty to let the position decide.',
   'profiles.check.envRef': "Environment variables ($VAR) can't be used here.",
   'profiles.check.envRef.fix': 'Type the full value.',
   'profiles.check.failoverSelf': "A VPN can't be its own backup.",

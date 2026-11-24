@@ -8,9 +8,10 @@
 // Rules: the name is a plain file name (no separators, no hidden or Windows
 // device names); the file lands in ~/.kongtrol/configs/<name>.conf|.ovpn
 // with 0600; it is never replaced unless Overwrite is set (O_EXCL), never
-// through a link or onto a folder; an imported .ovpn must be self-contained
-// (no references to other files), so an import never makes Kongtrol read
-// some other path.
+// through a link or onto a folder; the stored .ovpn is always
+// self-contained: files it names are read once at import time from the
+// picked file's folder or from files the user added, and put inside it
+// (refs.go, ADR-0105), so the helper never opens another user path.
 package profileimport
 
 import (
@@ -45,6 +46,9 @@ type Request struct {
 	Type      string // wireguard | openvpn
 	Content   []byte // the .conf / .ovpn file
 	Overwrite bool   // replace an existing file of that name
+	// Refs is where the files an .ovpn names come from (ADR-0105); nil =
+	// the .ovpn must already be self-contained.
+	Refs *Refs
 }
 
 // Result says where the file was stored.
@@ -55,6 +59,9 @@ type Result struct {
 	// Provider is the VPN provider whose account issued the file
 	// (ProviderForContent: "protonvpn"), "" when unknown (ADR-0103).
 	Provider string `json:"provider,omitempty"`
+	// Included are the referenced files put inside the stored .ovpn
+	// (base names, ADR-0105).
+	Included []string `json:"included,omitempty"`
 }
 
 // ErrStore marks a failure writing the file (not the user's input).
@@ -182,14 +189,27 @@ func Import(dir string, req Request) (Result, error) {
 	if len(req.Content) > MaxSize {
 		return Result{}, TooBig()
 	}
-	if err := Validate(typ, req.Content); err != nil {
+	content := req.Content
+	var included []string
+	if typ == "openvpn" && req.Refs != nil {
+		out, inc, err := Resolve(content, req.Refs)
+		if err != nil {
+			return Result{}, err
+		}
+		if len(inc) > 0 {
+			if len(out) > MaxSize {
+				return Result{}, TooBig()
+			}
+			content, included = out, inc
+		}
+	} else if err := Validate(typ, content); err != nil {
 		return Result{}, err
 	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return Result{}, fmt.Errorf("%w: %w", ErrStore, err)
 	}
 	path := filepath.Join(dir, name+ext)
-	overwritten, err := store(path, req.Content, req.Overwrite)
+	overwritten, err := store(path, content, req.Overwrite)
 	switch {
 	case errors.Is(err, fs.ErrExist):
 		return Result{}, &config.ValidationError{Key: "api.err.import_exists", Args: []any{name + ext}}
@@ -198,7 +218,7 @@ func Import(dir string, req Request) (Result, error) {
 	case err != nil:
 		return Result{}, fmt.Errorf("%w: %w", ErrStore, err)
 	}
-	return Result{Path: path, Type: typ, Overwritten: overwritten, Provider: ProviderForContent(typ, req.Content)}, nil
+	return Result{Path: path, Type: typ, Overwritten: overwritten, Provider: ProviderForContent(typ, content), Included: included}, nil
 }
 
 // TooBig is the refusal for a file over MaxSize (callers that see the size
@@ -216,7 +236,8 @@ func (e *fileRefError) Error() string {
 
 // Validate runs the helper's own checks for typ (wireguard | openvpn) and
 // turns a refusal into a translated reason. An .ovpn must be
-// self-contained: every file reference is refused (no reader).
+// self-contained: every file reference is refused (no reader; Resolve is
+// the variant that reads them, ADR-0105).
 func Validate(typ string, content []byte) error {
 	var err error
 	if typ == "wireguard" {
@@ -240,6 +261,8 @@ var (
 	directiveRE = regexp.MustCompile(`line (\d+): directive "([^"]+)" is not allowed`)
 	scriptSecRE = regexp.MustCompile(`line (\d+): script-security above 1`)
 	wgShapeRE   = regexp.MustCompile(`needs exactly one \[Interface\] with a PrivateKey`)
+	notTextRE   = regexp.MustCompile(`([\w-]+) file is not a PEM/text key file`)
+	refBigRE    = regexp.MustCompile(`([\w-]+) file larger than \d+ bytes`)
 )
 
 var wgHookNames = map[string]string{"preup": "PreUp", "postup": "PostUp", "predown": "PreDown", "postdown": "PostDown"}
@@ -247,6 +270,10 @@ var wgHookNames = map[string]string{"preup": "PreUp", "postup": "PostUp", "predo
 // reason maps a validator error to the most specific api.err.import_* key;
 // anything else stays api.err.import_invalid with the raw reason.
 func reason(err error) error {
+	var ve *config.ValidationError
+	if errors.As(err, &ve) {
+		return err // already translated (a referenced file, ADR-0105)
+	}
 	var ref *fileRefError
 	if errors.As(err, &ref) {
 		return &config.ValidationError{Key: "api.err.import_file_ref", Args: []any{ref.path}}
@@ -265,6 +292,12 @@ func reason(err error) error {
 	}
 	if m := scriptSecRE.FindStringSubmatch(msg); m != nil {
 		return &config.ValidationError{Key: "api.err.import_script_security", Args: []any{line(m[1])}}
+	}
+	if m := notTextRE.FindStringSubmatch(msg); m != nil {
+		return &config.ValidationError{Key: ErrKeyRefNotText, Args: []any{m[1]}}
+	}
+	if m := refBigRE.FindStringSubmatch(msg); m != nil {
+		return &config.ValidationError{Key: ErrKeyRefTooBig, Args: []any{m[1], MaxReferenceSize >> 10}}
 	}
 	if wgShapeRE.MatchString(msg) {
 		return &config.ValidationError{Key: "api.err.import_not_wireguard"}

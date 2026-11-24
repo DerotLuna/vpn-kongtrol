@@ -107,6 +107,8 @@
 .k-datalist { width: 100%; container: datalist / inline-size; }
 .k-datalist table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .k-datalist th, .k-datalist td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+/* The last row has no rule: the card edge or a footer divider closes the list (no double line). */
+.k-datalist tbody tr:last-child > * { border-bottom: 0; }
 .k-datalist thead th { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.04em; color: var(--text-muted); }
 .k-datalist tbody th { font-weight: 600; }
 /* A row that was just added rises in once (DataList data-new). */

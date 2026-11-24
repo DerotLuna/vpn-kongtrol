@@ -25,10 +25,15 @@ export type Routes = Record<string, (init?: RequestInit) => Promise<Response>>
 
 /**
  * Stubs fetch with "METHOD path" routes; anything else answers 404. The live
- * feed's ticket (POST /api/v1/ws-ticket) answers by default.
+ * feed's ticket (POST /api/v1/ws-ticket) and the Reglas page's read-only
+ * "Rutas que trae cada VPN" (GET /api/v1/vpns/routes, empty) answer by default.
  */
 export function stubFetch(routes: Routes) {
-  const all: Routes = { 'POST /api/v1/ws-ticket': () => json({ ticket: 't', expires_in: 30 }), ...routes }
+  const all: Routes = {
+    'POST /api/v1/ws-ticket': () => json({ ticket: 't', expires_in: 30 }),
+    'GET /api/v1/vpns/routes': () => json({ profiles: [] }),
+    ...routes,
+  }
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const route = all[`${init?.method ?? 'GET'} ${String(input)}`]
     return route ? route(init) : json({ error: 'not found' }, 404)

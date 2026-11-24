@@ -1,4 +1,10 @@
-// Reglas — saved rules in evaluation order, and where they overlap · v1.0.0 · 2026-11-18
+// Reglas — saved rules in evaluation order, and where they overlap · v1.1.0 · 2026-11-24
+//
+// The "Sale por" cell adds the order hint (ADR-0108) only on rows in an
+// overlap the order settles: "Prioridad N" or "por posición". Elsewhere the
+// order changes nothing, and new profiles all start at 10, so a hint on
+// every row would be noise. It links to that profile's editor with the
+// priority field focused.
 import { memo, useMemo } from 'react'
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
@@ -7,9 +13,10 @@ import type { MessageKey } from '../../i18n/messages'
 import { IconButton } from '../ui/Button'
 import { DataList, type Column } from '../ui/DataList'
 import { Switch } from '../ui/Switch'
+import { Tooltip } from '../ui/Tooltip'
 import { EditIcon, TrashIcon } from './icons'
-import { findOverlaps, onDownOf, type Policy } from './model'
-import { overlapText } from './preview'
+import { findOverlaps, onDownOf, orderMatters, overlapOrder, priorityLink, type Policy, type Priorities } from './model'
+import { overlapOrderText, overlapText } from './preview'
 import { VpnState } from './shared'
 
 const MAX_CHIPS = 4
@@ -39,18 +46,33 @@ const MatchCell = memo(function MatchCell({ p }: { p: Policy }) {
 
 interface ListProps {
   policies: readonly Policy[]
+  /** Each profile's own priority (absent = by position). */
+  priorities: Priorities
   onEdit: (p: Policy) => void
   onDelete: (p: Policy) => void
 }
 
-export function PolicyList({ policies, onEdit, onDelete }: ListProps) {
+export function PolicyList({ policies, priorities, onEdit, onDelete }: ListProps) {
   const { t } = usePreferences()
+  const matters = useMemo(() => orderMatters(findOverlaps(policies)), [policies])
   const { mutate: toggle, isPending, variables } = useTogglePolicy()
   const columns = useMemo<Column<Policy>[]>(
     () => [
       { id: 'name', header: t('rules.list.name'), cell: (p) => p.name },
       { id: 'match', header: t('rules.list.match'), cell: (p) => <MatchCell p={p} /> },
-      { id: 'via', header: t('rules.list.via'), cell: (p) => <VpnState name={p.via} /> },
+      {
+        id: 'via',
+        header: t('rules.list.via'),
+        cell: (p) => {
+          const priority = priorities.get(p.via) ?? 0
+          return (
+            <span className="r-via">
+              <VpnState name={p.via} />
+              {matters.has(p.name) && <OrderHint via={p.via} priority={priority} />}
+            </span>
+          )
+        },
+      },
       {
         id: 'status',
         header: t('rules.list.status'),
@@ -85,30 +107,58 @@ export function PolicyList({ policies, onEdit, onDelete }: ListProps) {
         ),
       },
     ],
-    [t, onEdit, onDelete, toggle, isPending, variables],
+    [t, onEdit, onDelete, toggle, isPending, variables, priorities, matters],
   )
   return <DataList caption={t('rules.list.caption')} columns={columns} rows={policies} rowKey={(p) => p.name} />
 }
 
 /** Rules that send the same destination to different VPNs, and which one wins. */
-export function Overlaps({ policies }: { policies: readonly Policy[] }) {
+export function Overlaps({ policies, priorities }: { policies: readonly Policy[]; priorities: Priorities }) {
   const { t } = usePreferences()
   const overlaps = useMemo(() => findOverlaps(policies), [policies])
   if (overlaps.length === 0) return null
-  const domainOverlap = overlaps.some((o) => o.kind !== 'nestedRange')
+  const orderOverlap = overlaps.some((o) => o.kind !== 'nestedRange')
   return (
     <section className="r-overlaps" aria-labelledby="r-overlaps-title">
       <h3 id="r-overlaps-title">{t('rules.overlap.title', { count: overlaps.length })}</h3>
       <ul>
-        {overlaps.map((o) => (
-          <li key={`${o.kind}|${o.value}|${o.winner.policy}|${o.other.policy}`}>{overlapText(o, t)}</li>
-        ))}
+        {overlaps.map((o) => {
+          const by = overlapOrder(o, priorities)
+          return (
+            <li key={`${o.kind}|${o.value}|${o.winner.policy}|${o.other.policy}`}>
+              {overlapText(o, t)}
+              {by && (
+                <>
+                  {' '}
+                  <span className="r-overlaps__by">{overlapOrderText(o, by, priorities, t)}</span>
+                  {/* Decided by position: offer the number that lets the user choose (the other VPN's, so it can win). */}
+                  {by !== 'priority' && (
+                    <>
+                      {' '}
+                      <Link to={priorityLink(o.other.via)} aria-label={t('rules.overlap.changePriorityOf', { name: o.other.via })}>
+                        {t('rules.overlap.changePriority')}
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
+            </li>
+          )
+        })}
       </ul>
-      {domainOverlap && (
-        <p className="r-note">
-          {t('rules.overlap.change')} <Link to="/profiles">{t('rules.editor.priority.link')}</Link>
-        </p>
-      )}
+      {orderOverlap && <p className="r-note">{t('rules.overlap.change')}</p>}
     </section>
+  )
+}
+
+/** "Prioridad N" / "por posición" next to the VPN, linking to its priority field. */
+function OrderHint({ via, priority }: { via: string; priority: number }) {
+  const { t } = usePreferences()
+  return (
+    <Tooltip content={t('rules.order.tip')} describe>
+      <Link to={priorityLink(via)} className={`r-order${priority > 0 ? ' is-set' : ''}`}>
+        {priority > 0 ? t('rules.order.priority', { n: priority }) : t('rules.order.position')}
+      </Link>
+    </Tooltip>
   )
 }

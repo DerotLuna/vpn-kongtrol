@@ -1,4 +1,4 @@
-# Change-impact map — version 1.14 · 2026-11-23
+# Change-impact map — version 1.16 · 2026-11-24
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -125,6 +125,36 @@ features:
       - docs/SETUP.md#policies
       - landing/src/content/guide.es.tsx#routes
       - landing/src/content/guide.en.tsx#routes
+
+  profile_priority:
+    code:
+      - cmd/kongtrol/cmd_profile_priority.go
+      - internal/i18n/priority.go
+      - web/ui/src/components/profiles/ProfileForm.tsx
+      - web/ui/src/components/profiles/ProfileList.tsx
+      - web/ui/src/pages/ProfilesPage.tsx
+    surfaces:
+      - AGENTS.md#profile_priority
+      - landing/src/content/guide.es.tsx#profile_priority
+      - landing/src/content/guide.en.tsx#profile_priority
+      - web/ui/src/i18n/pages/rules.ts#profile_priority
+
+  vpn_routes:
+    code:
+      - internal/app/vpnroutes.go
+      - internal/api/handlers_vpn_routes.go
+      - internal/vpn/openvpn/configroutes.go
+      - internal/vpn/wireguard/routes.go
+      - internal/i18n/vpn_routes.go
+      - cmd/kongtrol/cmd_routes_vpn.go
+      - web/ui/src/components/rules/VpnRoutes.tsx
+      - web/ui/src/components/rules/vpnRoutesModel.ts
+    surfaces:
+      - AGENTS.md#vpn_routes
+      - docs/API.md
+      - landing/src/content/guide.es.tsx#vpn_routes
+      - landing/src/content/guide.en.tsx#vpn_routes
+      - web/ui/src/i18n/pages/rules.ts#vpn_routes
 
   default_egress:
     code:
@@ -289,6 +319,9 @@ features:
       - internal/daemonctl/recent.go
       - internal/config/recentconns.go
       - cmd/kongtrol/cmd_traffic.go
+      - web/ui/src/components/traffic/RecentCard.tsx
+      - web/ui/src/components/traffic/recentView.ts
+      - web/ui/src/data/recent.ts
     surfaces:
       - README.md#recent_connections
       - AGENTS.md#recent_connections
@@ -352,6 +385,8 @@ features:
     code:
       - internal/profileimport/**
       - internal/api/handlers_vpn_import.go
+      - internal/api/handlers_vpn_pick.go
+      - internal/filepicker/**
       - cmd/kongtrol/cmd_profile.go
       - cmd/kongtrol/cmd_profile_add.go
       - cmd/kongtrol/protected_read*.go
@@ -359,9 +394,13 @@ features:
       - web/ui/src/components/profiles/ImportFile.tsx
       - web/ui/src/components/profiles/importModel.ts
       - web/ui/src/components/add/FileStep.tsx
+      - web/ui/src/components/profiles/dropZone.ts
     surfaces:
       - AGENTS.md#profile_import
       - docs/SETUP.md#profile_import
+      - docs/SECURITY.md
+      - landing/src/content/guide.es.tsx#profile_import
+      - landing/src/content/guide.en.tsx#profile_import
       - docs/API.md#api
 
   config:

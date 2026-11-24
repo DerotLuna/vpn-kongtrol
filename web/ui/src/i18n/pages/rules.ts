@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Reglas (/rules) and Horarios (/rules/schedule) · v1.3.0 · 2026-11-19
+// Kongtrol UI strings — Reglas (/rules) and Horarios (/rules/schedule) · v1.5.0 · 2026-11-24
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -146,7 +146,58 @@ const es = {
   'rules.overlap.nestedRange':
     '{value} («{winner}») está dentro de {otherEntry} («{other}»). Esas direcciones salen por {via}, porque gana la red más concreta; el resto sale por {otherVia}.',
   'rules.overlap.change':
-    'El orden lo marca la prioridad de cada VPN (gana el número mayor) y, si empatan, la posición en el archivo.',
+    'Gana la VPN con más prioridad (el número mayor). Sin prioridad, decide la posición de la regla en la lista.',
+  // feature:profile_priority
+  'rules.overlap.by.position': 'Ninguna de las dos VPN tiene prioridad: decide la posición en la lista.',
+  'rules.overlap.by.tie': 'Las dos VPN tienen la misma prioridad: decide la posición en la lista.',
+  'rules.overlap.by.priority': 'Lo decide la prioridad: {via} ({a}) va antes que {otherVia} ({b}).',
+  'rules.overlap.by.mixed':
+    'Solo una de las dos VPN tiene prioridad y la otra va por posición: el resultado puede cambiar si mueves reglas. Pon prioridad a las dos para decidirlo tú.',
+  'rules.overlap.changePriority': 'Cambiar prioridad',
+  'rules.overlap.changePriorityOf': 'Cambiar la prioridad de {name}',
+  'rules.order.priority': 'Prioridad {n}',
+  'rules.order.position': 'por posición',
+  'rules.order.tip':
+    'Solo decide entre tus reglas cuando dos cubren el mismo sitio o el mismo rango de IP: gana el número mayor. Sin número, va antes la que está más arriba.',
+
+  // feature:vpn_routes
+  'rules.vpnRoutes.title': 'Rutas que trae cada VPN',
+  'rules.vpnRoutes.lead': 'Vienen del archivo o del servidor de la VPN. Para cambiarlas, edita el archivo o pídeselo a tu proveedor.',
+  'rules.vpnRoutes.loading': 'Cargando rutas…',
+  'rules.vpnRoutes.empty': 'Aún no tienes VPN guardadas.',
+  'rules.vpnRoutes.summary.one': '{count} ruta',
+  'rules.vpnRoutes.summary.other': '{count} rutas',
+  'rules.vpnRoutes.summary.none': 'sin rutas propias',
+  'rules.vpnRoutes.summary.file': 'del archivo',
+  'rules.vpnRoutes.summary.server': 'del servidor',
+  'rules.vpnRoutes.summary.mixed': 'del archivo y del servidor',
+  'rules.vpnRoutes.summary.app': 'la app decide',
+  'rules.vpnRoutes.summary.unused': 'Kongtrol no las usa',
+  'rules.vpnRoutes.origin.file': 'del archivo',
+  'rules.vpnRoutes.origin.server': 'del servidor',
+  'rules.vpnRoutes.allTraffic': 'Todo el tráfico',
+  'rules.vpnRoutes.allTrafficV6': 'Todo el tráfico IPv6',
+  'rules.vpnRoutes.listLabel': 'Rutas de «{name}»',
+  'rules.vpnRoutes.move': 'Hacer que esto salga por otra VPN',
+  'rules.vpnRoutes.moveNamed': 'Hacer que {target} salga por otra VPN',
+  'rules.vpnRoutes.app.all': 'La app decide: túnel completo (todo el tráfico).',
+  'rules.vpnRoutes.app.other': 'La app decide qué pasa por ella. Kongtrol no ve sus rutas.',
+  'rules.vpnRoutes.unreadable': 'No se pudo leer el archivo. Las rutas aparecen al conectar.',
+  'rules.vpnRoutes.noFileRoutes': 'El archivo no trae rutas.',
+  'rules.vpnRoutes.serverPending': 'Las del servidor aparecen al conectar.',
+  'rules.vpnRoutes.rulesOnly': 'Kongtrol no usa estas rutas: por esta VPN solo sale lo que dicen tus reglas.',
+  'rules.vpnRoutes.allTrafficWins': 'Tus reglas por otra VPN ganan sobre «Todo el tráfico»: son más específicas.',
+  'rules.vpnRoutes.conflict.rule': 'Tu regla «{rule}» gana para {destination}: es más específica. Sale por «{via}» cuando está conectada.',
+  'rules.vpnRoutes.conflict.vpn': 'Esta ruta gana para {route} sobre tu regla «{rule}»: es más específica.',
+  'rules.vpnRoutes.conflict.system':
+    'Tu regla «{rule}» pide lo mismo ({destination}) por «{via}». El sistema elige una; para asegurarlo, usa una dirección más específica.',
+  'rules.vpnRoutes.precedence.title': 'Qué gana',
+  'rules.vpnRoutes.precedence.body':
+    'Gana la dirección más específica: 10.1.2.3 gana sobre 10.0.0.0/8. Si dos piden lo mismo, el sistema elige una.',
+  'rules.vpnRoutes.precedence.sites':
+    'Las reglas por sitio también ganan: Kongtrol envía cada IP del sitio por separado, mientras su VPN está conectada.',
+  'rules.vpnRoutes.precedence.rules':
+    'La prioridad de cada VPN solo ordena tus reglas entre sí; frente a las rutas de una VPN no cuenta.',
 
   'rules.delete.title': '¿Borrar la regla «{name}»?',
   'rules.delete.body': 'Ese tráfico dejará de ir por esa VPN y saldrá por tu conexión normal. Puedes volver a crearla cuando quieras.',
@@ -410,7 +461,58 @@ const en: Strings<typeof es> = {
   'rules.overlap.nestedRange':
     '{value} (“{winner}”) is inside {otherEntry} (“{other}”). Those addresses go through {via}, because the most specific network wins; the rest goes through {otherVia}.',
   'rules.overlap.change':
-    'The order comes from each VPN’s priority (the larger number wins) and, on a tie, the position in the file.',
+    'The VPN with the higher priority (the larger number) wins. Without a priority, the rule’s position in the list decides.',
+  // feature:profile_priority
+  'rules.overlap.by.position': 'Neither VPN has a priority: the position in the list decides.',
+  'rules.overlap.by.tie': 'Both VPNs have the same priority: the position in the list decides.',
+  'rules.overlap.by.priority': 'Priority decides: {via} ({a}) goes before {otherVia} ({b}).',
+  'rules.overlap.by.mixed':
+    'Only one of the two VPNs has a priority and the other goes by position: the result can change if you move rules. Give both a priority to decide it yourself.',
+  'rules.overlap.changePriority': 'Change priority',
+  'rules.overlap.changePriorityOf': 'Change the priority of {name}',
+  'rules.order.priority': 'Priority {n}',
+  'rules.order.position': 'by position',
+  'rules.order.tip':
+    'It only decides between your rules when two cover the same site or the same IP range: the higher number wins. Without a number, the one higher up goes first.',
+
+  // feature:vpn_routes
+  'rules.vpnRoutes.title': 'Routes each VPN brings',
+  'rules.vpnRoutes.lead': 'They come from the VPN’s file or server. To change them, edit the file or ask your provider.',
+  'rules.vpnRoutes.loading': 'Loading routes…',
+  'rules.vpnRoutes.empty': 'You have no saved VPNs yet.',
+  'rules.vpnRoutes.summary.one': '{count} route',
+  'rules.vpnRoutes.summary.other': '{count} routes',
+  'rules.vpnRoutes.summary.none': 'no routes of its own',
+  'rules.vpnRoutes.summary.file': 'from the file',
+  'rules.vpnRoutes.summary.server': 'from the server',
+  'rules.vpnRoutes.summary.mixed': 'from the file and the server',
+  'rules.vpnRoutes.summary.app': 'the app decides',
+  'rules.vpnRoutes.summary.unused': 'Kongtrol doesn’t use them',
+  'rules.vpnRoutes.origin.file': 'from the file',
+  'rules.vpnRoutes.origin.server': 'from the server',
+  'rules.vpnRoutes.allTraffic': 'All traffic',
+  'rules.vpnRoutes.allTrafficV6': 'All IPv6 traffic',
+  'rules.vpnRoutes.listLabel': 'Routes of “{name}”',
+  'rules.vpnRoutes.move': 'Send this through another VPN',
+  'rules.vpnRoutes.moveNamed': 'Send {target} through another VPN',
+  'rules.vpnRoutes.app.all': 'The app decides: full tunnel (all traffic).',
+  'rules.vpnRoutes.app.other': 'The app decides what goes through it. Kongtrol can’t see its routes.',
+  'rules.vpnRoutes.unreadable': 'Couldn’t read the file. Routes show up once connected.',
+  'rules.vpnRoutes.noFileRoutes': 'The file brings no routes.',
+  'rules.vpnRoutes.serverPending': 'The server’s routes show up once connected.',
+  'rules.vpnRoutes.rulesOnly': 'Kongtrol doesn’t use these routes: only what your rules say goes through this VPN.',
+  'rules.vpnRoutes.allTrafficWins': 'Your rules through another VPN win over “All traffic”: they’re more specific.',
+  'rules.vpnRoutes.conflict.rule': 'Your rule “{rule}” wins for {destination}: it’s more specific. It goes through “{via}” while connected.',
+  'rules.vpnRoutes.conflict.vpn': 'This route wins for {route} over your rule “{rule}”: it’s more specific.',
+  'rules.vpnRoutes.conflict.system':
+    'Your rule “{rule}” asks for the same ({destination}) through “{via}”. The system picks one; to be sure, use a more specific address.',
+  'rules.vpnRoutes.precedence.title': 'What wins',
+  'rules.vpnRoutes.precedence.body':
+    'The most specific address wins: 10.1.2.3 beats 10.0.0.0/8. If two ask for the same, the system picks one.',
+  'rules.vpnRoutes.precedence.sites':
+    'Site rules win too: Kongtrol sends each of the site’s IPs on its own, while its VPN is connected.',
+  'rules.vpnRoutes.precedence.rules':
+    'Each VPN’s priority only orders your rules among themselves; it doesn’t count against a VPN’s routes.',
 
   'rules.delete.title': 'Delete rule “{name}”?',
   'rules.delete.body': 'That traffic stops going through that VPN and uses your normal connection. You can create it again any time.',

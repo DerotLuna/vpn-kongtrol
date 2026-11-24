@@ -255,3 +255,58 @@ describe('Rules page', () => {
     expect(screen.getAllByRole('button', { name: 'Retry' }).length).toBeGreaterThan(0)
   })
 })
+
+describe('Rules page: order between overlapping rules (ADR-0108)', () => {
+  const git = { name: 'Git', via: 'home', domains: ['git.corp.example'], ip_ranges: null, apps: null, on_tunnel_down: 'allow' }
+
+  it('marks the rows the order settles, explains who decided and links to the priority field', async () => {
+    stubFetch(
+      routes(
+        {
+          'GET /api/v1/vpns': () =>
+            json([
+              { name: 'office', type: 'openvpn', priority: 10 },
+              { name: 'home', type: 'nordvpn', priority: 10 },
+            ]),
+        },
+        [work, git, lab],
+      ),
+    )
+    render(<App />)
+    const table = await screen.findByRole('table', { name: 'Rules by destination, in the order they are checked' })
+    const rows = within(table).getAllByRole('row').slice(1)
+    const hint = await within(rows[0]!).findByRole('link', { name: 'Priority 10' })
+    expect(hint).toHaveAttribute('href', '/profiles?edit=office&focus=priority')
+    expect(hint).toHaveAccessibleDescription(/only decides between your rules when two cover the same site or the same IP range/)
+    expect(within(rows[1]!).getByRole('link', { name: 'Priority 10' })).toHaveAttribute('href', '/profiles?edit=home&focus=priority')
+    // Lab only overlaps by a nested range: the most specific one wins, the order changes nothing.
+    expect(within(rows[2]!).queryByRole('link', { name: /Priority|by position/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Both VPNs have the same priority: the position in the list decides.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Change the priority of home' })).toHaveAttribute('href', '/profiles?edit=home&focus=priority')
+  })
+
+  it('a decided priority needs no link; with no priorities the rows say "by position"', async () => {
+    stubFetch(
+      routes(
+        {
+          'GET /api/v1/vpns': () =>
+            json([
+              { name: 'office', type: 'openvpn', priority: 30 },
+              { name: 'home', type: 'nordvpn', priority: 10 },
+            ]),
+        },
+        [work, git],
+      ),
+    )
+    const { unmount } = render(<App />)
+    expect(await screen.findByText('Priority decides: office (30) goes before home (10).')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /Change the priority of/ })).not.toBeInTheDocument()
+    unmount()
+
+    stubFetch(routes({ 'GET /api/v1/vpns': () => json([]) }, [work, git]))
+    render(<App />)
+    const table = await screen.findByRole('table', { name: 'Rules by destination, in the order they are checked' })
+    expect(within(table).getAllByRole('link', { name: 'by position' })).toHaveLength(2)
+    expect(screen.getByText('Neither VPN has a priority: the position in the list decides.')).toBeInTheDocument()
+  })
+})

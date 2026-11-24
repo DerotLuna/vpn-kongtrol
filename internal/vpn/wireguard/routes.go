@@ -12,9 +12,17 @@ import (
 // parseConfigAllowedIPs reads every [Peer] AllowedIPs entry of a .conf file
 // as canonical CIDRs (deduplicated, in file order).
 func parseConfigAllowedIPs(configPath string) []string {
+	out, _ := ConfigAllowedIPs(configPath)
+	return out
+}
+
+// ConfigAllowedIPs is parseConfigAllowedIPs with the file's error (not
+// found, permission denied), for callers that must tell "no routes" from
+// "file unreadable" (ADR-0107).
+func ConfigAllowedIPs(configPath string) ([]string, error) {
 	f, err := os.Open(configPath)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer f.Close()
 	var out []string
@@ -56,7 +64,7 @@ func parseConfigAllowedIPs(configPath string) []string {
 			}
 		}
 	}
-	return out
+	return out, sc.Err()
 }
 
 // TunnelRoutes reports the peers' AllowedIPs: what WireGuard sends through

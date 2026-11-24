@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.15.0 · 2026-11-23
+Version 2.16.0 · 2026-11-24
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -438,6 +438,26 @@ trust boundary is crossed; the path must still be absolute and clean (no `..`, n
 `/dev`, `/proc` or `/sys`), a regular file opened without following links and checked to be the
 file inspected (`os.SameFile`), within the size cap and with a `.conf`/`.ovpn` name. A root-only
 file is never read through the helper (ADR-0058, ADR-0063).
+
+Files an imported `.ovpn` names (ADR-0105, `internal/profileimport/refs.go`) are read once, as the
+user, and inlined into the stored copy, so the helper still never opens another user path. Only the
+helper's own file directives qualify (`ca`, `cert`, `key`, `tls-auth`, `tls-crypt`, `tls-crypt-v2`,
+`secret`, `dh`, `extra-certs`, `crl-verify`, `pkcs12`; `auth-user-pass <file>` stays refused). From
+the picked file's folder only: an absolute path or `..` that leaves it, a drive-relative path or an
+NTFS stream is never opened (it is reported as missing); every folder on the way must be a real
+folder (no symlink or junction); the file must be a regular file, opened with `O_NOFOLLOW` (Unix)
+and re-checked with `os.SameFile`, at most 256 KiB; text only (no NUL, no `</`), except `pkcs12`
+(base64). Files added from the browser: at most 8, matched by base name only, 256 KiB each, 512 KiB
+together; the request body cap for this route is 2 MiB. Errors name the file, never its content.
+A hostile `.ovpn` can only make Kongtrol copy sibling files of the user's own folder into the user's
+own 0600 profile; of the inlined blocks only `cert`/`extra-certs` reach the VPN server, and OpenVPN
+must parse them as X.509 certificates (public by nature) first; `key`, `tls-auth`, `secret` and the
+rest are used locally (reasoned from the OpenVPN manual, not verified in OpenVPN's source).
+`POST /api/v1/vpns/import/pick` (authenticated like every API route, audited as
+`config.profile.import_pick` without the path) opens the OS's own "Open file" dialog in the daemon
+(`github.com/ncruces/zenity`): one dialog at a time, closed when the request ends or after 10 min;
+the picked path then goes through the same `path` checks above. On Linux it runs `qarma`, `zenity`
+or `matedialog` from `PATH` as the user; on macOS `osascript`. Nothing leaves the machine.
 
 Repository protections: CodeQL (GitHub default setup) on every push and pull request, Renovate for dependency updates, secret scanning
 with push protection (enabled 2026-11-20).

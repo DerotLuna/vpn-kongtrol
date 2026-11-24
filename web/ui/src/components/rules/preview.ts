@@ -1,4 +1,4 @@
-// Horarios — the plain-language sentence for a schedule · v1.0.0 · 2026-11-18
+// Horarios — the plain-language sentence for a schedule · v1.1.0 · 2026-11-24
 //
 // "De lunes a viernes, de 9:00 a 18:00: conecta «oficina». Fuera de ese
 // horario, Kongtrol la desconecta." Built from i18n keys + Intl.ListFormat,
@@ -6,7 +6,7 @@
 import type { FieldError } from '../ui/Field'
 import { messages, type Lang, type MessageKey } from '../../i18n/messages'
 import type { PolicyError } from './editorModel'
-import { daysShape, isOvernight, readableTime, type ExplainResult, type Overlap, type ScheduleRule, type Weekday } from './model'
+import { daysShape, isOvernight, readableTime, type ExplainResult, type OrderBy, type Overlap, type Priorities, type ScheduleRule, type Weekday } from './model'
 
 type T = (key: MessageKey, vars?: Record<string, string | number>) => string
 
@@ -79,6 +79,16 @@ export function overlapText(o: Overlap, t: T): string {
     otherEntry: o.other.entry,
     otherVia: o.other.via,
   })
+}
+
+/** Why the order went that way (ADR-0108): priority, position, or one of each. */
+export function overlapOrderText(o: Overlap, by: OrderBy, priorities: Priorities, t: T): string {
+  const a = priorities.get(o.winner.via) ?? 0
+  if (by === 'priority') {
+    return t('rules.overlap.by.priority', { via: o.winner.via, a, otherVia: o.other.via, b: priorities.get(o.other.via) ?? 0 })
+  }
+  if (by === 'position') return t(a > 0 ? 'rules.overlap.by.tie' : 'rules.overlap.by.position')
+  return t('rules.overlap.by.mixed')
 }
 
 export function policyErrorText(field: string, e: PolicyError, t: T): FieldError {

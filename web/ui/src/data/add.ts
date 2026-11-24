@@ -22,16 +22,16 @@ export function useDraftRuleTest(rule: PolicyPayload | null, target: string, app
   })
 }
 
-const dropped = createStore<File | null>(null)
+const dropped = createStore<File[] | null>(null)
 
-/** A .conf / .ovpn dropped on the window, waiting for the sheet to take it. */
+/** Files dropped on the window (a .conf / .ovpn, maybe with its certificates), waiting for the sheet to take them. */
 export const droppedFile = {
-  set: (file: File | null): void => dropped.set(file),
-  /** Hands the file over once. */
-  take: (): File | null => {
-    const file = dropped.get()
+  set: (files: File[] | null): void => dropped.set(files),
+  /** Hands the files over once. */
+  take: (): File[] | null => {
+    const files = dropped.get()
     dropped.set(null)
-    return file
+    return files
   },
   subscribe: (listener: () => void): (() => void) => dropped.subscribe(listener),
 }

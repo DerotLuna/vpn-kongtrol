@@ -148,3 +148,22 @@ describe('helpers', () => {
     expect(matchesFilter(p, 'zzz')).toBe(false)
   })
 })
+
+describe('priority (ADR-0108)', () => {
+  it('shows 0 as empty (by position), sends empty as 0 and keeps a set number', () => {
+    expect(fromProfile(profile('a', { priority: 0 })).priority).toBe('')
+    expect(fromProfile(profile('a', { priority: 20 })).priority).toBe('20')
+    const d = { ...emptyDraft('openvpn'), name: 'a', config: '~/a.ovpn' }
+    expect(toRequest({ ...d, priority: '' }, 'update').priority).toBe(0)
+    expect(toRequest({ ...d, priority: ' 25 ' }, 'update').priority).toBe(25)
+  })
+
+  it('accepts empty, 0 and 1..1000; refuses negatives and larger numbers with what to do', () => {
+    const d = { ...emptyDraft('openvpn'), name: 'o', config: '~/o.ovpn' }
+    for (const ok of ['', '0', '1', '1000']) expect(checkDraft({ ...d, priority: ok }, { profiles: [] }).priority).toBeUndefined()
+    for (const bad of ['-1', '1001', '2.5']) {
+      expect(checkDraft({ ...d, priority: bad }, { profiles: [] }).priority).toEqual({ key: 'profiles.check.priority', vars: { max: 1000 } })
+    }
+    expect(fieldForErrorKey('config.err.profile_priority')).toBe('priority')
+  })
+})

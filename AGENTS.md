@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.30 · 2026-11-23
+Version 1.32 · 2026-11-24
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -311,6 +311,7 @@ ProfileService.Disconnect(name)
 | `internal/sockowner` | Who owns the server end of a loopback TCP connection, no admin: Windows `GetExtendedTcpTable` + process token SID, Linux `/proc/net/tcp` uid, macOS unknown (ADR-0062) |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
 | `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
+| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105 |
 | `internal/update` | Opt-in new version notice: GitHub Releases latest, ≤1 request/24 h, semver compare, never downloads (ADR-0034) |
 | `internal/uninstall` | Uninstall plan per channel (install.manifest, Windows installer, package managers) and data purge with the exact keychain entries (ADR-0034) |
 | `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
@@ -424,7 +425,17 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 `POST /api/v1/vpns/import` and `kongtrol profile import` share `internal/profileimport`: a
 `.conf`/`.ovpn` validated by the helper's own `privops` validators, refusals mapped to specific
 `api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
-`~/.kongtrol/configs/` (ADR-0042); the result carries `provider` (`profileimport.ProviderForContent`, Proton only) and the API adds a translated `hint` (ADR-0103). A file only root can read (`/etc/wireguard/wg0.conf`) is never read
+`~/.kongtrol/configs/` (ADR-0042); the result carries `provider` (`profileimport.ProviderForContent`, Proton only) and the API adds a translated `hint` (ADR-0103).
+Files an `.ovpn` names (`ca ca.crt`…, ADR-0105) are inlined into the stored copy by
+`profileimport.Resolve` (`Refs{Dir, Files}` → the helper's sanitizer): `Dir` is the picked file's
+folder (only inside it, no links/junctions, regular files ≤ 256 KiB, `O_NOFOLLOW` + `os.SameFile`),
+`Files` are added by hand (`"files":[{name,content_base64}]`, ≤ 8, matched by base name); what is
+still missing is `api.err.import_missing_files` with `missing` (panel: "Agregar <name>"; CLI: extra
+arguments, `kongtrol profile import <file> [certificates…]`). "Elegir archivo" in the Add sheet opens
+the OS's own dialog through the daemon (`POST /api/v1/vpns/import/pick`, `internal/filepicker` =
+`github.com/ncruces/zenity`, no cgo; `GET` says if available, else the browser's `multiple` input); on
+Windows the dialog is raised in z-order because a background process cannot take the foreground. Drop
+zones use `useDropZone` (depth counter). A file only root can read (`/etc/wireguard/wg0.conf`) is never read
 through the helper: `config.CheckFileReadable` → `config.err.file_root_only` (profile save, preflight,
 doctor), and the user copies it with one OS prompt — CLI/wizard `sudo`, dashboard `{"path","elevate":true}`
 → `pkexec` — to the hidden `kongtrol profile read-protected`, which releases it only after
@@ -473,7 +484,9 @@ Recent destinations (ADR-0054): `monitor.RecentConnections` reads the OS TCP tab
 1 h, emptied when off and on shutdown; never on disk, in logs or the audit log), host only from
 `PolicyResolver.HostOf` (no reverse DNS). `GET /api/v1/connections/recent`, `kongtrol traffic
 recent`, setting `monitor.recent_connections.enabled` (default on; `config recent-connections`,
-settings API `recent_connections_enabled`).
+settings API `recent_connections_enabled`). Panel and CLI read it the same way (ADR-0106): 10 rows +
+"Ver 20 más", search + "Salió por" filters (`kongtrol traffic recent --search/--via`), live updates
+held behind "N nuevas · Mostrar" (`web/ui/src/components/traffic/recentView.ts`).
 
 Settings that are genuinely local to one machine — not the shared `kongtrol.yaml` — live in
 `~/.kongtrol/preferences.json` instead (`cmd/kongtrol/preferences.go`): CLI display language,
@@ -495,7 +508,7 @@ changing the port from the page serving that request would cut the connection mi
 - No declared backup (or none worked): retry the same profile within the bounded policy above and notify once per outage — `monitor.Event` kind `tunnel_watchdog`, keys `watchdog.event.*` (tray, dashboard toasts and Actividad, live view render them). `monitor.Event.Offer` adds one action button (`enable_killswitch`, `release_block`, `add_provider`; ADR-0102): panel `src/data/offers.ts` + `OfferActions`, flyout `src/tray/TrayOffer.tsx` (closed `open-add-<type>` messages), native menu `tray_offer.go`, live view `offerHintCLI`; strings in `internal/i18n/killswitch_offer.go`. Health-check failures only notify.
 - `MarkIntended` cancels the watchdog's in-flight reconnect/failover for that profile; `ProfileService.Disconnect` also cancels and waits for any running `Connect` of the profile (`trackConnect`/`cancelConnects`), so `down` reports a final status and no provider app opens afterwards.
 - WireGuard liveness (ADR-0030): an existing interface is not "connected". The adapter reads `privops.WGStats` every 10s and `healthTracker` decides `vpn.TunnelHealth` (`ok` / `idle` / `no_response` / `unknown`, `vpn.HealthReporter`, `TunnelMetrics.Health` json `health`). `no_response` (handshake older than 200 s with PersistentKeepalive, or tx growing with rx flat for 15 s, or never handshaked but sent something; 30 s grace after connect) makes `Status()` return `StatusError`, so watchdog reconnect/failover, kill switch and `on_tunnel_down` treat it like a drop; the reconnect replaces the tunnel (`wgUp` restart). An unused tunnel without keepalive is `idle`, never flagged. Stats unreadable (helper missing/outdated) → `unknown` + `ReasonKey`, status stays connected. The watchdog emits `no_response` once per outage and `responding` when the handshake is fresh again (`watchdog.event.*`); clients render health with `health.*` keys.
-- `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset = position (earlier first).
+- `priority` is only the policy-engine tie-break (`policy.New`): higher number first for domain/app rules and equal-length IP prefixes; unset (0) = position (earlier first), on the same scale as explicit numbers. Range 0–1000 (`config.MaxPriority`, `config.err.profile_priority`). Visible (ADR-0108) <!-- feature:profile_priority -->: Reglas shows "Prioridad N" / "por posición" only on rows in an overlap the order settles, and each overlap says who decided (priority, position, or one of each) with "Cambiar prioridad" → `/profiles?edit=<name>&focus=priority`; the profile editor has its own "Orden de sus reglas" field (new profiles 10); `kongtrol profile priority <name> [N|none]`, `kongtrol profile list`, ORDER column in `kongtrol policy list` (`--json` `priority`).
 
 ### DNS manager internals
 
@@ -542,6 +555,17 @@ Linux uses the native `wg-quick` table. Windows uses two /1 routes per family in
 private copy so provider firewall rules do not block more-specific routes through other interfaces.
 The helper checks for conflicts before startup and preserves the tunnel's AllowedIPs until teardown.
 The setting applies when Kongtrol next starts the tunnel.
+
+<!-- feature:vpn_routes -->
+Routes a VPN brings by itself (ADR-0107) are read-only: `app.OwnRoutes` (shared by
+`GET /api/v1/vpns/routes` and `kongtrol routes vpn [perfil]`) lists per profile the `.ovpn` `route`/`route-ipv6`/
+`redirect-gateway` lines (`openvpn.ConfigRoutes`; `net_gateway` routes skipped), server-pushed routes while
+connected (`RouteReporter`, origin `server`), WireGuard AllowedIPs (`wireguard.ConfigAllowedIPs`; `rules_only`
+without `default_egress`, because `ProfileService.policyAllowedIPs` replaces them) and provider apps only as
+"la app decide". Who wins against an active IP rule through another profile is the OS's longest prefix match:
+the longer prefix wins, equal prefixes are `system` (metric, not controlled by Kongtrol), /0 and /1 never
+conflict (PolicyResolver never installs them). `priority` never takes part. The Reglas page shows them under
+the rules table; its one action opens the "＋ Agregar" rule sheet (`?add=rule&target=`).
 
 ### Public IP lookup (opt-in)
 

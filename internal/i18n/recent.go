@@ -25,9 +25,13 @@ var recentMessages = map[Lang]map[string]string{
 
 		"help.kongtrol.traffic.recent.short":   "Muestra a qué destinos se conectó este equipo hace poco",
 		"help.kongtrol.traffic.recent.long":    "Lista los destinos de la última hora: nombre (si una política lo resolvió) o IP, puerto, programa, por qué VPN salió (o directo) y cuántas conexiones hubo. Necesita Kongtrol abierto. Los datos viven solo en memoria y no salen del equipo. Apágalo con: kongtrol config recent-connections off",
-		"help.kongtrol.traffic.recent.example": "  kongtrol traffic recent\n  kongtrol traffic recent --limit 20\n  kongtrol traffic recent --json",
+		"help.kongtrol.traffic.recent.example": "  kongtrol traffic recent --limit 20\n  kongtrol traffic recent --search github\n  kongtrol traffic recent --via direct",
 
 		"cli.recent.flag.limit":   "Cuántos destinos mostrar (0 = todos)",
+		"cli.recent.flag.search":  "Muestra solo los que contienen este texto en el sitio, la IP o el programa",
+		"cli.recent.flag.via":     "Muestra solo los que salieron por este perfil (direct = conexión normal, sin VPN)",
+		"cli.recent.no_match":     "Ningún destino reciente coincide con el filtro.",
+		"cli.recent.no_match_do":  "Prueba con otro texto o quita --search / --via para ver toda la lista.",
 		"cli.recent.invalid":      "%q no es válido · usa on, off o status",
 		"cli.recent.on":           "Lista de destinos recientes encendida",
 		"cli.recent.off":          "Lista de destinos recientes apagada · se borró lo que había",
@@ -60,9 +64,13 @@ var recentMessages = map[Lang]map[string]string{
 
 		"help.kongtrol.traffic.recent.short":   "Show which destinations this computer connected to lately",
 		"help.kongtrol.traffic.recent.long":    "Lists the destinations of the last hour: name (when a policy resolved it) or IP, port, program, which VPN it went through (or direct) and how many connections there were. Needs Kongtrol open. The data lives only in memory and never leaves this computer. Turn it off with: kongtrol config recent-connections off",
-		"help.kongtrol.traffic.recent.example": "  kongtrol traffic recent\n  kongtrol traffic recent --limit 20\n  kongtrol traffic recent --json",
+		"help.kongtrol.traffic.recent.example": "  kongtrol traffic recent --limit 20\n  kongtrol traffic recent --search github\n  kongtrol traffic recent --via direct",
 
 		"cli.recent.flag.limit":   "How many destinations to show (0 = all)",
+		"cli.recent.flag.search":  "Show only those with this text in the site, IP or program",
+		"cli.recent.flag.via":     "Show only those that went through this profile (direct = normal connection, no VPN)",
+		"cli.recent.no_match":     "No recent destination matches the filter.",
+		"cli.recent.no_match_do":  "Try other text or drop --search / --via to see the whole list.",
 		"cli.recent.invalid":      "%q is not valid · use on, off or status",
 		"cli.recent.on":           "Recent destinations list turned on",
 		"cli.recent.off":          "Recent destinations list turned off · what it held was erased",

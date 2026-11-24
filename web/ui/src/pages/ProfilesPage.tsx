@@ -1,4 +1,8 @@
-// Perfiles (/profiles) — the VPN profiles Kongtrol manages · v1.2.0 · 2026-11-19
+// Perfiles (/profiles) — the VPN profiles Kongtrol manages · v1.3.0 · 2026-11-24
+//
+// Deep link (ADR-0108): /profiles?edit=<name>[&focus=priority] opens that
+// profile's editor (the Reglas page's "Cambiar prioridad"); the parameters
+// are dropped once read, so Back and reload do not reopen it.
 //
 // Parity contract: docs/dashboard-parity.md §3.2 "Tab: VPN Profiles". Reads
 // profiles, setup state and installed VPN apps once per visit (no polling,
@@ -6,7 +10,8 @@
 // Changes write kongtrol.yaml + the OS keychain and need a restart before
 // they connect: the banner offers it. With no profiles the page is the
 // first-run guide.
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useAddSheet } from '../app/addLink'
 import { usePreferences } from '../app/preferences-context'
 import { Monogram, ProfilesHeader } from '../components/profiles/Bits'
@@ -37,7 +42,7 @@ import {
 } from '../data/profiles'
 import { useTunnelsQuery } from '../data/resources'
 
-type EditorState = { mode: 'closed' } | { mode: 'edit'; profile: VPNProfile; seq: number }
+type EditorState = { mode: 'closed' } | { mode: 'edit'; profile: VPNProfile; seq: number; focus?: 'priority' | undefined }
 
 // Row objects are cached per profile object (structural sharing keeps it
 // identical while unchanged), so a live tick re-renders only the row whose
@@ -66,6 +71,24 @@ export function ProfilesPage() {
   const [editor, setEditor] = useState<EditorState>({ mode: 'closed' })
   const [toDelete, setToDelete] = useState<VPNProfile | null>(null)
   const seq = useRef(0)
+
+  // ?edit=<name>[&focus=priority]: open that editor once the list is here.
+  const [params, setParams] = useSearchParams()
+  const editParam = params.get('edit')
+  const focusParam = params.get('focus') === 'priority' ? 'priority' : undefined
+  useEffect(() => {
+    if (!editParam || !profiles.data) return
+    const profile = profiles.data.find((p) => p.name === editParam)
+    if (profile) setEditor({ mode: 'edit', profile, seq: ++seq.current, focus: focusParam })
+    setParams(
+      (prev) => {
+        prev.delete('edit')
+        prev.delete('focus')
+        return prev
+      },
+      { replace: true },
+    )
+  }, [editParam, focusParam, profiles.data, setParams])
 
   // The daemon's own refusal (every reference at once, or the last profile)
   // reopens the dialog with the list instead of a toast.
@@ -218,6 +241,7 @@ export function ProfilesPage() {
           profiles={list}
           busy={busyNames.has(editor.profile.name)}
           connected={connectedNames.has(editor.profile.name)}
+          focusField={editor.focus}
         />
       )}
 

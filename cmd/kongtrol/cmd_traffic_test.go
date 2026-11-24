@@ -186,3 +186,76 @@ func TestSetRecentConnectionsInFile(t *testing.T) {
 		t.Fatal("on not written")
 	}
 }
+
+// --search / --via (ADR-0106): same rules as the panel's Recientes filters.
+func TestFilterRecent(t *testing.T) {
+	in := []monitor.RecentConnection{
+		{Host: "GitHub.com", RemoteIP: "140.82.112.3", Via: "office"},
+		{RemoteIP: "93.184.216.34", Process: "claude.exe.old.1795215272638.13036"},
+		{Host: "intranet.example", RemoteIP: "10.0.0.5", Via: "office"},
+		{RemoteIP: "1.1.1.1", Via: "home"},
+	}
+	cases := []struct {
+		search, via string
+		limit       int
+		want        []string
+	}{
+		{"github", "", 0, []string{"140.82.112.3"}},
+		{"CLAUDE.EXE", "", 0, []string{"93.184.216.34"}},
+		{"10.0.0", "", 0, []string{"10.0.0.5"}},
+		{"", "office", 0, []string{"140.82.112.3", "10.0.0.5"}},
+		{"", "office", 1, []string{"140.82.112.3"}},
+		{"", "direct", 0, []string{"93.184.216.34"}},
+		{"", "DIRECT", 0, []string{"93.184.216.34"}},
+		{"intranet", "home", 0, nil},
+		{"  ", "", 0, []string{"140.82.112.3", "93.184.216.34", "10.0.0.5", "1.1.1.1"}},
+	}
+	for _, c := range cases {
+		got := filterRecent(in, c.search, c.via, c.limit)
+		var ips []string
+		for _, g := range got {
+			ips = append(ips, g.RemoteIP)
+		}
+		if strings.Join(ips, ",") != strings.Join(c.want, ",") {
+			t.Errorf("search=%q via=%q limit=%d: got %v, want %v", c.search, c.via, c.limit, ips, c.want)
+		}
+	}
+}
+
+// Filtering asks for the whole list, then cuts to --limit; no match says what to do.
+func TestTrafficRecent_SearchAndVia(t *testing.T) {
+	now := time.Now()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/tunnels", func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode([]any{})
+	})
+	mux.HandleFunc("/api/v1/connections/recent", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("limit") {
+			t.Errorf("a filtered list must fetch everything, got %q", r.URL.RawQuery)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"supported": true, "enabled": true,
+			"connections": []monitor.RecentConnection{
+				{Host: "intranet.example", RemoteIP: "10.0.0.5", Port: 22, Via: "office", FirstSeen: now, LastSeen: now, Count: 1},
+				{RemoteIP: "93.184.216.34", Port: 443, Process: "chrome.exe", FirstSeen: now, LastSeen: now, Count: 1},
+			},
+		})
+	})
+	ts := httptest.NewServer(mux)
+	t.Cleanup(ts.Close)
+	host, port := fakeDaemonBase(t, ts)
+	withTestCfg(t, host, port)
+	prevLimit, prevSearch, prevVia := recentLimit, recentSearch, recentVia
+	t.Cleanup(func() { recentLimit, recentSearch, recentVia = prevLimit, prevSearch, prevVia })
+
+	recentLimit, recentSearch, recentVia = 1, "", "direct"
+	out, err := captureStdout(t, func() error { return trafficRecentCmd.RunE(trafficRecentCmd, nil) })
+	if err != nil || !strings.Contains(out, "chrome.exe") || strings.Contains(out, "intranet.example") {
+		t.Fatalf("--via direct: %v\n%s", err, out)
+	}
+	recentSearch, recentVia = "nothing-like-this", ""
+	out, err = captureStdout(t, func() error { return trafficRecentCmd.RunE(trafficRecentCmd, nil) })
+	if err != nil || !strings.Contains(out, ct("cli.recent.no_match_do")) {
+		t.Fatalf("no match must say what to do: %v\n%s", err, out)
+	}
+}

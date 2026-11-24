@@ -25,7 +25,7 @@ var policyListCmd = &cobra.Command{
 		if outputJSON {
 			return emitJSON(buildMapReport(nil))
 		}
-		printTrafficMap()
+		printTrafficMap(true)
 		return nil
 	},
 }

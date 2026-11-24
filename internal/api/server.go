@@ -85,6 +85,8 @@ type Server struct {
 	// readProtected reads a root-only profile file with one OS permission
 	// prompt (SetProtectedReader; nil = not offered on this OS).
 	readProtected func(ctx context.Context, path string) ([]byte, error)
+	// picker is the native "Open file" dialog (SetPicker; nil = DefaultPicker).
+	picker *Picker
 	// setupMode / restart back /api/v1/setup and /api/v1/restart; see
 	// SetSetupMode and SetRestarter.
 	setupMode atomic.Bool
@@ -186,11 +188,14 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/security/publicip/check", s.handleCheckPublicIP)
 	mux.HandleFunc("GET /api/v1/vpns", s.handleListVPNs)
 	mux.HandleFunc("GET /api/v1/vpns/detect", s.handleDetectVPNs)
+	mux.HandleFunc("GET /api/v1/vpns/routes", s.handleVPNOwnRoutes)
 	mux.HandleFunc("GET /api/v1/vpns/{name}/default-egress", s.handleDefaultEgress)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}/default-egress", s.handleSetDefaultEgress)
 	mux.HandleFunc("GET /api/v1/connections/recent", s.handleRecentConnections)
 	mux.HandleFunc("POST /api/v1/vpns", s.handleCreateVPN)
 	mux.HandleFunc("POST /api/v1/vpns/import", s.handleImportVPNFile)
+	mux.HandleFunc("GET /api/v1/vpns/import/pick", s.handleImportPickAvailable)
+	mux.HandleFunc("POST /api/v1/vpns/import/pick", s.handleImportPick)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
 	mux.HandleFunc("DELETE /api/v1/vpns/{name}", s.handleDeleteVPN)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}/killswitch", s.handleSetProfileKillSwitch)
@@ -340,7 +345,11 @@ func (s *Server) secureHandler(next http.Handler) http.Handler {
 				http.Error(w, "content type must be application/json", http.StatusUnsupportedMediaType)
 				return
 			}
-			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+			limit := int64(1 << 20)
+			if r.URL.Path == importPath {
+				limit = importBodyLimit
+			}
+			r.Body = http.MaxBytesReader(w, r.Body, limit)
 		}
 		s.serveAnnounced(next, w, r)
 	})
@@ -443,7 +452,7 @@ func isConfigMutation(path string) bool {
 	// (elevated read): it locks only to store the file.
 	if strings.HasPrefix(path, "/api/v1/tunnels/") || strings.HasPrefix(path, "/api/v1/helper/") ||
 		path == sessionPath || path == sessionNoncePath || path == wsTicketPath ||
-		path == importPath || path == "/api/v1/shutdown" {
+		path == importPath || path == importPickPath || path == "/api/v1/shutdown" {
 		return false
 	}
 	if strings.HasPrefix(path, "/api/v1/groups/") &&

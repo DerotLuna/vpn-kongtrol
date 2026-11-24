@@ -76,9 +76,10 @@ export function AddSheet() {
       // A drop zone inside the page (the profile editor's import) handled it already.
       if (!hasFiles(e) || e.defaultPrevented || otherDialogOpen()) return
       e.preventDefault()
-      const file = e.dataTransfer?.files[0]
-      if (!file) return
-      droppedFile.set(file)
+      // All of them: an .ovpn often comes with its certificates (ADR-0105).
+      const files = [...(e.dataTransfer?.files ?? [])]
+      if (files.length === 0) return
+      droppedFile.set(files)
       if (!latest.current.isOpen) latest.current.open({ mode: 'file' })
     }
     window.addEventListener('dragenter', enter)

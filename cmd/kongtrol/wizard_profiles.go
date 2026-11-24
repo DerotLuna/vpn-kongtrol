@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/huh"
@@ -158,6 +159,8 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		}
 	}
 
+	// 10 like the panel's new profiles; emptied = no priority: the rule's
+	// position decides (ADR-0108).
 	priorityStr := "10"
 	groups := make([]*huh.Group, 0, 2)
 	if needsBinaryPath {
@@ -172,8 +175,15 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 		huh.NewInput().
 			Title(i18n.T(lang, "collect.priority")).
 			Description(styleDim.Render(t("hint.priority"))).
-			Placeholder("10").
-			Value(&priorityStr),
+			Placeholder(t("wizard.priority.placeholder")).
+			Value(&priorityStr).
+			Validate(func(s string) error {
+				if strings.TrimSpace(s) == "" {
+					return nil
+				}
+				_, err := parsePriority(name, s)
+				return err
+			}),
 	))
 	if err := runForm(newForm(groups...)); err != nil {
 		return "", nil, err
@@ -182,10 +192,9 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 	if binPath != "" && !vpndetect.IsStandard(adapterType, binPath) {
 		fields = append(fields, [2]string{"binary_path", binPath})
 	}
-	if priorityStr == "" {
-		priorityStr = "10"
+	if p, err := parsePriority(name, priorityStr); err == nil && p > 0 {
+		fields = append(fields, [2]string{"priority", strconv.Itoa(p)})
 	}
-	fields = append(fields, [2]string{"priority", priorityStr})
 
 	// Build YAML node
 	authFields := [][2]string{{"method", auth.Method}}

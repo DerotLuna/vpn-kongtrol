@@ -1,6 +1,6 @@
-// Kongtrol UI — the list of VPN profiles · v1.0.0 · 2026-11-18
+// Kongtrol UI — the list of VPN profiles · v1.1.0 · 2026-11-24
 //
-// One row per profile: which VPN, its live state (Four States Rule), how it
+// One row per profile: which VPN (with "Prioridad N" when set, ADR-0108), its live state (Four States Rule), how it
 // works on this computer, sign-in stored, backups, kill switch (read-only:
 // it is changed on Seguridad, docs/dashboard-parity.md §2), and Edit /
 // Delete. A table on wide screens, cards on phones (DataList). Rows are
@@ -63,6 +63,9 @@ export function ProfileList({ rows, onEdit, onDelete }: Props) {
                 <span className="kp-vpn__type">
                   {spec.label}
                   {where && <span className="mono kp-vpn__where"> · {where}</span>}
+                  {profile.priority > 0 && (
+                    <span className="kp-vpn__priority"> · {t('profiles.list.priority', { n: profile.priority })}</span>
+                  )}
                 </span>
                 <SupportChip spec={spec} />
               </span>

@@ -278,6 +278,7 @@ func importAndCreate(file, name string, overwrite bool) error {
 	}
 	if !outputJSON && !outputQuiet {
 		fmt.Println(tuiOK(cf("cli.profile.import.done", res.Path)))
+		printIncluded(res)
 		printImportHint(res)
 	}
 	p := configedit.VPNProfile{Name: strPtr(name), Type: strPtr(res.Type), ConfigFile: strPtr(res.Path)}

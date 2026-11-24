@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { format, messages, type MessageKey } from '../../i18n/messages'
 import {
   findOverlaps,
+  orderMatters,
+  overlapOrder,
+  priorityLink,
   isActiveAt,
   isIpOrCidr,
   normalizeDomain,
@@ -14,7 +17,7 @@ import {
   type ExplainResult,
   type Policy,
 } from './model'
-import { describeSchedule } from './preview'
+import { describeSchedule, overlapOrderText } from './preview'
 import { draftFromPolicy, validatePolicy } from './editorModel'
 
 const tES = (k: MessageKey, v?: Record<string, string | number>) => format(messages.es[k], v)
@@ -202,5 +205,41 @@ describe('schedules', () => {
     expect(
       scheduleToPayload({ name: ' a ', profiles: ['v'], days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], allDay: true, start: '09:00', end: '18:00' }),
     ).toEqual({ name: 'a', profiles: ['v'], weekdays: [], start: '', end: '' })
+  })
+})
+
+describe('order between overlapping rules (ADR-0108)', () => {
+  const pol = (name: string, via: string, domains: string[] | null, ip_ranges: string[] | null = null): Policy => ({
+    name,
+    via,
+    domains,
+    ip_ranges,
+    apps: null,
+    on_tunnel_down: 'allow',
+  })
+  const list = [pol('A', 'oficina', ['git.example.com']), pol('B', 'casa', ['*.example.com']), pol('C', 'lab', null, ['10.2.0.0/16']), pol('D', 'casa', null, ['10.0.0.0/8'])]
+
+  it('says whether priority, position or one of each decided; nested ranges are never the order', () => {
+    const [domain, nested] = findOverlaps(list)
+    expect(domain?.kind).toBe('wildcard')
+    expect(nested?.kind).toBe('nestedRange')
+    expect(overlapOrder(domain!, new Map())).toBe('position')
+    expect(overlapOrder(domain!, new Map([['oficina', 10], ['casa', 10]]))).toBe('position')
+    expect(overlapOrder(domain!, new Map([['oficina', 20], ['casa', 10]]))).toBe('priority')
+    expect(overlapOrder(domain!, new Map([['oficina', 20]]))).toBe('mixed')
+    expect(overlapOrder(nested!, new Map())).toBeNull()
+  })
+
+  it('marks only the rules in an overlap the order settles, and links to the priority field', () => {
+    expect([...orderMatters(findOverlaps(list))].sort()).toEqual(['A', 'B'])
+    expect(priorityLink('mi casa')).toBe('/profiles?edit=mi%20casa&focus=priority')
+  })
+
+  it('explains each case in one line', () => {
+    const [domain] = findOverlaps(list)
+    expect(overlapOrderText(domain!, 'position', new Map(), tES)).toBe('Ninguna de las dos VPN tiene prioridad: decide la posición en la lista.')
+    expect(overlapOrderText(domain!, 'position', new Map([['oficina', 10], ['casa', 10]]), tES)).toMatch(/misma prioridad/)
+    expect(overlapOrderText(domain!, 'priority', new Map([['oficina', 20], ['casa', 10]]), tES)).toBe('Lo decide la prioridad: oficina (20) va antes que casa (10).')
+    expect(overlapOrderText(domain!, 'mixed', new Map([['oficina', 20]]), tES)).toMatch(/Pon prioridad a las dos/)
   })
 })

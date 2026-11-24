@@ -1,4 +1,4 @@
-// Kongtrol UI — Tráfico › Recientes: destinations this computer connected to lately · v1.0.0 · 2026-11-19
+// Kongtrol UI — Tráfico › Recientes: destinations this computer connected to lately · v1.1.0 · 2026-11-24
 //
 // GET /api/v1/connections/recent?limit=n (internal/api/handlers_connections.go,
 // ADR-0054): kept only in the daemon's memory, on by default with a switch
@@ -34,6 +34,9 @@ export interface RecentConnections {
   connections: RecentConnection[] | null
 }
 
+/** The daemon keeps at most this many (monitor.RecentMax): the panel asks for all of them and filters itself (ADR-0106). */
+export const RECENT_MAX = 500
+
 /** Same cadence as the daemon's check (monitor.RecentEvery = 15 s). */
 export const RECENT_POLL_MS = 15_000
 
@@ -49,7 +52,7 @@ export function fetchRecent(limit: number): Promise<RecentConnections | null> {
   )
 }
 
-export function useRecentConnections(limit = 50) {
+export function useRecentConnections(limit = RECENT_MAX) {
   return useQuery({
     queryKey: recentKeys.recent(limit),
     queryFn: () => fetchRecent(limit),

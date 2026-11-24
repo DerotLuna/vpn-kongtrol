@@ -231,7 +231,8 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
 <!-- feature:recent_connections -->
 - Where did my traffic go? `kongtrol traffic recent` lists the destinations of the last hour, the
   program and which VPN each went through (Windows and Linux). Memory only, never saved or sent;
-  `kongtrol config recent-connections off` turns it off.
+  `kongtrol config recent-connections off` turns it off. Narrow it with `--search <text>` (site, IP or
+  program) and `--via <profile|direct>`; the dashboard's Tráfico › Recientes has the same filters.
 - Something wrong? `kongtrol doctor`, then `kongtrol logs`.
 
 ## Commands
@@ -264,7 +265,7 @@ explains it with the next step and examples. Full reference: [docs/CLI.en.md](do
 | `kongtrol restart` | Restart Kongtrol and reconnect what was connected |
 | `kongtrol export` | Print your config without passwords to share it |
 | `kongtrol doctor [--fix]` | Check your computer and say how to fix each problem |
-| `kongtrol traffic recent [--limit n]` | Destinations of the last hour: program, VPN or direct |
+| `kongtrol traffic recent [--limit n] [--search text] [--via profile\|direct]` | Destinations of the last hour: program, VPN or direct |
 | `kongtrol ip` | Look up your public IP now and check for leaks |
 | `kongtrol logs` | Show Kongtrol's events |
 | `kongtrol service install\|uninstall\|status` | Network helper (no admin terminal) |

@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.30.0 · 2026-11-23
+Version 1.32.0 · 2026-11-24
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -117,6 +117,10 @@ decision live in [`docs/research/`](../research/README.md).
 | [0102](0102-kill-switch-offered-after-first-drop-and-recover-button.md) | Offer the kill switch once after the first unexpected drop; "Recuperar internet" on every kill switch block; notice offers (`monitor.Event.Offer`) | Accepted | 2026-11-23 |
 | [0103](0103-proton-same-account-and-shared-tunnel-address.md) | A Proton file never runs next to the Proton app; one tunnel address, one tunnel (refines 0099) | Accepted | 2026-11-23 |
 | [0104](0104-move-rules-to-provider-app-profile.md) | After adding a provider app, offer to move the rules of that provider's files to it (`POST /api/v1/policies/move`, `kongtrol policy move`) | Accepted | 2026-11-23 |
+| [0105](0105-import-ovpn-with-referenced-files.md) | Import an .ovpn with the files it names: native file picker through the daemon, several files at once, "Agregar <name>" (refines 0042) | Accepted | 2026-11-24 |
+| [0106](0106-recent-list-load-more-and-held-updates.md) | Live lists (Recientes) use "load more" + filters and hold new entries behind "N nuevas · Mostrar", never pages (`kongtrol traffic recent --search/--via`) | Accepted | 2026-11-24 |
+| [0107](0107-show-each-vpns-own-routes-read-only.md) | Show the routes each VPN brings by itself, read-only, with what wins against a rule (`GET /api/v1/vpns/routes`, `kongtrol routes vpn`) | Accepted | 2026-11-24 |
+| [0108](0108-show-and-change-profile-priority.md) | Show each profile's priority where rules overlap, with who decided and a link to change it; visible priority field; `kongtrol profile priority`, `kongtrol profile list`, ORDER in `policy list`; range 0–1000 | Accepted | 2026-11-24 |
 
 ## Statuses
 

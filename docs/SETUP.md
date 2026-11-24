@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.17 · 2026-11-23
+Versión 1.19 · 2026-11-24
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -227,10 +227,18 @@ Solo necesitas hacer algo aquí si:
 Si te enviaron el archivo (o lo bajaste de tu proveedor), Kongtrol puede guardarlo por ti en
 `~/.kongtrol/configs/`, solo para tu usuario:
 
-- **Panel:** Perfiles → Nueva VPN (o Editar) → WireGuard u OpenVPN → **Importar archivo**. El campo
-  de ruta se llena solo; también puedes escribir una ruta a mano.
+- **Panel:** **＋ Agregar → Importar un archivo de VPN → Elegir archivo** (abre la ventana de archivos
+  de tu sistema), o arrastra el archivo al panel. En Perfiles → Editar → WireGuard u OpenVPN →
+  **Importar archivo** el campo de ruta se llena solo; también puedes escribir una ruta a mano.
 - **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`). Con
   `--create` también crea el perfil que lo usa, con el nombre del archivo (o `--name`).
+
+Si el `.ovpn` nombra otros archivos (`ca ca.crt`, `tls-auth ta.key 1`…), Kongtrol los guarda dentro
+del perfil: con «Elegir archivo» o en la terminal los busca en la misma carpeta del `.ovpn`; si
+arrastras, arrastra el `.ovpn` junto con sus certificados. Si falta alguno, el panel lo nombra con un
+botón «Agregar <archivo>»; en la terminal pásalo después del archivo
+(`kongtrol profile import oficina.ovpn ~/certs/ca.crt`). Solo se leen archivos normales de esa carpeta
+(no accesos directos ni carpetas de fuera), de hasta 256 KB (ADR-0105).
 
 Sin preguntas, para scripts: `kongtrol profile detect` lista las apps de VPN instaladas y
 `kongtrol profile add <tipo> --name <nombre> [--host …] [--country …]` crea el perfil con las mismas
@@ -240,7 +248,7 @@ scripts) para usar el perfil nuevo.
 
 Se revisa con las mismas reglas que usa el servicio de Kongtrol antes de conectar: se rechazan los
 archivos que ejecutan comandos (`PostUp`/`PreUp` en WireGuard; `up`, `down`, `plugin`,
-`script-security 2` en OpenVPN) y un `.ovpn` importado debe llevar sus certificados dentro
+`script-security 2` en OpenVPN) y la copia guardada de un `.ovpn` lleva sus certificados dentro
 (`<ca>…</ca>`). Nunca reemplaza un archivo con el mismo nombre sin confirmarlo. Si el archivo es de tu cuenta de
 Proton, al importarlo te avisa que no lo conectes mientras la app de Proton esté conectada (ver
 «Archivo de Proton junto a la app de Proton», ADR-0103).
@@ -640,7 +648,7 @@ Si dos reglas cubren la misma IP, gana la más específica:
 | `10.10.0.0/16` vía `office` | Todo `10.10.x.x` |
 | `10.10.1.0/24` vía `dev-server` | Solo `10.10.1.x` — gana sobre `/16` |
 
-Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera regla que coincide), desempata la `priority` del perfil: **gana el número mayor**. Si el perfil no tiene `priority`, cuenta la posición de la política (las primeras van antes). `priority` no conecta ni cambia perfiles.
+Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera regla que coincide), desempata la `priority` del perfil: **gana el número mayor**. Si el perfil no tiene `priority`, cuenta la posición de la política (las primeras van antes). Va de 0 a 1000 (0 = sin prioridad). Ojo: sin `priority`, la posición cuenta en la misma escala; si solo una de dos VPN tiene número, el resultado depende también de la posición, así que pon prioridad a las dos. Cámbiala en el panel (**Perfiles › Orden de sus reglas**, o «Cambiar prioridad» en **Reglas**, que marca las reglas que se cruzan) o con `kongtrol profile priority <perfil> <N>` (`none` la quita); `kongtrol profile list` y `kongtrol policy list` la muestran ([ADR-0108](adr/0108-show-and-change-profile-priority.md)). `priority` no conecta ni cambia perfiles.
 
 <!-- feature:watchdog -->
 #### Si una VPN se cae y no vuelve (failover)

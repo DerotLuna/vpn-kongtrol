@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.20 · 2026-11-23
+Versión 2.24 · 2026-11-24
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -100,7 +100,7 @@ kongtrol routes [perfil] [opciones]
 
 ```bash
 kongtrol routes
-kongtrol routes oficina
+kongtrol routes vpn oficina
 kongtrol routes --system
 ```
 
@@ -130,6 +130,22 @@ kongtrol routes default-egress <perfil> <on|off> [opciones]
 
 ```bash
 kongtrol routes default-egress oficina on
+```
+
+### `kongtrol routes vpn`
+
+Muestra las rutas que trae cada VPN por su cuenta: las del archivo (.ovpn o .conf) y las que manda el servidor al conectar. Kongtrol no las cambia. También dice qué gana cuando una de tus reglas toca la misma dirección.
+
+```text
+kongtrol routes vpn [perfil] [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol routes vpn
+kongtrol routes vpn oficina
+kongtrol routes vpn --json
 ```
 
 ### `kongtrol dashboard`
@@ -532,10 +548,10 @@ kongtrol profile import oficina.conf --create
 
 ### `kongtrol profile import`
 
-Revisa el archivo con las mismas reglas que el panel (sin scripts ni comandos; un .ovpn con los certificados dentro) y lo guarda en ~/.kongtrol/configs/ solo para tu usuario. No reemplaza un archivo con el mismo nombre salvo con --overwrite. Con --create también crea el perfil que lo usa (nombre: el del archivo, o --name). Después: kongtrol up <nombre>.
+Revisa el archivo con las mismas reglas que el panel (sin scripts ni comandos) y lo guarda en ~/.kongtrol/configs/ solo para tu usuario. Si un .ovpn nombra otros archivos (ca ca.crt, tls-auth ta.key…), los busca en su misma carpeta y los guarda dentro del perfil; uno que esté en otra carpeta se pasa después del archivo. No reemplaza un archivo con el mismo nombre salvo con --overwrite. Con --create también crea el perfil que lo usa (nombre: el del archivo, o --name). Después: kongtrol up <nombre>.
 
 ```text
-kongtrol profile import <archivo.conf|archivo.ovpn> [opciones]
+kongtrol profile import <archivo.conf|archivo.ovpn> [certificados…] [opciones]
 ```
 
 **Opciones**
@@ -552,7 +568,7 @@ kongtrol profile import <archivo.conf|archivo.ovpn> [opciones]
 ```bash
 kongtrol profile import ~/Descargas/oficina.conf --create
 kongtrol profile import proveedor.ovpn --name casa
-kongtrol profile import oficina.conf --overwrite
+kongtrol profile import oficina.ovpn ~/certs/ca.crt ~/certs/ta.key
 ```
 
 ### `kongtrol profile add`
@@ -608,6 +624,37 @@ kongtrol profile detect [opciones]
 ```bash
 kongtrol profile detect
 kongtrol profile detect --json
+```
+
+### `kongtrol profile priority`
+
+La prioridad solo decide entre tus reglas cuando dos cubren el mismo sitio o el mismo rango de IP: gana el número mayor. Sin prioridad (0 o none) decide la posición de la regla: la primera va antes. No conecta otra VPN y no cambia las rutas que trae cada VPN.
+
+```text
+kongtrol profile priority <perfil> [N|none] [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol profile priority oficina
+kongtrol profile priority oficina 20
+kongtrol profile priority oficina none
+```
+
+### `kongtrol profile list`
+
+Muestra cada perfil con su tipo y su orden: «Prioridad N» o «por posición». Para cambiarla: kongtrol profile priority <perfil> <N>.
+
+```text
+kongtrol profile list [opciones]
+```
+
+**Ejemplos**
+
+```bash
+kongtrol profile list
+kongtrol profile list --json
 ```
 
 ### `kongtrol profile on-tunnel-down`
@@ -895,13 +942,15 @@ kongtrol traffic recent [opciones]
 | Opciones | Descripción |
 |---|---|
 | `--limit int` | Cuántos destinos mostrar (0 = todos) |
+| `--search string` | Muestra solo los que contienen este texto en el sitio, la IP o el programa |
+| `--via string` | Muestra solo los que salieron por este perfil (direct = conexión normal, sin VPN) |
 
 **Ejemplos**
 
 ```bash
-kongtrol traffic recent
 kongtrol traffic recent --limit 20
-kongtrol traffic recent --json
+kongtrol traffic recent --search github
+kongtrol traffic recent --via direct
 ```
 
 ### `kongtrol logs`

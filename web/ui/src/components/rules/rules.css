@@ -1,4 +1,4 @@
-/* Reglas + Horarios (/rules, /rules/schedule) · v1.1.0 · 2026-11-18
+/* Reglas + Horarios (/rules, /rules/schedule) · v1.3.0 · 2026-11-24
    Operate mode (DESIGN.md): flat surfaces, hairlines, gold only for the
    primary action and focus, state colors only for states (the route's exit
    step, pills). Machine values (domains, CIDRs, apps, profile names) in mono.
@@ -15,6 +15,12 @@
 .r-vpn { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .r-vpn .mono { font-size: 13px; }
 .r-down { font-size: 14px; color: var(--text-muted); }
+/* Order hint under the VPN (ADR-0108): small, muted; a set priority reads in body color. */
+.r-via { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.r-order { display: inline-flex; align-items: center; min-height: 24px; font-size: 12px; color: var(--text-muted); text-decoration: underline dotted; text-underline-offset: 3px; border-radius: 4px; }
+.r-order.is-set { color: var(--text); }
+.r-order:hover { color: var(--signal); }
+.r-order:focus-visible { outline: none; box-shadow: var(--focus); }
 .r-row-actions { display: inline-flex; align-items: center; gap: 4px; flex-wrap: nowrap; justify-content: flex-end; }
 .k-empty .r-row-actions { flex-wrap: wrap; justify-content: flex-start; }
 /* Per-rule pause switch: the column header names it. */
@@ -58,6 +64,8 @@ button.r-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 
 .r-overlaps h3 { font: 600 15px/1.3 var(--font-display); margin-bottom: 8px; }
 .r-overlaps ul { margin: 0 0 8px 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; max-width: 75ch; }
 .r-note { font-size: 13px; color: var(--text-muted); max-width: 70ch; }
+.r-overlaps__by { color: var(--text-muted); }
+.r-overlaps li a { color: var(--signal); text-underline-offset: 3px; }
 .r-note a, .r-reload a, .k-banner a { color: var(--signal); text-underline-offset: 3px; }
 
 /* ── Editor ───────────────────────────────────────────────────────────── */
@@ -192,6 +200,24 @@ button.r-chip:focus-visible { outline: 2px solid var(--signal); outline-offset: 
   .r-list .k-datalist td:last-child { width: auto; justify-content: flex-end; }
   .r-list .k-datalist .r-chips { justify-content: flex-end; }
 }
+
+/* ── Rutas que trae cada VPN (read-only, ADR-0107) ────────────────────── */
+.r-vpnroutes__lead { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: var(--text-muted); max-width: 75ch; }
+.r-vpnroutes__lead > svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--text-dim); }
+.r-vpnroutes__list { display: flex; flex-direction: column; margin-top: 8px; }
+.r-vpnroute { border-top: 1px solid var(--border); }
+.r-vpnroute > summary { flex-wrap: wrap; color: var(--text); }
+.r-vpnroute__meta { font-weight: 400; color: var(--text-muted); }
+.r-vpnroute > .r-note { margin: 0 0 10px 15px; }
+.r-vpnroute__rows { list-style: none; margin: 0 0 10px 15px; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.r-vpnroute__row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; align-items: center; min-height: 40px; }
+.r-vpnroute__dest { font-size: 14px; overflow-wrap: anywhere; }
+.r-vpnroute__origin { font-size: 12px; }
+.r-vpnroute__conflicts { grid-column: 1 / -1; margin: 0 0 6px 18px; font-size: 13px; color: var(--text-muted); max-width: 75ch; }
+.r-precedence { margin-top: 12px; padding: 14px 16px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
+.r-precedence h3 { font: 600 15px/1.3 var(--font-display); margin-bottom: 6px; }
+.r-precedence p { font-size: 14px; max-width: 75ch; }
+.r-precedence p + p { margin-top: 6px; }
 
 @media (prefers-reduced-motion: reduce) {
   .r-flow { animation: none; }

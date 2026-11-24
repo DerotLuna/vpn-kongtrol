@@ -21,6 +21,9 @@ var profileCmd = &cobra.Command{
 var (
 	profileImportName      string
 	profileImportOverwrite bool
+	// profileImportExtra: certificates and keys given after the file
+	// (ADR-0105).
+	profileImportExtra []string
 )
 
 // profile import: the CLI side of the dashboard's "Importar archivo"
@@ -29,10 +32,11 @@ var (
 // helper does and stored 0600 in ~/.kongtrol/configs/. It needs no
 // kongtrol.yaml and no running daemon.
 var profileImportCmd = &cobra.Command{
-	Use:         "import <file>",
-	Args:        cobra.ExactArgs(1),
+	Use:         "import <file> [certificates...]",
+	Args:        cobra.RangeArgs(1, 1+profileimport.MaxExtraFiles),
 	Annotations: map[string]string{annotationPrefsOnly: "true"},
 	RunE: func(cmd *cobra.Command, args []string) error {
+		profileImportExtra = args[1:]
 		if profileImportCreate {
 			return importAndCreate(args[0], profileImportName, profileImportOverwrite)
 		}
@@ -48,6 +52,7 @@ var profileImportCmd = &cobra.Command{
 			key = "cli.profile.import.replaced"
 		}
 		fmt.Println(tuiOK(cf(key, res.Path)))
+		printIncluded(res)
 		fmt.Println(tuiInfo(cf("cli.profile.import.next", res.Type, res.Path)))
 		printImportHint(res)
 		return nil
@@ -81,7 +86,11 @@ func runProfileImport(file, name string, overwrite bool) (profileimport.Result, 
 	if err != nil {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.read", file))
 	}
-	return storeImport(file, name, profileimport.TypeForContent(file, content), content, overwrite)
+	refs, err := importRefs(file, profileImportExtra)
+	if err != nil {
+		return profileimport.Result{}, err
+	}
+	return storeImport(file, name, profileimport.TypeForContent(file, content), content, overwrite, refs)
 }
 
 // absPath is p made absolute (the elevated read takes absolute paths only).
@@ -92,8 +101,30 @@ func absPath(p string) string {
 	return p
 }
 
+// importRefs: the files an .ovpn names are read from its own folder, and
+// from the extra files given after it (matched by base name, ADR-0105).
+func importRefs(file string, extra []string) (*profileimport.Refs, error) {
+	files := make(map[string][]byte, len(extra))
+	for _, p := range extra {
+		fi, err := os.Stat(p)
+		if err != nil || !fi.Mode().IsRegular() {
+			return nil, fmt.Errorf("%s", cf("cli.profile.import.extra_read", p))
+		}
+		if fi.Size() > profileimport.MaxReferenceSize {
+			return nil, localizeConfigErr(&config.ValidationError{Key: profileimport.ErrKeyRefTooBig, Args: []any{filepath.Base(p), profileimport.MaxReferenceSize >> 10}})
+		}
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("%s", cf("cli.profile.import.extra_read", p))
+		}
+		files[filepath.Base(p)] = b
+	}
+	refs, err := profileimport.NewRefs(filepath.Dir(absPath(file)), files)
+	return refs, localizeConfigErr(err)
+}
+
 // storeImport validates content and stores it in ~/.kongtrol/configs.
-func storeImport(file, name, typ string, content []byte, overwrite bool) (profileimport.Result, error) {
+func storeImport(file, name, typ string, content []byte, overwrite bool, refs *profileimport.Refs) (profileimport.Result, error) {
 	if strings.TrimSpace(name) == "" {
 		name = strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 	}
@@ -101,11 +132,23 @@ func storeImport(file, name, typ string, content []byte, overwrite bool) (profil
 	if err != nil {
 		return profileimport.Result{}, err
 	}
-	res, err := profileimport.Import(dir, profileimport.Request{Name: name, Type: typ, Content: content, Overwrite: overwrite})
+	res, err := profileimport.Import(dir, profileimport.Request{Name: name, Type: typ, Content: content, Overwrite: overwrite, Refs: refs})
 	if errors.Is(err, profileimport.ErrStore) {
 		return res, fmt.Errorf("%s\n    %s", cf("cli.profile.import.store", dir), err)
 	}
+	var miss *profileimport.MissingFilesError
+	if errors.As(err, &miss) {
+		// The panel's "Agregar" is the extra arguments here.
+		return res, fmt.Errorf("%s\n    %s", localizeConfigErr(err), cf("cli.profile.import.missing_hint", file, strings.Join(miss.Names, " ")))
+	}
 	return res, localizeConfigErr(err)
+}
+
+// printIncluded says which referenced files went inside the stored profile.
+func printIncluded(res profileimport.Result) {
+	if len(res.Included) > 0 {
+		fmt.Println(tuiInfo(cf("cli.profile.import.included", strings.Join(res.Included, ", "))))
+	}
 }
 
 func init() {

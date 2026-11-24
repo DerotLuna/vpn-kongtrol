@@ -1,8 +1,9 @@
-// Reglas (/rules) — which sites and networks go through each VPN · v1.1.0 · 2026-11-19
+// Reglas (/rules) — which sites and networks go through each VPN · v1.3.0 · 2026-11-24
 //
 // Parity with the classic Studio "Policies" tab (docs/dashboard-parity.md),
 // plus: success toasts, on_tunnel_down per row, overlaps explained, a
-// "Probar un destino" route view (`kongtrol policy show`) and starting
+// "Probar un destino" route view (`kongtrol policy show`), the read-only
+// "Rutas que trae cada VPN" (ADR-0107, `kongtrol routes vpn`) and starting
 // points for people who don't write globs or CIDRs. The editor opens
 // inline above the list (not a modal); delete asks first.
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -12,6 +13,7 @@ import { PolicyEditor } from '../components/rules/PolicyEditor'
 import { Overlaps, PolicyList } from '../components/rules/PolicyList'
 import { ConfirmDelete, RulesHeader } from '../components/rules/shared'
 import { TestDestination } from '../components/rules/TestDestination'
+import { VpnRoutes } from '../components/rules/VpnRoutes'
 import { FileIcon, RouteIcon } from '../components/rules/icons'
 import { draftFromPolicy, type PolicyDraft } from '../components/rules/editorModel'
 import type { Policy } from '../components/rules/model'
@@ -19,6 +21,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { PlusIcon, RefreshIcon } from '../components/ui/icons'
+import { useProfilePriorities } from '../data/profiles'
 import { useDeletePolicy, usePoliciesQuery, usePolicyMetaQuery, useReloadPolicies } from '../data/rules'
 import '../components/rules/rules.css'
 
@@ -34,6 +37,7 @@ export function RulesPage() {
   const meta = usePolicyMetaQuery()
   const reload = useReloadPolicies()
   const remove = useDeletePolicy()
+  const priorities = useProfilePriorities()
   const [editor, setEditor] = useState<EditorState | null>(null)
   const [toDelete, setToDelete] = useState<Policy | null>(null)
 
@@ -105,8 +109,8 @@ export function RulesPage() {
         ) : (
           <>
             <p className="muted r-list__lead">{t('rules.list.what')}</p>
-            <PolicyList policies={list} onEdit={openEdit} onDelete={askDelete} />
-            <Overlaps policies={list} />
+            <PolicyList policies={list} priorities={priorities} onEdit={openEdit} onDelete={askDelete} />
+            <Overlaps policies={list} priorities={priorities} />
           </>
         )}
 
@@ -128,6 +132,8 @@ export function RulesPage() {
           </Button>
         </div>
       </Card>
+
+      <VpnRoutes />
 
       {list.length > 0 && <TestDestination policies={list} />}
 

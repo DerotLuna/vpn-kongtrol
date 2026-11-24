@@ -1,4 +1,4 @@
-/* Kongtrol UI — Tráfico (/traffic) · v1.0.0 · 2026-11-18
+/* Kongtrol UI — Tráfico (/traffic) · v1.1.0 · 2026-11-24
    Operate mode (DESIGN.md): flat cards, one accent (gold only on the
    primary "Revisar"), charts in steel (a series, not a state), green only
    for "goes through a connected VPN", 11px floor, 44px targets, tabular
@@ -178,6 +178,22 @@
 .tr-sysroutes__bar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .tr-sysroutes__bar .k-field { min-width: min(100%, 280px); }
 .tr-sysroutes .k-datalist td, .tr-sysroutes .k-datalist th { overflow-wrap: anywhere; }
+
+/* Recientes (ADR-0106): filters above, the "N nuevas · Mostrar" notice, the
+   list, "Ver 20 más". Long hosts and program names are clipped (full text
+   in the title) so they never widen a column or the card. */
+.tr-recent__tools { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.tr-recent__tools .k-field { flex: 1 1 240px; min-width: 0; }
+.tr-recent__fresh { display: flex; align-items: center; gap: 8px; min-height: 36px; color: var(--text-muted); }
+.tr-recent__fresh:empty { min-height: 8px; }
+/* The button is never the scroll anchor: rows added above it must not
+   scroll the page (CSS Scroll Anchoring, overflow-anchor). */
+.tr-recent__more { display: flex; justify-content: center; margin-top: 12px; overflow-anchor: none; }
+.tr-recent__clip { display: inline-block; max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+@container datalist (max-width: 679px) {
+  .tr-recent .k-datalist th, .tr-recent .k-datalist td { min-width: 0; }
+  .tr-recent__clip { max-width: 100%; min-width: 0; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tr-disclosure__chev { transition: none; }

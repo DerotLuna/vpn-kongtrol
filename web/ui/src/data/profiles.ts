@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.3.0 · 2026-11-23
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.5.0 · 2026-11-24
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -11,6 +11,7 @@
 // the same file; they are plain resource names, so another page reading
 // ['vpns'] (e.g. /security's override table) shares the same entry.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { ApiError, http } from '../api/client'
 import type { Group } from '../api/types'
 import { keys } from './keys'
@@ -121,6 +122,8 @@ export interface ImportRequest {
   /** Absolute path instead of content; with `elevate`, a root-only file is read after the OS permission window (ADR-0058). */
   path?: string
   elevate?: boolean
+  /** Certificates and keys added by hand, matched to the .ovpn's references by base name (ADR-0105). */
+  files?: { name: string; content_base64: string }[]
 }
 
 /** POST /api/v1/vpns/import answer (201). */
@@ -134,7 +137,14 @@ export interface ImportResult {
   /** Server-translated line for that provider, and its i18n key. */
   hint?: string
   hint_key?: string
+  /** Referenced files put inside the stored .ovpn (ADR-0105). */
+  included?: string[]
 }
+
+/** POST /api/v1/vpns/import/pick answer: the file picked in the OS's own dialog, or cancelled (ADR-0105). */
+export type PickResult =
+  | { cancelled: true }
+  | { cancelled?: false; path: string; name: string; type: 'wireguard' | 'openvpn'; content_base64: string }
 
 /** internal/api/handlers_setup.go `SetupStatus`. */
 export interface SetupStatus {
@@ -185,6 +195,17 @@ export const profilesApi = {
   remove: (name: string) => http.delete<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`),
   /** Validated like the privileged helper does; 409 api.err.import_exists unless overwrite. */
   importFile: (body: ImportRequest) => http.post<ImportResult>('/api/v1/vpns/import', body),
+  /** Whether the daemon can open the OS's own "Open file" dialog; an older daemon (404) cannot. */
+  pickAvailable: () =>
+    http.get<{ available: boolean }>('/api/v1/vpns/import/pick').then(
+      (r) => r.available,
+      (err: unknown) => {
+        if (err instanceof ApiError && err.status === 404) return false
+        throw err
+      },
+    ),
+  /** Opens the OS's own "Open file" dialog; answers when the user picks or closes it. */
+  pickFile: () => http.post<PickResult>('/api/v1/vpns/import/pick'),
   setup: () => http.get<SetupStatus>('/api/v1/setup'),
   /** Older daemons have no detect endpoint: a 404 means "nothing to suggest". */
   detect: () =>
@@ -220,6 +241,7 @@ export const profileKeys = {
   vpns: ['vpns'] as const,
   setup: ['setup'] as const,
   detect: ['vpns', 'detect'] as const,
+  pick: ['vpns', 'import', 'pick'] as const,
 } as const
 
 // ── Reads ─────────────────────────────────────────────────────────────────
@@ -227,6 +249,12 @@ export const profileKeys = {
 /** Loaded once per page view and after each change; no polling (parity: legacy loads once). */
 export function useProfilesQuery() {
   return useQuery({ queryKey: profileKeys.vpns, queryFn: profilesApi.list, staleTime: 30_000 })
+}
+
+/** Each profile's own priority, for the Reglas page (ADR-0108); 0 or absent = by position. */
+export function useProfilePriorities(): ReadonlyMap<string, number> {
+  const { data } = useProfilesQuery()
+  return useMemo(() => new Map((data ?? []).filter((p) => p.priority > 0).map((p) => [p.name, p.priority])), [data])
 }
 
 export function useSetupQuery() {
@@ -338,6 +366,16 @@ export function useDeleteProfile(
 /** "Importar archivo": stores the file; the form then fills its path. Not cached. */
 export function useImportProfileFile() {
   return useMutation<ImportResult, unknown, ImportRequest>({ mutationFn: profilesApi.importFile })
+}
+
+/** "Elegir archivo" opens the OS's own dialog when the daemon can (ADR-0105); else the browser's input. */
+export function usePickAvailable() {
+  return useQuery({ queryKey: profileKeys.pick, queryFn: profilesApi.pickAvailable, staleTime: 5 * 60_000, retry: false })
+}
+
+/** Opens the OS's own "Open file" dialog (one at a time). Not cached. */
+export function usePickProfileFile() {
+  return useMutation<PickResult, unknown, void>({ mutationFn: () => profilesApi.pickFile() })
 }
 
 // ── Restart ───────────────────────────────────────────────────────────────
