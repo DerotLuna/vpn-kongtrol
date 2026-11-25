@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.23 · 2026-11-24
+Version 1.24 · 2026-11-24
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -573,7 +573,7 @@ kongtrol profile import office.ovpn ~/certs/ca.crt ~/certs/ta.key
 
 ### `kongtrol profile add`
 
-Creates a profile like "＋ Add" in the dashboard, with the same rules. <type>: forticlient, openvpn, protonvpn, nordvpn, surfshark, ciscoanyconnect, wireguard, globalprotect, tailscale or cloudflarewarp. The password never goes on the command line: if the type uses one, it is asked without showing it in a terminal; otherwise add it in the dashboard. If Kongtrol is running, it offers to restart it to use the profile. Next: kongtrol up <name>.
+Creates a profile like "＋ Add" in the dashboard, with the same rules. <type>: forticlient, openvpn, protonvpn, nordvpn, surfshark, mullvad, pia, expressvpn, windscribe, cyberghost, ciscoanyconnect, wireguard, globalprotect, tailscale or cloudflarewarp. The password never goes on the command line: if the type uses one, it is asked without showing it in a terminal; otherwise add it in the dashboard. If Kongtrol is running, it offers to restart it to use the profile. Next: kongtrol up <name>.
 
 ```text
 kongtrol profile add <type> [flags]

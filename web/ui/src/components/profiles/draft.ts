@@ -114,6 +114,7 @@ export function visibleFields(spec: AdapterSpec): Set<DraftField> {
   if (spec.host) f.add('host')
   if (spec.config) f.add('config')
   if (spec.location) ['server', 'country', 'city'].forEach((k) => f.add(k as DraftField))
+  if (spec.exactRegion) f.add('server')
   if (spec.serverGroup) f.add('group')
   if (spec.protocol) f.add('protocol')
   if (spec.autoConnect) f.add('autoConnect')
@@ -159,7 +160,7 @@ export function toRequest(d: Draft, mode: 'create' | 'update'): ProfileRequest {
     const value = d[field] as string
     const trimmed = field === 'authMethod' ? value : value.trim()
     if (shown.has(field)) body[key] = trimmed
-    else if (ATTACH_ONLY.includes(field) || (field === 'server' && !spec.location)) body[key] = ''
+    else if (ATTACH_ONLY.includes(field) || (field === 'server' && !spec.location && !spec.exactRegion)) body[key] = ''
   }
   if (shown.has('password') && d.password !== '') body.password = d.password
   if (mode === 'create') {

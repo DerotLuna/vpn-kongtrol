@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.10 · 2026-11-24
+Versión 1.12 · 2026-11-24
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -14,7 +14,7 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 
 | Clave | Tipo | Por defecto | Descripción |
 |---|---|---|---|
-| `vpns.<name>.type` | texto | — | **Obligatorio.** Tipo de VPN (adaptador). Valores: `forticlient`, `openvpn`, `protonvpn`, `nordvpn`, `surfshark`, `ciscoanyconnect`, `wireguard`, `globalprotect`, `tailscale`, `cloudflarewarp`. |
+| `vpns.<name>.type` | texto | — | **Obligatorio.** Tipo de VPN (adaptador). Valores: `forticlient`, `openvpn`, `protonvpn`, `nordvpn`, `surfshark`, `ciscoanyconnect`, `wireguard`, `globalprotect`, `tailscale`, `cloudflarewarp`, `mullvad`, `pia`, `expressvpn`, `windscribe`, `cyberghost`. |
 | `vpns.<name>.version` | texto | — | Versión del cliente, solo informativa. |
 | `vpns.<name>.host` | texto | — | Servidor o gateway VPN (clientes corporativos). |
 | `vpns.<name>.port` | entero | — | Puerto del servidor. |
@@ -22,7 +22,7 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 | `vpns.<name>.default_egress` | booleano | — | Opción para un solo perfil WireGuard directo en Windows o Linux. En la próxima conexión, el perfil lleva el tráfico IPv4 e IPv6 sin una ruta más específica. |
 | `vpns.<name>.allow_insecure_cert` | booleano | — | Solo FortiClient: acepta advertencias de certificado al automatizar la app. Déjalo en `false` (riesgo de MITM). |
 | `vpns.<name>.config` | texto | — | Ruta al `.ovpn` (openvpn) o `.conf` (wireguard). |
-| `vpns.<name>.server` | texto | — | Servidor exacto (protonvpn, nordvpn). |
+| `vpns.<name>.server` | texto | — | Servidor exacto (Proton VPN, NordVPN, Mullvad) o nombre/ID de región (PIA, ExpressVPN, Windscribe). |
 | `vpns.<name>.protocol` | texto | — | Protocolo del proveedor: `wireguard` u `openvpn` (protonvpn). |
 | `vpns.<name>.binary_path` | texto | — | Ruta al programa del cliente VPN si no se detecta solo. |
 | `vpns.<name>.auth.method` | texto | — | **Obligatorio.** Cómo se autentica: `certificate`, `credentials` o `certificate+credentials`. Para protonvpn, nordvpn y surfshark vale `credentials` si lo omites. |

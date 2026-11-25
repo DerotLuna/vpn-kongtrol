@@ -57,6 +57,13 @@ The Linux prototype selects different interfaces for different executables. Inte
 Kongtrol profiles and validation on Windows and macOS are pending.
 [GitHub issue #64](https://github.com/DerotLuna/vpn-kongtrol/issues/64)
 
+<!-- feature:providers -->
+### Official provider apps
+
+Mullvad, Private Internet Access, ExpressVPN, Windscribe and CyberGhost have attach
+profiles. The live vendor and platform verification matrix remains open.
+[Provider research](research/2026-11-24-five-provider-apps.md)
+
 ### v0.1 — Core ✅
 FortiClient · OpenVPN · ProtonVPN · Route manager · Policy engine · Basic CLI
 

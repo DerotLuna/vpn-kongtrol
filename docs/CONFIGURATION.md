@@ -235,6 +235,21 @@ The option is off by default. Turning it off restores the profile's usual behavi
 next connection. A file that already brings up default routes can still do so.
 [ADR-0090](adr/0090-wireguard-default-egress-windows.md)
 
+<!-- feature:providers -->
+### Additional provider apps
+
+Create an app profile in **＋ Add** or with `kongtrol profile add <type>`. Sign in in the provider's app first. Kongtrol uses the tunnel once it can identify the interface. Enter the exact interface in the profile's advanced settings if automatic detection is unavailable.
+
+| Type | App control | Location | Direct file |
+|---|---|---|---|
+| `mullvad` | Official Mullvad CLI | `country` and optional `city` codes, or exact `server` hostname | WireGuard |
+| `pia` | `piactl` with the app running or background mode enabled in PIA | `server` is the ID from `piactl get regions` | OpenVPN |
+| `expressvpn` | Official CLI on Linux/macOS with the app running or background mode enabled. Connect in the app on Windows. | `server` is the exact name from `expressvpnctl get regions` on CLI-capable systems | OpenVPN |
+| `windscribe` | `windscribe-cli` from the current desktop app or Linux CLI | `server` is a location from the official CLI | WireGuard or OpenVPN |
+| `cyberghost` | Manual. On Linux, attach to a tunnel already started outside Kongtrol and set `interface:` if needed. | Choose in CyberGhost | OpenVPN and any referenced certificates |
+
+On Windows, ExpressVPN's Lightway Turbo can run without exposing a separate VPN interface. Choose a protocol that exposes one, or disable Lightway Turbo in the app before connecting. On macOS, use the exact interface if the VPN service does not appear by provider name. Kongtrol uses the vendor app to manage its account and leaves its DNS and background-mode preferences to the user. These adapters do not enable per-executable routing.
+
 <!-- feature:providers feature:wireguard -->
 ## ProtonVPN: GUI vs WireGuard
 

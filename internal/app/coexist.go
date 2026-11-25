@@ -36,7 +36,10 @@ type TunnelClaim struct {
 // destination through the VPN by default (consumer VPNs). Corporate
 // clients (FortiClient, Cisco, GlobalProtect) are usually split tunnels
 // configured by the company, so they are not counted.
-var fullTunnelApps = map[string]bool{"protonvpn": true, "nordvpn": true, "surfshark": true}
+var fullTunnelApps = map[string]bool{
+	"protonvpn": true, "nordvpn": true, "surfshark": true,
+	"mullvad": true, "pia": true, "expressvpn": true, "windscribe": true, "cyberghost": true,
+}
 
 // FullTunnelAppTypes lists the provider types whose app tunnel counts as a
 // full tunnel (for the daemon's external tunnel probe).

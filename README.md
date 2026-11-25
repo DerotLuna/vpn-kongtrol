@@ -121,6 +121,11 @@ in the app, Kongtrol watches it.
 | NordVPN | `nordvpn` | auto | manual | auto |
 | Proton VPN | `protonvpn` | manual | manual | auto |
 | Surfshark | `surfshark` | manual | manual | manual |
+| Mullvad VPN | `mullvad` | auto | CLI / interface | auto |
+| Private Internet Access | `pia` | auto | CLI / interface | auto |
+| ExpressVPN | `expressvpn` | manual / visible adapter | CLI / interface | auto |
+| Windscribe | `windscribe` | auto | CLI / interface | auto |
+| CyberGhost VPN | `cyberghost` | manual | manual / interface | manual / interface |
 | FortiClient ([support by version](docs/forticlient-support.md)) | `forticlient` | auto | yes | yes |
 
 **Kongtrol connects directly** with your config file or the official client.

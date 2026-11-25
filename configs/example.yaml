@@ -104,6 +104,25 @@ vpns:
       method: credentials   # session lives in the Surfshark app
     priority: 5
 
+  # Additional official provider apps. Uncomment only the apps you use.
+  # mullvad:
+  #   type: mullvad
+  #   country: se
+  #   city: got
+  # pia:
+  #   type: pia
+  #   server: us_california   # ID from piactl get regions
+  # express:
+  #   type: expressvpn
+  #   server: "Germany - Frankfurt - 1"  # on Linux/macOS
+  # windscribe:
+  #   type: windscribe
+  #   server: "Toronto"
+  # cyberghost:
+  #   type: cyberghost
+  #   auto_connect: false
+  #   interface: "CyberGhost*"  # use the exact interface if auto-detection misses it
+
   # ── Additional adapters ────────────────────────────────────────────────────
 
   corporate-cisco:

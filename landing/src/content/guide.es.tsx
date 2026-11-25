@@ -85,7 +85,7 @@ export default function guideES(os: OS) {
       col1: 'Tu VPN',
       col2: 'Qué necesitas',
       rows: [
-        { vpn: <>NordVPN, Proton VPN, Surfshark, FortiClient</>, need: <>Su app oficial instalada y tu sesión iniciada. No la cierres: Kongtrol trabaja con ella.</> },
+        { vpn: <>NordVPN, Proton VPN, Surfshark, FortiClient, Mullvad, PIA, ExpressVPN, Windscribe, CyberGhost</>, need: <>Su app oficial instalada y tu sesión iniciada. Si Kongtrol no detecta el túnel, indica su interfaz en las opciones avanzadas. ExpressVPN en Windows y CyberGhost se conectan desde el cliente del proveedor.</> },
         { vpn: <>WireGuard, OpenVPN</>, need: <>El archivo <IC c=".conf" /> o <IC c=".ovpn" /> que te dio tu proveedor o tu equipo de IT, y el programa{' '}
           {os === 'windows' ? 'WireGuard u OpenVPN para Windows' : os === 'macos' ? 'wireguard-tools u OpenVPN' : 'wireguard-tools u openvpn'}.</> },
         { vpn: <>Tailscale, Cloudflare WARP, Cisco Secure Client, GlobalProtect</>, need: <>Su programa oficial instalado y con sesión iniciada.</> },

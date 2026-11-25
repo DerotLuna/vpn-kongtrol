@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/nordvpn"
@@ -27,11 +28,16 @@ var providerAppNames = map[string]string{
 	"protonvpn":   "Proton VPN",
 	"nordvpn":     "NordVPN",
 	"surfshark":   "Surfshark",
+	"mullvad":     "Mullvad VPN",
+	"pia":         "Private Internet Access",
+	"expressvpn":  "ExpressVPN",
+	"windscribe":  "Windscribe",
+	"cyberghost":  "CyberGhost VPN",
 }
 
 // directCapable lists the consumer providers that also offer downloadable
 // WireGuard / OpenVPN files (the direct way, no app).
-var directCapable = map[string]bool{"protonvpn": true, "nordvpn": true, "surfshark": true}
+var directCapable = map[string]bool{"protonvpn": true, "nordvpn": true, "surfshark": true, "mullvad": true, "pia": true, "expressvpn": true, "windscribe": true, "cyberghost": true}
 
 // providerAnswers are the attach-mode answers for one provider profile.
 type providerAnswers struct {
@@ -45,12 +51,15 @@ func defaultProviderAnswers() providerAnswers { return providerAnswers{AutoConne
 // providerCanSelect reports whether Kongtrol can pick a location for the
 // provider (validateProvider rejects location fields otherwise).
 func providerCanSelect(adapterType string) bool {
-	return adapterType == "nordvpn" || adapterType == "protonvpn"
+	return adapterType == "nordvpn" || adapterType == "protonvpn" || adapterType == "mullvad" || config.ProviderExactLocation(adapterType)
 }
 
 // providerAutoAvailable reports whether Kongtrol can connect the provider on
 // its own on this OS (CLI or, for FortiClient, GUI automation).
 func providerAutoAvailable(adapterType string) bool {
+	if desktop, ok := appattach.DesktopDefinition(adapterType); ok {
+		return len(desktop.CLI) > 0
+	}
 	switch adapterType {
 	case "forticlient":
 		return true
@@ -78,7 +87,7 @@ func providerFields(adapterType string, a providerAnswers) [][2]string {
 	if providerCanSelect(adapterType) {
 		if strings.TrimSpace(a.Server) != "" {
 			add("server", a.Server)
-		} else {
+		} else if !config.ProviderExactLocation(adapterType) {
 			add("country", a.Country)
 			add("city", a.City)
 			if adapterType == "nordvpn" {
@@ -134,7 +143,12 @@ func selectProviderMode(lang i18n.Lang, adapterType string) (string, error) {
 	}
 	fmt.Println(tuiInfo(i18n.T(lang, "wizard.direct.hint."+adapterType)))
 	direct := "wireguard"
-	if adapterType == "nordvpn" {
+	switch adapterType {
+	case "mullvad":
+		return "wireguard", nil
+	case "pia", "expressvpn", "cyberghost":
+		return "openvpn", nil
+	case "nordvpn":
 		direct = "openvpn"
 	}
 	if err := runForm(newForm(huh.NewGroup(
@@ -172,18 +186,23 @@ func collectProviderFields(lang i18n.Lang, adapterType string, fields *[][2]stri
 				Value(&a.AutoConnect),
 		))
 		if providerCanSelect(adapterType) {
-			inputs := []huh.Field{
-				huh.NewInput().Title(t("collect.country")).
+			var inputs []huh.Field
+			if !config.ProviderExactLocation(adapterType) {
+				inputs = append(inputs, huh.NewInput().Title(t("collect.country")).
 					Description(styleDim.Render(t("hint.country"))).Value(&a.Country),
-				huh.NewInput().Title(t("collect.city")).
-					Description(styleDim.Render(t("hint.city"))).Value(&a.City),
+					huh.NewInput().Title(t("collect.city")).
+						Description(styleDim.Render(t("hint.city"))).Value(&a.City))
 			}
 			if adapterType == "nordvpn" {
 				inputs = append(inputs, huh.NewInput().Title(t("collect.nord_group")).
 					Description(styleDim.Render(t("hint.nord_group"))).Value(&a.Group))
 			}
-			inputs = append(inputs, huh.NewInput().Title(t("collect.server")).
-				Description(styleDim.Render(t("hint.server"))).
+			label, hint := "collect.server", "hint.server"
+			if config.ProviderExactLocation(adapterType) {
+				label, hint = "collect.provider_region", "hint.provider_region"
+			}
+			inputs = append(inputs, huh.NewInput().Title(t(label)).
+				Description(styleDim.Render(t(hint))).
 				Validate(func(s string) error {
 					if strings.TrimSpace(s) != "" && strings.TrimSpace(a.Country+a.City+a.Group) != "" {
 						return errors.New(t("err.server_combo"))

@@ -133,6 +133,8 @@ vpn-kongtrol/
 ```
 
 <!-- feature:providers -->
+Mullvad, PIA, ExpressVPN, Windscribe and CyberGhost register a desktop application, interface matcher and optional CLI command plan in `appattach`. The wizard, installation probe and dashboard use those provider IDs, and the daemon includes their detected interfaces in its full-tunnel conflict check. Profile management uses the shared attach session.
+
 ## Adding a new VPN adapter
 
 The adapter interface is the only contract:

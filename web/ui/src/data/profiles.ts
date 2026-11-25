@@ -20,13 +20,18 @@ import { createStore, useStore } from './store'
 
 // ── Types (mirrors of internal/api JSON; source named above each) ─────────
 
-/** The 10 adapter types (`oneof` in internal/config/schema.go). */
+/** The adapter types (`oneof` in internal/config/schema.go). */
 export type AdapterType =
   | 'openvpn'
   | 'wireguard'
   | 'protonvpn'
   | 'nordvpn'
   | 'surfshark'
+  | 'mullvad'
+  | 'pia'
+  | 'expressvpn'
+  | 'windscribe'
+  | 'cyberghost'
   | 'forticlient'
   | 'ciscoanyconnect'
   | 'globalprotect'

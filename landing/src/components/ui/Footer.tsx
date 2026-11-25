@@ -24,7 +24,7 @@ export default function Footer({ lang, page = 'home' }: Props) {
     ? {
       claim: 'Todas tus VPN bajo Kongtrol',
       tagline: 'Panel web y CLI completa. Local, gratis y de código abierto.',
-      facts: ['beta', '10 VPN', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
+      facts: ['beta', '15 VPN', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
       madeBy: ['Hecho con', 'por'],
       madeByHeart: 'cariño',
@@ -38,7 +38,7 @@ export default function Footer({ lang, page = 'home' }: Props) {
     : {
       claim: 'All your VPNs under Kongtrol',
       tagline: 'Web panel and a full CLI. Local, free and open source.',
-      facts: ['beta', '10 VPNs', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
+      facts: ['beta', '15 VPNs', 'Win / macOS / Linux', 'ES / EN', 'Apache-2.0'],
       wink: 'no place like 127.0.0.1',
       madeBy: ['Made with', 'by'],
       madeByHeart: 'love',

@@ -4,7 +4,7 @@
 
 # Configuration reference (kongtrol.yaml)
 
-Version 1.10 · 2026-11-24
+Version 1.12 · 2026-11-24
 
 Every key of `~/.kongtrol/kongtrol.yaml`, read from the schema (`internal/config/schema.go`). Defaults are the ones the code applies. Guide with examples: [CONFIGURATION.md](CONFIGURATION.md) · full example: [configs/example.yaml](../configs/example.yaml) · Español: [CONFIG.md](CONFIG.md).
 
@@ -14,7 +14,7 @@ Your VPN profiles, one per name (`vpns.office`, `vpns.home`, …). At least one.
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `vpns.<name>.type` | string | — | **Required.** VPN type (adapter). Values: `forticlient`, `openvpn`, `protonvpn`, `nordvpn`, `surfshark`, `ciscoanyconnect`, `wireguard`, `globalprotect`, `tailscale`, `cloudflarewarp`. |
+| `vpns.<name>.type` | string | — | **Required.** VPN type (adapter). Values: `forticlient`, `openvpn`, `protonvpn`, `nordvpn`, `surfshark`, `ciscoanyconnect`, `wireguard`, `globalprotect`, `tailscale`, `cloudflarewarp`, `mullvad`, `pia`, `expressvpn`, `windscribe`, `cyberghost`. |
 | `vpns.<name>.version` | string | — | Client version, informational only. |
 | `vpns.<name>.host` | string | — | VPN server or gateway (corporate clients). |
 | `vpns.<name>.port` | int | — | Server port. |
@@ -22,7 +22,7 @@ Your VPN profiles, one per name (`vpns.office`, `vpns.home`, …). At least one.
 | `vpns.<name>.default_egress` | bool | — | Opt in for one direct WireGuard profile on Windows or Linux. On the next connection it carries IPv4 and IPv6 traffic without a more specific route. |
 | `vpns.<name>.allow_insecure_cert` | bool | — | FortiClient only: accept certificate warnings while automating the app. Keep it `false` (MITM risk). |
 | `vpns.<name>.config` | string | — | Path to the `.ovpn` (openvpn) or `.conf` (wireguard) file. |
-| `vpns.<name>.server` | string | — | Exact server (protonvpn, nordvpn). |
+| `vpns.<name>.server` | string | — | Exact server (Proton VPN, NordVPN, Mullvad) or region name/ID (PIA, ExpressVPN, Windscribe). |
 | `vpns.<name>.protocol` | string | — | Provider protocol: `wireguard` or `openvpn` (protonvpn). |
 | `vpns.<name>.binary_path` | string | — | Path to the VPN client program when it isn't detected. |
 | `vpns.<name>.auth.method` | string | — | **Required.** How it authenticates: `certificate`, `credentials` or `certificate+credentials`. For protonvpn, nordvpn and surfshark it is `credentials` when left out. |

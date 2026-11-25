@@ -183,6 +183,12 @@ features:
       - internal/vpn/protonvpn/**
       - internal/vpn/nordvpn/**
       - internal/vpn/surfshark/**
+      - internal/vpn/mullvad/**
+      - internal/vpn/pia/**
+      - internal/vpn/expressvpn/**
+      - internal/vpn/windscribe/**
+      - internal/vpn/cyberghost/**
+      - web/ui/src/components/profiles/catalog.ts
       - internal/vpn/ciscoanyconnect/**
       - internal/vpn/globalprotect/**
       - internal/vpn/tailscale/**

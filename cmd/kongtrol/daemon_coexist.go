@@ -30,6 +30,9 @@ func externalFullTunnels() []app.ExternalTunnel {
 		label := providerAppLabels[typ]
 		if label == "" {
 			label = typ
+			if desktop, ok := appattach.DesktopDefinition(typ); ok {
+				label = desktop.App.DisplayName
+			}
 		}
 		out = append(out, app.ExternalTunnel{Type: typ, Label: label, Interface: t.Name})
 	}

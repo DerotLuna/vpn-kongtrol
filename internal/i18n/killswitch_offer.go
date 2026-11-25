@@ -26,6 +26,16 @@ func OfferAppName(adapterType string) string {
 		return "NordVPN"
 	case "surfshark":
 		return "Surfshark"
+	case "mullvad":
+		return "Mullvad VPN"
+	case "pia":
+		return "Private Internet Access"
+	case "expressvpn":
+		return "ExpressVPN"
+	case "windscribe":
+		return "Windscribe"
+	case "cyberghost":
+		return "CyberGhost VPN"
 	case "forticlient":
 		return "FortiClient"
 	}

@@ -1,4 +1,4 @@
-// Kongtrol UI — the 10 VPN types and what each one needs · v1.0.0 · 2026-11-18
+// Kongtrol UI — the VPN types and what each one needs · v1.0.0 · 2026-11-18
 //
 // One table drives the type picker, the guided form (which fields each type
 // shows) and the list's "works on this system" chip.
@@ -32,6 +32,8 @@ export interface AdapterSpec {
   host?: 'required' | 'optional'
   /** Country / city / exact server (the official CLI can pick a location). */
   location?: boolean
+  /** Exact region name or ID passed to the official CLI. */
+  exactRegion?: boolean
   /** NordVPN server group. */
   serverGroup?: boolean
   /** Proton protocol. */
@@ -68,6 +70,31 @@ export const CATALOG: readonly AdapterSpec[] = [
     type: 'forticlient', label: 'FortiClient', mark: 'Fc', group: 'attach',
     os: { windows: 'auto', mac: 'yes', linux: 'yes' },
     host: 'required', autoConnect: true, attach: true, auth: 'main', defaultAuth: 'credentials',
+  },
+  {
+    type: 'mullvad', label: 'Mullvad VPN', mark: 'Mv', group: 'attach',
+    os: { windows: 'auto', mac: 'partial', linux: 'auto' },
+    location: true, autoConnect: true, attach: true, auth: 'none', defaultAuth: 'credentials',
+  },
+  {
+    type: 'pia', label: 'Private Internet Access', mark: 'Pa', group: 'attach',
+    os: { windows: 'auto', mac: 'partial', linux: 'auto' },
+    exactRegion: true, autoConnect: true, attach: true, auth: 'none', defaultAuth: 'credentials',
+  },
+  {
+    type: 'expressvpn', label: 'ExpressVPN', mark: 'Ev', group: 'attach',
+    os: { windows: 'manual', mac: 'partial', linux: 'auto' },
+    exactRegion: true, autoConnect: true, attach: true, auth: 'none', defaultAuth: 'credentials',
+  },
+  {
+    type: 'windscribe', label: 'Windscribe', mark: 'Ws', group: 'attach',
+    os: { windows: 'auto', mac: 'partial', linux: 'auto' },
+    exactRegion: true, autoConnect: true, attach: true, auth: 'none', defaultAuth: 'credentials',
+  },
+  {
+    type: 'cyberghost', label: 'CyberGhost VPN', mark: 'Cg', group: 'attach',
+    os: { windows: 'manual', mac: 'manual', linux: 'partial' },
+    attach: true, auth: 'none', defaultAuth: 'credentials',
   },
   // Direct group: Kongtrol brings the tunnel up itself or drives the vendor CLI.
   {

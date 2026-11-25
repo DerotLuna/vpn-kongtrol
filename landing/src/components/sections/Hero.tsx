@@ -122,7 +122,7 @@ export default function Hero({ os, lang }: Props) {
   const copy = es
     ? {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
-      tag1: '# torre de kongtrol multi-VPN · 10 VPN · Win / macOS / Linux (según la VPN)',
+      tag1: '# torre de kongtrol multi-VPN · 15 VPN · Win / macOS / Linux (según la VPN)',
       tag2: '# panel web + CLI completa',
       title: 'Todas tus VPN en un solo lugar.',
       sub: 'Conecta tus VPN como siempre. Kongtrol las detecta, las vigila, las reconecta si caen y manda cada sitio por la VPN correcta.',
@@ -138,7 +138,7 @@ export default function Hero({ os, lang }: Props) {
     }
     : {
       lastLogin: 'Last login: Mon Jul 14 09:41:07 2026 from 127.0.0.1',
-      tag1: '# multi-VPN kongtrol tower · 10 VPNs · Win / macOS / Linux (varies by VPN)',
+      tag1: '# multi-VPN kongtrol tower · 15 VPNs · Win / macOS / Linux (varies by VPN)',
       tag2: '# web panel + full CLI',
       title: 'All your VPNs in one place.',
       sub: 'Connect your VPNs the way you always do. Kongtrol detects them, watches them, reconnects them if they drop, and sends each site through the right VPN.',

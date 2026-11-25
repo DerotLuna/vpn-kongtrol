@@ -11,6 +11,7 @@ import (
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpndetect"
 )
 
@@ -26,6 +27,7 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 
 	// Build adapter options — detected ones first, with a note.
 	allAdapters := []string{"forticlient", "openvpn", "protonvpn", "nordvpn", "surfshark", "ciscoanyconnect", "wireguard", "globalprotect", "tailscale", "cloudflarewarp"}
+	allAdapters = append(allAdapters, appattach.DesktopTypes()...)
 	detectedKeys := detectedAdapterKeys(detected)
 
 	var adapterOpts []huh.Option[string]
@@ -103,7 +105,7 @@ func collectProfileHuh(lang i18n.Lang, detected []detectedVPN, _ map[string]bool
 			return "", nil, err
 		}
 
-	case "protonvpn", "nordvpn", "surfshark":
+	case "protonvpn", "nordvpn", "surfshark", "mullvad", "pia", "expressvpn", "windscribe", "cyberghost":
 		// Login lives in the official app: no auth block is written
 		// (config defaults auth.method for these types).
 		if err := collectProviderFields(lang, adapterType, &fields); err != nil {

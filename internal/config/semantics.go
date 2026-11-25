@@ -258,14 +258,29 @@ func validateProvider(name string, v VPNConfig) error {
 	if v.Group != "" && v.Type != "nordvpn" {
 		return newValidationError("config.err.group_nord", name)
 	}
-	canSelect := v.Type == "nordvpn" || v.Type == "protonvpn"
-	if !canSelect && (v.Country != "" || v.City != "" || v.Server != "") {
+	canSelect := v.Type == "nordvpn" || v.Type == "protonvpn" || v.Type == "mullvad"
+	if ProviderExactLocation(v.Type) && (v.Country != "" || v.City != "") {
+		return newValidationError("config.err.exact_location", name, v.Type)
+	}
+	if !canSelect && !ProviderExactLocation(v.Type) && (v.Country != "" || v.City != "" || v.Server != "") {
 		return newValidationError("config.err.no_location", name, v.Type)
+	}
+	if v.Type == "mullvad" && v.City != "" && strings.TrimSpace(v.Country) == "" {
+		return newValidationError("config.err.mullvad_city", name)
 	}
 	if v.Server != "" && (v.Country != "" || v.City != "" || v.Group != "") {
 		return newValidationError("config.err.server_combo", name)
 	}
 	return nil
+}
+
+// ProviderExactLocation reports whether server holds a provider region name or ID.
+func ProviderExactLocation(typ string) bool {
+	switch typ {
+	case "pia", "expressvpn", "windscribe":
+		return true
+	}
+	return false
 }
 
 // MaxPriority is the largest vpns.<name>.priority (ADR-0108). 0 means

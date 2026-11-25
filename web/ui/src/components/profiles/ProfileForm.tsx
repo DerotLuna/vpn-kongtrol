@@ -160,7 +160,7 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
         />
       </Section>
 
-      {(spec.config || spec.host || spec.location || spec.autoConnect || spec.serverGroup || spec.protocol) && (
+      {(spec.config || spec.host || spec.location || spec.exactRegion || spec.autoConnect || spec.serverGroup || spec.protocol) && (
         <Section title={t('profiles.section.connect')}>
           {spec.config && (
             <TextField
@@ -230,6 +230,9 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
               hint={t('profiles.hint.server')}
               {...text('server')}
             />
+          )}
+          {spec.exactRegion && (
+            <TextField label={t('profiles.field.providerRegion')} hint={t('profiles.hint.providerRegion')} {...text('server')} />
           )}
           {spec.protocol && (
             <TextField label={t('profiles.field.protocol')} mono placeholder="wireguard" hint={t('profiles.hint.protocol')} {...text('protocol')} />

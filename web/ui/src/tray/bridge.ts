@@ -28,6 +28,11 @@ const ADD_PROVIDER_MESSAGES = {
   nordvpn: 'open-add-nordvpn',
   surfshark: 'open-add-surfshark',
   forticlient: 'open-add-forticlient',
+  mullvad: 'open-add-mullvad',
+  pia: 'open-add-pia',
+  expressvpn: 'open-add-expressvpn',
+  windscribe: 'open-add-windscribe',
+  cyberghost: 'open-add-cyberghost',
 } as const
 
 export type AddProviderMessage = (typeof ADD_PROVIDER_MESSAGES)[keyof typeof ADD_PROVIDER_MESSAGES]

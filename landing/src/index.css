@@ -1370,7 +1370,7 @@ body:has(.nav.is-away) .home-jump { transform: translateY(calc(-100% - var(--nav
    the label, so the button keeps its size when the OS becomes known */
 .th-btn-stack { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; }
 .th-btn-os { font-size: 0.6875rem; font-weight: 500; letter-spacing: 0.02em; }
-/* facts under the buttons (10 VPN · OS · panel + CLI) */
+/* facts under the buttons (15 VPN · OS · panel + CLI) */
 .th-meta { margin: 0 0 18px; }
 .th-btn {
   font-size: 0.8rem; padding: 10px 18px;

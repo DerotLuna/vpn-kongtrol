@@ -37,6 +37,11 @@ const ATTACH: Provider[] = [
   { name: 'NordVPN', mark: 'Nv', kind: 'privacy', os: { win: 'auto', mac: 'manual', linux: 'auto' } },
   { name: 'Proton VPN', mark: 'Pv', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'auto' } },
   { name: 'Surfshark', mark: 'Ss', kind: 'privacy', os: { win: 'manual', mac: 'manual', linux: 'manual' } },
+  { name: 'Mullvad VPN', mark: 'Mv', kind: 'privacy', os: { win: 'auto', mac: 'partial', linux: 'auto' } },
+  { name: 'Private Internet Access', mark: 'Pa', kind: 'privacy', os: { win: 'auto', mac: 'partial', linux: 'auto' } },
+  { name: 'ExpressVPN', mark: 'Ev', kind: 'privacy', os: { win: 'manual', mac: 'partial', linux: 'auto' } },
+  { name: 'Windscribe', mark: 'Ws', kind: 'privacy', os: { win: 'auto', mac: 'partial', linux: 'auto' } },
+  { name: 'CyberGhost VPN', mark: 'Cg', kind: 'privacy', os: { win: 'manual', mac: 'partial', linux: 'partial' } },
   { name: 'FortiClient', mark: 'Fc', kind: 'enterprise', os: { win: 'auto', mac: 'yes', linux: 'yes' } },
 ]
 

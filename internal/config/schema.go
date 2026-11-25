@@ -27,7 +27,7 @@ type GroupConfig struct {
 
 // VPNConfig holds the configuration for a single VPN profile.
 type VPNConfig struct {
-	Type       string `yaml:"type,omitempty"        validate:"required,oneof=forticlient openvpn protonvpn nordvpn surfshark ciscoanyconnect wireguard globalprotect tailscale cloudflarewarp"`
+	Type       string `yaml:"type,omitempty"        validate:"required,oneof=forticlient openvpn protonvpn nordvpn surfshark ciscoanyconnect wireguard globalprotect tailscale cloudflarewarp mullvad pia expressvpn windscribe cyberghost"`
 	Version    string `yaml:"version,omitempty"`
 	Host       string `yaml:"host,omitempty"`
 	Port       int    `yaml:"port,omitempty"`
@@ -82,6 +82,7 @@ type VPNConfig struct {
 // provider's official app.
 var ProviderTypes = map[string]bool{
 	"forticlient": true, "protonvpn": true, "nordvpn": true, "surfshark": true,
+	"mullvad": true, "pia": true, "expressvpn": true, "windscribe": true, "cyberghost": true,
 }
 
 // AdapterExtra returns the AdapterConfig.Extra map for this profile — the
@@ -390,7 +391,7 @@ type AlertAction struct {
 // providers whose login lives in the official app (protonvpn, nordvpn,
 // surfshark) need no auth block: auth.method defaults to "credentials".
 func (v VPNConfig) WithDefaults() VPNConfig {
-	if v.Auth.Method == "" && (v.Type == "protonvpn" || v.Type == "nordvpn" || v.Type == "surfshark") {
+	if v.Auth.Method == "" && ProviderTypes[v.Type] && v.Type != "forticlient" {
 		v.Auth.Method = "credentials"
 	}
 	return v

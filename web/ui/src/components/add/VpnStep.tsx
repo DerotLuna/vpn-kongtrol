@@ -170,7 +170,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
     error: err(f),
   })
   const hasAuth = spec.auth !== 'none'
-  const moreFields: DraftField[] = ['username', 'password', 'country', 'city', 'host']
+  const moreFields: DraftField[] = ['username', 'password', 'country', 'city', 'server', 'iface', 'host']
   const moreProblem = moreFields.some((f) => f !== 'host' && err(f))
 
   const submit = async (e: FormEvent) => {
@@ -227,7 +227,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
         />
       )}
       {spec.auth === 'none' && <p className="k-add__muted k-add__small">{t('profiles.signin.app', { app: spec.label })}</p>}
-      {(hasAuth || spec.location || spec.autoConnect || spec.host === 'optional') && (
+      {(hasAuth || spec.location || spec.exactRegion || spec.attach || spec.autoConnect || spec.host === 'optional') && (
         <details className="k-add-more" open={moreProblem || undefined}>
           <summary>{t('add.more')}</summary>
           <div className="k-add-more__body">
@@ -248,7 +248,14 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
               <>
                 <TextField label={t('profiles.field.country')} placeholder={t('profiles.placeholder.country')} {...text('country')} />
                 <TextField label={t('profiles.field.city')} {...text('city')} />
+                <TextField label={t('profiles.field.server')} {...text('server')} />
               </>
+            )}
+            {spec.exactRegion && (
+              <TextField label={t('profiles.field.providerRegion')} hint={t('profiles.hint.providerRegion')} {...text('server')} />
+            )}
+            {spec.attach && (
+              <TextField label={t('profiles.field.interface')} hint={t('profiles.hint.interface')} {...text('iface')} />
             )}
             {spec.autoConnect && (
               <Switch

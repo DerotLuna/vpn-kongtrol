@@ -296,6 +296,11 @@ const (
 	flyoutOpenAddNordVPN
 	flyoutOpenAddSurfshark
 	flyoutOpenAddFortiClient
+	flyoutOpenAddMullvad
+	flyoutOpenAddPia
+	flyoutOpenAddExpressvpn
+	flyoutOpenAddWindscribe
+	flyoutOpenAddCyberghost
 )
 
 // flyoutAddProviders maps each "open-add-<type>" action to its adapter type.
@@ -304,6 +309,11 @@ var flyoutAddProviders = map[flyoutAction]string{
 	flyoutOpenAddNordVPN:     "nordvpn",
 	flyoutOpenAddSurfshark:   "surfshark",
 	flyoutOpenAddFortiClient: "forticlient",
+	flyoutOpenAddMullvad:     "mullvad",
+	flyoutOpenAddPia:         "pia",
+	flyoutOpenAddExpressvpn:  "expressvpn",
+	flyoutOpenAddWindscribe:  "windscribe",
+	flyoutOpenAddCyberghost:  "cyberghost",
 }
 
 // addProviderPath is the deep link of "Agregar <App>" (web/ui
@@ -346,6 +356,11 @@ var flyoutMessages = map[string]flyoutAction{
 	"open-add-nordvpn":     flyoutOpenAddNordVPN,
 	"open-add-surfshark":   flyoutOpenAddSurfshark,
 	"open-add-forticlient": flyoutOpenAddFortiClient,
+	"open-add-mullvad":     flyoutOpenAddMullvad,
+	"open-add-pia":         flyoutOpenAddPia,
+	"open-add-expressvpn":  flyoutOpenAddExpressvpn,
+	"open-add-windscribe":  flyoutOpenAddWindscribe,
+	"open-add-cyberghost":  flyoutOpenAddCyberghost,
 }
 
 // parseFlyoutMessage returns the action of a page message, which must be

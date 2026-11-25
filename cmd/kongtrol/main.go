@@ -22,13 +22,18 @@ import (
 	// Adapter registrations — order is irrelevant; all run via init().
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/ciscoanyconnect"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/cloudflarewarp"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/cyberghost"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/expressvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/forticlient"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/globalprotect"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/mullvad"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/nordvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/pia"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/protonvpn"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/surfshark"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/tailscale"
+	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/windscribe"
 	_ "github.com/vpn-kongtrol/kongtrol/internal/vpn/wireguard"
 )
 

@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/vpn/appattach"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
 )
 
@@ -48,13 +49,19 @@ type standard struct {
 func Probes() []Probe {
 	out := make([]Probe, len(probes))
 	copy(out, probes)
+	for _, typ := range appattach.DesktopTypes() {
+		desktop, _ := appattach.DesktopDefinition(typ)
+		if len(desktop.Locations()) > 0 {
+			out = append(out, Probe{Label: desktop.App.DisplayName, AdapterType: typ})
+		}
+	}
 	return out
 }
 
 // DetectAll runs every probe and returns the clients found.
 func DetectAll() []Client {
 	var found []Client
-	for _, p := range probes {
+	for _, p := range Probes() {
 		if path, ok := Detect(p); ok {
 			found = append(found, Client{Label: p.Label, AdapterType: p.AdapterType, Path: path, VersionArgs: p.VersionArgs})
 		}
@@ -97,6 +104,9 @@ func Detect(p Probe) (string, bool) {
 // binary on this OS. Empty means unknown or the adapter is unsupported here.
 // OpenVPN is resolved by openvpn.FindBinary and is not listed.
 func StandardLocations(adapterType string) []string {
+	if desktop, ok := appattach.DesktopDefinition(adapterType); ok {
+		return desktop.Locations()
+	}
 	return append([]string(nil), standards[adapterType].locations...)
 }
 
@@ -116,7 +126,7 @@ func FindStandard(adapterType string) (string, bool) {
 		p, err := openvpn.FindBinary("")
 		return p, err == nil
 	}
-	for _, loc := range standards[adapterType].locations {
+	for _, loc := range StandardLocations(adapterType) {
 		if filepath.IsAbs(loc) {
 			if fi, err := os.Stat(loc); err == nil && fi.Mode().IsRegular() {
 				return loc, true
@@ -132,7 +142,7 @@ func FindStandard(adapterType string) (string, bool) {
 
 // Known reports whether this OS has standard locations for the adapter type.
 func Known(adapterType string) bool {
-	return adapterType == "openvpn" || len(standards[adapterType].locations) > 0
+	return adapterType == "openvpn" || len(StandardLocations(adapterType)) > 0
 }
 
 // IsStandard reports whether path is the binary the adapter already finds on
