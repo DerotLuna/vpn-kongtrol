@@ -1,4 +1,4 @@
-/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.4.0 · 2026-11-25
+/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.5.0 · 2026-11-25
    DESIGN.md tokens only; 44px targets; 11px floor; motion only for the
    overlay's state change, off with reduced motion. Compact (owner feedback
    2026-11-19): 520px wide, 12px rhythm, 32px icon tiles; one primary
@@ -25,6 +25,12 @@
   background: var(--surface); font-size: 13px; overflow-wrap: anywhere;
 }
 .k-add-file__found { overflow-wrap: anywhere; }
+/* The automatic check (ADR-0118): the loader and the answer share one line
+   of room, so the form does not jump when the check ends. */
+.k-add-file__result { min-height: 24px; }
+.k-add-file__checking { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text-muted); }
+.k-add-file__ok > p { margin: 0; overflow-wrap: anywhere; }
+.k-add-file__ok > p + p { margin-top: 4px; }
 @media (max-width: 599px) {
   .k-add-missing__actions > .k-btn { flex: 1 1 100%; }
 }

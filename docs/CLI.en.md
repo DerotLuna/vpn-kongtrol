@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.27 · 2026-11-25
+Version 1.28 · 2026-11-25
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -558,6 +558,7 @@ kongtrol profile import <file.conf|file.ovpn> [certificates…] [flags]
 
 | Flags | Description |
 |---|---|
+| `--check` | only check the file (and its certificates) and say what an import would do; saves nothing |
 | `--create` | also create the VPN profile that uses the file |
 | `--name string` | name of the saved file, without extension (default: the file's own) |
 | `--overwrite` | replace a file imported earlier with the same name |

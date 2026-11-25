@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.28 · 2026-11-25
+Versión 2.29 · 2026-11-25
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -558,6 +558,7 @@ kongtrol profile import <archivo.conf|archivo.ovpn> [certificados…] [opciones]
 
 | Opciones | Descripción |
 |---|---|
+| `--check` | solo revisa el archivo (y sus certificados) y dice qué haría la importación; no guarda nada |
 | `--create` | crea también el perfil VPN que usa el archivo |
 | `--name string` | nombre del archivo guardado, sin extensión (por defecto, el del archivo) |
 | `--overwrite` | reemplaza un archivo importado antes con el mismo nombre |

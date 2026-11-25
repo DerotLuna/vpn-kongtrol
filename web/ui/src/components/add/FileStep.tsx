@@ -1,4 +1,4 @@
-// Kongtrol UI — B: "Importar un archivo de VPN" · v1.4.0 · 2026-11-25
+// Kongtrol UI — B: "Importar un archivo de VPN" · v1.5.0 · 2026-11-25
 //
 // The type comes from the extension and, for a .conf, from its content
 // (profileimport.TypeForContent, ADR-0080: OpenVPN GUI uses .conf), the name
@@ -25,15 +25,27 @@
 // going back) aborts the request, the daemon's request context ends and
 // the dialog closes; an abort reads as cancelled, never as an error.
 // "Guardar y activar" saves and connects; "Guardar" only saves (ADR-0115).
+//
+// Automatic check (ADR-0118): every file chosen, dropped or picked, every
+// certificate added and every folder picked runs the same import with
+// `check: true` (nothing stored): a loader in the result area while it runs
+// (same place, no jump), then the answer at once: ready (type, files that go
+// inside, where they were found, Proton hint, a name already taken), the
+// missing-files banner, or the refusal with what to do. Both save buttons
+// stay off, with the reason under them, until the latest check passed. A
+// newer check aborts the previous one, and leaving the step aborts it too.
+// Saving still runs the real import (the daemon checks again).
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ApiError, isAbort } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
 import {
+  useCheckProfileFile,
   useImportProfileFile,
   usePickAvailable,
   usePickImportFolder,
   usePickProfileFile,
+  type ImportCheckResult,
   type ImportRequest,
   type VPNProfile,
 } from '../../data/profiles'
@@ -92,6 +104,12 @@ interface Stored {
   found?: string | undefined
 }
 
+/** The latest automatic check of one choice (ADR-0118). */
+type Check =
+  | { for: number; state: 'running' }
+  | { for: number; state: 'ok'; result: ImportCheckResult }
+  | { for: number; state: 'failed'; error: unknown }
+
 const AUTH_LABEL: Record<AuthMethod, MessageKey> = {
   certificate: 'profiles.auth.certificate',
   credentials: 'profiles.auth.credentials',
@@ -127,6 +145,12 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const drag = dropZone.drag
   const [noPicker, setNoPicker] = useState(false)
   const importFile = useImportProfileFile()
+  const checkFile = useCheckProfileFile()
+  const [check, setCheck] = useState<Check | null>(null)
+  /** The check in flight: a newer one aborts it, and so does leaving the step. */
+  const checking = useRef<AbortController | null>(null)
+  const checkSeq = useRef(0)
+  useEffect(() => () => checking.current?.abort(), [])
   const pickAvailable = usePickAvailable()
   const pickFile = usePickProfileFile()
   const pickFolder = usePickImportFolder()
@@ -147,6 +171,37 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
 
   useEffect(() => onDirty(chosen !== null), [chosen, onDirty])
 
+  /** The import body for a choice (the check sends the same, plus `check`). */
+  const bodyFor = (c: Chosen, as: string, files: Extra[], dir: string | undefined, overwrite: boolean): ImportRequest => {
+    const body: ImportRequest = c.path
+      ? { name: as, type: c.type, path: c.path, overwrite }
+      : { name: as, type: c.type, content_base64: c.content, file_name: c.fileName, overwrite }
+    if (files.length > 0) body.files = files.map((f) => ({ name: f.name, content_base64: f.content }))
+    if (dir) body.ref_dir = dir
+    return body
+  }
+
+  /** The automatic check (ADR-0118): the daemon evaluates everything and stores nothing. */
+  const runCheck = async (c: Chosen, files: Extra[], dir: string | undefined, profileName: string) => {
+    checking.current?.abort()
+    const ctl = new AbortController()
+    checking.current = ctl
+    const seq = ++checkSeq.current
+    setRefusal(null)
+    setCheck({ for: c.id, state: 'running' })
+    try {
+      const result = await checkFile.mutateAsync({ body: bodyFor(c, importName(profileName, c.fileName), files, dir, false), signal: ctl.signal })
+      if (seq !== checkSeq.current) return
+      setMissing([])
+      setCheck({ for: c.id, state: 'ok', result })
+      if (result.needs_credentials) setAuthMethod((m) => (m === 'certificate' ? 'credentials' : m))
+    } catch (err) {
+      if (isAbort(err) || seq !== checkSeq.current) return
+      setMissing(err instanceof ApiError && err.key === MISSING_KEY && Array.isArray(err.body.missing) ? (err.body.missing as string[]) : [])
+      setCheck({ for: c.id, state: 'failed', error: err })
+    }
+  }
+
   const select = (c: Omit<Chosen, 'id'>, added: Extra[]) => {
     const next = { ...c, id: ++choiceSeq }
     chosenId.current = next.id
@@ -157,8 +212,10 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     setFileError(null)
     setChosen(next)
     setExtras(added)
-    setName(profileNameFromFile(c.fileName, names))
+    const proposed = profileNameFromFile(c.fileName, names)
+    setName(proposed)
     setAuthMethod(c.needsCreds ? 'credentials' : specOf(c.type).defaultAuth)
+    void runCheck(next, added, undefined, proposed)
   }
 
   /** Reads certificates / keys; null (and the reason shown) when one cannot go. */
@@ -200,7 +257,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
         if (!added) return
         setFileError(null)
         setExtras(added)
-        if (missing.length > 0) void submit(undefined, false, added)
+        void runCheck(chosen, added, refDir, name)
         return
       }
       const first = files[0]
@@ -275,7 +332,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
       const res = await pickFolder.mutateAsync(pickSignal())
       if (res.cancelled) return
       setRefDir(res.path)
-      void submit(undefined, false, extras, res.path)
+      if (chosen) void runCheck(chosen, extras, res.path, name)
     } catch (err) {
       if (isAbort(err)) return
       if (err instanceof ApiError && err.key === PICKER_UNAVAILABLE) setNoPicker(true)
@@ -286,6 +343,8 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const submit = async (e?: Pick<FormEvent, 'preventDefault'>, overwrite = false, files: Extra[] = extras, dir: string | undefined = refDir) => {
     e?.preventDefault()
     if (act.busy || importFile.isPending) return
+    // Enter in a field submits too: only after the latest check passed.
+    if (chosen && !checkPassed) return
     setTried(true)
     if (!chosen) {
       setFileError({ message: t('add.file.required'), fix: t('add.file.required.fix') })
@@ -302,11 +361,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     let path = reuse?.path ?? ''
     let provider = reuse?.provider
     if (!path) {
-      const body: ImportRequest = chosen.path
-        ? { name: as, type: chosen.type, path: chosen.path, overwrite }
-        : { name: as, type: chosen.type, content_base64: chosen.content, file_name: chosen.fileName, overwrite }
-      if (files.length > 0) body.files = files.map((f) => ({ name: f.name, content_base64: f.content }))
-      if (dir) body.ref_dir = dir
+      const body = bodyFor(chosen, as, files, dir, overwrite)
       try {
         const res = await importFile.mutateAsync(body)
         // Another file was chosen while this one was being stored: drop this answer.
@@ -338,6 +393,24 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
 
   const showCreds = chosen?.type === 'openvpn' && authMethod !== 'certificate'
   const stillMissing = missing.filter((m) => !extras.some((x) => sameName(x.name, m)))
+  const current = chosen && check?.for === chosen.id ? check : null
+  const checkRunning = current?.state === 'running'
+  const checkOk = current?.state === 'ok' ? current.result : null
+  const checkPassed = checkOk !== null
+  // What the result area shows: a save refusal first, else a failed check.
+  const shown = refusal ?? (current?.state === 'failed' ? { error: current.error, exists: false } : null)
+  const needsCreds = (chosen?.needsCreds ?? false) || (checkOk?.needs_credentials ?? false)
+  const found = checkOk?.found_in ?? (chosen && stored?.for === chosen.id ? stored.found : undefined)
+  // A name already taken, for the name the check used (the user may have changed it since).
+  const taken =
+    chosen && checkOk?.exists && checkOk.file.replace(/\.[^.]*$/, '') === importName(name.trim(), chosen.fileName) ? checkOk.file : null
+  const blocked = !chosen
+    ? t('add.file.chooseFirst')
+    : checkRunning || !current
+      ? t('add.file.waitCheck')
+      : checkPassed
+        ? null
+        : t('add.file.fixFirst')
 
   return (
     <form
@@ -405,9 +478,9 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
           {chosen && extras.length > 0 && (
             <p className="k-add__small">{t('add.file.extras', { files: extras.map((x) => x.name).join(', ') })}</p>
           )}
-          {chosen && stored?.for === chosen.id && stored.found && (
+          {chosen && found && (
             <p className="k-add__small k-add-file__found">
-              {t('add.file.found', { file: chosen.fileName, dir: stored.found })}
+              {t('add.file.found', { file: chosen.fileName, dir: found })}
             </p>
           )}
         </div>
@@ -418,11 +491,31 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
         )}
       </div>
 
-      {refusal &&
-        (refusal.exists ? (
+      {chosen && (
+        <div className="k-add-file__result" aria-live="polite" aria-busy={checkRunning || undefined}>
+          {checkRunning ? (
+            <p className="k-add-file__checking">
+              <span className="k-spinner" aria-hidden="true" /> {t('add.file.checking')}
+            </p>
+          ) : !shown && checkOk ? (
+            <div className="k-add-file__ok">
+              <p className="k-add-file__ready">
+                <strong>{t('add.file.checkOk', { type: specOf(checkOk.type).label })}</strong>
+              </p>
+              {checkOk.included.length > 0 && <p className="k-add__small">{t('add.file.checkIncluded', { files: checkOk.included.join(', ') })}</p>}
+              {taken && <p className="k-add__small">{t('add.file.checkExists', { file: taken })}</p>}
+              {checkOk.hint && <p className="k-add__small">{checkOk.hint}</p>}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {!checkRunning &&
+        shown &&
+        (shown.exists ? (
           <Banner
             tone="caution"
-            title={describeError(refusal.error, t).message}
+            title={describeError(shown.error, t).message}
             actions={
               <>
                 <Button variant="outlined" size="sm" onClick={() => setRefusal(null)}>
@@ -434,7 +527,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
               </>
             }
           >
-            <span>{describeError(refusal.error, t).fix}</span>
+            <span>{describeError(shown.error, t).fix}</span>
           </Banner>
         ) : stillMissing.length > 0 ? (
           // Not the kit Banner: its actions sit beside the text, which squeezed
@@ -470,7 +563,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
             </div>
           </div>
         ) : (
-          <ErrorBanner error={refusal.error} />
+          <ErrorBanner error={shown.error} />
         ))}
 
       {chosen && (
@@ -488,7 +581,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
             }}
             error={nameError}
           />
-          {chosen.needsCreds && <p className="k-add__lead">{t('add.file.creds')}</p>}
+          {needsCreds && <p className="k-add__lead">{t('add.file.creds')}</p>}
           {showCreds && (
             <>
               <TextField label={t('profiles.field.username')} autoComplete="off" spellCheck={false} value={username} onChange={(e) => setUsername(e.target.value)} />
@@ -530,6 +623,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
       <ActivateFooter
         phase={act.phase}
         intent={act.intent}
+        blocked={blocked}
         onSaveOnly={() => {
           how.current = 'save'
           void submit()

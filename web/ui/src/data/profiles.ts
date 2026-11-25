@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.6.0 · 2026-11-25
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.7.0 · 2026-11-25
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -136,6 +136,26 @@ export interface ImportRequest {
   file_name?: string
   /** Folder picked with "Elegir la carpeta donde están": the .ovpn's files are read there (ADR-0112). */
   ref_dir?: string
+  /** Check only: the daemon runs the whole import and stores nothing (ADR-0118). Set by `checkFile`. */
+  check?: boolean
+}
+
+/** POST /api/v1/vpns/import with `check: true` answer (200, ADR-0118): what an import would do; refusals come as errors. */
+export interface ImportCheckResult {
+  status: 'checked'
+  type: 'wireguard' | 'openvpn'
+  /** The file name it would be stored as, and whether one of that name is already imported (the import then asks to replace). */
+  file: string
+  exists: boolean
+  /** Referenced files that would go inside the stored .ovpn. */
+  included: string[]
+  missing: string[]
+  /** The .ovpn has `auth-user-pass`: the profile needs a username and password. */
+  needs_credentials: boolean
+  found_in?: string
+  provider?: string
+  hint?: string
+  hint_key?: string
 }
 
 /** POST /api/v1/vpns/import answer (201). */
@@ -212,6 +232,9 @@ export const profilesApi = {
   remove: (name: string) => http.delete<ProfileChangeResult>(`/api/v1/vpns/${enc(name)}`),
   /** Validated like the privileged helper does; 409 api.err.import_exists unless overwrite. */
   importFile: (body: ImportRequest) => http.post<ImportResult>('/api/v1/vpns/import', body),
+  /** The same import, stored nowhere (ADR-0118): the answer says what saving would do. */
+  checkFile: (body: ImportRequest, signal?: AbortSignal) =>
+    http.post<ImportCheckResult>('/api/v1/vpns/import', { ...body, check: true }, signal ? { signal } : {}),
   /** Whether the daemon can open the OS's own "Open file" dialog; an older daemon (404) cannot. */
   pickAvailable: () =>
     http.get<{ available: boolean }>('/api/v1/vpns/import/pick').then(
@@ -396,6 +419,17 @@ export function useDeleteProfile(
 /** "Importar archivo": stores the file; the form then fills its path. Not cached. */
 export function useImportProfileFile() {
   return useMutation<ImportResult, unknown, ImportRequest>({ mutationFn: profilesApi.importFile })
+}
+
+/**
+ * The automatic check of the "＋ Agregar" file step (ADR-0118): runs on every
+ * file, certificate or folder change. Not cached; the caller passes a signal
+ * and aborts the previous check when a newer one starts (and on unmount).
+ */
+export function useCheckProfileFile() {
+  return useMutation<ImportCheckResult, unknown, { body: ImportRequest; signal: AbortSignal }>({
+    mutationFn: ({ body, signal }) => profilesApi.checkFile(body, signal),
+  })
 }
 
 /** "Elegir archivo" opens the OS's own dialog when the daemon can (ADR-0105); else the browser's input. */

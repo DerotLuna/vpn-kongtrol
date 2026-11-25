@@ -21,12 +21,39 @@ export function json(body: unknown, status = 200): Promise<Response> {
   return Promise.resolve(new Response(JSON.stringify(body), { status }))
 }
 
+/** Whether a request is the file step's automatic check (ADR-0118). */
+export function isImportCheck(init?: RequestInit): boolean {
+  try {
+    return (JSON.parse(String(init?.body)) as { check?: boolean }).check === true
+  } catch {
+    return false
+  }
+}
+
+/** A check that passed, for the body sent (ADR-0118). */
+export function passedCheck(init?: RequestInit, extra: Record<string, unknown> = {}) {
+  const body = JSON.parse(String(init?.body)) as { name: string; type: 'wireguard' | 'openvpn' }
+  return {
+    status: 'checked',
+    type: body.type,
+    file: `${body.name}${body.type === 'openvpn' ? '.ovpn' : '.conf'}`,
+    exists: false,
+    included: [],
+    missing: [],
+    needs_credentials: false,
+    ...extra,
+  }
+}
+
 export type Routes = Record<string, (init?: RequestInit) => Promise<Response>>
 
 /**
  * Stubs fetch with "METHOD path" routes; anything else answers 404. The live
  * feed's ticket (POST /api/v1/ws-ticket) and the Reglas page's read-only
  * "Rutas que trae cada VPN" (GET /api/v1/vpns/routes, empty) answer by default.
+ * The file step's automatic check (POST /api/v1/vpns/import with `check`,
+ * ADR-0118) goes to the route "POST /api/v1/vpns/import?check" when a test
+ * gives one, else it passes; the import route only sees real imports.
  */
 export function stubFetch(routes: Routes) {
   const all: Routes = {
@@ -35,7 +62,12 @@ export function stubFetch(routes: Routes) {
     ...routes,
   }
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
-    const route = all[`${init?.method ?? 'GET'} ${String(input)}`]
+    let key = `${init?.method ?? 'GET'} ${String(input)}`
+    if (key === 'POST /api/v1/vpns/import' && isImportCheck(init)) {
+      key = 'POST /api/v1/vpns/import?check'
+      if (!all[key]) return json(passedCheck(init))
+    }
+    const route = all[key]
     return route ? route(init) : json({ error: 'not found' }, 404)
   })
   vi.stubGlobal('fetch', fetchMock)

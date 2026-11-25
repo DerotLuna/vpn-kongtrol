@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.34 · 2026-11-25
+Version 1.35 · 2026-11-25
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -436,6 +436,11 @@ while the tunnel is up; DELETE lists all references (`api.err.vpn_in_use`).
 `.conf`/`.ovpn` validated by the helper's own `privops` validators, refusals mapped to specific
 `api.err.import_*` keys (hook, directive, script_security, file_ref, not_wireguard), stored 0600 in
 `~/.kongtrol/configs/` (ADR-0042); the result carries `provider` (`profileimport.ProviderForContent`, Proton only) and the API adds a translated `hint` (ADR-0103).
+`"check": true` (`profileimport.Request.Check`, ADR-0118) runs that same import and stops before writing: 200
+`{"status":"checked","type","file","exists","included","missing":[],"needs_credentials",…}`, the same refusals; a taken
+name is `exists` (not 409); never elevates; no config lock, no `changed` frame (`markRequest`), audited as
+`config.profile.import_check`. The Add sheet's file step runs it on every file, certificate or folder change (loader,
+newer check aborts older) and enables both save buttons only after it passed; CLI `kongtrol profile import --check`.
 Files an `.ovpn` names (`ca ca.crt`…, ADR-0105) are inlined into the stored copy by
 `profileimport.Resolve` (`Refs{Dir, Files}` → the helper's sanitizer): `Dir` is the picked file's
 folder (only inside it, no links/junctions, regular files ≤ 256 KiB, `O_NOFOLLOW` + `os.SameFile`),

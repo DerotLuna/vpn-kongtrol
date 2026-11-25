@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.17.0 · 2026-11-24
+Version 2.18.0 · 2026-11-25
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -53,6 +53,7 @@ contents — API requests are logged at the equivalent of Kubernetes' `Metadata`
 | Kill switch, DNS guard, public IP lookup, per-profile kill switch toggled | **Added** | `security.killswitch.set`, `security.dnsguard.set`, `security.publicip.set`, `security.profile_killswitch.set` | SECURITY |
 | Public IP checked on demand | **Added** | `security.publicip.check` | INFO |
 | Profile create / update (incl. rename) / delete / import of a `.conf`/`.ovpn` (incl. the elevated read of a root-only file) | **Added** (name and result; never the file or the password) | `config.profile.create`, `.update`, `.delete`, `.import` | SECURITY |
+| Import check (the file step's automatic check, `"check": true`: nothing stored, ADR-0118) | **Added** (result only; never the file) | `config.profile.import_check` | INFO |
 | Policy, group and scheduler rule create / update / delete; policy reload | **Added** | `config.policy.*`, `config.group.*`, `config.schedule.*` | INFO |
 | Settings saved (incl. audit log, kill switch mode, public IP endpoints) | **Added** | `config.settings.update` | SECURITY |
 | Preferences, update notice on/off | **Added** | `config.preferences.update`, `config.update_check.set` | INFO |
@@ -484,6 +485,13 @@ ADR-0112 widens where those files may come from, still as the user and still inl
 - **Folder dialog** `POST /api/v1/vpns/import/pick-folder` (audited as
   `config.profile.import_pick_folder`, no path): same dialog rules as the file dialog; answers only a
   clean local real folder, reads nothing; the import then uses it as `ref_dir` (checked again).
+
+The automatic check of the file step (ADR-0118, `POST /api/v1/vpns/import` with `"check": true`,
+`kongtrol profile import --check`) runs the same import code and stops before writing: it reads
+exactly what an import of the same request reads, with every restriction above (no links or
+junctions, size caps, PEM only outside the folder, never through the helper or the permission
+prompt: `elevate` is ignored), stores nothing, answers only names, type and the folder where
+certificates were found, and is audited as `config.profile.import_check` without the body.
 
 Repository protections: CodeQL (GitHub default setup) on every push and pull request, Renovate for dependency updates, secret scanning
 with push protection (enabled 2026-11-20).

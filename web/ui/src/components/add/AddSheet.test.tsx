@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../App'
 import { resetSessionForTests, startAuth } from '../../api/auth'
 import { RESTART_TIMING, resetRestartPhase, type VPNProfile } from '../../data/profiles'
-import { FakeSocket, helperReady, json, stubFetch, tunnel, type Routes } from '../../test/fakes'
+import { FakeSocket, isImportCheck, passedCheck, helperReady, json, stubFetch, tunnel, type Routes } from '../../test/fakes'
 
 function profile(name: string, type: VPNProfile['type'] = 'nordvpn'): VPNProfile {
   return {
@@ -49,10 +49,14 @@ function daemon(start: VPNProfile[], extra: Routes = {}) {
   return { state, routes }
 }
 
+/** The last body sent to that route (the file step's automatic checks are not imports, ADR-0118). */
 function bodyOf(fetchMock: ReturnType<typeof stubFetch>, key: string): unknown {
-  const call = fetchMock.mock.calls.findLast(([url, init]) => `${init?.method ?? 'GET'} ${String(url)}` === key)
+  const call = fetchMock.mock.calls.findLast(([url, init]) => `${init?.method ?? 'GET'} ${String(url)}` === key && !isImportCheck(init))
   return call ? JSON.parse(String(call[1]?.body)) : undefined
 }
+
+/** The automatic check passed (ADR-0118): the save buttons are on. */
+const ready = (sheet: HTMLElement) => within(sheet).findByText(/^Ready: /)
 
 const called = (fetchMock: ReturnType<typeof stubFetch>, key: string) =>
   fetchMock.mock.calls.some(([url, init]) => `${init?.method ?? 'GET'} ${String(url)}` === key)
@@ -403,6 +407,7 @@ describe('B: import a VPN file', () => {
     expect(within(sheet).getByText('This file asks for a username and password.')).toBeInTheDocument()
     expect(within(sheet).getByRole('textbox', { name: /^Name/ })).toHaveValue('Oficina')
     expect(within(sheet).getByRole('button', { name: /How it signs in/ })).toHaveTextContent('Username and password')
+    await ready(sheet)
     await userEvent.type(within(sheet).getByRole('textbox', { name: 'Username' }), 'ana')
     await userEvent.type(within(sheet).getByLabelText('Password'), 's3cret')
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
@@ -454,7 +459,8 @@ describe('B: import a VPN file', () => {
     await within(sheet).findByRole('button', { name: 'Choose file' })
     const input = sheet.querySelector<HTMLInputElement>('input[type="file"]')!
     await userEvent.upload(input, new File(['[Interface]\n# NetShield = 1\nAddress = 10.2.0.2/32\n'], 'proton-ch.conf'))
-    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save' }))
+    await ready(sheet)
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(
       await within(sheet).findByText('This file is from your Proton account. Do not connect it while the Proton app is connected: they clash.'),
     ).toBeInTheDocument()
@@ -488,6 +494,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     drop(zoneOf(sheet), [new File(['CA'], 'ca.crt'), new File([ovpn], 'Oficina.ovpn'), new File(['TA'], 'ta.key')])
     expect(await within(sheet).findByText('Oficina.ovpn · OpenVPN')).toBeInTheDocument()
     expect(within(sheet).getByText('Together with: ca.crt, ta.key')).toBeInTheDocument()
+    await ready(sheet)
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
     const body = bodyOf(fetchMock, 'POST /api/v1/vpns/import') as { files: { name: string; content_base64: string }[] }
@@ -497,11 +504,10 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     ])
   })
 
-  it('missing files come back by name; "Add <name>" imports again with them', async () => {
+  it('missing files come back by name as soon as the file is chosen; "Add <name>" checks again with them (ADR-0118)', async () => {
     let calls = 0
     const { sheet, fetchMock } = await openFileStep({
-      'POST /api/v1/vpns/import': (init) => {
-        calls++
+      'POST /api/v1/vpns/import?check': (init) => {
         const body = JSON.parse(String(init?.body)) as { files?: { name: string }[] }
         if (!body.files?.some((f) => f.name === 'ta.key')) {
           return json(
@@ -509,13 +515,20 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
             400,
           )
         }
+        return json(passedCheck(init, { included: ['ca.crt', 'ta.key'] }))
+      },
+      'POST /api/v1/vpns/import': () => {
+        calls++
         return imported('Oficina')
       },
     })
     drop(zoneOf(sheet), [new File([ovpn], 'Oficina.ovpn'), new File(['CA'], 'ca.crt')])
     await within(sheet).findByText('Oficina.ovpn · OpenVPN')
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
+    // No "Save" pressed: the check found what is missing, and saving waits for it.
     expect(await within(sheet).findByText('This .ovpn needs 1 more file')).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(within(sheet).getByRole('button', { name: 'Save and activate' })).toBeDisabled()
+    expect(within(sheet).getByText('Solve what is shown above to save.')).toBeInTheDocument()
     const addKey = within(sheet).getByRole('button', { name: 'Add ta.key' })
     const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
     await userEvent.click(addKey)
@@ -523,8 +536,12 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     click.mockRestore()
     const extraInput = sheet.querySelectorAll<HTMLInputElement>('input[type="file"]')[1]!
     await userEvent.upload(extraInput, new File(['TA'], 'ta.key'))
+    await ready(sheet)
+    expect(within(sheet).getByText('They will go inside the profile: ca.crt, ta.key')).toBeInTheDocument()
+    expect(calls).toBe(0)
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
-    expect(calls).toBe(2)
+    expect(calls).toBe(1)
     const body = bodyOf(fetchMock, 'POST /api/v1/vpns/import') as { files: { name: string }[] }
     expect(body.files.map((f) => f.name)).toEqual(['ca.crt', 'ta.key'])
   })
@@ -547,6 +564,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     const zone = zoneOf(sheet)
     drop(zone, [new File(['client\nremote a 1\n'], 'Oficina.ovpn')])
     await within(sheet).findByText('Oficina.ovpn · OpenVPN')
+    await ready(sheet)
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(creates).toBe(1))
 
@@ -561,6 +579,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     drop(zone, [new File(['client\nremote b 1\n'], 'Oficina.ovpn')])
     expect(zone).not.toHaveAttribute('data-drag')
     await waitFor(() => expect(within(sheet).queryByText('the daemon could not save it')).not.toBeInTheDocument())
+    await ready(sheet)
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
     expect(bodies.map((b) => atob(b.content_base64 ?? ''))).toEqual(['client\nremote a 1\n', 'client\nremote b 1\n'])
@@ -598,6 +617,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     await waitFor(() => expect(called(fetchMock, 'GET /api/v1/vpns/import/pick')).toBe(true))
     await userEvent.click(within(sheet).getByRole('button', { name: 'Choose file' }))
     expect(await within(sheet).findByText('Oficina.ovpn · OpenVPN')).toBeInTheDocument()
+    await ready(sheet)
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
     expect(bodyOf(fetchMock, 'POST /api/v1/vpns/import')).toEqual({ name: 'Oficina', type: 'openvpn', path: 'C:\\VPN\\Oficina.ovpn', overwrite: false })

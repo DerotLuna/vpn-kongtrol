@@ -1,4 +1,4 @@
-// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.3.0 · 2026-11-25
+// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.4.0 · 2026-11-25
 //
 // The one place every "add" entry in the panel opens: connect a VPN the
 // user already has, import a .conf / .ovpn, or send a site through a VPN.
@@ -62,6 +62,13 @@ const es = {
   'add.file.pickingFolder': 'Elige la carpeta en la ventana que se abrió (si no la ves, búscala en la barra de tareas).',
   'add.file.found': 'Encontré los certificados junto a {file} en {dir}',
   'add.file.included': 'Guardados dentro del perfil: {files}',
+  'add.file.checking': 'Revisando el archivo…',
+  'add.file.checkOk': 'Listo: {type}. Ya puedes guardarlo.',
+  'add.file.checkIncluded': 'Irán dentro del perfil: {files}',
+  'add.file.checkExists': 'Ya hay un archivo guardado como {file}. Al guardar podrás reemplazarlo, o cambia el nombre.',
+  'add.file.waitCheck': 'Los botones de guardar se activan al terminar la revisión.',
+  'add.file.fixFirst': 'Resuelve lo de arriba para poder guardar.',
+  'add.file.chooseFirst': 'Elige el archivo de tu VPN para poder guardar.',
   'add.file.extraTooBig.fix': 'Revisa que sea el certificado o la clave que pide el .ovpn y no otro archivo.',
   'add.file.tooMany': 'Son demasiados archivos a la vez (máximo {max} además del .ovpn).',
   'add.file.tooMany.fix': 'Agrega solo los certificados y claves que pide el .ovpn.',
@@ -224,6 +231,13 @@ const en: Strings<typeof es> = {
   'add.file.pickingFolder': 'Pick the folder in the window that opened (if you do not see it, look in the taskbar).',
   'add.file.found': 'Found the certificates next to {file} in {dir}',
   'add.file.included': 'Saved inside the profile: {files}',
+  'add.file.checking': 'Checking the file…',
+  'add.file.checkOk': 'Ready: {type}. You can save it now.',
+  'add.file.checkIncluded': 'They will go inside the profile: {files}',
+  'add.file.checkExists': 'A file is already saved as {file}. When you save you can replace it, or change the name.',
+  'add.file.waitCheck': 'The save buttons turn on when the check is done.',
+  'add.file.fixFirst': 'Solve what is shown above to save.',
+  'add.file.chooseFirst': 'Choose your VPN file to save.',
   'add.file.extraTooBig.fix': 'Check that it is the certificate or key the .ovpn asks for and not another file.',
   'add.file.tooMany': 'Too many files at once (at most {max} besides the .ovpn).',
   'add.file.tooMany.fix': 'Add only the certificates and keys the .ovpn asks for.',

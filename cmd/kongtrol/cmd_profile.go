@@ -24,6 +24,9 @@ var (
 	// profileImportExtra: certificates and keys given after the file
 	// (ADR-0105).
 	profileImportExtra []string
+	// profileImportCheck: --check runs the whole import and saves nothing
+	// (the panel's automatic check, ADR-0118).
+	profileImportCheck bool
 )
 
 // profile import: the CLI side of the dashboard's "Importar archivo"
@@ -37,6 +40,10 @@ var profileImportCmd = &cobra.Command{
 	Annotations: map[string]string{annotationPrefsOnly: "true"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		profileImportExtra = args[1:]
+		if profileImportCheck {
+			// --check wins over --create and --overwrite: nothing is written.
+			return checkProfileImport(args[0], profileImportName)
+		}
 		if profileImportCreate {
 			return importAndCreate(args[0], profileImportName, profileImportOverwrite)
 		}
@@ -71,7 +78,7 @@ func runProfileImport(file, name string, overwrite bool) (profileimport.Result, 
 	}
 	fi, err := os.Stat(file)
 	if err != nil && config.IsPermission(err) {
-		return importRootOnly(absPath(file), name, overwrite, profileImportYes)
+		return importRootOnlyOrCheck(absPath(file), name, overwrite)
 	}
 	if err != nil || !fi.Mode().IsRegular() {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.read", file))
@@ -81,7 +88,7 @@ func runProfileImport(file, name string, overwrite bool) (profileimport.Result, 
 	}
 	content, err := os.ReadFile(file)
 	if err != nil && config.IsPermission(err) {
-		return importRootOnly(absPath(file), name, overwrite, profileImportYes)
+		return importRootOnlyOrCheck(absPath(file), name, overwrite)
 	}
 	if err != nil {
 		return profileimport.Result{}, fmt.Errorf("%s", cf("cli.profile.import.read", file))
@@ -91,6 +98,46 @@ func runProfileImport(file, name string, overwrite bool) (profileimport.Result, 
 		return profileimport.Result{}, err
 	}
 	return storeImport(file, name, profileimport.TypeForContent(file, content), content, overwrite, refs)
+}
+
+// importRootOnlyOrCheck: a root-only file is read with one permission
+// prompt (importRootOnly), except for --check, which never asks: it says
+// what to do instead (ADR-0118).
+func importRootOnlyOrCheck(path, name string, overwrite bool) (profileimport.Result, error) {
+	if profileImportCheck {
+		return profileimport.Result{}, localizeConfigErr(&config.ValidationError{Key: config.ErrKeyFileRootOnly, Args: []any{path}})
+	}
+	return importRootOnly(path, name, overwrite, profileImportYes)
+}
+
+// checkProfileImport is `profile import --check`: the same reads and
+// refusals as the import, nothing written, and what the import would do
+// (ADR-0118).
+func checkProfileImport(file, name string) error {
+	res, err := runProfileImport(file, name, false)
+	if err != nil {
+		return err
+	}
+	if outputJSON {
+		return emitJSON(res)
+	}
+	label := map[string]string{"wireguard": "WireGuard", "openvpn": "OpenVPN"}[res.Type]
+	fmt.Println(tuiOK(cf("cli.profile.import.check.ok", res.File, label)))
+	if res.FoundIn != "" {
+		fmt.Println(tuiInfo(cf("cli.profile.import.check.found", res.FoundIn)))
+	}
+	if len(res.Included) > 0 {
+		fmt.Println(tuiInfo(cf("cli.profile.import.check.included", strings.Join(res.Included, ", "))))
+	}
+	if res.NeedsCredentials {
+		fmt.Println(tuiInfo(ct("cli.profile.import.check.creds")))
+	}
+	if res.Exists {
+		fmt.Println(tuiWarn(cf("cli.profile.import.check.exists", res.File)))
+	}
+	printImportHint(res)
+	fmt.Println(tuiInfo(ct("cli.profile.import.check.next")))
+	return nil
 }
 
 // absPath is p made absolute (the elevated read takes absolute paths only).
@@ -139,7 +186,7 @@ func storeImport(file, name, typ string, content []byte, overwrite bool, refs *p
 	if err != nil {
 		return profileimport.Result{}, err
 	}
-	res, err := profileimport.Import(dir, profileimport.Request{Name: name, Type: typ, Content: content, Overwrite: overwrite, Refs: refs})
+	res, err := profileimport.Import(dir, profileimport.Request{Name: name, Type: typ, Content: content, Overwrite: overwrite, Refs: refs, Check: profileImportCheck})
 	if errors.Is(err, profileimport.ErrStore) {
 		return res, fmt.Errorf("%s\n    %s", cf("cli.profile.import.store", dir), err)
 	}
@@ -161,6 +208,7 @@ func printIncluded(res profileimport.Result) {
 func init() {
 	profileImportCmd.Flags().StringVar(&profileImportName, "name", "", ct("cli.profile.import.flag.name"))
 	profileImportCmd.Flags().BoolVar(&profileImportOverwrite, "overwrite", false, ct("cli.profile.import.flag.overwrite"))
+	profileImportCmd.Flags().BoolVar(&profileImportCheck, "check", false, ct("cli.profile.import.flag.check"))
 	profileCmd.AddCommand(profileImportCmd)
 	rootCmd.AddCommand(profileCmd)
 }

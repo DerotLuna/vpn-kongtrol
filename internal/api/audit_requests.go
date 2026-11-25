@@ -175,6 +175,10 @@ func (s *Server) serveAudited(next http.Handler, w http.ResponseWriter, r *http.
 	if !ok {
 		route = auditRoute{action: "api.request", level: "INFO"}
 	}
+	// The handler named a read-only mode of its route (an import check).
+	if n := noteOf(r); n != nil && n.auditAction != "" {
+		route.action, route.level = n.auditAction, n.auditLevel
+	}
 	s.writeAudit(r, route, key, client, status)
 }
 

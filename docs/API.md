@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.18 · 2026-11-24
+Version 1.19 · 2026-11-25
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -120,6 +120,10 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   "included":[names]; still missing → 400 api.err.import_missing_files with "missing":[names];
                                              #   api.err.import_ref_unreadable|ref_too_big|ref_not_text; 413 api.err.import_too_many_files.
                                              #   Body cap for this route: 2 MiB (1 MiB elsewhere).
+                                             #   "check":true (ADR-0118): the same import, nothing stored → 200 {"status":"checked","type","file",
+                                             #   "exists","included":[…],"missing":[],"needs_credentials","found_in"?,"provider"?,"hint"?}; a taken
+                                             #   name is "exists":true (not 409); refusals keep their status and body; "elevate" is ignored (403
+                                             #   config.err.file_root_only); no config lock, no "changed" frame; audited as config.profile.import_check
                                              #   ADR-0112: "file_name" (the dropped file's own name): with no path and files missing, the daemon
                                              #   looks for its identical original (same name, size, SHA-256) in the usual folders (bounded: depth 3,
                                              #   20 000 entries, 1 s) and reads the files there → "found_in":"<folder>". "ref_dir":"<abs folder>"

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"sync"
 )
@@ -81,12 +82,37 @@ func (s *Server) serveAnnounced(next http.Handler, w http.ResponseWriter, r *htt
 		return
 	}
 	rec := &changeRecorder{ResponseWriter: w}
+	note := &requestNote{}
+	r = r.WithContext(context.WithValue(r.Context(), requestNoteKey{}, note))
 	s.serveAudited(next, rec, r)
 	status := rec.status
 	if status == 0 {
 		status = http.StatusOK
 	}
-	if status >= 200 && status < 300 {
+	if status >= 200 && status < 300 && !note.readOnly {
 		s.changes.bump()
 	}
+}
+
+// requestNote lets a handler say, for one mutating request, that it changed
+// nothing (no "changed" frame) and which audit action it was: a route
+// whose body selects a read-only mode (POST /api/v1/vpns/import with
+// "check", ADR-0118). The audit still never reads the body (ADR-0064).
+type requestNote struct {
+	auditAction, auditLevel string
+	readOnly                bool
+}
+
+type requestNoteKey struct{}
+
+// markRequest records that note on r (a no-op outside serveAnnounced).
+func markRequest(r *http.Request, action, level string, readOnly bool) {
+	if n, ok := r.Context().Value(requestNoteKey{}).(*requestNote); ok {
+		n.auditAction, n.auditLevel, n.readOnly = action, level, readOnly
+	}
+}
+
+func noteOf(r *http.Request) *requestNote {
+	n, _ := r.Context().Value(requestNoteKey{}).(*requestNote)
+	return n
 }

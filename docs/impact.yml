@@ -1,4 +1,4 @@
-# Change-impact map — version 1.17 · 2026-11-25
+# Change-impact map — version 1.18 · 2026-11-25
 #
 # For every feature: the code that implements it (globs, ** = any depth)
 # and the surfaces that describe it to users. A surface is "path" (the
@@ -427,6 +427,8 @@ features:
       - web/ui/src/components/profiles/ImportFile.tsx
       - web/ui/src/components/profiles/importModel.ts
       - web/ui/src/components/add/FileStep.tsx
+      - web/ui/src/components/add/parts.tsx
+      - web/ui/src/data/profiles.ts
       - web/ui/src/components/profiles/dropZone.ts
     surfaces:
       - AGENTS.md#profile_import
@@ -435,6 +437,7 @@ features:
       - landing/src/content/guide.es.tsx#profile_import
       - landing/src/content/guide.en.tsx#profile_import
       - docs/API.md#api
+      - docs/adr/0118-check-the-file-before-saving.md
 
   config:
     code:

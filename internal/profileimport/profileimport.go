@@ -49,11 +49,17 @@ type Request struct {
 	// Refs is where the files an .ovpn names come from (ADR-0105); nil =
 	// the .ovpn must already be self-contained.
 	Refs *Refs
+	// Check runs every step of the import (validators, referenced files,
+	// Locator, provider) but writes nothing: no folder, no file (ADR-0118).
+	// A name already taken is reported as Result.Exists, not refused.
+	Check bool
 }
 
-// Result says where the file was stored.
+// Result says where the file was stored (or, for a check, what an import
+// would do).
 type Result struct {
-	Path        string `json:"path"`
+	// Path is where the file was stored; "" for a check (nothing stored).
+	Path        string `json:"path,omitempty"`
 	Type        string `json:"type"`
 	Overwritten bool   `json:"overwritten"`
 	// Provider is the VPN provider whose account issued the file
@@ -65,6 +71,15 @@ type Result struct {
 	// FoundIn is the folder of a dropped file's identical original, where
 	// the files it names were read (Locator, ADR-0112); "" otherwise.
 	FoundIn string `json:"found_in,omitempty"`
+	// NeedsCredentials: the .ovpn has auth-user-pass, so the profile needs
+	// a username and password (NeedsCredentials).
+	NeedsCredentials bool `json:"needs_credentials,omitempty"`
+	// Check, File and Exists come only from a check (ADR-0118): the file
+	// name it would be stored as and whether one of that name is already
+	// there (the real import then needs Overwrite or another name).
+	Check  bool   `json:"check,omitempty"`
+	File   string `json:"file,omitempty"`
+	Exists bool   `json:"exists,omitempty"`
 }
 
 // ErrStore marks a failure writing the file (not the user's input).
@@ -170,7 +185,9 @@ func CleanName(path string) string {
 
 // Import validates req and stores it in dir. A refusal is a
 // *config.ValidationError (api.err.import_*: translated message + what to
-// do); a write failure wraps ErrStore.
+// do); a write failure wraps ErrStore. With req.Check it stops before
+// writing and says what the import would do (ADR-0118): the same reads,
+// the same refusals, nothing stored.
 func Import(dir string, req Request) (Result, error) {
 	name := strings.TrimSpace(req.Name)
 	if !nameRE.MatchString(name) || strings.Contains(name, "..") || windowsReserved[strings.ToLower(strings.SplitN(name, ".", 2)[0])] {
@@ -221,10 +238,22 @@ func Import(dir string, req Request) (Result, error) {
 	} else if err := Validate(typ, content); err != nil {
 		return Result{}, err
 	}
+	path := filepath.Join(dir, name+ext)
+	res := Result{Type: typ, Provider: ProviderForContent(typ, content), Included: included, FoundIn: foundIn,
+		NeedsCredentials: NeedsCredentials(typ, content)}
+	if req.Check {
+		res.Check, res.File = true, name+ext
+		if fi, err := os.Lstat(path); err == nil {
+			if !fi.Mode().IsRegular() {
+				return Result{}, &config.ValidationError{Key: "api.err.import_not_file", Args: []any{name + ext}}
+			}
+			res.Exists = true
+		}
+		return res, nil
+	}
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return Result{}, fmt.Errorf("%w: %w", ErrStore, err)
 	}
-	path := filepath.Join(dir, name+ext)
 	overwritten, err := store(path, content, req.Overwrite)
 	switch {
 	case errors.Is(err, fs.ErrExist):
@@ -234,7 +263,24 @@ func Import(dir string, req Request) (Result, error) {
 	case err != nil:
 		return Result{}, fmt.Errorf("%w: %w", ErrStore, err)
 	}
-	return Result{Path: path, Type: typ, Overwritten: overwritten, Provider: ProviderForContent(typ, content), Included: included, FoundIn: foundIn}, nil
+	res.Path, res.Overwritten = path, overwritten
+	return res, nil
+}
+
+// NeedsCredentials says whether an OpenVPN profile asks for a username and
+// password: a bare `auth-user-pass` line (one naming a file is refused by
+// the validators). The panel mirrors it (ovpnNeedsCredentials) to show the
+// fields before the check answers.
+func NeedsCredentials(typ string, content []byte) bool {
+	if typ != "openvpn" {
+		return false
+	}
+	for _, line := range strings.Split(string(content), "\n") {
+		if f := strings.Fields(line); len(f) > 0 && f[0] == "auth-user-pass" {
+			return true
+		}
+	}
+	return false
 }
 
 // TooBig is the refusal for a file over MaxSize (callers that see the size

@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.9.0 · 2026-11-25.
+// Version 3.10.0 · 2026-11-25.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -129,7 +129,7 @@ export default function guideEN(os: OS): GuideContent {
       lead: <>In the panel, <strong>Profiles</strong> (or the <strong>＋ Add</strong> button at the top). Pick one of these:</>,
       ways: [
         <><strong>A VPN you already use</strong> (NordVPN, Proton, FortiClient…): pick the app and give it a name, for example <IC c="office" />.</>,
-        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it with <strong>Choose file</strong>, or drop it on the panel. If it comes with separate certificates (<IC c="ca.crt" />…), Kongtrol takes them from the same folder or from the path the file names; if you dropped it, Kongtrol looks for the original in your usual folders (OpenVPN, Downloads, Desktop, Documents). If some are still missing, it names them: choose the folder they are in, or add them one by one. It checks it and keeps a protected copy.</>,
+        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it with <strong>Choose file</strong>, or drop it on the panel. If it comes with separate certificates (<IC c="ca.crt" />…), Kongtrol takes them from the same folder or from the path the file names; if you dropped it, Kongtrol looks for the original in your usual folders (OpenVPN, Downloads, Desktop, Documents). It checks the file as soon as you choose it and tells you right away whether it is ready or what is missing, before you save. If certificates are missing, it names them: choose the folder they are in, or add them one by one. When you save, it keeps a protected copy.</>,
         <><strong>Username and password</strong>: they go to the system keychain, never to a text file.</>,
         <><strong>Save and activate</strong> saves it and connects it; <strong>Save</strong> only saves it, so you connect it whenever you want.</>,
       ],

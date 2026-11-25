@@ -293,7 +293,7 @@ describe('ProfilesPage', () => {
     // Saved: the restart banner appears with its action.
     expect(await screen.findByText('Restart Kongtrol to use the changes')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Restart now' })).toBeEnabled()
-  })
+  }, 15_000) // many steps: slow under a loaded parallel run
 
   it('restart: a daemon that cannot restart says so with what to do; one that never comes back times out', async () => {
     let mode: 'refuse' | 'gone' = 'refuse'

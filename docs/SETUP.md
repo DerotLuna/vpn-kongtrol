@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.21 · 2026-11-25
+Versión 1.22 · 2026-11-25
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -234,6 +234,12 @@ Si te enviaron el archivo (o lo bajaste de tu proveedor), Kongtrol puede guardar
   **Importar archivo** el campo de ruta se llena solo; también puedes escribir una ruta a mano.
 - **Terminal:** `kongtrol profile import oficina.conf` (opcional `--name casa`, `--overwrite`). Con
   `--create` también crea el perfil que lo usa, con el nombre del archivo (o `--name`).
+
+En cuanto eliges, arrastras o agregas un archivo, un certificado o una carpeta, el panel lo revisa
+(«Revisando el archivo…») sin guardar nada y te dice al momento si está listo, qué certificados irán
+dentro, dónde los encontró, si ya hay un archivo con ese nombre o qué falta y qué hacer. «Guardar» y
+«Guardar y activar» se activan cuando la revisión pasa. En la terminal, lo mismo sin guardar nada:
+`kongtrol profile import oficina.ovpn --check` (también con `--json`) (ADR-0118).
 
 Si el `.ovpn` nombra otros archivos (`ca ca.crt`, `tls-auth ta.key 1`…), Kongtrol los guarda dentro
 del perfil: con «Elegir archivo» o en la terminal los busca en la misma carpeta del `.ovpn`, y una

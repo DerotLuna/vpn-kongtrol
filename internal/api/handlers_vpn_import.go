@@ -43,6 +43,10 @@ type importReq struct {
 	// ("Elegir la carpeta donde están", POST /api/v1/vpns/import/pick-folder);
 	// it replaces the file's own folder (ADR-0112).
 	RefDir string `json:"ref_dir,omitempty"`
+	// Check runs the whole import without writing anything (ADR-0118):
+	// 200 {"status":"checked",…} or the same refusal an import would get.
+	// It never asks for permission: "elevate" is ignored.
+	Check bool `json:"check,omitempty"`
 }
 
 // importFile is one file added by hand to an import.
@@ -170,11 +174,19 @@ func (s *Server) configsDir() (string, error) {
 // write files, an imported .ovpn self-contained); never overwrites unless
 // "overwrite": true (ADR-0042). With "path" it reads that file instead,
 // with permission for a root-only one when "elevate" is true (ADR-0058).
+// With "check": true it runs all of that and stores nothing (ADR-0118).
 func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 	var req importReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeLocalizedError(w, r, http.StatusBadRequest, errInvalidJSON)
 		return
+	}
+	if req.Check {
+		// A check reads exactly what the import would read and stores
+		// nothing: audited as a check, announces no change, and never
+		// opens the OS permission window (ADR-0118).
+		markRequest(r, "config.profile.import_check", "INFO", true)
+		req.Elevate = false
 	}
 	var content []byte
 	var refDir string
@@ -223,19 +235,36 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	s.configMu.Lock() // only to store the file (name taken / overwrite)
-	res, err := profileimport.Import(dir, profileimport.Request{
-		Name: req.Name, Type: req.Type, Content: content, Overwrite: req.Overwrite, Refs: refs,
-	})
-	s.configMu.Unlock()
+	ireq := profileimport.Request{
+		Name: req.Name, Type: req.Type, Content: content, Overwrite: req.Overwrite, Refs: refs, Check: req.Check,
+	}
+	var res profileimport.Result
+	if req.Check {
+		res, err = profileimport.Import(dir, ireq) // writes nothing: no lock
+	} else {
+		s.configMu.Lock() // only to store the file (name taken / overwrite)
+		res, err = profileimport.Import(dir, ireq)
+		s.configMu.Unlock()
+	}
 	if err != nil {
 		writeImportError(w, r, err)
 		return
 	}
+	status := http.StatusCreated
 	body := map[string]any{
 		"status": "imported", "path": res.Path, "type": res.Type, "overwritten": res.Overwritten,
 	}
-	if len(res.Included) > 0 {
+	if req.Check {
+		status = http.StatusOK
+		included := res.Included
+		if included == nil {
+			included = []string{}
+		}
+		body = map[string]any{
+			"status": "checked", "type": res.Type, "file": res.File, "exists": res.Exists,
+			"included": included, "missing": []string{}, "needs_credentials": res.NeedsCredentials,
+		}
+	} else if len(res.Included) > 0 {
 		body["included"] = res.Included
 	}
 	if res.FoundIn != "" {
@@ -250,7 +279,7 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		body["hint_key"] = key
 		body["hint"] = i18n.T(requestLang(r), key)
 	}
-	writeJSON(w, http.StatusCreated, body)
+	writeJSON(w, status, body)
 }
 
 // importRefs decodes the files added by hand and says where the .ovpn's

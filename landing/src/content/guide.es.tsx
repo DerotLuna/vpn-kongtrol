@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 3.9.0 · 2026-11-25.
+// Version 3.10.0 · 2026-11-25.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -135,7 +135,7 @@ export default function guideES(os: OS) {
       lead: <>En el panel, <strong>Perfiles</strong> (o el botón <strong>＋ Agregar</strong> arriba). Elige una de estas:</>,
       ways: [
         <><strong>Una VPN que ya usas</strong> (NordVPN, Proton, FortiClient…): elige la app y ponle un nombre, por ejemplo <IC c="oficina" />.</>,
-        <><strong>Un archivo <IC c=".conf" /> u <IC c=".ovpn" /></strong>: impórtalo con <strong>Elegir archivo</strong>, o suéltalo sobre el panel. Si trae certificados aparte (<IC c="ca.crt" />…), Kongtrol los toma de la misma carpeta o de la ruta que escribe el archivo; si lo soltaste, busca el original en tus carpetas habituales (OpenVPN, Descargas, Escritorio, Documentos). Si aun así faltan, te los nombra: elige la carpeta donde están o agrégalos uno por uno. Lo revisa y guarda una copia protegida.</>,
+        <><strong>Un archivo <IC c=".conf" /> u <IC c=".ovpn" /></strong>: impórtalo con <strong>Elegir archivo</strong>, o suéltalo sobre el panel. Si trae certificados aparte (<IC c="ca.crt" />…), Kongtrol los toma de la misma carpeta o de la ruta que escribe el archivo; si lo soltaste, busca el original en tus carpetas habituales (OpenVPN, Descargas, Escritorio, Documentos). Lo revisa en cuanto lo eliges y te dice al momento si está listo o qué falta, antes de guardar. Si faltan certificados, te los nombra: elige la carpeta donde están o agrégalos uno por uno. Al guardar, guarda una copia protegida.</>,
         <><strong>Usuario y contraseña</strong>: van al llavero del sistema, nunca a un archivo de texto.</>,
         <><strong>Guardar y activar</strong> la guarda y la conecta; <strong>Guardar</strong> solo la guarda, para conectarla cuando quieras.</>,
       ],

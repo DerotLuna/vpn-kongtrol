@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.34.0 · 2026-11-25
+Version 1.35.0 · 2026-11-25
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -130,6 +130,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0115](0115-save-without-connecting.md) | New profiles in the "＋ Agregar" sheet: "Guardar y activar" (primary) saves and connects, "Guardar" only saves; CLI parity already (`profile add`, then `up`) (amends 0055) | Accepted | 2026-11-25 |
 | [0116](0116-identical-copies-are-not-ambiguous.md) | A dropped .ovpn found in several complete folders whose referenced files are all identical is not ambiguous: the first by search-root order is used (refines 0112) | Accepted | 2026-11-25 |
 | [0117](0117-file-dialog-stays-in-front.md) | The native file dialog stays topmost while open; a second click brings it to the front; closing the sheet closes it (refines 0105, 0112) | Accepted | 2026-11-25 |
+| [0118](0118-check-the-file-before-saving.md) | The "＋ Agregar" file step checks the file as soon as it is chosen (same import with `"check": true`, nothing stored; a taken name is a field); saving waits for a passed check; CLI `profile import --check` (refines 0042, 0105, 0112, 0115) | Accepted | 2026-11-25 |
 
 ## Statuses
 
