@@ -35,6 +35,8 @@ type Locator struct {
 	MaxDepth   int           // folders below a root; 0 = 3
 	MaxEntries int           // directory entries looked at in all; 0 = 20000
 	Budget     time.Duration // wall time; 0 = 1 s
+
+	now func() time.Time // clock; nil = time.Now (tests step it: Windows clock ticks are coarse)
 }
 
 // maxHashed bounds how many same-name, same-size files are read.
@@ -62,10 +64,15 @@ func (l *Locator) Find(content []byte) string {
 	if roots == nil {
 		roots = SearchRoots()
 	}
+	now := l.now
+	if now == nil {
+		now = time.Now
+	}
 	s := &search{
+		now:   now,
 		names: names, size: int64(len(content)), sum: sha256.Sum256(content),
 		depth: or(l.MaxDepth, 3), left: or(l.MaxEntries, 20000),
-		deadline: time.Now().Add(orDur(l.Budget, time.Second)),
+		deadline: now().Add(orDur(l.Budget, time.Second)),
 		visited:  map[string]bool{},
 	}
 	for _, root := range roots {
@@ -107,12 +114,13 @@ type search struct {
 	left     int
 	hashed   int
 	deadline time.Time
+	now      func() time.Time
 	visited  map[string]bool
 	found    []string
 	foundFI  []os.FileInfo
 }
 
-func (s *search) stopped() bool { return s.left <= 0 || time.Now().After(s.deadline) }
+func (s *search) stopped() bool { return s.left <= 0 || s.now().After(s.deadline) }
 
 func (s *search) walk(dir string, depth int) {
 	key := foldName(dir)

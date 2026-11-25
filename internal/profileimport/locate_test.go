@@ -92,6 +92,12 @@ func TestLocate_LinksAreNotFollowed(t *testing.T) {
 	}
 }
 
+// stepClock advances one second per reading, so a time budget runs out on any OS.
+func stepClock() func() time.Time {
+	t := time.Unix(0, 0)
+	return func() time.Time { t = t.Add(time.Second); return t }
+}
+
 func TestLocate_Bounds(t *testing.T) {
 	root := realTemp(t)
 	for i := range 20 {
@@ -101,7 +107,7 @@ func TestLocate_Bounds(t *testing.T) {
 	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{root}, MaxEntries: 5}).Find([]byte(ovpnOwner)); got != "" {
 		t.Fatalf("entry bound ignored: %q", got)
 	}
-	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{root}, Budget: time.Nanosecond}).Find([]byte(ovpnOwner)); got != "" {
+	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{root}, Budget: time.Millisecond, now: stepClock()}).Find([]byte(ovpnOwner)); got != "" {
 		t.Fatalf("time budget ignored: %q", got)
 	}
 	deep := filepath.Join(root, "d1", "d2", "d3", "d4")
