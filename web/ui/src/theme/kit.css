@@ -1,4 +1,4 @@
-/* KONGTROL UI — component kit (src/components/ui) · v0.5.0 · 2026-11-24
+/* KONGTROL UI — component kit (src/components/ui) · v0.6.0 · 2026-11-25
    Operate mode (DESIGN.md "Sesión en la Torre"): precise and quiet. Amber
    is the one accent (primary action, selection, focus); states use the
    Four States colors with a word. Flat by default: no shadows except the
@@ -147,8 +147,28 @@
 }
 .k-dialog[open]::backdrop { opacity: 1; transition-duration: var(--dur-med); }
 @starting-style { .k-dialog[open]::backdrop { opacity: 0; } }
-.k-dialog__body { display: flex; flex-direction: column; gap: 14px; padding: 20px 20px 22px; }
-.k-dialog__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px -8px 0 0; }
+/* Fixed header (title + close), scrolling content, visible actions: the
+   <dialog> itself never scrolls, so no scrollbar runs under its rounded
+   corner or the close button. A step's own footer (.k-dialog__actions
+   inside the content) sticks to the bottom of the scroll area. */
+.k-dialog { flex-direction: column; overflow: hidden; }
+.k-dialog[open] { display: flex; }
+.k-dialog__body { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.k-dialog__head {
+  flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 12px 4px 20px;
+}
+.k-dialog__content {
+  flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 14px; padding: 10px 20px 22px;
+  scrollbar-width: thin; scrollbar-color: var(--border-2) transparent;
+}
+.k-dialog__content:has(.k-dialog__actions) { padding-bottom: 0; }
+.k-dialog__content .k-dialog__actions {
+  position: sticky; bottom: 0; z-index: 1; margin-top: auto; padding: 12px 0 20px;
+  background: linear-gradient(to bottom, transparent, var(--surface) 12px);
+}
+.k-dialog__body > .k-dialog__actions { flex: none; margin-top: 0; padding: 12px 20px 20px; border-top: 1px solid var(--border); }
 .k-dialog__head h2 { font: 600 19px/1.3 var(--font-display); }
 .k-dialog__head h2:focus { outline: none; }
 .k-dialog__head h2:focus-visible { box-shadow: none; }
@@ -264,6 +284,13 @@
 .k-empty h3 { font: 600 17px/1.3 var(--font-display); }
 .k-empty p { color: var(--text-muted); }
 .k-empty__icon svg { width: 28px; height: 28px; color: var(--text-dim); }
+/* Centred: a whole list empty on purpose; icon in a round tile, one line of what to expect. */
+.k-empty--center { align-items: center; text-align: center; margin-inline: auto; padding: 40px 16px; gap: 10px; }
+.k-empty--center .k-empty__icon {
+  display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.k-empty--center .k-empty__icon svg { color: var(--text-muted); }
 
 .k-error-state {
   display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start;

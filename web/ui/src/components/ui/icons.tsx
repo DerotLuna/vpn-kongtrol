@@ -123,6 +123,14 @@ export const AlertIcon = () => (
   </Icon>
 )
 
+/** A bell: notices (Actividad › Avisos). */
+export const BellIcon = () => (
+  <Icon>
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z" />
+    <path d="M10 20.5a2 2 0 0 0 4 0" />
+  </Icon>
+)
+
 export const InfoIcon = () => (
   <Icon>
     <circle cx="12" cy="12" r="9" />

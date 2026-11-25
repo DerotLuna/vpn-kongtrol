@@ -1,11 +1,12 @@
-// Kongtrol UI — Actividad data: audit log + daemon notices · v1.2.0 · 2026-11-19
+// Kongtrol UI — Actividad data: audit log + daemon notices · v1.3.0 · 2026-11-25
 //
 // Two resources, one cache entry each (ADR-0038):
 // - GET /api/v1/audit?limit&profile…&level&from&to&before (internal/api/
 //   handlers_audit.go, ADR-0042): the signed log, newest first, across every
 //   retained day, with `signed` / `verified` per entry. Pages by cursor:
 //   `before` = the last timestamp of a page; the X-Kongtrol-Audit-More
-//   header says whether an older page exists ("Cargar más"). Dates filter
+//   header says whether an older page exists (asked when "Ver 20 más" runs
+//   out of loaded entries; 50 per page). Dates filter
 //   on the daemon (`from` / `to`, local days); `profile` repeats, one per
 //   chosen profile (any of them matches). "En vivo" re-reads every 5 s;
 //   unchanged rows keep their identity (structural sharing).
@@ -39,8 +40,8 @@ export interface AuditEvent {
 export const AUDIT_LEVELS = ['INFO', 'WARN', 'ERROR', 'SECURITY'] as const
 export type AuditLevel = (typeof AUDIT_LEVELS)[number]
 
-/** Rows per page ("Cargar más" asks for the next older one); the API allows 1–1000. */
-export const AUDIT_PAGE = 200
+/** Entries per page (asked when "Ver 20 más" runs out of loaded ones); the API allows 1–1000. */
+export const AUDIT_PAGE = 50
 /** "En vivo": same cadence as the daemon's heartbeat. */
 export const LIVE_MS = 5_000
 /** The paging header (handlers_audit.go auditMoreHeader). */

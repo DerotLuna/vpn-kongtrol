@@ -21,7 +21,9 @@ import (
 // that size are read, and only to compare their SHA-256. Exactly one
 // folder with an identical copy is used like a picked file's folder;
 // several are narrowed to the one holding every referenced file; still
-// more than one is never guessed (ADR-0112).
+// more than one is never guessed (ADR-0112) unless every referenced file
+// is the same in all of them (size and SHA-256): identical copies are not
+// ambiguous, and the first by root order is used (ADR-0116).
 //
 // Bounds: folders at most MaxDepth below a root, MaxEntries directory
 // entries looked at in all, Budget of wall time, at most maxHashed files
@@ -75,7 +77,7 @@ func (l *Locator) Find(content []byte) string {
 		deadline: now().Add(orDur(l.Budget, time.Second)),
 		visited:  map[string]bool{},
 	}
-	for _, root := range roots {
+	for i, root := range roots {
 		if s.stopped() {
 			break
 		}
@@ -83,6 +85,7 @@ func (l *Locator) Find(content []byte) string {
 		if !ok || onRemoteDrive(r) {
 			continue
 		}
+		s.root = i
 		s.walk(r, 0)
 	}
 	switch len(s.found) {
@@ -94,30 +97,105 @@ func (l *Locator) Find(content []byte) string {
 	// Several folders hold the same file: the one that also holds every
 	// file it names (checked by name only, nothing more is read).
 	refs := ReferencedPaths(content)
-	var complete []string
-	for _, dir := range s.found {
+	var complete []int
+	for i, dir := range s.found {
 		if allPresent(dir, refs) {
-			complete = append(complete, dir)
+			complete = append(complete, i)
 		}
 	}
-	if len(complete) == 1 {
-		return complete[0]
+	switch len(complete) {
+	case 0:
+		return ""
+	case 1:
+		return s.found[complete[0]]
 	}
-	return ""
+	// Still several: the same copy kept twice (OpenVPN GUI's user folder
+	// and Program Files) is not ambiguous when every file it names is the
+	// same in each (ADR-0116). The first by root order wins, then by path
+	// (File.ReadDir order is not sorted), so the answer never varies.
+	dirs := make([]string, len(complete))
+	for i, c := range complete {
+		dirs[i] = s.found[c]
+	}
+	if !sameRefs(dirs, refs) {
+		return ""
+	}
+	best := complete[0]
+	for _, c := range complete[1:] {
+		if s.foundRoot[c] < s.foundRoot[best] || (s.foundRoot[c] == s.foundRoot[best] && s.found[c] < s.found[best]) {
+			best = c
+		}
+	}
+	return s.found[best]
+}
+
+// sameRefs: every reference inside the folders has the same SHA-256 (and
+// so the same size) in all of them. Each file is read like check reads
+// the copy (plain file, opened without following links and checked again,
+// at most MaxReferenceSize); anything unreadable counts as different.
+func sameRefs(dirs, refs []string) bool {
+	for _, p := range refs {
+		var want [sha256.Size]byte
+		for i, dir := range dirs {
+			full, inside, ok := refPath(dir, p)
+			if !ok {
+				return false
+			}
+			if !inside {
+				break // the same path from every folder
+			}
+			sum, ok := hashRef(full)
+			if !ok {
+				return false
+			}
+			if i == 0 {
+				want = sum
+			} else if sum != want {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// hashRef is the SHA-256 of a plain file of at most MaxReferenceSize.
+func hashRef(p string) ([sha256.Size]byte, bool) {
+	var sum [sha256.Size]byte
+	fi, err := os.Lstat(p)
+	if err != nil || fi.IsDir() || !plain(p, fi) || fi.Size() > MaxReferenceSize {
+		return sum, false
+	}
+	f, err := openNoFollow(p)
+	if err != nil {
+		return sum, false
+	}
+	defer f.Close()
+	after, err := f.Stat()
+	if err != nil || after.IsDir() || after.Mode()&notFile != 0 || !os.SameFile(fi, after) {
+		return sum, false
+	}
+	h := sha256.New()
+	if n, err := io.Copy(h, io.LimitReader(f, MaxReferenceSize+1)); err != nil || n != fi.Size() {
+		return sum, false
+	}
+	copy(sum[:], h.Sum(nil))
+	return sum, true
 }
 
 type search struct {
-	names    map[string]bool
-	size     int64
-	sum      [sha256.Size]byte
-	depth    int
-	left     int
-	hashed   int
-	deadline time.Time
-	now      func() time.Time
-	visited  map[string]bool
-	found    []string
-	foundFI  []os.FileInfo
+	names     map[string]bool
+	size      int64
+	sum       [sha256.Size]byte
+	depth     int
+	left      int
+	hashed    int
+	deadline  time.Time
+	now       func() time.Time
+	visited   map[string]bool
+	found     []string
+	foundFI   []os.FileInfo
+	foundRoot []int // index in the roots of each found folder
+	root      int   // index of the root being walked
 }
 
 func (s *search) stopped() bool { return s.left <= 0 || s.now().After(s.deadline) }
@@ -201,6 +279,7 @@ func (s *search) check(dir, p string) {
 	}
 	s.found = append(s.found, dir)
 	s.foundFI = append(s.foundFI, dfi)
+	s.foundRoot = append(s.foundRoot, s.root)
 }
 
 // allPresent: every reference inside dir is a plain file there (by name,

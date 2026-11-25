@@ -2,7 +2,7 @@
 
 # Dashboard parity: legacy → new UI
 
-Version 1.8.0 · 2026-11-19
+Version 1.9.0 · 2026-11-25
 
 **Complete.** Every row is ticked or justified (`replaced`, `dropped: ADR-0043`, `n/a`). The legacy
 dashboard was deleted and the new UI moved to `/` ([ADR-0043](adr/0043-new-dashboard-replaces-classic.md)).
@@ -231,7 +231,7 @@ Fields (client side → server side)
 
 Actions
 
-- [x] Create — legacy studio.html:206, studio.js:738-761 — API POST /api/v1/vpns (handlers_vpn.go:184; 201 `restart_required`) — target `/profiles` — status: done (the shell's "＋ Agregar" sheet, web/ui/src/components/add/VpnStep.tsx + FileStep.tsx, ADR-0055: "Guardar y activar" = create, plus the restart only when `restart_required` is true; web/ui/src/data/profiles.ts `useSaveProfile`). Editing a connected profile saves with "Guardar y reconectar" (PUT `?reconnect=true`, components/profiles/ProfileEditor.tsx)
+- [x] Create — legacy studio.html:206, studio.js:738-761 — API POST /api/v1/vpns (handlers_vpn.go:184; 201 `restart_required`) — target `/profiles` — status: done (the shell's "＋ Agregar" sheet, web/ui/src/components/add/VpnStep.tsx + FileStep.tsx, ADR-0055: "Guardar y activar" = create and connect, "Guardar" = create only (ADR-0115), plus the restart only when `restart_required` is true; web/ui/src/data/profiles.ts `useSaveProfile`). Editing a connected profile saves with "Guardar y reconectar" (PUT `?reconnect=true`, components/profiles/ProfileEditor.tsx)
 - [x] Create during first run — `POST /api/v1/vpns` applies the profile without a restart (ADR-0092). The same tab shows "Conectar", "Hacer que un sitio salga por ella" and "Ver en Inicio".
 - [x] Update (key = selected or name; rename supported) — legacy studio.html:207, studio.js:763-784 — API PUT /api/v1/vpns/{name} (handlers_vpn.go:214; 404, localized 400) — target `/profiles` — status: done (web/ui/src/components/profiles/ProfileEditor.tsx). Rename: done (ADR-0042) — the name is editable; `{"status":"renamed"}` shows what followed it and the restart banner; 409 `api.err.vpn_exists` / `api.err.vpn_rename_busy` land on the name field, and a connected VPN says "desconéctala para renombrarla" before saving (components/profiles/ProfileForm.tsx, ProfileEditor.tsx).
 - [x] Delete (selected or typed name) with confirm — legacy studio.html:208, studio.js:786-807 — API DELETE /api/v1/vpns/{name} (handlers_vpn.go:349; 409 last profile :362, referenced by policy :367, by group :374) — target `/profiles` — status: done (web/ui/src/pages/ProfilesPage.tsx + ConfirmDelete.tsx; optimistic; a 409 `api.err.vpn_in_use` / `vpn_last` reopens the dialog with "Dónde se usa" (policies, groups, backups, schedules, empty lists left out) instead of a toast — components/profiles/errors.ts deleteRefusal; last profile, group membership and other profiles' backups are checked first)
@@ -391,7 +391,7 @@ Table / states / notices
 - [x] Filter by profile (text, Enter applies) — legacy audit.html:25, audit.js:117-119 — API GET /api/v1/audit?profile= (handlers_security.go:284, :301) — target `/activity` — status: done (components/activity/AuditPanel.tsx: Enter or leaving the field applies; profile suggestions)
 - [x] Level filter All / INFO / WARN / ERROR / SECURITY — legacy audit.html:26-32 — API `level` (uppercased, handlers_security.go:302) — target `/activity` — status: done (components/activity/AuditPanel.tsx; **fix** done: applies at once, translated names)
 - [x] Apply + refresh buttons — legacy audit.html:22, audit.html:33 — target `/activity` — status: done (components/activity/AuditPanel.tsx: filters apply at once; Refresh icon button)
-- [x] Limit 300 — legacy audit.js:104 — API `limit`, `before` cursor, `X-Kongtrol-Audit-More` (handlers_audit.go) — target `/activity` — status: done (components/activity/AuditPanel.tsx: pages of 200, "Cargar más" asks for the next older page while the header says there is one)
+- [x] Limit 300 — legacy audit.js:104 — API `limit`, `before` cursor, `X-Kongtrol-Audit-More` (handlers_audit.go) — target `/activity` — status: done (components/activity/AuditPanel.tsx: pages of 50, 10 rows then "Ver 20 más", which asks for the next older page when the loaded rows run out while the header says there is one; live entries wait behind "N nuevas · Mostrar")
 - [x] Date range (new, ADR-0042) — legacy none (page-side only) — API `from` / `to` (local days) over every retained day — target `/activity` — status: done (components/activity/AuditPanel.tsx: Desde / Hasta filter on the daemon; From after To explained on the field)
 - [x] Signature verified per entry (new, ADR-0042) — legacy none — API `signed`, `verified` — target `/activity` — status: done ("Firma válida" / "Firma no válida" (danger, with why and a count) / "Sin firma")
 - [x] Table: Time (`toLocaleString(lang)`), Level badge, Action, Profile, Message, Signed (signed / unsigned) — legacy audit.html:36-51, audit.js:80-94 — API `timestamp, level, action, profile, message, hmac` — target `/activity` — status: done (components/activity/AuditPanel.tsx DataList (cards under 640px); signature as word + icon)

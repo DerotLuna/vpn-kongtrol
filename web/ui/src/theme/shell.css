@@ -1,7 +1,9 @@
-/* KONGTROL UI — app shell (header, navigation, page frame) · v0.5.0 · 2026-11-20
+/* KONGTROL UI — app shell (header, navigation, page frame) · v0.6.0 · 2026-11-25
    Navigation by width (ADR-0038): bottom bar < 600px · side menu ≥ 600px,
    collapsible to an icon rail. The header and nav are tonal (surface),
-   flat, with 1px hairlines; the active section is the gold selection. */
+   flat, with 1px hairlines; the active section is the gold selection.
+   Nothing in the header or menus is underlined: hover is a background
+   (or, for the brand, nothing but the mark's small turn). */
 
 .k-app {
   min-height: 100dvh;
@@ -15,13 +17,30 @@
 .k-topbar {
   grid-area: top; position: sticky; top: 0; z-index: 20; min-width: 0;
   display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px;
-  background: var(--surface); border-bottom: 1px solid var(--border);
+  background: var(--surface); border-bottom: 1px solid transparent;
+  transition: border-color var(--dur-fast) var(--ease-standard);
 }
+/* Like the landing's .nav.is-sticky: the hairline shows once the page scrolled. */
+.k-topbar.is-sticky { border-bottom-color: var(--border); }
+/* The landing's brand (landing/src/index.css .nav-logo*): mark, letter-spaced
+   name, BETA tag in steel. Never styled as a link. */
 .k-brand {
-  display: inline-flex; align-items: center; gap: 10px; min-height: var(--tap); padding-right: 4px;
-  color: var(--text); text-decoration: none; font: 700 17px/1 var(--font-display); letter-spacing: -0.01em;
+  display: inline-flex; align-items: center; gap: 11px; min-height: var(--tap); padding-right: 4px;
+  border-radius: var(--radius); color: var(--text); text-decoration: none;
 }
-.k-brand:hover { color: var(--text); }
+.k-brand:hover, .k-brand:active, .k-brand:visited { color: var(--text); text-decoration: none; }
+.k-brand .k-logo { transition: transform 0.4s cubic-bezier(.2, .8, .2, 1); }
+.k-brand:hover .k-logo { transform: rotate(-8deg) scale(1.06); }
+.k-brand__name {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 600 15px/1 var(--font-display); letter-spacing: 0.02em; color: var(--text);
+}
+.k-brand__name strong { font-weight: 600; letter-spacing: 0.14em; white-space: nowrap; }
+.k-brand__beta {
+  display: inline-flex; align-items: center; padding: 4px 6px; border-radius: 3px; line-height: 1;
+  font: 500 11px/1 var(--font-mono); letter-spacing: 0.16em;
+  color: var(--steel); border: 1px solid color-mix(in srgb, var(--steel) 40%, transparent);
+}
 /* The status link is the only part of the header that may shrink: the brand
    and the actions keep their size, the pill and "Reconectando…" truncate. */
 .k-aggregate { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); text-decoration: none; border-radius: 999px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
@@ -46,7 +65,6 @@
 .k-topbar__link:hover { color: var(--text); background: var(--state-hover); }
 .k-topbar__link svg { width: 18px; height: 18px; }
 .k-version { font: 400 12px/1.2 var(--font-mono); color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.k-topbar__version { padding: 0 6px 0 10px; }
 
 /* ── Navigation items (shared by sidebar, rail and bottom bar) ────────── */
 .k-sidenav, .k-bottombar { background: var(--surface); }
@@ -97,7 +115,7 @@
 .k-navcol { display: none; }
 /* Hidden visually only: the links keep their names for screen readers. */
 .k-topbar__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.k-topbar__version { display: none; }
+.k-sidenav__version { display: none; }
 /* The toast sits above the bottom bar on phones. */
 .k-toaster { bottom: calc(var(--bottombar-h) + 12px + env(safe-area-inset-bottom)); }
 
@@ -138,7 +156,15 @@
      at the same x when expanded */
   .k-sidenav .k-nav-item { white-space: nowrap; overflow: hidden; padding: 0 11px; }
   .k-sidenav .k-nav-item__label { transition: opacity var(--dur-fast) var(--ease-standard); }
+  /* The version sits at the foot of the menu, just above "Contraer menú";
+     collapsed to the rail it fades out with the labels. */
+  .k-sidenav__version {
+    display: block; margin-top: auto; padding: 0 11px; overflow: hidden; text-overflow: ellipsis;
+    transition: opacity var(--dur-fast) var(--ease-standard);
+  }
+  .k-app[data-nav='collapsed'] .k-sidenav__version { opacity: 0; }
   .k-nav-toggle { display: flex; margin-top: auto; color: var(--text-muted); }
+  .k-sidenav__version + .k-nav-toggle { margin-top: 0; }
   .k-nav-toggle .k-nav-item__icon svg { width: 20px; height: 20px; transition: transform var(--dur-med) var(--ease-standard); }
   /* the arrow points where the menu goes: left to collapse, right to expand */
   .k-app[data-nav='collapsed'] .k-nav-toggle .k-nav-item__icon svg { transform: rotate(180deg); }
@@ -150,12 +176,16 @@
 
 @media (min-width: 840px) {
   .k-topbar__label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
-  .k-topbar__version { display: inline; }
   .k-main { padding: 32px 40px 56px; }
 }
 
+@media (max-width: 599px) { .k-brand__name strong { display: none; } }
 @media (max-width: 420px) {
-  /* Logo stays top-left; only the name hides on the narrowest phones. */
+  /* Logo and BETA stay top-left; the spaced name hides on phones (as the landing does). */
   .k-topbar { gap: 8px; padding: 0 6px 0 12px; }
-  .k-brand > span:not(.k-logo) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .k-brand__beta { padding: 3px 5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .k-brand .k-logo, .k-topbar, .k-sidenav__version { transition: none; }
+  .k-brand:hover .k-logo { transform: none; }
 }

@@ -1,4 +1,4 @@
-// Kongtrol UI — B: "Importar un archivo de VPN" · v1.3.0 · 2026-11-24
+// Kongtrol UI — B: "Importar un archivo de VPN" · v1.4.0 · 2026-11-25
 //
 // The type comes from the extension and, for a .conf, from its content
 // (profileimport.TypeForContent, ADR-0080: OpenVPN GUI uses .conf), the name
@@ -20,8 +20,13 @@
 // carpeta donde están" (the OS's folder dialog, then `ref_dir`) when the
 // daemon can show one, and "Agregar <name>" (or a drop) per file; the
 // buttons sit under the text so the narrow sheet never squeezes it.
+//
+// A native pick waits for the user in the OS dialog: closing the sheet (or
+// going back) aborts the request, the daemon's request context ends and
+// the dialog closes; an abort reads as cancelled, never as an error.
+// "Guardar y activar" saves and connects; "Guardar" only saves (ADR-0115).
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { ApiError } from '../../api/client'
+import { ApiError, isAbort } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
 import {
@@ -43,7 +48,7 @@ import { localizeError } from '../profiles/errors'
 import { useDropZone } from '../profiles/dropZone'
 import { UploadIcon } from '../profiles/icons'
 import { MAX_EXTRA_BYTES, MAX_EXTRA_FILES, MAX_IMPORT_BYTES, fromBase64, importName, toBase64 } from '../profiles/importModel'
-import { useSaveAndActivate } from './activate'
+import { useSaveAndActivate, type SaveIntent } from './activate'
 import { isValidName, ovpnNeedsCredentials, profileNameFromFile, typeForContent, typeForFile } from './model'
 import { ActivateFooter, ErrorBanner } from './parts'
 
@@ -55,7 +60,8 @@ interface Props {
   note?: string | undefined
   onBack: () => void
   /** provider: whose account issued the file (POST /api/v1/vpns/import, ADR-0103). */
-  onDone: (name: string, path: string, reauth: boolean, provider?: string) => void
+  /** `connect`: "Guardar y activar" (true) or "Guardar" (false, ADR-0115). */
+  onDone: (name: string, path: string, reauth: boolean, provider: string | undefined, connect: boolean) => void
   onDirty: (dirty: boolean) => void
 }
 
@@ -127,6 +133,16 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   /** Folder picked for the .ovpn's files ("Elegir la carpeta donde están"), for this choice only. */
   const [refDir, setRefDir] = useState<string | undefined>(undefined)
   const act = useSaveAndActivate()
+  /** Which button saved: re-submits (a certificate added after a refusal) keep the user's choice. */
+  const how = useRef<SaveIntent>('activate')
+  /** The native pick in flight: aborted when the step goes away (sheet closed, Volver). */
+  const picking = useRef<AbortController | null>(null)
+  useEffect(() => () => picking.current?.abort(), [])
+  const pickSignal = () => {
+    picking.current?.abort()
+    picking.current = new AbortController()
+    return picking.current.signal
+  }
   const nativePicker = pickAvailable.data === true && !noPicker
 
   useEffect(() => onDirty(chosen !== null), [chosen, onDirty])
@@ -230,12 +246,13 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
       return
     }
     try {
-      const res = await pickFile.mutateAsync()
+      const res = await pickFile.mutateAsync(pickSignal())
       if (res.cancelled) return
       const text = new TextDecoder().decode(fromBase64(res.content_base64))
       const type = typeForContent(res.name, text) ?? res.type
       select({ fileName: res.name, type, content: res.content_base64, needsCreds: type === 'openvpn' && ovpnNeedsCredentials(text), path: res.path }, [])
     } catch (err) {
+      if (isAbort(err)) return
       // No dialog here after all: the next click opens the browser's picker.
       if (err instanceof ApiError && err.key === PICKER_UNAVAILABLE) setNoPicker(true)
       setFileError(describeError(err, t))
@@ -255,11 +272,12 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   /** "Elegir la carpeta donde están": the OS's folder dialog, then import again reading the files there. */
   const chooseFolder = async () => {
     try {
-      const res = await pickFolder.mutateAsync()
+      const res = await pickFolder.mutateAsync(pickSignal())
       if (res.cancelled) return
       setRefDir(res.path)
       void submit(undefined, false, extras, res.path)
     } catch (err) {
+      if (isAbort(err)) return
       if (err instanceof ApiError && err.key === PICKER_UNAVAILABLE) setNoPicker(true)
       setFileError(describeError(err, t))
     }
@@ -307,9 +325,9 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     }
     const draft = { ...emptyDraft(chosen.type), name: n, config: path, authMethod, username, password }
     try {
-      const outcome = await act.run(toRequest(draft, 'create'))
+      const outcome = await act.run(toRequest(draft, 'create'), how.current)
       onDirty(false)
-      if (outcome !== 'failed') onDone(n, path, outcome === 'reauth', provider)
+      if (outcome !== 'failed') onDone(n, path, outcome === 'reauth', provider, how.current === 'activate')
     } catch (err) {
       const local = localizeError(err, t)
       if (local instanceof ApiError && fieldForErrorKey(local.key) === 'name') {
@@ -322,7 +340,14 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const stillMissing = missing.filter((m) => !extras.some((x) => sameName(x.name, m)))
 
   return (
-    <form className="k-add__step k-add-file" onSubmit={(e) => void submit(e)} noValidate>
+    <form
+      className="k-add__step k-add-file"
+      onSubmit={(e) => {
+        how.current = 'activate'
+        void submit(e)
+      }}
+      noValidate
+    >
       {note && <p className="k-add__muted">{note}</p>}
       <div
         className="k-add-drop"
@@ -504,10 +529,15 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
 
       <ActivateFooter
         phase={act.phase}
+        intent={act.intent}
+        onSaveOnly={() => {
+          how.current = 'save'
+          void submit()
+        }}
         onBack={onBack}
         onRetry={() =>
           void act.retryRestart().then((outcome) => {
-            if (outcome !== 'failed' && stored) onDone(name.trim(), stored.path, outcome === 'reauth', stored.provider)
+            if (outcome !== 'failed' && stored) onDone(name.trim(), stored.path, outcome === 'reauth', stored.provider, how.current === 'activate')
           })
         }
       />

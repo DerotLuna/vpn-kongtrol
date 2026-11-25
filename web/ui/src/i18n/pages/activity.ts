@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Actividad (/activity): notices + audit log · v1.3.0 · 2026-11-19
+// Kongtrol UI strings — Actividad (/activity): notices + audit log · v1.4.0 · 2026-11-25
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -19,7 +19,7 @@ const es = {
   'activity.events.memory': 'Kongtrol recuerda los últimos 100 avisos mientras está abierto; al reiniciarlo empiezan de cero.',
   'activity.events.loading': 'Cargando avisos…',
   'activity.events.empty.title': 'Sin avisos por ahora',
-  'activity.events.empty.body': 'Aquí verás cuándo una VPN se cae o se reconecta, o cuándo una regla bloquea o deja pasar tráfico. Si todo va bien, esta lista queda vacía.',
+  'activity.events.empty.body': 'Aquí aparecerá cuándo una VPN se cae o se reconecta, o cuándo una regla actúa. Si todo va bien, queda vacía.',
   'activity.events.list': 'Avisos, del más nuevo al más viejo',
   'activity.events.today': 'Hoy',
   'activity.events.yesterday': 'Ayer',
@@ -75,8 +75,12 @@ const es = {
   'activity.audit.export': 'Exportar lo que ves',
   'activity.audit.exported': 'Listo: se descargó {file} con {count} entradas.',
   'activity.audit.count': 'Mostrando {shown} entradas',
-  'activity.audit.more': 'Cargar más',
+  'activity.audit.countOf': 'Mostrando {shown} de {total} entradas',
+  'activity.audit.more': 'Ver {n} más',
   'activity.audit.countMore': 'Mostrando las {shown} más nuevas · hay más antiguas',
+  'activity.audit.fresh': '{n} nuevas',
+  'activity.audit.fresh.one': '1 nueva',
+  'activity.audit.fresh.show': 'Mostrar',
   'activity.audit.caption': 'Entradas del registro de auditoría, de la más nueva a la más vieja',
   'activity.audit.col.time': 'Hora',
   'activity.audit.col.level': 'Nivel',
@@ -129,7 +133,7 @@ const en: Strings<typeof es> = {
   'activity.events.memory': 'Kongtrol remembers the last 100 notices while it runs; restarting it starts the list over.',
   'activity.events.loading': 'Loading notices…',
   'activity.events.empty.title': 'No notices for now',
-  'activity.events.empty.body': 'Here you will see when a VPN drops or reconnects, or when a rule blocks or lets traffic through. If all is well, this list stays empty.',
+  'activity.events.empty.body': 'This is where a VPN dropping or reconnecting, or a rule acting, will show up. If all is well, it stays empty.',
   'activity.events.list': 'Notices, newest first',
   'activity.events.today': 'Today',
   'activity.events.yesterday': 'Yesterday',
@@ -185,8 +189,12 @@ const en: Strings<typeof es> = {
   'activity.audit.export': 'Export what you see',
   'activity.audit.exported': 'Done: {file} was downloaded with {count} entries.',
   'activity.audit.count': 'Showing {shown} entries',
-  'activity.audit.more': 'Load more',
+  'activity.audit.countOf': 'Showing {shown} of {total} entries',
+  'activity.audit.more': 'Show {n} more',
   'activity.audit.countMore': 'Showing the newest {shown} · older ones exist',
+  'activity.audit.fresh': '{n} new',
+  'activity.audit.fresh.one': '1 new',
+  'activity.audit.fresh.show': 'Show',
   'activity.audit.caption': 'Audit log entries, newest first',
   'activity.audit.col.time': 'Time',
   'activity.audit.col.level': 'Level',

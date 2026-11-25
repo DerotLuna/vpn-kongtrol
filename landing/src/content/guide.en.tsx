@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.8.0 · 2026-11-24.
+// Version 3.9.0 · 2026-11-25.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -123,7 +123,7 @@ export default function guideEN(os: OS): GuideContent {
         <IC c="sudo" />. If the helper is missing, the panel says so with a <strong>Fix</strong> button; in the terminal:{' '}
         <IC c="kongtrol service install" />.</>,
     },
-    // feature:wizard feature:profile_import
+    // feature:wizard feature:profile_import feature:add_sheet
     wizard: {
       title: <>Your first VPN</>,
       lead: <>In the panel, <strong>Profiles</strong> (or the <strong>＋ Add</strong> button at the top). Pick one of these:</>,
@@ -131,6 +131,7 @@ export default function guideEN(os: OS): GuideContent {
         <><strong>A VPN you already use</strong> (NordVPN, Proton, FortiClient…): pick the app and give it a name, for example <IC c="office" />.</>,
         <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it with <strong>Choose file</strong>, or drop it on the panel. If it comes with separate certificates (<IC c="ca.crt" />…), Kongtrol takes them from the same folder or from the path the file names; if you dropped it, Kongtrol looks for the original in your usual folders (OpenVPN, Downloads, Desktop, Documents). If some are still missing, it names them: choose the folder they are in, or add them one by one. It checks it and keeps a protected copy.</>,
         <><strong>Username and password</strong>: they go to the system keychain, never to a text file.</>,
+        <><strong>Save and activate</strong> saves it and connects it; <strong>Save</strong> only saves it, so you connect it whenever you want.</>,
       ],
       attach: <><strong>If you use your VPN's app:</strong> when you connect, if the tunnel is already up, Kongtrol attaches to it.
         If not, it opens the app and connects for you when it can. If it can't, it tells you what to do and waits for you to connect.</>,
@@ -256,7 +257,7 @@ $ kongtrol doctor --fix    # and repairs what it can`,
         { name: <>Rules</>, desc: <>Which sites and networks use each VPN, with a test before saving; Schedules tab.</> },
         { name: <>Traffic</>, desc: <>What goes through each VPN, where a site goes out, recent connections (in memory only) and the system routes.</> },
         { name: <>Security</>, desc: <>Kill switch and DNS protection, per VPN, and the optional public IP check.</> },
-        { name: <>Activity</>, desc: <>Signed log with filters, and Kongtrol's notices.</> },
+        { name: <>Activity</>, desc: <>Signed log with filters (10 entries and <strong>Show 20 more</strong>; new ones wait behind <strong>Show</strong>), and Kongtrol's notices.</> },
         { name: <>Settings</>, desc: <>Language, theme, diagnostics, new version notice, restart or stop, and delete your data.</> },
       ],
       port: <>The panel's port changes only from the terminal (<IC c="kongtrol config dashboard set-port <port>" />):

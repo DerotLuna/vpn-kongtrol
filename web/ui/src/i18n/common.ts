@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Shared by every page: app, shell (header, navigation, status, notices), errors, help links, helper, tunnels, kit and the unsaved-changes prompt · v1.3.0 · 2026-11-24
+// Kongtrol UI strings — Shared by every page: app, shell (header, navigation, status, notices), errors, help links, helper, tunnels, kit and the unsaved-changes prompt · v1.4.0 · 2026-11-25
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -59,6 +59,7 @@ const es = {
   'nav.collapse': 'Contraer menú',
   'nav.expand': 'Expandir menú',
   'header.version': 'Versión {version}',
+  'header.beta': 'BETA',
   'header.toolbar': 'Agregar y ayuda',
   'status.label': 'Estado de tus VPN',
   'status.loading': 'Revisando tus VPN…',
@@ -163,6 +164,7 @@ const en: Strings<typeof es> = {
   'nav.collapse': 'Collapse menu',
   'nav.expand': 'Expand menu',
   'header.version': 'Version {version}',
+  'header.beta': 'BETA',
   'header.toolbar': 'Add and help',
   'status.label': 'Your VPNs status',
   'status.loading': 'Checking your VPNs…',

@@ -1,4 +1,4 @@
-// Kongtrol UI — typed client for the daemon's local API · v0.8.0 · 2026-11-19
+// Kongtrol UI — typed client for the daemon's local API · v0.9.0 · 2026-11-25
 //
 // Same-origin only; never the file token. Authentication (cookie, the page's
 // session header, session bootstrap, 401 handling) lives only in api/auth.ts. The daemon
@@ -64,7 +64,11 @@ async function send(path: string, init: RequestInit, accept: string): Promise<Re
   let res: Response
   try {
     res = await fetch(path, { ...init, headers, credentials: 'same-origin' })
-  } catch {
+  } catch (err) {
+    // Aborted by the caller (e.g. the Add sheet closed during a native
+    // pick): not a lost daemon. The caller sees the AbortError and
+    // treats it as cancelled; see isAbort.
+    if (init.signal?.aborted) throw err
     connection.set('offline')
     throw new ApiError('offline', 0)
   }
@@ -119,9 +123,16 @@ export const http = {
     const res = await send(path, {}, 'application/json')
     return { data: await parse<T>(res), headers: res.headers }
   },
-  post: <T>(path: string, payload?: unknown) => request<T>(path, withJSON('POST', payload)),
+  /** `signal` aborts the request; the daemon's request context is cancelled with it. */
+  post: <T>(path: string, payload?: unknown, opts: { signal?: AbortSignal } = {}) =>
+    request<T>(path, opts.signal ? { ...withJSON('POST', payload), signal: opts.signal } : withJSON('POST', payload)),
   put: <T>(path: string, payload: unknown) => request<T>(path, withJSON('PUT', payload)),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+}
+
+/** A request the caller aborted (AbortController): a cancel, never an error to show. */
+export function isAbort(err: unknown): boolean {
+  return typeof err === 'object' && err !== null && (err as { name?: unknown }).name === 'AbortError'
 }
 
 const enc = encodeURIComponent

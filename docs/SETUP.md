@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.20 · 2026-11-24
+Versión 1.21 · 2026-11-25
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -178,8 +178,10 @@ Pendiente (todavía no publicado).
 
 1. Abre Kongtrol (menú de inicio, Launchpad o el menú de aplicaciones). Aparece el ícono en la
    bandeja y se abre el panel en tu navegador.
-2. En **Perfiles VPN**, elige el tipo, completa los datos y pulsa **Crear**.
-3. Al guardar el primer perfil, el panel te deja conectar, crear una regla o volver a Inicio.
+2. En **Perfiles VPN**, elige el tipo, completa los datos y pulsa **Guardar y activar** (la guarda y
+   la conecta) o **Guardar** (solo la guarda; la conectas cuando quieras) ([ADR-0115](adr/0115-save-without-connecting.md)).
+3. Al guardar el primer perfil, el panel te deja crear una regla o volver a Inicio (y conectarlo,
+   si elegiste **Guardar**).
    Puedes seguir en la misma pestaña y el menú de la bandeja se actualiza en unos segundos.
 
 ¿Cerraste el navegador? En el ícono, **Configurar ahora…** lo abre de nuevo. Si prefieres la
@@ -864,7 +866,7 @@ frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&ta
 - **Reglas** — qué sitios y redes salen por cada VPN (las apps se muestran con «aún no se aplica») (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su VPN está apagada; pestaña **Horarios** (conectar o desconectar VPN a ciertas horas)
 - **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel, la tabla de rutas del equipo y **Recientes** (a dónde se conectó el equipo en la última hora y por dónde salió; se guarda solo en memoria y se apaga en Ajustes › Privacidad) con «Agregar como regla»
 - **Seguridad** — Kill Switch y DNS Guard en vivo (con sus ajustes), el interruptor por perfil, la IP pública opcional (apagada por defecto) y DNS dividido
-- **Actividad** — registro de auditoría (filtros por fecha, perfil y nivel; firma HMAC comprobada) y los avisos del daemon
+- **Actividad** — registro de auditoría (filtros por fecha, perfil y nivel; firma HMAC comprobada; 10 entradas y «Ver 20 más», que pide las más antiguas al daemon cuando hace falta; en vivo, las nuevas esperan tras «N nuevas · Mostrar») y los avisos del daemon
 - **Ajustes** — idioma, tema, **Diagnóstico** (las mismas comprobaciones que `kongtrol doctor`, **Reparar** si falta el ayudante, **Exportar configuración** sin contraseñas), comprobación de salud, avisos de versión nueva, ayudante, reiniciar / detener Kongtrol y borrar datos
 
 > El dashboard está compilado dentro del binario. No necesitas instalar nada extra. El

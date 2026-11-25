@@ -1,4 +1,4 @@
-// Kongtrol UI kit — Dialog / Sheet · v0.3.0 · 2026-11-19
+// Kongtrol UI kit — Dialog / Sheet · v0.4.0 · 2026-11-25
 //
 // Native <dialog> + showModal(): the browser makes the rest of the page
 // inert, traps focus, closes on Esc and restores focus to the opener (MDN,
@@ -9,6 +9,12 @@
 // dialog on wide screens. Kit layers opened inside (select lists, calendar,
 // tooltips: React Aria overlays, ADR-0068) portal into this <dialog>
 // instead of <body>, so they stay in its top layer and are not made inert.
+//
+// Only the content scrolls: the title and close button stay at the top and
+// the actions at the bottom (an `actions` footer sits outside the scroll
+// area; a step's own `.k-dialog__actions` footer sticks to the bottom), so
+// the scrollbar never runs under the rounded corner or the close button.
+// While a dialog is open the page behind it does not scroll (global.css).
 import { useCallback, useEffect, useId, useRef, type ReactNode } from 'react'
 import { UNSAFE_PortalProvider } from 'react-aria/PortalProvider'
 import { usePreferences } from '../../app/preferences-context'
@@ -83,12 +89,14 @@ export function Dialog({ open, onClose, title, description, children, actions, v
           </h2>
           <IconButton label={t('kit.close')} icon={<CloseIcon />} onClick={onClose} />
         </header>
-        {description && (
-          <div id={`${id}-d`} className="k-dialog__desc">
-            {description}
-          </div>
-        )}
-        {children}
+        <div className="k-dialog__content">
+          {description && (
+            <div id={`${id}-d`} className="k-dialog__desc">
+              {description}
+            </div>
+          )}
+          {children}
+        </div>
         {actions && <footer className="k-dialog__actions">{actions}</footer>}
       </div>
       </UNSAFE_PortalProvider>

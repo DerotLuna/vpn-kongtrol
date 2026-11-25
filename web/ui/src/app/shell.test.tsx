@@ -28,6 +28,23 @@ describe('shell and routes', () => {
     expect(within(nav).getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('header brand like the landing: spaced name + BETA, version at the foot of the side menu; on Home it scrolls to the top', async () => {
+    stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
+    const scrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', scrollTo)
+    render(<App />)
+    const header = document.querySelector<HTMLElement>('header.k-topbar')!
+    const brand = within(header).getByRole('link', { name: 'Kongtrol BETA' })
+    expect(brand).toHaveAttribute('href', '/')
+    expect(within(brand).getByText('K O N G T R O L')).toHaveAttribute('aria-hidden', 'true')
+    const nav = (await screen.findAllByRole('navigation', { name: 'Sections' }))[0]!
+    expect(await within(nav).findByText('Version v0.7.0')).toBeInTheDocument()
+    expect(within(header).queryByText('Version v0.7.0')).not.toBeInTheDocument()
+    await userEvent.click(brand)
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ top: 0 }))
+    expect(window.location.pathname).toBe('/')
+  })
+
   it('serves every section at the site root, with no link to the removed classic dashboard', async () => {
     stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
     render(<App />)

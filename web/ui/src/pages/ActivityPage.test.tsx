@@ -123,11 +123,13 @@ describe('Actividad · avisos', () => {
     expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/events?after=1')).toBe(true)
   })
 
-  it('empty feed teaches what will show up', async () => {
+  it('empty feed teaches what will show up, centred with an icon', async () => {
     stubFetch({ ...base, 'GET /api/v1/events?after=0': () => json({ seq: 0, events: [] }) })
     window.history.replaceState(null, '', '/activity')
     render(<App />)
-    expect(await screen.findByRole('heading', { name: 'Sin avisos por ahora' })).toBeInTheDocument()
+    const heading = await screen.findByRole('heading', { name: 'Sin avisos por ahora' })
+    expect(heading.closest('.k-empty')).toHaveClass('k-empty--center')
+    expect(heading.closest('.k-empty')!.querySelector('.k-empty__icon svg')).not.toBeNull()
   })
 })
 
@@ -144,9 +146,9 @@ describe('Actividad · registro de auditoría', () => {
   const auditRoutes = {
     ...base,
     'GET /api/v1/events?after=0': () => json({ seq: 0, events: [] }),
-    'GET /api/v1/audit?limit=200': () => page(all),
-    'GET /api/v1/audit?limit=200&level=WARN': () => page([all[1]!]),
-    'GET /api/v1/audit?limit=200&profile=casa': () => page([all[2]!]),
+    'GET /api/v1/audit?limit=50': () => page(all),
+    'GET /api/v1/audit?limit=50&level=WARN': () => page([all[1]!]),
+    'GET /api/v1/audit?limit=50&profile=casa': () => page([all[2]!]),
   }
 
   it('shows the verified signature state per entry and filters by level at once (no Apply)', async () => {
@@ -165,7 +167,7 @@ describe('Actividad · registro de auditoría', () => {
 
     await pickOption(userEvent.setup(), screen.getByRole('button', { name: /Nivel/ }), 'Aviso')
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
-    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&level=WARN')).toBe(true)
+    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=50&level=WARN')).toBe(true)
   })
 
   it('pages with the before cursor while the daemon says there is more', async () => {
@@ -173,23 +175,49 @@ describe('Actividad · registro de auditoría', () => {
     const first = [audit('9', 'INFO', { timestamp: '2026-11-17T10:00:00Z' })]
     stubFetch({
       ...auditRoutes,
-      'GET /api/v1/audit?limit=200': () => page(first, true),
-      'GET /api/v1/audit?limit=200&before=2026-11-17T10%3A00%3A00Z': () => page([older], false),
+      'GET /api/v1/audit?limit=50': () => page(first, true),
+      'GET /api/v1/audit?limit=50&before=2026-11-17T10%3A00%3A00Z': () => page([older], false),
     })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
     expect(await screen.findByText('Mostrando las 1 más nuevas · hay más antiguas')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Cargar más' }))
+    // The loaded entries ran out: "Ver 20 más" asks the daemon for the next older page.
+    await userEvent.click(screen.getByRole('button', { name: 'Ver 20 más' }))
     expect(await screen.findByText('older entry')).toBeInTheDocument()
     expect(screen.getByText('Mostrando 2 entradas')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Cargar más' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Ver \d+ más$/ })).not.toBeInTheDocument()
+  })
+
+  it('shows 10, then 20 more; live entries wait behind "N nuevas · Mostrar"', async () => {
+    const client = createQueryClient()
+    const at = (i: number) => new Date(Date.UTC(2026, 10, 20, 12, 0, 0) - i * 60_000).toISOString()
+    let entries = Array.from({ length: 25 }, (_, i) => audit(String(i), 'INFO', { timestamp: at(i), message: `entry ${i}` }))
+    stubFetch({ ...auditRoutes, 'GET /api/v1/audit?limit=50': () => page(entries) })
+    window.history.replaceState(null, '', '/activity?tab=audit')
+    render(<App client={client} />)
+    expect(await screen.findByText('Mostrando 10 de 25 entradas')).toBeInTheDocument()
+    expect(screen.getByText('entry 9')).toBeInTheDocument()
+    expect(screen.queryByText('entry 10')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Ver 15 más' }))
+    expect(await screen.findByText('entry 24')).toBeInTheDocument()
+    expect(screen.getByText('Mostrando 25 entradas')).toBeInTheDocument()
+
+    // A new entry arrives on a live read: it waits, the rows on screen stay.
+    entries = [audit('new', 'WARN', { timestamp: at(-1), message: 'brand new entry' }), ...entries]
+    await act(() => client.refetchQueries({ queryKey: ['audit'] }))
+    expect(await screen.findByText('1 nueva')).toBeInTheDocument()
+    expect(screen.queryByText('brand new entry')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Mostrar' }))
+    expect(await screen.findByText('brand new entry')).toBeInTheDocument()
+    expect(screen.getByText('entry 24')).toBeInTheDocument()
+    expect(screen.queryByText('1 nueva')).not.toBeInTheDocument()
   })
 
   it('filters dates on the daemon with one range control: a preset at once, then Clear', async () => {
     const week = presetRange('last7', toISODay(new Date()))
     const fetchMock = stubFetch({
       ...auditRoutes,
-      [`GET /api/v1/audit?limit=200&from=${week.from}&to=${week.to}`]: () => page([all[0]!]),
+      [`GET /api/v1/audit?limit=50&from=${week.from}&to=${week.to}`]: () => page([all[0]!]),
     })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
@@ -199,7 +227,7 @@ describe('Actividad · registro de auditoría', () => {
     await userEvent.click(dates)
     await userEvent.click(within(screen.getByRole('dialog', { name: 'Elegir fechas' })).getByRole('button', { name: 'Últimos 7 días' }))
     expect(await screen.findByText('Mostrando 1 entradas')).toBeInTheDocument()
-    expect(fetchMock.mock.calls.some(([u]) => String(u) === `/api/v1/audit?limit=200&from=${week.from}&to=${week.to}`)).toBe(true)
+    expect(fetchMock.mock.calls.some(([u]) => String(u) === `/api/v1/audit?limit=50&from=${week.from}&to=${week.to}`)).toBe(true)
     expect(dates).toHaveTextContent('Últimos 7 días')
     await userEvent.click(dates)
     await userEvent.click(screen.getByRole('button', { name: 'Borrar fechas' }))
@@ -210,7 +238,7 @@ describe('Actividad · registro de auditoría', () => {
     const user = userEvent.setup()
     const fetchMock = stubFetch({
       ...auditRoutes,
-      'GET /api/v1/audit?limit=200&profile=casa&profile=trabajo': () => page(all),
+      'GET /api/v1/audit?limit=50&profile=casa&profile=trabajo': () => page(all),
     })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
@@ -231,7 +259,7 @@ describe('Actividad · registro de auditoría', () => {
     await user.clear(search)
     await user.click(within(screen.getByRole('listbox', { name: 'Buscar perfil' })).getByRole('option', { name: 'trabajo' }))
     expect(await screen.findByText('Mostrando 3 entradas')).toBeInTheDocument()
-    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=200&profile=casa&profile=trabajo')).toBe(true)
+    expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/audit?limit=50&profile=casa&profile=trabajo')).toBe(true)
     await user.keyboard('{Escape}')
     expect(field).toHaveTextContent('2 elegidos')
     const chips = screen.getByRole('grid', { name: 'Perfiles elegidos' })
@@ -253,7 +281,7 @@ describe('Actividad · registro de auditoría', () => {
   it('reports a read error with what to do, not "not configured"', async () => {
     stubFetch({
       ...auditRoutes,
-      'GET /api/v1/audit?limit=200': () => json({ error: 'permiso denegado', hint: 'Revisa los permisos del archivo.' }, 400),
+      'GET /api/v1/audit?limit=50': () => json({ error: 'permiso denegado', hint: 'Revisa los permisos del archivo.' }, 400),
     })
     window.history.replaceState(null, '', '/activity?tab=audit')
     render(<App />)
@@ -317,9 +345,9 @@ describe('Actividad · registro de auditoría', () => {
 
 describe('activity data helpers', () => {
   it('builds the audit URL with only the filters in use', () => {
-    expect(auditURL({ profiles: [' '], level: '', from: '', to: '' })).toBe('/api/v1/audit?limit=200')
+    expect(auditURL({ profiles: [' '], level: '', from: '', to: '' })).toBe('/api/v1/audit?limit=50')
     expect(auditURL({ profiles: ['a b', 'c'], level: 'ERROR', from: '2026-11-01', to: '2026-11-02' }, '2026-11-02T10:00:00Z')).toBe(
-      '/api/v1/audit?limit=200&profile=a+b&profile=c&level=ERROR&from=2026-11-01&to=2026-11-02&before=2026-11-02T10%3A00%3A00Z',
+      '/api/v1/audit?limit=50&profile=a+b&profile=c&level=ERROR&from=2026-11-01&to=2026-11-02&before=2026-11-02T10%3A00%3A00Z',
     )
   })
 

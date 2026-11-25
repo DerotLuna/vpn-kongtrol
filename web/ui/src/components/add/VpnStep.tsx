@@ -1,4 +1,4 @@
-// Kongtrol UI — A: "Conectar una VPN que ya uso" · v1.1.0 · 2026-11-23
+// Kongtrol UI — A: "Conectar una VPN que ya uso" · v1.2.0 · 2026-11-25
 //
 // VPN apps found on this computer come first, each with one "Usar";
 // "Otra VPN" opens the same type picker as before. The form asks only what
@@ -6,7 +6,8 @@
 // rest sits under "Más opciones" and stays editable later in Perfiles.
 // The name starts as the app's name, made unique ("NordVPN 2") and valid
 // for config.ValidateName. WireGuard / OpenVPN need their file: picking
-// them goes to the import step.
+// them goes to the import step. "Guardar y activar" saves and connects;
+// "Guardar" only saves (ADR-0115).
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { describeError } from '../../api/errors'
@@ -23,7 +24,7 @@ import { checkDraft, emptyDraft, fieldForErrorKey, toRequest, type Draft, type D
 import { localizeError } from '../profiles/errors'
 import { ArrowLeftIcon } from '../profiles/icons'
 import { TypePicker } from '../profiles/TypePicker'
-import { useSaveAndActivate } from './activate'
+import { useSaveAndActivate, type SaveIntent } from './activate'
 import { cleanName, isValidName, uniqueName } from './model'
 import { ActivateFooter, ErrorBanner } from './parts'
 
@@ -35,7 +36,8 @@ interface Props {
   /** WireGuard / OpenVPN: continue with their file. */
   onNeedsFile: (type: 'wireguard' | 'openvpn') => void
   /** `type`: the new profile's type (a provider app may take over a direct file's rules, ADR-0104). */
-  onDone: (name: string, reauth: boolean, type: AdapterType) => void
+  /** `connect`: "Guardar y activar" (true) or "Guardar" (false, ADR-0115). */
+  onDone: (name: string, reauth: boolean, type: AdapterType, connect: boolean) => void
   onDirty: (dirty: boolean) => void
   focusFirst: () => void
 }
@@ -173,8 +175,8 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
   const moreFields: DraftField[] = ['username', 'password', 'country', 'city', 'server', 'iface', 'host']
   const moreProblem = moreFields.some((f) => f !== 'host' && err(f))
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
+  const submit = async (e?: Pick<FormEvent, 'preventDefault'>, how: SaveIntent = 'activate') => {
+    e?.preventDefault()
     if (act.busy) return
     setTried(true)
     setFormError(null)
@@ -183,9 +185,9 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
       return
     }
     try {
-      const outcome = await act.run(toRequest(draft, 'create'))
+      const outcome = await act.run(toRequest(draft, 'create'), how)
       onDirty(false)
-      if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth', draft.type)
+      if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth', draft.type, how === 'activate')
     } catch (error) {
       const local = localizeError(error, t)
       const field = local instanceof ApiError ? fieldForErrorKey(local.key) : undefined
@@ -272,10 +274,12 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
       )}
       <ActivateFooter
         phase={act.phase}
+        intent={act.intent}
+        onSaveOnly={() => void submit(undefined, 'save')}
         onBack={() => (initialType ? onBack() : setSub({ k: 'list' }))}
         onRetry={() =>
           void act.retryRestart().then((outcome) => {
-            if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth', draft.type)
+            if (outcome !== 'failed') onDone(draft.name.trim(), outcome === 'reauth', draft.type, act.intent === 'activate')
           })
         }
       />

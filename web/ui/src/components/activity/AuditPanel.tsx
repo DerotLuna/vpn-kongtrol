@@ -1,14 +1,17 @@
-// Kongtrol UI — Actividad: signed audit log viewer · v1.2.0 · 2026-11-19
+// Kongtrol UI — Actividad: signed audit log viewer · v1.3.0 · 2026-11-25
 //
 // GET /api/v1/audit (same reader as `kongtrol logs`, ADR-0042). Level,
 // profiles (any of the chosen ones) and dates filter on the daemon (from / to = local days, across
-// every retained day); "Cargar más" asks for the next older page with the
-// `before` cursor while X-Kongtrol-Audit-More says there is one. Level
+// every retained day). Read like Tráfico › Recientes (auditView.ts): 10
+// entries, then "Ver 20 más"; when the loaded entries run out it asks for
+// the next older page with the `before` cursor while X-Kongtrol-Audit-More
+// says there is one. "En vivo" keeps new entries behind "N nuevas ·
+// Mostrar" instead of pushing the rows being read. Level
 // names are translated; an unconfigured log is explained (the API answers
 // 200 [] for it) and any other error says what happened. Each entry shows
 // its signature in a word + icon: "Firma válida", "Firma no válida"
 // (danger: edited, or signed with another key) or "Sin firma".
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import {
   AUDIT_LEVELS,
@@ -31,6 +34,7 @@ import { AlertIcon, CheckIcon, InfoIcon, RefreshIcon } from '../ui/icons'
 import { Banner, EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
 import { Switch } from '../ui/Switch'
+import { AUDIT_FIRST, AUDIT_STEP, useAuditView } from './auditView'
 import './activity.css'
 
 // Green Means Up: INFO is not "up", so it stays neutral (legacy painted it
@@ -84,6 +88,35 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
     configured !== false,
   )
   const rows = useMemo(() => query.data?.pages.flatMap((p) => p.events), [query.data])
+  // A new filter starts a new snapshot once its own answer arrives (the
+  // previous filter's rows stay on screen meanwhile: placeholder data).
+  const filterKey = JSON.stringify([profiles, level, from, to])
+  const view = useAuditView(rows, query.isPlaceholderData ? `${filterKey}:wait` : filterKey)
+  const [count, setCount] = useState(AUDIT_FIRST)
+  const [countFor, setCountFor] = useState(filterKey)
+  if (countFor !== filterKey) {
+    // A new filter starts again from the first entries.
+    setCountFor(filterKey)
+    setCount(AUDIT_FIRST)
+  }
+  const listRef = useRef<HTMLDivElement>(null)
+  const visible = view.shown.slice(0, count)
+  const left = view.shown.length - visible.length
+  const canMore = left > 0 || query.hasNextPage
+  const focusList = () => listRef.current?.focus({ preventScroll: true })
+  const showFresh = () => {
+    // New entries go on top; what was on screen stays on screen below them.
+    setCount((n) => n + view.fresh.length)
+    view.merge()
+    focusList()
+  }
+  const showMore = () => {
+    setCount((n) => n + AUDIT_STEP)
+    // The loaded entries run out: ask the daemon for the next older page.
+    if (left < AUDIT_STEP && query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage()
+    if (left <= AUDIT_STEP && !query.hasNextPage) focusList()
+  }
+  const refresh = () => void query.refetch().then(() => view.reset())
   // Configured profiles plus any name the log has mentioned on this visit (a
   // profile renamed or deleted since): kept once seen, so filtering by one
   // never hides the others from the list.
@@ -147,12 +180,27 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
           </Banner>
         )}
         <p className="k-act__count" aria-live="polite">
-          {t(query.hasNextPage ? 'activity.audit.countMore' : 'activity.audit.count', { shown: rows.length })}
+          {query.hasNextPage
+            ? t('activity.audit.countMore', { shown: visible.length })
+            : left > 0
+              ? t('activity.audit.countOf', { shown: visible.length, total: view.shown.length })
+              : t('activity.audit.count', { shown: visible.length })}
         </p>
+        <div role="status" className="k-audit__fresh">
+          {view.fresh.length > 0 && (
+            <>
+              <span>{t(view.fresh.length === 1 ? 'activity.audit.fresh.one' : 'activity.audit.fresh', { n: view.fresh.length })}</span>
+              <Button variant="text" size="sm" onClick={showFresh}>
+                {t('activity.audit.fresh.show')}
+              </Button>
+            </>
+          )}
+        </div>
+        <div ref={listRef} tabIndex={-1} className="k-audit__list" aria-label={t('activity.audit.caption')}>
         <DataList
           caption={t('activity.audit.caption')}
           columns={columns}
-          rows={rows}
+          rows={visible}
           rowKey={(ev) => ev.id || `${ev.timestamp}-${ev.action}-${ev.message}`}
           empty={
             <EmptyState
@@ -169,11 +217,12 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
             />
           }
         />
+        </div>
         {query.error && <ErrorState error={query.error} onRetry={() => void query.refetch()} />}
-        {query.hasNextPage && (
+        {canMore && (
           <div className="k-act__more">
-            <Button variant="outlined" loading={query.isFetchingNextPage} onClick={() => void query.fetchNextPage()}>
-              {t('activity.audit.more')}
+            <Button variant="outlined" loading={query.isFetchingNextPage} onClick={showMore}>
+              {t('activity.audit.more', { n: query.hasNextPage ? AUDIT_STEP : Math.min(AUDIT_STEP, left) })}
             </Button>
           </div>
         )}
@@ -192,7 +241,7 @@ export function AuditPanel({ settings, settingsError }: { settings: Settings | u
         </div>
         {showLog && (
           <div className="k-act__tools">
-            <IconButton label={t('activity.audit.refresh')} icon={<RefreshIcon />} onClick={() => void query.refetch()} />
+            <IconButton label={t('activity.audit.refresh')} icon={<RefreshIcon />} onClick={refresh} />
             <Button variant="outlined" onClick={exportRows} disabled={!rows?.length}>
               {t('activity.audit.export')}
             </Button>

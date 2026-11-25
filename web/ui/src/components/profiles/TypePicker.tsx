@@ -1,4 +1,4 @@
-// Kongtrol UI — step 1 of "Nueva VPN": which VPN is it? · v1.0.0 · 2026-11-18
+// Kongtrol UI — step 1 of "Nueva VPN": which VPN is it? · v1.0.1 · 2026-11-25
 //
 // Two groups in plain words (the app you already use / a file or client
 // Kongtrol drives), each VPN as a monogram tile with how it works on this
@@ -8,6 +8,7 @@ import type { AdapterType, DetectedClient } from '../../data/profiles'
 import { usePreferences } from '../../app/preferences-context'
 import { CATALOG, type AdapterSpec } from './catalog'
 import { Monogram, SupportChip } from './Bits'
+import './picker.css'
 
 interface Props {
   detected: readonly DetectedClient[]

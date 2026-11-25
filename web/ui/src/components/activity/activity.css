@@ -1,4 +1,4 @@
-/* Kongtrol UI — Actividad: notices timeline + audit log · v1.2.0 · 2026-11-19
+/* Kongtrol UI — Actividad: notices timeline + audit log · v1.3.0 · 2026-11-25
    Operate mode: flat surface, hairlines, mono for machine data (times,
    actions, profiles), states as word + icon + color (Four States Rule). */
 
@@ -13,7 +13,11 @@
 .k-act__tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .k-act__note { font-size: 13px; color: var(--text-dim); }
 .k-act__count { font: 500 12px/1.4 var(--font-mono); color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.k-act__more { display: flex; justify-content: center; }
+.k-act__more { display: flex; justify-content: center; overflow-anchor: none; }
+/* "N nuevas · Mostrar" (live entries wait here, like Tráfico › Recientes). */
+.k-audit__fresh { display: flex; align-items: center; gap: 8px; min-height: 36px; color: var(--text-muted); }
+.k-audit__fresh:empty { min-height: 0; }
+.k-audit__list:focus { outline: none; }
 
 /* "En vivo": a quiet steel ring + word; it updates, it is not a state. */
 .k-live { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1.2 var(--font-mono); color: var(--text-muted); }

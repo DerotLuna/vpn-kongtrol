@@ -1,4 +1,4 @@
-// Kongtrol UI tests — "Importar un archivo de VPN": found original, folder pick, missing-files layout (ADR-0112) · v1.0.0 · 2026-11-24
+// Kongtrol UI tests — "Importar un archivo de VPN": found original, folder pick, missing-files layout (ADR-0112), abort on close, "Guardar" (ADR-0115) · v1.1.0 · 2026-11-25
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -111,7 +111,8 @@ describe('B: a dropped .ovpn whose certificates are elsewhere (ADR-0112)', () =>
       'POST /api/v1/vpns': () => json({ status: 'created', profile: 'rluna', restart_required: false }, 201),
     })
     await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/v1/vpns/import/pick')).toBe(true))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    // "Save" (ADR-0115): the import again after the folder pick keeps the choice, so nothing connects.
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     await within(sheet).findByText('This .ovpn needs 4 more files')
     const banner = sheet.querySelector<HTMLElement>('.k-add-missing')!
     expect(within(banner).getByText('Choose the folder they are in, or add them one by one.')).toBeInTheDocument()
@@ -120,5 +121,45 @@ describe('B: a dropped .ovpn whose certificates are elsewhere (ADR-0112)', () =>
     const sent = bodies(fetchMock, 'POST /api/v1/vpns/import')
     expect(sent).toHaveLength(2)
     expect(sent[1]).toMatchObject({ ref_dir: 'D:\\certs', file_name: 'rluna.conf' })
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/connect'))).toBe(false)
+  })
+})
+
+describe('B: the native pick ends with the sheet', () => {
+  it('closing the sheet while the OS dialog is open aborts the request (the daemon closes the dialog) and shows no error', async () => {
+    window.history.replaceState(null, '', '/?add=file')
+    let signal: AbortSignal | null | undefined
+    stubFetch({
+      'GET /api/v1/preferences': () => json({ language: 'en', theme: '' }),
+      'GET /api/v1/version': () => json({ version: 'v0.8.0' }),
+      'GET /api/v1/helper/status': () => json(helperReady),
+      'GET /api/v1/tunnels': () => json([]),
+      'GET /api/v1/groups': () => json([]),
+      'GET /api/v1/policies': () => json([]),
+      'GET /api/v1/vpns': () => json([work]),
+      'GET /api/v1/vpns/detect': () => json([]),
+      'GET /api/v1/setup': () => json({ setup_mode: false, needs_setup: false, restart_pending: false, config_path: '' }),
+      'GET /api/v1/vpns/import/pick': () => json({ available: true }),
+      // The user has not picked yet: the answer never comes, unless aborted.
+      'POST /api/v1/vpns/import/pick': (init) => {
+        signal = init?.signal
+        return new Promise<Response>((_, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+        })
+      },
+    })
+    render(<App />)
+    const sheet = await screen.findByRole('dialog', { name: 'Import a VPN file' })
+    const choose = await within(sheet).findByRole('button', { name: 'Choose file' })
+    await waitFor(() => expect(choose).not.toBeDisabled())
+    const alerts = screen.queryAllByRole('alert').length
+    await userEvent.click(choose)
+    await waitFor(() => expect(signal).toBeDefined())
+    expect(signal?.aborted).toBe(false)
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(signal?.aborted).toBe(true))
+    expect(screen.queryByRole('dialog', { name: 'Import a VPN file' })).toBeNull()
+    // No new error (an abort is a cancel, not "Kongtrol is not answering").
+    expect(screen.queryAllByRole('alert').length).toBeLessThanOrEqual(alerts)
   })
 })

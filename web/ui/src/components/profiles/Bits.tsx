@@ -1,4 +1,4 @@
-// Kongtrol UI — small pieces shared by Perfiles and Grupos · v1.0.0 · 2026-11-18
+// Kongtrol UI — small pieces shared by Perfiles and Grupos · v1.0.1 · 2026-11-25
 //
 // Monogram tiles (our own marks, never a provider logo: ADR-0023), the
 // "works on this system" chip, the profile state pill and the page header
@@ -13,6 +13,7 @@ import { PageHeader } from '../layout/PageHeader'
 import { StatusPill, type PillTone } from '../ui/StatusPill'
 import { TabLinks } from '../ui/Tabs'
 import { supportOn, type AdapterSpec, type Support } from './catalog'
+import './bits.css'
 
 export function Monogram({ spec, size = 'md' }: { spec: AdapterSpec; size?: 'md' | 'lg' }) {
   return (

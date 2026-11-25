@@ -1,4 +1,4 @@
-// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.2.0 · 2026-11-24
+// Kongtrol UI strings — "＋ Agregar" sheet (ADR-0055) · v1.3.0 · 2026-11-25
 //
 // The one place every "add" entry in the panel opens: connect a VPN the
 // user already has, import a .conf / .ovpn, or send a site through a VPN.
@@ -40,8 +40,9 @@ const es = {
   'add.vpn.formLead': 'Solo lo necesario. Lo demás está en «Más opciones» y en Perfiles puedes cambiarlo después.',
   'add.field.name': 'Nombre',
   'add.field.name.hint': 'Así la verás en Kongtrol.',
-  'add.restart.what': 'Al guardar, puedes conectar el perfil o asignarle una regla.',
+  'add.restart.what': '«Guardar y activar» la guarda y la conecta. «Guardar» solo la guarda: la conectas cuando quieras.',
   'add.save': 'Guardar y activar',
+  'add.saveOnly': 'Guardar',
   'add.saving': 'Guardando…',
   'add.restarting': 'Reiniciando Kongtrol…',
   'add.restartFailed': 'Quedó guardada, pero Kongtrol no se reinició.',
@@ -138,6 +139,8 @@ const es = {
 
   'add.done.vpn': '«{name}» está lista.',
   'add.done.vpn.what': 'Ya puedes usarla. Conéctala ahora o haz que un sitio salga por ella.',
+  'add.done.vpn.connecting': '«{name}» está guardada y se está conectando.',
+  'add.done.vpn.connecting.what': 'Verás cuándo queda conectada en Inicio. Mientras tanto, puedes hacer que un sitio salga por ella.',
   'add.done.connect': 'Conectar {name}',
   'add.done.rule': 'Hacer que un sitio salga por ella',
   'add.done.home': 'Ver en Inicio',
@@ -199,8 +202,9 @@ const en: Strings<typeof es> = {
   'add.vpn.formLead': 'Only what is needed. The rest is under “More options” and you can change it later in Profiles.',
   'add.field.name': 'Name',
   'add.field.name.hint': 'How you will see it in Kongtrol.',
-  'add.restart.what': 'Once saved, you can connect the profile or assign it a rule.',
+  'add.restart.what': '“Save and activate” saves and connects it. “Save” only saves it: connect it whenever you want.',
   'add.save': 'Save and activate',
+  'add.saveOnly': 'Save',
   'add.saving': 'Saving…',
   'add.restarting': 'Restarting Kongtrol…',
   'add.restartFailed': 'It is saved, but Kongtrol did not restart.',
@@ -296,6 +300,8 @@ const en: Strings<typeof es> = {
 
   'add.done.vpn': '“{name}” is ready.',
   'add.done.vpn.what': 'You can use it now. Connect it or send a site through it.',
+  'add.done.vpn.connecting': '“{name}” is saved and connecting.',
+  'add.done.vpn.connecting.what': 'You will see on Home when it is connected. Meanwhile, you can send a site through it.',
   'add.done.connect': 'Connect {name}',
   'add.done.rule': 'Send a site through it',
   'add.done.home': 'See it on Home',

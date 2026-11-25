@@ -1,16 +1,34 @@
-// Kongtrol UI — "＋ Agregar": small shared pieces · v1.0.0 · 2026-11-19
+// Kongtrol UI — "＋ Agregar": small shared pieces · v1.1.0 · 2026-11-25
 import type { ReactNode } from 'react'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
 import { Button } from '../ui/Button'
 import { Banner } from '../ui/States'
 import { ArrowLeftIcon } from '../profiles/icons'
-import type { ActivatePhase } from './activate'
+import type { ActivatePhase, SaveIntent } from './activate'
 
-/** Footer of the profile steps: what saving does, then Back + "Guardar y activar". */
-export function ActivateFooter({ phase, onBack, onRetry }: { phase: ActivatePhase; onBack: () => void; onRetry: () => void }) {
+/**
+ * Footer of the profile steps: what saving does, then Back, "Guardar"
+ * (outlined: save only) and "Guardar y activar" (the one primary, the form's
+ * submit: save and connect; ADR-0115). The spinner shows on the button that
+ * was pressed; both wait while it runs.
+ */
+export function ActivateFooter({
+  phase,
+  intent,
+  onBack,
+  onRetry,
+  onSaveOnly,
+}: {
+  phase: ActivatePhase
+  intent: SaveIntent
+  onBack: () => void
+  onRetry: () => void
+  onSaveOnly: () => void
+}) {
   const { t } = usePreferences()
   const busy = phase === 'saving' || phase === 'restarting'
+  const label = phase === 'saving' ? t('add.saving') : phase === 'restarting' ? t('add.restarting') : null
   return (
     <>
       {phase === 'restartFailed' ? (
@@ -36,9 +54,14 @@ export function ActivateFooter({ phase, onBack, onRetry }: { phase: ActivatePhas
           {t('add.back')}
         </Button>
         {phase !== 'restartFailed' && (
-          <Button type="submit" loading={busy}>
-            {phase === 'saving' ? t('add.saving') : phase === 'restarting' ? t('add.restarting') : t('add.save')}
-          </Button>
+          <>
+            <Button variant="outlined" onClick={onSaveOnly} loading={busy && intent === 'save'} disabled={busy}>
+              {busy && intent === 'save' && label ? label : t('add.saveOnly')}
+            </Button>
+            <Button type="submit" loading={busy && intent === 'activate'} disabled={busy && intent === 'save'}>
+              {busy && intent === 'activate' && label ? label : t('add.save')}
+            </Button>
+          </>
         )}
       </footer>
     </>

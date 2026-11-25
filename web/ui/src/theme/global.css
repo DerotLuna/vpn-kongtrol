@@ -1,10 +1,15 @@
-/* KONGTROL UI — base + shared card styles · v0.6.0 · 2026-11-20
+/* KONGTROL UI — base + shared card styles · v0.7.0 · 2026-11-25
    Kit: kit.css · shell: shell.css */
 @import './tokens.css';
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { -webkit-text-size-adjust: 100%; background: var(--bg); }
+/* scrollbar-gutter keeps the layout still when a modal locks the page's
+   scroll (the scrollbar's room stays reserved). */
+html { -webkit-text-size-adjust: 100%; background: var(--bg); scrollbar-gutter: stable; }
+/* A modal <dialog> is open: the page behind it does not scroll; only the
+   dialog's own content does (kit.css "Dialog"). */
+html:has(dialog[open]) { overflow: hidden; }
 body {
   min-height: 100dvh;
   background: var(--bg);
@@ -15,7 +20,11 @@ body {
 img, svg { display: block; max-width: 100%; }
 button { font: inherit; color: inherit; }
 a { color: var(--signal); text-underline-offset: 3px; }
-a:hover { color: var(--signal); text-decoration: underline; text-decoration-color: var(--signal-mark); }
+/* Links inside text are underlined (the browser's default) and keep it on
+   hover. Zero specificity (:where), so navigation, the brand and menu items
+   that set `text-decoration: none` never pick an underline up on hover;
+   they answer hover with a background instead (shell.css). */
+:where(a:hover) { color: var(--signal); text-decoration-color: var(--signal-mark); }
 :focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius); }
 
 /* No lone last words in prose; balanced headings (CSS Text 4). */

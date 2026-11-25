@@ -38,6 +38,21 @@ var (
 
 var open sync.Mutex
 
+// shown is the title of the dialog open now ("" when none), so a second
+// click can bring that dialog to the front instead of only refusing.
+var shown struct {
+	sync.Mutex
+	title string
+}
+
+// raiseFn keeps the open dialog in front for its whole life; bringFn
+// raises an already-open dialog once (variables so tests never touch a
+// window; raise_windows.go / raise_other.go).
+var (
+	raiseFn = raise
+	bringFn = bringToFront
+)
+
 // Options are the dialog's translated texts and the file patterns.
 type Options struct {
 	Title      string
@@ -74,11 +89,27 @@ func pick(ctx context.Context, title string, extra []zenity.Option) (string, err
 		return "", ErrUnavailable
 	}
 	if !open.TryLock() {
+		// The dialog may sit behind the browser (the daemon cannot take
+		// the foreground): show the user the one already open.
+		shown.Lock()
+		t := shown.title
+		shown.Unlock()
+		if t != "" {
+			bringFn(t)
+		}
 		return "", ErrBusy
 	}
 	defer open.Unlock()
+	shown.Lock()
+	shown.title = title
+	shown.Unlock()
+	defer func() {
+		shown.Lock()
+		shown.title = ""
+		shown.Unlock()
+	}()
 	opts := append([]zenity.Option{zenity.Context(ctx), zenity.Title(title)}, extra...)
-	stop := raise(ctx, title)
+	stop := raiseFn(ctx, title)
 	defer stop()
 	path, err := selectFile(opts...)
 	switch {

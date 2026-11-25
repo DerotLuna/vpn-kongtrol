@@ -1,15 +1,18 @@
-/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.3.0 · 2026-11-24
+/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.4.0 · 2026-11-25
    DESIGN.md tokens only; 44px targets; 11px floor; motion only for the
    overlay's state change, off with reduced motion. Compact (owner feedback
    2026-11-19): 520px wide, 12px rhythm, 32px icon tiles; one primary
    (gold) per step, secondary outlined/tonal, "Volver" a quiet text
    button at the start of the footer. "Importar un archivo de VPN" is wider
    (680px, like the profile editor) so file names and the missing-files
-   banner have room (ADR-0112). */
+   banner have room (ADR-0112). Steps that list choices use the width:
+   the VPN type picker opens at up to 880px so its tiles flow in two or
+   three columns (DESIGN.md "Dialogs"). */
 
 @media (min-width: 600px) {
   .k-dialog.k-add-sheet { width: min(520px, calc(100vw - 32px)); }
   .k-dialog.k-add-sheet:has(.k-add-file) { width: min(680px, calc(100vw - 32px)); }
+  .k-dialog.k-add-sheet:has(.kp-picker) { width: min(880px, calc(100vw - 32px)); }
 }
 
 /* Missing files of an .ovpn: names as chips, buttons under the text (never
@@ -25,7 +28,10 @@
 @media (max-width: 599px) {
   .k-add-missing__actions > .k-btn { flex: 1 1 100%; }
 }
-.k-add-sheet .k-dialog__body { gap: 12px; padding: 16px 18px 18px; }
+.k-add-sheet .k-dialog__head { padding: 12px 10px 2px 18px; }
+.k-add-sheet .k-dialog__content { gap: 12px; padding: 8px 18px 18px; }
+.k-add-sheet .k-dialog__content:has(.k-dialog__actions) { padding-bottom: 0; }
+.k-add-sheet .k-dialog__content .k-dialog__actions { padding-bottom: 18px; }
 .k-add { display: flex; flex-direction: column; gap: 12px; }
 .k-add__step { display: flex; flex-direction: column; gap: 12px; }
 .k-add-move, .k-add-move > div { display: flex; flex-direction: column; gap: 8px; }

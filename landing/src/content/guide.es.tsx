@@ -1,5 +1,5 @@
 // Setup guide content — Spanish.
-// Version 3.8.0 · 2026-11-24.
+// Version 3.9.0 · 2026-11-25.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.en.tsx exactly
@@ -129,7 +129,7 @@ export default function guideES(os: OS) {
         <IC c="sudo" />. Si falta el ayudante, el panel lo avisa con un botón <strong>Reparar</strong>; en la terminal:{' '}
         <IC c="kongtrol service install" />.</>,
     },
-    // feature:wizard feature:profile_import
+    // feature:wizard feature:profile_import feature:add_sheet
     wizard: {
       title: <>Tu primera VPN</>,
       lead: <>En el panel, <strong>Perfiles</strong> (o el botón <strong>＋ Agregar</strong> arriba). Elige una de estas:</>,
@@ -137,6 +137,7 @@ export default function guideES(os: OS) {
         <><strong>Una VPN que ya usas</strong> (NordVPN, Proton, FortiClient…): elige la app y ponle un nombre, por ejemplo <IC c="oficina" />.</>,
         <><strong>Un archivo <IC c=".conf" /> u <IC c=".ovpn" /></strong>: impórtalo con <strong>Elegir archivo</strong>, o suéltalo sobre el panel. Si trae certificados aparte (<IC c="ca.crt" />…), Kongtrol los toma de la misma carpeta o de la ruta que escribe el archivo; si lo soltaste, busca el original en tus carpetas habituales (OpenVPN, Descargas, Escritorio, Documentos). Si aun así faltan, te los nombra: elige la carpeta donde están o agrégalos uno por uno. Lo revisa y guarda una copia protegida.</>,
         <><strong>Usuario y contraseña</strong>: van al llavero del sistema, nunca a un archivo de texto.</>,
+        <><strong>Guardar y activar</strong> la guarda y la conecta; <strong>Guardar</strong> solo la guarda, para conectarla cuando quieras.</>,
       ],
       attach: <><strong>Si usas la app de tu VPN:</strong> al conectar, si el túnel ya está arriba, Kongtrol se engancha.
         Si no, abre la app y conecta por ti cuando puede. Si no puede, te dice qué hacer y espera a que conectes tú.</>,
@@ -262,7 +263,7 @@ $ kongtrol doctor --fix    # y repara lo que se puede`,
         { name: <>Reglas</>, desc: <>Qué sitios y redes salen por cada VPN, con prueba antes de guardar; pestaña Horarios.</> },
         { name: <>Tráfico</>, desc: <>Qué pasa por cada VPN, por dónde sale un sitio, conexiones recientes (solo en memoria) y las rutas del sistema.</> },
         { name: <>Seguridad</>, desc: <>Kill switch y protección de DNS, por VPN, y la consulta opcional de IP pública.</> },
-        { name: <>Actividad</>, desc: <>Registro firmado con filtros y los avisos de Kongtrol.</> },
+        { name: <>Actividad</>, desc: <>Registro firmado con filtros (10 entradas y <strong>Ver 20 más</strong>; las nuevas esperan tras <strong>Mostrar</strong>) y los avisos de Kongtrol.</> },
         { name: <>Ajustes</>, desc: <>Idioma, tema, diagnóstico, aviso de versión nueva, reiniciar o detener, y borrar tus datos.</> },
       ],
       port: <>El puerto del panel se cambia solo desde la terminal (<IC c="kongtrol config dashboard set-port <puerto>" />):

@@ -71,9 +71,35 @@ func TestLocate_SeveralCopies(t *testing.T) {
 	if got := l.Find([]byte(ovpnOwner)); got != filepath.Join(root, "a") {
 		t.Fatalf("Find = %q, want the folder with every file", got)
 	}
-	withRefs(t, filepath.Join(root, "c"), ovpnOwner) // a second complete folder
+	withRefs(t, filepath.Join(root, "c"), ovpnOwner) // a second complete folder, same files
+	if got := l.Find([]byte(ovpnOwner)); got != filepath.Join(root, "a") {
+		t.Fatalf("identical complete copies: Find = %q, want the first by path", got)
+	}
+	write(t, filepath.Join(root, "c", "ta.key"), strings.Replace(tlsKey, "ab", "cd", 1))
 	if got := l.Find([]byte(ovpnOwner)); got != "" {
-		t.Fatalf("ambiguous copies guessed %q", got)
+		t.Fatalf("copies with a different ta.key guessed %q", got)
+	}
+}
+
+// The owner's case (ADR-0116): the same complete copy in the user's
+// OpenVPN folder and in Program Files is not ambiguous; the first root
+// wins, whichever order the roots are given in.
+func TestLocate_IdenticalCopiesFirstRoot(t *testing.T) {
+	base := realTemp(t)
+	userRoot, progRoot := filepath.Join(base, "user"), filepath.Join(base, "prog")
+	user := filepath.Join(userRoot, "OpenVPN", "config")
+	prog := filepath.Join(progRoot, "OpenVPN", "config", "rluna")
+	withRefs(t, user, ovpnOwner)
+	withRefs(t, prog, ovpnOwner)
+	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{userRoot, progRoot}}).Find([]byte(ovpnOwner)); got != user {
+		t.Fatalf("Find = %q, want the first root's %q", got, user)
+	}
+	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{progRoot, userRoot}}).Find([]byte(ovpnOwner)); got != prog {
+		t.Fatalf("Find = %q, want the first root's %q", got, prog)
+	}
+	write(t, filepath.Join(prog, "ta.key"), strings.Replace(tlsKey, "ab", "cd", 1))
+	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{userRoot, progRoot}}).Find([]byte(ovpnOwner)); got != "" {
+		t.Fatalf("different ta.key guessed %q", got)
 	}
 }
 

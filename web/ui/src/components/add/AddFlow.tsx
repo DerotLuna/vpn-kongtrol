@@ -1,12 +1,13 @@
-// Kongtrol UI — "＋ Agregar" sheet · v1.3.0 · 2026-11-24
+// Kongtrol UI — "＋ Agregar" sheet · v1.4.0 · 2026-11-25
 //
 // One sheet for every "add" in the panel (ADR-0055): a menu with three
 // plain-language choices, then
 //   A "Conectar una VPN que ya uso"  (VpnStep: found apps first, "Usar")
 //   B "Importar un archivo de VPN"   (FileStep: .conf / .ovpn, drop)
 //   C "Hacer que un sitio salga por una VPN" (RuleStep: one sentence)
-// and a Done step with the next useful actions. A and B save and restart
-// ("Guardar y activar"); C saves paused. C with no profile runs A first
+// and a Done step with the next useful actions. A and B save (restarting
+// only when the daemon asks): "Guardar y activar" also connects the new
+// profile, "Guardar" only saves it (ADR-0115); C saves paused. C with no profile runs A first
 // and comes back with the draft kept.
 //
 // Native <dialog> sheet (kit Dialog): Esc and the close button ask first
@@ -44,7 +45,7 @@ type View =
   | { k: 'vpn'; type?: AdapterType | undefined }
   | { k: 'file'; note?: string | undefined }
   | { k: 'rule' }
-  | { k: 'doneVpn'; name: string; path?: string | undefined; provider?: string | undefined; type?: AdapterType | undefined }
+  | { k: 'doneVpn'; name: string; path?: string | undefined; provider?: string | undefined; type?: AdapterType | undefined; connecting?: boolean | undefined }
   | { k: 'doneRule'; rule: SavedRule }
 
 const TITLE: Record<View['k'], MessageKey> = {
@@ -88,6 +89,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   const [resume, setResume] = useState<{ saved: boolean; target: string } | null>(null)
   const [stepDirty, setStepDirty] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const runTunnel = useTunnelActions()
   const body = useRef<HTMLDivElement>(null)
   const [opener] = useState(() => document.activeElement as HTMLElement | null)
 
@@ -138,7 +140,10 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   }
   const onDirty = useCallback((d: boolean) => setStepDirty(d), [])
 
-  const vpnDone = (name: string, reauth: boolean, path?: string, provider?: string, type?: AdapterType) => {
+  const vpnDone = (name: string, reauth: boolean, connect: boolean, path?: string, provider?: string, type?: AdapterType) => {
+    // "Guardar y activar": connect now. After a restart that needs a new
+    // session (reauth) the page reloads, so it is left to the user.
+    if (connect && !reauth) runTunnel(name, 'connect')
     if (reauth) {
       const draft = backToRule ? { ...rule, via: name } : null
       setResume({ saved: saveAddRecovery({ profile: name, draft }), target: draft?.input ?? '' })
@@ -153,7 +158,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
       go({ k: 'rule' })
       return
     }
-    go({ k: 'doneVpn', name, path, provider, type })
+    go({ k: 'doneVpn', name, path, provider, type, connecting: connect })
   }
 
   const finish = (to?: string) => {
@@ -187,7 +192,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             initialType={view.type}
             onBack={() => go(backToRule ? { k: 'rule' } : { k: 'menu' })}
             onNeedsFile={(type) => go({ k: 'file', note: t('add.file.fromPicker', { app: specOf(type).label }) })}
-            onDone={(name, reauth, type) => vpnDone(name, reauth, undefined, undefined, type)}
+            onDone={(name, reauth, type, connect) => vpnDone(name, reauth, connect, undefined, undefined, type)}
             onDirty={onDirty}
             focusFirst={focusFirst}
           />
@@ -200,7 +205,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             incoming={incoming}
             note={view.note}
             onBack={() => go(backToRule ? { k: 'rule' } : { k: 'menu' })}
-            onDone={(name, path, reauth, provider) => vpnDone(name, reauth, path, provider)}
+            onDone={(name, path, reauth, provider, connect) => vpnDone(name, reauth, connect, path, provider)}
             onDirty={onDirty}
           />
         )
@@ -236,6 +241,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             path={view.path}
             provider={view.provider}
             type={view.type ?? profiles.find((p) => p.name === view.name)?.type}
+            connecting={view.connecting === true}
             profiles={profiles}
             onRule={() => {
               setRule(emptyRuleDraft('', view.name))
@@ -325,12 +331,15 @@ function DoneVpn({
   path,
   provider,
   type,
+  connecting,
   profiles,
   onRule,
   onHome,
 }: {
   name: string
   path?: string | undefined
+  /** "Guardar y activar" already asked to connect it (ADR-0115): no "Conectar" choice. */
+  connecting: boolean
   /** The new profile's type: a provider app may take over its files' rules (ADR-0104). */
   type?: AdapterType | undefined
   profiles: readonly VPNProfile[]
@@ -343,8 +352,8 @@ function DoneVpn({
   const run = useTunnelActions()
   return (
     <div className="k-add__step">
-      <Banner tone="ok" title={t('add.done.vpn', { name })}>
-        <span>{t('add.done.vpn.what')}</span>
+      <Banner tone="ok" title={t(connecting ? 'add.done.vpn.connecting' : 'add.done.vpn', { name })}>
+        <span>{t(connecting ? 'add.done.vpn.connecting.what' : 'add.done.vpn.what')}</span>
       </Banner>
       {provider === 'protonvpn' && <Banner tone="caution" title={t('add.done.protonHint')} />}
       <MoveRules to={name} type={type} profiles={profiles} />
@@ -354,12 +363,14 @@ function DoneVpn({
         </p>
       )}
       <ul className="k-add-choices">
-        <Choice icon={<PlugIcon />} title={t('add.done.connect', { name })} onClick={() => {
-          run(name, 'connect')
-          onHome()
-        }} autoFocus />
+        {!connecting && (
+          <Choice icon={<PlugIcon />} title={t('add.done.connect', { name })} onClick={() => {
+            run(name, 'connect')
+            onHome()
+          }} autoFocus />
+        )}
         <Choice icon={<RouteIcon />} title={t('add.done.rule')} onClick={onRule} />
-        <Choice icon={<HomeIcon />} title={t('add.done.home')} onClick={onHome} />
+        <Choice icon={<HomeIcon />} title={t('add.done.home')} onClick={onHome} autoFocus={connecting} />
       </ul>
     </div>
   )

@@ -1,4 +1,4 @@
-// Kongtrol UI — Actividad: daemon notices timeline · v1.1.0 · 2026-11-19
+// Kongtrol UI — Actividad: daemon notices timeline · v1.2.0 · 2026-11-25
 //
 // The notices the tray and the classic panel show as toasts (GET
 // /api/v1/events), kept as a readable history: newest first, grouped by
@@ -13,7 +13,7 @@ import { useTunnelAction } from '../../data/resources'
 import { AddRuleIcon } from '../add/entries'
 import { OfferActions } from '../home/OfferActions'
 import { Button } from '../ui/Button'
-import { AlertIcon, InfoIcon, PlugIcon } from '../ui/icons'
+import { AlertIcon, BellIcon, InfoIcon, PlugIcon } from '../ui/icons'
 import { EmptyState, ErrorState, Skeleton } from '../ui/States'
 import { StatusPill } from '../ui/StatusPill'
 import './activity.css'
@@ -119,7 +119,7 @@ export function EventsPanel() {
       ) : !data ? (
         <Skeleton lines={4} label={t('activity.events.loading')} />
       ) : data.events.length === 0 ? (
-        <EmptyState icon={<InfoIcon />} title={t('activity.events.empty.title')} body={t('activity.events.empty.body')} />
+        <EmptyState center icon={<BellIcon />} title={t('activity.events.empty.title')} body={t('activity.events.empty.body')} />
       ) : (
         <div className="k-ev-groups" aria-label={t('activity.events.list')} role="region">
           {groups.map((g) => (

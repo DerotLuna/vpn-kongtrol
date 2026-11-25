@@ -1,0 +1,35 @@
+/* Kongtrol UI — shared profile pieces (Bits.tsx) · v1.0.0 · 2026-11-25
+   Monogram tile, support chip and the muted/small text helpers. Imported
+   by Bits.tsx itself, so every surface that renders them (Perfiles, Grupos,
+   the "＋ Agregar" sheet) gets the same look without loading the page CSS.
+   Our own marks only (ADR-0023); no green: support is not a state. */
+
+.kp-muted { color: var(--text-muted); }
+.kp-small { font-size: 13px; }
+
+/* ── Monogram tile ─────────────────────────────────────────────────────── */
+.kp-mono {
+  --kp-group: var(--signal);
+  position: relative; flex: none; display: inline-grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 9px;
+  font: 600 14px/1 var(--font-display); letter-spacing: -0.01em; color: var(--text);
+  background: linear-gradient(150deg, var(--surface-3), var(--surface-2));
+  border: 1px solid var(--border-2);
+}
+.kp-mono::after {
+  content: ''; position: absolute; top: 5px; right: 5px; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--kp-group);
+}
+.kp-mono--direct { --kp-group: var(--steel); }
+.kp-mono--lg { width: 44px; height: 44px; border-radius: 11px; font-size: 16px; }
+
+/* ── Support chip (no green: support is not a state) ───────────────────── */
+.kp-chip {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 2px 9px; border-radius: 999px;
+  border: 1px solid var(--border-2); color: var(--text-muted);
+  font: 500 11px/1.3 var(--font-mono); letter-spacing: 0.02em; white-space: nowrap;
+}
+.kp-chip--auto { color: var(--signal); border-color: var(--signal-line); background: var(--signal-soft); }
+.kp-chip--partial { border-style: dashed; }
+.kp-chip--none { border-style: dashed; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.kp-chip--long { white-space: normal; border-radius: 8px; margin-top: 6px; }

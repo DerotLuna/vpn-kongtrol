@@ -1,4 +1,4 @@
-// Kongtrol UI kit — Skeleton, EmptyState, ErrorState, Banner, Kbd · v0.3.0 · 2026-11-24
+// Kongtrol UI kit — Skeleton, EmptyState, ErrorState, Banner, Kbd · v0.4.0 · 2026-11-25
 //
 // Loading: skeletons only on the first load (they reserve the final space,
 // no layout shift); later refreshes keep the last data on screen
@@ -40,11 +40,13 @@ interface EmptyStateProps {
   body: ReactNode
   action?: ReactNode
   icon?: ReactNode
+  /** Centred, icon in a round tile: a whole list that is empty on purpose (e.g. Avisos). */
+  center?: boolean
 }
 
-export function EmptyState({ title, body, action, icon }: EmptyStateProps) {
+export function EmptyState({ title, body, action, icon, center = false }: EmptyStateProps) {
   return (
-    <div className="k-empty">
+    <div className={center ? 'k-empty k-empty--center' : 'k-empty'}>
       {icon && <span className="k-empty__icon">{icon}</span>}
       <h3>{title}</h3>
       <p>{body}</p>

@@ -108,8 +108,8 @@ describe('ProfilesPage', () => {
     await userEvent.type(name, 'nord')
     await userEvent.click(within(dialog).getByText('More options'))
     await userEvent.type(within(dialog).getByLabelText('Country (optional)'), 'CH')
-    expect(within(dialog).getByText('Once saved, you can connect the profile or assign it a rule.')).toBeInTheDocument()
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Save and activate' }))
+    expect(within(dialog).getByText('“Save and activate” saves and connects it. “Save” only saves it: connect it whenever you want.')).toBeInTheDocument()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toBeDefined())
     expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toEqual({ name: 'nord', type: 'nordvpn', priority: 10, auto_connect: true, country: 'CH' })

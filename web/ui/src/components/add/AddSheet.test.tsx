@@ -200,7 +200,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
 })
 
 describe('A: connect a VPN I already use', () => {
-  it('found app first → name deduped ("NordVPN 2") → Save and activate = create + restart → Done', async () => {
+  it('found app first → name deduped ("NordVPN 2") → Save = create + restart, no connect → Done offers Connect', async () => {
     window.history.replaceState(null, '', '/?add=vpn')
     const { routes, state } = daemon([profile('NordVPN')], {
       'GET /api/v1/vpns/detect': () =>
@@ -226,16 +226,42 @@ describe('A: connect a VPN I already use', () => {
     const name = within(sheet).getByRole('textbox', { name: /^Name/ })
     expect(name).toHaveValue('NordVPN 2')
     await waitFor(() => expect(name).toHaveFocus())
-    expect(within(sheet).getByText('Once saved, you can connect the profile or assign it a rule.')).toBeInTheDocument()
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    expect(within(sheet).getByText('“Save and activate” saves and connects it. “Save” only saves it: connect it whenever you want.')).toBeInTheDocument()
+    expect(within(sheet).getByRole('button', { name: 'Save and activate' })).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
 
     expect(await within(sheet).findByText('“NordVPN 2” is ready.')).toBeInTheDocument()
+    expect(called(fetchMock, 'POST /api/v1/tunnels/NordVPN%202/connect')).toBe(false)
     expect(bodyOf(fetchMock, 'POST /api/v1/vpns')).toEqual({ name: 'NordVPN 2', type: 'nordvpn', priority: 10, auto_connect: true })
     const order = fetchMock.mock.calls.map(([u, i]) => `${i?.method ?? 'GET'} ${String(u)}`)
     expect(order.indexOf('POST /api/v1/restart')).toBeGreaterThan(order.indexOf('POST /api/v1/vpns'))
     await userEvent.click(within(sheet).getByRole('button', { name: 'Connect NordVPN 2' }))
     await waitFor(() => expect(called(fetchMock, 'POST /api/v1/tunnels/NordVPN%202/connect')).toBe(true))
     await waitFor(() => expect(window.location.pathname).toBe('/'))
+  })
+
+  it('"Save and activate" creates the profile and connects it at once (ADR-0115)', async () => {
+    window.history.replaceState(null, '', '/?add=vpn')
+    const { routes, state } = daemon([], {
+      'GET /api/v1/vpns/detect': () => json([{ label: 'NordVPN', adapter_type: 'nordvpn', path: 'C:/NordVPN/nordvpn.exe' }]),
+      'POST /api/v1/vpns': () => {
+        state.profiles.push(profile('NordVPN'))
+        return json({ status: 'created', profile: 'NordVPN', restart_required: false }, 201)
+      },
+      'POST /api/v1/tunnels/NordVPN/connect': () => json({ status: 'connecting', tunnel: 'NordVPN' }, 202),
+    })
+    const fetchMock = stubFetch(routes)
+    render(<App />)
+    const sheet = await screen.findByRole('dialog', { name: 'Connect a VPN I already use' })
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Use NordVPN' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+
+    expect(await within(sheet).findByText('“NordVPN” is saved and connecting.')).toBeInTheDocument()
+    await waitFor(() => expect(called(fetchMock, 'POST /api/v1/tunnels/NordVPN/connect')).toBe(true))
+    const order = fetchMock.mock.calls.map(([u, i]) => `${i?.method ?? 'GET'} ${String(u)}`)
+    expect(order.indexOf('POST /api/v1/tunnels/NordVPN/connect')).toBeGreaterThan(order.indexOf('POST /api/v1/vpns'))
+    // Already connecting: no "Connect" choice on the Done step.
+    expect(within(sheet).queryByRole('button', { name: 'Connect NordVPN' })).toBeNull()
   })
 
   it('corporate client asks for the gateway; a name the daemon would refuse is caught first', async () => {
@@ -246,7 +272,7 @@ describe('A: connect a VPN I already use', () => {
     const name = await within(sheet).findByRole('textbox', { name: /^Name/ })
     expect(name).toHaveValue('FortiClient')
     await userEvent.type(name, '<x>')
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('That name cannot be used.')).toBeInTheDocument()
     expect(within(sheet).getByText('The server is missing.')).toBeInTheDocument()
     expect(called(fetchMock, 'POST /api/v1/vpns')).toBe(false)
@@ -297,7 +323,7 @@ describe('C with no profile: add the VPN first, then back to the rule with the d
     const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Add a VPN' }))
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Use Surfshark' }))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('Your profile was saved. Reopen the dashboard to continue.')).toBeInTheDocument()
     expect(within(sheet).getByText('example.net')).toBeInTheDocument()
     expect(screen.getAllByRole('alert')).toHaveLength(1)
@@ -333,7 +359,7 @@ describe('C with no profile: add the VPN first, then back to the rule with the d
     expect(await within(sheet).findByText('First add the VPN it will go through.')).toBeInTheDocument()
     await userEvent.click(within(sheet).getByRole('button', { name: 'Add a VPN' }))
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Use Surfshark' }))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
 
     expect(await within(sheet).findByText('Done: “Surfshark” is added. Go on with your rule.')).toBeInTheDocument()
     expect(within(sheet).getByRole('textbox', { name: /Site, IP or program/ })).toHaveValue('claude.ai')
@@ -379,7 +405,7 @@ describe('B: import a VPN file', () => {
     expect(within(sheet).getByRole('button', { name: /How it signs in/ })).toHaveTextContent('Username and password')
     await userEvent.type(within(sheet).getByRole('textbox', { name: 'Username' }), 'ana')
     await userEvent.type(within(sheet).getByLabelText('Password'), 's3cret')
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
 
     expect(await within(sheet).findByText('a file "Oficina.ovpn" already exists')).toBeInTheDocument()
     expect(within(sheet).getByText('Pick another name or confirm.')).toBeInTheDocument()
@@ -428,7 +454,7 @@ describe('B: import a VPN file', () => {
     await within(sheet).findByRole('button', { name: 'Choose file' })
     const input = sheet.querySelector<HTMLInputElement>('input[type="file"]')!
     await userEvent.upload(input, new File(['[Interface]\n# NetShield = 1\nAddress = 10.2.0.2/32\n'], 'proton-ch.conf'))
-    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(await within(sheet).findByRole('button', { name: 'Save' }))
     expect(
       await within(sheet).findByText('This file is from your Proton account. Do not connect it while the Proton app is connected: they clash.'),
     ).toBeInTheDocument()
@@ -462,7 +488,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     drop(zoneOf(sheet), [new File(['CA'], 'ca.crt'), new File([ovpn], 'Oficina.ovpn'), new File(['TA'], 'ta.key')])
     expect(await within(sheet).findByText('Oficina.ovpn · OpenVPN')).toBeInTheDocument()
     expect(within(sheet).getByText('Together with: ca.crt, ta.key')).toBeInTheDocument()
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
     const body = bodyOf(fetchMock, 'POST /api/v1/vpns/import') as { files: { name: string; content_base64: string }[] }
     expect(body.files).toEqual([
@@ -488,7 +514,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     })
     drop(zoneOf(sheet), [new File([ovpn], 'Oficina.ovpn'), new File(['CA'], 'ca.crt')])
     await within(sheet).findByText('Oficina.ovpn · OpenVPN')
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('This .ovpn needs 1 more file')).toBeInTheDocument()
     const addKey = within(sheet).getByRole('button', { name: 'Add ta.key' })
     const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
@@ -521,7 +547,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     const zone = zoneOf(sheet)
     drop(zone, [new File(['client\nremote a 1\n'], 'Oficina.ovpn')])
     await within(sheet).findByText('Oficina.ovpn · OpenVPN')
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(creates).toBe(1))
 
     // Dragging over the button inside the zone must not flicker it off.
@@ -535,7 +561,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     drop(zone, [new File(['client\nremote b 1\n'], 'Oficina.ovpn')])
     expect(zone).not.toHaveAttribute('data-drag')
     await waitFor(() => expect(within(sheet).queryByText('the daemon could not save it')).not.toBeInTheDocument())
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
     expect(bodies.map((b) => atob(b.content_base64 ?? ''))).toEqual(['client\nremote a 1\n', 'client\nremote b 1\n'])
   })
@@ -572,7 +598,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     await waitFor(() => expect(called(fetchMock, 'GET /api/v1/vpns/import/pick')).toBe(true))
     await userEvent.click(within(sheet).getByRole('button', { name: 'Choose file' }))
     expect(await within(sheet).findByText('Oficina.ovpn · OpenVPN')).toBeInTheDocument()
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Oficina” is ready.')).toBeInTheDocument()
     expect(bodyOf(fetchMock, 'POST /api/v1/vpns/import')).toEqual({ name: 'Oficina', type: 'openvpn', path: 'C:\\VPN\\Oficina.ovpn', overwrite: false })
   })
@@ -619,7 +645,7 @@ describe('applied live (restart_required: false) and apps connected now', () => 
     expect(within(rows[0]!).getByText('Connected now')).toBeInTheDocument()
     expect(within(sheet).getAllByText('Connected now')).toHaveLength(1)
     await userEvent.click(within(rows[0]!).getByRole('button', { name: 'Use Surfshark' }))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Surfshark” is ready.')).toBeInTheDocument()
     expect(called(fetchMock, 'POST /api/v1/restart')).toBe(false)
   })
@@ -724,7 +750,7 @@ describe('provider app added: move the rules of its account’s files (ADR-0104)
     window.history.replaceState(null, '', '/?add=vpn')
     const sheet = await screen.findByRole('dialog', { name: 'Connect a VPN I already use' })
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Use Proton VPN' }))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     expect(await within(sheet).findByText('“Proton VPN” is ready.')).toBeInTheDocument()
     return sheet
   }

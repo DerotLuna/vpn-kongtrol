@@ -1,4 +1,4 @@
-<!-- README version 2.5.0 · 2026-11-23.
+<!-- README version 2.6.0 · 2026-11-25.
      Theme-aware logo: GitHub supports <picture> with prefers-color-scheme sources
      (docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/quickstart-for-writing-on-github#adding-an-image-to-suit-your-visitors). -->
 <picture>
@@ -229,6 +229,9 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
   It works at once, no restart. Edited a VPN that is connected? It keeps its old settings until you
   reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other VPNs are never
   touched.
+<!-- feature:add_sheet -->
+- New profile in the panel ("＋ Agregar"): "Guardar y activar" saves it and connects it; "Guardar"
+  only saves it, like `kongtrol profile add` (connect it later with `kongtrol up <name>`).
 <!-- feature:app_routing -->
 In a compatible direct WireGuard profile on Linux, turn on **Executable egress** and add
 app-only rules with full executable paths. Destination policies keep their priority

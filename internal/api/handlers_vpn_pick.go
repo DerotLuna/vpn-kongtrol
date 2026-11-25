@@ -59,7 +59,10 @@ func (s *Server) handleImportPickAvailable(w http.ResponseWriter, _ *http.Reques
 // The file is read like a "path" import (regular file, no link, size cap,
 // the user's own rights); nothing of it is logged or audited. 503
 // api.err.picker_unavailable (the panel falls back to the browser's
-// input), 409 api.err.picker_busy (a dialog is already open).
+// input), 409 api.err.picker_busy (a dialog is already open: filepicker
+// brings it to the front first). The dialog closes when the
+// request ends: the panel aborting the fetch cancels r.Context(), and
+// zenity.Context closes the dialog (IFileDialog::Close on Windows).
 func (s *Server) handleImportPick(w http.ResponseWriter, r *http.Request) {
 	_ = http.NewResponseController(w).SetWriteDeadline(time.Now().Add(pickDeadline + time.Minute))
 	ctx, cancel := context.WithTimeout(r.Context(), pickDeadline)

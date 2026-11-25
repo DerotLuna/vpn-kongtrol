@@ -1,4 +1,4 @@
-// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.5.0 · 2026-11-24
+// Kongtrol UI — Perfiles + Grupos: daemon resources and changes · v1.6.0 · 2026-11-25
 //
 // The only place /profiles and /profiles/groups talk to the daemon (ADR-0038
 // "pages only compose hooks + kit"). Profile and group CRUD write
@@ -222,9 +222,9 @@ export const profilesApi = {
       },
     ),
   /** Opens the OS's own "Open file" dialog; answers when the user picks or closes it. */
-  pickFile: () => http.post<PickResult>('/api/v1/vpns/import/pick'),
+  pickFile: (signal?: AbortSignal) => http.post<PickResult>('/api/v1/vpns/import/pick', undefined, signal ? { signal } : {}),
   /** Opens the same dialog in folder mode ("Elegir la carpeta donde están", ADR-0112). */
-  pickFolder: () => http.post<PickFolderResult>('/api/v1/vpns/import/pick-folder'),
+  pickFolder: (signal?: AbortSignal) => http.post<PickFolderResult>('/api/v1/vpns/import/pick-folder', undefined, signal ? { signal } : {}),
   setup: () => http.get<SetupStatus>('/api/v1/setup'),
   /** Older daemons have no detect endpoint: a 404 means "nothing to suggest". */
   detect: () =>
@@ -403,14 +403,14 @@ export function usePickAvailable() {
   return useQuery({ queryKey: profileKeys.pick, queryFn: profilesApi.pickAvailable, staleTime: 5 * 60_000, retry: false })
 }
 
-/** Opens the OS's own "Open file" dialog (one at a time). Not cached. */
+/** Opens the OS's own "Open file" dialog (one at a time). Not cached. Pass a signal: aborting it (the Add sheet closed) cancels the request, and the daemon closes the dialog. */
 export function usePickProfileFile() {
-  return useMutation<PickResult, unknown, void>({ mutationFn: () => profilesApi.pickFile() })
+  return useMutation<PickResult, unknown, AbortSignal | undefined>({ mutationFn: (signal) => profilesApi.pickFile(signal) })
 }
 
 /** "Elegir la carpeta donde están": the OS's own folder dialog (ADR-0112). */
 export function usePickImportFolder() {
-  return useMutation<PickFolderResult, unknown, void>({ mutationFn: () => profilesApi.pickFolder() })
+  return useMutation<PickFolderResult, unknown, AbortSignal | undefined>({ mutationFn: (signal) => profilesApi.pickFolder(signal) })
 }
 
 // ── Restart ───────────────────────────────────────────────────────────────

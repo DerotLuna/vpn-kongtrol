@@ -1,8 +1,13 @@
-/* KONGTROL UI — tray flyout (/tray) · v1.1.0 · 2026-11-20 · ADR-0036, ADR-0069
+/* KONGTROL UI — tray flyout (/tray) · v1.1.1 · 2026-11-25 · ADR-0036, ADR-0069
    A 360×520 window next to the tray icon: the control tower seen through a
    small hatch. Title bar in surface-2 (like the terminal window), rows on
    hairlines, state colors only for states (Four States Rule), gold only for
    the one primary action and focus. */
+
+/* The flyout window never scrolls as a page (only .tray-body does): no
+   reserved scrollbar gutter on its <html> (global.css reserves one for the
+   panel so a modal never shifts the layout). */
+html:has(.tray) { scrollbar-gutter: auto; }
 
 .tray {
   display: flex; flex-direction: column;

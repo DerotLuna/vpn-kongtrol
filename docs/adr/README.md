@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.33.0 · 2026-11-24
+Version 1.34.0 · 2026-11-25
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -127,6 +127,9 @@ decision live in [`docs/research/`](../research/README.md).
 | [0112](0112-find-a-dropped-ovpns-files-automatically.md) | A dropped `.ovpn`'s identical original is found in the usual folders (name, size, SHA-256; bounded); absolute and `../` references read with PEM-only checks; "Elegir la carpeta donde están" (`import/pick-folder`, `ref_dir`); wider import sheet, stacked missing-files banner (refines 0105) | Accepted | 2026-11-24 |
 | [0113](0113-label-app-rules-honestly.md) | Label program (`app:`) rules honestly until per-program routing exists: "aún no se aplica" in the Add sheet, Reglas, Tráfico, CLI and docs | Accepted | 2026-11-24 |
 | [0114](0114-traffic-charts-skeleton-and-latency-states.md) | Tráfico charts: same-size skeleton (kit `SkeletonBlock`, aria-busy) and latency that never spins forever: loader for 45 s of samples, then "Sin medición para esta VPN" with why | Accepted | 2026-11-24 |
+| [0115](0115-save-without-connecting.md) | New profiles in the "＋ Agregar" sheet: "Guardar y activar" (primary) saves and connects, "Guardar" only saves; CLI parity already (`profile add`, then `up`) (amends 0055) | Accepted | 2026-11-25 |
+| [0116](0116-identical-copies-are-not-ambiguous.md) | A dropped .ovpn found in several complete folders whose referenced files are all identical is not ambiguous: the first by search-root order is used (refines 0112) | Accepted | 2026-11-25 |
+| [0117](0117-file-dialog-stays-in-front.md) | The native file dialog stays topmost while open; a second click brings it to the front; closing the sheet closes it (refines 0105, 0112) | Accepted | 2026-11-25 |
 
 ## Statuses
 

@@ -1,10 +1,15 @@
-// Kongtrol UI — app shell · v0.7.0 · 2026-11-20
+// Kongtrol UI — app shell · v0.8.0 · 2026-11-25
 //
 // Layout route for every page (ADR-0038):
-// - Header: logo top-left, aggregate VPN status, "＋ Agregar" (the add
-//   sheet, ADR-0055), help (same place on every page, WCAG 3.2.6),
-//   version. Language and theme live only in Ajustes › Idioma y apariencia
-//   (owner feedback 2026-11-19: the header copies were duplicates).
+// - Header: the landing's brand (mark, spaced "K O N G T R O L", BETA; the
+//   32 px solid mark by DESIGN.md "Logo") top-left, aggregate VPN status,
+//   "＋ Agregar" (the add sheet, ADR-0055), help (same place on every page,
+//   WCAG 3.2.6). The brand never looks like a link: on Inicio it scrolls to
+//   the top (smoothly unless reduced motion), elsewhere it goes to Inicio.
+//   Sticky, with its bottom hairline only once the page has scrolled (like
+//   the landing's .is-sticky). The version sits at the foot of the side
+//   menu (and in the phone "Más" sheet). Language and theme live only in
+//   Ajustes › Idioma y apariencia (owner feedback 2026-11-19).
 // - Navigation by width (Material 3 window classes, Apple HIG, Fluent
 //   NavigationView): ≥ 600px a side menu that collapses to an icon rail
 //   with tooltips ("Contraer menú", remembered on this device, collapsed
@@ -36,6 +41,48 @@ import { AggregateStatus, VersionTag } from './AggregateStatus'
 import { AppNotices } from './AppNotices'
 import { UnsavedChangesGuard } from './UnsavedChangesGuard'
 
+/** True once the page has scrolled: the header then shows its bottom hairline. */
+function useScrolled() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 4)
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    return () => window.removeEventListener('scroll', update)
+  }, [])
+  return scrolled
+}
+
+/**
+ * The landing's brand (Nav.tsx .nav-logo): mark, spaced name, BETA tag. A
+ * link to Inicio that never looks like one; on Inicio it scrolls back to
+ * the top instead (instantly under reduced motion).
+ */
+function Brand() {
+  const { t } = usePreferences()
+  const { pathname } = useLocation()
+  const name = t('app.name')
+  return (
+    <Link
+      className="k-brand"
+      to="/"
+      onClick={(e) => {
+        if (pathname !== '/') return
+        e.preventDefault()
+        const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+        window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
+      }}
+    >
+      <Logo size={32} />
+      <span className="k-brand__name">
+        <strong aria-hidden="true">{name.toUpperCase().split('').join(' ')}</strong>
+        <span className="visually-hidden">{name}</span>{' '}
+        <small className="k-brand__beta">{t('header.beta')}</small>
+      </span>
+    </Link>
+  )
+}
+
 function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { t } = usePreferences()
   const listId = useId()
@@ -58,6 +105,7 @@ function SideNav({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
           </li>
         ))}
       </ul>
+      <VersionTag className="k-sidenav__version" />
       <Tooltip content={toggleLabel} placement="right" disabled={!collapsed}>
         <button type="button" className="k-nav-item k-nav-toggle" aria-expanded={!collapsed} aria-controls={listId} aria-label={toggleLabel} onClick={onToggle}>
           <span className="k-nav-item__icon">
@@ -136,6 +184,7 @@ export function AppShell() {
   // Daemon notices (policy, watchdog, update) toast on every page, like the
   // tray; one poll for the whole app, shared with Inicio's list.
   useNoticeToasts()
+  const scrolled = useScrolled()
 
   // Move focus to the new page's heading after a navigation (not on load).
   useEffect(() => {
@@ -153,11 +202,9 @@ export function AppShell() {
       <a className="skip-link" href="#main">
         {t('app.skip')}
       </a>
-      <header className="k-topbar">
-        <Link className="k-brand" to="/">
-          <Logo size={32} />
-          <span>{t('app.name')}</span>
-        </Link>
+      <header className={`k-topbar${scrolled ? ' is-sticky' : ''}`}>
+        <Brand />
+
         <AggregateStatus />
         <div className="k-topbar__actions" role="group" aria-label={t('header.toolbar')}>
           <Button
@@ -174,7 +221,6 @@ export function AppShell() {
             <span className="k-topbar__label">{t('help.guide')}</span>
             <span className="visually-hidden"> {t('help.newTab')}</span>
           </a>
-          <VersionTag className="k-topbar__version" />
         </div>
       </header>
       <div className="k-navcol">

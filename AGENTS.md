@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.33 · 2026-11-24
+Version 1.34 · 2026-11-25
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -311,7 +311,7 @@ ProfileService.Disconnect(name)
 | `internal/sockowner` | Who owns the server end of a loopback TCP connection, no admin: Windows `GetExtendedTcpTable` + process token SID, Linux `/proc/net/tcp` uid, macOS unknown (ADR-0062) |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
 | `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
-| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105; folder mode `PickFolder`, ADR-0112 |
+| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105; folder mode `PickFolder`, ADR-0112; the dialog stays topmost while open (re-asserted every 250 ms) and a second click while it is open brings it to the front before answering 409 `api.err.picker_busy`; closing the Add sheet aborts the request, which closes the dialog (ADR-0117) |
 | `internal/update` | Opt-in new version notice: GitHub Releases latest, ≤1 request/24 h, semver compare, never downloads (ADR-0034) |
 | `internal/uninstall` | Uninstall plan per channel (install.manifest, Windows installer, package managers) and data purge with the exact keychain entries (ADR-0034) |
 | `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
@@ -371,9 +371,11 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   `X-Kongtrol-Session` header and `data/live.ts` a one-time WebSocket ticket (ADR-0062).
 - Every "add" (profile, imported file, rule) opens the one shell-hosted "＋ Agregar" sheet
   (`src/components/add`, ADR-0055) through the deep link `?add=menu|vpn|file|rule[&via=&target=&app=]`
-  (`src/app/addLink.ts` `useAddSheet`); never a page-local create form. New profiles always
-  "Guardar y activar" (create; the sheet restarts itself only on `restart_required: true`);
-  editing a connected profile saves with
+  (`src/app/addLink.ts` `useAddSheet`); never a page-local create form. New profiles offer
+  "Guardar y activar" (primary: create, then connect) and "Guardar" (create only, like
+  `kongtrol profile add`; ADR-0115); the sheet restarts itself only on `restart_required: true`;
+  a native pick ("Elegir archivo", folder) is aborted when the sheet closes (`AbortSignal` →
+  `http.post(…, { signal })`, read as cancelled); editing a connected profile saves with
   "Guardar y reconectar" (`PUT ?reconnect=true`). The sheet reads "Sitio, IP o programa" like
   `policy.ClassifyTargets` (shared table `internal/policy/testdata/classify_targets.json`).
 - UI kit in `src/components/ui` (review at `/_kit`, dev builds only); shell in
@@ -387,6 +389,14 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   build keeps only es-ES/en-US strings). Row actions are 36px icon squares with tooltips (only
   the state's own action carries weight). Tables switch to cards by their container's width
   (container queries), never by window width.
+- Kit `Dialog`: fixed title + close, only `.k-dialog__content` scrolls, actions stay visible (a
+  step's own `.k-dialog__actions` footer is sticky); the page behind never scrolls
+  (`html:has(dialog[open])`, `scrollbar-gutter: stable`). A component imports its own CSS
+  (`profiles/Bits.tsx` → `bits.css`, `profiles/TypePicker.tsx` → `picker.css`) so it looks the
+  same in any page or sheet. Long live lists show 10 rows + "Ver 20 más" and hold new entries
+  behind "N nuevas · Mostrar" (Recientes `recentView.ts`, audit log `activity/auditView.ts`,
+  which asks `GET /api/v1/audit?before=` when the loaded rows run out). Header (DESIGN.md):
+  the landing's brand (32 px solid mark), never styled as a link; version at the foot of the side menu.
 - A tunnel action stays pending until the live state ends it (`src/data/transition.ts`:
   connected / error / provider app waiting for the user / timeout with what to do), not just
   while the HTTP request runs; Inicio, Grupos and the tray flyout share that rule.
@@ -439,7 +449,7 @@ zones use `useDropZone` (depth counter). ADR-0112: a dropped `.ovpn` (no path; t
 `file_name`) with missing files is matched to its identical original (`profileimport.Locator`: same
 name, size, SHA-256; `SearchRoots()` = OpenVPN GUI config folders, Downloads/Desktop/Documents via the
 OS, client folders on Linux/macOS; depth ≤ 3, 20 000 entries, 1 s, no links/junctions/network drives),
-whose folder then acts as `Dir` (answer `found_in`); `Refs.Disk` reads absolute and `../` references
+whose folder then acts as `Dir` (answer `found_in`); several complete copies whose referenced files are all identical (size + SHA-256) are not ambiguous: the first by `SearchRoots()` order is used (ADR-0116); `Refs.Disk` reads absolute and `../` references
 too (`readOutside`: `CleanLocalPath`, real folders from the root, PEM key blocks only →
 `api.err.import_ref_not_key`), never for the elevated read; "Elegir la carpeta donde están" =
 `POST /api/v1/vpns/import/pick-folder` (`filepicker.PickFolder`) then `ref_dir`. Tests set
