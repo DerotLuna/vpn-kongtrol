@@ -121,6 +121,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0106](0106-recent-list-load-more-and-held-updates.md) | Live lists (Recientes) use "load more" + filters and hold new entries behind "N nuevas · Mostrar", never pages (`kongtrol traffic recent --search/--via`) | Accepted | 2026-11-24 |
 | [0107](0107-show-each-vpns-own-routes-read-only.md) | Show the routes each VPN brings by itself, read-only, with what wins against a rule (`GET /api/v1/vpns/routes`, `kongtrol routes vpn`) | Accepted | 2026-11-24 |
 | [0108](0108-show-and-change-profile-priority.md) | Show each profile's priority where rules overlap, with who decided and a link to change it; visible priority field; `kongtrol profile priority`, `kongtrol profile list`, ORDER in `policy list`; range 0–1000 | Accepted | 2026-11-24 |
+| [0109](0109-validate-routing-by-executable.md) | Validate routing by executable | Proposed | 2026-11-24 |
 
 ## Statuses
 

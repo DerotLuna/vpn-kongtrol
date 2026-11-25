@@ -94,6 +94,7 @@ features:
     surfaces:
       - AGENTS.md#policies
       - docs/SETUP.md#policies
+      - docs/ROADMAP.md#policies
       - docs/CONFIGURATION.md#policies
       - landing/src/content/guide.es.tsx#policies
       - landing/src/content/guide.en.tsx#policies

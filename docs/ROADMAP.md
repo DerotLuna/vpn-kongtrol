@@ -21,7 +21,7 @@
 | Per-profile kill-switch overrides | ✅ |
 | DNS guard (netsh · resolv.conf · networksetup) — timeout-bounded | ✅ |
 | Transparent split-DNS (policy domain host injection) | ✅ |
-| Auto-reconnect watchdog (bounded: 3 attempts, re-armed on network change; timeout-bounded reconnects) | ✅ |
+| Auto-reconnect watchdog (exponential backoff, timeout-bounded reconnects) | ✅ |
 | Health-check (notifies) + failover only to declared backup profiles (`failover:`, ADR-0018) | ✅ |
 | Profile scheduler (weekday/time windows) | ✅ |
 | Leak detection (opt-in public IP lookup on connect/disconnect and on demand · configurable action) | ✅ |
@@ -47,6 +47,15 @@
 | Live-daemon E2E tests (OpenVPN and WireGuard; broader adapter coverage pending) | 🧪 |
 
 ## Roadmap
+
+<!-- feature:policies -->
+### Planned · Route by application
+
+Apply `app:` rules to the selected executable's outbound traffic. Programs it launches use
+their own rules or normal routing. A per-rule option to include subprocesses is deferred.
+The Linux prototype selects different interfaces for different executables. Integration with
+Kongtrol profiles and validation on Windows and macOS are pending.
+[GitHub issue #64](https://github.com/DerotLuna/vpn-kongtrol/issues/64)
 
 ### v0.1 — Core ✅
 FortiClient · OpenVPN · ProtonVPN · Route manager · Policy engine · Basic CLI
