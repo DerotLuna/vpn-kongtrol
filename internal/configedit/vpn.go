@@ -167,6 +167,12 @@ func SaveVPNProfile(cfg *config.Config, name string, base config.VPNConfig, p VP
 		}
 	}
 
+	if vc.AppRouteMode != "" && (vc.AppRouteMode != base.AppRouteMode || vc.ConfigFile != base.ConfigFile) {
+		if err := vc.CheckAppRoute(); err != nil {
+			return err
+		}
+	}
+
 	if cfg.VPNs == nil {
 		cfg.VPNs = map[string]config.VPNConfig{}
 	}

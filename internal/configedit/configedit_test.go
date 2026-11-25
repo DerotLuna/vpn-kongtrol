@@ -4,11 +4,13 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/zalando/go-keyring"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
 const testYAML = "vpns:\n  office:\n    type: wireguard\n    config: /etc/wg.conf\n    auth:\n      method: certificate\n"
@@ -123,5 +125,65 @@ func TestAuthDefaults(t *testing.T) {
 	}
 	if !NeedsPassword("forticlient", "credentials") || NeedsPassword("openvpn", "certificate") || NeedsPassword("nordvpn", "credentials") {
 		t.Fatal("needs password")
+	}
+}
+
+func TestSaveVPNProfileChecksExecutableRouting(t *testing.T) {
+	c, _ := load(t)
+	base := c.VPNs["office"]
+	base.ConfigFile = filepath.Join(t.TempDir(), "wg0.conf")
+	fullTunnel := `[Interface]
+PrivateKey = AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+Address = 10.7.0.2/32, fd43:1::2/128
+DNS = 10.7.0.1
+
+[Peer]
+PublicKey = AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=
+Endpoint = vpn.example:51820
+AllowedIPs = 0.0.0.0/0, ::/0
+`
+	if err := os.WriteFile(base.ConfigFile, []byte(fullTunnel), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	c.VPNs["office"] = base
+	mode := privops.AppRouteFallback
+	saved := false
+	save := func(*config.Config) error { saved = true; return nil }
+	err := SaveVPNProfile(c, "office", base, VPNProfile{AppRouteMode: &mode}, save)
+	if privops.WGAppRoutingSupported() {
+		if !base.AppRouteSupported() || !saved || err != nil {
+			t.Fatalf("compatible profile: supported=%t saved=%t err=%v", base.AppRouteSupported(), saved, err)
+		}
+		conflict := base
+		conflict.DefaultEgress = true
+		if conflict.AppRouteSupported() {
+			t.Fatal("profile with whole-device default egress offers executable routing")
+		}
+	} else if base.AppRouteSupported() || saved || key(err) != "config.err.app_route_platform" {
+		t.Fatalf("unsupported platform: supported=%t saved=%t err=%v", base.AppRouteSupported(), saved, err)
+	}
+
+	split := filepath.Join(t.TempDir(), "wg1.conf")
+	if err := os.WriteFile(split, []byte(strings.Replace(fullTunnel, ", ::/0", "", 1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	// Existing settings can come from a different host. Reject switching the
+	// file while routing is on, but let the user switch it off.
+	base.AppRouteMode = mode
+	c.VPNs["office"] = base
+	saved = false
+	err = SaveVPNProfile(c, "office", base, VPNProfile{ConfigFile: &split}, save)
+	if saved || err == nil || c.VPNs["office"].ConfigFile != base.ConfigFile {
+		t.Fatalf("changed file: saved=%t err=%v", saved, err)
+	}
+	if privops.WGAppRoutingSupported() && key(err) != "config.err.default_egress_missing_defaults" {
+		t.Fatalf("split file: %v", err)
+	}
+	off := ""
+	if err := SaveVPNProfile(c, "office", base, VPNProfile{AppRouteMode: &off, ConfigFile: &split}, save); err != nil {
+		t.Fatal(err)
+	}
+	if !saved || c.VPNs["office"].AppRouteMode != "" || c.VPNs["office"].AppRouteSupported() {
+		t.Fatalf("turning off: saved=%t profile=%+v", saved, c.VPNs["office"])
 	}
 }

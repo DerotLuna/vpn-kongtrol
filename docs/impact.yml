@@ -159,14 +159,17 @@ features:
 
   app_routing:
     code:
+      - internal/config/app_routing.go
       - internal/policy/app_egress_test.go
       - internal/privops/app_classifier_linux*.go
       - internal/privops/app_route_linux.go
       - internal/privops/wg_app_routing*.go
     surfaces:
       - README.md#app_routing
+      - docs/API.md
       - docs/CONFIGURATION.md#app_routing
       - docs/ROADMAP.md#app_routing
+      - web/ui/src/i18n/pages/profiles.ts#app_routing
       - docs/adr/0111-activate-linux-executable-egress.md
 
   default_egress:

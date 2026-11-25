@@ -12,6 +12,7 @@ import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
 import type { AdapterType, VPNProfile } from '../../data/profiles'
 import type { MessageKey } from '../../i18n/messages'
+import { Button } from '../ui/Button'
 import { SelectField, TextField, type FieldError } from '../ui/Field'
 import { StatusPill } from '../ui/StatusPill'
 import { Switch } from '../ui/Switch'
@@ -75,6 +76,10 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
     onChange: (e: { target: { value: string } }) => onChange({ [f]: e.target.value } as Partial<Draft>),
     error: err(f),
   })
+  const savedProfile = editing && (profiles.find((p) => p.name === editing.name) ?? editing)
+  const canEnableAppRoute = draft.type === 'wireguard' && savedProfile?.app_route_supported &&
+    draft.config.trim() === (savedProfile.config ?? '').trim()
+  const canTurnOffAppRoute = draft.type === 'wireguard' && !canEnableAppRoute && draft.appRouteMode !== ''
   const hasCert = draft.authMethod !== 'credentials'
   const hasCreds = draft.authMethod !== 'certificate'
   const candidates = profiles.map((p) => p.name).filter((n) => n !== (editing?.name ?? draft.name.trim()))
@@ -272,7 +277,7 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
         <p className="k-field__hint">{t('profiles.onDown.hint')}</p>
       </Section>
 
-      {draft.type === 'wireguard' && editing?.app_route_supported && (
+      {canEnableAppRoute && (
         <Section title={t('profiles.appRoute.title')}>
           <SelectField
             label={t('profiles.appRoute.mode')}
@@ -288,6 +293,15 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
               if (!busy) onChange({ appRouteMode: value as Draft['appRouteMode'] })
             }}
           />
+        </Section>
+      )}
+
+      {canTurnOffAppRoute && (
+        <Section title={t('profiles.appRoute.title')}>
+          <p className="k-field__hint">{t('profiles.appRoute.unavailable')}</p>
+          <Button variant="outlined" size="sm" disabled={busy} onClick={() => onChange({ appRouteMode: '' })}>
+            {t('profiles.appRoute.turnOff')}
+          </Button>
         </Section>
       )}
 

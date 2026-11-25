@@ -230,7 +230,7 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
   reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other VPNs are never
   touched.
 <!-- feature:app_routing -->
-For direct WireGuard on Linux, turn on **Executable egress** in the profile and add
+In a compatible direct WireGuard profile on Linux, turn on **Executable egress** and add
 app-only rules with full executable paths. Destination policies keep their priority
 unless the profile explicitly takes all traffic from those programs.
 [Setup and limits](docs/CONFIGURATION.md#executable-routing-linux)

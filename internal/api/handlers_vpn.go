@@ -11,7 +11,6 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/app"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
-	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
 // GET /api/v1/vpns — list VPN profiles. Credentials are never returned, only
@@ -94,7 +93,7 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 			WaitTimeout:        v.WaitTimeout,
 			AppPath:            v.AppPath,
 			AppRouteMode:       v.AppRouteMode,
-			AppRouteSupported:  v.Type == "wireguard" && privops.WGAppRoutingSupported(),
+			AppRouteSupported:  v.AppRouteSupported(),
 			Provider:           app.DirectProfileProvider(v),
 		})
 	}

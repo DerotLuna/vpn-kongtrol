@@ -83,7 +83,8 @@ GET  /api/v1/policies/explain?target=...     # which policy/VPN a target (IP, do
                                              # POST/PUT accepts on_tunnel_down: "" to inherit, or allow, block, connect.
 
 # VPN profiles (config + OS keychain; applied live, ADR-0053 — see "Profile changes" below)
-GET/POST  /api/v1/vpns                      # POST → 201 {"status":"created","profile","restart_required":false,"reconnect_required":false}
+GET/POST  /api/v1/vpns                      # GET includes app_route_supported for eligible Linux WireGuard profiles.
+                                             # POST → 201 {"status":"created","profile","restart_required":false,"reconnect_required":false}
                                              # Profile GET exposes on_tunnel_down; POST/PUT accepts allow, block, connect.
                                              # GET adds "provider" ("protonvpn") for a direct profile made from that provider's file (ADR-0103/0104).
 GET  /api/v1/vpns/detect                     # VPN clients installed here (same local probes as `kongtrol init`; read-only, runs nothing):

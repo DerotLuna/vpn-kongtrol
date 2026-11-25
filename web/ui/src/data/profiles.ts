@@ -328,12 +328,17 @@ export function useSaveProfile() {
 }
 
 export function useProfileDefaultEgress(name: string) {
+  const client = useQueryClient()
   const path = `/api/v1/vpns/${encodeURIComponent(name)}/default-egress`
   const queryKey = [...profileKeys.vpns, name, 'default-egress']
   const query = useQuery({ queryKey, queryFn: () => http.get<DefaultEgressStatus>(path) })
   const change = useOptimisticMutation<boolean, DefaultEgressStatus, DefaultEgressStatus>({
     queryKey,
-    mutationFn: (enabled) => http.put<DefaultEgressStatus>(path, { enabled }),
+    mutationFn: async (enabled) => {
+      const status = await http.put<DefaultEgressStatus>(path, { enabled })
+      await client.invalidateQueries({ queryKey: profileKeys.vpns, exact: true })
+      return status
+    },
     apply: (current, enabled) => ({ ...current, enabled }),
   })
   return { query, change }

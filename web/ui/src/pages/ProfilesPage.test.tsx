@@ -140,6 +140,44 @@ describe('ProfilesPage', () => {
     expect(within(dialog).queryByText('You already have a VPN called “work”.')).not.toBeInTheDocument()
   })
 
+  it.each([
+    { supported: true, mode: '' },
+    { supported: false, mode: '' },
+    { supported: false, mode: 'all' },
+  ] as const)('gates executable routing (supported=$supported, mode=$mode)', async ({ supported, mode }) => {
+    const fetchMock = stubFetch(base({
+      'GET /api/v1/vpns': () => json([profile('home', {
+        type: 'wireguard',
+        config: '/home/ana/wg0.conf',
+        app_route_supported: supported,
+        app_route_mode: mode,
+      })]),
+      'GET /api/v1/vpns/home/default-egress': () => json({ enabled: false, compatible: false }),
+      'PUT /api/v1/vpns/home': () => json({ status: 'updated', profile: 'home', restart_required: false }),
+    }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit home' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Edit home' }))
+    const selector = () => dialog.queryByLabelText('Route priority')
+    if (supported) {
+      expect(selector()).toBeEnabled()
+      const file = dialog.getByDisplayValue('/home/ana/wg0.conf')
+      await userEvent.type(file, '2')
+      expect(selector()).not.toBeInTheDocument()
+    } else {
+      expect(selector()).not.toBeInTheDocument()
+    }
+    const turnOff = dialog.queryByRole('button', { name: 'Turn off executable egress' })
+    if (mode) {
+      expect(turnOff).toBeEnabled()
+      await userEvent.click(turnOff!)
+      await userEvent.click(dialog.getByRole('button', { name: 'Save' }))
+      await waitFor(() => expect(bodyOf(fetchMock, 'PUT /api/v1/vpns/home')).toMatchObject({ app_route_mode: '' }))
+    } else {
+      expect(turnOff).not.toBeInTheDocument()
+    }
+  })
+
   it('selects native default egress from the saved WireGuard profile', async () => {
     let enabled = false
     const fetchMock = stubFetch(base({
