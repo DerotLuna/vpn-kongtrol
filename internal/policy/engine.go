@@ -12,7 +12,8 @@ import (
 // Engine evaluates traffic policy rules and resolves a destination
 // (IP or domain) to the VPN profile that should handle it.
 type Engine struct {
-	rules []*Rule // sorted by priority descending, then by prefix specificity
+	rules     []*Rule // sorted by priority descending, then by prefix specificity
+	forceApps map[string]bool
 }
 
 // ExplainResult contains human-friendly resolution metadata for a target.
@@ -32,7 +33,10 @@ type ExplainResult struct {
 
 // New builds an Engine from the loaded configuration.
 func New(cfg *config.Config) (*Engine, error) {
-	e := &Engine{}
+	e := &Engine{forceApps: map[string]bool{}}
+	for name, profile := range cfg.VPNs {
+		e.forceApps[name] = profile.AppRouteMode == "all"
+	}
 
 	active := cfg.ActivePolicies()
 	for i, pr := range active {
@@ -99,13 +103,45 @@ func (e *Engine) ResolveApp(app string) (vpnName string, matched bool) {
 	return "", false
 }
 
-// ResolveFlow returns the VPN profile and rule for a combined flow context.
-// target may be an IP or domain; app may be an executable name/path.
+// ResolveFlow selects the destination route first and uses an app-only
+// rule as the fallback. A combined rule still requires both selectors.
 func (e *Engine) ResolveFlow(target, app string) (vpnName string, ruleName string, matched bool) {
+	return e.resolveFlow(target, app, nil)
+}
+
+// resolveFlow can consider only currently selectable profiles and move the
+// executable-only rule ahead when its profile explicitly owns all app traffic.
+func (e *Engine) resolveFlow(target, app string, available func(string) bool) (string, string, bool) {
+	ip := net.ParseIP(strings.TrimSpace(target))
+	var appRule, destRule *Rule
+	bestPrefix := -1
 	for _, r := range e.rules {
-		if r.MatchesFlow(target, app) {
-			return r.Via, r.Name, true
+		if available != nil && !available(r.Via) || !r.MatchesFlow(target, app) {
+			continue
 		}
+		if len(r.Match.Domains) == 0 && len(r.Match.IPRanges) == 0 {
+			if appRule == nil {
+				appRule = r
+			}
+			continue
+		}
+		if ip == nil {
+			if destRule == nil {
+				destRule = r
+			}
+			continue
+		}
+		for _, network := range r.Match.IPRanges {
+			if specificity := prefixLen(network); specificity > bestPrefix && network.Contains(ip) {
+				destRule, bestPrefix = r, specificity
+			}
+		}
+	}
+	if appRule != nil && (e.forceApps[appRule.Via] || destRule == nil) {
+		return appRule.Via, appRule.Name, true
+	}
+	if destRule != nil {
+		return destRule.Via, destRule.Name, true
 	}
 	return "", "", false
 }

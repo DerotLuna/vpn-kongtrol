@@ -123,6 +123,7 @@ decision live in [`docs/research/`](../research/README.md).
 | [0108](0108-show-and-change-profile-priority.md) | Show each profile's priority where rules overlap, with who decided and a link to change it; visible priority field; `kongtrol profile priority`, `kongtrol profile list`, ORDER in `policy list`; range 0–1000 | Accepted | 2026-11-24 |
 | [0109](0109-validate-routing-by-executable.md) | Validate routing by executable | Proposed | 2026-11-24 |
 | [0110](0110-five-consumer-vpn-apps.md) | Integrate five consumer VPN apps | Accepted | 2026-11-24 |
+| [0111](0111-activate-linux-executable-egress.md) | Activate executable egress on Linux and preserve explicit destination routes by default | Accepted | 2026-11-25 |
 
 ## Statuses
 

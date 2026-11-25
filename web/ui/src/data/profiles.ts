@@ -66,6 +66,8 @@ export interface VPNProfile {
   interface?: string
   wait_timeout?: string
   app_path?: string
+  app_route_mode?: '' | 'prefer_destinations' | 'all'
+  app_route_supported?: boolean
   /** Whose account issued a direct profile's file ("protonvpn"); absent when unknown (ADR-0103/0104). */
   provider?: string
 }
@@ -93,6 +95,7 @@ export type ProfileRequest = Partial<{
   interface: string
   wait_timeout: string
   app_path: string
+  app_route_mode?: '' | 'prefer_destinations' | 'all'
 }>
 
 /** Create / update / rename / delete answer (handlers_vpn.go). */

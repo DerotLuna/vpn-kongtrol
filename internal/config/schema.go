@@ -33,7 +33,8 @@ type VPNConfig struct {
 	Port       int    `yaml:"port,omitempty"`
 	TunnelName string `yaml:"tunnel_name,omitempty"`
 	// DefaultEgress preserves native default routing for direct WireGuard on Linux.
-	DefaultEgress bool `yaml:"default_egress,omitempty"`
+	DefaultEgress bool   `yaml:"default_egress,omitempty"`
+	AppRouteMode  string `yaml:"app_route_mode,omitempty"`
 	// FortiClient-only: when true, GUI automation accepts certificate warnings.
 	// Keep false in production to avoid MITM risk.
 	AllowInsecureCert bool       `yaml:"allow_insecure_cert,omitempty"`

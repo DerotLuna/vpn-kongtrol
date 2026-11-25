@@ -36,12 +36,13 @@ type LocalOptions struct {
 // one Local per process: it tracks added routes, DNS snapshots and
 // OpenVPN sessions in memory.
 type Local struct {
-	opts     LocalOptions
-	mu       sync.Mutex
-	routes   map[string][]Route // per interface, added by this Local
-	dnsPrev  map[string]dnsSnapshot
-	sessions map[string]*ovpnSession
-	leases   *leaseTable
+	opts         LocalOptions
+	mu           sync.Mutex
+	routes       map[string][]Route // per interface, added by this Local
+	dnsPrev      map[string]dnsSnapshot
+	sessions     map[string]*ovpnSession
+	leases       *leaseTable
+	wgAppRouting map[string]wgAppRoutingSession
 	// releaseFn undoes one resource of an expired lease (stubbed in tests).
 	releaseFn func(context.Context, resource) error
 	// statsAudited throttles the audit of wg.stats authorized by a
@@ -56,11 +57,12 @@ func NewLocal(opts LocalOptions) *Local {
 		opts.StateDir = DefaultStateDir()
 	}
 	l := &Local{
-		opts:     opts,
-		routes:   map[string][]Route{},
-		dnsPrev:  map[string]dnsSnapshot{},
-		sessions: map[string]*ovpnSession{},
-		leases:   newLeaseTable(opts.Now, LeaseTTL),
+		opts:         opts,
+		routes:       map[string][]Route{},
+		dnsPrev:      map[string]dnsSnapshot{},
+		sessions:     map[string]*ovpnSession{},
+		leases:       newLeaseTable(opts.Now, LeaseTTL),
+		wgAppRouting: map[string]wgAppRoutingSession{},
 	}
 	l.releaseFn = l.releaseResource
 	return l
@@ -274,6 +276,16 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		return WGTunnel{}, err
 	}
 	defer clear(data)
+	if req.AppRouting != nil {
+		if req.DefaultEgress {
+			return WGTunnel{}, invalid("choose one WireGuard egress mode")
+		}
+		data, err = prepareWGAppRouting(data, *req.AppRouting)
+		if err != nil {
+			return WGTunnel{}, err
+		}
+		defer clear(data)
+	}
 	if req.DefaultEgress {
 		if result := inspectWireGuardDefaultEgress(data); !result.Compatible {
 			return WGTunnel{}, invalid("native WireGuard default routing: %s", result.Reason)
@@ -318,6 +330,9 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		}
 	}
 	if l.wgManaged(name) {
+		if err := l.clearWGAppRouting(name); err != nil {
+			return WGTunnel{}, failed("remove previous executable routes", err)
+		}
 		if err := sysWGDown(ctx, name, copyPath); err != nil && (req.DefaultEgress || markerErr == nil) {
 			live, probeErr := wgIsTunnelFn(ctx, name)
 			if live || probeErr != nil {
@@ -343,6 +358,18 @@ func (l *Local) WGInstallTunnel(ctx context.Context, req WGInstallRequest) (WGTu
 		_ = os.Remove(copyPath)
 		_ = os.Remove(marker)
 		return WGTunnel{}, failed("start WireGuard tunnel", err)
+	}
+	if req.AppRouting != nil {
+		session, err := l.startWGAppRouting(name, CallerFrom(ctx).UID, *req.AppRouting)
+		if err != nil {
+			downErr := sysWGDown(ctx, name, copyPath)
+			if downErr == nil {
+				_ = os.Remove(copyPath)
+			}
+			return WGTunnel{}, failed("activate executable routes", errors.Join(err, downErr))
+		}
+		l.wgAppRouting[name] = session
+		l.leases.own(l.leaseOf(ctx), resource{resWGAppRoute, name})
 	}
 	return WGTunnel{Name: name}, nil
 }
@@ -442,7 +469,7 @@ func (l *Local) WGRemoveTunnel(ctx context.Context, req WGRemoveRequest) error {
 	}
 	_ = os.Remove(copyPath)
 	_ = os.Remove(l.wgDefaultEgressMarker(req.Name))
-	return nil
+	return l.clearWGAppRouting(req.Name)
 }
 
 func (l *Local) WGSetAllowedIPs(ctx context.Context, req WGAllowedIPsRequest) error {

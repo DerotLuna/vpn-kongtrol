@@ -272,6 +272,25 @@ export function ProfileForm({ draft, onChange, onTypeChange, problems, serverErr
         <p className="k-field__hint">{t('profiles.onDown.hint')}</p>
       </Section>
 
+      {draft.type === 'wireguard' && editing?.app_route_supported && (
+        <Section title={t('profiles.appRoute.title')}>
+          <SelectField
+            label={t('profiles.appRoute.mode')}
+            hint={t(busy ? 'profiles.appRoute.disconnect' : 'profiles.appRoute.hint')}
+            value={draft.appRouteMode}
+            disabled={busy ?? false}
+            options={[
+              { value: '', label: t('profiles.appRoute.off') },
+              { value: 'prefer_destinations', label: t('profiles.appRoute.destinations') },
+              { value: 'all', label: t('profiles.appRoute.all') },
+            ]}
+            onChange={(value) => {
+              if (!busy) onChange({ appRouteMode: value as Draft['appRouteMode'] })
+            }}
+          />
+        </Section>
+      )}
+
       <Section title={t('profiles.section.order')}>
         <TextField
           label={t('profiles.field.priority')}

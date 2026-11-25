@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.25 · 2026-11-24
+Versión 2.26 · 2026-11-25
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -584,6 +584,7 @@ kongtrol profile add <tipo> [opciones]
 | Opciones | Descripción |
 |---|---|
 | `--app-path string` | ruta de la app oficial, si no está en su lugar habitual |
+| `--app-route-mode string` | Ruta por ejecutable (Linux WireGuard): prefer_destinations o all |
 | `--auth-method string` | certificate, credentials o certificate+credentials (por defecto, el habitual del tipo) |
 | `--cert string` | archivo del certificado de cliente |
 | `--city string` | ciudad del servidor (NordVPN, Proton VPN) |

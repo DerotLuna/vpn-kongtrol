@@ -25,6 +25,7 @@ type VPNProfile struct {
 	Server       *string `json:"server"`
 	Protocol     *string `json:"protocol"`
 	ConfigFile   *string `json:"config"`
+	AppRouteMode *string `json:"app_route_mode"`
 	Priority     *int    `json:"priority"`
 	OnTunnelDown *string `json:"on_tunnel_down"`
 	// Failover: the backup profiles, in order; [] clears it.
@@ -71,6 +72,7 @@ func (p VPNProfile) ApplyTo(vc *config.VPNConfig) {
 	setTrimmed(&vc.Server, p.Server)
 	setTrimmed(&vc.Protocol, p.Protocol)
 	setTrimmed(&vc.ConfigFile, p.ConfigFile)
+	setTrimmed(&vc.AppRouteMode, p.AppRouteMode)
 	setTrimmed(&vc.Auth.Method, p.AuthMethod)
 	setTrimmed(&vc.Auth.Cert, p.Cert)
 	setTrimmed(&vc.Auth.Key, p.Key)

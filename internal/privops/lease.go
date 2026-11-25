@@ -2,6 +2,9 @@ package privops
 
 import (
 	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -68,6 +71,7 @@ const (
 	resDNS                            // id = interface
 	resHosts                          // single, id = ""
 	resBlock                          // single, id = "" (blocked destinations)
+	resWGAppRoute                     // id = WireGuard interface
 )
 
 func (k resourceKind) String() string {
@@ -82,6 +86,8 @@ func (k resourceKind) String() string {
 		return "hosts"
 	case resBlock:
 		return "block"
+	case resWGAppRoute:
+		return "app-route"
 	}
 	return "unknown"
 }
@@ -276,6 +282,20 @@ func (l *Local) releaseResource(ctx context.Context, r resource) error {
 		return l.WriteHostsBlock(ctx, nil)
 	case resBlock:
 		return l.SetBlockedDestinations(ctx, BlockRequest{})
+	case resWGAppRoute:
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		// Once the app lease expires, a running interface is no longer a
+		// usable app tunnel. Tear it down so the next daemon can reconnect.
+		if _, ok := l.wgAppRouting[r.id]; !ok {
+			return nil
+		}
+		copyPath := filepath.Join(l.wgDir(), r.id+".conf")
+		err := wgDownFn(ctx, r.id, copyPath)
+		if err == nil {
+			_ = os.Remove(copyPath)
+		}
+		return errors.Join(err, l.clearWGAppRouting(r.id))
 	}
 	return nil
 }

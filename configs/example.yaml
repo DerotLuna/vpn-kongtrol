@@ -138,6 +138,7 @@ vpns:
     type: wireguard
     config: ~/.kongtrol/configs/wg-home.conf  # path to WireGuard .conf file
     # default_egress: true  # Windows/Linux; one profile with IPv4 and IPv6 defaults and DNS
+    # app_route_mode: prefer_destinations  # Linux app-only rules with full paths; or all. Leave default_egress off.
     auth:
       method: certificate   # WireGuard uses keys embedded in .conf
     priority: 15

@@ -14,12 +14,17 @@ import (
 // egress. The caller supplies a reserved mark, table and priority for the
 // network namespace. Use a dedicated table so unmarked sockets skip it.
 type appRouteTable struct {
-	route    netlink.Route
-	fallback netlink.Route
-	rule     netlink.Rule
+	route           netlink.Route
+	fallback        netlink.Route
+	rule            netlink.Rule
+	destinationRule *netlink.Rule
 }
 
 func openAppRouteTable(egress netlink.Link, destination netip.Prefix, table, priority int, mark uint32) (*appRouteTable, error) {
+	return openAppRouteTableWithMode(egress, destination, table, priority, mark, AppRouteOverride)
+}
+
+func openAppRouteTableWithMode(egress netlink.Link, destination netip.Prefix, table, priority int, mark uint32, mode string) (*appRouteTable, error) {
 	if !destination.IsValid() || table <= 0 || priority <= 0 || mark == 0 {
 		return nil, errors.New("app routing needs a destination, table, policy priority and nonzero mark")
 	}
@@ -52,10 +57,28 @@ func openAppRouteTable(egress netlink.Link, destination netip.Prefix, table, pri
 	if err := netlink.RuleAdd(&rt.rule); err != nil {
 		return nil, errors.Join(fmt.Errorf("add app routing rule: %w", err), deleteAppRoute(&rt.route), deleteAppRoute(&rt.fallback))
 	}
+	if mode == AppRouteFallback {
+		destinations := netlink.NewRule()
+		destinations.Family, destinations.Table, destinations.Priority = family, unix.RT_TABLE_MAIN, priority-1
+		destinations.Mark, destinations.Mask = int(mark), -1
+		// Keep explicit routes and LAN routes. A regular default and the
+		// two /1 defaults that VPN clients use do not override this app.
+		destinations.SuppressPrefixlen = 1
+		if err := netlink.RuleAdd(destinations); err != nil {
+			return nil, errors.Join(fmt.Errorf("add destination precedence rule: %w", err), rt.Close())
+		}
+		rt.destinationRule = destinations
+	}
 	return rt, nil
 }
 
 func (rt *appRouteTable) Close() error {
+	if rt.destinationRule != nil {
+		if err := netlink.RuleDel(rt.destinationRule); err != nil && !errors.Is(err, unix.ENOENT) && !errors.Is(err, unix.ESRCH) {
+			return err
+		}
+		rt.destinationRule = nil
+	}
 	// Stop the lookup before changing the contents of its dedicated table.
 	if err := netlink.RuleDel(&rt.rule); err != nil && !errors.Is(err, unix.ENOENT) && !errors.Is(err, unix.ESRCH) {
 		return err

@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.12 · 2026-11-24
+Versión 1.13 · 2026-11-25
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -20,6 +20,7 @@ Tus perfiles VPN, uno por nombre (`vpns.oficina`, `vpns.casa`, …). Al menos un
 | `vpns.<name>.port` | entero | — | Puerto del servidor. |
 | `vpns.<name>.tunnel_name` | texto | — | Nombre de la conexión guardada en el cliente (p. ej. FortiClient). |
 | `vpns.<name>.default_egress` | booleano | — | Opción para un solo perfil WireGuard directo en Windows o Linux. En la próxima conexión, el perfil lleva el tráfico IPv4 e IPv6 sin una ruta más específica. |
+| `vpns.<name>.app_route_mode` | texto | — | Solo WireGuard directo en Linux. prefer_destinations conserva las rutas de destino; all prioriza este perfil para los ejecutables seleccionados. Aplica en la próxima conexión. |
 | `vpns.<name>.allow_insecure_cert` | booleano | — | Solo FortiClient: acepta advertencias de certificado al automatizar la app. Déjalo en `false` (riesgo de MITM). |
 | `vpns.<name>.config` | texto | — | Ruta al `.ovpn` (openvpn) o `.conf` (wireguard). |
 | `vpns.<name>.server` | texto | — | Servidor exacto (Proton VPN, NordVPN, Mullvad) o nombre/ID de región (PIA, ExpressVPN, Windscribe). |

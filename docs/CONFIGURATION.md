@@ -236,6 +236,16 @@ next connection. A file that already brings up default routes can still do so.
 [ADR-0090](adr/0090-wireguard-default-egress-windows.md)
 
 <!-- feature:providers -->
+<!-- feature:app_routing -->
+### Executable routing (Linux)
+
+1. Import a compatible direct WireGuard profile. Its file needs one peer, IPv4 and IPv6 addresses, both default AllowedIPs and DNS. Use the standard file without custom route, script or mark options.
+2. In **Profiles → Edit**, choose **Executable egress**. Select **Respect destination routes** for normal precedence, or **Send all app traffic through this profile** to give this profile precedence for selected programs. The YAML field is `app_route_mode` with values `prefer_destinations` or `all`, and the CLI accepts `profile add wireguard --app-route-mode`. Leave `default_egress` off for this profile.
+3. Create and enable an app-only rule for the profile with exact absolute paths, for example `app:/usr/bin/example`. Save website and IP rules separately. Connect the profile and restart the selected app to open new sockets.
+
+A program without a matching route still uses the ordinary network rules. In destination-first mode, traffic from the selected executable uses an existing more-specific route first. If that route is removed, it uses its executable profile. Its ordinary system DNS may use the current network; executing helper programs or requests handed to shared processes are evaluated under their own identity. Reconnect after editing the executable rule or replacing its binary. Windows and macOS continue to display executable matches for diagnostics.
+
+<!-- feature:providers -->
 ### Additional provider apps
 
 Create an app profile in **＋ Add** or with `kongtrol profile add <type>`. Sign in in the provider's app first. Kongtrol uses the tunnel once it can identify the interface. Enter the exact interface in the profile's advanced settings if automatic detection is unavailable.

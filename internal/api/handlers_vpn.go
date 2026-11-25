@@ -11,6 +11,7 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/app"
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/configedit"
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 )
 
 // GET /api/v1/vpns — list VPN profiles. Credentials are never returned, only
@@ -42,13 +43,15 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 		HasPasswordCred    bool     `json:"has_password_credential"`
 		KillSwitchOverride string   `json:"kill_switch_override"` // "inherit" | "on" | "off"
 		// Provider attach mode (forticlient, protonvpn, nordvpn, surfshark).
-		AutoConnect bool   `json:"auto_connect"`
-		Country     string `json:"country,omitempty"`
-		City        string `json:"city,omitempty"`
-		Group       string `json:"group,omitempty"`
-		Interface   string `json:"interface,omitempty"`
-		WaitTimeout string `json:"wait_timeout,omitempty"`
-		AppPath     string `json:"app_path,omitempty"`
+		AutoConnect       bool   `json:"auto_connect"`
+		Country           string `json:"country,omitempty"`
+		City              string `json:"city,omitempty"`
+		Group             string `json:"group,omitempty"`
+		Interface         string `json:"interface,omitempty"`
+		WaitTimeout       string `json:"wait_timeout,omitempty"`
+		AppPath           string `json:"app_path,omitempty"`
+		AppRouteMode      string `json:"app_route_mode,omitempty"`
+		AppRouteSupported bool   `json:"app_route_supported"`
 		// Provider: whose account issued a direct profile's file
 		// (app.DirectProfileProvider, "protonvpn"), "" when unknown. The Add
 		// sheet offers to move its rules to that provider's app profile
@@ -90,6 +93,8 @@ func (s *Server) handleListVPNs(w http.ResponseWriter, r *http.Request) {
 			Interface:          v.Interface,
 			WaitTimeout:        v.WaitTimeout,
 			AppPath:            v.AppPath,
+			AppRouteMode:       v.AppRouteMode,
+			AppRouteSupported:  v.Type == "wireguard" && privops.WGAppRoutingSupported(),
 			Provider:           app.DirectProfileProvider(v),
 		})
 	}

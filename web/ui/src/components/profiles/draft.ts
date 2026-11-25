@@ -36,6 +36,7 @@ export interface Draft {
   iface: string
   waitTimeout: string
   appPath: string
+  appRouteMode: NonNullable<VPNProfile['app_route_mode']>
   authMethod: AuthMethod
   cert: string
   key: string
@@ -66,6 +67,7 @@ export function emptyDraft(type: AdapterType = 'openvpn'): Draft {
     iface: '',
     waitTimeout: '',
     appPath: '',
+    appRouteMode: '',
     authMethod: specOf(type).defaultAuth,
     cert: '',
     key: '',
@@ -95,6 +97,7 @@ export function fromProfile(p: VPNProfile): Draft {
     iface: p.interface ?? '',
     waitTimeout: p.wait_timeout ?? '',
     appPath: p.app_path ?? '',
+    appRouteMode: p.app_route_mode ?? '',
     authMethod: method,
     cert: p.cert ?? '',
     key: p.key ?? '',
@@ -156,6 +159,7 @@ export function toRequest(d: Draft, mode: 'create' | 'update'): ProfileRequest {
     auto_connect: !spec.autoConnect || d.autoConnect,
   }
   if (mode === 'update' || d.onTunnelDown !== 'allow') body.on_tunnel_down = d.onTunnelDown
+  if (d.type === 'wireguard' && (mode === 'update' || d.appRouteMode)) body.app_route_mode = d.appRouteMode
   for (const [field, key] of TEXT) {
     const value = d[field] as string
     const trimmed = field === 'authMethod' ? value : value.trim()

@@ -58,7 +58,7 @@ const es = {
   'rules.field.via.pick': 'Elige una VPN',
   'rules.field.onDown': 'Si esa VPN está apagada',
   'rules.field.apps.note':
-    'Hoy las apps solo sirven para probar y diagnosticar: Kongtrol aún no desvía el tráfico según la app. Para que algo salga por la VPN, usa sitios web o redes.',
+    'Para enrutar ejecutables en Linux, activa Salida por ejecutable en un perfil WireGuard y usa rutas completas de archivo. Guarda los sitios y las IP en reglas separadas.',
 
   'rules.onDown.allow': 'Usar la conexión normal y avisarme',
   'rules.onDown.inherit': 'Usar la opción de la VPN',
@@ -373,7 +373,7 @@ const en: Strings<typeof es> = {
   'rules.field.via.pick': 'Pick a VPN',
   'rules.field.onDown': 'If that VPN is off',
   'rules.field.apps.note':
-    'Today apps are only for testing and diagnosis: Kongtrol does not steer traffic by app yet. To send something through the VPN, use websites or networks.',
+    'For executable routing on Linux, enable Executable egress on a WireGuard profile and use full file paths. Save sites and IPs in separate rules.',
 
   'rules.onDown.allow': 'Use the normal connection and tell me',
   'rules.onDown.inherit': 'Use the VPN setting',

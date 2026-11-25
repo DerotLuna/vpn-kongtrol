@@ -62,6 +62,9 @@ func (p profileApply) reconnectRequired(name string) bool {
 // tunnel was brought up with. Priority, failover and the protection
 // settings are read when used, so they never need a reconnect.
 func tunnelSettingsChanged(before, after config.VPNConfig) bool {
+	if before.AppRouteMode != after.AppRouteMode {
+		return true
+	}
 	strip := func(v config.VPNConfig) config.VPNConfig {
 		v.Priority = 0
 		v.Failover = nil

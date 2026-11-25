@@ -190,7 +190,7 @@ func (r *PolicyResolver) RegisterProfile(name, ifaceName, configPath string) err
 		return nil
 	}
 	r.mu.Lock()
-	preserve := r.cfg != nil && r.cfg.VPNs[name].DefaultEgress
+	preserve := r.cfg != nil && (r.cfg.VPNs[name].DefaultEgress || r.cfg.VPNs[name].AppRouteMode != "")
 	r.mu.Unlock()
 	pubKey, err := wireguard.ParsePeerPublicKey(configPath)
 	if err != nil {

@@ -27,6 +27,10 @@ func validateDefaultEgress(profiles map[string]VPNConfig, names []string) error 
 	selected := ""
 	for _, name := range names {
 		profile := profiles[name]
+		if profile.AppRouteMode != "" && (profile.Type != "wireguard" || profile.DefaultEgress ||
+			(profile.AppRouteMode != privops.AppRouteFallback && profile.AppRouteMode != privops.AppRouteOverride)) {
+			return newValidationError("config.err.app_route_mode", name)
+		}
 		if !profile.DefaultEgress {
 			continue
 		}

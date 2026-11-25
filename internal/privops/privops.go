@@ -21,7 +21,7 @@ import (
 // ProtocolVersion is the IPC wire version. Bump it on any incompatible
 // change to the request/response shapes below.
 // 4: wg.stats (read-only WireGuard handshake/transfer counters, ADR-0030).
-const ProtocolVersion = 4
+const ProtocolVersion = 5
 
 // BuildVersion is the Kongtrol release this binary was built from. The CLI
 // sets it at startup; Ping reports the helper's value so `service status`
@@ -122,9 +122,10 @@ type KillSwitchRequest struct {
 // WGInstallRequest brings a WireGuard tunnel up from a user .conf file.
 // The helper reads and validates the file itself and runs a private copy.
 type WGInstallRequest struct {
-	ConfigPath    string `json:"config_path"`
-	Name          string `json:"name,omitempty"` // default: config file base name
-	DefaultEgress bool   `json:"default_egress,omitempty"`
+	ConfigPath    string        `json:"config_path"`
+	Name          string        `json:"name,omitempty"` // default: config file base name
+	DefaultEgress bool          `json:"default_egress,omitempty"`
+	AppRouting    *WGAppRouting `json:"app_routing,omitempty"`
 }
 
 // WGTunnel is the tunnel the helper brought up.

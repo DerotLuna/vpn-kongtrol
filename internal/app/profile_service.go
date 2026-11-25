@@ -7,12 +7,14 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
+	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn/openvpn"
@@ -148,6 +150,7 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 		KeyPath:       vpnCfg.Auth.Key,
 		ConfigPath:    vpnCfg.ConfigFile,
 		DefaultEgress: vpnCfg.DefaultEgress,
+		AppRouteMode:  vpnCfg.AppRouteMode,
 		Username:      vpnCfg.Auth.Username,
 		Extra:         vpnCfg.AdapterExtra(),
 		// Provider adapters (attach mode) call this when they start waiting
@@ -166,6 +169,29 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 		if err == nil {
 			aCfg.Password = p
 		}
+	}
+
+	if vpnCfg.AppRouteMode != "" {
+		aCfg.Password = ""
+		if !privops.WGAppRoutingSupported() {
+			return errors.New(s.t("cli.app_route.unsupported"))
+		}
+		if adapter.Status().Normalize() == vpn.StatusConnected {
+			type appRouteReporter interface{ AppRoutingActive() bool }
+			if reporter, ok := adapter.(appRouteReporter); !ok || !reporter.AppRoutingActive() {
+				return errors.New(s.f("cli.app_route.reconnect", name))
+			}
+		}
+		paths := s.appRoutePaths(name)
+		if len(paths) == 0 {
+			return errors.New(s.f("cli.app_route.paths", name))
+		}
+		for _, path := range paths {
+			if !filepath.IsAbs(path) {
+				return errors.New(s.f("cli.app_route.paths", name))
+			}
+		}
+		aCfg.AppExecutables = paths
 	}
 
 	if err := s.runProfilePreflight(name, vpnCfg, aCfg); err != nil {
@@ -496,8 +522,27 @@ func (s *ProfileService) PolicyAllowedIPs(profileName string) []string {
 	return s.policyAllowedIPs(profileName, false)
 }
 
+func (s *ProfileService) appRoutePaths(name string) []string {
+	engine, err := policy.New(s.cfg)
+	if err != nil {
+		return nil
+	}
+	var paths []string
+	for _, rule := range engine.Rules() {
+		if rule.Via != name || len(rule.Match.Domains) != 0 || len(rule.Match.IPRanges) != 0 {
+			continue
+		}
+		for _, executable := range rule.Match.Apps {
+			if !slices.Contains(paths, executable) {
+				paths = append(paths, executable)
+			}
+		}
+	}
+	return paths
+}
+
 func (s *ProfileService) runProfilePreflight(name string, vpnCfg config.VPNConfig, aCfg vpn.AdapterConfig) error {
-	if vpnCfg.DefaultEgress {
+	if vpnCfg.DefaultEgress || vpnCfg.AppRouteMode != "" {
 		if status := vpnCfg.DefaultEgressStatus(); !status.Compatible {
 			key := "config.err.default_egress_" + status.Reason
 			return fmt.Errorf("%s %s", s.t(key), s.t(key+".fix"))
@@ -645,7 +690,7 @@ func (s *ProfileService) reauthHint(vpnCfg config.VPNConfig) string {
 
 func (s *ProfileService) policyAllowedIPs(profileName string, bootstrap bool) []string {
 	vpnCfg, ok := s.cfg.VPNs[profileName]
-	if !ok || vpnCfg.DefaultEgress {
+	if !ok || vpnCfg.DefaultEgress || vpnCfg.AppRouteMode != "" {
 		return nil
 	}
 

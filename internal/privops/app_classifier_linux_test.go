@@ -208,6 +208,34 @@ func TestAppClassifierSameDestination(t *testing.T) {
 		}
 		t.Logf("observed packet to %s:59208 on %s", destination, tc.peer)
 	}
+	// A marked socket consults explicit destination routes first in the
+	// normal mode. When the route disappears it uses its own profile.
+	egress, err := netlink.LinkByName("testvpn1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const fallbackMark = 0x4B010003
+	fallback, err := openAppRouteTableWithMode(egress, netip.MustParsePrefix("0.0.0.0/0"), 103, 105, fallbackMark, AppRouteFallback)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := fallback.Close(); err != nil {
+			t.Errorf("remove destination fallback profile: %v", err)
+		}
+	})
+	lookup := func(mark, iface string) {
+		t.Helper()
+		out, err := exec.Command("ip", "route", "get", destination, "mark", mark).CombinedOutput()
+		if err != nil || !strings.Contains(string(out), "dev "+iface+" ") {
+			t.Fatalf("route via %s: %v\n%s", iface, err, out)
+		}
+	}
+	lookup("0x4b010003", "testdirect")
+	lookup("0x4b010001", "testvpn1")
+	ip("route", "delete", destination+"/32", "dev", "testdirect")
+	lookup("0x4b010003", "testvpn1")
+	ip("route", "add", destination+"/32", "dev", "testdirect")
 	ip("link", "delete", "testvpn1")
 	send(first, "disconnected")
 	send(second, "send")

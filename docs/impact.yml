@@ -157,6 +157,18 @@ features:
       - landing/src/content/guide.en.tsx#vpn_routes
       - web/ui/src/i18n/pages/rules.ts#vpn_routes
 
+  app_routing:
+    code:
+      - internal/policy/app_egress_test.go
+      - internal/privops/app_classifier_linux*.go
+      - internal/privops/app_route_linux.go
+      - internal/privops/wg_app_routing*.go
+    surfaces:
+      - README.md#app_routing
+      - docs/CONFIGURATION.md#app_routing
+      - docs/ROADMAP.md#app_routing
+      - docs/adr/0111-activate-linux-executable-egress.md
+
   default_egress:
     code:
       - cmd/kongtrol/cmd_routes_default_egress.go

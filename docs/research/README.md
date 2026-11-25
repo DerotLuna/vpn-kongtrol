@@ -73,6 +73,7 @@ reasoned but unverified.
 | [Profile priority](2026-11-24-profile-priority.md) | `policy.New` rank = priority or position on one scale, defaults of 10, no range check before, Little Snitch ranks an explicit priority first | ADR-0108 |
 | [Executable routing](2026-11-24-per-app-routing.md) | Routing executables by VPN profile | ADR-0109 |
 | [Five provider apps](2026-11-24-five-provider-apps.md) | Mullvad, PIA, ExpressVPN, Windscribe and CyberGhost | ADR-0110 |
+| [Executable precedence](2026-11-25-executable-egress-precedence.md) | Runtime activation and platform constraints | ADR-0111 |
 | [Direct diagnostics](2026-11-21-diagnostics-deep-links.md) | Authenticated dashboard entry points and tray colors | ADR-0083 |
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |

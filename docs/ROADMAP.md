@@ -48,13 +48,14 @@
 
 ## Roadmap
 
-<!-- feature:policies -->
-### Planned · Route by application
+<!-- feature:policies feature:app_routing -->
+### Route by application
 
 Apply `app:` rules to the selected executable's outbound traffic. Programs it launches use
 their own rules or normal routing. A per-rule option to include subprocesses is deferred.
-The Linux prototype selects different interfaces for different executables. Integration with
-Kongtrol profiles and validation on Windows and macOS are pending.
+Linux supports activation for direct WireGuard profiles. The default executable mode respects
+specific destination routes, and an explicit mode sends the selected executable through its
+profile first. Windows and macOS activation are pending.
 [GitHub issue #64](https://github.com/DerotLuna/vpn-kongtrol/issues/64)
 
 <!-- feature:providers -->

@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vpn-kongtrol/kongtrol/internal/privops"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
 
@@ -79,6 +80,12 @@ func (a *Adapter) Version() string {
 	return "unknown"
 }
 
+func (a *Adapter) AppRoutingActive() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.status == vpn.StatusConnected && a.lastCfg.AppRouteMode != ""
+}
+
 func (a *Adapter) Capabilities() vpn.Capabilities {
 	return vpn.Capabilities{
 		SupportsSplitTunnel: true, // WireGuard AllowedIPs is split-tunnel by design
@@ -123,7 +130,11 @@ func (a *Adapter) Connect(ctx context.Context, cfg vpn.AdapterConfig) error {
 	a.assignedIP, _ = parseConfigAddress(configPath)
 	a.dnsServers = parseConfigDNS(configPath)
 
-	if err := wgUp(configPath, a.ifaceName, restart, cfg.DefaultEgress); err != nil {
+	var appRouting *privops.WGAppRouting
+	if cfg.AppRouteMode != "" {
+		appRouting = &privops.WGAppRouting{Mode: cfg.AppRouteMode, Executables: cfg.AppExecutables}
+	}
+	if err := wgUp(configPath, a.ifaceName, restart, cfg.DefaultEgress, appRouting); err != nil {
 		a.status = vpn.StatusError
 		return fmt.Errorf("wireguard: %w", err)
 	}
