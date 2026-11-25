@@ -95,7 +95,7 @@ func TestLocate_LinksAreNotFollowed(t *testing.T) {
 func TestLocate_Bounds(t *testing.T) {
 	root := realTemp(t)
 	for i := range 20 {
-		write(t, filepath.Join(root, "a", "f"+string(rune('a'+i))+".txt"), "x")
+		write(t, filepath.Join(root, "f"+string(rune('a'+i))+".txt"), "x") // beside z: File.ReadDir order is not sorted
 	}
 	withRefs(t, filepath.Join(root, "z"), ovpnOwner)
 	if got := (&Locator{Names: []string{"rluna.conf"}, Roots: []string{root}, MaxEntries: 5}).Find([]byte(ovpnOwner)); got != "" {
