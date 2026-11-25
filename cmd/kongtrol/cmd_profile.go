@@ -102,7 +102,10 @@ func absPath(p string) string {
 }
 
 // importRefs: the files an .ovpn names are read from its own folder, and
-// from the extra files given after it (matched by base name, ADR-0105).
+// from the extra files given after it (matched by base name, ADR-0105); an
+// absolute path (or a "../" leaving the folder) is read too, with the
+// stricter outside checks (ADR-0112). The elevated root-only read passes no
+// refs at all.
 func importRefs(file string, extra []string) (*profileimport.Refs, error) {
 	files := make(map[string][]byte, len(extra))
 	for _, p := range extra {
@@ -120,7 +123,11 @@ func importRefs(file string, extra []string) (*profileimport.Refs, error) {
 		files[filepath.Base(p)] = b
 	}
 	refs, err := profileimport.NewRefs(filepath.Dir(absPath(file)), files)
-	return refs, localizeConfigErr(err)
+	if err != nil {
+		return nil, localizeConfigErr(err)
+	}
+	refs.Disk = true
+	return refs, nil
 }
 
 // storeImport validates content and stores it in ~/.kongtrol/configs.

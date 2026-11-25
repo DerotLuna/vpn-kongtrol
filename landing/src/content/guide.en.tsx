@@ -1,5 +1,5 @@
 // Setup guide content — English.
-// Version 3.7.0 · 2026-11-24.
+// Version 3.8.0 · 2026-11-24.
 //
 // Rendered by components/sections/Guide.tsx, which owns the markup; this file
 // holds only the words. Keys and shapes must match guide.es.tsx exactly
@@ -129,7 +129,7 @@ export default function guideEN(os: OS): GuideContent {
       lead: <>In the panel, <strong>Profiles</strong> (or the <strong>＋ Add</strong> button at the top). Pick one of these:</>,
       ways: [
         <><strong>A VPN you already use</strong> (NordVPN, Proton, FortiClient…): pick the app and give it a name, for example <IC c="office" />.</>,
-        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it with <strong>Choose file</strong>, or drop it on the panel. If it comes with separate certificates (<IC c="ca.crt" />…), Kongtrol takes them from the same folder, or drag them together; if one is missing, it asks for it by name. It checks it and keeps a protected copy.</>,
+        <><strong>A <IC c=".conf" /> or <IC c=".ovpn" /> file</strong>: import it with <strong>Choose file</strong>, or drop it on the panel. If it comes with separate certificates (<IC c="ca.crt" />…), Kongtrol takes them from the same folder or from the path the file names; if you dropped it, Kongtrol looks for the original in your usual folders (OpenVPN, Downloads, Desktop, Documents). If some are still missing, it names them: choose the folder they are in, or add them one by one. It checks it and keeps a protected copy.</>,
         <><strong>Username and password</strong>: they go to the system keychain, never to a text file.</>,
       ],
       attach: <><strong>If you use your VPN's app:</strong> when you connect, if the tunnel is already up, Kongtrol attaches to it.

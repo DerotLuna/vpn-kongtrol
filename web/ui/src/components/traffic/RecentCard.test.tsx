@@ -101,6 +101,18 @@ describe('RecentCard', () => {
     expect(rowNames()).toHaveLength(4)
   })
 
+  it('each row offers "Agregar como regla" with a tooltip that names the destination', async () => {
+    list = [conn(1), conn(2, { host: '' })]
+    renderCard()
+    await screen.findByRole('table')
+    const buttons = screen.getAllByRole('button', { name: 'Agregar como regla' })
+    expect(buttons).toHaveLength(2)
+    expect(buttons[0]).toHaveAccessibleDescription('Crea una regla para que site1.example salga por la VPN que elijas.')
+    expect(buttons[1]).toHaveAccessibleDescription('Crea una regla para que 10.0.0.2 salga por la VPN que elijas.')
+    expect(buttons[0]).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(screen.queryByText(/Hacer que esto salga por/)).not.toBeInTheDocument()
+  })
+
   it('keeps the rows on screen during live updates and merges new ones on top when asked', async () => {
     list = Array.from({ length: 3 }, (_, i) => conn(i))
     const user = userEvent.setup()

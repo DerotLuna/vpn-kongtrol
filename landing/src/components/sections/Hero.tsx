@@ -186,7 +186,8 @@ export default function Hero({ os, lang }: Props) {
       if (t === 'amazonaws.com' || t.endsWith('.amazonaws.com')) line = `${target} → ${es ? 'regla' : 'rule'} «AWS workloads» → aws (OpenVPN)`
       else if (t.startsWith('10.')) line = `${target} → longest-prefix 10.10.0.0/16 → office (FortiClient)`
       else if (t.includes('claude')) line = `${target} → ${es ? 'regla' : 'rule'} «US content» → us-content (ProtonVPN)`
-      else if (t.startsWith('app:')) line = `${target} → ${es ? 'política por app (experimental)' : 'app policy (experimental)'} → us-content`
+      // ADR-0113: program rules are recognised, not routed yet.
+      else if (t.startsWith('app:')) line = `${target} → ${es ? 'regla por programa: aún no se aplica (usa sitios o IPs)' : 'program rule: not applied yet (use sites or IPs)'}`
       else line = `${target} → ${es ? 'sin regla — salida directa (sin VPN)' : 'no rule — direct egress (no VPN)'}`
       return out([{ cls: 't-muted', text: line }])
     }

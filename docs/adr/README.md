@@ -2,7 +2,7 @@
 
 # Architecture Decision Records
 
-Version 1.32.0 · 2026-11-24
+Version 1.33.0 · 2026-11-24
 
 Every product or architecture decision in Kongtrol is recorded here as an ADR, using the
 [MADR 4.0.0](https://adr.github.io/madr/) template (why MADR: [ADR-0001](0001-record-decisions-with-madr.md),
@@ -124,6 +124,9 @@ decision live in [`docs/research/`](../research/README.md).
 | [0109](0109-validate-routing-by-executable.md) | Validate routing by executable | Proposed | 2026-11-24 |
 | [0110](0110-five-consumer-vpn-apps.md) | Integrate five consumer VPN apps | Accepted | 2026-11-24 |
 | [0111](0111-activate-linux-executable-egress.md) | Activate executable egress on Linux and preserve explicit destination routes by default | Accepted | 2026-11-25 |
+| [0112](0112-find-a-dropped-ovpns-files-automatically.md) | A dropped `.ovpn`'s identical original is found in the usual folders (name, size, SHA-256; bounded); absolute and `../` references read with PEM-only checks; "Elegir la carpeta donde están" (`import/pick-folder`, `ref_dir`); wider import sheet, stacked missing-files banner (refines 0105) | Accepted | 2026-11-24 |
+| [0113](0113-label-app-rules-honestly.md) | Label program (`app:`) rules honestly until per-program routing exists: "aún no se aplica" in the Add sheet, Reglas, Tráfico, CLI and docs | Accepted | 2026-11-24 |
+| [0114](0114-traffic-charts-skeleton-and-latency-states.md) | Tráfico charts: same-size skeleton (kit `SkeletonBlock`, aria-busy) and latency that never spins forever: loader for 45 s of samples, then "Sin medición para esta VPN" with why | Accepted | 2026-11-24 |
 
 ## Statuses
 

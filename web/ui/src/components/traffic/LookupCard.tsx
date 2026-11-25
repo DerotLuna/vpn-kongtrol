@@ -1,8 +1,9 @@
-// Kongtrol UI — "¿Por dónde sale?" + the rules it filters · v1.0.0 · 2026-11-18
+// Kongtrol UI — "¿Por dónde sale?" + the rules it filters · v1.1.0 · 2026-11-24
 //
 // Classic panel's traffic map (index.html:68, app.js:892-1014): a site, IP,
 // URL, rule/profile name or app:<program> → GET /api/v1/resolve, explained
 // in plain words against what is up right now (a rule's VPN may be off).
+// A program is only recognised, never routed (ADR-0113): its answer says so.
 // For a domain sent through a VPN, the IPs it resolves to through that
 // VPN's DNS are one click away (GET /api/v1/dns/resolve). Below, the rules
 // filtered by the same query, each with the IPs Kongtrol found and when
@@ -118,10 +119,16 @@ function verdictText(v: LookupVerdict, lhs: string, t: ReturnType<typeof usePref
         title: t('traffic.lookup.normal', { lhs }),
         detail: v.iface ? t('traffic.lookup.normal.detail', { iface: v.iface }) : t('traffic.lookup.normal.detailNoIface'),
       }
+    case 'app':
+      return {
+        title: v.rule ? t('traffic.lookup.app', { lhs, rule: v.rule }) : t('traffic.lookup.appNoRule', { lhs }),
+        detail: t('policy.app.notApplied'),
+      }
   }
 }
 
 const TONE: Record<LookupVerdict['kind'], string> = {
+  app: 'caution',
   tunnel: 'ok',
   all_traffic: 'ok',
   tunnel_down: 'caution',
@@ -151,13 +158,11 @@ function LookupResult({ result, input, verdict }: { result: ResolveResult; input
             <span className="k-btn__label">{t('traffic.lookup.goHome')}</span>
           </Link>
         )}
-        <AddButton
-          req={result.app ? { mode: 'rule', app: result.app } : { mode: 'rule', target: result.target || input }}
-          variant="text"
-          className="tr-result__action"
-        >
-          {t('add.thisVia')}
-        </AddButton>
+        {verdict.kind !== 'app' && (
+          <AddButton req={{ mode: 'rule', target: result.target || input }} variant="text" className="tr-result__action">
+            {t('add.thisVia')}
+          </AddButton>
+        )}
         {showDns && 'via' in verdict && <DnsDetail key={`${result.target}|${verdict.via}`} domain={result.target} via={verdict.via} />}
       </div>
     </div>

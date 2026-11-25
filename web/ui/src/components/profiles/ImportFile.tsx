@@ -1,4 +1,4 @@
-// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.2.0 · 2026-11-24
+// Kongtrol UI — "Importar archivo" for WireGuard / OpenVPN profiles · v1.3.0 · 2026-11-24
 //
 // feature:profile_import
 // The non-technical path to a .conf / .ovpn: pick (or drop) the file the
@@ -13,7 +13,9 @@
 // answered inline with "Reemplazar" / "Conservar el que hay" — a confirm
 // in place, never a dialog over the profile sheet. Every refusal reads as
 // what happened + what to do (the daemon translates api.err.import_*).
-// Drag and drop is an extra: the button is the accessible path.
+// Drag and drop is an extra: the button is the accessible path. A dropped
+// .ovpn sends its own name (`file_name`) so the daemon can find its
+// identical original and read the certificates next to it (ADR-0112).
 import { useId, useRef, useState, type DragEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { describeError, type ErrorText } from '../../api/errors'
@@ -40,7 +42,7 @@ interface Props {
 
 type Phase =
   | { kind: 'idle' }
-  | { kind: 'done'; result: ImportResult }
+  | { kind: 'done'; result: ImportResult; file?: string }
   | { kind: 'exists'; file: File; extras: File[]; error: ErrorText }
   | { kind: 'error'; error: ErrorText }
 
@@ -86,10 +88,10 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
       return
     }
     save.mutate(
-      { name: importName(profileName, file.name), type, content_base64: content, overwrite, ...(files.length > 0 ? { files } : {}) },
+      { name: importName(profileName, file.name), type, content_base64: content, file_name: file.name, overwrite, ...(files.length > 0 ? { files } : {}) },
       {
         onSuccess: (result) => {
-          setPhase({ kind: 'done', result })
+          setPhase({ kind: 'done', result, file: file.name })
           onImported(result.path)
         },
         onError: (err) => {
@@ -171,6 +173,9 @@ export function ImportFile({ type, profileName, onImported, protectedPath }: Pro
             {t(phase.result.overwritten ? 'profiles.import.replaced' : 'profiles.import.done')}{' '}
             <code className="mono">{phase.result.path}</code>
           </p>
+        )}
+        {phase.kind === 'done' && phase.result.found_in && (
+          <p className="kp-import__ok">{t('add.file.found', { file: phase.file ?? '', dir: phase.result.found_in })}</p>
         )}
       </div>
       {phase.kind === 'exists' && (

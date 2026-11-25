@@ -2,7 +2,7 @@
 
 # Security architecture
 
-Version 2.16.0 · 2026-11-24
+Version 2.17.0 · 2026-11-24
 
 Technical companion to the [security policy](../SECURITY.md) (how to report a vulnerability,
 supported versions, scope). This page describes how Kongtrol protects the machine it runs on and
@@ -443,8 +443,8 @@ Files an imported `.ovpn` names (ADR-0105, `internal/profileimport/refs.go`) are
 user, and inlined into the stored copy, so the helper still never opens another user path. Only the
 helper's own file directives qualify (`ca`, `cert`, `key`, `tls-auth`, `tls-crypt`, `tls-crypt-v2`,
 `secret`, `dh`, `extra-certs`, `crl-verify`, `pkcs12`; `auth-user-pass <file>` stays refused). From
-the picked file's folder only: an absolute path or `..` that leaves it, a drive-relative path or an
-NTFS stream is never opened (it is reported as missing); every folder on the way must be a real
+the picked file's folder (absolute paths and `..` that leave it: see ADR-0112 below); a
+drive-relative path or an NTFS stream is never opened (it is reported as missing); every folder on the way must be a real
 folder (no symlink or junction); the file must be a regular file, opened with `O_NOFOLLOW` (Unix)
 and re-checked with `os.SameFile`, at most 256 KiB; text only (no NUL, no `</`), except `pkcs12`
 (base64). Files added from the browser: at most 8, matched by base name only, 256 KiB each, 512 KiB
@@ -458,6 +458,32 @@ rest are used locally (reasoned from the OpenVPN manual, not verified in OpenVPN
 (`github.com/ncruces/zenity`): one dialog at a time, closed when the request ends or after 10 min;
 the picked path then goes through the same `path` checks above. On Linux it runs `qarma`, `zenity`
 or `matedialog` from `PATH` as the user; on macOS `osascript`. Nothing leaves the machine.
+
+ADR-0112 widens where those files may come from, still as the user and still inlined:
+- **References outside the folder** (absolute paths, `../` that leave it; `internal/profileimport/refs_disk.go`
+  `readOutside`), for the panel and the CLI but never for the elevated root-only read. OpenVPN GUI
+  would read them with the same rights, so no privilege boundary is crossed. Checks: a plain local
+  path (`CleanLocalPath`: no UNC share, `\\?\`, `\??\`, device path, `/dev`, `/proc`, `/sys`; Windows
+  drive letters only), not a network drive (`GetDriveTypeW` `DRIVE_REMOTE`; Linux statfs NFS, SMB,
+  CIFS, AFS, Ceph, 9P, FUSE; macOS `smbfs`, `nfs`, `afpfs`, `webdav`), every folder from the root a real
+  folder, the file regular, ≤ 256 KiB, opened without following links and re-checked, and its content
+  only PEM blocks an OpenVPN directive takes (certificate, CRL, private key, DH parameters, OpenVPN
+  static / tls-crypt-v2 key), else `api.err.import_ref_not_key`. A UNC path is never opened, so a
+  hostile `.ovpn` cannot make Windows authenticate to another host (forced NTLM authentication); the
+  PEM rule stops it from copying an OpenSSH key, a PGP key or a token file into the user's profile.
+  Leak analysis is the same as above: only `cert` / `extra-certs` (and certificates in `pkcs12`, which
+  outside the folder is refused anyway) are sent, as X.509.
+- **Original of a dropped file** (`locate.go`): searched in the OpenVPN GUI config folders,
+  Downloads, Desktop and Documents (OS locations, OneDrive included) and the usual client folders on
+  Linux and macOS (`/etc/openvpn` only if the user can read it). Only files with the dropped file's
+  base name and size are read, to compare SHA-256; then only the referenced files of the one chosen
+  folder. Depth ≤ 3, 20 000 entries, 1 s, 32 hashes; links, junctions and other reparse points are
+  never followed (OneDrive cloud files are recognised by their reparse tag, read without opening
+  their data); network drives are skipped. Several identical copies with all their files → no guess.
+  The folder found goes back to the panel (`found_in`), never to logs or the audit log.
+- **Folder dialog** `POST /api/v1/vpns/import/pick-folder` (audited as
+  `config.profile.import_pick_folder`, no path): same dialog rules as the file dialog; answers only a
+  clean local real folder, reads nothing; the import then uses it as `ref_dir` (checked again).
 
 Repository protections: CodeQL (GitHub default setup) on every push and pull request, Renovate for dependency updates, secret scanning
 with push protection (enabled 2026-11-20).

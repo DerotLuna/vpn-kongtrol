@@ -129,16 +129,17 @@ describe('TrafficPage', () => {
     await user.click(screen.getByRole('button', { name: 'Ver a qué IPs apunta por work' }))
     expect(await screen.findByText('160.79.104.10')).toBeInTheDocument()
 
-    // app: switches the query to ?app= and no rule → normal connection.
+    // app: switches the query to ?app=; a program is never "sale por" (ADR-0113).
     await user.clear(input)
     await user.type(input, 'app:teams.exe{Enter}')
-    expect(await screen.findByText('app:teams.exe sale por tu conexión normal.')).toBeInTheDocument()
-    expect(screen.getByText('Ninguna regla lo manda por una VPN. Sale por Wi-Fi.')).toBeInTheDocument()
+    expect(await screen.findByText('Ninguna regla nombra app:teams.exe.')).toBeInTheDocument()
+    expect(screen.getByText(/Programas: solo salen por la VPN en Linux/)).toBeInTheDocument()
+    expect(screen.queryByText(/app:teams.exe sale por/)).not.toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/resolve?app=teams.exe')).toBe(true)
 
     await user.click(screen.getByRole('button', { name: 'Limpiar' }))
     expect(input).toHaveValue('')
-    expect(screen.queryByText('app:teams.exe sale por tu conexión normal.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ninguna regla nombra app:teams.exe.')).not.toBeInTheDocument()
     expect(screen.getByText('2 reglas')).toBeInTheDocument()
   })
 

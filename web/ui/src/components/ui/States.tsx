@@ -1,4 +1,4 @@
-// Kongtrol UI kit — Skeleton, EmptyState, ErrorState, Banner, Kbd · v0.2.0 · 2026-11-18
+// Kongtrol UI kit — Skeleton, EmptyState, ErrorState, Banner, Kbd · v0.3.0 · 2026-11-24
 //
 // Loading: skeletons only on the first load (they reserve the final space,
 // no layout shift); later refreshes keep the last data on screen
@@ -23,6 +23,16 @@ export function Skeleton({ lines = 3, label }: { lines?: number; label: string }
       ))}
     </div>
   )
+}
+
+/**
+ * One shimmer shape for a skeleton shaped like the final content (a chart,
+ * a card): the caller's class sets its size, so nothing jumps when the real
+ * content arrives. Decorative only: the region around it carries aria-busy
+ * and the words for screen readers.
+ */
+export function SkeletonBlock({ className = '' }: { className?: string }) {
+  return <span className={`k-skeleton__block ${className}`.trim()} aria-hidden="true" />
 }
 
 interface EmptyStateProps {

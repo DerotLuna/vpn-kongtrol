@@ -1,12 +1,29 @@
-/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.2.0 · 2026-11-23
+/* Kongtrol UI — "＋ Agregar" sheet + window drop overlay · v1.3.0 · 2026-11-24
    DESIGN.md tokens only; 44px targets; 11px floor; motion only for the
    overlay's state change, off with reduced motion. Compact (owner feedback
    2026-11-19): 520px wide, 12px rhythm, 32px icon tiles; one primary
    (gold) per step, secondary outlined/tonal, "Volver" a quiet text
-   button at the start of the footer. */
+   button at the start of the footer. "Importar un archivo de VPN" is wider
+   (680px, like the profile editor) so file names and the missing-files
+   banner have room (ADR-0112). */
 
 @media (min-width: 600px) {
   .k-dialog.k-add-sheet { width: min(520px, calc(100vw - 32px)); }
+  .k-dialog.k-add-sheet:has(.k-add-file) { width: min(680px, calc(100vw - 32px)); }
+}
+
+/* Missing files of an .ovpn: names as chips, buttons under the text (never
+   beside it), full width on a phone. */
+.k-banner.k-add-missing { grid-template-columns: auto 1fr; align-items: start; }
+.k-add-missing .k-banner__actions { grid-column: 1 / -1; }
+.k-add-missing__chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; padding: 0; }
+.k-add-missing__chip {
+  padding: 2px 8px; border: 1px solid var(--border-2); border-radius: var(--radius);
+  background: var(--surface); font-size: 13px; overflow-wrap: anywhere;
+}
+.k-add-file__found { overflow-wrap: anywhere; }
+@media (max-width: 599px) {
+  .k-add-missing__actions > .k-btn { flex: 1 1 100%; }
 }
 .k-add-sheet .k-dialog__body { gap: 12px; padding: 16px 18px 18px; }
 .k-add { display: flex; flex-direction: column; gap: 12px; }

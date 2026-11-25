@@ -1,4 +1,4 @@
-// Kongtrol UI — "＋ Agregar" sheet · v1.2.0 · 2026-11-23
+// Kongtrol UI — "＋ Agregar" sheet · v1.3.0 · 2026-11-24
 //
 // One sheet for every "add" in the panel (ADR-0055): a menu with three
 // plain-language choices, then
@@ -380,9 +380,12 @@ function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; c
       // The error stays by the activation button, which can be used again.
     }
   }
-  const target = rule.probe.replace(/^app:/, '')
+  // ADR-0113: a program is only recognised, never routed: no "Probado: …
+  // sale por …" for it, no test, the honest line instead.
+  const isApp = /^app:/i.test(rule.probe)
+  const target = rule.probe.replace(/^app:/i, '')
   let tested: string | null = null
-  if (asked && result.data) {
+  if (!isApp && asked && result.data) {
     const ex = result.data
     if (!ex.Matched || ex.Via !== rule.via) tested = t('add.done.tested.other', { target })
     else if (connected) tested = t('add.done.tested.via', { target, via: ex.Via, rule: ex.RuleName })
@@ -394,6 +397,7 @@ function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; c
         <span>{t(active ? 'add.done.rule.active' : 'add.done.rule.paused')}</span>
       </Banner>
       {activation.isError && <ErrorState error={activation.error} />}
+      {isApp && <Banner tone="caution" title={t('policy.app.notApplied')} />}
       <div aria-live="polite">{tested && <p className="k-add-preview">{tested}</p>}</div>
       <footer className="k-dialog__actions k-add__actions">
         <Button variant="text" className="k-add__back" icon={<PlusIcon />} onClick={onAnother}>
@@ -404,12 +408,12 @@ function DoneRule({ rule, connected, onAnother, onFinish }: { rule: SavedRule; c
             {t('add.done.activate')}
           </Button>
         )}
-        {active && !connected && (
+        {active && !connected && !isApp && (
           <Button variant="outlined" icon={<PlugIcon />} onClick={() => run(rule.via, 'connect')}>
             {t('add.done.connectNow', { name: rule.via })}
           </Button>
         )}
-        {active && (
+        {active && !isApp && (
           <Button variant="outlined" icon={<CheckIcon />} loading={asked && result.isFetching} onClick={() => (asked ? void result.refetch() : setAsked(true))}>
             {t('add.done.test')}
           </Button>

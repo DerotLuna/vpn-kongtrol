@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Tráfico (/traffic) · v2.2.0 · 2026-11-24
+// Kongtrol UI strings — Tráfico (/traffic) · v2.3.0 · 2026-11-24
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -29,6 +29,8 @@ const es = {
   'traffic.lookup.normal.detailNoIface': 'Ninguna regla lo manda por una VPN.',
   'traffic.lookup.publicIp': 'Tu IP pública conocida: {ip}',
   'traffic.lookup.goHome': 'Ir a Inicio',
+  'traffic.lookup.app': 'La regla «{rule}» reconoce {lhs}, pero aún no se aplica.',
+  'traffic.lookup.appNoRule': 'Ninguna regla nombra {lhs}.',
   'traffic.dns.show': 'Ver a qué IPs apunta por {via}',
   'traffic.dns.title': 'IPs de {domain} según el DNS de {via}',
   'traffic.dns.none': '{via} no devolvió ninguna IP para {domain}.',
@@ -70,8 +72,12 @@ const es = {
   'traffic.tunnel.sent': 'Enviado',
   'traffic.tunnel.latency': 'Latencia',
   'traffic.tunnel.totals': 'Total en esta conexión: {rx} recibido · {tx} enviado',
-  'traffic.tunnel.collecting': 'Juntando datos… el gráfico aparece en unos segundos.',
+  'traffic.tunnel.loadingCharts': 'Cargando gráficos',
   'traffic.tunnel.noLatency': 'Midiendo la latencia…',
+  'traffic.tunnel.latencyLast': 'Última medición; el gráfico aparece cuando cambie.',
+  'traffic.tunnel.latencyNone': 'Sin medición para esta VPN',
+  'traffic.tunnel.latencyWhy': 'Por qué no hay latencia',
+  'traffic.tunnel.latencyWhy.tip': 'Kongtrol mide la latencia abriendo una conexión con el servidor de la VPN o con el DNS que entrega la VPN. Con esta VPN ninguno respondió a esa prueba (pasa, por ejemplo, con un servidor OpenVPN solo por UDP que no entrega DNS). Tu conexión no se ve afectada.',
   'traffic.stats.label': 'Estabilidad de {name}',
   'traffic.stats.uptime': 'Tiempo conectado',
   'traffic.stats.reconnects': 'Reconexiones',
@@ -160,6 +166,8 @@ const es = {
   'traffic.recent.noMatch': 'Ningún destino coincide con el filtro.',
   'traffic.recent.noMatch.fix': 'Prueba con otro texto o elige «Todas» en «Salió por».',
   'traffic.recent.noMatch.clear': 'Quitar filtros',
+  'traffic.recent.addRule': 'Agregar como regla',
+  'traffic.recent.addRule.tip': 'Crea una regla para que {target} salga por la VPN que elijas.',
 } as const
 
 const en: Strings<typeof es> = {
@@ -185,6 +193,8 @@ const en: Strings<typeof es> = {
   'traffic.lookup.normal.detailNoIface': 'No rule sends it through a VPN.',
   'traffic.lookup.publicIp': 'Your last known public IP: {ip}',
   'traffic.lookup.goHome': 'Go to Home',
+  'traffic.lookup.app': 'Rule “{rule}” recognises {lhs}, but it is not applied yet.',
+  'traffic.lookup.appNoRule': 'No rule names {lhs}.',
   'traffic.dns.show': 'See which IPs it points to through {via}',
   'traffic.dns.title': 'IPs of {domain} from {via}’s DNS',
   'traffic.dns.none': '{via} returned no IP for {domain}.',
@@ -224,8 +234,12 @@ const en: Strings<typeof es> = {
   'traffic.tunnel.sent': 'Sent',
   'traffic.tunnel.latency': 'Latency',
   'traffic.tunnel.totals': 'Total this connection: {rx} received · {tx} sent',
-  'traffic.tunnel.collecting': 'Collecting data… the chart appears in a few seconds.',
+  'traffic.tunnel.loadingCharts': 'Loading charts',
   'traffic.tunnel.noLatency': 'Measuring latency…',
+  'traffic.tunnel.latencyLast': 'Last reading; the chart appears when it changes.',
+  'traffic.tunnel.latencyNone': 'No reading for this VPN',
+  'traffic.tunnel.latencyWhy': 'Why there is no latency',
+  'traffic.tunnel.latencyWhy.tip': 'Kongtrol measures latency by opening a connection to the VPN server or to the DNS the VPN provides. With this VPN neither answered that check (it happens, for example, with a UDP-only OpenVPN server that provides no DNS). Your connection is not affected.',
   'traffic.stats.label': '{name} stability',
   'traffic.stats.uptime': 'Time connected',
   'traffic.stats.reconnects': 'Reconnects',
@@ -312,6 +326,8 @@ const en: Strings<typeof es> = {
   'traffic.recent.noMatch': 'No destination matches the filter.',
   'traffic.recent.noMatch.fix': 'Try other text or pick “All” under “Went through”.',
   'traffic.recent.noMatch.clear': 'Clear filters',
+  'traffic.recent.addRule': 'Add as a rule',
+  'traffic.recent.addRule.tip': 'Creates a rule so {target} goes through the VPN you choose.',
 }
 
 export default { es, en }

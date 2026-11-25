@@ -87,4 +87,17 @@ func TestProfileImport_ReadsReferencedFiles(t *testing.T) {
 	if res, err := runProfileImport(conf, "b", false); err != nil || len(res.Included) != 1 {
 		t.Fatalf("same folder: %+v %v", res, err)
 	}
+	// An absolute path the .ovpn names is read too (ADR-0112).
+	otherReal, err := filepath.EvalSymlinks(elsewhere)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abs := filepath.Join(src, "abs.ovpn")
+	line := "ca \"" + strings.ReplaceAll(otherReal, `\`, `\\`) + "\"\n"
+	if err := os.WriteFile(abs, []byte("client\nremote vpn.example.com 1194\n"+line), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if res, err := runProfileImport(abs, "c", false); err != nil || len(res.Included) != 1 {
+		t.Fatalf("absolute path: %+v %v", res, err)
+	}
 }

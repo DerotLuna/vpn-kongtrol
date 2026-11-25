@@ -36,6 +36,13 @@ type importReq struct {
 	// the .ovpn, or "Agregar <name>"), matched to the .ovpn's references by
 	// base name (ADR-0105).
 	Files []importFile `json:"files,omitempty"`
+	// FileName is the dropped file's own name (rluna.conf): with no path the
+	// daemon looks for its identical original by that name (ADR-0112).
+	FileName string `json:"file_name,omitempty"`
+	// RefDir is the folder the user picked for the files an .ovpn names
+	// ("Elegir la carpeta donde están", POST /api/v1/vpns/import/pick-folder);
+	// it replaces the file's own folder (ADR-0112).
+	RefDir string `json:"ref_dir,omitempty"`
 }
 
 // importFile is one file added by hand to an import.
@@ -63,6 +70,10 @@ const elevatedImportDeadline = 4 * time.Minute
 // importReadFile reads a "path" import (a variable so tests can answer
 // "permission denied" on any OS).
 var importReadFile = readRegularFile
+
+// importSearchRoots are the folders searched for a dropped file's original
+// (a variable so tests never walk the real home folder, ADR-0112).
+var importSearchRoots = profileimport.SearchRoots
 
 // errNotRegular: the path is not (or stopped being) a plain file.
 var errNotRegular = errors.New("not a regular file")
@@ -104,37 +115,34 @@ func readRegularFile(path string) ([]byte, error) {
 }
 
 // cleanImportPath accepts an absolute path to a file the user picked and
-// returns it cleaned. Refused: relative paths, any ".." element, NUL, and
-// device or network namespaces (\\.\, \\?\, UNC shares, /dev, /proc,
-// /sys), which are never a profile file and a UNC path would make Windows
-// contact another machine.
-func cleanImportPath(raw string) (string, bool) {
-	p := strings.TrimSpace(raw)
-	if p == "" || strings.ContainsRune(p, 0) || !filepath.IsAbs(p) {
-		return "", false
+// returns it cleaned (profileimport.CleanLocalPath: no "..", no device or
+// network namespaces such as UNC shares, /dev, /proc, /sys).
+func cleanImportPath(raw string) (string, bool) { return profileimport.CleanLocalPath(raw) }
+
+// cleanRefDir checks the folder picked for an .ovpn's files (ADR-0112): a
+// clean local path (cleanImportPath) to a real folder (no link, no
+// junction).
+func cleanRefDir(raw string) (string, error) {
+	refuse := &config.ValidationError{Key: profileimport.ErrKeyProtectedPath, Args: []any{strings.TrimSpace(raw)}}
+	dir, ok := cleanImportPath(raw)
+	if !ok || !profileimport.PlainDir(dir) {
+		return "", refuse
 	}
-	for _, el := range strings.FieldsFunc(p, func(r rune) bool { return r == '/' || r == '\\' }) {
-		if el == ".." {
-			return "", false
-		}
+	return dir, nil
+}
+
+// dropNames are the names a dropped file's original may have: the name the
+// browser gave (file_name), else the import name with the usual
+// extensions (ADR-0112).
+func dropNames(req importReq) []string {
+	if n := profileimport.RefBase(req.FileName); n != "" {
+		return []string{n}
 	}
-	// NT object paths (\??\UNC\…, \??\GLOBALROOT\…) reach SMB or devices
-	// too, and Windows treats them as absolute.
-	for _, prefix := range []string{`\\`, "//", `/\`, `\/`, `\??\`, `/??/`} {
-		if strings.HasPrefix(p, prefix) {
-			return "", false
-		}
+	n := strings.TrimSpace(req.Name)
+	if n == "" {
+		return nil
 	}
-	if !plainLocalVolume(p) {
-		return "", false
-	}
-	p = filepath.Clean(p)
-	for _, dir := range []string{"/dev", "/proc", "/sys"} {
-		if p == dir || strings.HasPrefix(p, dir+"/") {
-			return "", false
-		}
-	}
-	return p, true
+	return []string{n + ".ovpn", n + ".conf"}
 }
 
 // SetImportDir sets where imported files go (default ~/.kongtrol/configs).
@@ -188,10 +196,27 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 		writeLocalizedError(w, r, http.StatusBadRequest, &config.ValidationError{Key: "api.err.import_content"})
 		return
 	}
+	// A root-only file read with permission has no folder: it releases
+	// only a self-contained profile (ADR-0058).
+	elevated := strings.TrimSpace(req.Path) != "" && refDir == ""
+	if strings.TrimSpace(req.RefDir) != "" && !elevated {
+		if refDir, err = cleanRefDir(req.RefDir); err != nil {
+			writeLocalizedError(w, r, importStatus(err), err)
+			return
+		}
+	}
 	refs, err := importRefs(refDir, req.Files)
 	if err != nil {
 		writeLocalizedError(w, r, importStatus(err), err)
 		return
+	}
+	if !elevated {
+		// References outside the folder are read with the user's own
+		// rights, and a dropped file's original is looked for (ADR-0112).
+		refs.Disk = true
+		if refDir == "" {
+			refs.Locate = &profileimport.Locator{Names: dropNames(req), Roots: importSearchRoots()}
+		}
 	}
 	dir, err := s.configsDir()
 	if err != nil {
@@ -212,6 +237,9 @@ func (s *Server) handleImportVPNFile(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(res.Included) > 0 {
 		body["included"] = res.Included
+	}
+	if res.FoundIn != "" {
+		body["found_in"] = res.FoundIn
 	}
 	// A file from a provider account (Proton) says once that it clashes
 	// with that provider's app (ADR-0103).

@@ -126,7 +126,7 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
           spellCheck={false}
           autoCapitalize="off"
         />
-        {hasApps && <p className="r-note">{t('rules.field.apps.note')}</p>}
+        {hasApps && <p className="r-note">{t('policy.app.notApplied')}</p>}
 
         <fieldset className="r-choice" aria-describedby={errors.onDown ? `${titleId}-ondown-err` : undefined}>
           <legend className="k-field__label">{t('rules.field.onDown')}</legend>

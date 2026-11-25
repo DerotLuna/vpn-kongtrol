@@ -1,4 +1,4 @@
-// Kongtrol UI strings — Shared by every page: app, shell (header, navigation, status, notices), errors, help links, helper, tunnels, kit and the unsaved-changes prompt · v1.2.0 · 2026-11-19
+// Kongtrol UI strings — Shared by every page: app, shell (header, navigation, status, notices), errors, help links, helper, tunnels, kit and the unsaved-changes prompt · v1.3.0 · 2026-11-24
 //
 // One module per page so parallel work never edits the same file; composed
 // in ../messages.ts. ES is the source of the key set; EN must match it
@@ -103,6 +103,10 @@ const es = {
   'page.notFound.title': 'No encontramos esta página',
   'page.notFound.body': 'Puede que el enlace sea viejo. Vuelve al inicio para seguir.',
   'page.notFound.action': 'Ir al inicio',
+  // ADR-0113: program (app:) rules are recognised, not routed yet.
+  'policy.app.notApplied': 'Programas: solo salen por la VPN en Linux, con un perfil WireGuard que tenga «Salida por ejecutable». En los demás casos Kongtrol solo los reconoce: usa sitios o IPs.',
+  'policy.app.tag': 'aún no se aplica',
+  'policy.app.tip': 'Kongtrol guarda esta regla y la reconoce al probar, pero esta VPN no manda programas. Solo lo hace un perfil WireGuard en Linux con «Salida por ejecutable». Si no, agrega sus sitios o IPs.',
 } as const
 
 const en: Strings<typeof es> = {
@@ -203,6 +207,9 @@ const en: Strings<typeof es> = {
   'page.notFound.title': 'We could not find this page',
   'page.notFound.body': 'The link may be old. Go back home to continue.',
   'page.notFound.action': 'Go home',
+  'policy.app.notApplied': 'Programs: they only go through the VPN on Linux, with a WireGuard profile that has Executable egress on. Otherwise Kongtrol only recognises them: use sites or IPs.',
+  'policy.app.tag': 'not applied yet',
+  'policy.app.tip': 'Kongtrol saves this rule and recognises it when you test, but this VPN does not carry programs. Only a WireGuard profile on Linux with Executable egress does. Otherwise, add its sites or IPs.',
 }
 
 export default { es, en }

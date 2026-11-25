@@ -4,7 +4,7 @@
 
 # CLI reference
 
-Version 1.25 · 2026-11-25
+Version 1.27 · 2026-11-25
 
 Every `kongtrol` command, in the same groups and order as `kongtrol --help`. Every command has its own help with examples: `kongtrol <command> --help`. Español: [CLI.md](CLI.md). First time: [SETUP.md](SETUP.md).
 
@@ -548,7 +548,7 @@ kongtrol profile import office.conf --create
 
 ### `kongtrol profile import`
 
-Checks the file with the same rules as the dashboard (no scripts or commands) and saves it in ~/.kongtrol/configs/ for your user only. If an .ovpn names other files (ca ca.crt, tls-auth ta.key…), it looks for them in the same folder and saves them inside the profile; pass one that lives in another folder after the file. It does not replace a file with the same name unless you pass --overwrite. With --create it also creates the profile that uses it (name: the file's, or --name). Next: kongtrol up <name>.
+Checks the file with the same rules as the dashboard (no scripts or commands) and saves it in ~/.kongtrol/configs/ for your user only. If an .ovpn names other files (ca ca.crt, tls-auth ta.key…), it looks for them in the same folder (or at the full path it names, when that is a PEM certificate or key) and saves them inside the profile; pass one that lives in another folder after the file. It does not replace a file with the same name unless you pass --overwrite. With --create it also creates the profile that uses it (name: the file's, or --name). Next: kongtrol up <name>.
 
 ```text
 kongtrol profile import <file.conf|file.ovpn> [certificates…] [flags]
@@ -674,7 +674,7 @@ kongtrol profile on-tunnel-down office block
 
 ### `kongtrol policy`
 
-Adds or removes policies (which sites, IPs or apps go through which VPN), shows which VPN each destination uses and why, and tests lists of destinations. Start with: kongtrol policy list.
+Adds or removes policies (which sites or IPs go through which VPN), shows which VPN each destination uses and why, and tests lists of destinations. Start with: kongtrol policy list.
 
 ```text
 kongtrol policy [command]
@@ -690,7 +690,7 @@ kongtrol policy test targets.txt
 
 ### `kongtrol policy add`
 
-Creates a policy like "＋ Add" in the dashboard: a site or link (and its subdomains), an IP or a range (10.0.0.0/8) or an app (app:chrome.exe) go through the --via VPN. The name is generated (for example "github.com via office") unless you pass --name. With --block-when-down that traffic does not leave through the normal internet while the VPN is off. Next: kongtrol policy show <site>.
+Creates a policy like "＋ Add" in the dashboard: a site or link (and its subdomains), an IP or a range (10.0.0.0/8) go through the --via VPN. An app (app:chrome.exe) is saved but not sent through the VPN yet: for now Kongtrol only recognises it. The name is generated (for example "github.com via office") unless you pass --name. With --block-when-down that traffic does not leave through the normal internet while the VPN is off. Next: kongtrol policy show <site>.
 
 ```text
 kongtrol policy add <site|ip|range|app:<exe>>... [flags]
@@ -712,7 +712,7 @@ kongtrol policy add <site|ip|range|app:<exe>>... [flags]
 ```bash
 kongtrol policy add claude.com "*.anthropic.com" --via office
 kongtrol policy add api.anthropic.com 192.0.2.42 192.0.2.0/24 --via work --block-when-down
-kongtrol policy add app:teams.exe --via work --name teams
+kongtrol policy add 10.20.0.0/16 --via work --name work-network --paused
 ```
 
 ### `kongtrol policy remove`
@@ -795,7 +795,7 @@ kongtrol policy list --json
 
 ### `kongtrol policy show`
 
-Shows which policy and which VPN a destination (domain or IP) or an app uses, and why. To see them all: kongtrol policy list.
+Shows which policy and which VPN a destination (domain or IP) or an app uses, and why (apps are not applied yet: only recognised). To see them all: kongtrol policy list.
 
 ```text
 kongtrol policy show <target|app:<exe>> [flags]

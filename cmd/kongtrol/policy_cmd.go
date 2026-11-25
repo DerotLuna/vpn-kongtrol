@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/policy"
 )
 
@@ -52,13 +53,14 @@ func runPolicyShow(cmd *cobra.Command, args []string) error {
 		return emitJSON(ex)
 	}
 	if ex.Matched {
-		fmt.Println(tuiOK(styleMapName.Render(target) + "  →  " + styleMapVia.Render(ex.Via)))
+		fmt.Println(matchedLine(target, ex))
 		if ex.RuleName != "" {
 			fmt.Println("  " + styleDim.Render(ct("cli.policy.rule_label")) + styleBright.Render(ex.RuleName))
 		}
 		if ex.Reason != "" {
 			fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+policyReasonText(ex)))
 		}
+		printAppNotApplied(ex)
 		return nil
 	}
 
@@ -90,16 +92,47 @@ var policyTestCmd = &cobra.Command{
 		for _, ex := range results {
 			target := ex.Target
 			if ex.Matched {
-				fmt.Println(tuiOK(styleMapName.Render(target) + "  →  " + styleMapVia.Render(ex.Via)))
+				fmt.Println(matchedLine(target, ex))
 			} else {
 				fmt.Println(tuiWarn(styleMapName.Render(target) + "  →  " + styleDim.Render(ct("cli.policy.default_route_short"))))
 			}
 			if ex.Reason != "" {
 				fmt.Println("  " + styleDim.Render(ct("cli.policy.why_label")+policyReasonText(ex)))
 			}
+			printAppNotApplied(ex)
 		}
 		return nil
 	},
+}
+
+// matchedLine is "target → via" for a matched rule. A program (app:) rule
+// is only recognised (ADR-0113): no check mark, and "aún no se aplica",
+// unless its profile routes programs (Linux app_route_mode, ADR-0111).
+func matchedLine(target string, ex policy.ExplainResult) string {
+	line := styleMapName.Render(target) + "  →  " + styleMapVia.Render(ex.Via)
+	if ex.Kind == "app" && !appRouted(cfg, ex.Via) {
+		return tuiInfo(line + "  " + styleDim.Render("("+ct("cli.policy.app_tag")+")"))
+	}
+	return tuiOK(line)
+}
+
+// printAppNotApplied says that a matched app: rule is only recognised: no
+// route, block or connect follows a program unless its profile routes
+// programs (ADR-0113, ADR-0111).
+func printAppNotApplied(ex policy.ExplainResult) {
+	if ex.Kind == "app" && ex.Matched && !appRouted(cfg, ex.Via) {
+		fmt.Println("  " + tuiWarn(ct("cli.policy.apps_not_applied")))
+	}
+}
+
+// appRouted reports whether profile via routes program rules: a Linux
+// WireGuard profile with app_route_mode (ADR-0111).
+func appRouted(c *config.Config, via string) bool {
+	if c == nil {
+		return false
+	}
+	v, ok := c.VPNs[via]
+	return ok && v.AppRouteMode != "" && v.AppRouteSupported()
 }
 
 func readPolicyTargets(path string) ([]string, error) {

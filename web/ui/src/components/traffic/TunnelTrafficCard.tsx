@@ -1,10 +1,16 @@
-// Kongtrol UI — one connected tunnel: live throughput, stability, routes · v1.0.0 · 2026-11-18
+// Kongtrol UI — one connected tunnel: live throughput, stability, routes · v1.1.0 · 2026-11-24
 //
 // Memoized: a live tick re-renders only the cards whose tunnel object,
 // routes or samples changed (structural sharing + per-tunnel sample store).
 // Received and sent are two small charts on one shared scale (small
 // multiples), latency a third; the open/closed state of the routes panel
 // lives in the page, so it survives every re-render.
+// Until two samples exist the three charts are a skeleton of the same size
+// (aria-busy, "Cargando gráficos" for screen readers). Latency comes from the
+// daemon's health probe (TCP to the VPN server, else the tunnel's DNS): a
+// loader only while a first reading is still expected (LATENCY_WAIT_MS of
+// samples), then a static "Sin medición para esta VPN" with why — never an
+// endless spinner (ADR-0114).
 import { memo } from 'react'
 import type { TunnelMetrics } from '../../api/types'
 import { usePreferences } from '../../app/preferences-context'
@@ -21,6 +27,9 @@ import {
   type TunnelRoutesResponse,
 } from '../../data/traffic'
 import { tunnelState } from '../../data/resources'
+import { IconButton } from '../ui/Button'
+import { InfoIcon } from '../ui/icons'
+import { SkeletonBlock } from '../ui/States'
 import { StatusPill } from '../ui/StatusPill'
 import { MiniChart } from './MiniChart'
 import { TunnelRoutesPanel } from './TunnelRoutesPanel'
@@ -110,16 +119,44 @@ function spanText(points: readonly { at: number }[]): string {
   return formatDuration(Math.max(1, Math.round(ms / 1000)))
 }
 
+/**
+ * How long (in samples' time) a first latency reading is still expected.
+ * The daemon probes each connected tunnel within one watchdog pass (5 s)
+ * and gives a probe up to `monitor.health_check.timeout` (10 s by default);
+ * 45 s covers that with room. A tunnel already connected when the page
+ * opened has its reading in the first frame.
+ */
+export const LATENCY_WAIT_MS = 45_000
+
+/** Same size as the three charts, so nothing jumps when they arrive. */
+function ChartsSkeleton({ name }: { name: string }) {
+  const { t } = usePreferences()
+  return (
+    <div className="tr-charts tr-charts--loading" data-tunnel={name} aria-busy="true">
+      <span className="visually-hidden" role="status">
+        {t('traffic.tunnel.loadingCharts')}
+      </span>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="tr-chart tr-chart--skeleton" aria-hidden="true">
+          <div className="tr-chart__head">
+            <SkeletonBlock className="tr-skel tr-skel--title" />
+            <SkeletonBlock className="tr-skel tr-skel--now" />
+          </div>
+          <SkeletonBlock className="tr-skel tr-skel--plot" />
+          <SkeletonBlock className="tr-skel tr-skel--x" />
+          <SkeletonBlock className="tr-skel tr-skel--line" />
+          <SkeletonBlock className="tr-skel tr-skel--line tr-skel--short" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function Charts({ series, name }: { series: TrafficSeries; name: string }) {
   const { t, lang } = usePreferences()
   const pts = series.points
-  if (pts.length < 2) {
-    return (
-      <p className="tr-tunnel__collecting" role="status">
-        {t('traffic.tunnel.collecting')}
-      </p>
-    )
-  }
+  if (pts.length < 2) return <ChartsSkeleton name={name} />
+  const waited = (pts.at(-1)?.at ?? 0) - (pts[0]?.at ?? 0) >= LATENCY_WAIT_MS
   const times = pts.map((p) => p.at)
   const rx = pts.map((p) => p.rx)
   const tx = pts.map((p) => p.tx)
@@ -175,11 +212,22 @@ function Charts({ series, name }: { series: TrafficSeries; name: string }) {
         <div className="tr-chart tr-chart--empty">
           <span className="tr-chart__title">{t('traffic.tunnel.latency')}</span>
           <span className="tr-chart__now">{lat.length === 1 ? ms(latMs[0]!) : '—'}</span>
-          {/* still measuring: a loader, with the words for screen readers */}
-          <span className="tr-chart__wait" role="status">
-            <span className="k-spinner" aria-hidden="true" />
-            <span className="visually-hidden">{t('traffic.tunnel.noLatency')}</span>
-          </span>
+          {lat.length === 1 ? (
+            // One reading so far (it is recorded only when it changes).
+            <span className="tr-chart__note">{t('traffic.tunnel.latencyLast')}</span>
+          ) : waited ? (
+            // The probe got no round trip from this VPN: say so, statically.
+            <span className="tr-chart__note tr-chart__none">
+              {t('traffic.tunnel.latencyNone')}
+              <IconButton size="sm" label={t('traffic.tunnel.latencyWhy')} tip={t('traffic.tunnel.latencyWhy.tip')} icon={<InfoIcon />} />
+            </span>
+          ) : (
+            // A first reading is still expected: a loader, with the words.
+            <span className="tr-chart__wait" role="status">
+              <span className="k-spinner" aria-hidden="true" />
+              <span className="visually-hidden">{t('traffic.tunnel.noLatency')}</span>
+            </span>
+          )}
         </div>
       )}
     </div>

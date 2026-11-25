@@ -209,7 +209,10 @@ policies:
         - "hulu.com"
     via: us-content
 
-  - name: "Corporate apps (experimental)"
+  # apps: are saved and recognised (kongtrol policy show app:chrome), but not
+  # applied yet: no program goes through the VPN by this list (ADR-0113).
+  # Use domains or ip_ranges to steer traffic.
+  - name: "Corporate apps (not applied yet)"
     match:
       apps:
         - "chrome"

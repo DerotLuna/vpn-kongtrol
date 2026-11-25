@@ -128,6 +128,10 @@ func runPolicyAdd(cmd *cobra.Command, args []string) error {
 			fmt.Println("  " + styleDim.Render(cf(line.key, strings.Join(line.list, ", "))))
 		}
 	}
+	// ADR-0113: app: entries are recognised; only a profile that routes programs applies them.
+	if len(targets.Apps) > 0 && !appRouted(cfg, via) {
+		fmt.Println(tuiWarn(ct("cli.policy.apps_not_applied")))
+	}
 	if rule.Disabled {
 		fmt.Println(tuiInfo(cf("cli.policy.add.paused_next", rule.Name)))
 		return nil

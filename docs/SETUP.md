@@ -1,6 +1,6 @@
 # Guía de configuración — Kongtrol
 
-Versión 1.19 · 2026-11-24
+Versión 1.20 · 2026-11-24
 
 Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
 Tiempo estimado: **15–20 minutos**.
@@ -234,11 +234,14 @@ Si te enviaron el archivo (o lo bajaste de tu proveedor), Kongtrol puede guardar
   `--create` también crea el perfil que lo usa, con el nombre del archivo (o `--name`).
 
 Si el `.ovpn` nombra otros archivos (`ca ca.crt`, `tls-auth ta.key 1`…), Kongtrol los guarda dentro
-del perfil: con «Elegir archivo» o en la terminal los busca en la misma carpeta del `.ovpn`; si
-arrastras, arrastra el `.ovpn` junto con sus certificados. Si falta alguno, el panel lo nombra con un
-botón «Agregar <archivo>»; en la terminal pásalo después del archivo
-(`kongtrol profile import oficina.ovpn ~/certs/ca.crt`). Solo se leen archivos normales de esa carpeta
-(no accesos directos ni carpetas de fuera), de hasta 256 KB (ADR-0105).
+del perfil: con «Elegir archivo» o en la terminal los busca en la misma carpeta del `.ovpn`, y una
+ruta completa que escriba el archivo (`ca C:\\certs\\ca.crt`) también se lee si es un certificado o
+una clave en texto (PEM). Si arrastras el `.ovpn` solo, Kongtrol busca su original idéntico en las
+carpetas habituales (OpenVPN, Descargas, Escritorio, Documentos) y toma los certificados de allí; si
+aun así falta alguno, el panel lo nombra con «Elegir la carpeta donde están» y un botón
+«Agregar <archivo>»; en la terminal pásalo después del archivo
+(`kongtrol profile import oficina.ovpn ~/certs/ca.crt`). Solo se leen archivos normales del disco del
+equipo (no accesos directos, carpetas de red ni unidades de red), de hasta 256 KB (ADR-0105, ADR-0112).
 
 Sin preguntas, para scripts: `kongtrol profile detect` lista las apps de VPN instaladas y
 `kongtrol profile add <tipo> --name <nombre> [--host …] [--country …]` crea el perfil con las mismas
@@ -471,7 +474,7 @@ Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a
 
 ### La forma rápida: panel o una línea en la terminal
 
-En el panel, usa **＋ Agregar** y escribe sitios, enlaces, IP, rangos o apps separados por comas
+En el panel, usa **＋ Agregar** y escribe sitios, enlaces, IP o rangos separados por comas
 o saltos de línea. Por ejemplo, `claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42`.
 Elige la VPN y guarda la regla pausada. Puedes activarla al terminar o después en **Reglas**.
 La terminal admite varios destinos como argumentos:
@@ -479,15 +482,20 @@ La terminal admite varios destinos como argumentos:
 ```bash
 kongtrol policy add claude.ai --via us-content            # claude.ai y *.claude.ai
 kongtrol policy add 10.10.0.0/16 intranet.tuempresa.com --via office --block-when-down
-kongtrol policy add app:teams.exe --via office --name teams
+kongtrol policy add 10.20.0.0/16 --via office --name red-oficina
 kongtrol policy add claude.com api.anthropic.com '*.anthropic.com' --via us-content --name claude --paused
 kongtrol policy state claude on                          # usa off para pausarla
-kongtrol policy remove teams                              # pregunta antes; --yes para scripts
+kongtrol policy remove red-oficina                        # pregunta antes; --yes para scripts
 ```
 
 Un enlace (`https://…/x`) se guarda como su sitio; `--no-subdomains` deja solo el sitio exacto. Si
 no pones `--name`, el nombre sale solo ("claude.ai por us-content"). Con Kongtrol en marcha se aplica
 al momento, salvo que uses `--paused`. Sin Kongtrol en marcha se guarda en `kongtrol.yaml`.
+
+Las apps (`app:teams.exe`) se guardan y `kongtrol policy show` las reconoce, pero **aún no se aplican**:
+ningún programa sale por la VPN, se bloquea ni conecta una VPN por su nombre. El panel, la terminal
+y la documentación lo dicen igual ([ADR-0113](adr/0113-label-app-rules-honestly.md)). Para dirigir un
+programa, agrega los sitios o IPs que usa.
 
 <!-- feature:policies -->
 En **Perfiles**, elige qué hacen sus reglas cuando la VPN está apagada. Cada regla puede heredar
@@ -853,8 +861,8 @@ frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&ta
 
 - **Inicio** — tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos
 - **Perfiles** — crear, editar, renombrar y borrar perfiles VPN (la contraseña va al llavero del sistema), respaldo (`failover`) y la guía del primer uso; pestaña **Grupos** (crear, editar, conectar o desconectar varias VPN a la vez)
-- **Reglas** — qué sitios, redes y apps salen por cada VPN (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su VPN está apagada; pestaña **Horarios** (conectar o desconectar VPN a ciertas horas)
-- **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel, la tabla de rutas del equipo y **Recientes** (a dónde se conectó el equipo en la última hora y por dónde salió; se guarda solo en memoria y se apaga en Ajustes › Privacidad) con «Hacer que esto salga por…»
+- **Reglas** — qué sitios y redes salen por cada VPN (las apps se muestran con «aún no se aplica») (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su VPN está apagada; pestaña **Horarios** (conectar o desconectar VPN a ciertas horas)
+- **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel, la tabla de rutas del equipo y **Recientes** (a dónde se conectó el equipo en la última hora y por dónde salió; se guarda solo en memoria y se apaga en Ajustes › Privacidad) con «Agregar como regla»
 - **Seguridad** — Kill Switch y DNS Guard en vivo (con sus ajustes), el interruptor por perfil, la IP pública opcional (apagada por defecto) y DNS dividido
 - **Actividad** — registro de auditoría (filtros por fecha, perfil y nivel; firma HMAC comprobada) y los avisos del daemon
 - **Ajustes** — idioma, tema, **Diagnóstico** (las mismas comprobaciones que `kongtrol doctor`, **Reparar** si falta el ayudante, **Exportar configuración** sin contraseñas), comprobación de salud, avisos de versión nueva, ayudante, reiniciar / detener Kongtrol y borrar datos

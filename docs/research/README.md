@@ -74,6 +74,7 @@ reasoned but unverified.
 | [Executable routing](2026-11-24-per-app-routing.md) | Routing executables by VPN profile | ADR-0109 |
 | [Five provider apps](2026-11-24-five-provider-apps.md) | Mullvad, PIA, ExpressVPN, Windscribe and CyberGhost | ADR-0110 |
 | [Executable precedence](2026-11-25-executable-egress-precedence.md) | Runtime activation and platform constraints | ADR-0111 |
+| [Find an .ovpn's files](2026-11-24-find-ovpn-files-automatically.md) | Where OpenVPN clients keep configs, matching a dropped file to its original, PEM-only outside reads | ADR-0112 |
 | [Direct diagnostics](2026-11-21-diagnostics-deep-links.md) | Authenticated dashboard entry points and tray colors | ADR-0083 |
 | [Tunnel-down detection](2026-11-21-tunnel-down-detection.md) | TCP sampling and firewall events | ADR-0084 |
 | [Domain input](2026-11-21-policy-domain-inputs.md) | DNS normalization and wildcard examples | ADR-0087 |

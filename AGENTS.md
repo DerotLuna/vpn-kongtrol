@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Version 1.32 · 2026-11-24
+Version 1.33 · 2026-11-24
 
 Guidance for coding agents (any vendor) working in this repository. `CLAUDE.md` only imports this file.
 
@@ -311,7 +311,7 @@ ProfileService.Disconnect(name)
 | `internal/sockowner` | Who owns the server end of a loopback TCP connection, no admin: Windows `GetExtendedTcpTable` + process token SID, Linux `/proc/net/tcp` uid, macOS unknown (ADR-0062) |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
 | `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
-| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105 |
+| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105; folder mode `PickFolder`, ADR-0112 |
 | `internal/update` | Opt-in new version notice: GitHub Releases latest, ≤1 request/24 h, semver compare, never downloads (ADR-0034) |
 | `internal/uninstall` | Uninstall plan per channel (install.manifest, Windows installer, package managers) and data purge with the exact keychain entries (ADR-0034) |
 | `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
@@ -435,7 +435,15 @@ arguments, `kongtrol profile import <file> [certificates…]`). "Elegir archivo"
 the OS's own dialog through the daemon (`POST /api/v1/vpns/import/pick`, `internal/filepicker` =
 `github.com/ncruces/zenity`, no cgo; `GET` says if available, else the browser's `multiple` input); on
 Windows the dialog is raised in z-order because a background process cannot take the foreground. Drop
-zones use `useDropZone` (depth counter). A file only root can read (`/etc/wireguard/wg0.conf`) is never read
+zones use `useDropZone` (depth counter). ADR-0112: a dropped `.ovpn` (no path; the panel sends
+`file_name`) with missing files is matched to its identical original (`profileimport.Locator`: same
+name, size, SHA-256; `SearchRoots()` = OpenVPN GUI config folders, Downloads/Desktop/Documents via the
+OS, client folders on Linux/macOS; depth ≤ 3, 20 000 entries, 1 s, no links/junctions/network drives),
+whose folder then acts as `Dir` (answer `found_in`); `Refs.Disk` reads absolute and `../` references
+too (`readOutside`: `CleanLocalPath`, real folders from the root, PEM key blocks only →
+`api.err.import_ref_not_key`), never for the elevated read; "Elegir la carpeta donde están" =
+`POST /api/v1/vpns/import/pick-folder` (`filepicker.PickFolder`) then `ref_dir`. Tests set
+`importSearchRoots` so they never walk the real home folder. A file only root can read (`/etc/wireguard/wg0.conf`) is never read
 through the helper: `config.CheckFileReadable` → `config.err.file_root_only` (profile save, preflight,
 doctor), and the user copies it with one OS prompt — CLI/wizard `sudo`, dashboard `{"path","elevate":true}`
 → `pkexec` — to the hidden `kongtrol profile read-protected`, which releases it only after
@@ -521,6 +529,7 @@ changing the port from the page serving that request would cut the connection mi
 - openvpn runs with `--cd <config dir>`, so relative `ca`/`cert`/`key`/`tls-crypt` paths inside the `.ovpn` resolve like OpenVPN GUI. Self-contained configs need no `auth.cert`/`auth.key`.
 - Server-pushed routes are always accepted; Kongtrol adds policy routes on top (see Policy routing) and skips a destination the server already routes on the tunnel interface.
 - `binary_path` reaches the adapter via `AdapterConfig.Extra`. `TunnelInfo` reports `InterfaceName` and pushed DNS.
+- Latency comes only from the daemon health probe (`healthCheckProfile`: TCP to `host`/`RemoteIP`, else the tunnel DNS). OpenVPN reports no `RemoteIP`, so without `host` and pushed DNS there is no reading; Tráfico shows a loader for 45 s of samples, then "Sin medición para esta VPN" with why, never an endless spinner (ADR-0114).
 - Runs via the privileged helper when not elevated (`privops.OpenVPNStart`); Kongtrol answers the management password prompt; interface/DNS come from the helper log tail, falling back to an IP match.
 - An openvpn that exits on its own (killed, crashed) is reaped on the next `Connect`/`Disconnect` (`reapExitedLocked`: management connection closed, helper session stopped), so the watchdog can reconnect instead of getting "already connected".
 
@@ -529,7 +538,7 @@ changing the port from the page serving that request would cut the connection mi
 
 - All privileged ops go through `privops.Default()` (`Local` when elevated, `Client` to the helper otherwise; `ErrHelperNotInstalled` → `GuidanceKey`). Installed once with `kongtrol service install`.
 - GUI install (always one OS permission prompt, never silent elevation): tray item "Instalar ayudante (una vez)" ("Actualizar ayudante (una vez)" when `helper/status` says `outdated`) on every OS, also in the first-run menu; after success the tray notifies "Ayudante listo" and hides the item at once; with no daemon answering the tray pings the helper itself, and tells the user once (`tray.helper_first_run`). The dashboard's Diagnóstico card offers "Reparar" for checks with `fix: helper_install`; both use `POST /api/v1/helper/install`.
-- Direct WireGuard on Linux supports opt-in `app_route_mode`: `prefer_destinations` or `all`. The helper leases executable routes, keeps peer defaults in a private copy, and uses `Table = off`. Keep app-only rules separate from destination policies. See ADR-0111.
+- Direct WireGuard on Linux supports opt-in `app_route_mode`: `prefer_destinations` or `all`. The helper leases executable routes, keeps peer defaults in a private copy, and uses `Table = off`. Keep app-only rules separate from destination policies. See ADR-0114.
 - The protocol is versioned (`privops.ProtocolVersion`; bump it on any wire change). With the network helper task selected, Windows Setup runs `service install --if-needed` on upgrades before resuming tunnels. A compatible helper needs no elevation. A missing, unhealthy or incompatible helper takes the existing installation path. The per-process lease (renew 5s, expire 20s) undoes OpenVPN, DNS, hosts, blocked destinations and the kill switch on expiry. Ordinary WireGuard and its route lifecycle stay independent of leases. Opt-in executable egress is leased.
 - `block.set` (`SetBlockedDestinations`) replaces the whole set of blocked outbound prefixes: Windows Firewall BLOCK rules `KongtrolBlock`, Linux `KONGTROL_BLOCK` iptables/ip6tables chains (REJECT), macOS pf anchor `com.kongtrol` table. Only block rules: in Windows Defender Firewall a block rule always beats an allow rule, so "block all + allow exceptions" cannot work — a full-tunnel block is sent as the complement of its exceptions. An older helper answers "unknown operation" → `ErrHelperOutdated`.
 - `wg.stats` (`WGStats`, protocol 4) is read-only: `wg show <iface> dump` for a tunnel the helper manages, or the caller's own profile tunnel (same checks as `wg.remove`, nothing adopted). Only peer public key, latest handshake, rx/tx and keepalive leave the helper (`ParseWGDump` drops private/preshared keys; a failure never echoes the output). Successful read-only ops are not audited (polled every 10s); failures are.
@@ -542,6 +551,7 @@ changing the port from the page serving that request would cut the connection mi
   The optional root dot is preserved when the resolver makes a DNS lookup.
   A `*.` pattern matches one label. Route discovery probes common hostnames.
   Add exact hostnames that the policy must route.
+- Program rules (`match.apps`, `app:<exe>`) route only through a direct WireGuard profile on Linux with `app_route_mode` (ADR-0111); elsewhere they are matched only by resolve / `policies/test` / explain (PolicyResolver, KillSwitchService and PolicyWatch use domains/IPs). Every surface labels the rest honestly (ADR-0113; panel `useAppRoutedProfiles`, CLI `appRouted`): Add sheet Done step and preview, Reglas chip tag "aún no se aplica" + tooltip, Tráfico lookup, `policy add|list|show|test` (`cli.policy.apps_not_applied`), config docs, landing demo. Never claim a program goes through a VPN unless its profile routes programs.
 
 Rules inherit `vpns.<name>.on_tunnel_down` (default `allow`) unless they explicitly select `allow`, `block` or `connect` (ADR-0084). `allow` leaves the system's existing routes available. `block` and `connect` keep the winning rule's known destinations blocked while the VPN is off, including after an individual disconnect.
 - Rules with `disabled: true` remain editable and do not affect routing, DNS, blocking or demand connections. The dashboard saves new rules paused. CLI parity uses `policy add --paused` and `policy state <name> on|off`. Existing rules without the key are active.

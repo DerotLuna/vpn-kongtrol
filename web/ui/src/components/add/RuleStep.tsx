@@ -1,4 +1,4 @@
-// Kongtrol UI — C: "Hacer que un sitio salga por una VPN" · v1.0.0 · 2026-11-19
+// Kongtrol UI — C: "Hacer que un sitio salga por una VPN" · v1.1.0 · 2026-11-24
 //
 // The daemon previews the first destination before and after activation.
 // The entire list is validated before the rule is saved paused.
@@ -110,7 +110,7 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
   const probe = main && !invalid ? probeOf(main.entry) : null
   const settled = useDebounced(JSON.stringify({ probe, payload }))
   const { probe: dProbe, payload: dPayload } = JSON.parse(settled) as { probe: typeof probe; payload: PolicyPayload | null }
-  const todayTarget = dProbe ? (dProbe.app ? `app:${dProbe.app}` : dProbe.target) : ''
+  const todayTarget = dProbe && !dProbe.app ? dProbe.target : ''
   const today = useExplain(todayTarget)
   const after = useDraftRuleTest(dPayload, dProbe?.target ?? '', dProbe?.app ?? '')
 
@@ -167,7 +167,8 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
     return t(onDown === 'allow' ? 'add.rule.after.offAllow' : 'add.rule.after.offBlock', { target: label, via: draft.via })
   }
   const todayText = (): string | null => {
-    if (!probe) return null
+    // A program goes wherever its destinations go (ADR-0113): no "Hoy" line.
+    if (!probe || probe.app) return null
     if (!today.data) return today.isFetching ? t('add.rule.checking') : null
     return today.data.Matched
       ? t('add.rule.today.via', { target: label, via: today.data.Via, rule: today.data.RuleName })
@@ -197,7 +198,7 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
         data-autofocus=""
       />
       {hintText && <p className="k-add__small">{hintText}</p>}
-      {entries.some((entry) => entry.kind === 'app') && <p className="k-add__small">{t('rules.field.apps.note')}</p>}
+      {entries.some((entry) => entry.kind === 'app') && <p className="k-add__small">{t('policy.app.notApplied')}</p>}
       {entries.some((entry) => entry.kind === 'domain' && !entry.value.startsWith('*.')) && (
         <label className="k-add-check">
           <input type="checkbox" checked={draft.subs} onChange={(e) => onChange({ subs: e.target.checked })} />

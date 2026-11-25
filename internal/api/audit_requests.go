@@ -68,11 +68,12 @@ var auditRoutes = map[string]auditRoute{
 	"PUT /api/v1/vpns/{name}/killswitch":     {action: "security.profile_killswitch.set", level: "SECURITY", profile: true},
 	"PUT /api/v1/vpns/{name}/default-egress": {action: "vpn.default_egress.set", level: "SECURITY", profile: true},
 
-	"POST /api/v1/vpns":             {action: "config.profile.create", level: "SECURITY"},
-	"POST /api/v1/vpns/import":      {action: "config.profile.import", level: "SECURITY"},
-	"POST /api/v1/vpns/import/pick": {action: "config.profile.import_pick", level: "INFO"},
-	"PUT /api/v1/vpns/{name}":       {action: "config.profile.update", level: "SECURITY", profile: true},
-	"DELETE /api/v1/vpns/{name}":    {action: "config.profile.delete", level: "SECURITY", profile: true},
+	"POST /api/v1/vpns":                    {action: "config.profile.create", level: "SECURITY"},
+	"POST /api/v1/vpns/import":             {action: "config.profile.import", level: "SECURITY"},
+	"POST /api/v1/vpns/import/pick":        {action: "config.profile.import_pick", level: "INFO"},
+	"POST /api/v1/vpns/import/pick-folder": {action: "config.profile.import_pick_folder", level: "INFO"},
+	"PUT /api/v1/vpns/{name}":              {action: "config.profile.update", level: "SECURITY", profile: true},
+	"DELETE /api/v1/vpns/{name}":           {action: "config.profile.delete", level: "SECURITY", profile: true},
 
 	"POST /api/v1/policies":                 {action: "config.policy.create", level: "INFO"},
 	"PUT /api/v1/policies/{name}":           {action: "config.policy.update", level: "INFO"},

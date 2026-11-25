@@ -21,7 +21,7 @@ import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState, ErrorState, Skeleton } from '../components/ui/States'
 import { PlusIcon, RefreshIcon } from '../components/ui/icons'
-import { useProfilePriorities } from '../data/profiles'
+import { useAppRoutedProfiles, useProfilePriorities } from '../data/profiles'
 import { useDeletePolicy, usePoliciesQuery, usePolicyMetaQuery, useReloadPolicies } from '../data/rules'
 import '../components/rules/rules.css'
 
@@ -38,6 +38,7 @@ export function RulesPage() {
   const reload = useReloadPolicies()
   const remove = useDeletePolicy()
   const priorities = useProfilePriorities()
+  const appRouted = useAppRoutedProfiles()
   const [editor, setEditor] = useState<EditorState | null>(null)
   const [toDelete, setToDelete] = useState<Policy | null>(null)
 
@@ -109,7 +110,7 @@ export function RulesPage() {
         ) : (
           <>
             <p className="muted r-list__lead">{t('rules.list.what')}</p>
-            <PolicyList policies={list} priorities={priorities} onEdit={openEdit} onDelete={askDelete} />
+            <PolicyList policies={list} priorities={priorities} appRouted={appRouted} onEdit={openEdit} onDelete={askDelete} />
             <Overlaps policies={list} priorities={priorities} />
           </>
         )}

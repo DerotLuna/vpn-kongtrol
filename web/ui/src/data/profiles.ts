@@ -132,6 +132,10 @@ export interface ImportRequest {
   elevate?: boolean
   /** Certificates and keys added by hand, matched to the .ovpn's references by base name (ADR-0105). */
   files?: { name: string; content_base64: string }[]
+  /** The dropped file's own name: without a path the daemon looks for its identical original (ADR-0112). */
+  file_name?: string
+  /** Folder picked with "Elegir la carpeta donde están": the .ovpn's files are read there (ADR-0112). */
+  ref_dir?: string
 }
 
 /** POST /api/v1/vpns/import answer (201). */
@@ -147,7 +151,12 @@ export interface ImportResult {
   hint_key?: string
   /** Referenced files put inside the stored .ovpn (ADR-0105). */
   included?: string[]
+  /** Folder of the dropped file's identical original, where they were read (ADR-0112). */
+  found_in?: string
 }
+
+/** POST /api/v1/vpns/import/pick-folder answer: the folder picked, or cancelled (ADR-0112). */
+export type PickFolderResult = { cancelled: true } | { cancelled?: false; path: string; name: string }
 
 /** POST /api/v1/vpns/import/pick answer: the file picked in the OS's own dialog, or cancelled (ADR-0105). */
 export type PickResult =
@@ -214,6 +223,8 @@ export const profilesApi = {
     ),
   /** Opens the OS's own "Open file" dialog; answers when the user picks or closes it. */
   pickFile: () => http.post<PickResult>('/api/v1/vpns/import/pick'),
+  /** Opens the same dialog in folder mode ("Elegir la carpeta donde están", ADR-0112). */
+  pickFolder: () => http.post<PickFolderResult>('/api/v1/vpns/import/pick-folder'),
   setup: () => http.get<SetupStatus>('/api/v1/setup'),
   /** Older daemons have no detect endpoint: a 404 means "nothing to suggest". */
   detect: () =>
@@ -263,6 +274,12 @@ export function useProfilesQuery() {
 export function useProfilePriorities(): ReadonlyMap<string, number> {
   const { data } = useProfilesQuery()
   return useMemo(() => new Map((data ?? []).filter((p) => p.priority > 0).map((p) => [p.name, p.priority])), [data])
+}
+
+/** Profiles that route program (app:) rules: Linux WireGuard with app_route_mode (ADR-0111, ADR-0113). */
+export function useAppRoutedProfiles(): ReadonlySet<string> {
+  const { data } = useProfilesQuery()
+  return useMemo(() => new Set((data ?? []).filter((p) => p.app_route_mode && p.app_route_supported).map((p) => p.name)), [data])
 }
 
 export function useSetupQuery() {
@@ -389,6 +406,11 @@ export function usePickAvailable() {
 /** Opens the OS's own "Open file" dialog (one at a time). Not cached. */
 export function usePickProfileFile() {
   return useMutation<PickResult, unknown, void>({ mutationFn: () => profilesApi.pickFile() })
+}
+
+/** "Elegir la carpeta donde están": the OS's own folder dialog (ADR-0112). */
+export function usePickImportFolder() {
+  return useMutation<PickFolderResult, unknown, void>({ mutationFn: () => profilesApi.pickFolder() })
 }
 
 // ── Restart ───────────────────────────────────────────────────────────────

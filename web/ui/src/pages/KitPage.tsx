@@ -1,4 +1,4 @@
-// Kongtrol UI — component kit review page (/_kit) · v0.2.0 · 2026-11-19
+// Kongtrol UI — component kit review page (/_kit) · v0.3.0 · 2026-11-24
 //
 // Development builds only (App.tsx loads it behind import.meta.env.DEV), so
 // it never ships and its sample text lives here, not in messages.ts. Shows
@@ -14,7 +14,7 @@ import { Dialog } from '../components/ui/Dialog'
 import { DateRangeField, MultiSelectField, SelectField, TextAreaField, TextField } from '../components/ui/Field'
 import { PlugIcon, PlusIcon, RefreshIcon, SettingsIcon } from '../components/ui/icons'
 import { PowerIcon, TrashIcon } from '../components/profiles/icons'
-import { Banner, EmptyState, ErrorState, Kbd, Skeleton } from '../components/ui/States'
+import { Banner, EmptyState, ErrorState, Kbd, Skeleton, SkeletonBlock } from '../components/ui/States'
 import { StatusPill } from '../components/ui/StatusPill'
 import { Switch } from '../components/ui/Switch'
 import { Tabs } from '../components/ui/Tabs'
@@ -263,6 +263,11 @@ export default function KitPage() {
           </Banner>
           <ErrorState error={new ApiError('offline', 0)} onRetry={() => {}} />
           <Skeleton label={x.loading} />
+          <div className="kit-skel" aria-busy="true">
+            <span className="visually-hidden" role="status">{x.loading}</span>
+            <SkeletonBlock className="kit-skel__title" />
+            <SkeletonBlock className="kit-skel__plot" />
+          </div>
           <EmptyState title={x.emptyT} body={x.emptyB} action={<Button icon={<PlusIcon />}>{x.newRule}</Button>} />
         </Card>
 

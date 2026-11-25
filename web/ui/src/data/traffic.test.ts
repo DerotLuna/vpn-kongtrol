@@ -74,6 +74,9 @@ describe('lookup', () => {
     expect(explainLookup(miss, ctx)).toEqual({ kind: 'normal', iface: 'Wi-Fi' })
     expect(explainLookup(miss, { ...ctx, routes: { ...routes, rest_via_tunnel: 'work' } })).toEqual({ kind: 'all_traffic', via: 'work' })
     expect(explainLookup(miss, { ...ctx, routes: undefined })).toEqual({ kind: 'normal', iface: '' })
+    // A program is recognised, never routed (ADR-0113): never "tunnel" / "normal".
+    expect(explainLookup({ ...hit('work', 'ai'), app: 'claude.exe' }, ctx)).toEqual({ kind: 'app', rule: 'ai' })
+    expect(explainLookup({ ...miss, app: 'claude.exe' }, ctx)).toEqual({ kind: 'app', rule: '' })
   })
 
   it('recognises domains (for the DNS detail) but not IPs', () => {

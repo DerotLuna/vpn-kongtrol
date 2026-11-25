@@ -196,6 +196,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("POST /api/v1/vpns/import", s.handleImportVPNFile)
 	mux.HandleFunc("GET /api/v1/vpns/import/pick", s.handleImportPickAvailable)
 	mux.HandleFunc("POST /api/v1/vpns/import/pick", s.handleImportPick)
+	mux.HandleFunc("POST /api/v1/vpns/import/pick-folder", s.handleImportPickFolder)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}", s.handleUpdateVPN)
 	mux.HandleFunc("DELETE /api/v1/vpns/{name}", s.handleDeleteVPN)
 	mux.HandleFunc("PUT /api/v1/vpns/{name}/killswitch", s.handleSetProfileKillSwitch)
@@ -452,7 +453,7 @@ func isConfigMutation(path string) bool {
 	// (elevated read): it locks only to store the file.
 	if strings.HasPrefix(path, "/api/v1/tunnels/") || strings.HasPrefix(path, "/api/v1/helper/") ||
 		path == sessionPath || path == sessionNoncePath || path == wsTicketPath ||
-		path == importPath || path == importPickPath || path == "/api/v1/shutdown" {
+		path == importPath || path == importPickPath || path == importPickFolderPath || path == "/api/v1/shutdown" {
 		return false
 	}
 	if strings.HasPrefix(path, "/api/v1/groups/") &&

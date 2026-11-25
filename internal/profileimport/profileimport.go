@@ -62,6 +62,9 @@ type Result struct {
 	// Included are the referenced files put inside the stored .ovpn
 	// (base names, ADR-0105).
 	Included []string `json:"included,omitempty"`
+	// FoundIn is the folder of a dropped file's identical original, where
+	// the files it names were read (Locator, ADR-0112); "" otherwise.
+	FoundIn string `json:"found_in,omitempty"`
 }
 
 // ErrStore marks a failure writing the file (not the user's input).
@@ -191,8 +194,21 @@ func Import(dir string, req Request) (Result, error) {
 	}
 	content := req.Content
 	var included []string
+	var foundIn string
 	if typ == "openvpn" && req.Refs != nil {
 		out, inc, err := Resolve(content, req.Refs)
+		var miss *MissingFilesError
+		if errors.As(err, &miss) && req.Refs.Dir == "" && req.Refs.Locate != nil {
+			// A dropped file: its identical original's folder, when there is
+			// exactly one, stands in for the picked file's folder (ADR-0112).
+			if dir := req.Refs.Locate.Find(content); dir != "" {
+				found := *req.Refs
+				found.Dir = dir
+				if out2, inc2, err2 := Resolve(content, &found); err2 == nil {
+					out, inc, err, foundIn = out2, inc2, nil, dir
+				}
+			}
+		}
 		if err != nil {
 			return Result{}, err
 		}
@@ -218,7 +234,7 @@ func Import(dir string, req Request) (Result, error) {
 	case err != nil:
 		return Result{}, fmt.Errorf("%w: %w", ErrStore, err)
 	}
-	return Result{Path: path, Type: typ, Overwritten: overwritten, Provider: ProviderForContent(typ, content), Included: included}, nil
+	return Result{Path: path, Type: typ, Overwritten: overwritten, Provider: ProviderForContent(typ, content), Included: included, FoundIn: foundIn}, nil
 }
 
 // TooBig is the refusal for a file over MaxSize (callers that see the size

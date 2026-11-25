@@ -1,4 +1,4 @@
-// Kongtrol UI — B: "Importar un archivo de VPN" · v1.2.0 · 2026-11-24
+// Kongtrol UI — B: "Importar un archivo de VPN" · v1.3.0 · 2026-11-24
 //
 // The type comes from the extension and, for a .conf, from its content
 // (profileimport.TypeForContent, ADR-0080: OpenVPN GUI uses .conf), the name
@@ -13,16 +13,29 @@
 // OS's own dialog through the daemon when it can (a real path: the daemon
 // reads them from the file's folder); otherwise the browser's input, which
 // takes several files at once, like a drop (the .ovpn plus its
-// certificates). Whatever is still missing comes back by name and each gets
-// an "Agregar <name>" button (or a drop) that imports again with it.
+// certificates). A dropped file (no path) is matched by the daemon to its
+// identical original in the usual folders, and the answer says where the
+// certificates were found (`found_in`, ADR-0112). Whatever is still missing
+// comes back by name: the banner lists them as chips, with "Elegir la
+// carpeta donde están" (the OS's folder dialog, then `ref_dir`) when the
+// daemon can show one, and "Agregar <name>" (or a drop) per file; the
+// buttons sit under the text so the narrow sheet never squeezes it.
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../../api/client'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
-import { useImportProfileFile, usePickAvailable, usePickProfileFile, type ImportRequest, type VPNProfile } from '../../data/profiles'
+import {
+  useImportProfileFile,
+  usePickAvailable,
+  usePickImportFolder,
+  usePickProfileFile,
+  type ImportRequest,
+  type VPNProfile,
+} from '../../data/profiles'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
 import { SelectField, TextField, type FieldError } from '../ui/Field'
+import { AlertIcon } from '../ui/icons'
 import { Banner } from '../ui/States'
 import { AUTH_METHODS, specOf, type AuthMethod } from '../profiles/catalog'
 import { emptyDraft, fieldForErrorKey, toRequest } from '../profiles/draft'
@@ -69,6 +82,8 @@ interface Stored {
   path: string
   provider?: string | undefined
   included?: string[] | undefined
+  /** Folder of the dropped file's original, where its certificates were read (ADR-0112). */
+  found?: string | undefined
 }
 
 const AUTH_LABEL: Record<AuthMethod, MessageKey> = {
@@ -108,6 +123,9 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const importFile = useImportProfileFile()
   const pickAvailable = usePickAvailable()
   const pickFile = usePickProfileFile()
+  const pickFolder = usePickImportFolder()
+  /** Folder picked for the .ovpn's files ("Elegir la carpeta donde están"), for this choice only. */
+  const [refDir, setRefDir] = useState<string | undefined>(undefined)
   const act = useSaveAndActivate()
   const nativePicker = pickAvailable.data === true && !noPicker
 
@@ -119,6 +137,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     setRefusal(null)
     setStored(null)
     setMissing([])
+    setRefDir(undefined)
     setFileError(null)
     setChosen(next)
     setExtras(added)
@@ -233,7 +252,20 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     return null
   }
 
-  const submit = async (e?: Pick<FormEvent, 'preventDefault'>, overwrite = false, files: Extra[] = extras) => {
+  /** "Elegir la carpeta donde están": the OS's folder dialog, then import again reading the files there. */
+  const chooseFolder = async () => {
+    try {
+      const res = await pickFolder.mutateAsync()
+      if (res.cancelled) return
+      setRefDir(res.path)
+      void submit(undefined, false, extras, res.path)
+    } catch (err) {
+      if (err instanceof ApiError && err.key === PICKER_UNAVAILABLE) setNoPicker(true)
+      setFileError(describeError(err, t))
+    }
+  }
+
+  const submit = async (e?: Pick<FormEvent, 'preventDefault'>, overwrite = false, files: Extra[] = extras, dir: string | undefined = refDir) => {
     e?.preventDefault()
     if (act.busy || importFile.isPending) return
     setTried(true)
@@ -254,8 +286,9 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
     if (!path) {
       const body: ImportRequest = chosen.path
         ? { name: as, type: chosen.type, path: chosen.path, overwrite }
-        : { name: as, type: chosen.type, content_base64: chosen.content, overwrite }
+        : { name: as, type: chosen.type, content_base64: chosen.content, file_name: chosen.fileName, overwrite }
       if (files.length > 0) body.files = files.map((f) => ({ name: f.name, content_base64: f.content }))
+      if (dir) body.ref_dir = dir
       try {
         const res = await importFile.mutateAsync(body)
         // Another file was chosen while this one was being stored: drop this answer.
@@ -263,7 +296,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
         path = res.path
         provider = res.provider
         setMissing([])
-        setStored({ for: chosen.id, as, path, provider, included: res.included })
+        setStored({ for: chosen.id, as, path, provider, included: res.included, found: res.found_in })
       } catch (err) {
         if (chosenId.current !== chosen.id) return
         const list = err instanceof ApiError && err.key === MISSING_KEY && Array.isArray(err.body.missing) ? (err.body.missing as string[]) : []
@@ -289,7 +322,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const stillMissing = missing.filter((m) => !extras.some((x) => sameName(x.name, m)))
 
   return (
-    <form className="k-add__step" onSubmit={(e) => void submit(e)} noValidate>
+    <form className="k-add__step k-add-file" onSubmit={(e) => void submit(e)} noValidate>
       {note && <p className="k-add__muted">{note}</p>}
       <div
         className="k-add-drop"
@@ -330,7 +363,13 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
           {chosen ? t('add.file.change') : t('add.file.choose')}
         </Button>
         <p className="k-add__muted k-add__small">
-          {pickFile.isPending ? t('add.file.picking') : drag ? t('add.file.drop') : t('add.file.what')}
+          {pickFile.isPending
+            ? t('add.file.picking')
+            : pickFolder.isPending
+              ? t('add.file.pickingFolder')
+              : drag
+                ? t('add.file.drop')
+                : t('add.file.what')}
         </p>
         <div aria-live="polite">
           {chosen && (
@@ -340,6 +379,11 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
           )}
           {chosen && extras.length > 0 && (
             <p className="k-add__small">{t('add.file.extras', { files: extras.map((x) => x.name).join(', ') })}</p>
+          )}
+          {chosen && stored?.for === chosen.id && stored.found && (
+            <p className="k-add__small k-add-file__found">
+              {t('add.file.found', { file: chosen.fileName, dir: stored.found })}
+            </p>
           )}
         </div>
         {fileError && (
@@ -367,18 +411,39 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
           >
             <span>{describeError(refusal.error, t).fix}</span>
           </Banner>
-        ) : missing.length > 0 ? (
-          <Banner
-            tone="caution"
-            title={describeError(refusal.error, t).message}
-            actions={stillMissing.map((m) => (
-              <Button key={m} variant="outlined" size="sm" icon={<UploadIcon />} onClick={() => extraInput.current?.click()}>
-                {t('add.file.addMissing', { file: m })}
-              </Button>
-            ))}
-          >
-            <span>{describeError(refusal.error, t).fix}</span>
-          </Banner>
+        ) : stillMissing.length > 0 ? (
+          // Not the kit Banner: its actions sit beside the text, which squeezed
+          // the text into one word per line in the sheet. Here they wrap below.
+          <div className="k-banner k-banner--caution k-add-missing" role="status">
+            <span className="k-banner__icon">
+              <AlertIcon />
+            </span>
+            <div className="k-banner__text">
+              <strong>
+                {stillMissing.length === 1 ? t('add.file.missingTitle.one') : t('add.file.missingTitle', { count: stillMissing.length })}
+              </strong>
+              <ul className="k-add-missing__chips" aria-label={t('add.file.missingList')}>
+                {stillMissing.map((m) => (
+                  <li key={m} className="k-add-missing__chip mono">
+                    {m}
+                  </li>
+                ))}
+              </ul>
+              <span>{nativePicker ? t('add.file.missingWhat') : t('add.file.missingWhat.browser')}</span>
+            </div>
+            <div className="k-banner__actions k-add-missing__actions">
+              {nativePicker && (
+                <Button variant="tonal" size="sm" loading={pickFolder.isPending} onClick={() => void chooseFolder()}>
+                  {t('add.file.pickFolder')}
+                </Button>
+              )}
+              {stillMissing.map((m) => (
+                <Button key={m} variant="outlined" size="sm" icon={<UploadIcon />} onClick={() => extraInput.current?.click()}>
+                  {t('add.file.addMissing', { file: m })}
+                </Button>
+              ))}
+            </div>
+          </div>
         ) : (
           <ErrorBanner error={refusal.error} />
         ))}

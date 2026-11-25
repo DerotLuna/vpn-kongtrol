@@ -1,10 +1,12 @@
-// Reglas — saved rules in evaluation order, and where they overlap · v1.1.0 · 2026-11-24
+// Reglas — saved rules in evaluation order, and where they overlap · v1.2.0 · 2026-11-24
 //
 // The "Sale por" cell adds the order hint (ADR-0108) only on rows in an
 // overlap the order settles: "Prioridad N" or "por posición". Elsewhere the
 // order changes nothing, and new profiles all start at 10, so a hint on
 // every row would be noise. It links to that profile's editor with the
 // priority field focused.
+// Program chips (app:) carry "aún no se aplica" with a tooltip (ADR-0113):
+// unless the rule's profile routes programs (Linux app_route_mode, ADR-0111).
 import { memo, useMemo } from 'react'
 import { Link } from 'react-router'
 import { usePreferences } from '../../app/preferences-context'
@@ -22,7 +24,7 @@ import { VpnState } from './shared'
 const MAX_CHIPS = 4
 
 /** Destinations as mono chips; apps marked as such; long lists end in "+N". */
-const MatchCell = memo(function MatchCell({ p }: { p: Policy }) {
+const MatchCell = memo(function MatchCell({ p, appRouted }: { p: Policy; appRouted: boolean }) {
   const { t } = usePreferences()
   const items = [
     ...(p.domains ?? []).map((v) => ({ v, app: false })),
@@ -37,6 +39,14 @@ const MatchCell = memo(function MatchCell({ p }: { p: Policy }) {
         <li key={`${app}:${v}`} className={`r-chip r-chip--static ${app ? 'is-app' : ''}`}>
           {app && <span className="r-chip__tag">{t('rules.list.app')}</span>}
           {v}
+          {/* ADR-0113: a program is only recognised unless its profile routes programs. */}
+          {app && !appRouted && (
+            <Tooltip content={t('policy.app.tip')} describe>
+              <button type="button" className="r-chip__pending">
+                {t('policy.app.tag')}
+              </button>
+            </Tooltip>
+          )}
         </li>
       ))}
       {rest > 0 && <li className="r-chips__more">{t('rules.list.more', { count: rest })}</li>}
@@ -48,18 +58,20 @@ interface ListProps {
   policies: readonly Policy[]
   /** Each profile's own priority (absent = by position). */
   priorities: Priorities
+  /** Profiles that route program rules (useAppRoutedProfiles); absent = none. */
+  appRouted?: ReadonlySet<string>
   onEdit: (p: Policy) => void
   onDelete: (p: Policy) => void
 }
 
-export function PolicyList({ policies, priorities, onEdit, onDelete }: ListProps) {
+export function PolicyList({ policies, priorities, appRouted, onEdit, onDelete }: ListProps) {
   const { t } = usePreferences()
   const matters = useMemo(() => orderMatters(findOverlaps(policies)), [policies])
   const { mutate: toggle, isPending, variables } = useTogglePolicy()
   const columns = useMemo<Column<Policy>[]>(
     () => [
       { id: 'name', header: t('rules.list.name'), cell: (p) => p.name },
-      { id: 'match', header: t('rules.list.match'), cell: (p) => <MatchCell p={p} /> },
+      { id: 'match', header: t('rules.list.match'), cell: (p) => <MatchCell p={p} appRouted={appRouted?.has(p.via) ?? false} /> },
       {
         id: 'via',
         header: t('rules.list.via'),
@@ -107,7 +119,7 @@ export function PolicyList({ policies, priorities, onEdit, onDelete }: ListProps
         ),
       },
     ],
-    [t, onEdit, onDelete, toggle, isPending, variables, priorities, matters],
+    [t, onEdit, onDelete, toggle, isPending, variables, priorities, matters, appRouted],
   )
   return <DataList caption={t('rules.list.caption')} columns={columns} rows={policies} rowKey={(p) => p.name} />
 }

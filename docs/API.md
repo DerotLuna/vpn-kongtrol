@@ -2,7 +2,7 @@
 
 # Local API reference
 
-Version 1.17 · 2026-11-24
+Version 1.18 · 2026-11-24
 
 <!-- feature:api -->
 The daemon's local API (IPC on this machine only — nothing leaves the host). The tray, the CLI and
@@ -120,6 +120,12 @@ POST /api/v1/vpns/import                     # {"name","type":"wireguard"|"openv
                                              #   "included":[names]; still missing → 400 api.err.import_missing_files with "missing":[names];
                                              #   api.err.import_ref_unreadable|ref_too_big|ref_not_text; 413 api.err.import_too_many_files.
                                              #   Body cap for this route: 2 MiB (1 MiB elsewhere).
+                                             #   ADR-0112: "file_name" (the dropped file's own name): with no path and files missing, the daemon
+                                             #   looks for its identical original (same name, size, SHA-256) in the usual folders (bounded: depth 3,
+                                             #   20 000 entries, 1 s) and reads the files there → "found_in":"<folder>". "ref_dir":"<abs folder>"
+                                             #   (from import/pick-folder) replaces the file's folder. Absolute and ../ references are read too
+                                             #   (local paths only, no links, PEM key blocks only → else 400 api.err.import_ref_not_key), never
+                                             #   for the elevated read.
                                              #   Or {"path":"/abs/file.conf","elevate":false} instead of content: a file only root can read
                                              #   answers 403 config.err.file_root_only; "elevate":true reads it after the OS permission
                                              #   window (pkexec, Linux) → 201, or 403 api.err.import_elevated_failed (ADR-0058)
@@ -131,6 +137,10 @@ POST /api/v1/vpns/import/pick                # opens it (one at a time, up to 10
                                              #   for the .ovpn/.conf picked (read like a "path" import; the panel then imports with "path"),
                                              #   or {"cancelled":true}; 503 api.err.picker_unavailable (use the browser's input), 409 api.err.picker_busy.
                                              #   Audited as config.profile.import_pick (never the path or content)
+POST /api/v1/vpns/import/pick-folder         # the same dialog in folder mode ("Elegir la carpeta donde están", ADR-0112) → {"path","name"}
+                                             #   or {"cancelled":true}; only a clean local real folder (else 400 api.err.import_protected_path);
+                                             #   nothing in it is read here (the panel imports again with "ref_dir"); 503/409 as above.
+                                             #   Audited as config.profile.import_pick_folder (never the path)
 PUT  /api/v1/vpns/{name}/killswitch          # {"override": "inherit"|"on"|"off"}
 GET/PUT /api/v1/vpns/{name}/default-egress    # PUT {"enabled":bool}, 409 while connected/connecting
                                              # Both return {enabled,compatible,reason?}, see ADR-0085

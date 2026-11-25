@@ -117,7 +117,9 @@ policies:
       domains: ["netflix.com", "*.netflix.com", "hulu.com"]
     via: us-content
 
-  - name: "Corporate apps (experimental)"
+  # apps: saved and recognised (kongtrol policy show app:chrome) but not applied
+  # yet: no program goes through the VPN by this list (ADR-0113).
+  - name: "Corporate apps (not applied yet)"
     match:
       apps: ["chrome", "teams*", "*\\Code.exe"]
     via: office

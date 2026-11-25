@@ -1,15 +1,17 @@
 // Package filepicker opens the operating system's own "Open file" dialog
 // from the daemon, so the panel's "Elegir archivo" gets a real path (the
 // browser's file input never gives one) and an imported .ovpn can find the
-// certificates next to it (ADR-0105).
+// certificates next to it (ADR-0105). PickFolder opens the same dialog in
+// folder mode, for "Elegir la carpeta donde están" when a dropped .ovpn's
+// files are still missing (ADR-0112).
 //
 // It wraps github.com/ncruces/zenity (MIT, pure Go, no cgo): Windows uses
 // the Common Item Dialog (IFileOpenDialog) in-process; macOS runs
-// osascript (JavaScript for Automation, "choose file"); Linux and the BSDs
-// run qarma, zenity or matedialog, whichever is installed. Available says
-// whether this session can show one; when it cannot, the panel falls back
-// to the browser's file input. Research and sources:
-// docs/research/2026-11-24-native-file-picker.md.
+// osascript (JavaScript for Automation, "choose file" / "choose folder");
+// Linux and the BSDs run qarma, zenity or matedialog, whichever is
+// installed. Available says whether this session can show one; when it
+// cannot, the panel falls back to the browser's file input. Research and
+// sources: docs/research/2026-11-24-native-file-picker.md.
 //
 // Only the path the user picked leaves this package (nothing is read
 // here); one dialog at a time; the dialog closes when ctx ends (the page
@@ -54,6 +56,20 @@ func Available() bool { return availableFn() }
 
 // Pick shows the dialog and returns the absolute path of the file picked.
 func Pick(ctx context.Context, o Options) (string, error) {
+	opts := []zenity.Option{}
+	if len(o.Patterns) > 0 {
+		opts = append(opts, zenity.FileFilter{Name: o.FilterName, Patterns: o.Patterns, CaseFold: true})
+	}
+	return pick(ctx, o.Title, opts)
+}
+
+// PickFolder shows the dialog in folder mode (zenity.Directory) and
+// returns the absolute path of the folder picked.
+func PickFolder(ctx context.Context, o Options) (string, error) {
+	return pick(ctx, o.Title, []zenity.Option{zenity.Directory()})
+}
+
+func pick(ctx context.Context, title string, extra []zenity.Option) (string, error) {
 	if !Available() {
 		return "", ErrUnavailable
 	}
@@ -61,11 +77,8 @@ func Pick(ctx context.Context, o Options) (string, error) {
 		return "", ErrBusy
 	}
 	defer open.Unlock()
-	opts := []zenity.Option{zenity.Context(ctx), zenity.Title(o.Title)}
-	if len(o.Patterns) > 0 {
-		opts = append(opts, zenity.FileFilter{Name: o.FilterName, Patterns: o.Patterns, CaseFold: true})
-	}
-	stop := raise(ctx, o.Title)
+	opts := append([]zenity.Option{zenity.Context(ctx), zenity.Title(title)}, extra...)
+	stop := raise(ctx, title)
 	defer stop()
 	path, err := selectFile(opts...)
 	switch {

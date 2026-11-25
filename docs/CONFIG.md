@@ -4,7 +4,7 @@
 
 # Referencia de configuración (kongtrol.yaml)
 
-Versión 1.13 · 2026-11-25
+Versión 1.12 · 2026-11-25
 
 Todas las claves de `~/.kongtrol/kongtrol.yaml`, leídas del esquema (`internal/config/schema.go`). Los valores por defecto son los que aplica el código. Guía con ejemplos: [CONFIGURATION.md](CONFIGURATION.md) · ejemplo completo: [configs/example.yaml](../configs/example.yaml) · English: [CONFIG.en.md](CONFIG.en.md).
 
@@ -61,7 +61,7 @@ Reglas que deciden por qué VPN sale cada destino, en orden.
 | `policies[].name` | texto | — | **Obligatorio.** Nombre de la regla. |
 | `policies[].match.ip_ranges` | lista de texto | — | Rangos de IP en notación CIDR. |
 | `policies[].match.domains` | lista de texto | — | Dominios o globs (`*.ejemplo.com`). |
-| `policies[].match.apps` | lista de texto | — | Ejecutables o globs (experimental). |
+| `policies[].match.apps` | lista de texto | — | Ejecutables o globs (chrome.exe, teams*). Aún no se aplican: se guardan y kongtrol policy show los reconoce, pero ningún programa sale por la VPN, se bloquea ni conecta una VPN por esta lista (ADR-0113). Para dirigir tráfico usa domains o ip_ranges. |
 | `policies[].via` | texto | — | **Obligatorio.** Perfil VPN por el que sale el tráfico. |
 | `policies[].disabled` | booleano | — | `true` conserva la regla pausada hasta que la actives. Por defecto la regla está activa. |
 | `policies[].on_tunnel_down` | texto | — | Vacío: hereda la opción del perfil. `allow` permite y avisa si detecta tráfico. `block` bloquea las IP conocidas. `connect` también las bloquea e intenta conectar si detecta tráfico TCP en Windows o Linux. En macOS, conecta manualmente. |

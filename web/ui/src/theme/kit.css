@@ -1,4 +1,4 @@
-/* KONGTROL UI — component kit (src/components/ui) · v0.4.0 · 2026-11-20
+/* KONGTROL UI — component kit (src/components/ui) · v0.5.0 · 2026-11-24
    Operate mode (DESIGN.md "Sesión en la Torre"): precise and quiet. Amber
    is the one accent (primary action, selection, focus); states use the
    Four States colors with a word. Flat by default: no shadows except the
@@ -253,6 +253,11 @@
 }
 .k-skeleton__line:nth-child(3n) { width: 60%; }
 .k-skeleton__line:nth-child(3n + 2) { width: 85%; }
+.k-skeleton__block {
+  display: block; min-height: 8px; border-radius: 4px; background: var(--surface-3);
+  background-image: linear-gradient(90deg, transparent, var(--state-hover), transparent);
+  background-size: 200% 100%; animation: k-shimmer 1.4s linear infinite;
+}
 @keyframes k-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
 .k-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 24px 4px; max-width: 52ch; }
@@ -305,6 +310,9 @@
 .kit-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
 .kit-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .kit-edge { margin-left: auto; }
+.kit-skel { display: flex; flex-direction: column; gap: 6px; }
+.kit-skel__title { width: 40%; height: 12px; }
+.kit-skel__plot { height: 72px; }
 .kit-check { display: flex; align-items: center; gap: 10px; min-height: var(--tap); cursor: pointer; }
 .kit-radios { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; }
 
@@ -313,6 +321,6 @@
 :root { accent-color: var(--signal); caret-color: var(--signal); scrollbar-color: var(--border-2) transparent; }
 
 @media (prefers-reduced-motion: reduce) {
-  .k-skeleton__line { animation: none; background-image: none; }
+  .k-skeleton__line, .k-skeleton__block { animation: none; background-image: none; }
   .k-spinner { animation-duration: 2.4s; }
 }

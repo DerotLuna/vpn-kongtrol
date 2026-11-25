@@ -1,4 +1,4 @@
-// Kongtrol UI — Tráfico (/traffic): reads, live samples and lookups · v1.0.1 · 2026-11-18
+// Kongtrol UI — Tráfico (/traffic): reads, live samples and lookups · v1.1.0 · 2026-11-24
 //
 // Everything the Traffic page reads from the daemon, on the shared cache
 // (ADR-0038): routes, what goes through each tunnel, policies (with their
@@ -257,6 +257,8 @@ export type LookupVerdict =
   | { kind: 'blocked'; via: string; rule: string }
   | { kind: 'all_traffic'; via: string }
   | { kind: 'normal'; iface: string }
+  /** A program (app:): recognised by a rule (rule set) or not, never routed (ADR-0113). */
+  | { kind: 'app'; rule: string }
 
 export interface LookupContext {
   tunnels: readonly TunnelMetrics[]
@@ -271,6 +273,8 @@ export interface LookupContext {
  * took all traffic still carries it.
  */
 export function explainLookup(res: ResolveResult, ctx: LookupContext): LookupVerdict {
+  // Nothing routes by program yet: never "sale por" for one (ADR-0113).
+  if (res.app) return { kind: 'app', rule: res.matched ? res.rule : '' }
   if (res.matched && res.via) {
     const up = ctx.tunnels.some((tn) => tn.Name === res.via && tn.Status === 'connected')
     if (up) return { kind: 'tunnel', via: res.via, rule: res.rule }

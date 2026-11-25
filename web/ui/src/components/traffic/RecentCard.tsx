@@ -1,10 +1,11 @@
-// Kongtrol UI — Tráfico › Recientes · v1.1.0 · 2026-11-24
+// Kongtrol UI — Tráfico › Recientes · v1.2.0 · 2026-11-24
 //
 // The destinations this computer connected to lately (host or IP, program,
 // the tunnel it left through or the normal connection, when) from the
 // daemon's in-memory list (data/recent.ts, ADR-0054). Each row offers
-// "Hacer que esto salga por…": the "＋ Agregar" sheet on the rule step
-// with that destination prefilled (ADR-0055). On by default (ADR-0054); when turned off the card says
+// "Agregar como regla" (kit Tooltip: a rule so that destination goes through
+// the VPN you choose): the "＋ Agregar" sheet on the rule step with that
+// destination prefilled (ADR-0055). On by default (ADR-0054); when turned off the card says
 // where to turn it on; where the OS does not allow it without admin rights,
 // it says so. Hidden on a daemon without the endpoint.
 // ADR-0106: 10 rows, then "Ver 20 más"; search + "Salió por" filter the
@@ -23,6 +24,7 @@ import { DataList, type Column } from '../ui/DataList'
 import { SelectField, TextField } from '../ui/Field'
 import type { SelectOption } from '../ui/Select'
 import { EmptyState, Skeleton } from '../ui/States'
+import { Tooltip } from '../ui/Tooltip'
 import { SectionError } from './SectionError'
 import { matchesRecent, RECENT_FIRST, RECENT_STEP, recentKey, useStableList, viaNames, viaProfile, type ViaFilter } from './recentView'
 
@@ -59,15 +61,14 @@ export function RecentCard() {
       },
       {
         id: 'action',
-        header: t('add.thisVia'),
+        header: t('traffic.recent.addRule'),
         hideHeader: true,
         cell: (c) => (
-          <AddButton
-            req={{ mode: 'rule', target: destinationOf(c) }}
-            variant="text"
-          >
-            {t('add.thisVia')}
-          </AddButton>
+          <Tooltip content={t('traffic.recent.addRule.tip', { target: destinationOf(c) })} describe>
+            <AddButton req={{ mode: 'rule', target: destinationOf(c) }} variant="text">
+              {t('traffic.recent.addRule')}
+            </AddButton>
+          </Tooltip>
         ),
       },
     ],

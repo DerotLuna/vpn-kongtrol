@@ -59,6 +59,47 @@ describe('Rules page', () => {
     expect(screen.getByText('/home/u/.kongtrol/kongtrol.yaml')).toBeInTheDocument()
   })
 
+  it('a program chip says it is not applied yet, with a tooltip saying why (ADR-0113)', async () => {
+    stubFetch(routes())
+    render(<App />)
+    const table = await screen.findByRole('table', { name: 'Rules by destination, in the order they are checked' })
+    const [workRow, labRow] = within(table).getAllByRole('row').slice(1)
+    const tag = within(labRow!).getByRole('button', { name: 'not applied yet' })
+    expect(tag).toHaveAccessibleDescription(/this VPN does not carry programs/)
+    expect(within(workRow!).queryByRole('button', { name: 'not applied yet' })).not.toBeInTheDocument()
+  })
+
+  it('the Done step of a program rule never says it goes through the VPN, and offers no test (ADR-0113)', async () => {
+    const explain = vi.fn(() => json({ Target: 'claude.exe', Kind: 'app', Matched: true, Via: 'home', RuleName: 'x' }))
+    stubFetch(
+      routes(
+        {
+          'GET /api/v1/vpns': () => json([{ name: 'home', type: 'nordvpn' }]),
+          'POST /api/v1/policies': () => json({ status: 'created' }, 201),
+          'PUT /api/v1/policies/claude.exe%20via%20home': () => json({ status: 'updated' }),
+          'GET /api/v1/policies/explain?target=app%3Aclaude.exe': explain,
+        },
+        [],
+      ),
+    )
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Create the first rule' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
+    fireEvent.change(await within(sheet).findByRole('textbox', { name: /Site, IP or program/ }), { target: { value: 'app:claude.exe' } })
+    const notApplied = 'Programs: they only go through the VPN on Linux, with a WireGuard profile that has Executable egress on. Otherwise Kongtrol only recognises them: use sites or IPs.'
+    expect(within(sheet).getByText(notApplied)).toBeInTheDocument()
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Save paused' }))
+    expect(await within(sheet).findByText('The rule “claude.exe via home” is saved.')).toBeInTheDocument()
+    expect(within(sheet).getByText(notApplied)).toBeInTheDocument()
+
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Activate rule' }))
+    await waitFor(() => expect(within(sheet).queryByRole('button', { name: 'Activate rule' })).not.toBeInTheDocument())
+    expect(within(sheet).queryByRole('button', { name: 'Test' })).not.toBeInTheDocument()
+    expect(within(sheet).queryByRole('button', { name: 'Connect home now' })).not.toBeInTheDocument()
+    expect(within(sheet).queryByText(/Tested:/)).not.toBeInTheDocument()
+    expect(explain).not.toHaveBeenCalled()
+  })
+
   it('validates the entire list, saves it paused, and connects only after explicit activation and connection', async () => {
     let body: unknown = null
     const activationPatches: unknown[] = []
@@ -90,7 +131,7 @@ describe('Rules page', () => {
     expect(new URLSearchParams(window.location.search).get('add')).toBe('rule')
     // Nothing typed: the error names the problem and says what to do.
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Save paused' }))
-    expect(within(sheet).getByText('Type a site, an IP or a program.')).toBeInTheDocument()
+    expect(within(sheet).getByText('Type a site or an IP.')).toBeInTheDocument()
 
     const destinations = within(sheet).getByRole('textbox', { name: /Site, IP or program/ })
     fireEvent.change(destinations, { target: { value: 'https://git.acme.test/x,y, git.acme.test\n192.0.2.4, bad host' } })

@@ -130,7 +130,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     expect(input).not.toHaveAttribute('aria-invalid')
     await userEvent.clear(input)
     await userEvent.type(input, 'teams.exe')
-    expect(within(sheet).getByText(/If it is, type it as app:teams.exe./)).toBeInTheDocument()
+    expect(within(sheet).getByText(/Programs are not sent through the VPN yet; for now Kongtrol only recognises them./)).toBeInTheDocument()
     await userEvent.clear(input)
     await userEvent.type(input, 'not a host')
     expect(within(sheet).getByText('We do not understand “not a host”.')).toBeInTheDocument()
@@ -489,7 +489,7 @@ describe('B: files an .ovpn names (ADR-0105)', () => {
     drop(zoneOf(sheet), [new File([ovpn], 'Oficina.ovpn'), new File(['CA'], 'ca.crt')])
     await within(sheet).findByText('Oficina.ovpn · OpenVPN')
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save and activate' }))
-    expect(await within(sheet).findByText('files this .ovpn needs are missing: ta.key')).toBeInTheDocument()
+    expect(await within(sheet).findByText('This .ovpn needs 1 more file')).toBeInTheDocument()
     const addKey = within(sheet).getByRole('button', { name: 'Add ta.key' })
     const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {})
     await userEvent.click(addKey)
@@ -628,7 +628,7 @@ describe('applied live (restart_required: false) and apps connected now', () => 
 describe('Traffic › Recent', () => {
   const recent = (body: unknown) => ({ 'GET /api/v1/connections/recent?limit=500': () => json(body) })
 
-  it('lists recent destinations; "Send this through…" opens the rule sheet with that destination', async () => {
+  it('lists recent destinations; "Add as a rule" (with a tooltip that names it) opens the rule sheet with that destination', async () => {
     window.history.replaceState(null, '', '/traffic')
     stubFetch(
       daemon([profile('work'), profile('home')], {
@@ -652,7 +652,9 @@ describe('Traffic › Recent', () => {
     expect(rows[0]).toHaveTextContent('work')
     expect(rows[1]).toHaveTextContent('10.2.0.5')
     expect(rows[1]).toHaveTextContent('Normal connection')
-    await userEvent.click(within(rows[1]!).getByRole('button', { name: 'Send this through…' }))
+    const addRule = within(rows[1]!).getByRole('button', { name: 'Add as a rule' })
+    expect(addRule).toHaveAccessibleDescription('Creates a rule so 10.2.0.5 goes through the VPN you choose.')
+    await userEvent.click(addRule)
     const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
     expect(await within(sheet).findByRole('textbox', { name: /Site, IP or program/ })).toHaveValue('10.2.0.5')
   })

@@ -175,6 +175,13 @@ func printTrafficMap(withOrder bool) {
 	if withOrder {
 		fmt.Println("  " + styleDim.Render(ct("cli.policy.list.order_hint")))
 	}
+	// ADR-0113: app: entries are listed; only a profile that routes programs applies them.
+	for _, r := range rules {
+		if len(r.Match.Apps) > 0 && !appRouted(cfg, r.Via) {
+			fmt.Println("  " + tuiWarn("app: "+ct("cli.policy.app_tag")+". "+ct("cli.policy.apps_not_applied")))
+			break
+		}
+	}
 }
 
 func buildMapReport(args []string) mapReportJSON {
