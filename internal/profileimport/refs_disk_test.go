@@ -2,6 +2,7 @@ package profileimport
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -76,6 +77,55 @@ func TestImport_OutsideReferencesNeverReachTheNetworkOrLinks(t *testing.T) {
 		if key(t, err) != ErrKeyRefUnreadable {
 			t.Fatalf("through a link: %v", err)
 		}
+	}
+}
+
+func TestReadInsideRejectsEscapingPath(t *testing.T) {
+	root := realTemp(t)
+	dir := filepath.Join(root, "vpn")
+	write(t, filepath.Join(dir, "client.ovpn"), "client")
+	outside := filepath.Join(root, "ca.crt")
+	write(t, outside, caPEM)
+
+	if data, err := readInside(dir, outside, "ca.crt"); !errors.Is(err, errRefMissing) || data != nil {
+		t.Fatalf("outside path: got %q, %v", data, err)
+	}
+}
+
+func TestReferenceDirectoryRemainsAnchoredAfterRename(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows prevents renaming an open directory")
+	}
+	base := realTemp(t)
+	dir := filepath.Join(base, "keys")
+	write(t, filepath.Join(dir, "ca.crt"), "original")
+	outside := filepath.Join(base, "outside")
+	write(t, filepath.Join(outside, "ca.crt"), "redirected")
+
+	parent, err := os.OpenRoot(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer parent.Close()
+	opened, err := openRefDirectory(parent, "keys")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer opened.Close()
+	if err := os.Rename(dir, filepath.Join(base, "moved")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, dir); err != nil {
+		t.Fatal(err)
+	}
+	f, err := openRootNoFollow(opened, "ca.crt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	got, err := io.ReadAll(f)
+	if err != nil || string(got) != "original" {
+		t.Fatalf("read redirected after rename: %q, %v", got, err)
 	}
 }
 

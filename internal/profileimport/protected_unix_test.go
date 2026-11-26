@@ -21,6 +21,7 @@ func TestOpenRegular_FIFOAndSymlinkDoNotHang(t *testing.T) {
 	if err := unix.Mkfifo(fifo, 0o600); err != nil {
 		t.Skipf("mkfifo: %v", err)
 	}
+
 	real := filepath.Join(dir, "real.conf")
 	if err := os.WriteFile(real, []byte(wgConf), 0o600); err != nil {
 		t.Fatal(err)
@@ -62,5 +63,26 @@ func TestOpenRegular_FIFOAndSymlinkDoNotHang(t *testing.T) {
 
 	if data, err := ReadProtected(fifo); data != nil || key(t, err) != ErrKeyProtectedPath {
 		t.Fatalf("FIFO: %q, %v", data, err)
+	}
+}
+
+func TestOpenRootNoFollowRefusesFinalSymlink(t *testing.T) {
+	dir := t.TempDir()
+	real := filepath.Join(dir, "real.crt")
+	if err := os.WriteFile(real, []byte(caPEM), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("real.crt", filepath.Join(dir, "link.crt")); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer root.Close()
+	f, err := openRootNoFollow(root, "link.crt")
+	if err == nil {
+		f.Close()
+		t.Fatal("opened final symlink")
 	}
 }

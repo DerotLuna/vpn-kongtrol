@@ -468,6 +468,8 @@ newer check aborts older) and enables both save buttons only after it passed; CL
 Files an `.ovpn` names (`ca ca.crt`…, ADR-0105) are inlined into the stored copy by
 `profileimport.Resolve` (`Refs{Dir, Files}` → the helper's sanitizer): `Dir` is the picked file's
 folder (only inside it, no links/junctions, regular files ≤ 256 KiB, `O_NOFOLLOW` + `os.SameFile`),
+with opened directories anchored by `os.Root` and the Unix final component opened with `openat`
+(ADR-0127), so a later ancestor replacement cannot redirect the read;
 `Files` are added by hand (`"files":[{name,content_base64}]`, ≤ 8, matched by base name); what is
 still missing is `api.err.import_missing_files` with `missing` (panel: "Agregar <name>"; CLI: extra
 arguments, `kongtrol profile import <file> [certificates…]`). "Elegir archivo" in the Add sheet opens

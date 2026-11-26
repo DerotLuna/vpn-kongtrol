@@ -66,25 +66,12 @@ func (r *Refs) readDisk(p, base string) ([]byte, error) {
 // readInside reads full, a path inside dir: every folder on the way from
 // dir must be a real folder (no link, no junction).
 func readInside(dir, full, base string) ([]byte, error) {
-	unreadable := &config.ValidationError{Key: ErrKeyRefUnreadable, Args: []any{base}}
 	dir = filepath.Clean(dir)
 	in, err := filepath.Rel(dir, full)
-	if err != nil {
+	if err != nil || !filepath.IsLocal(in) {
 		return nil, errRefMissing
 	}
-	parts := strings.Split(in, string(filepath.Separator))
-	cur := dir
-	for _, part := range parts[:len(parts)-1] {
-		cur = filepath.Join(cur, part)
-		fi, err := os.Lstat(cur)
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, errRefMissing
-		}
-		if err != nil || !fi.IsDir() || !plain(cur, fi) {
-			return nil, unreadable
-		}
-	}
-	return readRefFile(full, base)
+	return readRootedRef(dir, in, base)
 }
 
 // readOutside reads a reference outside the .ovpn's folder: an absolute
@@ -102,24 +89,12 @@ func readOutside(full, base string) ([]byte, error) {
 	if !ok || onRemoteDrive(p) {
 		return nil, errRefMissing
 	}
-	unreadable := &config.ValidationError{Key: ErrKeyRefUnreadable, Args: []any{base}}
-	var chain []string
-	for d := filepath.Dir(p); ; d = filepath.Dir(d) {
-		chain = append(chain, d)
-		if filepath.Dir(d) == d {
-			break
-		}
+	rootPath := filepath.VolumeName(p) + string(filepath.Separator)
+	rel, err := filepath.Rel(rootPath, p)
+	if err != nil || !filepath.IsLocal(rel) {
+		return nil, errRefMissing
 	}
-	for i := len(chain) - 1; i >= 0; i-- {
-		fi, err := os.Lstat(chain[i])
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil, errRefMissing
-		}
-		if err != nil || !fi.IsDir() || !plain(chain[i], fi) {
-			return nil, unreadable
-		}
-	}
-	b, err := readRefFile(p, base)
+	b, err := readRootedRef(rootPath, rel, base)
 	if err != nil {
 		return nil, err
 	}
@@ -129,23 +104,43 @@ func readOutside(full, base string) ([]byte, error) {
 	return b, nil
 }
 
-// readRefFile reads full: there but a link, a folder, a device, unreadable
-// or swapped → api.err.import_ref_unreadable; not there → errRefMissing;
-// too big → api.err.import_ref_too_big. Opened without following a link
-// (O_NOFOLLOW on Unix) and checked again after opening (os.SameFile).
-func readRefFile(full, base string) ([]byte, error) {
+// readRootedRef keeps each verified directory open while opening the next,
+// so replacing an ancestor cannot redirect the later file operation.
+func readRootedRef(dir, rel, base string) ([]byte, error) {
 	unreadable := &config.ValidationError{Key: ErrKeyRefUnreadable, Args: []any{base}}
-	before, err := os.Lstat(full)
+	root, err := os.OpenRoot(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, errRefMissing
 	}
-	if err != nil || before.IsDir() || !plain(full, before) {
+	if err != nil {
+		return nil, unreadable
+	}
+	defer func() { _ = root.Close() }()
+
+	parts := strings.Split(rel, string(filepath.Separator))
+	for _, part := range parts[:len(parts)-1] {
+		next, err := openRefDirectory(root, part)
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			return nil, errRefMissing
+		case err != nil:
+			return nil, unreadable
+		}
+		_ = root.Close()
+		root = next
+	}
+	name := parts[len(parts)-1]
+	before, err := root.Lstat(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, errRefMissing
+	}
+	if err != nil || before.IsDir() || !plain(filepath.Join(root.Name(), name), before) {
 		return nil, unreadable
 	}
 	if before.Size() > MaxReferenceSize {
 		return nil, &config.ValidationError{Key: ErrKeyRefTooBig, Args: []any{base, MaxReferenceSize >> 10}}
 	}
-	f, err := openNoFollow(full)
+	f, err := openRootNoFollow(root, name)
 	if err != nil {
 		return nil, unreadable
 	}
@@ -162,6 +157,26 @@ func readRefFile(full, base string) ([]byte, error) {
 		return nil, &config.ValidationError{Key: ErrKeyRefTooBig, Args: []any{base, MaxReferenceSize >> 10}}
 	}
 	return b, nil
+}
+
+func openRefDirectory(root *os.Root, name string) (*os.Root, error) {
+	before, err := root.Lstat(name)
+	if err != nil {
+		return nil, err
+	}
+	if !before.IsDir() || !plain(filepath.Join(root.Name(), name), before) {
+		return nil, errNotRegular
+	}
+	next, err := root.OpenRoot(name)
+	if err != nil {
+		return nil, err
+	}
+	after, err := next.Stat(".")
+	if err != nil || !os.SameFile(before, after) {
+		_ = next.Close()
+		return nil, errNotRegular
+	}
+	return next, nil
 }
 
 const notFile = fs.ModeSymlink | fs.ModeNamedPipe | fs.ModeSocket | fs.ModeDevice | fs.ModeCharDevice

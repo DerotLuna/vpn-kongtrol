@@ -450,6 +450,9 @@ folder (no symlink or junction); the file must be a regular file, opened with `O
 and re-checked with `os.SameFile`, at most 256 KiB; text only (no NUL, no `</`), except `pkcs12`
 (base64). Files added from the browser: at most 8, matched by base name only, 256 KiB each, 512 KiB
 together; the request body cap for this route is 2 MiB. Errors name the file, never its content.
+ADR-0127 anchors each checked reference directory to an open `os.Root`; on Unix
+the final component is opened with `openat` and `O_NOFOLLOW`. This prevents a
+later ancestor replacement from redirecting the read; it does not prevent mount traversal.
 A hostile `.ovpn` can only make Kongtrol copy sibling files of the user's own folder into the user's
 own 0600 profile; of the inlined blocks only `cert`/`extra-certs` reach the VPN server, and OpenVPN
 must parse them as X.509 certificates (public by nature) first; `key`, `tls-auth`, `secret` and the

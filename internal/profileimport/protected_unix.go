@@ -21,6 +21,19 @@ func openNoFollow(path string) (*os.File, error) {
 	return os.NewFile(uintptr(fd), path), nil
 }
 
+func openRootNoFollow(root *os.Root, name string) (*os.File, error) {
+	dir, err := root.Open(".")
+	if err != nil {
+		return nil, err
+	}
+	defer dir.Close()
+	fd, err := unix.Openat(int(dir.Fd()), name, unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK|unix.O_CLOEXEC, 0)
+	if err != nil {
+		return nil, err
+	}
+	return os.NewFile(uintptr(fd), name), nil
+}
+
 // linkCount returns the number of hard links of fi (from fstat); known is
 // false when the platform does not report it.
 func linkCount(fi os.FileInfo) (n uint64, known bool) {

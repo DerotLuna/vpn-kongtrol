@@ -9,4 +9,8 @@ import "os"
 
 func openNoFollow(path string) (*os.File, error) { return os.Open(path) }
 
+func openRootNoFollow(root *os.Root, name string) (*os.File, error) {
+	return root.Open(name)
+}
+
 func linkCount(os.FileInfo) (n uint64, known bool) { return 0, false }
