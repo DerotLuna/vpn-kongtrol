@@ -84,9 +84,10 @@
 }
 
 /* ── Tunnel cards ───────────────────────────────────────────────────── */
-.tr-tunnels__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+.tr-tunnels__grid { columns: 520px; column-gap: 16px; }
 .tr-tunnel {
   display: flex; flex-direction: column; gap: 14px; padding: 20px; min-width: 0;
+  break-inside: avoid; margin-bottom: 16px;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   scroll-margin-top: calc(var(--topbar-h, 64px) + 16px);
 }

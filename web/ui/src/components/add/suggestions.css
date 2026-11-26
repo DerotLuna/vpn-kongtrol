@@ -1,0 +1,10 @@
+.k-rule-suggestions { border: 0; padding: 0; margin: 0; min-width: 0; }
+.k-rule-suggestions p { color: var(--text-muted); font-size: 13px; margin: 6px 0 0; }
+.k-rule-suggestions__buttons {
+  display: flex; gap: 8px; overflow-x: auto; overscroll-behavior-inline: contain;
+  scroll-snap-type: x proximity; scroll-padding-inline: 3px; padding: 3px 3px 6px;
+  scrollbar-width: thin; scrollbar-color: var(--border-2) transparent;
+}
+.k-rule-suggestions__buttons .k-btn {
+  flex: 0 0 auto; scroll-snap-align: start; border-radius: 999px;
+}

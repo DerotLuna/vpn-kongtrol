@@ -83,7 +83,7 @@ func setupConfiguredMenu() {
 		}()
 	}
 
-	m := &trayMenu{}
+	m := &trayMenu{descriptions: make(map[string]string)}
 
 	// ── Status header ─────────────────────────────────────────────────────
 	m.header = systray.AddMenuItem(trayT("tray.status_loading"), "")
@@ -113,10 +113,20 @@ func setupConfiguredMenu() {
 	diagnostics := systray.AddMenuItem(trayT("tray.open_diagnostics"), trayT("tray.open_diagnostics"))
 	onClick(diagnostics, openDiagnostics)
 
-	// One slot per VPN profile; renderTunnels relabels them so connected
-	// VPNs come first.
+	// Choose the profile order once; never change a slot under the pointer.
 	m.tunnels = systray.AddMenuItem(trayT("tray.tunnels"), trayT("tray.tunnels_tip"))
-	for _, name := range sortedKeys(cfg.VPNs) {
+	names := sortedKeys(cfg.VPNs)
+	states, stateErr := client.TunnelStates()
+	if stateErr == nil {
+		history, _ := client.ProfileHistory()
+		names = trayProfileOrder(names, states, history)
+	}
+	if len(names) > 10 {
+		m.findProfiles = m.tunnels.AddSubMenuItem(trayT("tray.find_profiles"), "")
+		onClick(m.findProfiles, func() { openDashboardPage("/") })
+	}
+	for _, name := range names {
+		m.descriptions[name] = trayProfileDescription(cfg.VPNs[name])
 		s := &slotItem{item: m.tunnels.AddSubMenuItemCheckbox(name, "", false), name: name}
 		m.profiles = append(m.profiles, s)
 		onClick(s.item, func() {
@@ -453,6 +463,7 @@ func applyTrayMenuLanguage(m *trayMenu) {
 	set(m.dash, "tray.open_dashboard", "tray.open_dashboard_tip")
 	set(m.groups, "tray.groups", "tray.groups_tip")
 	set(m.tunnels, "tray.tunnels", "tray.tunnels_tip")
+	set(m.findProfiles, "tray.find_profiles", "tray.find_profiles")
 	set(m.start, "tray.start", "tray.start_tip")
 	set(m.stopAll, "tray.stop_all", "tray.stop_all_tip")
 	set(m.quit, "tray.quit", "tray.quit_tip")

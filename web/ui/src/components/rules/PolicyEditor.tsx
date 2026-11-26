@@ -10,6 +10,7 @@ import { ApiError } from '../../api/client'
 import { usePreferences } from '../../app/preferences-context'
 import { useUnsavedChanges } from '../../app/unsaved'
 import { useProfilesQuery } from '../../data/profiles'
+import { profileDescription } from '../../data/profileList'
 import { useSavePolicy, useTestDraft } from '../../data/rules'
 import type { MessageKey } from '../../i18n/messages'
 import { Button } from '../ui/Button'
@@ -17,6 +18,8 @@ import { Card } from '../ui/Card'
 import { SelectField, TextAreaField, TextField, type FieldError } from '../ui/Field'
 import { ErrorState } from '../ui/States'
 import { CheckIcon, InfoIcon } from '../ui/icons'
+import { appendRulePreset } from '../add/model'
+import { RuleSuggestions } from '../add/RuleSuggestions'
 import { POLICY_FIELDS, validatePolicy, type PolicyDraft, type PolicyErrors } from './editorModel'
 import { TUNNEL_DOWN_CHOICES, priorityLink, splitTestInput, type Policy } from './model'
 import { policyErrorText } from './preview'
@@ -40,7 +43,8 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
   const [serverError, setServerError] = useState<unknown>(null)
   const titleId = useId()
 
-  const profileAction = useProfilesQuery().data?.find((p) => p.name === draft.via)?.on_tunnel_down ?? 'allow'
+  const profileDetails = useProfilesQuery().data
+  const profileAction = profileDetails?.find((p) => p.name === draft.via)?.on_tunnel_down ?? 'allow'
   const ctx = { names: policies.map((p) => p.name), editing: original, profiles, profileAction }
   const { errors: found, payload, hasApps } = validatePolicy(draft, ctx)
   const errors: PolicyErrors = submitted ? found : {}
@@ -109,10 +113,16 @@ export function PolicyEditor({ original, initial, policies, profiles, onClose }:
               required
               mono
               placeholder={t('rules.field.via.pick')}
-              options={profiles.map((p) => ({ value: p, label: p }))}
+              options={profiles.map((p) => {
+                const identity = profileDescription(profileDetails?.find((profile) => profile.name === p), t('profile.identity.app'))
+                return { value: p, label: identity ? `${p} · ${identity}` : p }
+              })}
             />
           )}
         </div>
+        <RuleSuggestions onAdd={(preset) => setDraft((d) => ({
+          ...d, destinations: appendRulePreset({ input: d.destinations, subs: false }, preset).input,
+        }))} />
         <TextAreaField
           name="destinations"
           label={t('add.rule.input')}

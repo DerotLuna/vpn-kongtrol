@@ -56,7 +56,7 @@ function ToastView({ toast }: { toast: Toast }) {
         <strong>{toast.message}</strong>
         {toast.detail && <span>{toast.detail}</span>}
       </div>
-      {toast.action && (
+      {toast.action && !toast.actionHidden && (
         <button
           type="button"
           className="k-btn k-btn--text k-btn--sm"

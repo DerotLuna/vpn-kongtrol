@@ -60,30 +60,14 @@ h1, h2, h3 { text-wrap: balance; }
   font: 500 12px/1.2 var(--font-mono); white-space: nowrap;
   background: var(--surface-3); color: var(--text-muted);
 }
-/* Four States Rule (DESIGN.md): word + color + dot shape, never color alone.
-   ok = filled dot, connecting = ring, caution = diamond, bad = square,
-   idle = hollow, unknown = dashed ring, on = filled neutral. Amber (the
-   brand) is never a state. */
-.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
-/* A state change reads as one motion (owner feedback 2026-11-20): colours
-   blend, the connecting ring breathes, the connected dot settles in. Off
-   with reduced motion (rule below). */
+/* State is conveyed by words as well as color. Amber is never a state. */
 .pill { transition: background-color var(--dur-med) var(--ease-standard), color var(--dur-med) var(--ease-standard); }
-.pill.connecting::before { animation: pill-breathe 1.2s ease-in-out infinite; }
-.pill.ok::before { animation: pill-settle var(--dur-med) var(--ease-enter); }
-@keyframes pill-breathe { 50% { opacity: 0.35; transform: scale(0.8); } }
-@keyframes pill-settle { from { transform: scale(0.3); opacity: 0.4; } }
 .pill { font-variant-numeric: tabular-nums; }
 .pill.ok { background: var(--live-soft); color: var(--live); }
 .pill.connecting { background: var(--steel-soft); color: var(--steel); }
-.pill.connecting::before { background: none; box-shadow: inset 0 0 0 2px currentColor; }
 .pill.caution { background: var(--caution-soft); color: var(--caution); }
-.pill.caution::before { border-radius: 1px; transform: rotate(45deg) scale(0.9); }
 .pill.bad { background: var(--danger-soft); color: var(--danger); }
-.pill.bad::before { border-radius: 1px; }
-.pill:not(.ok):not(.connecting):not(.caution):not(.bad):not(.on):not(.unknown)::before { background: none; box-shadow: inset 0 0 0 1.5px currentColor; }
 .pill.unknown { background: none; border: 1px dashed var(--border-2); color: var(--text-muted); }
-.pill.unknown::before { background: none; border: 1.5px dashed currentColor; width: 8px; height: 8px; }
 .pill.on { background: var(--surface-3); color: var(--text); }
 
 /* ── Diagnostics ───────────────────────────────────────────────────────── */

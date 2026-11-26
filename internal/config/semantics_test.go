@@ -66,7 +66,7 @@ policies:
 `)
 
 	_, err := Load(path)
-	if err == nil || !strings.Contains(err.Error(), "duplicate policy name") {
+	if err == nil || !strings.Contains(err.Error(), "duplicate rule name") {
 		t.Fatalf("expected duplicate policy validation error, got: %v", err)
 	}
 }

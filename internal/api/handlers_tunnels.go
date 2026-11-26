@@ -43,7 +43,7 @@ func (s *Server) handleMetricsHistory(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/tunnels
 func (s *Server) handleListTunnels(w http.ResponseWriter, r *http.Request) {
-	snapshot := s.collector.Snapshot()
+	snapshot := s.collector.ClientSnapshot()
 	tunnels := make([]monitor.TunnelMetrics, 0, len(snapshot))
 	for _, m := range snapshot {
 		tunnels = append(tunnels, m)

@@ -22,6 +22,19 @@ func phaseOf(s *Session) vpn.AttachPhase {
 	return ""
 }
 
+func TestConnectCancelledBeforeManualLaunch(t *testing.T) {
+	launched := 0
+	s := newTestSession(&fakeNet{}, &launched)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := s.Connect(ctx, testProvider, Options{}, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Connect = %v, want context cancellation", err)
+	}
+	if launched != 0 {
+		t.Fatal("cancelled connection launched the app")
+	}
+}
+
 func TestConnectAlreadyUpAttaches(t *testing.T) {
 	f := &fakeNet{up: true}
 	launched := 0

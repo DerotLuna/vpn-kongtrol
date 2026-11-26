@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAddSheet } from '../app/addLink'
 import { usePreferences } from '../app/preferences-context'
+import { useSearchFocus } from '../app/searchFocus'
 import { PolicyEditor } from '../components/rules/PolicyEditor'
 import { Overlaps, PolicyList } from '../components/rules/PolicyList'
 import { ConfirmDelete, RulesHeader } from '../components/rules/shared'
@@ -34,6 +35,7 @@ interface EditorState {
 export function RulesPage() {
   const { t } = usePreferences()
   const policies = usePoliciesQuery()
+  useSearchFocus(policies.isSuccess)
   const meta = usePolicyMetaQuery()
   const reload = useReloadPolicies()
   const remove = useDeletePolicy()

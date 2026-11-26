@@ -15,6 +15,29 @@ type collectorAdapter struct {
 	info   *vpn.TunnelInfo
 }
 
+func TestCollector_ClientSnapshotStartup(t *testing.T) {
+	ad := &collectorAdapter{status: vpn.StatusDisconnected}
+	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))
+	c.collect()
+	c.SetStartupPending("office", true, true)
+	if got := c.ClientSnapshot()["office"]; got.Status != vpn.StatusConnecting || !got.Restoring {
+		t.Fatalf("client startup state = %+v", got)
+	}
+	if got := c.Snapshot()["office"]; got.Status != vpn.StatusDisconnected || got.Restoring {
+		t.Fatalf("internal state changed: %+v", got)
+	}
+	c.SetStartupPending("office", false, false)
+	if got := c.ClientSnapshot()["office"]; got.Status != vpn.StatusDisconnected || got.Restoring {
+		t.Fatalf("finished startup state = %+v", got)
+	}
+	ad.status = vpn.StatusConnected
+	c.collect()
+	c.SetStartupPending("office", true, true)
+	if got := c.ClientSnapshot()["office"]; got.Status != vpn.StatusConnected || got.Restoring {
+		t.Fatalf("connected state hidden: %+v", got)
+	}
+}
+
 func TestCollector_LoadSaveHistory(t *testing.T) {
 	ad := &collectorAdapter{status: vpn.StatusConnected}
 	c := NewCollector(vpn.NewSet(map[string]vpn.VPNAdapter{"office": ad}))

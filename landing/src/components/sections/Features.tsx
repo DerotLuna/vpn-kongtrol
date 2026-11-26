@@ -74,10 +74,10 @@ export default function Features({ lang }: Props) {
     ? {
       label: '$ kongtrol policy show claude.ai',
       title: 'Cada sitio, por la VPN correcta.',
-      sub: 'Elige qué sitios y redes van por cada VPN. Por ejemplo, el sistema de tu empresa por la VPN del trabajo y otro sitio por tu VPN personal.',
+      sub: 'Elige qué sitios y redes van por cada perfil VPN. Por ejemplo, el sistema de tu empresa por el perfil del trabajo y otro sitio por tu perfil personal.',
       boardIn: 'Sitio o red',
       boardOut: 'Conexión que usa',
-      boardName: 'Mapa de rutas: qué destino sale por qué VPN',
+      boardName: 'Mapa de rutas: qué destino sale por qué perfil',
       hint: 'Elige un sitio o una red para ver su recorrido.',
       routes: [
         { dest: '10.10.0.0/16', human: 'sistema de tu empresa', tunnel: 'office', adapter: 'FortiClient' },
@@ -89,10 +89,10 @@ export default function Features({ lang }: Props) {
     : {
       label: '$ kongtrol policy show claude.ai',
       title: 'Every site, through the right VPN.',
-      sub: 'Choose which sites and networks use each VPN. For example, send your company system through the work VPN and another site through your personal VPN.',
+      sub: 'Choose which sites and networks use each VPN profile. For example, send your company system through your work profile and another site through your personal profile.',
       boardIn: 'Site or network',
       boardOut: 'Connection it uses',
-      boardName: 'Route map: which destination goes out through which VPN',
+      boardName: 'Route map: which destination goes out through which profile',
       hint: 'Choose a site or network to see its route.',
       routes: [
         { dest: '10.10.0.0/16', human: 'your company system', tunnel: 'office', adapter: 'FortiClient' },

@@ -16,18 +16,18 @@ import type { Group, TunnelMetrics } from '../api/types'
 import { useQueryClient } from '@tanstack/react-query'
 import { usePreferences } from '../app/preferences-context'
 import { keys } from '../data/keys'
+import { useProfilesQuery } from '../data/profiles'
+import { orderedProfiles, profileDescription, useStableProfileOrder } from '../data/profileList'
 import { useAppVersion, useGroupsQuery, useSecurityQuery } from '../data/resources'
 import { SHOWN_EVENT, announceReady, trayHost } from '../tray/bridge'
 import { TrayOffer } from '../tray/TrayOffer'
 import {
   aggregate,
-  applyOrder,
   dnsGuardWord,
   groupState,
   killSwitchWord,
   pendingDone,
   rowState,
-  trayOrder,
   type Pending,
   type Tone,
 } from '../tray/model'
@@ -69,6 +69,7 @@ export function TrayPage() {
   const host = trayHost() // frozen object injected by the tray: stable
   const [shownTick, setShownTick] = useState(0)
   const { tunnels, error, reload } = useTunnels()
+  const profiles = useProfilesQuery()
   const { groups, security, version } = useTrayData(shownTick)
   const [pending, setPending] = useState<Record<string, { want: Pending; at: number }>>({})
   // true = generic "No se pudo"; a string = the daemon's translated reason
@@ -76,7 +77,9 @@ export function TrayPage() {
   const [failed, setFailed] = useState<Record<string, string | boolean>>({})
   const [quitOpen, setQuitOpen] = useState(false)
   // Row order, taken on each show and when profiles come or go (trayOrder).
-  const [order, setOrder] = useState<{ tick: number; names: string[] } | null>(null)
+  const { names: order, freeze } = useStableProfileOrder(tunnels ?? undefined, shownTick)
+  const [search, setSearch] = useState('')
+  const [limit, setLimit] = useState(10)
   const rootRef = useRef<HTMLDivElement>(null)
   // The daemon restarted (upgrade, restart): this hidden page's session died
   // with it and every request answers 401. Inside the tray, ask it once per
@@ -223,22 +226,12 @@ export function TrayPage() {
     })
   }
 
-  useEffect(() => {
-    if (!tunnels) return
-    const key = tunnels
-      .map((tn) => tn.Name)
-      .sort()
-      .join('\n')
-    // oxlint-disable-next-line react/set-state-in-effect
-    setOrder((prev) =>
-      prev && prev.tick === shownTick && [...prev.names].sort().join('\n') === key
-        ? prev
-        : { tick: shownTick, names: trayOrder(tunnels) },
-    )
-  }, [tunnels, shownTick])
-
-  const sorted = tunnels ? applyOrder(tunnels, order?.names ?? trayOrder(tunnels)) : []
+  const sorted = orderedProfiles(tunnels ?? [], order)
   const rows = sorted.map((tn) => ({ tn, st: rowState(tn, pending[tn.Name]?.want) }))
+  const descriptions = new Map((profiles.data ?? []).map((profile) => [profile.name, profileDescription(profile, t('profile.identity.app'))]))
+  const query = search.trim().toLocaleLowerCase()
+  const filtered = rows.filter(({ tn }) => `${tn.Name} ${descriptions.get(tn.Name) ?? ''}`.toLocaleLowerCase().includes(query))
+  const visible = filtered.filter(({ tn }, index) => index < limit || tn.Status === 'connected')
   const agg = aggregate(rows.map((r) => r.st))
   const offline = error && !tunnels
   const unauthorized = auth === 'unauthorized'
@@ -313,8 +306,13 @@ export function TrayPage() {
                 </button>
               </div>
             ) : (
-              <ul className="tray-list">
-                {rows.map(({ tn, st }, i) => {
+              <>
+              {(rows.length > 10 || search !== '') && <label className="tray-profile-search">{t('tray.profiles.search')}
+                <input type="search" value={search} onChange={(event) => { setSearch(event.target.value); setLimit(10) }} />
+              </label>}
+              {filtered.length === 0 && <p className="tray-note" role="status">{t('tray.profiles.empty')}</p>}
+              <ul className="tray-list" onPointerEnter={freeze} onFocusCapture={freeze}>
+                {visible.map(({ tn, st }, i) => {
                   const noteId = `tray-note-${i}`
                   const failure = failed[tn.Name]
                   const showFail = Boolean(failure)
@@ -325,6 +323,7 @@ export function TrayPage() {
                     <li key={tn.Name} className="tray-row">
                       <div className="tray-row-main">
                         <span className="tray-name">{tn.Name}</span>
+                        {descriptions.get(tn.Name) && <span className="tray-note">{descriptions.get(tn.Name)}</span>}
                         <span className={`tray-state ${tone}`}>
                           <Dot tone={tone} />
                           {t(showFail ? 'tray.status.error' : st.word)}
@@ -357,6 +356,8 @@ export function TrayPage() {
                   )
                 })}
               </ul>
+              {visible.length < filtered.length && <button type="button" className="tray-btn ghost small" onClick={() => setLimit((current) => current + 20)}>{t('tray.profiles.more', { count: filtered.length - visible.length })}</button>}
+              </>
             )}
           </section>
         )}

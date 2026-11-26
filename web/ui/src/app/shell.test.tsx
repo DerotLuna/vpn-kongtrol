@@ -22,7 +22,7 @@ describe('shell and routes', () => {
     stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
     render(<App />)
     expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main')
-    expect(await screen.findByRole('link', { name: 'Your VPNs status: 1 of 2 connected' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Status of your VPN profiles: 1 of 2 connected' })).toBeInTheDocument()
     expect((await screen.findAllByText('Version v0.7.0'))[0]).toBeInTheDocument()
     const nav = screen.getAllByRole('navigation', { name: 'Sections' })[0]!
     expect(within(nav).getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page')
@@ -59,7 +59,7 @@ describe('shell and routes', () => {
   it('the status link keeps its visible words in its name while the live feed reconnects', async () => {
     stubFetch({ ...base, 'GET /api/v1/helper/status': () => json(helperReady) })
     render(<App />)
-    await screen.findByRole('link', { name: 'Your VPNs status: 1 of 2 connected' })
+    await screen.findByRole('link', { name: 'Status of your VPN profiles: 1 of 2 connected' })
     const socket = FakeSocket.last()
     act(() => {
       socket.open()
@@ -67,7 +67,7 @@ describe('shell and routes', () => {
     })
     const link = await screen.findByRole('link', { name: /Reconnecting to Kongtrol…$/ })
     // WCAG 2.5.3: the accessible name contains the visible text.
-    expect(link).toHaveAccessibleName('Your VPNs status: 1 of 2 connected Reconnecting to Kongtrol…')
+    expect(link).toHaveAccessibleName('Status of your VPN profiles: 1 of 2 connected Reconnecting to Kongtrol…')
   })
 
   it('navigates without reload, focuses the new heading and sets the title', async () => {
@@ -95,7 +95,7 @@ describe('shell and routes', () => {
     expect(await screen.findByRole('heading', { name: 'Your groups' })).toBeInTheDocument()
 
     await userEvent.click(within(tabs).getByRole('link', { name: 'VPN profiles' }))
-    expect(await screen.findByRole('heading', { name: 'Create your first VPN' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Create your first VPN profile' })).toBeInTheDocument()
 
     window.history.pushState(null, '', '/nope')
     window.dispatchEvent(new PopStateEvent('popstate'))
@@ -172,7 +172,7 @@ describe('shell and routes', () => {
     expect(alert).toHaveTextContent('Could not reach Kongtrol.')
     expect(alert).toHaveTextContent('This page reconnects by itself as soon as Kongtrol starts.')
     expect(within(alert).getByRole('button', { name: 'Retry' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Your VPNs status: Kongtrol is not answering/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Status of your VPN profiles: Kongtrol is not answering/ })).toBeInTheDocument()
   })
 })
 

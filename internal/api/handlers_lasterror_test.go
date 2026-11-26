@@ -128,3 +128,17 @@ func TestHandleConnect_CancelledConnectIsNotAnError(t *testing.T) {
 		t.Fatalf("cancelled connect recorded as error %q", e)
 	}
 }
+
+func TestHandleListTunnels_ShowsQueuedRestore(t *testing.T) {
+	s, _ := newLastErrorServer(t, func() error { return nil })
+	s.collector.SetStartupPending("office", true, true)
+	got := listTunnels(t, s)["office"]
+	if got["Status"] != "connecting" || got["restoring"] != true {
+		t.Fatalf("queued restore = %v", got)
+	}
+	s.collector.SetStartupPending("office", false, false)
+	got = listTunnels(t, s)["office"]
+	if got["Status"] != "disconnected" || got["restoring"] != nil {
+		t.Fatalf("cancelled restore = %v", got)
+	}
+}

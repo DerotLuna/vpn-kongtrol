@@ -2,7 +2,8 @@
 
 Versión 1.22 · 2026-11-25
 
-Esta guía te lleva desde cero hasta tener todas tus VPNs corriendo bajo Kongtrol.  
+Esta guía te lleva desde cero hasta gestionar tus perfiles VPN con Kongtrol.
+
 Tiempo estimado: **15–20 minutos**.
 
 ---
@@ -283,10 +284,11 @@ sin las líneas dudosas en tu carpeta e impórtala para ver el detalle. (ADR-006
 ---
 
 <!-- feature:wizard -->
-Al crear tu primera VPN con `kongtrol init`, elige **Guardar y salir** o
-**Guardar y configurar rutas y políticas**. Tu perfil queda guardado antes
-del paso de reglas y puedes conectar cuando estés listo.
-## 4. Registrar tus VPNs: `kongtrol init`
+Al crear tu primer perfil VPN con `kongtrol init`, puedes guardarlo y salir o
+continuar con las reglas y la seguridad. Tu perfil queda guardado antes del
+paso de reglas y puedes conectar cuando estés listo.
+
+## 4. Registrar tus perfiles VPN: `kongtrol init`
 
 > **¿Ya tienes tus VPNs configuradas?** Perfecto — `kongtrol init` no las toca. Lo que hace es decirle a Kongtrol dónde están y cómo hablarles: qué cliente usar, qué tunnel name tiene, dónde está el `.ovpn`. Si FortiClient ya conecta y OpenVPN ya tiene su `.ovpn`, este paso solo recopila esa información.
 
@@ -391,7 +393,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 ```
 
 <!-- feature:killswitch feature:dns_guard -->
-### Opciones de seguridad y políticas
+### Opciones de seguridad y reglas
 
 ```
 ¿Activar kill switch? (si una VPN se cae sola, bloquea lo que iba por ella) [S/n]:    ← Enter = sí
@@ -399,12 +401,12 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 ¿Activar log de auditoría firmado? [S/n]:
 ¿Activar panel web? (http://127.0.0.1:9741) [S/n]:
 
-── Políticas de enrutamiento ──────────────────────────────────────────────
+── Reglas de salida ───────────────────────────────────────────────────────
 
-¿Agregar una política de enrutamiento? [S/n]: s
+¿Agregar una regla de salida? [S/n]: s
 
-  Nombre de la política (ej: trabajo, streaming): Claude AI
-  Perfil VPN para esta política:
+  Nombre de la regla (ej: trabajo, streaming): Claude AI
+  Perfil VPN para esta regla:
     1) office
     2) us-content
   Elige [1]: 2
@@ -417,9 +419,9 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
     Rango IP o IP — deja en blanco para terminar
   IP / rango:
 
-¿Agregar una política de enrutamiento? [S/n]:
+¿Agregar una regla de salida? [S/n]:
 
-    También puedes editar políticas directamente en kongtrol.yaml → sección 'policies'.
+    También puedes editar reglas directamente en kongtrol.yaml → sección 'policies'.
 
 ¿Escribir configuración en ~/.kongtrol/kongtrol.yaml? [S/n]: s
 
@@ -434,7 +436,7 @@ Las contraseñas se guardan en el llavero del sistema — nunca en el YAML.
 
 Al terminar, `init` revisa el **ayudante** (el servicio que hace los cambios de red, así nunca necesitas una terminal de administrador) y te ofrece instalarlo; luego conecta lo que acabas de crear, igual que `kongtrol up`. En scripts: `kongtrol init --yes`. Kill switch y DNS guard se cambian después con `kongtrol config killswitch on|off|status` y `kongtrol config dns-guard on|off|status`, o en el panel → Seguridad.
 
-> **¿Quieres agregar otro perfil o política después?** Vuelve a ejecutar `kongtrol init`. El wizard detecta el config existente, muestra los perfiles y políticas actuales, y no sobreescribe nada sin confirmación. Para más detalle sobre políticas ve a la [sección 5b](#5b-políticas-de-routing).
+> **¿Quieres agregar otro perfil o regla después?** Vuelve a ejecutar `kongtrol init`. El wizard detecta el config existente, muestra los perfiles y reglas actuales, y no sobreescribe nada sin confirmación. Para más detalle sobre reglas ve a la [sección 5b](#5b-reglas-de-salida).
 
 ---
 
@@ -461,20 +463,20 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si Kongtrol ya está funcionando en segundo plano (el daemon que arranca `kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel, `kongtrol reload <perfil>`; para políticas, `kongtrol reload --policy`; sin argumentos, `kongtrol reload` aplica todo y, si agregaste perfiles, ofrece reiniciar Kongtrol (`--yes` en scripts). Ver [CLI.md → reload](CLI.md#kongtrol-reload).
+Si Kongtrol ya está funcionando en segundo plano (el daemon que arranca `kongtrol up`), no hace falta reiniciarlo para que tome el grupo nuevo — `kongtrol reload --group work` recarga el `kongtrol.yaml` recién editado y reinicia solo los túneles activos de ese grupo. Para un solo túnel, `kongtrol reload <perfil>`; para reglas, `kongtrol reload --policy`; sin argumentos, `kongtrol reload` aplica todo y, si agregaste perfiles, ofrece reiniciar Kongtrol (`--yes` en scripts). Ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
 <!-- feature:policies -->
-## 5b. Políticas de routing
+## 5b. Reglas de salida
 
 ### ¿Para qué sirven?
 
-Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a Kongtrol qué tráfico va por qué VPN.
+Un **perfil VPN** guarda una configuración de conexión; puedes tener varios perfiles del mismo proveedor. Una **regla** indica qué destinos usan un perfil y qué hacer si está desconectado. Una **ruta** es un camino de red que usa el equipo, incluso si la trae la VPN o el sistema.
 
-**Sin políticas:** cada VPN instala sus propias rutas al conectarse. El último en conectar suele ganar el tráfico general. No puedes controlar qué va por dónde.
+**Sin reglas:** cada VPN puede instalar sus propias rutas al conectarse. El sistema decide cuál usa según esas rutas y sus métricas.
 
-**Con políticas:**
+**Con reglas:**
 - `claude.ai` y `*.anthropic.com` → van por `us-content` (ProtonVPN)
 - `10.10.0.0/16` (red interna) → van por `office` (FortiClient)
 - `*.tuempresa.com` → van por `office`
@@ -484,7 +486,12 @@ Cuando tienes varios túneles activos al mismo tiempo, las políticas le dicen a
 
 En el panel, usa **＋ Agregar** y escribe sitios, enlaces, IP o rangos separados por comas
 o saltos de línea. Por ejemplo, `claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42`.
-Elige la VPN y guarda la regla pausada. Puedes activarla al terminar o después en **Reglas**.
+Elige el perfil y guarda la regla pausada. Puedes activarla al terminar o después en **Reglas**.
+Después de guardar un perfil puedes elegir **Agregar regla de salida**. Al crear o editar
+una regla, los botones Claude, ChatGPT/OpenAI y otros sitios agregan varios destinos a la lista
+editable. Son aproximaciones, no garantizan acceso: los bloqueos varían por red, las apps pueden
+usar otras direcciones y los proveedores tienen sus propias condiciones. Un comodín alcanza un
+nivel y Kongtrol descubre solo algunos subdominios; agrega los nombres concretos que necesites.
 La terminal admite varios destinos como argumentos:
 
 ```bash
@@ -506,7 +513,7 @@ y la documentación lo dicen igual ([ADR-0113](adr/0113-label-app-rules-honestly
 programa, agrega los sitios o IPs que usa.
 
 <!-- feature:policies -->
-En **Perfiles**, elige qué hacen sus reglas cuando la VPN está apagada. Cada regla puede heredar
+Al crear el perfil o en **Perfiles**, elige qué hacen sus reglas cuando la VPN está apagada. Cada regla puede heredar
 esa opción o elegir otra. También puedes cambiarla desde la terminal.
 
 Si una regla activa intenta conectar su VPN al detectar tráfico, Kongtrol hace hasta tres
@@ -528,12 +535,12 @@ se detecta tráfico TCP. Un intento rechazado puede pasar inadvertido. En macOS,
 Al final de `kongtrol init` (después de seguridad), el wizard pregunta:
 
 ```
-── Políticas de enrutamiento ──────────────────────────────
+── Reglas de salida ───────────────────────────────────────
 
-¿Agregar una política de enrutamiento? [S/n]: s
+¿Agregar una regla de salida? [S/n]: s
 
-  Nombre de la política (ej: trabajo, streaming): Claude AI
-  Perfil VPN para esta política:
+  Nombre de la regla (ej: trabajo, streaming): Claude AI
+  Perfil VPN para esta regla:
     1) office
     2) us-content
   Elige [1]: 2
@@ -546,9 +553,9 @@ Al final de `kongtrol init` (después de seguridad), el wizard pregunta:
     Rango IP o IP — deja en blanco para terminar
   IP / rango:
 
-¿Agregar una política de enrutamiento? [S/n]:
+¿Agregar una regla de salida? [S/n]:
 
-    También puedes editar políticas directamente en kongtrol.yaml → sección 'policies'.
+    También puedes editar reglas directamente en kongtrol.yaml → sección 'policies'.
 ```
 
 > **Tip:** puedes escribir varios dominios separados por coma en un solo prompt — `claude.ai, *.anthropic.com` genera dos entradas separadas.
@@ -664,7 +671,7 @@ Si dos reglas cubren la misma IP, gana la más específica:
 | `10.10.0.0/16` vía `office` | Todo `10.10.x.x` |
 | `10.10.1.0/24` vía `dev-server` | Solo `10.10.1.x` — gana sobre `/16` |
 
-Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera regla que coincide), desempata la `priority` del perfil: **gana el número mayor**. Si el perfil no tiene `priority`, cuenta la posición de la política (las primeras van antes). Va de 0 a 1000 (0 = sin prioridad). Ojo: sin `priority`, la posición cuenta en la misma escala; si solo una de dos VPN tiene número, el resultado depende también de la posición, así que pon prioridad a las dos. Cámbiala en el panel (**Perfiles › Orden de sus reglas**, o «Cambiar prioridad» en **Reglas**, que marca las reglas que se cruzan) o con `kongtrol profile priority <perfil> <N>` (`none` la quita); `kongtrol profile list` y `kongtrol policy list` la muestran ([ADR-0108](adr/0108-show-and-change-profile-priority.md)). `priority` no conecta ni cambia perfiles.
+Con la misma longitud de prefijo (o con dominios y apps, donde gana la primera regla que coincide), desempata la `priority` del perfil: **gana el número mayor**. Si el perfil no tiene `priority`, cuenta la posición de la regla (las primeras van antes). Va de 0 a 1000 (0 = sin prioridad). Ojo: sin `priority`, la posición cuenta en la misma escala; si solo uno de dos perfiles tiene número, el resultado depende también de la posición, así que pon prioridad a los dos. Cámbiala en el panel (**Perfiles › Orden de sus reglas**, o «Cambiar prioridad» en **Reglas**, que marca las reglas que se cruzan) o con `kongtrol profile priority <perfil> <N>` (`none` la quita); `kongtrol profile list` y `kongtrol policy list` la muestran ([ADR-0108](adr/0108-show-and-change-profile-priority.md)). `priority` no conecta ni cambia perfiles.
 
 <!-- feature:watchdog -->
 #### Si una VPN se cae y no vuelve (failover)
@@ -705,7 +712,7 @@ kongtrol config validate
 # [OK] Config is valid.
 ```
 
-Si no hay un daemon corriendo todavía, las políticas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → reload](CLI.md#kongtrol-reload).
+Si no hay un daemon corriendo todavía, las reglas se leen al ejecutar `kongtrol up`. Si ya tienes uno activo (`kongtrol up` en background o vía dashboard), aplica el cambio sin reiniciarlo con `kongtrol reload --policy` — ver [CLI.md → reload](CLI.md#kongtrol-reload).
 
 ---
 
@@ -861,16 +868,24 @@ pestaña sí mantiene la sesión ([ADR-0039](adr/0039-browser-sessions-one-time-
 [ADR-0062](adr/0062-origin-bound-sessions-token-rotation-listener-owner.md)). Si otro usuario de
 este equipo ocupa el puerto de Kongtrol, la bandeja y la terminal no le envían tu clave y te dicen
 qué hacer (cambiar el puerto con `kongtrol config dashboard set-port <puerto>`).
+Usa **Buscar** o **Ctrl/Cmd+K** para encontrar secciones, acciones, perfiles, reglas y grupos;
+**Esc** cierra la búsqueda. Se realiza solo en este equipo.
+En Inicio y en el panel de la bandeja, las listas largas permiten buscar perfiles por nombre
+o tipo y mostrar más. Se ordenan al abrirlas: conectados primero y después los conectados
+más recientemente, según el historial local; los perfiles conectados no se ocultan por el límite.
+Durante una restauración o reinicio, los perfiles pendientes dicen «Reconectando» y puedes
+cancelarlos. En el menú nativo de la bandeja, los perfiles mantienen su lugar y las listas
+largas ofrecen un acceso a la búsqueda del panel.
 Es una consola de gestión completa, no solo
-monitoreo. Arriba, «＋ Agregar» abre una sola hoja para conectar una VPN que ya usas, importar un
-`.conf`/`.ovpn` (también soltándolo sobre el panel) o hacer que un sitio salga por una VPN en una
-frase; también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&target=<sitio>`,
+monitoreo. Arriba, «＋ Agregar» abre una sola hoja para agregar un perfil con una VPN que ya usas, importar un
+`.conf`/`.ovpn` (también soltándolo sobre el panel) o agregar una regla de salida;
+también se abre con un enlace (`/?add=menu|vpn|file|rule&via=<perfil>&target=<sitio>`,
 [ADR-0055](adr/0055-add-sheet-one-entry-point.md)). Las páginas:
 
-- **Inicio** — tus VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todas; avisos (con «Conectar <perfil>» cuando una regla necesita una VPN apagada), resumen de protección, salida a internet y grupos
-- **Perfiles** — crear, editar, renombrar y borrar perfiles VPN (la contraseña va al llavero del sistema), respaldo (`failover`) y la guía del primer uso; pestaña **Grupos** (crear, editar, conectar o desconectar varias VPN a la vez)
-- **Reglas** — qué sitios y redes salen por cada VPN (las apps se muestran con «aún no se aplica») (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su VPN está apagada; pestaña **Horarios** (conectar o desconectar VPN a ciertas horas)
-- **Tráfico** — tráfico por VPN en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel, la tabla de rutas del equipo y **Recientes** (a dónde se conectó el equipo en la última hora y por dónde salió; se guarda solo en memoria y se apaga en Ajustes › Privacidad) con «Agregar como regla»
+- **Inicio** — tus perfiles VPN en vivo (estado, IP, tiempo, tráfico, latencia con tendencia, qué sale por cada túnel) con conectar / cancelar / desconectar / recargar y conectar o desconectar todos; avisos (con «Conectar <perfil>» cuando una regla necesita un perfil desconectado), resumen de protección, salida a internet y grupos
+- **Perfiles** — crear, editar, renombrar y borrar perfiles VPN (la contraseña va al llavero del sistema), respaldo (`failover`) y la guía del primer uso; pestaña **Grupos** (crear, editar, conectar o desconectar varios perfiles a la vez)
+- **Reglas** — qué sitios y redes salen por cada perfil (las apps se muestran con «aún no se aplica») (crear, editar, probar antes de guardar, recargar del archivo) y qué pasa si su perfil está desconectado; pestaña **Horarios** (conectar o desconectar perfiles a ciertas horas)
+- **Tráfico** — tráfico por perfil en el tiempo, por dónde sale un sitio o IP, rutas activas por túnel, la tabla de rutas del equipo y **Recientes** (a dónde se conectó el equipo en la última hora y por dónde salió; se guarda solo en memoria y se apaga en Ajustes › Privacidad) con «Agregar como regla»
 - **Seguridad** — Kill Switch y DNS Guard en vivo (con sus ajustes), el interruptor por perfil, la IP pública opcional (apagada por defecto) y DNS dividido
 - **Actividad** — registro de auditoría (filtros por fecha, perfil y nivel; firma HMAC comprobada; 10 entradas y «Ver 20 más», que pide las más antiguas al daemon cuando hace falta; en vivo, las nuevas esperan tras «N nuevas · Mostrar») y los avisos del daemon
 - **Ajustes** — idioma, tema, **Diagnóstico** (las mismas comprobaciones que `kongtrol doctor`, **Reparar** si falta el ayudante, **Exportar configuración** sin contraseñas), comprobación de salud, avisos de versión nueva, ayudante, reiniciar / detener Kongtrol y borrar datos
@@ -902,7 +917,7 @@ kongtrol status                   # ver qué está conectado
 kongtrol status --watch           # monitoreo en vivo
 kongtrol ip                       # consulta tu IP pública y prueba fugas (requiere kongtrol config public-ip on)
 kongtrol up --group work --dry-run # simulación completa sin tocar rutas/DNS/firewall
-kongtrol policy list              # todas las políticas y su VPN
+kongtrol policy list              # todas las reglas y su perfil
 kongtrol policy show github.com   # qué regla aplica a un destino y por qué (--json: salida estructurada)
 kongtrol config killswitch on     # kill switch (también: off, status)
 kongtrol config dns-guard on      # DNS guard (también: off, status)
@@ -960,7 +975,7 @@ kongtrol init
 kongtrol export > kongtrol-template.yaml
 ```
 
-Esto genera el YAML completo (perfiles, políticas, grupos, seguridad, programador) **sin
+Esto genera el YAML completo (perfiles, reglas, grupos, seguridad, programador) **sin
 contraseñas** — Kongtrol las guarda en el llavero del sistema, no en el archivo. El resultado se
 vuelve a cargar tal cual. Sin terminal: panel → **Ajustes → Diagnóstico** → «Exportar
 configuración» (descarga `kongtrol-export.yaml`; API `GET /api/v1/config/export`). Ejemplo:
@@ -1072,7 +1087,7 @@ servidores DNS solo se alcanzan por el túnel caído) y avisa qué bloquea el ki
   eso es lo que pide un túnel completo. Para navegar ya: pulsa «Recuperar internet» en el aviso (lo
   desconecta; o
   `kongtrol down <perfil>`). Si solo necesitas algunos sitios por esa VPN, agrega reglas
-  (Agregar → «Hacer que un sitio salga por una VPN»): con reglas, Kongtrol lleva por el túnel solo
+  (Agregar → «Agregar regla de salida»): con reglas, Kongtrol lleva por el túnel solo
   esos destinos y lo demás no depende de él.
 - **«…bloquea internet y tu red local (impresoras, NAS)»**: igual que el anterior, con
   `allow_lan` apagado. Mientras el túnel completo está caído también se cortan los equipos de tu

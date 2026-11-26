@@ -10,10 +10,8 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 )
 
-// Rendering of the views in tray_state.go onto systray items. systray can
-// neither reorder nor insert items after the menu is built, so the VPN list
-// is a fixed set of slots that are relabelled on every refresh (connected
-// first); each slot's click reads the profile it currently shows.
+// Rendering of the views in tray_state.go onto systray items. Each slot
+// keeps its profile for the life of the menu, including while it is open.
 
 // version is set at build time: -ldflags "-X main.version=v1.2.3". The
 // version line prefers the daemon's own (GET /api/v1/version).
@@ -58,22 +56,24 @@ func (s *slotItem) render(v itemView, withIcon bool) {
 
 // trayMenu holds the full menu's items.
 type trayMenu struct {
-	mu       sync.Mutex
-	header   *systray.MenuItem
-	start    *systray.MenuItem
-	tunnels  *systray.MenuItem
-	groups   *systray.MenuItem
-	dash     *systray.MenuItem
-	ver      *systray.MenuItem
-	stopAll  *systray.MenuItem
-	quit     *systray.MenuItem
-	profiles []*slotItem // one per VPN profile, relabelled in view order
-	grpSlots []*slotItem // one per group, in name order
-	verText  string
-	badge    assets.TrayBadge
-	theme    string
-	iconSet  bool
-	daemon   daemonState
+	mu           sync.Mutex
+	header       *systray.MenuItem
+	start        *systray.MenuItem
+	tunnels      *systray.MenuItem
+	findProfiles *systray.MenuItem
+	groups       *systray.MenuItem
+	dash         *systray.MenuItem
+	ver          *systray.MenuItem
+	stopAll      *systray.MenuItem
+	quit         *systray.MenuItem
+	profiles     []*slotItem // one fixed slot per VPN profile
+	descriptions map[string]string
+	grpSlots     []*slotItem // one per group, in name order
+	verText      string
+	badge        assets.TrayBadge
+	theme        string
+	iconSet      bool
+	daemon       daemonState
 }
 
 var stateIconCache sync.Map // stateKind → []byte
@@ -116,17 +116,21 @@ func (m *trayMenu) setTrayBadge(b assets.TrayBadge) {
 	m.badge, m.theme, m.iconSet = b, theme, true
 }
 
-// renderTunnels relabels the profile slots with views (same length).
+// renderTunnels refreshes each fixed profile slot.
 func (m *trayMenu) renderTunnels(views []tunnelView) {
-	for i, s := range m.profiles {
-		if i >= len(views) {
+	byName := make(map[string]tunnelView, len(views))
+	for _, v := range views {
+		byName[v.Name] = v
+	}
+	for _, s := range m.profiles {
+		v, ok := byName[s.name]
+		if !ok {
 			s.item.Hide()
 			continue
 		}
-		v := views[i]
-		m.mu.Lock()
-		s.name = v.Name
-		m.mu.Unlock()
+		if desc := m.descriptions[s.name]; desc != "" {
+			v.Title += " · " + desc
+		}
 		s.render(itemView{title: v.Title, tooltip: v.Tooltip, kind: v.Kind, checked: v.Checked}, true)
 	}
 }

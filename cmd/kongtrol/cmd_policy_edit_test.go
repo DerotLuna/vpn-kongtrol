@@ -156,7 +156,7 @@ func TestPolicyAdd_ErrorsCarryWhatToDo(t *testing.T) {
 		{map[string]string{"via": "oficina"}, []string{"no es un host"}, "Ejemplos:"},
 		{map[string]string{"via": "oficina", "name": "x"}, []string{"a.com"}, ""},
 		// The name is taken now: the shared check answers, translated.
-		{map[string]string{"via": "oficina", "name": "X"}, []string{"b.com"}, "Ya hay una política"},
+		{map[string]string{"via": "oficina", "name": "X"}, []string{"b.com"}, "Ya hay una regla"},
 	}
 	for _, c := range cases {
 		_, err := runFlags(t, policyAddCmd, c.flags, c.args...)
@@ -195,7 +195,7 @@ func TestPolicyRemove_AsksAndHonorsYes(t *testing.T) {
 	if _, err := runFlags(t, policyRemoveCmd, nil, "CORP"); err != nil || len(reloadEditCfg(t, path).Policies) != 0 {
 		t.Fatalf("answered yes: %v", err)
 	}
-	if _, err := runFlags(t, policyRemoveCmd, map[string]string{"yes": "true"}, "corp"); err == nil || !strings.Contains(err.Error(), "No existe la política") {
+	if _, err := runFlags(t, policyRemoveCmd, map[string]string{"yes": "true"}, "corp"); err == nil || !strings.Contains(err.Error(), "No existe la regla") {
 		t.Fatalf("missing policy: %v", err)
 	}
 }
@@ -213,7 +213,7 @@ func TestPolicyAddRemove_DaemonUsesAPI(t *testing.T) {
 	mux.HandleFunc("DELETE /api/v1/policies/{name}", func(w http.ResponseWriter, r *http.Request) {
 		got = append(got, "DELETE "+r.PathValue("name"))
 		w.WriteHeader(http.StatusConflict)
-		_, _ = io.WriteString(w, `{"error":"Ya hay una política llamada \"x\".","hint":"Usa otro nombre.","error_key":"api.err.policy_exists"}`)
+		_, _ = io.WriteString(w, `{"error":"Ya hay una regla llamada \"x\".","hint":"Usa otro nombre.","error_key":"api.err.policy_exists"}`)
 	})
 	ts := httptest.NewServer(mux)
 	defer ts.Close()
@@ -230,7 +230,7 @@ func TestPolicyAddRemove_DaemonUsesAPI(t *testing.T) {
 	}
 	cfg.Policies = append(cfg.Policies, config.PolicyRule{Name: "a b", Via: "casa"})
 	_, err := runFlags(t, policyRemoveCmd, map[string]string{"yes": "true"}, "a b")
-	if err == nil || err.Error() != "Ya hay una política llamada \"x\".\n    Usa otro nombre." {
+	if err == nil || err.Error() != "Ya hay una regla llamada \"x\".\n    Usa otro nombre." {
 		t.Fatalf("remote error: %v", err)
 	}
 	if strings.Join(got, ",") != "POST lang=es,DELETE a b" {

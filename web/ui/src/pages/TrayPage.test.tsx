@@ -79,6 +79,42 @@ describe('TrayPage (/tray)', () => {
     authState.set('ok')
   })
 
+  it('shows a restoring profile and lets the user turn it off', async () => {
+    stubApi(baseRoutes([{ ...tunnel('office', 'connecting'), restoring: true }]))
+    render(<App />)
+    expect(await screen.findByText('Reconectando…')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: 'Desconectar office' })).toBeEnabled()
+  })
+
+  it('searches and identifies profiles in the flyout', async () => {
+    const list = Array.from({ length: 12 }, (_, i) => tunnel(`profile-${i}`, 'disconnected'))
+    stubApi({
+      ...baseRoutes(list),
+      'GET /api/v1/vpns': () => json([{ name: 'profile-11', type: 'protonvpn' }]),
+      'GET /api/v1/metrics/history': () => json({}),
+    })
+    render(<App />)
+    const search = await screen.findByRole('searchbox', { name: 'Buscar perfiles' })
+    await userEvent.type(search, 'Proton')
+    expect(await screen.findByText('profile-11')).toBeInTheDocument()
+    expect(screen.getByText('Proton VPN · app')).toBeInTheDocument()
+    expect(screen.queryByText('profile-0')).not.toBeInTheDocument()
+  })
+
+  it('keeps an active search editable when the list shrinks', async () => {
+    const list = Array.from({ length: 11 }, (_, i) => tunnel(`profile-${i}`, 'disconnected'))
+    stubApi({ ...baseRoutes(list), 'GET /api/v1/metrics/history': () => json({}) })
+    render(<App />)
+    const search = await screen.findByRole('searchbox', { name: 'Buscar perfiles' })
+    await userEvent.type(search, 'profile-1')
+    list.pop()
+    window.dispatchEvent(new Event('kongtrol:shown'))
+    await waitFor(() => expect(screen.queryByText('profile-10')).not.toBeInTheDocument())
+    expect(screen.getByRole('searchbox', { name: 'Buscar perfiles' })).toHaveValue('profile-1')
+    await userEvent.clear(search)
+    expect(screen.queryByRole('searchbox', { name: 'Buscar perfiles' })).not.toBeInTheDocument()
+  })
+
   it('shows each VPN with its state word, the aggregate, protection and version', async () => {
     stubApi(baseRoutes([tunnel('oficina', 'connected'), tunnel('cliente', 'disconnected'), tunnel('casa', 'error')]))
     render(<App />)
@@ -140,9 +176,9 @@ describe('TrayPage (/tray)', () => {
   it('in a normal tab: "Abrir panel" is a link and there is no Salir', async () => {
     stubApi(baseRoutes([]))
     render(<App />)
-    expect(await screen.findByText('Todavía no tienes VPN. Agrega la primera en un minuto.')).toBeInTheDocument()
-    // with no VPN the one primary action is "Agregar VPN"; "Abrir panel" steps back
-    expect(screen.getByRole('button', { name: 'Agregar VPN' })).toHaveClass('primary')
+    expect(await screen.findByText('Todavía no tienes perfiles VPN. Agrega el primero en un minuto.')).toBeInTheDocument()
+    // with no profile the one primary action is "Agregar perfil VPN"; "Abrir panel" steps back
+    expect(screen.getByRole('button', { name: 'Agregar perfil VPN' })).toHaveClass('primary')
     expect(screen.getByRole('link', { name: 'Abrir panel' })).not.toHaveClass('primary')
     expect(screen.getByRole('link', { name: 'Abrir panel' })).toHaveAttribute('href', '/')
     expect(screen.queryByRole('button', { name: 'Salir' })).toBeNull()

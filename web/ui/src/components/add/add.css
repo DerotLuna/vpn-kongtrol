@@ -3,7 +3,8 @@
    overlay's state change, off with reduced motion. Compact (owner feedback
    2026-11-19): 520px wide, 12px rhythm, 32px icon tiles; one primary
    (gold) per step, secondary outlined/tonal, "Volver" a quiet text
-   button at the start of the footer. "Importar un archivo de VPN" is wider
+   button at the start of the footer. Rule creation is wider for destination
+   lists and suggestions. "Importar un archivo de VPN" is wider
    (680px, like the profile editor) so file names and the missing-files
    banner have room (ADR-0112). Steps that list choices use the width:
    the VPN type picker opens at up to 880px so its tiles flow in two or
@@ -12,6 +13,7 @@
 @media (min-width: 600px) {
   .k-dialog.k-add-sheet { width: min(520px, calc(100vw - 32px)); }
   .k-dialog.k-add-sheet:has(.k-add-file) { width: min(680px, calc(100vw - 32px)); }
+  .k-dialog.k-add-sheet:has(.k-add-rule) { width: min(800px, calc(100vw - 32px)); }
   .k-dialog.k-add-sheet:has(.kp-picker) { width: min(880px, calc(100vw - 32px)); }
 }
 

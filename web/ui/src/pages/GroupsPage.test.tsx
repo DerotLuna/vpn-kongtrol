@@ -52,14 +52,14 @@ describe('GroupsPage', () => {
       }),
     )
     render(<App />)
-    const table = await screen.findByRole('table', { name: 'VPN groups' })
+    const table = await screen.findByRole('table', { name: 'VPN profile groups' })
     expect(within(table).getByText('1 of 2 connected')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: 'New group' }))
     const dialog = await screen.findByRole('dialog', { name: 'New group' })
     await userEvent.click(within(dialog).getByRole('button', { name: 'Create group' }))
     expect(within(dialog).getByText('The group name is missing.')).toBeInTheDocument()
-    expect(within(dialog).getByText('Tick at least one VPN.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Tick at least one VPN profile.')).toBeInTheDocument()
 
     await userEvent.type(within(dialog).getByLabelText(/^Group name/), 'home')
     await userEvent.click(within(dialog).getByRole('checkbox', { name: /c/ }))
@@ -124,7 +124,7 @@ describe('GroupsPage', () => {
   it('without profiles, the empty state sends you to create one first', async () => {
     stubFetch(base({ 'GET /api/v1/groups': () => json([]), 'GET /api/v1/vpns': () => json([]) }))
     render(<App />)
-    expect(await screen.findByRole('heading', { name: 'Create a VPN first' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Create a VPN profile first' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Go to VPN profiles' })).toHaveAttribute('href', '/profiles')
   })
 })

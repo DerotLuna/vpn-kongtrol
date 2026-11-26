@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/vpn-kongtrol/kongtrol/assets"
+	"github.com/vpn-kongtrol/kongtrol/internal/app"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
@@ -38,6 +40,51 @@ type tunnelView struct {
 	Checked bool // the tunnel is up: checkmark + listed first
 }
 
+// Native menus have no reliable menu-open signal on every platform. Fix
+// their order once, rather than relabelling a slot under the user's pointer.
+func trayProfileOrder(names []string, states map[string]monitor.TunnelMetrics, history map[string]monitor.ProfileHistory) []string {
+	out := append([]string(nil), names...)
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		au, bu := states[a].Status.Normalize() == vpn.StatusConnected, states[b].Status.Normalize() == vpn.StatusConnected
+		if au != bu {
+			return au
+		}
+		at, bt := history[a].LastConnectedAt, history[b].LastConnectedAt
+		if !at.Equal(bt) {
+			return at.After(bt)
+		}
+		return a < b
+	})
+	return out
+}
+
+func trayProfileDescription(profile config.VPNConfig) string {
+	labels := map[string]string{
+		"wireguard": "WireGuard", "openvpn": "OpenVPN", "protonvpn": "Proton VPN",
+		"nordvpn": "NordVPN", "surfshark": "Surfshark", "forticlient": "FortiClient",
+		"mullvad": "Mullvad VPN", "pia": "Private Internet Access", "expressvpn": "ExpressVPN",
+		"windscribe": "Windscribe", "cyberghost": "CyberGhost VPN", "tailscale": "Tailscale",
+		"cloudflarewarp": "Cloudflare WARP", "ciscoanyconnect": "Cisco AnyConnect", "globalprotect": "GlobalProtect",
+	}
+	label := labels[profile.Type]
+	if label == "" {
+		return ""
+	}
+	if profile.Type == "wireguard" || profile.Type == "openvpn" {
+		if app.DirectProfileProvider(profile) == "protonvpn" {
+			return "Proton VPN · " + label
+		}
+		return label
+	}
+	switch profile.Type {
+	case "protonvpn", "nordvpn", "surfshark", "forticlient", "mullvad", "pia", "expressvpn", "windscribe", "cyberghost":
+		return label + " · " + trayT("tray.profile_app")
+	default:
+		return label
+	}
+}
+
 // trayStateWord is the localized state word of a tunnel status, the same
 // meaning as the CLI's statusText and the dashboards' status labels.
 func trayStateWord(s vpn.Status) string {
@@ -66,6 +113,8 @@ func trayTunnelView(name string, m monitor.TunnelMetrics) tunnelView {
 	attach := v.Tooltip
 	health := trayHealthLine(m.Health)
 	switch {
+	case m.Restoring && st == vpn.StatusConnecting:
+		v.Title, v.Kind = name+" · "+trayT("tray.state.reconnecting"), kindConnecting
 	case m.Attach != nil && m.Attach.Waiting() && attach != "":
 		v.Title = name + " · " + attach
 		switch m.Attach.Phase {

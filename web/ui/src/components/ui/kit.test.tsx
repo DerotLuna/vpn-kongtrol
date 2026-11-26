@@ -423,6 +423,28 @@ describe('TextField', () => {
 })
 
 describe('Toaster', () => {
+  it('resolves only relevant notices for the recovered profile', () => {
+    toasts.clear()
+    toasts.show({ tone: 'bad', message: 'No response', notice: { profile: 'work', kind: 'tunnel_watchdog', key: 'watchdog.event.no_response' } })
+    toasts.show({ tone: 'bad', message: 'Blocked', notice: { profile: 'work', kind: 'other', key: 'killswitch.event.blocking' } })
+    toasts.show({ tone: 'bad', message: 'Other profile', notice: { profile: 'home', kind: 'policy_tunnel_down', key: 'policy.event.block' } })
+    toasts.resolveNotice('work', 'responding')
+    expect(toasts.get().map((toast) => toast.message)).toEqual(['Blocked', 'Other profile'])
+    toasts.resolveNotice('home', 'connected')
+    expect(toasts.get().map((toast) => toast.message)).toEqual(['Blocked'])
+    toasts.clear()
+  })
+
+  it('hides a retry while connecting and restores it if connection fails', () => {
+    toasts.clear()
+    toasts.show({ tone: 'bad', message: 'Retry', action: { label: 'Retry', run: () => {} }, notice: { profile: 'work', kind: 'tunnel_watchdog', key: 'watchdog.event.gave_up', connectAction: true } })
+    toasts.setConnectActionHidden('work', true)
+    expect(toasts.get()[0]?.actionHidden).toBe(true)
+    toasts.setConnectActionHidden('work', false)
+    expect(toasts.get()[0]?.actionHidden).toBe(false)
+    toasts.clear()
+  })
+
   it('shows one toast at a time in a live region; errors stay until dismissed', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     withPrefs(<Toaster />)

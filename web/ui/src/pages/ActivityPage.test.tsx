@@ -95,7 +95,7 @@ describe('Actividad · avisos', () => {
 
     const list = await screen.findByRole('region', { name: 'Avisos, del más nuevo al más viejo' })
     const items = within(list).getAllByRole('listitem')
-    expect(items[0]).toHaveTextContent('No se pudo conectar trabajo para intranet.example tras tres intentos automáticos. Conecta la VPN manualmente.')
+    expect(items[0]).toHaveTextContent('No se pudo conectar trabajo para intranet.example tras tres intentos automáticos. Conecta el perfil manualmente.')
     expect(items[0]).toHaveTextContent('Aviso')
     expect(items[1]).toHaveTextContent('casa se reconectó')
     expect(within(list).getByRole('heading', { name: 'Hoy' })).toBeInTheDocument()

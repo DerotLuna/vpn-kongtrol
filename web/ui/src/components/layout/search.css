@@ -1,0 +1,6 @@
+.k-search__field .k-input { width: 100%; }
+.k-search__results { list-style: none; max-height: min(50vh, 480px); overflow-y: auto; margin-top: 12px; }
+.k-search__item { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: var(--radius); cursor: pointer; }
+.k-search__item[data-focused], .k-search__item[data-hovered] { background: var(--state-hover); outline: none; }
+.k-search__item small { color: var(--text-muted); }
+@media (max-width: 899px) { .k-topbar__search .k-btn__label { display: none; } }

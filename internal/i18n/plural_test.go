@@ -11,12 +11,12 @@ func TestNPlural(t *testing.T) {
 		n    int
 		want string
 	}{
-		{ES, 0, "0 VPN conectadas"},
-		{ES, 1, "1 VPN conectada"},
-		{ES, 2, "2 VPN conectadas"},
-		{EN, 0, "0 VPNs connected"},
-		{EN, 1, "1 VPN connected"},
-		{EN, 3, "3 VPNs connected"},
+		{ES, 0, "0 perfiles VPN conectados"},
+		{ES, 1, "1 perfil VPN conectado"},
+		{ES, 2, "2 perfiles VPN conectados"},
+		{EN, 0, "0 VPN profiles connected"},
+		{EN, 1, "1 VPN profile connected"},
+		{EN, 3, "3 VPN profiles connected"},
 	}
 	for _, c := range cases {
 		if got := N(c.lang, "tray.status_active", c.n); got != c.want {

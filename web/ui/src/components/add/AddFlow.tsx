@@ -4,7 +4,7 @@
 // plain-language choices, then
 //   A "Conectar una VPN que ya uso"  (VpnStep: found apps first, "Usar")
 //   B "Importar un archivo de VPN"   (FileStep: .conf / .ovpn, drop)
-//   C "Hacer que un sitio salga por una VPN" (RuleStep: one sentence)
+//   C "Agregar regla de salida" (RuleStep)
 // and a Done step with the next useful actions. A and B save (restarting
 // only when the daemon asks): "Guardar y activar" also connects the new
 // profile, "Guardar" only saves it (ADR-0115); C saves paused. C with no profile runs A first
@@ -82,6 +82,7 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   )
   const [rule, setRule] = useState<RuleDraft>(() => recovery?.draft ?? emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? ''), ''))
   const [viaChosen, setViaChosen] = useState(!!recovery?.draft)
+  const [ruleReturn, setRuleReturn] = useState<Extract<View, { k: 'doneVpn' | 'doneRule' }> | null>(null)
   const [backToRule, setBackToRule] = useState(false)
   const [backNote, setBackNote] = useState<string | undefined>(() =>
     recovery?.draft ? t('add.rule.back', { name: recovery.profile }) : undefined,
@@ -96,7 +97,10 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   // "sale por" follows the deep link / only profile / first connected until the user picks.
   const via = viaChosen ? rule.via : defaultVia(names, tunnels, req.via)
   const ruleDraft = useMemo(() => ({ ...rule, via }), [rule, via])
-  const ruleDirty = view.k === 'rule' && (rule.input !== emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? '')).input || rule.name !== '' || !rule.subs || rule.onDown !== 'inherit' || viaChosen)
+  const returnVia = ruleReturn?.k === 'doneVpn' ? ruleReturn.name : ruleReturn?.rule.via
+  const editingRule = view.k === 'rule' || (ruleReturn !== null && view.k === ruleReturn.k)
+  const initialInput = ruleReturn ? '' : emptyRuleDraft(req.app ? `app:${req.app}` : (req.target ?? '')).input
+  const ruleDirty = editingRule && (rule.input !== initialInput || rule.name !== '' || !rule.subs || rule.onDown !== 'inherit' || (ruleReturn ? rule.via !== returnVia : viaChosen))
   const dirty = !resume?.saved && ((view.k === 'vpn' || view.k === 'file') ? stepDirty : ruleDirty || (backToRule && rule.input !== ''))
   useUnsavedChanges(dirty)
 
@@ -162,6 +166,10 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   }
 
   const finish = (to?: string) => {
+    if (dirty) {
+      requestClose()
+      return
+    }
     onClose()
     if (to) void navigate(to)
   }
@@ -183,7 +191,10 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
   } else {
     switch (view.k) {
       case 'menu':
-        content = <Menu onPick={(k) => go(k === 'vpn' ? { k: 'vpn' } : k === 'file' ? { k: 'file' } : { k: 'rule' })} />
+        content = <Menu onPick={(k) => {
+          if (k === 'rule') setRuleReturn(null)
+          go(k === 'vpn' ? { k: 'vpn' } : k === 'file' ? { k: 'file' } : { k: 'rule' })
+        }} />
         break
       case 'vpn':
         content = (
@@ -222,13 +233,14 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             profiles={names}
             tunnels={tunnels}
             backNote={backNote}
-            onBack={() => go({ k: 'menu' })}
+            onBack={() => go(ruleReturn ?? { k: 'menu' })}
             onNeedVpn={() => {
               setBackToRule(true)
               go({ k: 'vpn' })
             }}
             onDone={(saved) => {
               setBackNote(undefined)
+              setRuleReturn(null)
               go({ k: 'doneRule', rule: saved })
             }}
           />
@@ -244,7 +256,10 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             connecting={view.connecting === true}
             profiles={profiles}
             onRule={() => {
-              setRule(emptyRuleDraft('', view.name))
+              if (ruleReturn?.k !== 'doneVpn' || ruleReturn.name !== view.name) {
+                setRule(emptyRuleDraft('', view.name))
+              }
+              setRuleReturn(view)
               setViaChosen(true)
               go({ k: 'rule' })
             }}
@@ -258,7 +273,10 @@ export function AddFlow({ req, recovery, onClose }: { req: AddRequest; recovery:
             rule={view.rule}
             connected={tunnels.some((tn) => tn.Name === view.rule.via && tn.Status === 'connected')}
             onAnother={() => {
-              setRule(emptyRuleDraft('', view.rule.via))
+              if (ruleReturn?.k !== 'doneRule' || ruleReturn.rule.name !== view.rule.name) {
+                setRule(emptyRuleDraft('', view.rule.via))
+              }
+              setRuleReturn(view)
               setViaChosen(true)
               go({ k: 'rule' })
             }}
@@ -369,7 +387,7 @@ function DoneVpn({
             onHome()
           }} autoFocus />
         )}
-        <Choice icon={<RouteIcon />} title={t('add.done.rule')} onClick={onRule} />
+        <Choice icon={<RouteIcon />} title={t('add.done.rule')} onClick={() => onRule()} />
         <Choice icon={<HomeIcon />} title={t('add.done.home')} onClick={onHome} autoFocus={connecting} />
       </ul>
     </div>

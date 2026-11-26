@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -10,6 +11,52 @@ import (
 	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
+
+func TestConnectAlreadyCancelledDoesNotStartAdapter(t *testing.T) {
+	adapter := &blockingAdapter{started: make(chan struct{})}
+	svc := NewProfileService(ProfileServiceDeps{
+		Cfg:      &config.Config{VPNs: map[string]config.VPNConfig{"work": {Type: "tailscale"}}},
+		Adapters: vpn.NewSet(map[string]vpn.VPNAdapter{"work": adapter}),
+	})
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := svc.Connect(ctx, "work"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Connect = %v, want cancellation", err)
+	}
+	select {
+	case <-adapter.started:
+		t.Fatal("adapter started after cancellation")
+	default:
+	}
+}
+
+type disappearingAdapter struct {
+	*blockingAdapter
+	reads atomic.Int32
+}
+
+func (a *disappearingAdapter) Status() vpn.Status {
+	if a.reads.Add(1) == 1 {
+		return vpn.StatusConnected
+	}
+	return vpn.StatusDisconnected
+}
+
+func TestConnectAttachedDoesNotStartDisappearingTunnel(t *testing.T) {
+	adapter := &disappearingAdapter{blockingAdapter: &blockingAdapter{started: make(chan struct{})}}
+	svc := NewProfileService(ProfileServiceDeps{
+		Cfg:      &config.Config{VPNs: map[string]config.VPNConfig{"work": {Type: "tailscale"}}},
+		Adapters: vpn.NewSet(map[string]vpn.VPNAdapter{"work": adapter}),
+	})
+	if err := svc.ConnectAttached(t.Context(), "work"); !errors.Is(err, ErrTunnelNotAttached) {
+		t.Fatalf("ConnectAttached = %v, want ErrTunnelNotAttached", err)
+	}
+	select {
+	case <-adapter.started:
+		t.Fatal("attach-only restore started an adapter")
+	default:
+	}
+}
 
 // blockingAdapter's Connect waits like a provider adapter waiting for the
 // user in the app: it only returns when its context ends.

@@ -108,6 +108,7 @@ export interface NetworkOverview {
 /** GET /api/v1/metrics/history — internal/monitor/collector.go `ProfileHistory`. */
 export interface ProfileHistory {
   name: string
+  last_connected_at?: string
   samples: number
   connected_samples: number
   uptime_seconds: number

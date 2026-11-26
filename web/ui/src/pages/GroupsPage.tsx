@@ -11,6 +11,7 @@ import { Link } from 'react-router'
 import type { Group, TunnelMetrics } from '../api/types'
 import { describeError } from '../api/errors'
 import { usePreferences } from '../app/preferences-context'
+import { useSearchFocus } from '../app/searchFocus'
 import { ProfilesHeader } from '../components/profiles/Bits'
 import { ConfirmDelete } from '../components/profiles/ConfirmDelete'
 import { localizeError } from '../components/profiles/errors'
@@ -50,6 +51,7 @@ type EditorState = { mode: 'closed' } | { mode: 'create'; seq: number } | { mode
 export function GroupsPage() {
   const { t } = usePreferences()
   const groups = useGroupsList()
+  useSearchFocus(groups.isSuccess)
   const profiles = useProfilesQuery()
   const tunnels = useTunnelsQuery()
   const action = useGroupAction()
@@ -84,7 +86,13 @@ export function GroupsPage() {
         } else if (started.length === 0) {
           toasts.show({ tone: 'info', message: t('groups.toast.already', { name }) })
         } else {
-          toasts.show({ tone: 'info', message: t('groups.toast.connecting', { name, n: started.length }) })
+          toasts.show({
+            tone: 'info',
+            message: t(started.length === 1 ? 'groups.toast.connecting.one' : 'groups.toast.connecting.other', {
+              name,
+              n: started.length,
+            }),
+          })
         }
         return
       }

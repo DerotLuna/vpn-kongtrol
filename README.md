@@ -45,12 +45,16 @@ same time, send each destination (IP range or domain) through the right tunnel, 
 from a CLI with the same features as the app. Free, open source, no account, and it never sends
 your data anywhere.
 
+A **VPN profile** is a named connection configuration; several profiles can use the same provider.
+A **rule** chooses destinations and their behavior for a profile; a **route** is a network path,
+including one provided by a VPN or the operating system.
+
 ## What's new
 
 **v0.6.0:**
 
 - **Desktop app, no terminal needed:** Windows installer, macOS app, `.deb`/`.rpm` packages and a
-  tray icon. On first run the browser panel opens to create your first VPN.
+  tray icon. On first run the browser panel opens to create your first VPN profile.
 - **Diagnostics and export in the panel:** check your computer, repair the network helper and
   download your configuration (without passwords).
 - **WireGuard shows "no answer from the server"** when a tunnel stops getting replies, instead of
@@ -215,7 +219,7 @@ kongtrol dashboard      # open the panel in your browser (already signed in)
 ```
 
 Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
-(Español: [kongtrol.app/guia](https://kongtrol.app/guia)). Several VPNs, groups and rules:
+(Español: [kongtrol.app/guia](https://kongtrol.app/guia)). Several VPN profiles, groups and rules:
 [docs/SETUP.md](docs/SETUP.md).
 
 ## Daily use
@@ -226,8 +230,8 @@ Step-by-step guide: [kongtrol.app/en/guide](https://kongtrol.app/en/guide)
   (VPNs keep running)" only hides the tray icon.
 <!-- feature:profile_live -->
 - Added, renamed or deleted a profile (panel, `kongtrol profile add` or by hand + `kongtrol reload`)?
-  It works at once, no restart. Edited a VPN that is connected? It keeps its old settings until you
-  reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other VPNs are never
+  It works at once, no restart. Edited a connected profile? It keeps its old settings until you
+  reconnect it: the panel offers "Guardar y reconectar", `kongtrol reload` asks; other profiles are never
   touched.
 <!-- feature:add_sheet -->
 - New profile in the panel ("＋ Agregar"): "Guardar y activar" saves it and connects it; "Guardar"
@@ -273,7 +277,7 @@ explains it with the next step and examples. Full reference: [docs/CLI.en.md](do
 | `kongtrol config update-check <on\|off\|status>` | Optional new version notice |
 | `kongtrol config recent-connections <on\|off\|status>` | Recent destinations list (memory only) |
 | `kongtrol config autostart <on\|off\|status>` | Open Kongtrol when you sign in |
-| `kongtrol config restore-tunnels <on\|off\|status>` | Reconnect the VPNs you had connected when Kongtrol starts (off until you turn it on; asked once after your first VPN) |
+| `kongtrol config restore-tunnels <on\|off\|status>` | Reconnect the profiles you had connected when Kongtrol starts (off until you turn it on; asked once after your first connection) |
 | `kongtrol config lang <es\|en>` · `config favorites` · `config dashboard` | Language, favorites, panel address on this computer |
 | `kongtrol reload [profile]` | Apply `kongtrol.yaml` changes without disconnecting |
 | `kongtrol restart` | Restart Kongtrol and reconnect what was connected |

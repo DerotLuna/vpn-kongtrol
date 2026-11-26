@@ -6,15 +6,18 @@
 // cells that read other state (pending action, routes, latency samples)
 // subscribe on their own. Four States: skeleton on first load, the error
 // with what to do, the first-run step when there are no VPNs, the table.
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { TunnelMetrics } from '../../api/types'
 import { usePreferences } from '../../app/preferences-context'
 import { bulkTargets, useTunnelActions } from '../../data/home'
 import { summarizeTunnels } from '../../data/resources'
+import { useProfilesQuery } from '../../data/profiles'
+import { orderedProfiles, profileDescription, useStableProfileOrder } from '../../data/profileList'
 import { guideLink } from '../../links'
 import { Button, IconButton } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { DataList, type Column } from '../ui/DataList'
+import { TextField } from '../ui/Field'
 import { ExternalLink } from '../ui/ExternalLink'
 import { PlugIcon, RefreshIcon } from '../ui/icons'
 import { PowerIcon } from '../profiles/icons'
@@ -41,10 +44,18 @@ const routesDetail = (tn: TunnelMetrics, colSpan: number) => <TunnelRoutesRow na
 export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
   const { t, lang } = usePreferences()
   const run = useTunnelActions()
+  const profiles = useProfilesQuery()
+  const { names: order, freeze } = useStableProfileOrder(tunnels)
+  const [search, setSearch] = useState('')
+  const [limit, setLimit] = useState(10)
+  const descriptions = useMemo(() => new Map((profiles.data ?? []).map((profile) =>
+    [profile.name, profileDescription(profile, t('profile.identity.app'))])), [profiles.data, t])
 
   const columns = useMemo<Column<TunnelMetrics>[]>(
     () => [
-      { id: 'name', header: t('home.col.name'), cell: (tn) => <span className="home-name">{tn.Name}</span> },
+      { id: 'name', header: t('home.col.name'), cell: (tn) => (
+        <span><span className="home-name">{tn.Name}</span>{descriptions.get(tn.Name) && <span className="home-profile-type">{descriptions.get(tn.Name)}</span>}</span>
+      ) },
       { id: 'status', header: t('home.col.status'), cell: (tn) => <TunnelStatusCell tn={tn} /> },
       {
         id: 'ip',
@@ -72,7 +83,7 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
           tn.Status === 'connected' ? (
             <span className="home-latency">
               {tn.LatencyMS > 0 ? <span>{tn.LatencyMS}&#8239;ms</span> : <Dash />}
-              <LatencySparkline name={tn.Name} />
+              <LatencySparkline name={tn.Name} uptime={tn.UptimeSeconds} />
             </span>
           ) : (
             <Dash />
@@ -85,13 +96,17 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
         cell: (tn) => <TunnelActionsCell tn={tn} />,
       },
     ],
-    [t, lang],
+    [t, lang, descriptions],
   )
 
   const list = tunnels ?? []
   const sum = summarizeTunnels(list)
   const toConnect = bulkTargets(list, 'connect')
   const toDisconnect = bulkTargets(list, 'disconnect')
+  const query = search.trim().toLocaleLowerCase()
+  const filtered = orderedProfiles(list, order).filter((tn) =>
+    `${tn.Name} ${descriptions.get(tn.Name) ?? ''}`.toLocaleLowerCase().includes(query))
+  const visible = filtered.filter((tn, index) => index < limit || tn.Status === 'connected')
 
   const head = (
     <div className="home-toolbar">
@@ -155,14 +170,19 @@ export function TunnelsCard({ tunnels, error, onRefresh, onRowRender }: Props) {
       {tunnels && list.length > 0 && (
         <>
           {sum.connected === 0 && <p className="muted">{t('tunnels.allOff')}</p>}
-          <DataList
-            caption={t('home.tunnels.caption')}
-            columns={columns}
-            rows={list}
-            rowKey={(tn) => tn.Name}
-            rowDetail={routesDetail}
-            {...(onRowRender ? { onRowRender } : {})}
-          />
+          {(list.length > 10 || search !== '') && <TextField type="search" label={t('home.profiles.search')} value={search} onChange={(event) => { setSearch(event.target.value); setLimit(10) }} />}
+          {filtered.length === 0 && <p role="status">{t('home.profiles.empty')}</p>}
+          <div onPointerEnter={freeze} onFocusCapture={freeze}>
+            <DataList
+              caption={t('home.tunnels.caption')}
+              columns={columns}
+              rows={visible}
+              rowKey={(tn) => tn.Name}
+              rowDetail={routesDetail}
+              {...(onRowRender ? { onRowRender } : {})}
+            />
+          </div>
+          {visible.length < filtered.length && <Button variant="outlined" onClick={() => setLimit((current) => current + 20)}>{t('home.profiles.more', { count: filtered.length - visible.length })}</Button>}
           <p className="home-help">
             <ExternalLink href={guideLink('connect')}>{t('help.connect')}</ExternalLink>
           </p>

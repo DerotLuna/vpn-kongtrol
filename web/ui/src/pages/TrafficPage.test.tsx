@@ -100,6 +100,8 @@ describe('TrafficPage', () => {
     const card = await screen.findByRole('region', { name: 'work' })
     expect(within(card).getByText('Conectada')).toBeInTheDocument()
     const toggle = await within(card).findByRole('button', { name: 'Qué sale por este túnel (2)' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(within(card).getByText('El servidor de la VPN pidió 1')).toBeInTheDocument()
     expect(within(card).getByText('Por tu regla ai: 1')).toBeInTheDocument()
@@ -133,7 +135,7 @@ describe('TrafficPage', () => {
     await user.clear(input)
     await user.type(input, 'app:teams.exe{Enter}')
     expect(await screen.findByText('Ninguna regla nombra app:teams.exe.')).toBeInTheDocument()
-    expect(screen.getByText(/Programas: solo salen por la VPN en Linux/)).toBeInTheDocument()
+    expect(screen.getByText(/Programas: solo salen por un perfil WireGuard/)).toBeInTheDocument()
     expect(screen.queryByText(/app:teams.exe sale por/)).not.toBeInTheDocument()
     expect(fetchMock.mock.calls.some(([u]) => String(u) === '/api/v1/resolve?app=teams.exe')).toBe(true)
 
@@ -170,7 +172,7 @@ describe('TrafficPage', () => {
     const user = userEvent.setup()
     const toggle = await screen.findByRole('button', { name: 'Qué sale por este túnel (2)' })
     await user.click(toggle)
-    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
 
     renders.length = 0
     const homeSame = (client.getQueryData<TunnelMetrics[]>(keys.tunnels) ?? []).find((t) => t.Name === 'home')!
@@ -180,7 +182,7 @@ describe('TrafficPage', () => {
     expect(renders).toContain('work')
     expect(renders).not.toContain('home')
     expect(homeSame.UpdatedAt).toBe(at(0))
-    expect(screen.getByRole('button', { name: 'Qué sale por este túnel (2)' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'Qué sale por este túnel (2)' })).toHaveAttribute('aria-expanded', 'true')
 
     // Two frames give a chart with a text alternative.
     act(() => {
@@ -200,7 +202,7 @@ describe('TrafficPage', () => {
       }),
     )
     renderPage()
-    expect(await screen.findByRole('heading', { name: 'Ninguna VPN conectada' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Ninguna conexión VPN activa' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ir a Inicio' })).toHaveAttribute('href', '/')
     expect(await screen.findByRole('heading', { name: 'Todavía no tienes reglas' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ir a Reglas' })).toHaveAttribute('href', '/rules')

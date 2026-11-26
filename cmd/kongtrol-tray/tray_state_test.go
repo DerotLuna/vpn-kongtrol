@@ -6,12 +6,41 @@ import (
 	"reflect"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/vpn-kongtrol/kongtrol/assets"
+	"github.com/vpn-kongtrol/kongtrol/internal/config"
 	"github.com/vpn-kongtrol/kongtrol/internal/i18n"
 	"github.com/vpn-kongtrol/kongtrol/internal/monitor"
 	"github.com/vpn-kongtrol/kongtrol/internal/vpn"
 )
+
+func TestTrayProfileOrderAndIdentity(t *testing.T) {
+	states := map[string]monitor.TunnelMetrics{"up": {Status: vpn.StatusConnected}}
+	history := map[string]monitor.ProfileHistory{"recent": {LastConnectedAt: time.Unix(100, 0)}}
+	got := trayProfileOrder([]string{"old", "recent", "up"}, states, history)
+	if !reflect.DeepEqual(got, []string{"up", "recent", "old"}) {
+		t.Fatalf("order = %v", got)
+	}
+	for _, tt := range []struct{ typ, want string }{
+		{"protonvpn", "Proton VPN · app"},
+		{"wireguard", "WireGuard"},
+		{"openvpn", "OpenVPN"},
+		{"unknown", ""},
+	} {
+		if got := trayProfileDescription(config.VPNConfig{Type: tt.typ}); got != tt.want {
+			t.Errorf("%s: got %q, want %q", tt.typ, got, tt.want)
+		}
+	}
+}
+
+func TestTrayRestoringState(t *testing.T) {
+	trayLang = i18n.ES
+	v := trayTunnelView("work", monitor.TunnelMetrics{Status: vpn.StatusConnecting, Restoring: true})
+	if v.Title != "work · reconectando…" || v.Kind != kindConnecting {
+		t.Fatalf("restore view: %+v", v)
+	}
+}
 
 func TestTrayTunnelViews_ConnectedFirst(t *testing.T) {
 	trayLang = i18n.ES
@@ -93,13 +122,13 @@ func TestTrayHeaderTransitions(t *testing.T) {
 		badge   assets.TrayBadge
 		startOn bool
 	}{
-		{daemonRunning, up, "1 VPN conectada", "1 VPN connected", assets.BadgeLive, false},
+		{daemonRunning, up, "1 perfil VPN conectado", "1 VPN profile connected", assets.BadgeLive, false},
 		{daemonStopped, nil, "Kongtrol detenido", "Kongtrol stopped", assets.BadgeStopped, true},
 		{daemonStarting, nil, "Iniciando Kongtrol…", "Starting Kongtrol…", assets.BadgeNone, false},
-		{daemonRunning, []tunnelView{{Checked: true, Kind: kindUp}, {Checked: true, Kind: kindUp}}, "2 VPN conectadas", "2 VPNs connected", assets.BadgeLive, false},
-		{daemonRunning, []tunnelView{{Kind: kindDown}}, "Ninguna VPN conectada", "No VPN connected", assets.BadgeNone, false},
-		{daemonRunning, []tunnelView{{Kind: kindError}, {Kind: kindCaution}}, "Ninguna VPN conectada", "No VPN connected", assets.BadgeError, false},
-		{daemonRunning, []tunnelView{{Checked: true, Kind: kindCaution}}, "1 VPN conectada", "1 VPN connected", assets.BadgeCaution, false},
+		{daemonRunning, []tunnelView{{Checked: true, Kind: kindUp}, {Checked: true, Kind: kindUp}}, "2 perfiles VPN conectados", "2 VPN profiles connected", assets.BadgeLive, false},
+		{daemonRunning, []tunnelView{{Kind: kindDown}}, "No hay perfiles VPN conectados", "No VPN profiles connected", assets.BadgeNone, false},
+		{daemonRunning, []tunnelView{{Kind: kindError}, {Kind: kindCaution}}, "No hay perfiles VPN conectados", "No VPN profiles connected", assets.BadgeError, false},
+		{daemonRunning, []tunnelView{{Checked: true, Kind: kindCaution}}, "1 perfil VPN conectado", "1 VPN profile connected", assets.BadgeCaution, false},
 		{daemonUnresponsive, nil, "Kongtrol no responde · espera o abre el panel", "Kongtrol is not responding · wait or open the panel", assets.BadgeCaution, false},
 	}
 	for i, s := range steps {

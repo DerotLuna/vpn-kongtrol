@@ -10,6 +10,9 @@ import { useCallback } from 'react'
 import { useAddSheet } from '../../app/addLink'
 import { usePreferences } from '../../app/preferences-context'
 import { useVpnRoutesQuery } from '../../data/rules'
+import { useProfilesQuery } from '../../data/profiles'
+import { profileDescription } from '../../data/profileList'
+import { isKnownType } from '../profiles/catalog'
 import type { MessageKey } from '../../i18n/messages'
 import { IconButton } from '../ui/Button'
 import { Card } from '../ui/Card'
@@ -20,6 +23,7 @@ import { conflictText, profileSummary, routeRows, rowLabel, ruleTarget, type Pro
 export function VpnRoutes() {
   const { t } = usePreferences()
   const q = useVpnRoutesQuery()
+  const profiles = useProfilesQuery()
   const list = q.data ?? []
   return (
     // feature:vpn_routes
@@ -37,7 +41,15 @@ export function VpnRoutes() {
       ) : (
         <div className="r-vpnroutes__list">
           {list.map((p) => (
-            <ProfileRoutes key={p.name} p={p} />
+            <ProfileRoutes
+              key={p.name}
+              p={p}
+              identity={profileDescription(
+                profiles.data?.find((profile) => profile.name === p.name)
+                  ?? (isKnownType(p.type) ? { type: p.type } : undefined),
+                t('profile.identity.app'),
+              )}
+            />
           ))}
         </div>
       )}
@@ -46,7 +58,7 @@ export function VpnRoutes() {
   )
 }
 
-function ProfileRoutes({ p }: { p: ProfileOwnRoutes }) {
+function ProfileRoutes({ p, identity }: { p: ProfileOwnRoutes; identity: string }) {
   const { t } = usePreferences()
   const { open } = useAddSheet()
   const moveElsewhere = useCallback((target: string) => open({ mode: 'rule', target }), [open])
@@ -62,6 +74,7 @@ function ProfileRoutes({ p }: { p: ProfileOwnRoutes }) {
     <details className="r-disclosure r-vpnroute">
       <summary>
         <span className="r-vpnroute__name">{p.name}</span>
+        {identity && <span className="r-vpnroute__meta">· {identity}</span>}
         <span className="r-vpnroute__meta">· {profileSummary(p, t)}</span>
       </summary>
       {rows.length > 0 && (

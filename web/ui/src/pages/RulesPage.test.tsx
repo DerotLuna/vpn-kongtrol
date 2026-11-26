@@ -34,6 +34,68 @@ function routes(extra: Routes = {}, policies: unknown[] = [work, lab]): Routes {
 }
 
 describe('Rules page', () => {
+  it('identifies each profile beside its own routes without guessing an unknown provider', async () => {
+    stubFetch(routes({
+      'GET /api/v1/vpns': () => json([
+        { name: 'proton', type: 'wireguard', provider: 'protonvpn', priority: 10 },
+        { name: 'office', type: 'openvpn', priority: 10 },
+        { name: 'app', type: 'nordvpn', priority: 10 },
+      ]),
+      'GET /api/v1/vpns/routes': () => json({ profiles: [
+        { name: 'proton', type: 'wireguard', source: 'config', routes: [] },
+        { name: 'office', type: 'openvpn', source: 'config', routes: [] },
+        { name: 'app', type: 'nordvpn', source: 'app', routes: [] },
+      ] }),
+    }, []))
+    render(<App />)
+    const heading = await screen.findByRole('heading', { name: 'Routes belonging to each profile' })
+    const card = heading.closest('section')!
+    await waitFor(() => {
+      expect(within(card).getByText('proton').closest('summary')).toHaveTextContent('Proton VPN · WireGuard')
+      expect(within(card).getByText('office').closest('summary')).toHaveTextContent('OpenVPN')
+      expect(within(card).getByText('app').closest('summary')).toHaveTextContent('NordVPN · app')
+    })
+  })
+
+  it('keeps the protocol visible on routes when profile details are unavailable', async () => {
+    stubFetch(routes({
+      'GET /api/v1/vpns': () => json({ error: 'unavailable' }, 500),
+      'GET /api/v1/vpns/routes': () => json({ profiles: [
+        { name: 'office', type: 'openvpn', source: 'config', routes: [] },
+      ] }),
+    }, []))
+    render(<App client={noRetryClient()} />)
+    const heading = await screen.findByRole('heading', { name: 'Routes belonging to each profile' })
+    expect(await within(heading.closest('section')!).findByText('· OpenVPN')).toBeInTheDocument()
+  })
+
+  it('adds multiple suggestions to an existing rule without saving or replacing its destinations', async () => {
+    let saved: { match?: { domains?: string[]; ip_ranges?: string[]; apps?: string[] } } | undefined
+    const fetchMock = stubFetch(routes({
+      'PUT /api/v1/policies/Lab': (init) => {
+        saved = JSON.parse(String(init?.body))
+        return json({ status: 'updated' })
+      },
+    }))
+    render(<App />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Edit “Lab”' }))
+    const input = screen.getByRole<HTMLTextAreaElement>('textbox', { name: /Site, IP or program/ })
+    await userEvent.click(screen.getByRole('button', { name: 'Claude' }))
+    await userEvent.click(screen.getByRole('button', { name: 'X / Twitter' }))
+    await userEvent.click(screen.getByRole('button', { name: 'X / Twitter' }))
+    expect(input.value).toContain('10.2.0.0/16')
+    expect(input.value).toContain('app:code.exe')
+    expect(input.value).toContain('claude.ai')
+    expect(input.value.match(/^x\.com$/gm)).toHaveLength(1)
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    await waitFor(() => expect(saved?.match).toMatchObject({
+      domains: expect.arrayContaining(['claude.ai', 'x.com']),
+      ip_ranges: ['10.2.0.0/16'],
+      apps: ['code.exe'],
+    }))
+  })
+
   it('shows one recovery notice when authorization is refused', async () => {
     stubFetch(routes({
       'GET /api/v1/policies': () => Promise.resolve(new Response('forbidden origin', { status: 403 })),
@@ -65,7 +127,7 @@ describe('Rules page', () => {
     const table = await screen.findByRole('table', { name: 'Rules by destination, in the order they are checked' })
     const [workRow, labRow] = within(table).getAllByRole('row').slice(1)
     const tag = within(labRow!).getByRole('button', { name: 'not applied yet' })
-    expect(tag).toHaveAccessibleDescription(/this VPN does not carry programs/)
+    expect(tag).toHaveAccessibleDescription(/this profile does not send program traffic through the VPN/)
     expect(within(workRow!).queryByRole('button', { name: 'not applied yet' })).not.toBeInTheDocument()
   })
 
@@ -84,9 +146,9 @@ describe('Rules page', () => {
     )
     render(<App />)
     await userEvent.click(await screen.findByRole('button', { name: 'Create the first rule' }))
-    const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
+    const sheet = await screen.findByRole('dialog', { name: 'Add routing rule' })
     fireEvent.change(await within(sheet).findByRole('textbox', { name: /Site, IP or program/ }), { target: { value: 'app:claude.exe' } })
-    const notApplied = 'Programs: they only go through the VPN on Linux, with a WireGuard profile that has Executable egress on. Otherwise Kongtrol only recognises them: use sites or IPs.'
+    const notApplied = 'Programs: they only go through a WireGuard profile on Linux with Executable egress on. Otherwise Kongtrol only recognises them: use sites or IPs.'
     expect(within(sheet).getByText(notApplied)).toBeInTheDocument()
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save paused' }))
     expect(await within(sheet).findByText('The rule “claude.exe via home” is saved.')).toBeInTheDocument()
@@ -127,7 +189,7 @@ describe('Rules page', () => {
     expect(await screen.findByText('No rules yet')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Create the first rule' }))
 
-    const sheet = await screen.findByRole('dialog', { name: 'Send a site through a VPN' })
+    const sheet = await screen.findByRole('dialog', { name: 'Add routing rule' })
     expect(new URLSearchParams(window.location.search).get('add')).toBe('rule')
     // Nothing typed: the error names the problem and says what to do.
     await userEvent.click(await within(sheet).findByRole('button', { name: 'Save paused' }))
@@ -139,7 +201,7 @@ describe('Rules page', () => {
     expect(body).toBeNull()
     expect(destinations).toHaveAttribute('aria-invalid', 'true')
     fireEvent.change(destinations, { target: { value: 'https://git.acme.test/x,y, git.acme.test\n192.0.2.4\napp:Code, Inc.exe' } })
-    expect(within(sheet).getByRole('button', { name: /Goes through/ })).toHaveTextContent(/home/)
+    expect(within(sheet).getByRole('button', { name: /Outgoing profile/ })).toHaveTextContent(/home/)
     await userEvent.click(within(sheet).getByRole('radio', { name: 'Block it' }))
     await userEvent.click(within(sheet).getByRole('button', { name: 'Save paused' }))
 
@@ -322,7 +384,7 @@ describe('Rules page: order between overlapping rules (ADR-0108)', () => {
     expect(within(rows[1]!).getByRole('link', { name: 'Priority 10' })).toHaveAttribute('href', '/profiles?edit=home&focus=priority')
     // Lab only overlaps by a nested range: the most specific one wins, the order changes nothing.
     expect(within(rows[2]!).queryByRole('link', { name: /Priority|by position/ })).not.toBeInTheDocument()
-    expect(screen.getByText('Both VPNs have the same priority: the position in the list decides.')).toBeInTheDocument()
+    expect(screen.getByText('Both profiles have the same priority: the position in the list decides.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Change the priority of home' })).toHaveAttribute('href', '/profiles?edit=home&focus=priority')
   })
 
@@ -348,6 +410,6 @@ describe('Rules page: order between overlapping rules (ADR-0108)', () => {
     render(<App />)
     const table = await screen.findByRole('table', { name: 'Rules by destination, in the order they are checked' })
     expect(within(table).getAllByRole('link', { name: 'by position' })).toHaveLength(2)
-    expect(screen.getByText('Neither VPN has a priority: the position in the list decides.')).toBeInTheDocument()
+    expect(screen.getByText('Neither profile has a priority: the position in the list decides.')).toBeInTheDocument()
   })
 })

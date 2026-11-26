@@ -1,10 +1,12 @@
-// Kongtrol UI — C: "Hacer que un sitio salga por una VPN" · v1.1.0 · 2026-11-24
+// Kongtrol UI — C: "Agregar regla de salida" · v1.1.0 · 2026-11-24
 //
 // The daemon previews the first destination before and after activation.
 // The entire list is validated before the rule is saved paused.
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { useDraftRuleTest } from '../../data/add'
+import { useProfilesQuery } from '../../data/profiles'
+import { profileDescription } from '../../data/profileList'
 import { useExplain, usePoliciesQuery, useSavePolicy } from '../../data/rules'
 import type { TunnelMetrics } from '../../api/types'
 import type { MessageKey } from '../../i18n/messages'
@@ -13,8 +15,9 @@ import { SelectField, TextAreaField, TextField, type FieldError } from '../ui/Fi
 import { Banner } from '../ui/States'
 import { TUNNEL_DOWN_CHOICES, type OnTunnelDown, type PolicyPayload } from '../rules/model'
 import { ArrowLeftIcon } from '../profiles/icons'
-import { autoName as suggestName, isValidName, matchOf, nameSource, probeOf, readDestinations, type Classified, type Entry, type RuleDraft } from './model'
+import { appendRulePreset, autoName as suggestName, isValidName, matchOf, nameSource, probeOf, readDestinations, type Classified, type Entry, type RuleDraft } from './model'
 import { ErrorBanner } from './parts'
+import { RuleSuggestions } from './RuleSuggestions'
 
 export type { RuleDraft }
 
@@ -59,6 +62,7 @@ function problemText(c: Classified, t: T): FieldError | null {
 export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, backNote, onBack, onNeedVpn, onDone }: Props) {
   const { t } = usePreferences()
   const policies = usePoliciesQuery()
+  const profileDetails = useProfilesQuery()
   const save = useSavePolicy()
   const [tried, setTried] = useState(false)
   const [refusal, setRefusal] = useState<unknown>(null)
@@ -178,11 +182,12 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
   const afterLine = afterText()
 
   return (
-    <form className="k-add__step" onSubmit={(e) => void submit(e)} noValidate>
+    <form className="k-add__step k-add-rule" onSubmit={(e) => void submit(e)} noValidate>
       {backNote && (
         <Banner tone="ok" title={backNote} />
       )}
       {refusal !== null && <ErrorBanner error={refusal} />}
+      <RuleSuggestions onAdd={(preset) => onChange(appendRulePreset(draft, preset))} />
       <TextAreaField
         label={t('add.rule.input')}
         hint={t('add.rule.input.hint')}
@@ -212,7 +217,11 @@ export function RuleStep({ draft, onChange, profiles, profileAction, tunnels, ba
         error={viaError}
         mono
         placeholder={t('add.rule.via.pick')}
-        options={profiles.map((p) => ({ value: p, label: t(state(p) === 'connected' ? 'add.rule.via.on' : 'add.rule.via.off', { name: p }) }))}
+        options={profiles.map((p) => {
+          const identity = profileDescription(profileDetails.data?.find((profile) => profile.name === p), t('profile.identity.app'))
+          const name = identity ? `${p} · ${identity}` : p
+          return { value: p, label: t(state(p) === 'connected' ? 'add.rule.via.on' : 'add.rule.via.off', { name }) }
+        })}
       />
       <fieldset className="k-add-radios" aria-invalid={downError ? true : undefined}>
         <legend className="k-field__label">{t('add.rule.down')}</legend>

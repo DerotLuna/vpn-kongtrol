@@ -46,7 +46,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return conn.WriteMessage(1, data) == nil
 	}
 	send := func() bool {
-		snapshot := s.collector.Snapshot()
+		snapshot := s.collector.ClientSnapshot()
 		if events {
 			return write(map[string]any{"type": "metrics", "tunnels": snapshot})
 		}

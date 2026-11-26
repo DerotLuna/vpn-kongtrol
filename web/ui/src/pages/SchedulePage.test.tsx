@@ -162,7 +162,7 @@ describe('Schedule page', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /Name/ }), 'Night')
     fireEvent.change(screen.getByLabelText('Until'), { target: { value: '09:00' } })
     await userEvent.click(screen.getByRole('button', { name: 'Create schedule' }))
-    expect(screen.getByText('The VPN is missing.')).toBeInTheDocument()
+    expect(screen.getByText('Choose a VPN profile.')).toBeInTheDocument()
     expect(screen.getByText('It starts and ends at the same time, so it would never turn on.')).toBeInTheDocument()
     expect(post).not.toHaveBeenCalled()
   })

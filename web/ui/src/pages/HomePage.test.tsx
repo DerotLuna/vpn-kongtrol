@@ -120,12 +120,50 @@ beforeEach(() => {
 })
 
 describe('Inicio: states', () => {
+  it('shows a planned restore as reconnecting and lets the user cancel it', async () => {
+    stubApi(base([{ ...tunnel('work', 'connecting'), restoring: true }]))
+    render(<App />)
+    const row = await rowOf('work')
+    expect(within(row).getByText('Reconectando')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Cancelar work' })).toBeEnabled()
+  })
+
+  it('finds and identifies profiles in a long list', async () => {
+    const list = Array.from({ length: 12 }, (_, i) => tunnel(`profile-${i}`, 'disconnected'))
+    stubApi(base(list, {
+      'GET /api/v1/vpns': () => json([{ name: 'profile-11', type: 'wireguard', provider: 'protonvpn' }]),
+      'GET /api/v1/metrics/history': () => json({}),
+    }))
+    render(<App />)
+    const search = await screen.findByRole('searchbox', { name: 'Buscar perfiles' })
+    await userEvent.type(search, 'Proton')
+    const row = await rowOf('profile-11')
+    expect(within(row).getByText('Proton VPN · WireGuard')).toBeInTheDocument()
+    expect(screen.queryByText('profile-0', { selector: '.home-name' })).not.toBeInTheDocument()
+  })
+
+  it('does not move profiles under the pointer when history arrives late', async () => {
+    let finish!: (response: Response) => void
+    const history = new Promise<Response>((resolve) => { finish = resolve })
+    stubApi(base([tunnel('first', 'disconnected'), tunnel('recent', 'disconnected')], {
+      'GET /api/v1/metrics/history': () => history,
+    }))
+    render(<App />)
+    const first = await rowOf('first')
+    await userEvent.hover(first)
+    await act(async () => {
+      finish(await json({ recent: { name: 'recent', last_connected_at: '2026-11-24T10:00:00Z' } }))
+    })
+    const names = document.querySelectorAll('.home-name')
+    expect(Array.from(names, (name) => name.textContent)).toEqual(['first', 'recent'])
+  })
+
   it('shows skeletons first, then every tunnel field, in Spanish', async () => {
     stubApi(base([work, tunnel('home', 'disconnected')]))
     render(<App />)
 
     expect(screen.getByRole('heading', { level: 1, name: 'Inicio' })).toBeInTheDocument()
-    expect(screen.getByRole('status', { name: 'Cargando tus VPN' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Cargando tus perfiles VPN' })).toBeInTheDocument()
 
     const row = await rowOf('work')
     expect(within(row).getByText('Conectada')).toHaveClass('pill', 'ok')
@@ -155,7 +193,7 @@ describe('Inicio: states', () => {
     }
     expect(within(row).getByRole('button', { name: 'Desconectar work' })).toHaveClass('k-icon-btn--strong')
     expect(within(row).getByRole('button', { name: 'Reconectar work' })).toHaveClass('k-icon-btn--outlined')
-    expect(within(row).getByRole('button', { name: 'Hacer que un sitio salga por work' })).toHaveClass('k-icon-btn--outlined')
+    expect(within(row).getByRole('button', { name: 'Agregar regla de salida por el perfil work' })).toHaveClass('k-icon-btn--outlined')
     expect(within(off).getByRole('button', { name: 'Conectar home' })).toHaveClass('k-icon-btn--filled')
     expect(within(off).queryByRole('button', { name: 'Reconectar home' })).toBeNull()
     expect(squares(row).filter((b) => b.matches('.k-icon-btn--filled, .k-icon-btn--strong'))).toHaveLength(1)
@@ -165,11 +203,11 @@ describe('Inicio: states', () => {
     expect(screen.queryByRole('button', { name: 'Instalar ayudante' })).toBeNull()
   })
 
-  it('first run: no VPNs yet → one primary "Agregar VPN" that opens the add sheet + the quick start guide', async () => {
+  it('first run: no VPN profiles yet → one primary "Agregar perfil VPN" that opens the add sheet + the quick start guide', async () => {
     stubApi(base([]))
     render(<App />)
-    expect(await screen.findByRole('heading', { name: 'Agrega tu primera VPN' })).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Agregar VPN' }))
+    expect(await screen.findByRole('heading', { name: 'Agrega tu primer perfil VPN' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Agregar perfil VPN' }))
     expect(await screen.findByRole('dialog', { name: 'Agregar' })).toBeInTheDocument()
     expect(new URLSearchParams(window.location.search).get('add')).toBe('menu')
     expect(screen.getByRole('link', { name: /guía de inicio rápido/ })).toHaveAttribute('target', '_blank')
@@ -275,7 +313,7 @@ describe('Inicio: tunnel lines', () => {
     stubApi(base([work]), FakeSocket)
     render(<App />)
     const row = await rowOf('work')
-    expect(within(row).getByText('Midiendo')).toBeInTheDocument()
+    expect(within(row).queryByText('Midiendo')).not.toBeInTheDocument()
     const ws = FakeSocket.last()
     act(() => ws.open())
     act(() => ws.push({ work: { ...work, LatencyMS: 40 } }))
@@ -285,6 +323,19 @@ describe('Inicio: tunnel lines', () => {
     expect(
       await within(row).findByRole('img', { name: 'Latencia de las últimas 3 medidas: entre 40 y 55 ms, ahora 55 ms.' }),
     ).toBeInTheDocument()
+  })
+
+  it('does not keep measuring indefinitely when a connected VPN has no latency', async () => {
+    stubApi(base([tunnel('office', 'connected', { UptimeSeconds: 100, LatencyMS: 0 })]), FakeSocket)
+    render(<App />)
+    const row = await rowOf('office')
+    expect(within(row).getByText('Sin medición')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Por qué no hay latencia' })).toHaveAccessibleDescription(/servidor de la VPN/)
+    expect(within(row).queryByText('Midiendo')).not.toBeInTheDocument()
+    act(() => FakeSocket.last().open())
+    act(() => FakeSocket.last().push({ office: tunnel('office', 'connected', { UptimeSeconds: 105, LatencyMS: 32 }) }))
+    await waitFor(() => expect(within(row).getByText(/32/)).toBeInTheDocument())
+    expect(within(row).queryByText('Sin medición')).not.toBeInTheDocument()
   })
 })
 
@@ -313,7 +364,7 @@ describe('Inicio: tunnel actions', () => {
     render(<App />)
     const row = await rowOf('work')
     await userEvent.click(within(row).getByRole('button', { name: 'Conectar work' }))
-    expect(await screen.findByText('Kongtrol no encuentra la VPN work.')).toBeInTheDocument()
+    expect(await screen.findByText('Kongtrol no encuentra el perfil VPN work.')).toBeInTheDocument()
     expect(screen.getByText(/Qué hacer: actualiza la lista/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
     expect(await within(row).findByText('Desconectada')).toBeInTheDocument()
@@ -521,11 +572,11 @@ describe('Inicio: groups, egress, protection, notices', () => {
     const card = (await screen.findByRole('heading', { name: 'Grupos' })).closest('section')!
     expect(await within(card).findByText('oficina')).toBeInTheDocument()
     // work is up: the count says so and both squares explain themselves.
-    expect(within(card).getByText('1 de 3 conectadas')).toBeInTheDocument()
+    expect(within(card).getByText('1 de 3 perfiles conectados')).toBeInTheDocument()
 
     await userEvent.click(within(card).getByRole('button', { name: 'Conectar las que faltan en oficina (2 de 3)' }))
-    expect(await screen.findByText('Conectando el grupo oficina: 1 VPN.')).toBeInTheDocument()
-    expect(screen.getByText(/todavía no las conoce \(reinícialo\): nueva/)).toBeInTheDocument()
+    expect(await screen.findByText('Conectando el grupo oficina: 1 perfil VPN.')).toBeInTheDocument()
+    expect(screen.getByText(/todavía no los conoce \(reinícialo\): nueva/)).toBeInTheDocument()
 
     act(() => toasts.clear()) // one toast at a time: let the error show now
     await userEvent.click(within(card).getByRole('button', { name: /^Desconectar todas en oficina/ }))
@@ -554,9 +605,9 @@ describe('Inicio: groups, egress, protection, notices', () => {
     const fetchMock = stubApi(base([work]))
     render(<App />)
     const card = (await screen.findByRole('heading', { name: 'Protección' })).closest('section')!
-    expect(await within(card).findByText('Armado')).toHaveClass('pill', 'on')
-    expect(within(card).getByText('Protege 2 VPN conectadas.')).toBeInTheDocument()
-    expect(within(card).getByText('Activa')).toHaveClass('pill', 'on')
+    expect(await within(card).findByText('Armado')).toHaveClass('pill', 'ok')
+    expect(within(card).getByText('Protege 2 conexiones VPN.')).toBeInTheDocument()
+    expect(within(card).getByText('Activa')).toHaveClass('pill', 'ok')
     expect(within(card).getByText(/no consulta ningún servicio externo/)).toBeInTheDocument()
     expect(within(card).queryByRole('button', { name: 'Revisar IP pública' })).toBeNull()
     expect(within(card).getByRole('link', { name: 'Gestionar en Seguridad' })).toHaveAttribute('href', '/security')
@@ -619,6 +670,7 @@ describe('Inicio: groups, egress, protection, notices', () => {
     expect(sessionStorage.getItem('kongtrol.noticeSeq')).toBe('7')
     // The toast too (with its own action button).
     expect(screen.getAllByText('claude.ai sale por internet normal · brainbox está apagado')).toHaveLength(2)
+    expect(toasts.get().find((toast) => toast.notice?.profile === 'brainbox')?.duration).toBe(0)
     await userEvent.click(within(card).getByRole('button', { name: 'Conectar brainbox' }))
     await waitFor(() => expect(posts(fetchMock)).toContain('/api/v1/tunnels/brainbox/connect'))
   })
@@ -651,6 +703,18 @@ describe('Inicio: only changed rows re-render', () => {
       </PreferencesProvider>
     )
   }
+
+  it('keeps the active search editable when profiles are removed', async () => {
+    stubApi(base([], { 'GET /api/v1/metrics/history': () => json({}) }))
+    const list = Array.from({ length: 11 }, (_, i) => tunnel(`profile-${i}`, 'disconnected'))
+    const { rerender } = render(<Harness list={list} onRow={() => {}} />)
+    const search = await screen.findByRole('searchbox', { name: 'Buscar perfiles' })
+    await userEvent.type(search, 'profile-1')
+    rerender(<Harness list={list.slice(0, 10)} onRow={() => {}} />)
+    expect(screen.getByRole('searchbox', { name: 'Buscar perfiles' })).toHaveValue('profile-1')
+    await userEvent.clear(search)
+    expect(screen.queryByRole('searchbox', { name: 'Buscar perfiles' })).not.toBeInTheDocument()
+  })
 
   it('a tick that changes one tunnel re-renders only its row', async () => {
     stubApi(base([]))
@@ -698,6 +762,10 @@ describe('Inicio: pure helpers', () => {
   })
 
   it('maps the security status like `kongtrol status`', () => {
+    expect(securityView(security()).killSwitch.tone).toBe('ok')
+    expect(securityView(security()).dnsGuard.tone).toBe('ok')
+    expect(securityView(security({ kill_switch_status: { state: 'armed', protected: [] } })).killSwitch.tone).toBe('on')
+    expect(securityView(security({ dns_guard: false, dns_guard_state: 'idle' })).dnsGuard.tone).toBe('on')
     expect(securityView(security({ kill_switch_status: { state: 'active', blocking: ['brainbox'] } })).killSwitch).toMatchObject({
       tone: 'caution',
       label: 'home.sec.ks.active',

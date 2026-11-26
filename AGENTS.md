@@ -96,6 +96,12 @@ When adding a new adapter:
   `internal/autostart` (Windows Run + `StartupApproved\Run`, XDG `Hidden=true`, macOS
   LaunchAgent); both in Ajustes › Al iniciar, `GET/PUT /api/v1/startup`,
   `kongtrol config autostart|restore-tunnels`.
+- Planned startup connects are registered before the API listens (ADR-0121):
+  client snapshots say `connecting` plus `restoring` for restore/restart, without
+  changing internal adapter state. Cancel waits for the scheduled attempt before
+  disconnecting; disabling restore cancels automatic restores, not explicit restarts.
+  Provider restores use `ProfileService.ConnectAttached`, which never starts an
+  adapter if its tunnel disappeared after planning.
 - After `kongtrol down` the tray stays open: header "Kongtrol detenido", an "Iniciar Kongtrol"
   item (`ensureDaemon`), and it recovers by itself when any client starts the daemon again
   (it keeps polling; refused connection = stopped, timeout = "no responde"). ADR-0037.
@@ -248,7 +254,8 @@ of quality, correctness or coverage: cut waste, not checks.
 **Brand and icon standard (owner-approved, ADR-0047/0051/0052).** Every logo, icon and image
 follows DESIGN.md "Logo (name and sizes)": all bitmaps generated from the SVG masters by
 `assets/brand/generate.go` (never hand-made, never a PNG logo on a filled disc); solid mark up to
-~64 px (favicon, tray, panel marks, landing header), line art from ~128 px; the app icon (Ink
+~64 px (favicon, tray, panel marks), line art from ~128 px, with the owner-approved header
+exceptions in DESIGN.md (including the panel's 48 px mark, ADR-0119); the app icon (Ink
 squircle plate + Bone solid mark, plain mid-tone mark ≤ 24 px) is the only logo with a background;
 web logos are transparent and follow the theme. A new surface (store listing, social card, PWA,
 docs) reuses these assets; any deviation is proposed first and gets an ADR.
@@ -311,7 +318,7 @@ ProfileService.Disconnect(name)
 | `internal/sockowner` | Who owns the server end of a loopback TCP connection, no admin: Windows `GetExtendedTcpTable` + process token SID, Linux `/proc/net/tcp` uid, macOS unknown (ADR-0062) |
 | `internal/vpn/appattach` | Attach mode shared by provider adapters |
 | `internal/vpndetect` | Per-OS detection of VPN client binaries (wizard, preflight, doctor); `FileVersion` (Win32 version API, never launches the binary) |
-| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105; folder mode `PickFolder`, ADR-0112; the dialog stays topmost while open (re-asserted every 250 ms) and a second click while it is open brings it to the front before answering 409 `api.err.picker_busy`; closing the Add sheet aborts the request, which closes the dialog (ADR-0117) |
+| `internal/filepicker` | The OS's own "Open file" dialog for the panel's "Elegir archivo" (`github.com/ncruces/zenity`, no cgo; one at a time; Windows z-order raise), ADR-0105; folder mode `PickFolder`, ADR-0112; the dialog stays topmost while open (re-asserted every 250 ms) and a second click while it is open brings it to the front before answering 409 `api.err.picker_busy`; closing the Add sheet aborts the request, which closes the dialog (ADR-0117; Windows posts WM_CLOSE, ADR-0120) |
 | `internal/update` | Opt-in new version notice: GitHub Releases latest, ≤1 request/24 h, semver compare, never downloads (ADR-0034) |
 | `internal/uninstall` | Uninstall plan per channel (install.manifest, Windows installer, package managers) and data purge with the exact keychain entries (ADR-0034) |
 | `internal/doctor` | Diagnostics shared by `kongtrol doctor` and `GET /api/v1/doctor`: `Run(Options)` → translated checks, each with a "what to do" `Hint` and an optional `Fix` (only `helper_install`, offered by the GUI) |
@@ -341,6 +348,15 @@ Go embed paths are relative to the source file — no `../` allowed. Embed point
 - `web/ui_embed.go` embeds `ui/dist/`
 - `assets/embed.go` embeds from `assets/brand/`
 - Never commit duplicate brand files: web clients get logos from `assets/brand` (bundled by Vite from `@brand` or copied at build time).
+
+### User-facing vocabulary
+
+Use **VPN profile** for a named Kongtrol configuration; several profiles may
+use the same provider. Show the provider and app or protocol when known, never
+guess a provider from WireGuard or OpenVPN. A **rule** is the user's choice of
+destinations and behavior; a **route** is an actual network route, including
+those supplied by a VPN. Use the existing "Agregar regla de salida" action
+consistently (ADR-0124/0125).
 
 ### Dashboard (`web/ui/`)
 
@@ -396,7 +412,15 @@ Architecture (ADR-0038); `docs/dashboard-parity.md` is the closed record of the 
   same in any page or sheet. Long live lists show 10 rows + "Ver 20 más" and hold new entries
   behind "N nuevas · Mostrar" (Recientes `recentView.ts`, audit log `activity/auditView.ts`,
   which asks `GET /api/v1/audit?before=` when the loaded rows run out). Header (DESIGN.md):
-  the landing's brand (32 px solid mark), never styled as a link; version at the foot of the side menu.
+  the landing's brand (48 px line-art mark, ADR-0119), never styled as a link; version at the foot of the side menu.
+- Header search (ADR-0119): Ctrl/Cmd+K opens a local React Aria palette of sections, add actions,
+  profiles, rules and groups; Esc closes it. Dashboard status pills have words and color, no dot.
+- Inicio and the tray flyout show known provider/type per VPN profile and search long lists locally.
+  Their order is captured on entry/show: connected first, then existing `LastConnectedAt` history
+  (including automatic reconnects), then name; connected profiles remain visible (ADR-0120).
+- The native tray fixes its profile order at menu creation, connected then last connection
+  when the daemon answers, otherwise by name. It shows known type/provider and links long
+  lists to dashboard search; it never reassigns a menu slot while a user may click it (ADR-0121).
 - A tunnel action stays pending until the live state ends it (`src/data/transition.ts`:
   connected / error / provider app waiting for the user / timeout with what to do), not just
   while the HTTP request runs; Inicio, Grupos and the tray flyout share that rule.
@@ -475,6 +499,14 @@ API handlers and the CLI with no daemon (`kongtrol policy add|remove`, `kongtrol
 `profile import --create`); with a daemon the CLI calls the same endpoints. `policy.ClassifyTargets`
 is the "＋ Agregar" input classifier (URL → host, `*.host` unless `--no-subdomains`, IP/CIDR,
 `app:`); web/ui mirrors it. `kongtrol profile detect` = `GET /api/v1/vpns/detect` (vpndetect).
+The Add sheet exposes the profile's `on_tunnel_down` on both creation paths, default unchanged.
+Rule suggestions (Claude, ChatGPT/OpenAI and selected sites with documented access restrictions)
+append editable destinations in rule creation and editing. After creating a profile, "Agregar
+regla de salida" opens that same form for it; Back returns to the saved profile and keeps the
+draft. Suggestions never promise full coverage and materialize selected subdomains before
+switching off automatic expansion (ADR-0122, ADR-0124).
+The header bell opens Activity's in-memory events; important event toasts stay until dismissed
+or a known recovery resolves them, and historical connect actions follow current tunnel state.
 
 <!-- feature:rule_move -->
 Moving rules (ADR-0104): `configedit.MovePolicies` points every rule of one profile at another in one
@@ -591,7 +623,8 @@ without `default_egress`, because `ProfileService.policyAllowedIPs` replaces the
 "la app decide". Who wins against an active IP rule through another profile is the OS's longest prefix match:
 the longer prefix wins, equal prefixes are `system` (metric, not controlled by Kongtrol), /0 and /1 never
 conflict (PolicyResolver never installs them). `priority` never takes part. The Reglas page shows them under
-the rules table; its one action opens the "＋ Agregar" rule sheet (`?add=rule&target=`).
+the rules table as "Rutas propias de cada perfil", with the known provider and app or protocol;
+its one action opens the "＋ Agregar" rule sheet (`?add=rule&target=`).
 
 ### Public IP lookup (opt-in)
 

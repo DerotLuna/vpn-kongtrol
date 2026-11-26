@@ -16,6 +16,7 @@ var (
 	procSetForegroundWindow = user32.NewProc("SetForegroundWindow")
 	procIsIconic            = user32.NewProc("IsIconic")
 	procShowWindow          = user32.NewProc("ShowWindow")
+	procPostMessageW        = user32.NewProc("PostMessageW")
 )
 
 const (
@@ -24,6 +25,7 @@ const (
 	swpNoActivate = 0x0010
 	swpShowWindow = 0x0040
 	swRestore     = 9
+	wmClose       = 0x0010
 )
 
 var hwndTopmost = ^uintptr(0) // HWND_TOPMOST (-1)
@@ -53,17 +55,24 @@ func raise(ctx context.Context, title string) func() {
 		tick := time.NewTicker(raiseEvery)
 		defer tick.Stop()
 		first := true
+		cancelled := ctx.Done()
+		closing := false
 		for {
 			select {
 			case <-done:
 				return
-			case <-ctx.Done():
-				return
+			case <-cancelled:
+				closing = true
+				cancelled = nil
 			case <-tick.C:
 			}
 			h := ownWindow(t)
 			if h == 0 {
 				continue
+			}
+			if closing {
+				_, _, _ = procPostMessageW.Call(h, wmClose, 0, 0)
+				return
 			}
 			if first {
 				bring(h)

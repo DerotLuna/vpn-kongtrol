@@ -7,7 +7,7 @@
 import type { Strings } from '../module'
 
 const es = {
-  'page.rules.lead': 'Qué sitios y redes salen por cada VPN, y cuándo se conectan solas.',
+  'page.rules.lead': 'Qué sitios y redes usan cada perfil VPN, y cuándo se conecta.',
   'page.rules.tab.policies': 'Por destino',
   'page.rules.tab.schedule': 'Horarios',
 
@@ -15,7 +15,7 @@ const es = {
   'rules.vpn.unknown': 'Sin estado',
   'rules.action.cancel': 'Cancelar',
   'rules.action.saveChanges': 'Guardar cambios',
-  'rules.action.new': 'Nueva regla',
+  'rules.action.new': 'Agregar regla de salida',
   'rules.action.editNamed': 'Editar «{name}»',
   'rules.action.deleteNamed': 'Borrar «{name}»',
 
@@ -39,7 +39,7 @@ const es = {
 
   'rules.empty.title': 'Aún no tienes reglas',
   'rules.empty.body':
-    'Una regla manda ciertos sitios o redes por una VPN concreta; lo demás sigue por tu conexión normal. Por ejemplo: todo lo de tu empresa por la VPN del trabajo.',
+    'Una regla manda ciertos sitios o redes por un perfil VPN; lo demás sigue por tu conexión normal. Por ejemplo: los sitios de tu empresa por el perfil del trabajo.',
   'rules.empty.action': 'Crear la primera regla',
 
   'rules.reload.what': '¿Editaste el archivo de configuración a mano? Kongtrol puede volver a leerlo sin reiniciar:',
@@ -47,28 +47,28 @@ const es = {
 
   'rules.editor.editTitle': 'Editar «{name}»',
   'rules.editor.priority':
-    'Si dos reglas con VPN distintas cubren el mismo sitio, gana la de la VPN con más prioridad (el número mayor).',
+    'Si dos reglas con perfiles distintos cubren el mismo sitio, gana la del perfil con más prioridad (el número mayor).',
   'rules.editor.priority.link': 'Cambiar la prioridad en Perfiles',
 
 
   'rules.field.name': 'Nombre',
   'rules.field.name.placeholder': 'Webs del trabajo',
-  'rules.field.via': 'Sale por la VPN',
-  'rules.field.via.hint': 'La VPN por la que sale este tráfico.',
-  'rules.field.via.pick': 'Elige una VPN',
-  'rules.field.onDown': 'Si esa VPN está apagada',
+  'rules.field.via': 'Perfil de salida',
+  'rules.field.via.hint': 'El perfil VPN por el que sale este tráfico.',
+  'rules.field.via.pick': 'Elige un perfil',
+  'rules.field.onDown': 'Si el perfil está desconectado',
   'rules.field.apps.note':
     'Para enrutar ejecutables en Linux, activa Salida por ejecutable en un perfil WireGuard y usa rutas completas de archivo. Guarda los sitios y las IP en reglas separadas.',
 
   'rules.onDown.allow': 'Usar la conexión normal y avisarme',
-  'rules.onDown.inherit': 'Usar la opción de la VPN',
+  'rules.onDown.inherit': 'Usar la opción del perfil',
   'rules.onDown.inherit.hint': 'La regla seguirá la opción que elijas en el perfil de la VPN.',
-  'rules.onDown.allow.hint': 'Tú decides qué VPN están encendidas; Kongtrol solo te avisa (como mucho una vez cada 30 min).',
+  'rules.onDown.allow.hint': 'Tú decides qué perfiles VPN conectar; Kongtrol solo te avisa (como mucho una vez cada 30 min).',
   'rules.onDown.allow.short': 'Conexión normal',
   'rules.onDown.block': 'Bloquear este tráfico',
   'rules.onDown.block.hint': 'Nunca sale por la conexión normal. En sitios web, solo se bloquean las IP que Kongtrol ya conoce.',
   'rules.onDown.block.short': 'Se bloquea',
-  'rules.onDown.connect': 'Bloquear e intentar conectar la VPN',
+  'rules.onDown.connect': 'Bloquear e intentar conectar el perfil',
   'rules.onDown.connect.hint': 'Bloquea las IP conocidas. Si detecta un intento TCP, Kongtrol intenta conectar. En macOS, conecta desde Inicio.',
   'rules.onDown.connect.short': 'Bloquea e intenta conectar',
 
@@ -76,9 +76,9 @@ const es = {
   'rules.err.name.required.fix': 'Escribe un nombre corto, por ejemplo «Webs del trabajo».',
   'rules.err.name.duplicate': 'Ya hay una regla llamada «{value}».',
   'rules.err.name.duplicate.fix': 'Elige otro nombre o edita esa regla.',
-  'rules.err.via.required': 'Falta la VPN.',
-  'rules.err.via.required.fix': 'Elige por qué VPN sale este tráfico.',
-  'rules.err.via.noProfiles': 'Aún no tienes ninguna VPN.',
+  'rules.err.via.required': 'Falta el perfil.',
+  'rules.err.via.required.fix': 'Elige por qué perfil sale este tráfico.',
+  'rules.err.via.noProfiles': 'Aún no tienes ningún perfil VPN.',
   'rules.err.via.noProfiles.fix': 'Crea una en Perfiles',
   'rules.err.destinations.noMatch': 'Falta a qué se aplica la regla.',
   'rules.err.destinations.noMatch.fix': 'Añade al menos un sitio, una IP, una red o un programa.',
@@ -119,7 +119,7 @@ const es = {
     'La regla «{rule}» coincide con esta app, pero hoy Kongtrol no desvía tráfico por app: solo sirve para diagnosticar.',
   'rules.outcome.via': 'Sale por «{via}», que está conectada.',
   'rules.outcome.connecting': 'Saldrá por «{via}» en cuanto termine de conectarse.',
-  'rules.outcome.noResponse': 'Debería salir por «{via}», pero no responde. Revisa esa VPN en Inicio.',
+  'rules.outcome.noResponse': 'Debería salir por «{via}», pero la conexión de ese perfil no responde. Revísala en Inicio.',
   'rules.outcome.normal': '«{via}» está apagada: ahora sale por tu conexión normal y Kongtrol te avisa. Conéctala para que salga por ella.',
   'rules.outcome.blocked': '«{via}» está apagada: Kongtrol bloquea este tráfico hasta que la conectes.',
   'rules.outcome.connect': '«{via}» está apagada. Kongtrol bloquea las IP conocidas e intenta conectar si detecta tráfico TCP.',
@@ -146,13 +146,13 @@ const es = {
   'rules.overlap.nestedRange':
     '{value} («{winner}») está dentro de {otherEntry} («{other}»). Esas direcciones salen por {via}, porque gana la red más concreta; el resto sale por {otherVia}.',
   'rules.overlap.change':
-    'Gana la VPN con más prioridad (el número mayor). Sin prioridad, decide la posición de la regla en la lista.',
+    'Gana el perfil con más prioridad (el número mayor). Sin prioridad, decide la posición de la regla en la lista.',
   // feature:profile_priority
-  'rules.overlap.by.position': 'Ninguna de las dos VPN tiene prioridad: decide la posición en la lista.',
-  'rules.overlap.by.tie': 'Las dos VPN tienen la misma prioridad: decide la posición en la lista.',
+  'rules.overlap.by.position': 'Ninguno de los dos perfiles tiene prioridad: decide la posición en la lista.',
+  'rules.overlap.by.tie': 'Los dos perfiles tienen la misma prioridad: decide la posición en la lista.',
   'rules.overlap.by.priority': 'Lo decide la prioridad: {via} ({a}) va antes que {otherVia} ({b}).',
   'rules.overlap.by.mixed':
-    'Solo una de las dos VPN tiene prioridad y la otra va por posición: el resultado puede cambiar si mueves reglas. Pon prioridad a las dos para decidirlo tú.',
+    'Solo uno de los dos perfiles tiene prioridad y el otro va por posición: el resultado puede cambiar si mueves reglas. Pon prioridad a los dos para decidirlo tú.',
   'rules.overlap.changePriority': 'Cambiar prioridad',
   'rules.overlap.changePriorityOf': 'Cambiar la prioridad de {name}',
   'rules.order.priority': 'Prioridad {n}',
@@ -161,10 +161,10 @@ const es = {
     'Solo decide entre tus reglas cuando dos cubren el mismo sitio o el mismo rango de IP: gana el número mayor. Sin número, va antes la que está más arriba.',
 
   // feature:vpn_routes
-  'rules.vpnRoutes.title': 'Rutas que trae cada VPN',
-  'rules.vpnRoutes.lead': 'Vienen del archivo o del servidor de la VPN. Para cambiarlas, edita el archivo o pídeselo a tu proveedor.',
+  'rules.vpnRoutes.title': 'Rutas propias de cada perfil',
+  'rules.vpnRoutes.lead': 'Pueden venir del archivo o del servidor de la VPN. Para cambiarlas, edita el archivo o pídeselo a tu proveedor.',
   'rules.vpnRoutes.loading': 'Cargando rutas…',
-  'rules.vpnRoutes.empty': 'Aún no tienes VPN guardadas.',
+  'rules.vpnRoutes.empty': 'Aún no tienes perfiles VPN guardados.',
   'rules.vpnRoutes.summary.one': '{count} ruta',
   'rules.vpnRoutes.summary.other': '{count} rutas',
   'rules.vpnRoutes.summary.none': 'sin rutas propias',
@@ -178,15 +178,15 @@ const es = {
   'rules.vpnRoutes.allTraffic': 'Todo el tráfico',
   'rules.vpnRoutes.allTrafficV6': 'Todo el tráfico IPv6',
   'rules.vpnRoutes.listLabel': 'Rutas de «{name}»',
-  'rules.vpnRoutes.move': 'Hacer que esto salga por otra VPN',
-  'rules.vpnRoutes.moveNamed': 'Hacer que {target} salga por otra VPN',
+  'rules.vpnRoutes.move': 'Agregar regla de salida para otro perfil',
+  'rules.vpnRoutes.moveNamed': 'Agregar regla de salida para {target}',
   'rules.vpnRoutes.app.all': 'La app decide: túnel completo (todo el tráfico).',
   'rules.vpnRoutes.app.other': 'La app decide qué pasa por ella. Kongtrol no ve sus rutas.',
   'rules.vpnRoutes.unreadable': 'No se pudo leer el archivo. Las rutas aparecen al conectar.',
   'rules.vpnRoutes.noFileRoutes': 'El archivo no trae rutas.',
   'rules.vpnRoutes.serverPending': 'Las del servidor aparecen al conectar.',
-  'rules.vpnRoutes.rulesOnly': 'Kongtrol no usa estas rutas: por esta VPN solo sale lo que dicen tus reglas.',
-  'rules.vpnRoutes.allTrafficWins': 'Tus reglas por otra VPN ganan sobre «Todo el tráfico»: son más específicas.',
+  'rules.vpnRoutes.rulesOnly': 'Kongtrol no usa estas rutas: por este perfil solo sale lo que dicen tus reglas.',
+  'rules.vpnRoutes.allTrafficWins': 'Tus reglas por otro perfil ganan sobre «Todo el tráfico»: son más específicas.',
   'rules.vpnRoutes.conflict.rule': 'Tu regla «{rule}» gana para {destination}: es más específica. Sale por «{via}» cuando está conectada.',
   'rules.vpnRoutes.conflict.vpn': 'Esta ruta gana para {route} sobre tu regla «{rule}»: es más específica.',
   'rules.vpnRoutes.conflict.system':
@@ -197,10 +197,10 @@ const es = {
   'rules.vpnRoutes.precedence.sites':
     'Las reglas por sitio también ganan: Kongtrol envía cada IP del sitio por separado, mientras su VPN está conectada.',
   'rules.vpnRoutes.precedence.rules':
-    'La prioridad de cada VPN solo ordena tus reglas entre sí; frente a las rutas de una VPN no cuenta.',
+    'La prioridad de cada perfil solo ordena tus reglas entre sí; frente a las rutas de una VPN no cuenta.',
 
   'rules.delete.title': '¿Borrar la regla «{name}»?',
-  'rules.delete.body': 'Ese tráfico dejará de ir por esa VPN y saldrá por tu conexión normal. Puedes volver a crearla cuando quieras.',
+  'rules.delete.body': 'Ese tráfico dejará de ir por ese perfil y saldrá por tu conexión normal. Puedes volver a crear la regla cuando quieras.',
   'rules.delete.confirm': 'Borrar',
 
   'rules.toast.created': 'Regla «{name}» guardada en pausa.',
@@ -227,7 +227,7 @@ const es = {
   'schedule.day.sun.short': 'dom',
 
   'schedule.preview.label': 'Qué hará: ',
-  'schedule.preview.pickVpn': 'Elige al menos una VPN para ver qué hará.',
+  'schedule.preview.pickVpn': 'Elige al menos un perfil VPN para ver qué hará.',
   'schedule.preview.days.all': 'Todos los días',
   'schedule.preview.days.weekdays': 'De lunes a viernes',
   'schedule.preview.days.weekend': 'Sábados y domingos',
@@ -243,7 +243,7 @@ const es = {
 
   'schedule.switch.title': 'Conexión por horario',
   'schedule.switch.label': 'Usar horarios',
-  'schedule.switch.what': 'Conecta y desconecta tus VPN solas según el día y la hora.',
+  'schedule.switch.what': 'Conecta y desconecta tus perfiles VPN según el día y la hora.',
   'schedule.switch.on': 'Activado',
   'schedule.switch.off': 'Apagado',
   'schedule.interval.label': 'Revisar cada',
@@ -269,7 +269,7 @@ const es = {
 
   'schedule.empty.title': 'Aún no tienes horarios',
   'schedule.empty.body':
-    'Por ejemplo: de lunes a viernes, de 9:00 a 18:00, conecta la VPN del trabajo; fuera de ese horario la desconecta.',
+    'Por ejemplo: de lunes a viernes, de 9:00 a 18:00, conecta el perfil del trabajo; fuera de ese horario lo desconecta.',
   'schedule.empty.action': 'Crear horario de oficina',
   'schedule.template.office.name': 'Oficina',
 
@@ -277,7 +277,7 @@ const es = {
   'schedule.editor.editTitle': 'Editar «{name}»',
   'schedule.field.name': 'Nombre',
   'schedule.field.name.placeholder': 'Horario de oficina',
-  'schedule.field.profiles': 'VPN que conecta',
+  'schedule.field.profiles': 'Perfiles VPN que conecta',
   'schedule.field.days': 'Días',
   'schedule.field.days.hint': 'Si no marcas ningún día, cuenta todos los días.',
   'schedule.field.hours': 'Horas',
@@ -297,10 +297,10 @@ const es = {
   'schedule.err.name.required.fix': 'Escribe un nombre corto, por ejemplo «Oficina».',
   'schedule.err.name.duplicate': 'Ya hay un horario llamado «{value}».',
   'schedule.err.name.duplicate.fix': 'Elige otro nombre o edita ese horario.',
-  'schedule.err.profiles.noProfiles': 'Aún no tienes ninguna VPN.',
+  'schedule.err.profiles.noProfiles': 'Aún no tienes ningún perfil VPN.',
   'schedule.err.profiles.noProfiles.fix': 'Crea una en Perfiles',
-  'schedule.err.profiles.pickProfile': 'Falta la VPN.',
-  'schedule.err.profiles.pickProfile.fix': 'Marca al menos una VPN para conectar en este horario.',
+  'schedule.err.profiles.pickProfile': 'Falta elegir el perfil VPN.',
+  'schedule.err.profiles.pickProfile.fix': 'Marca al menos un perfil VPN para conectar en este horario.',
   'schedule.err.start.required': 'Falta la hora de inicio.',
   'schedule.err.start.required.fix': 'Escribe a qué hora empieza, o marca «Todo el día».',
   'schedule.err.start.badTime': 'La hora de inicio no es válida.',
@@ -313,7 +313,7 @@ const es = {
   'schedule.err.end.sameTime.fix': 'Cambia una de las dos horas, o marca «Todo el día».',
 
   'schedule.delete.title': '¿Borrar el horario «{name}»?',
-  'schedule.delete.body': 'Kongtrol dejará de conectar y desconectar esas VPN por horario. Ahora mismo no cambia nada.',
+  'schedule.delete.body': 'Kongtrol dejará de conectar y desconectar esos perfiles VPN por horario. Ahora mismo no cambia nada.',
 
   'schedule.toast.created': 'Horario «{name}» creado.',
   'schedule.toast.updated': 'Cambios en «{name}» guardados.',
@@ -322,7 +322,7 @@ const es = {
 } as const
 
 const en: Strings<typeof es> = {
-  'page.rules.lead': 'Which sites and networks go through each VPN, and when VPNs connect by themselves.',
+  'page.rules.lead': 'Which sites and networks use each VPN profile, and when it connects.',
   'page.rules.tab.policies': 'By destination',
   'page.rules.tab.schedule': 'Schedules',
 
@@ -330,7 +330,7 @@ const en: Strings<typeof es> = {
   'rules.vpn.unknown': 'No status',
   'rules.action.cancel': 'Cancel',
   'rules.action.saveChanges': 'Save changes',
-  'rules.action.new': 'New rule',
+  'rules.action.new': 'Add routing rule',
   'rules.action.editNamed': 'Edit “{name}”',
   'rules.action.deleteNamed': 'Delete “{name}”',
 
@@ -354,7 +354,7 @@ const en: Strings<typeof es> = {
 
   'rules.empty.title': 'No rules yet',
   'rules.empty.body':
-    'A rule sends certain sites or networks through one VPN; everything else keeps using your normal connection. For example: everything from your company through the work VPN.',
+    'A rule sends certain sites or networks through a VPN profile; everything else keeps using your normal connection. For example: company sites through your work profile.',
   'rules.empty.action': 'Create the first rule',
 
   'rules.reload.what': 'Edited the configuration file by hand? Kongtrol can read it again without restarting:',
@@ -362,28 +362,28 @@ const en: Strings<typeof es> = {
 
   'rules.editor.editTitle': 'Edit “{name}”',
   'rules.editor.priority':
-    'If two rules with different VPNs cover the same site, the one whose VPN has the higher priority (the larger number) wins.',
+    'If two rules with different profiles cover the same site, the one whose profile has the higher priority (the larger number) wins.',
   'rules.editor.priority.link': 'Change priority in Profiles',
 
 
   'rules.field.name': 'Name',
   'rules.field.name.placeholder': 'Work sites',
-  'rules.field.via': 'Goes through VPN',
-  'rules.field.via.hint': 'The VPN this traffic goes through.',
-  'rules.field.via.pick': 'Pick a VPN',
-  'rules.field.onDown': 'If that VPN is off',
+  'rules.field.via': 'Outgoing profile',
+  'rules.field.via.hint': 'The VPN profile this traffic goes through.',
+  'rules.field.via.pick': 'Pick a profile',
+  'rules.field.onDown': 'If the profile is disconnected',
   'rules.field.apps.note':
     'For executable routing on Linux, enable Executable egress on a WireGuard profile and use full file paths. Save sites and IPs in separate rules.',
 
   'rules.onDown.allow': 'Use the normal connection and tell me',
-  'rules.onDown.inherit': 'Use the VPN setting',
+  'rules.onDown.inherit': 'Use the profile setting',
   'rules.onDown.inherit.hint': 'This rule follows the setting you choose in the VPN profile.',
-  'rules.onDown.allow.hint': 'You decide which VPNs are on; Kongtrol only tells you (at most once every 30 min).',
+  'rules.onDown.allow.hint': 'You decide which VPN profiles to connect; Kongtrol only tells you (at most once every 30 min).',
   'rules.onDown.allow.short': 'Normal connection',
   'rules.onDown.block': 'Block this traffic',
   'rules.onDown.block.hint': 'It never leaves through the normal connection. For websites, only the IPs Kongtrol already knows are blocked.',
   'rules.onDown.block.short': 'Blocked',
-  'rules.onDown.connect': 'Block and try to connect the VPN',
+  'rules.onDown.connect': 'Block and try to connect the profile',
   'rules.onDown.connect.hint': 'Blocks known IPs. If Kongtrol observes a TCP attempt, it tries to connect. On macOS, connect from Home.',
   'rules.onDown.connect.short': 'Blocks and tries to connect',
 
@@ -391,9 +391,9 @@ const en: Strings<typeof es> = {
   'rules.err.name.required.fix': 'Type a short name, for example “Work sites”.',
   'rules.err.name.duplicate': 'There is already a rule called “{value}”.',
   'rules.err.name.duplicate.fix': 'Pick another name or edit that rule.',
-  'rules.err.via.required': 'The VPN is missing.',
-  'rules.err.via.required.fix': 'Pick which VPN this traffic goes through.',
-  'rules.err.via.noProfiles': 'You have no VPN yet.',
+  'rules.err.via.required': 'The profile is missing.',
+  'rules.err.via.required.fix': 'Pick which profile this traffic goes through.',
+  'rules.err.via.noProfiles': 'You have no VPN profiles yet.',
   'rules.err.via.noProfiles.fix': 'Create one in Profiles',
   'rules.err.destinations.noMatch': 'The rule needs a destination.',
   'rules.err.destinations.noMatch.fix': 'Add at least one site, IP, network or program.',
@@ -434,7 +434,7 @@ const en: Strings<typeof es> = {
     'Rule “{rule}” matches this app, but Kongtrol does not steer traffic by app today: it is for diagnosis only.',
   'rules.outcome.via': 'It goes through “{via}”, which is connected.',
   'rules.outcome.connecting': 'It will go through “{via}” as soon as it finishes connecting.',
-  'rules.outcome.noResponse': 'It should go through “{via}”, but that VPN is not answering. Check it on Home.',
+  'rules.outcome.noResponse': 'It should go through “{via}”, but that profile’s connection is not responding. Check it on Home.',
   'rules.outcome.normal': '“{via}” is off: it uses your normal connection now and Kongtrol tells you. Connect it to send this through it.',
   'rules.outcome.blocked': '“{via}” is off: Kongtrol blocks this traffic until you connect it.',
   'rules.outcome.connect': '“{via}” is off. Kongtrol blocks known IPs and tries to connect if it observes TCP traffic.',
@@ -461,13 +461,13 @@ const en: Strings<typeof es> = {
   'rules.overlap.nestedRange':
     '{value} (“{winner}”) is inside {otherEntry} (“{other}”). Those addresses go through {via}, because the most specific network wins; the rest goes through {otherVia}.',
   'rules.overlap.change':
-    'The VPN with the higher priority (the larger number) wins. Without a priority, the rule’s position in the list decides.',
+    'The profile with the higher priority (the larger number) wins. Without a priority, the rule’s position in the list decides.',
   // feature:profile_priority
-  'rules.overlap.by.position': 'Neither VPN has a priority: the position in the list decides.',
-  'rules.overlap.by.tie': 'Both VPNs have the same priority: the position in the list decides.',
+  'rules.overlap.by.position': 'Neither profile has a priority: the position in the list decides.',
+  'rules.overlap.by.tie': 'Both profiles have the same priority: the position in the list decides.',
   'rules.overlap.by.priority': 'Priority decides: {via} ({a}) goes before {otherVia} ({b}).',
   'rules.overlap.by.mixed':
-    'Only one of the two VPNs has a priority and the other goes by position: the result can change if you move rules. Give both a priority to decide it yourself.',
+    'Only one of the two profiles has a priority and the other goes by position: the result can change if you move rules. Give both a priority to decide it yourself.',
   'rules.overlap.changePriority': 'Change priority',
   'rules.overlap.changePriorityOf': 'Change the priority of {name}',
   'rules.order.priority': 'Priority {n}',
@@ -476,10 +476,10 @@ const en: Strings<typeof es> = {
     'It only decides between your rules when two cover the same site or the same IP range: the higher number wins. Without a number, the one higher up goes first.',
 
   // feature:vpn_routes
-  'rules.vpnRoutes.title': 'Routes each VPN brings',
-  'rules.vpnRoutes.lead': 'They come from the VPN’s file or server. To change them, edit the file or ask your provider.',
+  'rules.vpnRoutes.title': 'Routes belonging to each profile',
+  'rules.vpnRoutes.lead': 'They may come from the VPN’s file or server. To change them, edit the file or ask your provider.',
   'rules.vpnRoutes.loading': 'Loading routes…',
-  'rules.vpnRoutes.empty': 'You have no saved VPNs yet.',
+  'rules.vpnRoutes.empty': 'You have no saved VPN profiles yet.',
   'rules.vpnRoutes.summary.one': '{count} route',
   'rules.vpnRoutes.summary.other': '{count} routes',
   'rules.vpnRoutes.summary.none': 'no routes of its own',
@@ -493,15 +493,15 @@ const en: Strings<typeof es> = {
   'rules.vpnRoutes.allTraffic': 'All traffic',
   'rules.vpnRoutes.allTrafficV6': 'All IPv6 traffic',
   'rules.vpnRoutes.listLabel': 'Routes of “{name}”',
-  'rules.vpnRoutes.move': 'Send this through another VPN',
-  'rules.vpnRoutes.moveNamed': 'Send {target} through another VPN',
+  'rules.vpnRoutes.move': 'Add a routing rule for another profile',
+  'rules.vpnRoutes.moveNamed': 'Add routing rule for {target}',
   'rules.vpnRoutes.app.all': 'The app decides: full tunnel (all traffic).',
   'rules.vpnRoutes.app.other': 'The app decides what goes through it. Kongtrol can’t see its routes.',
   'rules.vpnRoutes.unreadable': 'Couldn’t read the file. Routes show up once connected.',
   'rules.vpnRoutes.noFileRoutes': 'The file brings no routes.',
   'rules.vpnRoutes.serverPending': 'The server’s routes show up once connected.',
-  'rules.vpnRoutes.rulesOnly': 'Kongtrol doesn’t use these routes: only what your rules say goes through this VPN.',
-  'rules.vpnRoutes.allTrafficWins': 'Your rules through another VPN win over “All traffic”: they’re more specific.',
+  'rules.vpnRoutes.rulesOnly': 'Kongtrol doesn’t use these routes: only what your rules say goes through this profile.',
+  'rules.vpnRoutes.allTrafficWins': 'Your rules through another profile win over “All traffic”: they’re more specific.',
   'rules.vpnRoutes.conflict.rule': 'Your rule “{rule}” wins for {destination}: it’s more specific. It goes through “{via}” while connected.',
   'rules.vpnRoutes.conflict.vpn': 'This route wins for {route} over your rule “{rule}”: it’s more specific.',
   'rules.vpnRoutes.conflict.system':
@@ -512,10 +512,10 @@ const en: Strings<typeof es> = {
   'rules.vpnRoutes.precedence.sites':
     'Site rules win too: Kongtrol sends each of the site’s IPs on its own, while its VPN is connected.',
   'rules.vpnRoutes.precedence.rules':
-    'Each VPN’s priority only orders your rules among themselves; it doesn’t count against a VPN’s routes.',
+    'Each profile’s priority only orders your rules among themselves; it doesn’t count against a VPN’s routes.',
 
   'rules.delete.title': 'Delete rule “{name}”?',
-  'rules.delete.body': 'That traffic stops going through that VPN and uses your normal connection. You can create it again any time.',
+  'rules.delete.body': 'That traffic stops going through that profile and uses your normal connection. You can create the rule again any time.',
   'rules.delete.confirm': 'Delete',
 
   'rules.toast.created': 'Rule “{name}” saved paused.',
@@ -542,7 +542,7 @@ const en: Strings<typeof es> = {
   'schedule.day.sun.short': 'Sun',
 
   'schedule.preview.label': 'What it does: ',
-  'schedule.preview.pickVpn': 'Pick at least one VPN to see what it will do.',
+  'schedule.preview.pickVpn': 'Pick at least one VPN profile to see what it will do.',
   'schedule.preview.days.all': 'Every day',
   'schedule.preview.days.weekdays': 'Monday to Friday',
   'schedule.preview.days.weekend': 'Saturdays and Sundays',
@@ -558,7 +558,7 @@ const en: Strings<typeof es> = {
 
   'schedule.switch.title': 'Connect on a schedule',
   'schedule.switch.label': 'Use schedules',
-  'schedule.switch.what': 'Connects and disconnects your VPNs by themselves, by day and time.',
+  'schedule.switch.what': 'Connects and disconnects your VPN profiles by day and time.',
   'schedule.switch.on': 'On',
   'schedule.switch.off': 'Off',
   'schedule.interval.label': 'Check every',
@@ -584,7 +584,7 @@ const en: Strings<typeof es> = {
 
   'schedule.empty.title': 'No schedules yet',
   'schedule.empty.body':
-    'For example: Monday to Friday, from 9:00 to 18:00, connect the work VPN; outside that time, disconnect it.',
+    'For example: Monday to Friday, from 9:00 to 18:00, connect the work profile; outside that time, disconnect it.',
   'schedule.empty.action': 'Create an office schedule',
   'schedule.template.office.name': 'Office',
 
@@ -592,7 +592,7 @@ const en: Strings<typeof es> = {
   'schedule.editor.editTitle': 'Edit “{name}”',
   'schedule.field.name': 'Name',
   'schedule.field.name.placeholder': 'Office hours',
-  'schedule.field.profiles': 'VPN it connects',
+  'schedule.field.profiles': 'VPN profiles it connects',
   'schedule.field.days': 'Days',
   'schedule.field.days.hint': 'With no day ticked, it counts every day.',
   'schedule.field.hours': 'Hours',
@@ -611,10 +611,10 @@ const en: Strings<typeof es> = {
   'schedule.err.name.required.fix': 'Type a short name, for example “Office”.',
   'schedule.err.name.duplicate': 'There is already a schedule called “{value}”.',
   'schedule.err.name.duplicate.fix': 'Pick another name or edit that schedule.',
-  'schedule.err.profiles.noProfiles': 'You have no VPN yet.',
+  'schedule.err.profiles.noProfiles': 'You have no VPN profiles yet.',
   'schedule.err.profiles.noProfiles.fix': 'Create one in Profiles',
-  'schedule.err.profiles.pickProfile': 'The VPN is missing.',
-  'schedule.err.profiles.pickProfile.fix': 'Tick at least one VPN to connect on this schedule.',
+  'schedule.err.profiles.pickProfile': 'Choose a VPN profile.',
+  'schedule.err.profiles.pickProfile.fix': 'Tick at least one VPN profile to connect on this schedule.',
   'schedule.err.start.required': 'The start time is missing.',
   'schedule.err.start.required.fix': 'Type when it starts, or tick “All day”.',
   'schedule.err.start.badTime': 'The start time is not valid.',
@@ -627,7 +627,7 @@ const en: Strings<typeof es> = {
   'schedule.err.end.sameTime.fix': 'Change one of the two times, or tick “All day”.',
 
   'schedule.delete.title': 'Delete schedule “{name}”?',
-  'schedule.delete.body': 'Kongtrol stops connecting and disconnecting those VPNs on a schedule. Nothing changes right now.',
+  'schedule.delete.body': 'Kongtrol stops connecting and disconnecting those VPN profiles on a schedule. Nothing changes right now.',
 
   'schedule.toast.created': 'Schedule “{name}” created.',
   'schedule.toast.updated': 'Changes to “{name}” saved.',

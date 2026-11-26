@@ -59,10 +59,11 @@ import { emptyDraft, fieldForErrorKey, toRequest } from '../profiles/draft'
 import { localizeError } from '../profiles/errors'
 import { useDropZone } from '../profiles/dropZone'
 import { UploadIcon } from '../profiles/icons'
+import type { OnTunnelDown } from '../rules/model'
 import { MAX_EXTRA_BYTES, MAX_EXTRA_FILES, MAX_IMPORT_BYTES, fromBase64, importName, toBase64 } from '../profiles/importModel'
 import { useSaveAndActivate, type SaveIntent } from './activate'
 import { isValidName, ovpnNeedsCredentials, profileNameFromFile, typeForContent, typeForFile } from './model'
-import { ActivateFooter, ErrorBanner } from './parts'
+import { ActivateFooter, ErrorBanner, ProfileDownField } from './parts'
 
 interface Props {
   profiles: readonly VPNProfile[]
@@ -137,6 +138,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
   const [authMethod, setAuthMethod] = useState<AuthMethod>('certificate')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [onTunnelDown, setOnTunnelDown] = useState<OnTunnelDown>('allow')
   const [tried, setTried] = useState(false)
   const [nameError, setNameError] = useState<FieldError | null>(null)
   const [refusal, setRefusal] = useState<{ error: unknown; exists: boolean } | null>(null)
@@ -378,7 +380,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
         return
       }
     }
-    const draft = { ...emptyDraft(chosen.type), name: n, config: path, authMethod, username, password }
+    const draft = { ...emptyDraft(chosen.type), name: n, config: path, authMethod, username, password, onTunnelDown }
     try {
       const outcome = await act.run(toRequest(draft, 'create'), how.current)
       onDirty(false)
@@ -581,6 +583,7 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
             }}
             error={nameError}
           />
+          <ProfileDownField value={onTunnelDown} onChange={setOnTunnelDown} />
           {needsCreds && <p className="k-add__lead">{t('add.file.creds')}</p>}
           {showCreds && (
             <>

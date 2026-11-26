@@ -43,7 +43,8 @@ type TunnelMetrics struct {
 	// Health says whether a connected tunnel's server answers (WireGuard:
 	// latest handshake, ADR-0030): ok / idle / no_response / unknown.
 	// Clients render Health.MessageKey() (+ ReasonKey) with i18n.
-	Health *vpn.TunnelHealth `json:"health,omitempty"`
+	Health    *vpn.TunnelHealth `json:"health,omitempty"`
+	Restoring bool              `json:"restoring,omitempty"`
 }
 
 // interfaceCounters is the OS byte-counter source; a variable so tests can
@@ -81,10 +82,43 @@ type Collector struct {
 	metrics  map[string]*TunnelMetrics
 	history  map[string]*ProfileHistory
 	lastErr  map[string]connectFailure
+	startup  map[string]bool
 	stop     chan struct{}
 
 	subMu sync.Mutex
 	subs  map[chan struct{}]struct{}
+}
+
+// SetStartupPending reports a planned startup connect to clients without
+// changing the adapter state used by routing and the watchdog.
+func (c *Collector) SetStartupPending(name string, pending, reconnect bool) {
+	c.mu.Lock()
+	if pending {
+		if c.startup == nil {
+			c.startup = make(map[string]bool)
+		}
+		c.startup[name] = reconnect
+	} else {
+		delete(c.startup, name)
+	}
+	c.mu.Unlock()
+	c.notifyChange()
+}
+
+// ClientSnapshot adds planned startup work to the real adapter snapshot.
+func (c *Collector) ClientSnapshot() map[string]TunnelMetrics {
+	out := c.Snapshot()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	for name, reconnect := range c.startup {
+		if m, ok := out[name]; ok && m.Status.Normalize() != vpn.StatusConnected {
+			m.Status = vpn.StatusConnecting
+			m.Restoring = reconnect
+			m.LastError, m.LastErrorKey = "", ""
+			out[name] = m
+		}
+	}
+	return out
 }
 
 // NewCollector creates a metrics collector for the given adapters.

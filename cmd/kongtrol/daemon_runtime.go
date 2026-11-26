@@ -150,11 +150,20 @@ func afterProfileSync(c *config.Config, res app.SyncResult) api.ProfileSyncResul
 }
 
 func connectProfile(ctx context.Context, name string) error {
+	return connectProfileMode(ctx, name, false)
+}
+
+func connectProfileMode(ctx context.Context, name string, attachOnly bool) error {
 	svc := profileSvc.Load()
 	if svc == nil {
 		return fmt.Errorf("%s", ct("cli.error.no_config_loaded"))
 	}
-	err := svc.Connect(ctx, name)
+	var err error
+	if attachOnly {
+		err = svc.ConnectAttached(ctx, name)
+	} else {
+		err = svc.Connect(ctx, name)
+	}
 	if err == nil {
 		if policyWatch != nil {
 			policyWatch.ResetConnectBudget(name)

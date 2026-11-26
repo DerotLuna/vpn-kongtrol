@@ -237,9 +237,9 @@ describe('order between overlapping rules (ADR-0108)', () => {
 
   it('explains each case in one line', () => {
     const [domain] = findOverlaps(list)
-    expect(overlapOrderText(domain!, 'position', new Map(), tES)).toBe('Ninguna de las dos VPN tiene prioridad: decide la posición en la lista.')
+    expect(overlapOrderText(domain!, 'position', new Map(), tES)).toBe('Ninguno de los dos perfiles tiene prioridad: decide la posición en la lista.')
     expect(overlapOrderText(domain!, 'position', new Map([['oficina', 10], ['casa', 10]]), tES)).toMatch(/misma prioridad/)
     expect(overlapOrderText(domain!, 'priority', new Map([['oficina', 20], ['casa', 10]]), tES)).toBe('Lo decide la prioridad: oficina (20) va antes que casa (10).')
-    expect(overlapOrderText(domain!, 'mixed', new Map([['oficina', 20]]), tES)).toMatch(/Pon prioridad a las dos/)
+    expect(overlapOrderText(domain!, 'mixed', new Map([['oficina', 20]]), tES)).toMatch(/Pon prioridad a los dos/)
   })
 })

@@ -104,8 +104,8 @@ export interface SecurityView {
 /**
  * GET /api/v1/security/status → the three summary lines, the same states as
  * `kongtrol status` and the classic shellSecurityBadges. The kill switch
- * blocking is "caution" (degraded: a VPN dropped), armed and DNS active are
- * "on" (a setting doing its job, never green), a passed leak check is "ok".
+ * blocking is "caution"; working protections are green, enabled protections
+ * without anything to protect are neutral, like the Security page.
  */
 export function securityView(st: SecuritySummary): SecurityView {
   const ks = st.kill_switch_status
@@ -117,7 +117,7 @@ export function securityView(st: SecuritySummary): SecurityView {
   } else if (ksState === 'armed' || (ksState === 'idle' && st.kill_switch_enabled)) {
     const n = ks?.protected?.length ?? 0
     killSwitch = {
-      tone: 'on',
+      tone: n > 0 ? 'ok' : 'on',
       label: 'home.sec.ks.armed',
       detail:
         n === 0
@@ -132,8 +132,8 @@ export function securityView(st: SecuritySummary): SecurityView {
 
   let dnsGuard: SecurityLine
   if (!st.dns_guard_enabled || st.dns_guard_state === 'disabled') dnsGuard = { tone: 'idle', label: 'home.sec.dns.disabled' }
-  else if (st.dns_guard_state === 'active' || st.dns_guard) dnsGuard = { tone: 'on', label: 'home.sec.dns.active' }
-  else dnsGuard = { tone: 'idle', label: 'home.sec.dns.idle', detail: { key: 'home.sec.dns.idleDetail' } }
+  else if (st.dns_guard_state === 'active' || st.dns_guard) dnsGuard = { tone: 'ok', label: 'home.sec.dns.active' }
+  else dnsGuard = { tone: 'on', label: 'home.sec.dns.idle', detail: { key: 'home.sec.dns.idleDetail' } }
 
   let leak: SecurityLine = { tone: 'idle', label: 'home.sec.leak.disabled', detail: { key: 'home.sec.leak.offHint' } }
   if (st.leak_detection_configured && !st.leak_check_available && !st.public_ip_check_enabled) {

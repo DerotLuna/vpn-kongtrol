@@ -25,6 +25,7 @@
 .home-help { font-size: 14px; }
 .home-dim { color: var(--text-dim); }
 .home-name { font: 500 14px/1.35 var(--font-mono); overflow-wrap: anywhere; }
+.home-profile-type { display: block; margin-top: 3px; color: var(--text-muted); font: 400 12px/1.35 var(--font-body); }
 .home-tunnels tbody th .home-name { display: inline-block; min-width: 10ch; overflow-wrap: normal; word-break: break-word; }
 .home-empty-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 4px; }
 .home-empty-actions .k-btn svg { width: 18px; height: 18px; }
@@ -69,6 +70,7 @@
 .home-latency { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .home-spark { color: var(--steel); flex: none; }
 .home-spark--empty { font: 400 11px/1 var(--font-mono); color: var(--text-dim); min-width: 72px; text-align: right; }
+.home-latency--none { display: inline-flex; align-items: center; font: 400 11px/1 var(--font-mono); color: var(--text-muted); }
 
 /* Row actions: one line of 36px squares (44px in phone cards), the
    state's own action first. */

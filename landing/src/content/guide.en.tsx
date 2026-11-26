@@ -50,14 +50,14 @@ export default function guideEN(os: OS): GuideContent {
           see: <>"Helper ready". It never asks again.</>,
         },
         {
-          t: <>Create your first VPN</>,
+          t: <>Create your first VPN profile</>,
           d: <>The panel opens in your browser, on <strong>Profiles</strong>. Pick your VPN, fill in the details and click <strong>Save</strong>.</>,
-          see: <>Your VPN in the list. Kongtrol restarts by itself to use it.</>,
+          see: <>Your profile in the list, ready to connect.</>,
         },
         {
           t: <>Connect</>,
           d: <>From the icon or from <strong>Home</strong> in the panel. If you use your VPN's app, connect there as usual: Kongtrol detects it.</>,
-          see: <>"your-vpn · connected" with a green dot, and the icon turns green.</>,
+          see: <>The profile appears connected and the icon changes state.</>,
         },
       ] as GuideStep[],
       cli: <>Prefer the terminal? <IC c="kongtrol init" /> does the same with step-by-step questions.</>,
@@ -100,7 +100,7 @@ export default function guideEN(os: OS): GuideContent {
             {' '}If Microsoft Defender flags it as a threat (for example <IC c="Trojan:Win32/Bearfoos.A!ml" />) and quarantines it, it's a false positive common for new unsigned programs: check it on the <a href="/en/security">Security</a> page, allow it in Windows Security → Protection history only if you trust it, and report it at{' '}
             <a href={DEFENDER_FALSE_POSITIVE_URL}>microsoft.com/wdsi/filesubmission</a>.</>, see: <>The Kongtrol setup wizard.</> },
           { t: <>Keep the recommended options</>, d: <>Open at sign-in, install the network helper and add the <IC c="kongtrol" /> command. No administrator needed, except for the helper (once).</>, see: <>A Windows prompt for the helper: click <strong>Yes</strong>.</> },
-          { t: <>Finish</>, d: <>With "Open Kongtrol and create my first VPN" checked, go on to <a href="#wizard">Your first VPN</a>.</>, see: <>The icon in the tray and the panel in your browser.</> },
+          { t: <>Finish</>, d: <>With "Open Kongtrol and create my first VPN" checked, go on to <a href="#wizard">Your first VPN profile</a>.</>, see: <>The icon in the tray and the panel in your browser.</> },
         ]
         : [
           { t: <>Open Terminal</>, d: os === 'macos' ? <>Search with <strong>Cmd + Space</strong> → "Terminal".</> : <>From your desktop's applications menu.</>, see: <>A window with a line to type in.</> },
@@ -125,7 +125,7 @@ export default function guideEN(os: OS): GuideContent {
     },
     // feature:wizard feature:profile_import feature:add_sheet
     wizard: {
-      title: <>Your first VPN</>,
+      title: <>Your first VPN profile</>,
       lead: <>In the panel, <strong>Profiles</strong> (or the <strong>＋ Add</strong> button at the top). Pick one of these:</>,
       ways: [
         <><strong>A VPN you already use</strong> (NordVPN, Proton, FortiClient…): pick the app and give it a name, for example <IC c="office" />.</>,
@@ -154,14 +154,14 @@ $ kongtrol profile import ~/Downloads/proton-us.conf`,
     // feature:daemon_lifecycle
     connect: {
       title: <>Connect and disconnect</>,
-      lead: <>From the icon: click the VPN. From the panel: <strong>Home</strong> → <strong>Connect</strong>.</>,
+      lead: <>From the icon: choose the profile. From the panel: <strong>Home</strong> → <strong>Connect</strong>.</>,
       bg: <>Kongtrol keeps working in the background. Closing the panel, the terminal or the icon disconnects nothing.
         After your first VPN, Kongtrol asks whether to reconnect the ones you left connected when the computer starts; it waits for internet and never opens a VPN app on its own. You can change it in <strong>Settings</strong> → <strong>When starting</strong>.</>,
       stop: <>To disconnect everything: <strong>Quit and disconnect all</strong> in the icon, or <IC c="kongtrol down --all" />.
         The icon stays with "Kongtrol stopped"; <strong>Start Kongtrol</strong> starts it again.</>,
-      code: `$ kongtrol up office           # connect one VPN
+      code: `$ kongtrol up office           # connect one profile
 $ kongtrol up office aws       # several at once
-$ kongtrol status --watch      # live status · q closes the view, VPNs stay up
+$ kongtrol status --watch      # live status · q closes the view, profiles stay connected
 $ kongtrol tray                # open the tray icon if the tray app is installed
 $ kongtrol down office         # disconnect one
 $ kongtrol down --all          # disconnect all`,
@@ -172,29 +172,31 @@ $ kongtrol down --all          # disconnect all`,
     },
     // feature:policies feature:routes
     policies: {
-      title: <>What goes through each VPN</>,
-      lead: <>A <strong>rule</strong> chooses which destinations use a VPN profile. A <strong>route</strong> is the path your device takes to reach a destination. Other traffic follows the device's existing routes.</>,
+      title: <>What goes through each profile</>,
+      lead: <>A <strong>VPN profile</strong> stores how Kongtrol connects: you can have several profiles for the same provider. A <strong>rule</strong> chooses which destinations use a profile. A <strong>route</strong> is the path your device takes to reach a destination. Other traffic follows the device's existing routes.</>,
       diagram: `  destination          rule                         goes through
   ─────────────────────────────────────────────────────────────────
   claude.ai        ──▶  domains: claude.ai      ──▶  us-content
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  office
   example.com      ──▶  no rule                 ──▶  normal internet`,
-      panel: <>In the panel, open <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the VPN and test before saving.
-        After saving the first profile, you can stay in the same tab and add a rule for that VPN.
+      panel: <>In the panel, open <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the profile and test before saving.
+        Add several editable suggestions (Claude, ChatGPT/OpenAI and other sites) when creating or editing a rule.
+        They do not guarantee access: restrictions vary by network, apps use other destinations and services have their own terms.
+        After saving a profile, choose “Add routing rule” to configure its destinations.
         You can also create the rule in the terminal.</>,
       code: `$ kongtrol policy add github.com --via office
-$ kongtrol policy show github.com     # which VPN it uses and why
+$ kongtrol policy show github.com     # which profile it uses and why
 $ kongtrol policy list
 $ kongtrol policy remove <name>`,
-      down: <><strong>When the VPN is off,</strong> the profile can allow the regular connection, block known destinations, or block them and try to connect when Kongtrol sees TCP activity. Each rule can choose its own action.
+      down: <><strong>When the profile is disconnected,</strong> when creating or editing it you can allow the regular connection, block known destinations, or block them and try to connect when Kongtrol sees TCP activity. Each rule can choose its own action.
         Use <IC c="kongtrol profile on-tunnel-down office block" /> to change it. Detection can miss quick or rejected attempts. On macOS, connect manually.</>,
       // feature:default_egress
       defaultEgress: <>On Windows or Linux, choose <strong>WireGuard default egress</strong> on a compatible, disconnected direct profile. You can also use <IC c="kongtrol routes check-default office" /> and <IC c="kongtrol routes default-egress office on" />. When connected, the profile carries traffic without a more specific route.</>,
       // feature:vpn_routes
-      vpnRoutes: <><strong>Routes each VPN brings.</strong> Below your rules, the dashboard shows the routes that come from the VPN’s file or its server. Kongtrol doesn’t change them: to do that, edit the file or ask your provider.
-        The most specific address wins, so a rule for <IC c="10.1.2.3" /> through another VPN wins over <IC c="10.0.0.0/8" /> or over “All traffic” from an .ovpn or .conf file. In the terminal: <IC c="kongtrol routes vpn" />.</>,
+      vpnRoutes: <><strong>Routes belonging to each profile.</strong> Below your rules, the dashboard identifies each profile by name and, when known, its provider and technology. It shows the routes that come from the VPN’s file or its server. Kongtrol doesn’t change them: to do that, edit the file or ask your provider.
+        The most specific address wins, so a rule for <IC c="10.1.2.3" /> through another profile wins over <IC c="10.0.0.0/8" /> or over “All traffic” from an .ovpn or .conf file. In the terminal: <IC c="kongtrol routes vpn" />.</>,
       // feature:profile_priority
-      order: <><strong>When two rules overlap.</strong> If two rules with different VPNs cover the same site or the same IP range, the VPN with the higher <strong>priority</strong> (the larger number) wins. If neither has one, the rule higher up goes first.
+      order: <><strong>When two rules overlap.</strong> If two rules with different profiles cover the same site or the same IP range, the profile with the higher <strong>priority</strong> (the larger number) wins. If neither has one, the rule higher up goes first.
         The dashboard marks those rules (“Priority 10” or “by position”) and says who decided, with a “Change priority” link. In the terminal: <IC c="kongtrol profile priority office 20" /> and <IC c="kongtrol policy list" />.</>,
       yamlLead: <>You can also write them in <IC c="kongtrol.yaml" />, under <IC c="policies:" />:</>,
       yaml: `policies:
@@ -218,13 +220,13 @@ $ kongtrol policy remove <name>`,
     },
     groups: {
       title: <>Groups</>,
-      lead: <>A group connects several VPNs with one click. Create it in the panel: <strong>Profiles</strong> → <strong>Groups</strong> tab. Or in the file:</>,
+      lead: <>A group connects several VPN profiles with one click. Create it in the panel: <strong>Profiles</strong> → <strong>Groups</strong> tab. Or in the file:</>,
       yaml: `groups:
   work:
     profiles: [office, dev-server, aws]`,
       code: `$ kongtrol up --group work
 $ kongtrol down --group work`,
-      note: <>A VPN can be in several groups. If you edit the file while Kongtrol runs:{' '}
+      note: <>A profile can be in several groups. If you edit the file while Kongtrol runs:{' '}
         <IC c="kongtrol reload" /> applies the changes without a restart.</>,
     },
     faq: {
@@ -250,13 +252,16 @@ $ kongtrol doctor --fix    # and repairs what it can`,
     dashboard: {
       title: <>The panel</>,
       lead: <>Open it from the icon (<strong>Open panel</strong>) or with <IC c="kongtrol dashboard" />. It opens already signed in:
-        typing the address by hand is not enough, for security. It runs inside your computer; nothing leaves it.</>,
+        typing the address by hand is not enough, for security. It runs inside your computer; nothing leaves it.
+        Find sections, actions, profiles, rules and groups with <strong>Search</strong> or Ctrl/Cmd+K; Esc closes search.
+        Home and the tray let you search long profile lists, showing connected profiles first and then the most recently connected.
+        A connection being restored shows “Reconnecting” and can be cancelled.</>,
       rows: [
-        { name: <>Home</>, desc: <>Your VPNs live (status, IP, time, traffic), connect and disconnect, notices and quick-access groups.</> },
-        { name: <>Profiles</>, desc: <>Create, edit, rename and delete VPNs; backup (failover); Groups tab.</> },
-        { name: <>Rules</>, desc: <>Which sites and networks use each VPN, with a test before saving; Schedules tab.</> },
-        { name: <>Traffic</>, desc: <>What goes through each VPN, where a site goes out, recent connections (in memory only) and the system routes.</> },
-        { name: <>Security</>, desc: <>Kill switch and DNS protection, per VPN, and the optional public IP check.</> },
+        { name: <>Home</>, desc: <>Your VPN profiles live (status, IP, time, traffic), connect and disconnect, notices and quick-access groups.</> },
+        { name: <>Profiles</>, desc: <>Create, edit, rename and delete profiles; backup (failover); Groups tab.</> },
+        { name: <>Rules</>, desc: <>Which sites and networks use each profile, with a test before saving; Schedules tab.</> },
+        { name: <>Traffic</>, desc: <>What goes through each profile, where a site goes out, recent connections (in memory only) and the system routes.</> },
+        { name: <>Security</>, desc: <>Kill switch and DNS protection, per-profile settings, and the optional public IP check.</> },
         { name: <>Activity</>, desc: <>Signed log with filters (10 entries and <strong>Show 20 more</strong>; new ones wait behind <strong>Show</strong>), and Kongtrol's notices.</> },
         { name: <>Settings</>, desc: <>Language, theme, diagnostics, new version notice, restart or stop, and delete your data.</> },
       ],
@@ -270,7 +275,7 @@ $ kongtrol doctor --fix    # and repairs what it can`,
         { cmd: 'kongtrol up --group work', desc: <>Start the day</> },
         { cmd: 'kongtrol down --all', desc: <>Disconnect everything</> },
         { cmd: 'kongtrol status', desc: <>What's connected, kill switch and DNS</> },
-        { cmd: 'kongtrol policy show github.com', desc: <>Which VPN a destination uses and why</> },
+        { cmd: 'kongtrol policy show github.com', desc: <>Which profile a destination uses and why</> },
         { cmd: 'kongtrol ip', desc: <>Your public IP now (if you turned the check on)</> },
         { cmd: 'kongtrol logs', desc: <>Log of connections and notices</> },
         { cmd: 'kongtrol restart', desc: <>Restart Kongtrol; reconnects the VPNs that were up</> },

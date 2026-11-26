@@ -22,6 +22,8 @@ export interface Toast {
   action?: ToastAction
   /** ms; 0 = stays until dismissed. */
   duration: number
+  notice?: { profile: string; key: string; kind: string; offer?: string; args?: string[]; connectAction?: boolean }
+  actionHidden?: boolean
 }
 
 export type ToastInput = Omit<Toast, 'id' | 'duration'> & { duration?: number }
@@ -44,6 +46,30 @@ export const toasts = {
   },
   dismiss(id: number): void {
     queue.set(queue.get().filter((t) => t.id !== id))
+  },
+  dismissWhere(predicate: (toast: Toast) => boolean): void {
+    const list = queue.get()
+    const kept = list.filter((toast) => !predicate(toast))
+    if (kept.length !== list.length) queue.set(kept)
+  },
+  setConnectActionHidden(profile: string, hidden: boolean): void {
+    const list = queue.get()
+    let changed = false
+    const next = list.map((toast) => {
+      if (toast.notice?.profile !== profile || !toast.notice.connectAction || !!toast.actionHidden === hidden) return toast
+      changed = true
+      return { ...toast, actionHidden: hidden }
+    })
+    if (changed) queue.set(next)
+  },
+  resolveNotice(profile: string, recovery: 'connected' | 'responding'): void {
+    this.dismissWhere((toast) => {
+      const notice = toast.notice
+      if (!notice || notice.profile !== profile) return false
+      if (recovery === 'responding') return notice.key === 'watchdog.event.no_response'
+      return notice.kind === 'policy_tunnel_down' ||
+        /^watchdog\.event\.(no_response|manual_reconnect|gave_up|gave_up_blocking|gave_up_blocking_full|reconnect_blocked|reconnect_blocked_proton|reconnect_blocked_address)$/.test(notice.key)
+    })
   },
   clear(): void {
     queue.set([])

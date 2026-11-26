@@ -42,7 +42,7 @@ export function rowState(tn: TunnelMetrics, pending?: Pending): RowState {
   if (tn.Status === 'connecting' || pending === 'connect') {
     return {
       tone: 'steel',
-      word: 'tray.status.connecting',
+      word: tn.restoring ? 'tray.status.reconnecting' : 'tray.status.connecting',
       on: true,
       busy: true,
       note: attach?.phase === 'waiting_user' ? { key: 'tray.note.waitingUser', vars: { app: attach.app } } : null,

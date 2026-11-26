@@ -5,10 +5,12 @@ import { addSearch, parseAddParams, withoutAdd } from '../../app/addLink'
 import shared from '../../../../../internal/policy/testdata/classify_targets.json?raw'
 import {
   autoName,
+  appendRulePreset,
   classifyEntry,
   classifyTargets,
   cleanName,
   defaultVia,
+  emptyRuleDraft,
   isValidName,
   matchOf,
   nameSource,
@@ -45,6 +47,18 @@ describe('"Sitio, IP o programa": same reading as policy.ClassifyTargets (shared
 })
 
 describe('"Sitio, IP o programa": what the sheet adds on top', () => {
+  it('adds editable presets without losing prior entries or their subdomains', () => {
+    const first = appendRulePreset(emptyRuleDraft('EXAMPLE.com\nclaude.ai', 'work'), 'claude')
+    expect(first.subs).toBe(false)
+    expect(first.input).toContain('*.example.com')
+    expect(first.input?.match(/claude\.ai/gi)).toHaveLength(2)
+    const second = appendRulePreset({ ...emptyRuleDraft('', 'work'), ...first }, 'chatgpt')
+    expect(second.input).toContain('ws.chatgpt.com')
+    expect(second.input).toContain('*.oaiusercontent.com')
+    const again = appendRulePreset({ ...emptyRuleDraft('', 'work'), ...second }, 'chatgpt')
+    expect(again.input).toBe(second.input)
+  })
+
   it('labels for sentences: hosts without "*.", programs by file name', () => {
     expect(classifyEntry('*.acme.test')).toEqual({ ok: true, entry: { kind: 'domain', value: '*.acme.test', label: 'acme.test' } })
     expect(classifyEntry('app:C:\\Program Files\\Teams\\teams.exe')).toEqual({

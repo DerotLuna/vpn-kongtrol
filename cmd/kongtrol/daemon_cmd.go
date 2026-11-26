@@ -87,6 +87,7 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	if !setupMode {
 		wantedTunnels = daemonctl.NewWanted(daemonctl.WantedPath())
 	}
+	restored := prepareStartupConnections(ctx, targets)
 	srv := buildAPIServer(cancel)
 	if err := srv.Start(); err != nil {
 		return fmt.Errorf("%s", cf("cli.daemon.api_failed", base, err))
@@ -124,24 +125,30 @@ func runDaemon(signalCtx context.Context, targets []string) error {
 	fmt.Println(tuiInfo(cf("cli.daemon.listening", base)))
 
 	// The VPNs the user had on, unless "volver a conectar" is off.
-	restoreWanted(ctx, targets)
+	restoreWanted(ctx, restored)
 	for _, name := range targets {
 		if ctx.Err() != nil {
 			break
 		}
-		started := time.Now()
-		connectCtx, cancelConnect := context.WithTimeout(ctx, 5*time.Minute)
-		err := userConnectProfile(connectCtx, name)
-		cancelConnect()
-		elapsed := time.Since(started).Round(time.Second)
-		switch {
-		case err == nil:
-			fmt.Println(tuiOK(name + "  " + cf("cli.daemon.up.connected_in", elapsed)))
-		case errors.Is(err, context.Canceled):
-			fmt.Println(tuiWarn(name + "  " + ct("cli.up.cancelled")))
-		default:
-			fmt.Println(tuiErr(name + "  " + err.Error()))
-		}
+		startupConnects.run(name, func(ctx context.Context) {
+			started := time.Now()
+			connectCtx, cancelConnect := context.WithTimeout(ctx, 5*time.Minute)
+			err := rememberedConnect(connectCtx, name)
+			cancelConnect()
+			if ctx.Err() == nil {
+				col.RecordConnectError(name, err)
+			}
+			col.Refresh()
+			elapsed := time.Since(started).Round(time.Second)
+			switch {
+			case err == nil:
+				fmt.Println(tuiOK(name + "  " + cf("cli.daemon.up.connected_in", elapsed)))
+			case errors.Is(err, context.Canceled):
+				fmt.Println(tuiWarn(name + "  " + ct("cli.up.cancelled")))
+			default:
+				fmt.Println(tuiErr(name + "  " + err.Error()))
+			}
+		})
 	}
 
 	<-ctx.Done()

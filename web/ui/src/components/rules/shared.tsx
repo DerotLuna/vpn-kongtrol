@@ -2,6 +2,8 @@
 import type { ReactNode } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import type { TunnelState } from '../../data/resources'
+import { useProfilesQuery } from '../../data/profiles'
+import { profileDescription } from '../../data/profileList'
 import { useProfileState } from './hooks'
 import type { MessageKey } from '../../i18n/messages'
 import { PageHeader } from '../layout/PageHeader'
@@ -45,9 +47,12 @@ const WORD: Record<TunnelState, MessageKey> = {
 export function VpnState({ name }: { name: string }) {
   const { t } = usePreferences()
   const state = useProfileState(name)
+  const profile = useProfilesQuery().data?.find((item) => item.name === name)
+  const identity = profileDescription(profile, t('profile.identity.app'))
   return (
     <span className="r-vpn">
       <span className="mono">{name}</span>
+      {identity && <span className="r-vpnroute__meta">{identity}</span>}
       {state ? (
         <StatusPill tone={TONE[state]}>{t(WORD[state])}</StatusPill>
       ) : (

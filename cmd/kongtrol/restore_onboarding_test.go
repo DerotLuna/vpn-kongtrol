@@ -196,7 +196,7 @@ func TestOfferRestoreAtStart(t *testing.T) {
 	promptInteractiveFn = func() bool { return true }
 	promptReader = strings.NewReader("\n")
 	out, _ = captureStdout(t, func() error { offerRestoreAtStart(f); return nil })
-	if !slices.Equal(f.answers, []bool{true}) || !strings.Contains(out, "¿Volver a conectar tus VPN al encender el equipo?") {
+	if !slices.Equal(f.answers, []bool{true}) || !strings.Contains(out, "¿Volver a conectar tus perfiles VPN al encender el equipo?") {
 		t.Fatalf("interactive: %v\n%s", f.answers, out)
 	}
 

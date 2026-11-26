@@ -120,6 +120,18 @@ func NewProfileService(deps ProfileServiceDeps) *ProfileService {
 }
 
 func (s *ProfileService) Connect(ctx context.Context, name string) error {
+	return s.connect(ctx, name, false)
+}
+
+// ErrTunnelNotAttached indicates that an attach-only startup found no tunnel.
+var ErrTunnelNotAttached = errors.New("provider tunnel is not attached")
+
+// ConnectAttached applies the connected profile lifecycle without starting an adapter.
+func (s *ProfileService) ConnectAttached(ctx context.Context, name string) error {
+	return s.connect(ctx, name, true)
+}
+
+func (s *ProfileService) connect(ctx context.Context, name string, attachOnly bool) error {
 	adapter, ok := s.adapters.Get(name)
 	if !ok {
 		return fmt.Errorf("%s", s.f("cli.error.unknown_profile", name))
@@ -138,6 +150,9 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 	}
 	ctx, done := s.trackConnect(ctx, name)
 	defer done()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if s.onIntent != nil {
 		s.onIntent(name, false)
 	}
@@ -220,7 +235,15 @@ func (s *ProfileService) Connect(ctx context.Context, name string) error {
 		}
 	}
 
+	if err := ctx.Err(); err != nil {
+		aCfg.Password = ""
+		return err
+	}
 	if adapter.Status().Normalize() != vpn.StatusConnected {
+		if attachOnly {
+			aCfg.Password = ""
+			return ErrTunnelNotAttached
+		}
 		err := adapter.Connect(ctx, aCfg)
 		aCfg.Password = ""
 		if errors.Is(err, privops.ErrWGDefaultEgressConflict) {

@@ -19,7 +19,7 @@ func pluralCategory(_ Lang, n int) string {
 }
 
 // N returns the message of key for the count n in lang, formatted with n
-// followed by args: N(ES, "tray.status_active", 2) → "2 VPN conectadas".
+// followed by args: N(ES, "tray.status_active", 2) → "2 perfiles VPN conectados".
 func N(lang Lang, key string, n int, args ...any) string {
 	return fmt.Sprintf(T(lang, key+"."+pluralCategory(lang, n)), append([]any{n}, args...)...)
 }

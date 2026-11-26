@@ -46,6 +46,7 @@ export interface TunnelMetrics {
   last_error_key?: string
   attach?: AttachState
   health?: TunnelHealth
+  restoring?: boolean
 }
 
 /** internal/api/handlers_helper.go `HelperStatus`. */

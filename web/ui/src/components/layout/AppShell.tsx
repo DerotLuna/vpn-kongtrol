@@ -2,7 +2,7 @@
 //
 // Layout route for every page (ADR-0038):
 // - Header: the landing's brand (mark, spaced "K O N G T R O L", BETA; the
-//   32 px solid mark by DESIGN.md "Logo") top-left, aggregate VPN status,
+//   enlarged line-art mark) top-left, aggregate VPN status,
 //   "＋ Agregar" (the add sheet, ADR-0055), help (same place on every page,
 //   WCAG 3.2.6). The brand never looks like a link: on Inicio it scrolls to
 //   the top (smoothly unless reduced motion), elsewhere it goes to Inicio.
@@ -33,13 +33,14 @@ import { AddSheet } from '../add/AddSheet'
 import { useNavCollapse } from '../../app/navCollapse'
 import { Button } from '../ui/Button'
 import { Dialog } from '../ui/Dialog'
-import { BookIcon, CollapseIcon, MoreIcon, PlusIcon } from '../ui/icons'
+import { BellIcon, BookIcon, CollapseIcon, MoreIcon, PlusIcon, SearchIcon } from '../ui/icons'
 import { Tooltip } from '../ui/Tooltip'
 import { Logo } from '../ui/Logo'
 import { Toaster } from '../ui/Toaster'
 import { AggregateStatus, VersionTag } from './AggregateStatus'
 import { AppNotices } from './AppNotices'
 import { UnsavedChangesGuard } from './UnsavedChangesGuard'
+import { SearchPalette } from './SearchPalette'
 
 /** True once the page has scrolled: the header then shows its bottom hairline. */
 function useScrolled() {
@@ -73,7 +74,7 @@ function Brand() {
         window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
       }}
     >
-      <Logo size={32} />
+      <Logo size={48} />
       <span className="k-brand__name">
         <strong aria-hidden="true">{name.toUpperCase().split('').join(' ')}</strong>
         <span className="visually-hidden">{name}</span>{' '}
@@ -177,8 +178,10 @@ function BottomBar() {
 export function AppShell() {
   const { t } = usePreferences()
   const nav = useNavCollapse()
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const first = useRef(true)
+  const previousPath = useRef(pathname)
+  const [searchOpen, setSearchOpen] = useState(false)
   const { open: openAdd } = useAddSheet()
   useHelperReadyToast()
   // Daemon notices (policy, watchdog, update) toast on every page, like the
@@ -186,16 +189,31 @@ export function AppShell() {
   useNoticeToasts()
   const scrolled = useScrolled()
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'k') {
+        if (document.querySelector('dialog[open]')) return
+        event.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   // Move focus to the new page's heading after a navigation (not on load).
   useEffect(() => {
     if (first.current) {
       first.current = false
       return
     }
+    if (previousPath.current === pathname) return
+    previousPath.current = pathname
+    if (new URLSearchParams(search).has('focus')) return
     const heading = document.querySelector<HTMLElement>('#main h1')
     heading?.focus({ preventScroll: true })
     window.scrollTo({ top: 0 })
-  }, [pathname])
+  }, [pathname, search])
 
   return (
     <div className="k-app" data-nav={nav.collapsed ? 'collapsed' : 'expanded'}>
@@ -207,6 +225,14 @@ export function AppShell() {
 
         <AggregateStatus />
         <div className="k-topbar__actions" role="group" aria-label={t('header.toolbar')}>
+          <Tooltip content={t('header.notices')} describe={false}>
+            <Link to="/activity" className="k-topbar__link" aria-label={t('header.notices')}><BellIcon /></Link>
+          </Tooltip>
+          <Tooltip content={t('search.open')}>
+            <Button variant="text" className="k-topbar__search" icon={<SearchIcon />} aria-label={t('search.open')} aria-haspopup="dialog" onClick={() => setSearchOpen(true)}>
+              {t('search.button')} <kbd>Ctrl / ⌘ K</kbd>
+            </Button>
+          </Tooltip>
           <Button
             variant="tonal"
             className="k-topbar__add"
@@ -235,6 +261,7 @@ export function AppShell() {
       <BottomBar />
       <Toaster />
       <AddSheet />
+      <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <UnsavedChangesGuard />
     </div>
   )

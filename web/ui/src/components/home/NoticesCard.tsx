@@ -13,6 +13,7 @@ import { Link } from 'react-router'
 import { OfferActions } from './OfferActions'
 import { usePreferences } from '../../app/preferences-context'
 import { noticeActionLabel, noticeText, useRecentNotices, useTunnelActions } from '../../data/home'
+import { tunnelState, useTunnelsQuery } from '../../data/resources'
 import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { AlertIcon, InfoIcon } from '../ui/icons'
@@ -21,6 +22,7 @@ import { formatClock } from './format'
 export function NoticesCard() {
   const { t, lang } = usePreferences()
   const notices = useRecentNotices()
+  const tunnels = useTunnelsQuery().data
   const run = useTunnelActions()
   const disconnect = useCallback((profile: string) => run(profile, 'disconnect'), [run])
 
@@ -39,7 +41,7 @@ export function NoticesCard() {
                   {formatClock(e.time, lang)}
                 </time>
               </div>
-              {e.can_connect && e.profile && (
+              {e.can_connect && e.profile && !tunnels?.some((tn) => tn.Name === e.profile && (tunnelState(tn) === 'connected' || tunnelState(tn) === 'connecting')) && (
                 <Button variant="tonal" size="sm" onClick={() => run(e.profile ?? '', 'connect')}>
                   {noticeActionLabel(e, t)}
                 </Button>

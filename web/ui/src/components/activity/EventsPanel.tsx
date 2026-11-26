@@ -9,7 +9,7 @@
 import { memo, useCallback, useMemo } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { eventText, useEventsHistory, type DaemonEvent } from '../../data/activity'
-import { useTunnelAction } from '../../data/resources'
+import { tunnelState, useTunnelAction, useTunnelsQuery } from '../../data/resources'
 import { AddRuleIcon } from '../add/entries'
 import { OfferActions } from '../home/OfferActions'
 import { Button } from '../ui/Button'
@@ -28,11 +28,13 @@ const EventRow = memo(function EventRow({
   onConnect,
   onDisconnect,
   busy,
+  connected,
 }: {
   ev: DaemonEvent
   onConnect: (name: string) => void
   onDisconnect: (name: string) => void
   busy: boolean
+  connected: boolean
 }) {
   const { t, lang } = usePreferences()
   const warn = ev.level === 'WARN'
@@ -54,7 +56,7 @@ const EventRow = memo(function EventRow({
       </div>
       {ev.profile && (
         <div className="k-ev__actions">
-          {ev.can_connect && (
+          {ev.can_connect && !connected && (
             <Button variant="outlined" size="sm" icon={<PlugIcon />} loading={busy} onClick={() => onConnect(ev.profile!)}>
               {ev.key.startsWith('watchdog.event.')
                 ? t('activity.event.watchdog.event.action_retry', { 0: ev.profile })
@@ -73,6 +75,7 @@ export function EventsPanel() {
   const { t, lang } = usePreferences()
   const { data, error, refetch, dataUpdatedAt } = useEventsHistory()
   const action = useTunnelAction()
+  const tunnels = useTunnelsQuery().data
   const connecting = action.isPending ? action.variables?.name : undefined
 
   const groups = useMemo(() => {
@@ -127,7 +130,7 @@ export function EventsPanel() {
               <h3 className="k-ev-day">{g.label}</h3>
               <ul className="k-ev-list">
                 {g.items.map((ev) => (
-                  <EventRow key={ev.seq} ev={ev} onConnect={onConnect} onDisconnect={onDisconnect} busy={connecting === ev.profile} />
+                  <EventRow key={ev.seq} ev={ev} onConnect={onConnect} onDisconnect={onDisconnect} busy={connecting === ev.profile} connected={tunnels?.some((tn) => tn.Name === ev.profile && (tunnelState(tn) === 'connected' || tunnelState(tn) === 'connecting')) ?? false} />
                 ))}
               </ul>
             </section>

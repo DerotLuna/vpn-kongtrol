@@ -41,7 +41,7 @@ const TEXT = {
     infoT: 'Hay una versión nueva', infoB: 'Kongtrol 0.7.0 está disponible.', tabs: 'Pestañas', t1: 'General', t2: 'Avanzado', p1: 'Panel general.', p2: 'Panel avanzado.',
     kbd: 'Atajos', kbdLine: 'Cierra con', tip: 'Ajustes del perfil',
     controls: 'Selección, filtros y fechas', search: 'Buscar perfil', chosen: 'Perfiles elegidos', disconnect: 'Desconectar oficina', level: 'Nivel', levelAll: 'Todos', profileF: 'Perfil', profileAll: 'Todos los perfiles',
-    dates: 'Fechas', reconnect: 'Reconectar', addSite: 'Hacer que un sitio salga por oficina', remove: 'Borrar',
+    dates: 'Fechas', reconnect: 'Reconectar', addSite: 'Agregar regla de salida para oficina', remove: 'Borrar',
     edge: 'Tooltip junto al borde: se corre para no salirse de la pantalla.', checks: 'Casillas y opciones', check: 'Incluir subdominios', r1: 'Usar internet normal', r2: 'Bloquear',
   },
   en: {
@@ -62,7 +62,7 @@ const TEXT = {
     infoT: 'A new version is out', infoB: 'Kongtrol 0.7.0 is available.', tabs: 'Tabs', t1: 'General', t2: 'Advanced', p1: 'General panel.', p2: 'Advanced panel.',
     kbd: 'Shortcuts', kbdLine: 'Close with', tip: 'Profile settings',
     controls: 'Select, filters and dates', search: 'Search profile', chosen: 'Chosen profiles', disconnect: 'Disconnect office', level: 'Level', levelAll: 'All', profileF: 'Profile', profileAll: 'All profiles',
-    dates: 'Dates', reconnect: 'Reconnect', addSite: 'Send a site through office', remove: 'Delete',
+    dates: 'Dates', reconnect: 'Reconnect', addSite: 'Add routing rule for office', remove: 'Delete',
     edge: 'Tooltip at the edge: it shifts to stay on screen.', checks: 'Check boxes and radios', check: 'Include subdomains', r1: 'Use the normal internet', r2: 'Block',
   },
 } as const

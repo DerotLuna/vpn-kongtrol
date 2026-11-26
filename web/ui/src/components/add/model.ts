@@ -253,6 +253,32 @@ export function matchOf(entries: readonly Entry[], includeSubdomains: boolean): 
   return { domains: [...domains], ip_ranges: [...ranges], apps: [...apps] }
 }
 
+export const RULE_PRESETS = {
+  claude: ['claude.ai', '*.claude.ai', 'claude.com', '*.claude.com', 'anthropic.com', '*.anthropic.com', 'api.anthropic.com'],
+  chatgpt: ['chatgpt.com', '*.chatgpt.com', 'ws.chatgpt.com', 'openai.com', '*.openai.com', 'auth.openai.com', '*.auth.openai.com', 'auth0.openai.com', 'oaistatic.com', '*.oaistatic.com', 'oaiusercontent.com', '*.oaiusercontent.com'],
+  x: ['x.com', 'twitter.com', 'api.twitter.com', 'upload.twitter.com', 'abs-0.twimg.com', 'abs.twimg.com', 'pbs.twimg.com', 'video-0.twimg.com', 'video.twimg.com'],
+  reddit: ['reddit.com', 'www.reddit.com'],
+  telegram: ['telegram.org', 'web.telegram.org'],
+  canva: ['canva.com', 'www.canva.com'],
+  puntodecorte: ['puntodecorte.net', 'puntodecorte.com'],
+} as const
+
+export type RulePreset = keyof typeof RULE_PRESETS
+
+export function appendRulePreset(draft: Pick<RuleDraft, 'input' | 'subs'>, preset: RulePreset): { input: string; subs: false } {
+  const entries = readDestinations(draft.input).flatMap(({ result }) => result.ok ? [result.entry] : [])
+  const existing = new Set(entries.filter((entry) => entry.kind === 'domain').map((entry) => entry.value.toLowerCase()))
+  const inherited = draft.subs ? matchOf(entries, true).domains.filter((domain) => !existing.has(domain)) : []
+  const added: string[] = []
+  for (const domain of [...inherited, ...RULE_PRESETS[preset]]) {
+    if (!existing.has(domain.toLowerCase())) {
+      existing.add(domain.toLowerCase())
+      added.push(domain)
+    }
+  }
+  return { input: [draft.input.trimEnd(), ...added].filter(Boolean).join('\n'), subs: false }
+}
+
 /** policy.ClassifyTargets: the whole list, with the entries none of the forms accept. */
 export function classifyTargets(entries: readonly string[], includeSubdomains: boolean): Targets {
   const ok: Entry[] = []

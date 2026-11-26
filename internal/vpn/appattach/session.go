@@ -234,6 +234,9 @@ func (s *Session) Connect(ctx context.Context, p Provider, o Options, hook func(
 	}
 
 	// (3) Open the app and wait for the user.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	_ = s.doLaunch(p.App, o.AppPath) // not fatal: the user may open it
 	wait := o.WaitTimeout
 	if wait <= 0 {

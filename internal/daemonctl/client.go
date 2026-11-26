@@ -238,6 +238,23 @@ func (c *Client) Tunnels() ([]monitor.TunnelMetrics, error) {
 	return tunnels, nil
 }
 
+// ProfileHistory returns the existing local connection history.
+func (c *Client) ProfileHistory() (map[string]monitor.ProfileHistory, error) {
+	resp, err := c.do(http.MethodGet, "/api/v1/metrics/history", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, APIError(resp)
+	}
+	var history map[string]monitor.ProfileHistory
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&history); err != nil {
+		return nil, err
+	}
+	return history, nil
+}
+
 // TunnelStates returns Tunnels keyed by profile name, statuses normalized.
 func (c *Client) TunnelStates() (map[string]monitor.TunnelMetrics, error) {
 	tunnels, err := c.Tunnels()

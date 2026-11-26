@@ -128,7 +128,7 @@ func toggleProfile(name string) {
 		notifyError(trayT("tray.err_unreachable"), err)
 		return
 	}
-	if st == vpn.StatusConnected {
+	if st == vpn.StatusConnected || st == vpn.StatusConnecting {
 		disconnectProfile(name)
 	} else {
 		connectProfile(name)

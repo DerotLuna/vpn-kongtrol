@@ -22,7 +22,7 @@ export const AddButton = forwardRef<HTMLButtonElement, { req: AddRequest; childr
   },
 )
 
-/** "＋" beside a notice: "Hacer que un sitio salga por {vpn}" (name + tooltip; 36px, next to a small button). */
+/** "＋" beside a notice: add a routing rule for this VPN. */
 export function AddRuleIcon({ via }: { via: string }) {
   const { t } = usePreferences()
   const { open } = useAddSheet()

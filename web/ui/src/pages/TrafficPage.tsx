@@ -45,11 +45,10 @@ export function TrafficPage({ onCardRender }: TrafficPageProps = {}) {
   const history = useMetricsHistoryQuery()
   const list = useMemo(() => tunnels.data ?? [], [tunnels.data])
 
-  // Routes panels start open; the set holds the ones the user closed, so the
-  // choice survives live re-renders and tunnels that come and go.
-  const [closed, setClosed] = useState<ReadonlySet<string>>(() => new Set())
+  // Keep the user's choice across live updates and tunnels that come and go.
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
   const toggle = useCallback((name: string) => {
-    setClosed((prev) => {
+    setOpen((prev) => {
       const next = new Set(prev)
       if (next.has(name)) next.delete(name)
       else next.add(name)
@@ -104,7 +103,7 @@ export function TrafficPage({ onCardRender }: TrafficPageProps = {}) {
                   routes={tunnelRoutes.data?.tunnels.find((r) => r.name === tn.Name)}
                   allRoutes={tunnelRoutes.data}
                   history={history.data?.[tn.Name]}
-                  open={!closed.has(tn.Name)}
+                  open={open.has(tn.Name)}
                   onToggle={toggle}
                   onRender={onCardRender}
                 />

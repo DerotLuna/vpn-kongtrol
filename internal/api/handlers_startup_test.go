@@ -55,6 +55,23 @@ func TestStartupSettings(t *testing.T) {
 	}
 }
 
+func TestStartupRestoreChangeNotifiesAfterSave(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "preferences.json")
+	s := &Server{preferencesPath: path}
+	called := false
+	s.SetStartup(StartupHooks{OnRestoreChanged: func(on bool) {
+		prefs, err := config.LoadPreferences(path)
+		if err != nil || on || prefs.RestoreTunnelsEnabled() {
+			t.Errorf("restore hook: on=%v prefs=%+v err=%v", on, prefs, err)
+		}
+		called = true
+	}})
+	rec := doJSON(t, s, http.MethodPut, "/api/v1/startup", "/api/v1/startup", s.handleSetStartup, `{"restore_tunnels":false}`)
+	if rec.Code != http.StatusOK || !called {
+		t.Fatalf("status=%d called=%v", rec.Code, called)
+	}
+}
+
 func TestStartupNoTrayIsGuided(t *testing.T) {
 	s := &Server{preferencesPath: filepath.Join(t.TempDir(), "p.json")}
 	s.SetStartup(StartupHooks{

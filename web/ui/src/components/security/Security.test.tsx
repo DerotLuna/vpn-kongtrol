@@ -198,13 +198,13 @@ describe('Seguridad page', () => {
     await userEvent.click(summary)
     const list = screen.getByRole('list', { name: 'Destinos bloqueados' })
     expect(within(list).getByText('10.20.0.0/16')).toBeInTheDocument()
-    expect(screen.getByText('Reglas bloqueadas porque su VPN está apagada: intranet')).toBeInTheDocument()
+    expect(screen.getByText('Reglas bloqueadas porque sus perfiles VPN están desconectados: intranet')).toBeInTheDocument()
     const dns = screen.getByRole('group', { name: 'Servidores DNS en uso' })
     expect(within(dns).getByText('Servidores DNS en uso, en la conexión Ethernet 3')).toBeInTheDocument()
     expect(within(dns).getByText('10.0.0.53, 10.0.0.54')).toBeInTheDocument()
   })
 
-  it('edits the expected public IP per VPN: checks rows, then saves the whole map', async () => {
+  it('edits the expected public IP per VPN profile: checks rows, then saves the whole map', async () => {
     let saved: unknown
     const fetchMock = setup({
       'GET /api/v1/settings': () => json({ ...settings, expected_ips: { oficina: '203.0.113.7' } }),
@@ -218,10 +218,10 @@ describe('Seguridad page', () => {
         return json({ ...settings, expected_ips: { oficina: '203.0.113.7', casa: '198.51.100.4' } })
       },
     })
-    const title = await screen.findByRole('heading', { name: 'IP pública esperada por VPN' })
+    const title = await screen.findByRole('heading', { name: 'IP pública esperada por perfil VPN' })
     const form = title.closest('form')!
     expect(within(form).getByRole('textbox', { name: 'IP esperada de oficina' })).toHaveValue('203.0.113.7')
-    await userEvent.click(within(form).getByRole('button', { name: 'Agregar VPN' }))
+    await userEvent.click(within(form).getByRole('button', { name: 'Agregar perfil VPN' }))
     const ip = within(form).getByRole('textbox', { name: 'IP esperada de casa' })
     await userEvent.type(ip, '198.51.100.999')
     await userEvent.click(within(form).getByRole('button', { name: 'Guardar' }))

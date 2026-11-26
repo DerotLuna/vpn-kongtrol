@@ -5,21 +5,39 @@
 // alternative (legacy canvas had none). Min-max scaled like charts.js.
 // Subscribes to the latency store itself, so a new sample redraws only this
 // tunnel's line, not the table row.
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { usePreferences } from '../../app/preferences-context'
 import { useLatencySamples } from '../../data/home'
+import { IconButton } from '../ui/Button'
+import { InfoIcon } from '../ui/icons'
 import { sparkPoints } from './model'
 
 const W = 72
 const H = 22
 const PAD = 2
 
-export const LatencySparkline = memo(function LatencySparkline({ name }: { name: string }) {
+const WAIT_MS = 45_000
+
+export const LatencySparkline = memo(function LatencySparkline({ name, uptime }: { name: string; uptime: number }) {
   const { t } = usePreferences()
   const samples = useLatencySamples(name)
-  if (samples.length < 2) {
-    return <span className="home-spark home-spark--empty">{t('home.latency.collecting')}</span>
+  const [waited, setWaited] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setWaited(true), WAIT_MS)
+    return () => window.clearTimeout(timer)
+  }, [name])
+  if (samples.length === 0) {
+    if (waited || uptime >= WAIT_MS / 1000) {
+      return (
+        <span className="home-latency--none">
+          {t('home.latency.none')}
+          <IconButton size="sm" label={t('traffic.tunnel.latencyWhy')} tip={t('traffic.tunnel.latencyWhy.tip')} icon={<InfoIcon />} />
+        </span>
+      )
+    }
+    return <span className="home-spark home-spark--empty" role="status">{t('home.latency.collecting')}</span>
   }
+  if (samples.length === 1) return null
   const label = t('home.latency.trend', {
     n: samples.length,
     min: Math.min(...samples),

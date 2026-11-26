@@ -16,7 +16,7 @@ var policyStateMessages = map[Lang]map[string]string{
 		"cli.policy.state.off":               "%s está pausada.",
 		"cli.policy.state.usage":             "Usa on para activar la regla u off para pausarla.",
 		"help.kongtrol.policy.state.short":   "Consulta, activa o pausa una regla",
-		"help.kongtrol.policy.state.long":    "Una regla pausada se conserva y no enruta, bloquea ni intenta conectar su VPN. Activarla aplica su comportamiento de inmediato.",
+		"help.kongtrol.policy.state.long":    "Una regla pausada se conserva y no enruta, bloquea ni intenta conectar su perfil VPN. Activarla aplica su comportamiento de inmediato.",
 		"help.kongtrol.policy.state.example": "  kongtrol policy state intranet on",
 	},
 	EN: {
@@ -26,7 +26,7 @@ var policyStateMessages = map[Lang]map[string]string{
 		"cli.policy.state.off":               "%s is paused.",
 		"cli.policy.state.usage":             "Use on to activate the rule or off to pause it.",
 		"help.kongtrol.policy.state.short":   "Show, activate, or pause a rule",
-		"help.kongtrol.policy.state.long":    "A paused rule remains saved without routing, blocking, or attempting to connect to its VPN. Activating it applies its behavior immediately.",
+		"help.kongtrol.policy.state.long":    "A paused rule remains saved without routing, blocking, or attempting to connect its VPN profile. Activating it applies its behavior immediately.",
 		"help.kongtrol.policy.state.example": "  kongtrol policy state intranet on",
 	},
 }

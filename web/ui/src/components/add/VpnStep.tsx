@@ -26,7 +26,7 @@ import { ArrowLeftIcon } from '../profiles/icons'
 import { TypePicker } from '../profiles/TypePicker'
 import { useSaveAndActivate, type SaveIntent } from './activate'
 import { cleanName, isValidName, uniqueName } from './model'
-import { ActivateFooter, ErrorBanner } from './parts'
+import { ActivateFooter, ErrorBanner, ProfileDownField } from './parts'
 
 interface Props {
   profiles: readonly VPNProfile[]
@@ -229,6 +229,7 @@ export function VpnStep({ profiles, initialType, onBack, onNeedsFile, onDone, on
         />
       )}
       {spec.auth === 'none' && <p className="k-add__muted k-add__small">{t('profiles.signin.app', { app: spec.label })}</p>}
+      <ProfileDownField value={draft.onTunnelDown} onChange={(onTunnelDown) => setDraft((d) => ({ ...d, onTunnelDown }))} />
       {(hasAuth || spec.location || spec.exactRegion || spec.attach || spec.autoConnect || spec.host === 'optional') && (
         <details className="k-add-more" open={moreProblem || undefined}>
           <summary>{t('add.more')}</summary>

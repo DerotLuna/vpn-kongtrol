@@ -46,7 +46,6 @@
 .k-aggregate { display: inline-flex; align-items: center; gap: 8px; min-height: var(--tap); text-decoration: none; border-radius: 999px; min-width: 0; flex: 0 1 auto; overflow: hidden; }
 .k-brand, .k-topbar__actions { flex: none; }
 .k-aggregate .pill { flex: 0 1 auto; font-size: 12px; padding: 5px 11px; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
-.k-aggregate .pill::before { display: inline-block; vertical-align: 0.05em; margin-right: 6px; }
 .k-aggregate__live { display: inline-flex; align-items: center; gap: 6px; min-width: 0; flex: 0 100 auto; font: 400 12px/1.2 var(--font-mono); color: var(--steel); white-space: nowrap; animation: k-fade-in var(--dur-med) var(--ease-standard); }
 .k-aggregate__live svg { width: 16px; height: 16px; flex: none; animation: k-spin 1.6s linear infinite; }
 .k-aggregate__live-text { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; }

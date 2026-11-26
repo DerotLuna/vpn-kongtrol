@@ -123,7 +123,7 @@ func TestImportPick(t *testing.T) {
 	if code != http.StatusOK || out["path"] != conf || out["name"] != "office.ovpn" || out["type"] != "openvpn" || out["content_base64"] != b64(ovpnWithRefs) {
 		t.Fatalf("%d %v", code, out)
 	}
-	if gotTitle != "Kongtrol · Choose your VPN file" {
+	if gotTitle != "Kongtrol · Choose a VPN config file" {
 		t.Fatalf("title = %q", gotTitle)
 	}
 

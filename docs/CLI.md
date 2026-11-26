@@ -4,7 +4,7 @@
 
 # Referencia de la CLI
 
-Versión 2.29 · 2026-11-25
+Versión 2.32 · 2026-11-26
 
 Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --help`. Cada comando trae su ayuda con ejemplos: `kongtrol <comando> --help`. English: [CLI.en.md](CLI.en.md). Primera vez: [SETUP.md](SETUP.md).
 
@@ -12,7 +12,7 @@ Todos los comandos de `kongtrol`, en los mismos grupos y orden que `kongtrol --h
 
 ### `kongtrol up`
 
-Conecta los perfiles indicados y abre la vista en vivo; las VPN siguen conectadas al cerrarla. Después: kongtrol status.
+Conecta los perfiles indicados y abre la vista en vivo; los perfiles siguen conectados al cerrarla. Después: kongtrol status.
 
 ```text
 kongtrol up [perfil...] [opciones]
@@ -134,7 +134,7 @@ kongtrol routes default-egress oficina on
 
 ### `kongtrol routes vpn`
 
-Muestra las rutas que trae cada VPN por su cuenta: las del archivo (.ovpn o .conf) y las que manda el servidor al conectar. Kongtrol no las cambia. También dice qué gana cuando una de tus reglas toca la misma dirección.
+Muestra las rutas que trae cada perfil por su cuenta: las del archivo (.ovpn o .conf) y las que manda el servidor al conectar. Kongtrol no las cambia. También dice qué gana cuando una de tus reglas toca la misma dirección.
 
 ```text
 kongtrol routes vpn [perfil] [opciones]
@@ -150,7 +150,7 @@ kongtrol routes vpn --json
 
 ### `kongtrol dashboard`
 
-Abre el dashboard para configurar y conectar tus VPN desde el navegador; arranca Kongtrol en segundo plano si hace falta. Si no se abre, copia la dirección que aparece.
+Abre el panel para configurar y conectar tus perfiles VPN desde el navegador; arranca Kongtrol en segundo plano si hace falta. Si no se abre, copia la dirección que aparece.
 
 ```text
 kongtrol dashboard [opciones]
@@ -170,7 +170,7 @@ kongtrol dashboard
 
 ### `kongtrol tray`
 
-Abre la aplicación de bandeja instalada. Úsala desde tu sesión de escritorio para ver y gestionar las VPN.
+Abre la aplicación de bandeja instalada. Úsala desde tu sesión de escritorio para ver y gestionar tus perfiles VPN.
 
 ```text
 kongtrol tray [opciones]
@@ -186,7 +186,7 @@ kongtrol tray
 
 ### `kongtrol init`
 
-Te guía paso a paso para agregar tus VPN, políticas y seguridad en kongtrol.yaml. Al terminar revisa el ayudante (te ofrece instalarlo) y te pregunta si conectas ya.
+Te guía paso a paso para agregar perfiles VPN, reglas y seguridad en kongtrol.yaml. Al terminar revisa el ayudante (te ofrece instalarlo) y te pregunta si conectas ya.
 
 ```text
 kongtrol init [opciones]
@@ -438,7 +438,7 @@ kongtrol config public-ip off
 
 ### `kongtrol config killswitch`
 
-El kill switch evita fugas: si una VPN protegida se cae sin que la desconectes, Kongtrol bloquea lo que iba por ella hasta que vuelva. Con Kongtrol en marcha se aplica al instante; si no, se guarda en kongtrol.yaml.
+El kill switch evita fugas: si una conexión VPN protegida se cae sin que la desconectes, Kongtrol bloquea lo que iba por ella hasta que vuelva. Con Kongtrol en marcha se aplica al instante; si no, se guarda en kongtrol.yaml.
 
 ```text
 kongtrol config killswitch <on|off|status> [opciones]
@@ -453,7 +453,7 @@ kongtrol config killswitch status
 
 ### `kongtrol config dns-guard`
 
-El DNS guard evita que tus consultas DNS salgan fuera de la VPN: mientras hay VPN conectadas, Kongtrol usa solo sus DNS. Con Kongtrol en marcha se aplica al instante; si no, se guarda en kongtrol.yaml.
+El DNS guard evita que tus consultas DNS salgan fuera del túnel: mientras haya perfiles conectados, Kongtrol usa solo sus DNS. Con Kongtrol en marcha se aplica al instante; si no, se guarda en kongtrol.yaml.
 
 ```text
 kongtrol config dns-guard <on|off|status> [opciones]
@@ -484,7 +484,7 @@ kongtrol config autostart on
 
 ### `kongtrol config restore-tunnels`
 
-Apagado hasta que lo actives: Kongtrol te lo pregunta una vez, después de la primera VPN que conectas. Si apagas o reinicias el equipo, o Kongtrol se cierra de golpe, al volver a abrirse conecta otra vez las VPN que tenías conectadas, cuando ya hay conexión a internet. Las de una app (Proton, NordVPN, Surfshark, FortiClient) solo se adoptan si su app ya las conectó. Las que desconectaste tú no se conectan, y kongtrol down (o "Salir y desconectar todo") hace que no se conecte ninguna. Si una no conecta, Kongtrol lo intenta pocas veces y te avisa una sola vez.
+Apagado hasta que lo actives: Kongtrol te lo pregunta una vez, después de que conectes tu primer perfil VPN. Si apagas o reinicias el equipo, o Kongtrol se cierra de golpe, al volver a abrirse conecta otra vez los perfiles que tenías conectados cuando ya hay conexión a internet. Los perfiles de apps (Proton, NordVPN, Surfshark, FortiClient) solo se adoptan si su app ya conectó la VPN. Los perfiles que desconectaste tú no se conectan, y kongtrol down (o "Salir y desconectar todo") hace que no se conecte ninguno. Si un perfil no conecta, Kongtrol lo intenta pocas veces y te avisa una sola vez.
 
 ```text
 kongtrol config restore-tunnels <on|off|status> [opciones]
@@ -516,7 +516,7 @@ kongtrol config update-check status
 
 ### `kongtrol config recent-connections`
 
-Encendida por defecto. Kongtrol anota a qué direcciones se conectó este equipo en la última hora, por qué VPN salió cada una y qué programa la abrió. La lista vive solo en la memoria de Kongtrol: no se guarda en disco ni en los registros, no sale del equipo y se borra al apagarla o al cerrar Kongtrol.
+Encendida por defecto. Kongtrol anota a qué direcciones se conectó este equipo en la última hora, por qué perfil salió cada una y qué programa la abrió. La lista vive solo en la memoria de Kongtrol: no se guarda en disco ni en los registros, no sale del equipo y se borra al apagarla o al cerrar Kongtrol.
 
 ```text
 kongtrol config recent-connections <on|off|status> [opciones]
@@ -597,7 +597,7 @@ kongtrol profile add <tipo> [opciones]
 | `--key string` | archivo de la clave privada del certificado |
 | `--name string` | nombre del perfil (obligatorio), por ejemplo oficina |
 | `--no-auto-connect` | no conectar la app automáticamente: Kongtrol la abre y espera a que conectes |
-| `--on-tunnel-down string` | acción de sus reglas al apagarse la VPN: allow (por defecto), block o connect |
+| `--on-tunnel-down string` | acción de sus reglas al desconectar el perfil: allow (por defecto), block o connect |
 | `--port int` | puerto del servidor VPN |
 | `--protocol string` | protocolo (Proton VPN) |
 | `--server string` | servidor exacto (NordVPN, Proton VPN) |
@@ -630,7 +630,7 @@ kongtrol profile detect --json
 
 ### `kongtrol profile priority`
 
-La prioridad solo decide entre tus reglas cuando dos cubren el mismo sitio o el mismo rango de IP: gana el número mayor. Sin prioridad (0 o none) decide la posición de la regla: la primera va antes. No conecta otra VPN y no cambia las rutas que trae cada VPN.
+La prioridad solo decide entre tus reglas cuando dos cubren el mismo sitio o el mismo rango de IP: gana el número mayor. Sin prioridad (0 o none) decide la posición de la regla: la primera va antes. No conecta otro perfil ni cambia las rutas que trae cada perfil.
 
 ```text
 kongtrol profile priority <perfil> [N|none] [opciones]
@@ -675,7 +675,7 @@ kongtrol profile on-tunnel-down oficina block
 
 ### `kongtrol policy`
 
-Agrega o borra políticas (qué sitios o IP van por qué VPN), muestra qué VPN usa cada destino y por qué, y prueba listas de destinos. Empieza con: kongtrol policy list.
+Agrega o borra reglas (qué sitios o IP van por qué perfil), muestra qué perfil usa cada destino y por qué, y prueba listas de destinos. Empieza con: kongtrol policy list.
 
 ```text
 kongtrol policy [comando]
@@ -691,7 +691,7 @@ kongtrol policy test destinos.txt
 
 ### `kongtrol policy add`
 
-Crea una política como "＋ Agregar" en el panel: un sitio o enlace (y sus subdominios), una IP o un rango (10.0.0.0/8) van por la VPN de --via. Una app (app:chrome.exe) se guarda, pero aún no se dirige por la VPN: por ahora Kongtrol solo la reconoce. El nombre se genera solo (por ejemplo "github.com por oficina") salvo con --name. Con --block-when-down ese tráfico no sale por internet normal mientras la VPN esté apagada. Después: kongtrol policy show <sitio>.
+Crea una regla como "＋ Agregar" en el panel: un sitio o enlace (y sus subdominios), una IP o un rango (10.0.0.0/8) van por el perfil indicado en --via. Una app (app:chrome.exe) se guarda, pero aún no se dirige por el perfil: por ahora Kongtrol solo la reconoce. El nombre se genera solo (por ejemplo "github.com por oficina") salvo con --name. Con --block-when-down ese tráfico no sale por internet normal mientras el perfil esté desconectado. Después: kongtrol policy show <sitio>.
 
 ```text
 kongtrol policy add <sitio|ip|rango|app:<exe>>... [opciones]
@@ -701,10 +701,10 @@ kongtrol policy add <sitio|ip|rango|app:<exe>>... [opciones]
 
 | Opciones | Descripción |
 |---|---|
-| `--block-when-down` | si esa VPN está apagada, bloquea el tráfico en vez de usar internet normal |
-| `--name string` | nombre de la política (por defecto: "<primer destino> por <vpn>") |
+| `--block-when-down` | si ese perfil está desconectado, bloquea el tráfico en vez de usar internet normal |
+| `--name string` | nombre de la regla (por defecto: "<primer destino> por <perfil>") |
 | `--no-subdomains` | solo el sitio exacto, sin sus subdominios (*.sitio) |
-| `--on-tunnel-down string` | al apagarse la VPN: inherit (por defecto), allow, block o connect |
+| `--on-tunnel-down string` | al desconectarse el perfil: inherit (por defecto), allow, block o connect |
 | `--paused` | guarda la regla pausada hasta que la actives |
 | `--via string` | perfil de VPN por el que va el tráfico (obligatorio) |
 
@@ -718,7 +718,7 @@ kongtrol policy add 10.20.0.0/16 --via trabajo --name red-trabajo --paused
 
 ### `kongtrol policy remove`
 
-Borra la política con ese nombre (kongtrol policy list los muestra). Pregunta antes; para scripts: --yes. Ese tráfico vuelve a usar internet normal.
+Borra la regla con ese nombre (kongtrol policy list las muestra). Pregunta antes; para scripts: --yes. Ese tráfico vuelve a usar internet normal.
 
 ```text
 kongtrol policy remove <nombre> [opciones]
@@ -739,7 +739,7 @@ kongtrol policy remove teams --yes
 
 ### `kongtrol policy state`
 
-Una regla pausada se conserva y no enruta, bloquea ni intenta conectar su VPN. Activarla aplica su comportamiento de inmediato.
+Una regla pausada se conserva y no enruta, bloquea ni intenta conectar su perfil VPN. Activarla aplica su comportamiento de inmediato.
 
 ```text
 kongtrol policy state <name> [on|off] [opciones]
@@ -781,7 +781,7 @@ kongtrol policy on-tunnel-down intranet inherit
 
 ### `kongtrol policy list`
 
-Muestra tus políticas con su VPN y sus IP resueltas. Para un destino concreto: kongtrol policy show <destino>.
+Muestra tus reglas con su perfil y sus IP resueltas. Para un destino concreto: kongtrol policy show <destino>.
 
 ```text
 kongtrol policy list [opciones]
@@ -796,7 +796,7 @@ kongtrol policy list --json
 
 ### `kongtrol policy show`
 
-Muestra qué política y qué VPN usa un destino (dominio o IP) o una app, y por qué (las apps aún no se aplican: solo se reconocen). Para verlas todas: kongtrol policy list.
+Muestra qué regla y qué perfil usa un destino (dominio o IP) o una app, y por qué (las apps aún no se aplican: solo se reconocen). Para verlas todas: kongtrol policy list.
 
 ```text
 kongtrol policy show <destino|app:<exe>> [opciones]
@@ -812,7 +812,7 @@ kongtrol policy show app:chrome.exe
 
 ### `kongtrol policy test`
 
-Lee un archivo con un destino (IP o dominio) por línea y muestra qué VPN usaría cada uno. Si algo no cuadra: kongtrol policy show <destino>.
+Lee un archivo con un destino (IP o dominio) por línea y muestra qué perfil usaría cada uno. Si algo no cuadra: kongtrol policy show <destino>.
 
 ```text
 kongtrol policy test <archivo> [opciones]
@@ -827,7 +827,7 @@ kongtrol policy test destinos.txt --json
 
 ### `kongtrol reload`
 
-Carga kongtrol.yaml en Kongtrol en marcha: políticas y túneles conectados, o solo un perfil o un grupo. Si agregaste perfiles, te ofrece reiniciar Kongtrol. Después: kongtrol status.
+Carga kongtrol.yaml en Kongtrol en marcha: reglas y túneles conectados, o solo un perfil o un grupo. Si agregaste perfiles, te ofrece reiniciar Kongtrol. Después: kongtrol status.
 
 ```text
 kongtrol reload [perfil] [opciones]
@@ -838,7 +838,7 @@ kongtrol reload [perfil] [opciones]
 | Opciones | Descripción |
 |---|---|
 | `--group grupo` | recarga solo los túneles activos de este grupo |
-| `--policy` | recarga solo el motor de políticas (omite grupos) |
+| `--policy` | recarga solo el motor de reglas (omite grupos) |
 | `-y, --yes` | si hace falta reiniciar Kongtrol, reinicia sin preguntar |
 
 **Ejemplos**
@@ -851,7 +851,7 @@ kongtrol reload --yes
 
 ### `kongtrol restart`
 
-Detiene Kongtrol y lo vuelve a iniciar con kongtrol.yaml releído; reconecta las VPN que estaban conectadas. Es lo mismo que el botón Reiniciar del panel. Después: kongtrol status.
+Detiene Kongtrol y lo vuelve a iniciar con kongtrol.yaml releído; reconecta los perfiles que estaban conectados. Es lo mismo que el botón Reiniciar del panel. Después: kongtrol status.
 
 ```text
 kongtrol restart [opciones]
@@ -882,7 +882,7 @@ kongtrol export > plantilla.yaml
 
 ### `kongtrol doctor`
 
-Revisa todo lo que Kongtrol necesita sin conectar ninguna VPN y dice cómo arreglar cada fallo. Para corregir lo seguro e instalar el ayudante si falta: kongtrol doctor --fix.
+Revisa todo lo que Kongtrol necesita sin conectar ningún perfil VPN y dice cómo arreglar cada fallo. Para corregir lo seguro e instalar el ayudante si falta: kongtrol doctor --fix.
 
 ```text
 kongtrol doctor [opciones]
@@ -933,7 +933,7 @@ kongtrol traffic recent
 
 ### `kongtrol traffic recent`
 
-Lista los destinos de la última hora: nombre (si una política lo resolvió) o IP, puerto, programa, por qué VPN salió (o directo) y cuántas conexiones hubo. Necesita Kongtrol abierto. Los datos viven solo en memoria y no salen del equipo. Apágalo con: kongtrol config recent-connections off
+Lista los destinos de la última hora: nombre (si una regla lo resolvió) o IP, puerto, programa, por qué perfil salió (o directo) y cuántas conexiones hubo. Necesita Kongtrol abierto. Los datos viven solo en memoria y no salen del equipo. Apágalo con: kongtrol config recent-connections off
 
 ```text
 kongtrol traffic recent [opciones]
@@ -1045,7 +1045,7 @@ kongtrol service status
 
 ### `kongtrol uninstall`
 
-Desconecta tus VPN, cierra Kongtrol, quita el ayudante de red, el inicio automático y el PATH que agregó su instalador. Borra la app solo si la instaló install.sh o install.ps1; si vino de un gestor de paquetes (Homebrew, npm…) o del instalador de Windows, te dice cómo terminar. Tus datos están solo en este equipo: Kongtrol no guarda nada en internet ni en otro lugar. Sin opciones se quedan aquí, para que todo vuelva si reinstalas: la carpeta ~/.kongtrol (VPN, ajustes, archivos importados, registros) y tus contraseñas en el llavero del sistema de este equipo. --purge también los borra: la carpeta ~/.kongtrol, las contraseñas de Kongtrol del llavero y la clave que firma el registro de auditoría (y el registro de auditoría o el --config si los tienes en otra carpeta); no se puede deshacer. --data-only borra lo mismo, pero deja la app instalada.
+Desconecta tus perfiles VPN, cierra Kongtrol, quita el ayudante de red, el inicio automático y el PATH que agregó su instalador. Borra la app solo si la instaló install.sh o install.ps1; si vino de un gestor de paquetes (Homebrew, npm…) o del instalador de Windows, te dice cómo terminar. Tus datos están solo en este equipo: Kongtrol no guarda nada en internet ni en otro lugar. Sin opciones se quedan aquí, para que todo vuelva si reinstalas: la carpeta ~/.kongtrol (perfiles, ajustes, archivos importados, registros) y tus contraseñas en el llavero del sistema de este equipo. --purge también los borra: la carpeta ~/.kongtrol, las contraseñas de Kongtrol del llavero y la clave que firma el registro de auditoría (y el registro de auditoría o el --config si los tienes en otra carpeta); no se puede deshacer. --data-only borra lo mismo, pero deja la app instalada.
 
 ```text
 kongtrol uninstall [opciones]

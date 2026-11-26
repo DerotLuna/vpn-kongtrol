@@ -16,9 +16,10 @@ import (
 // (POST /api/v1/shutdown: `kongtrol down`, the tray's "Salir y
 // desconectar todo"), before the daemon stops; a restart does not call it.
 type StartupHooks struct {
-	Autostart    func() autostart.State
-	SetAutostart func(bool) error
-	OnStopAll    func()
+	Autostart        func() autostart.State
+	SetAutostart     func(bool) error
+	OnStopAll        func()
+	OnRestoreChanged func(bool)
 }
 
 // SetStartup wires the startup settings and the stop-all hook.
@@ -96,6 +97,9 @@ func (s *Server) handleSetStartup(w http.ResponseWriter, r *http.Request) {
 		}); err != nil {
 			writeLocalizedError(w, r, http.StatusInternalServerError, err)
 			return
+		}
+		if s.startup.OnRestoreChanged != nil {
+			s.startup.OnRestoreChanged(on)
 		}
 	}
 	if req.StartAtLogin != nil {

@@ -45,6 +45,10 @@ parameters each frame is that map, keyed by profile name (`kongtrol up`'s live v
 `{"type":"metrics","tunnels":{…}}` for the map, and `{"type":"changed","rev":N}` after any
 successful mutating request (profiles, groups, rules, security, settings, preferences, reload),
 so clients refetch what they show. A change frame carries no data.
+During a queued or running startup restoration, both the WebSocket and
+`GET /api/v1/tunnels` report `Status: "connecting"` and `restoring: true`.
+Cancelling the profile prevents a queued attempt from starting and waits for
+an active attempt to stop before disconnecting (ADR-0121).
 
 Commands: [CLI.en.md](CLI.en.md) (Español: [CLI.md](CLI.md)).
 

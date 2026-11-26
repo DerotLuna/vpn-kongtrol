@@ -1,7 +1,7 @@
 // Kongtrol UI — one tunnel's status and actions (Inicio) · v1.3.0 · 2026-11-19
 //
 // The status cell says, in this order: the state (Four States Rule: word +
-// color + dot shape), how a provider app's tunnel came up or what the user
+// color), how a provider app's tunnel came up or what the user
 // must do in that app (attach), whether the server answers (health), why
 // the last connect failed (with the raw error on demand, for developers) and
 // what goes through the tunnel. The actions cell offers exactly the actions
@@ -52,7 +52,9 @@ export const TunnelStatusCell = memo(function TunnelStatusCell({ tn }: { tn: Tun
   const busy = busyAction(tn, usePendingAction(tn.Name))
   const busyPill = busy ? BUSY_PILL[busy] : undefined
   const state = tunnelState(tn)
-  const s = busyPill ? { key: busyPill, tone: 'connecting' as const } : STATE[state]
+  const s = busyPill ? { key: busyPill, tone: 'connecting' as const }
+    : tn.restoring && tn.Status === 'connecting' ? { key: 'home.status.reconnecting' as const, tone: 'connecting' as const }
+      : STATE[state]
   const connected = tn.Status === 'connected'
   const health = tn.health?.state
   const unknown = health === 'unknown'

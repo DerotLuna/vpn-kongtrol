@@ -14,8 +14,9 @@ import type { SecurityStatus, TunnelMetrics } from '../api/types'
 import { usePreferences } from '../app/preferences-context'
 import type { MessageKey } from '../i18n/messages'
 import { keys } from './keys'
-import { offerLabel, offerOf, useOfferRunner } from './offers'
+import { offerLabel, offerOf, offerStillUseful, useOfferRunner } from './offers'
 import { useOptimisticMutation } from './optimistic'
+import { tunnelState, useSecurityQuery, useTunnelsQuery } from './resources'
 import { createStore, useStore } from './store'
 import { endTransition, pendingActions, setPending, watchTransition, type TunnelAction } from './transition'
 import { toasts } from './toast'
@@ -438,7 +439,10 @@ export function useGroupAction() {
       const skipped = profiles.filter((p) => !started.includes(p) && !already.includes(p))
       const message =
         started.length > 0
-          ? t('home.groups.toast.connecting', { name, n: started.length })
+          ? t(started.length === 1 ? 'home.groups.toast.connecting.one' : 'home.groups.toast.connecting.other', {
+              name,
+              n: started.length,
+            })
           : t('home.groups.toast.allConnected', { name })
       toasts.show({
         tone: 'info',
@@ -638,12 +642,32 @@ export const ACTION_TOAST_MS = 60_000
  */
 export function useNoticeToasts(): void {
   const { t } = usePreferences()
+  const tunnels = useTunnelsQuery().data
+  const security = useSecurityQuery().data
   const run = useTunnelActions()
   const runOffer = useOfferRunner(useCallback((profile: string) => run(profile, 'disconnect'), [run]))
+  useEffect(() => {
+    for (const tunnel of tunnels ?? []) {
+      const state = tunnelState(tunnel)
+      if (state === 'connected') toasts.resolveNotice(tunnel.Name, 'connected')
+      else toasts.setConnectActionHidden(tunnel.Name, state === 'connecting')
+    }
+  }, [tunnels])
+  useEffect(() => {
+    if (!security) return
+    toasts.dismissWhere((toast) => {
+      if (!toast.notice) return false
+      const offer = offerOf(toast.notice)
+      return !!offer && !offerStillUseful(offer, security)
+    })
+  }, [security])
   const onNotice = useCallback(
     (e: DaemonEvent) => {
+      if (e.profile && e.key === 'watchdog.event.reconnected') toasts.resolveNotice(e.profile, 'connected')
+      if (e.profile && e.key === 'watchdog.event.responding') toasts.resolveNotice(e.profile, 'responding')
       const message = noticeText(e, t)
       const tone = e.level === 'WARN' ? 'bad' : 'info'
+      const notice = e.profile ? { profile: e.profile, key: e.key, kind: e.kind, ...(e.offer ? { offer: e.offer } : {}), ...(e.args ? { args: e.args } : {}) } : undefined
       // An offer (ADR-0102) is the toast's action: "Recuperar internet"
       // matters more than "Reintentar"; Inicio's list shows both.
       const offer = offerOf(e)
@@ -651,24 +675,30 @@ export function useNoticeToasts(): void {
         toasts.show({
           tone,
           message,
-          duration: ACTION_TOAST_MS,
+          duration: tone === 'bad' ? 0 : ACTION_TOAST_MS,
+          ...(notice ? { notice } : {}),
           action: { label: offerLabel(offer, t), run: () => runOffer(offer, e.seq) },
         })
         return
       }
       if (e.can_connect && e.profile) {
         const profile = e.profile
+        const tunnel = tunnels?.find((item) => item.Name === profile)
+        const state = tunnel ? tunnelState(tunnel) : undefined
+        if (state === 'connected') return
         toasts.show({
           tone,
           message,
-          duration: ACTION_TOAST_MS,
+          duration: tone === 'bad' ? 0 : ACTION_TOAST_MS,
+          ...(notice ? { notice: { ...notice, connectAction: true } } : {}),
+          actionHidden: state === 'connecting',
           action: { label: noticeActionLabel(e, t), run: () => run(profile, 'connect') },
         })
         return
       }
-      toasts.show({ tone, message })
+      toasts.show({ tone, message, ...(notice ? { notice } : {}) })
     },
-    [t, run, runOffer],
+    [t, run, runOffer, tunnels],
   )
   useDaemonNotices(onNotice)
 }

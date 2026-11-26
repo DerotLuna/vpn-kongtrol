@@ -3,9 +3,24 @@ import type { ReactNode } from 'react'
 import { describeError } from '../../api/errors'
 import { usePreferences } from '../../app/preferences-context'
 import { Button } from '../ui/Button'
+import { SelectField } from '../ui/Field'
 import { Banner } from '../ui/States'
 import { ArrowLeftIcon } from '../profiles/icons'
+import { ON_TUNNEL_DOWN, type OnTunnelDown } from '../rules/model'
 import type { ActivatePhase, SaveIntent } from './activate'
+
+export function ProfileDownField({ value, onChange }: { value: OnTunnelDown; onChange: (value: OnTunnelDown) => void }) {
+  const { t } = usePreferences()
+  return (
+    <SelectField
+      label={t('profiles.onDown.label')}
+      hint={<>{t(`rules.onDown.${value}.hint`)} {t('profiles.onDown.hint')}</>}
+      value={value}
+      options={ON_TUNNEL_DOWN.map((option) => ({ value: option, label: t(`rules.onDown.${option}`) }))}
+      onChange={(option) => onChange(option as OnTunnelDown)}
+    />
+  )
+}
 
 /**
  * Footer of the profile steps: what saving does, then Back, "Guardar"
