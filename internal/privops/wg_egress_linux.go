@@ -54,7 +54,7 @@ func conflictingNativeDefaultRules(rules []netlink.Rule, mark uint32) bool {
 		if rule.Table == unix.RT_TABLE_MAIN && rule.SuppressPrefixlen == 0 {
 			suppress++
 		}
-		if mark != 0 && rule.Table == int(mark) && rule.Mark == mark && rule.Invert {
+		if mark != 0 && rule.Table >= 0 && uint64(rule.Table) == uint64(mark) && rule.Mark == mark && rule.Invert {
 			own++
 		}
 	}
