@@ -6,11 +6,7 @@ import './suggestions.css'
 const suggestions: { id: RulePreset; label: string }[] = [
   { id: 'claude', label: 'Claude' },
   { id: 'chatgpt', label: 'ChatGPT / OpenAI' },
-  { id: 'x', label: 'X / Twitter' },
-  { id: 'reddit', label: 'Reddit' },
-  { id: 'telegram', label: 'Telegram Web' },
-  { id: 'canva', label: 'Canva' },
-  { id: 'puntodecorte', label: 'Punto de Corte' },
+  { id: 'oracle', label: 'Oracle / Java' },
 ]
 
 export function RuleSuggestions({ onAdd }: { onAdd: (preset: RulePreset) => void }) {

@@ -1,6 +1,6 @@
 # ADR-0124: Routing rule sheet and suggestions
 
-Status: Accepted · Date: 2026-11-26 · Decision-maker: owner
+Status: Superseded by ADR-0126 · Date: 2026-11-26 · Decision-maker: owner
 
 Supersedes ADR-0123. Research: [site restrictions](../research/2026-11-26-venezuela-site-suggestions.md)
 and [sheet navigation](../research/2026-11-26-rule-sheet-navigation.md).

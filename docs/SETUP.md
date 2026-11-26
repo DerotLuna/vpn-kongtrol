@@ -488,7 +488,7 @@ En el panel, usa **＋ Agregar** y escribe sitios, enlaces, IP o rangos separado
 o saltos de línea. Por ejemplo, `claude.com, api.anthropic.com, *.anthropic.com, 192.0.2.42`.
 Elige el perfil y guarda la regla pausada. Puedes activarla al terminar o después en **Reglas**.
 Después de guardar un perfil puedes elegir **Agregar regla de salida**. Al crear o editar
-una regla, los botones Claude, ChatGPT/OpenAI y otros sitios agregan varios destinos a la lista
+una regla, los botones Claude, ChatGPT/OpenAI y Oracle/Java agregan varios destinos a la lista
 editable. Son aproximaciones, no garantizan acceso: los bloqueos varían por red, las apps pueden
 usar otras direcciones y los proveedores tienen sus propias condiciones. Un comodín alcanza un
 nivel y Kongtrol descubre solo algunos subdominios; agrega los nombres concretos que necesites.

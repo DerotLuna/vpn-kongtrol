@@ -180,7 +180,7 @@ $ kongtrol down --all          # disconnect all`,
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  office
   example.com      ──▶  no rule                 ──▶  normal internet`,
       panel: <>In the panel, open <strong>Rules</strong> → <strong>＋ Add</strong>. Type a site or a network, pick the profile and test before saving.
-        Add several editable suggestions (Claude, ChatGPT/OpenAI and other sites) when creating or editing a rule.
+        Add several editable suggestions (Claude, ChatGPT/OpenAI and Oracle/Java) when creating or editing a rule.
         They do not guarantee access: restrictions vary by network, apps use other destinations and services have their own terms.
         After saving a profile, choose “Add routing rule” to configure its destinations.
         You can also create the rule in the terminal.</>,

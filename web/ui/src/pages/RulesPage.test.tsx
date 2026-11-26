@@ -81,16 +81,16 @@ describe('Rules page', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Edit “Lab”' }))
     const input = screen.getByRole<HTMLTextAreaElement>('textbox', { name: /Site, IP or program/ })
     await userEvent.click(screen.getByRole('button', { name: 'Claude' }))
-    await userEvent.click(screen.getByRole('button', { name: 'X / Twitter' }))
-    await userEvent.click(screen.getByRole('button', { name: 'X / Twitter' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Oracle / Java' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Oracle / Java' }))
     expect(input.value).toContain('10.2.0.0/16')
     expect(input.value).toContain('app:code.exe')
     expect(input.value).toContain('claude.ai')
-    expect(input.value.match(/^x\.com$/gm)).toHaveLength(1)
+    expect(input.value.match(/^download\.oracle\.com$/gm)).toHaveLength(1)
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false)
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(saved?.match).toMatchObject({
-      domains: expect.arrayContaining(['claude.ai', 'x.com']),
+      domains: expect.arrayContaining(['claude.ai', 'download.oracle.com', 'javadl.oracle.com', 'jdk.java.net']),
       ip_ranges: ['10.2.0.0/16'],
       apps: ['code.exe'],
     }))

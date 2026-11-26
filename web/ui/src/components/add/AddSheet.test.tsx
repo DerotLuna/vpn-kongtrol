@@ -141,7 +141,7 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true')
   })
 
-  it('adds editable Claude and ChatGPT suggestions without replacing existing destinations', async () => {
+  it('adds editable suggestions without replacing existing destinations', async () => {
     window.history.replaceState(null, '', '/?add=rule&via=work&target=example.com')
     stubFetch(daemon([profile('work')]).routes)
     render(<App />)
@@ -149,11 +149,16 @@ describe('"＋ Add": one sheet, opened from the URL', () => {
     const input = await within(sheet).findByRole<HTMLTextAreaElement>('textbox', { name: /Site, IP or program/ })
     await userEvent.click(within(sheet).getByRole('button', { name: 'Claude' }))
     await userEvent.click(within(sheet).getByRole('button', { name: 'ChatGPT / OpenAI' }))
-    await userEvent.click(within(sheet).getByRole('button', { name: 'X / Twitter' }))
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Oracle / Java' }))
     expect(input.value).toContain('*.example.com')
     expect(input.value).toContain('*.anthropic.com')
     expect(input.value).toContain('auth.openai.com')
-    expect(input.value).toContain('pbs.twimg.com')
+    expect(input.value).toContain('download.oracle.com')
+    expect(input.value).toContain('javadl.oracle.com')
+    expect(input.value).toContain('jdk.java.net')
+    for (const name of ['X / Twitter', 'Reddit', 'Telegram Web', 'Canva', 'Punto de Corte']) {
+      expect(within(sheet).queryByRole('button', { name })).not.toBeInTheDocument()
+    }
     await userEvent.clear(input)
     await userEvent.type(input, 'only.example')
     expect(input).toHaveValue('only.example')

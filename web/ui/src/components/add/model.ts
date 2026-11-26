@@ -256,11 +256,7 @@ export function matchOf(entries: readonly Entry[], includeSubdomains: boolean): 
 export const RULE_PRESETS = {
   claude: ['claude.ai', '*.claude.ai', 'claude.com', '*.claude.com', 'anthropic.com', '*.anthropic.com', 'api.anthropic.com'],
   chatgpt: ['chatgpt.com', '*.chatgpt.com', 'ws.chatgpt.com', 'openai.com', '*.openai.com', 'auth.openai.com', '*.auth.openai.com', 'auth0.openai.com', 'oaistatic.com', '*.oaistatic.com', 'oaiusercontent.com', '*.oaiusercontent.com'],
-  x: ['x.com', 'twitter.com', 'api.twitter.com', 'upload.twitter.com', 'abs-0.twimg.com', 'abs.twimg.com', 'pbs.twimg.com', 'video-0.twimg.com', 'video.twimg.com'],
-  reddit: ['reddit.com', 'www.reddit.com'],
-  telegram: ['telegram.org', 'web.telegram.org'],
-  canva: ['canva.com', 'www.canva.com'],
-  puntodecorte: ['puntodecorte.net', 'puntodecorte.com'],
+  oracle: ['oracle.com', '*.oracle.com', 'www.oracle.com', 'download.oracle.com', 'javadl.oracle.com', 'java.com', '*.java.com', 'www.java.com', 'jdk.java.net', 'download.java.net'],
 } as const
 
 export type RulePreset = keyof typeof RULE_PRESETS

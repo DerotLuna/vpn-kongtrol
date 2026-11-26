@@ -500,11 +500,11 @@ API handlers and the CLI with no daemon (`kongtrol policy add|remove`, `kongtrol
 is the "＋ Agregar" input classifier (URL → host, `*.host` unless `--no-subdomains`, IP/CIDR,
 `app:`); web/ui mirrors it. `kongtrol profile detect` = `GET /api/v1/vpns/detect` (vpndetect).
 The Add sheet exposes the profile's `on_tunnel_down` on both creation paths, default unchanged.
-Rule suggestions (Claude, ChatGPT/OpenAI and selected sites with documented access restrictions)
+Rule suggestions (Claude, ChatGPT/OpenAI and Oracle/Java)
 append editable destinations in rule creation and editing. After creating a profile, "Agregar
 regla de salida" opens that same form for it; Back returns to the saved profile and keeps the
 draft. Suggestions never promise full coverage and materialize selected subdomains before
-switching off automatic expansion (ADR-0122, ADR-0124).
+switching off automatic expansion (ADR-0122, ADR-0126).
 The header bell opens Activity's in-memory events; important event toasts stay until dismissed
 or a known recovery resolves them, and historical connect actions follow current tunnel state.
 

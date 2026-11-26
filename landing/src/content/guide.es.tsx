@@ -186,7 +186,7 @@ $ kongtrol down --all          # desconecta todos`,
   10.10.4.12       ──▶  ip_ranges: 10.10.0.0/16 ──▶  oficina
   ejemplo.com      ──▶  sin regla               ──▶  internet normal`,
       panel: <>En el panel, abre <strong>Reglas</strong> → <strong>＋ Agregar</strong>. Escribe un sitio o una red, elige el perfil y prueba antes de guardar.
-        Puedes agregar varias sugerencias editables (Claude, ChatGPT/OpenAI y otros sitios) al crear o editar una regla.
+        Puedes agregar varias sugerencias editables (Claude, ChatGPT/OpenAI y Oracle/Java) al crear o editar una regla.
         No garantizan acceso: las restricciones varían por red, las apps usan otros destinos y cada servicio tiene sus condiciones.
         Al guardar un perfil, elige «Agregar regla de salida» para configurar sus destinos.
         También puedes crear la regla desde la terminal.</>,
