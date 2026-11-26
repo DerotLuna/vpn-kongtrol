@@ -59,6 +59,26 @@ func TestConflictingNativeDefaultRules(t *testing.T) {
 	}
 }
 
+func TestParseFWMark(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		raw  string
+		want uint32
+	}{
+		{"decimal", "51820", 51820},
+		{"hexadecimal", "0xca6c", 51820},
+		{"maximum", "4294967295", ^uint32(0)},
+		{"empty", "", 0},
+		{"out of range", "4294967296", 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := parseFWMark(test.raw); got != test.want {
+				t.Fatalf("parseFWMark(%q) = %d, want %d", test.raw, got, test.want)
+			}
+		})
+	}
+}
+
 func TestDefaultEgressMarkerProtectsAllowedIPs(t *testing.T) {
 	stub := stubWG(t, func(string) (bool, error) { return true, nil })
 	local := NewLocal(LocalOptions{StateDir: t.TempDir()})

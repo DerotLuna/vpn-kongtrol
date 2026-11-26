@@ -25,8 +25,7 @@ func checkNativeDefaultRules(ctx context.Context, replacing string) error {
 			return err
 		}
 		if out, err := run(ctx, exe, "show", replacing, "fwmark"); err == nil {
-			n, _ := strconv.ParseUint(strings.TrimSpace(string(out)), 0, 32)
-			mark = uint32(n)
+			mark = parseFWMark(out)
 		}
 	}
 	for _, family := range []int{netlink.FAMILY_V4, netlink.FAMILY_V6} {
@@ -39,6 +38,14 @@ func checkNativeDefaultRules(ctx context.Context, replacing string) error {
 		}
 	}
 	return nil
+}
+
+func parseFWMark(raw string) uint32 {
+	mark, err := strconv.ParseUint(strings.TrimSpace(raw), 0, 32)
+	if err != nil {
+		return 0
+	}
+	return uint32(mark)
 }
 
 func conflictingNativeDefaultRules(rules []netlink.Rule, mark uint32) bool {
