@@ -278,8 +278,8 @@ jobs:
           name: windows-installer
           path: dist-extra
 
-      - uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-      - uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
+      - uses: anchore/sbom-action/download-syft@dfcb83b97731532d72be422cbc51ee64adb6fd56 # v0.24.4
+      - uses: sigstore/cosign-installer@881c63bd87e38389154debd8331404ce7ca8a3ab # v4.1.4
 
       # A stable tag's changelog starts at the previous stable tag (v0.7.0
       # from v0.6.0), not at its own rc on the same commit. Pre-release tags
@@ -297,7 +297,7 @@ jobs:
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
         with:
           distribution: goreleaser
-          version: "v2.20.2" # exact, same as ci.yml; Renovate bumps it
+          version: "v2.20.3" # exact, same as ci.yml; Renovate bumps it
           args: release --clean
         env:
           # The tag that started this run. A stable tag on the commit of its
