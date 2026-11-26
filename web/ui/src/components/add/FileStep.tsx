@@ -285,7 +285,14 @@ export function FileStep({ profiles, incoming, note, onBack, onDone, onDirty }: 
 
   // Files dropped on the window while this step is open (or that opened it).
   useEffect(() => {
-    if (incoming) void take(incoming)
+    if (!incoming) return
+    let cancelled = false
+    queueMicrotask(() => {
+      if (!cancelled) void take(incoming)
+    })
+    return () => {
+      cancelled = true
+    }
     // take is recreated each render; only new files matter here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming])

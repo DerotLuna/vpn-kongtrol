@@ -36,7 +36,8 @@ func openAppRouteTableWithMode(egress netlink.Link, destination netip.Prefix, ta
 	subnet := &net.IPNet{IP: destination.Addr().AsSlice(), Mask: net.CIDRMask(destination.Bits(), destination.Addr().BitLen())}
 	rule := netlink.NewRule()
 	rule.Family, rule.Table, rule.Priority = family, table, priority
-	rule.Mark, rule.Mask = int(mark), -1 // full mark
+	fullMask := ^uint32(0)
+	rule.Mark, rule.Mask = mark, &fullMask
 	rt := &appRouteTable{
 		route: netlink.Route{
 			LinkIndex: egress.Attrs().Index, Dst: subnet, Table: table, Scope: netlink.SCOPE_LINK,
@@ -60,7 +61,7 @@ func openAppRouteTableWithMode(egress netlink.Link, destination netip.Prefix, ta
 	if mode == AppRouteFallback {
 		destinations := netlink.NewRule()
 		destinations.Family, destinations.Table, destinations.Priority = family, unix.RT_TABLE_MAIN, priority-1
-		destinations.Mark, destinations.Mask = int(mark), -1
+		destinations.Mark, destinations.Mask = mark, &fullMask
 		// Keep explicit routes and LAN routes. A regular default and the
 		// two /1 defaults that VPN clients use do not override this app.
 		destinations.SuppressPrefixlen = 1

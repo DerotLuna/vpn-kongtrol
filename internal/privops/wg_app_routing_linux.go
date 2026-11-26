@@ -117,13 +117,13 @@ func nextWGAppTable() (table, priority int, err error) {
 		}
 		for _, rule := range rules {
 			usedTables[rule.Table] = true
-			usedTables[rule.Mark] = true
+			usedTables[int(rule.Mark)] = true
 			usedPriorities[rule.Priority] = true
 			if rule.Priority > 0 && rule.Priority < firstPriority+2*slots {
 				// Only a rule carrying one of our distinct application marks
 				// can precede this connection without overriding its lookup.
 				if rule.Mark < firstTable || rule.Mark >= firstTable+slots ||
-					(rule.Table != rule.Mark && rule.Table != unix.RT_TABLE_MAIN) {
+					(rule.Table != int(rule.Mark) && rule.Table != unix.RT_TABLE_MAIN) {
 					return 0, 0, fmt.Errorf("an earlier Linux routing rule may override executable routing (priority %d)", rule.Priority)
 				}
 			}

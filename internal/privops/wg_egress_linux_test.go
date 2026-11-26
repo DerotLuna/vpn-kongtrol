@@ -42,7 +42,7 @@ func TestConflictingNativeDefaultRules(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		rules     []netlink.Rule
-		replacing int
+		replacing uint32
 		want      bool
 	}{
 		{"standard main table", []netlink.Rule{main}, 0, false},
