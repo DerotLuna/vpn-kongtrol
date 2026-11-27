@@ -18,15 +18,14 @@ func prepareWireGuardDefaultEgress(data []byte) []byte { return data }
 // wg-quick removes all main-table suppression rules on down. Allow an
 // existing pair only if it belongs to the managed tunnel being replaced.
 func checkNativeDefaultRules(ctx context.Context, replacing string) error {
-	var mark int
+	var mark uint32
 	if replacing != "" {
 		exe, err := wgTool()
 		if err != nil {
 			return err
 		}
 		if out, err := run(ctx, exe, "show", replacing, "fwmark"); err == nil {
-			n, _ := strconv.ParseUint(strings.TrimSpace(string(out)), 0, 31)
-			mark = int(n)
+			mark = parseFWMark(out)
 		}
 	}
 	for _, family := range []int{netlink.FAMILY_V4, netlink.FAMILY_V6} {
@@ -41,13 +40,21 @@ func checkNativeDefaultRules(ctx context.Context, replacing string) error {
 	return nil
 }
 
-func conflictingNativeDefaultRules(rules []netlink.Rule, mark int) bool {
+func parseFWMark(raw string) uint32 {
+	mark, err := strconv.ParseUint(strings.TrimSpace(raw), 0, 32)
+	if err != nil {
+		return 0
+	}
+	return uint32(mark)
+}
+
+func conflictingNativeDefaultRules(rules []netlink.Rule, mark uint32) bool {
 	suppress, own := 0, 0
 	for _, rule := range rules {
 		if rule.Table == unix.RT_TABLE_MAIN && rule.SuppressPrefixlen == 0 {
 			suppress++
 		}
-		if mark != 0 && rule.Table == mark && rule.Mark == mark && rule.Invert {
+		if mark != 0 && rule.Table >= 0 && uint64(rule.Table) == uint64(mark) && rule.Mark == mark && rule.Invert {
 			own++
 		}
 	}

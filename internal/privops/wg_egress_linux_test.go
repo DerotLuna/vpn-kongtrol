@@ -42,7 +42,7 @@ func TestConflictingNativeDefaultRules(t *testing.T) {
 	for _, test := range []struct {
 		name      string
 		rules     []netlink.Rule
-		replacing int
+		replacing uint32
 		want      bool
 	}{
 		{"standard main table", []netlink.Rule{main}, 0, false},
@@ -54,6 +54,26 @@ func TestConflictingNativeDefaultRules(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if got := conflictingNativeDefaultRules(test.rules, test.replacing); got != test.want {
 				t.Fatalf("conflict = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestParseFWMark(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		raw  string
+		want uint32
+	}{
+		{"decimal", "51820", 51820},
+		{"hexadecimal", "0xca6c", 51820},
+		{"maximum", "4294967295", ^uint32(0)},
+		{"empty", "", 0},
+		{"out of range", "4294967296", 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := parseFWMark(test.raw); got != test.want {
+				t.Fatalf("parseFWMark(%q) = %d, want %d", test.raw, got, test.want)
 			}
 		})
 	}
